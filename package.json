@@ -1,9 +1,10 @@
 {
   "name": "premia-contracts",
+  "private": true,
   "version": "1.0.0",
   "main": "index.js",
   "repository": "https://github.com/PremiaFinance/premia-contracts.git",
-  "author": "Lumyo <lumyo.b@gmail.com>",
+  "author": "Premia",
   "license": "MIT",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
