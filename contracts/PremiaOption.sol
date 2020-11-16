@@ -3,11 +3,13 @@
 pragma solidity ^0.6.0;
 
 import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
+import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
+import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
-import './interface/IERC20.sol';
 
 contract PremiaOption is Ownable, ERC1155 {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
     uint256 expirationIncrement = 3600 * 24 * 7; // 1 Week
 
@@ -92,53 +94,61 @@ contract PremiaOption is Ownable, ERC1155 {
         if (optionId == 0) {
             optionId = nextOptionId;
             options[_token][_expiration][_strikePrice][_isCall] = optionId;
+
             pools[optionId] = Pool({ tokenAmount: 0, daiAmount: 0});
+            optionData[optionId] = OptionData({
+                token: _token,
+                expiration: _expiration,
+                strikePrice: _strikePrice,
+                isCall: _isCall
+            });
+
             nextOptionId = nextOptionId.add(1);
         }
 
         if (_isCall) {
             uint256 amount = _contractAmount.mul(_strikePrice);
-            dai.transferFrom(msg.sender, address(this), amount);
+            dai.safeTransferFrom(msg.sender, address(this), amount);
             pools[optionId].daiAmount = pools[optionId].daiAmount.add(amount);
         } else {
             IERC20 tokenErc20 = IERC20(_token);
             uint256 amount = _contractAmount.mul(settings.contractSize);
-            tokenErc20.transferFrom(msg.sender, address(this), amount);
+            tokenErc20.safeTransferFrom(msg.sender, address(this), amount);
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
         }
 
         mint(msg.sender, optionId, _contractAmount);
     }
 
-    function executeOption(uint256 _optionId, uint256 _contractAmount) {
-        OptionData optionData = optionData[_optionId];
-        TokenSettings settings = tokenData[optionData.token];
+    function executeOption(uint256 _optionId, uint256 _contractAmount) public {
+        OptionData memory data = optionData[_optionId];
+        TokenSettings memory settings = tokenSettings[data.token];
 
-        require(block.timestamp < optionData.expiration, "Option expired");
+        require(block.timestamp < data.expiration, "Option expired");
         burn(msg.sender, _optionId, _contractAmount);
 
-        IERC20 tokenErc20 = IERC20(optionData.token);
+        IERC20 tokenErc20 = IERC20(data.token);
 
         uint256 tokenAmount = _contractAmount.mul(settings.contractSize);
-        uint256 daiAmount = _contractAmount.mul(optionData.strikePrice);
+        uint256 daiAmount = _contractAmount.mul(data.strikePrice);
 
         if (data.isCall) {
             pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(daiAmount);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
 
-            tokenErc20.transferFrom(msg.sender, address(this), tokenAmount);
-            dai.transfer(msg.sender, daiAmount);
+            tokenErc20.safeTransferFrom(msg.sender, address(this), tokenAmount);
+            dai.safeTransfer(msg.sender, daiAmount);
         } else {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
             pools[_optionId].daiAmount = pools[_optionId].daiAmount.add(daiAmount);
 
-            dai.transferFrom(msg.sender, address(this), daiAmount);
-            tokenErc20.transfer(msg.sender, tokenAmount);
+            dai.safeTransferFrom(msg.sender, address(this), daiAmount);
+            tokenErc20.safeTransfer(msg.sender, tokenAmount);
         }
     }
 
     // Withdraw funds from an expired option
-    function withdraw(uint256 _optionId) {
+    function withdraw(uint256 _optionId) public {
         // ToDo : Implement
     }
 
