@@ -18,11 +18,16 @@ contract PremiaOption is Ownable, ERC1155 {
         bool isDisabled; // Whether this token is disabled or not
     }
 
-    struct NftData {
+    struct OptionData {
         address token;
         uint256 expiration;
         uint256 strikePrice;
         bool isCall;
+    }
+
+    struct Pool {
+        uint256 tokenAmount;
+        uint256 daiAmount;
     }
 
     IERC20 public dai = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
@@ -32,12 +37,18 @@ contract PremiaOption is Ownable, ERC1155 {
     address[] public tokens;
     mapping (address => TokenSettings) public tokenSettings;
 
-    uint256 public nextNftId = 1;
+    uint256 public nextOptionId = 1;
 
-    // token => expiration => strikePrice => isCall (1 for call, 0 for put) => nftId
+    // token => expiration => strikePrice => isCall (1 for call, 0 for put) => optionId
     mapping (address => mapping(uint256 => mapping(uint256 => mapping (bool => uint256)))) public options;
 
-    // ToDo : Keep track of option writers, so that they can recover funds on expiration
+    // optionId => OptionData
+    mapping (uint256 => OptionData) public optionData;
+
+    // optionId => Pool
+    mapping (uint256 => Pool) public pools;
+
+    // ToDo : Keep track of option writers, so that they can claim funds on expiration
 
     constructor(string memory _uri) public ERC1155(_uri) {
 
@@ -51,7 +62,7 @@ contract PremiaOption is Ownable, ERC1155 {
     // View //
     //////////
 
-    function getOptionNftId(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public view returns(uint256) {
+    function getOptionId(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public view returns(uint256) {
         return options[_token][_expiration][_strikePrice][_isCall];
     }
 
@@ -59,6 +70,7 @@ contract PremiaOption is Ownable, ERC1155 {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
+    // Add a new token to support writing of options paired to DAI
     function addToken(address _token, uint256 _contractSize, uint256 _strikePriceIncrement) public onlyOwner {
         require(_isInArray(_token, tokens) == false, "Token already added");
         require(_strikePriceIncrement > 0, "Strike increment must be > 0");
@@ -76,24 +88,57 @@ contract PremiaOption is Ownable, ERC1155 {
 
         TokenSettings memory settings = tokenSettings[_token];
 
+        uint256 optionId = getOptionId(_token, _expiration, _strikePrice, _isCall);
+        if (optionId == 0) {
+            optionId = nextOptionId;
+            options[_token][_expiration][_strikePrice][_isCall] = optionId;
+            pools[optionId] = Pool({ tokenAmount: 0, daiAmount: 0});
+            nextOptionId = nextOptionId.add(1);
+        }
+
         if (_isCall) {
-            dai.transferFrom(msg.sender, address(this), _contractAmount.mul(_strikePrice));
+            uint256 amount = _contractAmount.mul(_strikePrice);
+            dai.transferFrom(msg.sender, address(this), amount);
+            pools[optionId].daiAmount = pools[optionId].daiAmount.add(amount);
         } else {
             IERC20 tokenErc20 = IERC20(_token);
-            tokenErc20.transferFrom(msg.sender, address(this), _contractAmount.mul(settings.contractSize));
+            uint256 amount = _contractAmount.mul(settings.contractSize);
+            tokenErc20.transferFrom(msg.sender, address(this), amount);
+            pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
         }
 
-        uint256 nftId = getOptionNftId(_token, _expiration, _strikePrice, _isCall);
-        if (nftId == 0) {
-            nftId = nextNftId;
-            options[_token][_expiration][_strikePrice][_isCall] = nftId;
-            nextNftId = nextNftId.add(1);
-        }
-
-        mint(msg.sender, nftId, _contractAmount);
+        mint(msg.sender, optionId, _contractAmount);
     }
 
-    function executeOption(uint256 _nftId, uint256 _amount) {
+    function executeOption(uint256 _optionId, uint256 _contractAmount) {
+        OptionData optionData = optionData[_optionId];
+        TokenSettings settings = tokenData[optionData.token];
+
+        require(block.timestamp < optionData.expiration, "Option expired");
+        burn(msg.sender, _optionId, _contractAmount);
+
+        IERC20 tokenErc20 = IERC20(optionData.token);
+
+        uint256 tokenAmount = _contractAmount.mul(settings.contractSize);
+        uint256 daiAmount = _contractAmount.mul(optionData.strikePrice);
+
+        if (data.isCall) {
+            pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(daiAmount);
+            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
+
+            tokenErc20.transferFrom(msg.sender, address(this), tokenAmount);
+            dai.transfer(msg.sender, daiAmount);
+        } else {
+            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
+            pools[_optionId].daiAmount = pools[_optionId].daiAmount.add(daiAmount);
+
+            dai.transferFrom(msg.sender, address(this), daiAmount);
+            tokenErc20.transfer(msg.sender, tokenAmount);
+        }
+    }
+
+    // Withdraw funds from an expired option
+    function withdraw(uint256 _optionId) {
         // ToDo : Implement
     }
 
@@ -123,7 +168,7 @@ contract PremiaOption is Ownable, ERC1155 {
         require(_strikePrice > 0, "Strike price must be > 0");
         require(_strikePrice % settings.strikePriceIncrement == 0, "Wrong strikePrice increment");
         require(_expiration > block.timestamp, "Expiration already passed");
-        require(_expiration % expirationIncrement == 0, "Wrong expiration timestamp");
+        require(_expiration % expirationIncrement == 0, "Wrong expiration timestamp increment");
     }
 
     // Utility function to check if a value is inside an array
