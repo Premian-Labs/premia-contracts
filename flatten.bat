@@ -1,8 +1,7 @@
 @ECHO OFF
 for %%f in (.\contracts\*.sol) do (
   echo "Flattening: %%f"
-  truffle-flattener %%f --output .\flattened\%%~nf.sol
+  sol-merger --export-plugin SPDXLicenseRemovePlugin %%f .\flattened
 )
 
 echo "Success"
-PAUSE

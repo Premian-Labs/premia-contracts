@@ -1,0 +1,187 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="BranchesTreeState">
+    <expand>
+      <path>
+        <item name="ROOT" type="e8cecc67:BranchNodeDescriptor" />
+        <item name="LOCAL_ROOT" type="e8cecc67:BranchNodeDescriptor" />
+      </path>
+    </expand>
+    <select />
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="9674be5d-2bf8-4748-b86c-08b07840d5df" name="Default Changelist" comment="">
+      <change afterPath="$PROJECT_DIR$/contracts/PremiaOption.sol" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/contracts/interface/IERC20.sol" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/flatten.bat" beforeDir="false" afterPath="$PROJECT_DIR$/flatten.bat" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="tsconfig.json" />
+        <option value="Solidity Contract" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectId" id="1kKNwfifxsQRYCtuv20u18OvdOF" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent">
+    <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
+    <property name="last_opened_file_path" value="$PROJECT_DIR$/../../hardhat" />
+    <property name="nodejs.mocha.mocha_node_package_dir" value="" />
+    <property name="nodejs_interpreter_path.stuck_in_default_project" value="undefined stuck path" />
+    <property name="nodejs_package_manager_path" value="npm" />
+    <property name="prettierjs.PrettierConfiguration.Package" value="C:\Users\tibog\Documents\repo\premia\premia-contracts\node_modules\prettier" />
+    <property name="run.prettier.on.save" value="true" />
+    <property name="settings.editor.selected.configurable" value="settings.javascript.prettier" />
+    <property name="ts.external.directory.path" value="C:\Users\tibog\Documents\repo\premia\premia-contracts\node_modules\typescript\lib" />
+    <property name="vue.rearranger.settings.migration" value="true" />
+  </component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\tibog\Documents\repo\premia\premia-contracts\contracts" />
+    </key>
+  </component>
+  <component name="RunManager" selected="Batch.flatten">
+    <configuration name="flatten" type="BatchConfigurationType" factoryName="Batch" temporary="true">
+      <module name="premia-contracts" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="WORKING_DIRECTORY" value="C:\Users\tibog\Documents\repo\premia\premia-contracts" />
+      <option name="PARENT_ENVS" value="true" />
+      <option name="SCRIPT_NAME" value="flatten.bat" />
+      <option name="PARAMETERS" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="Greeter" type="mocha-javascript-test-runner" temporary="true" nameIsGenerated="true">
+      <node-interpreter>project</node-interpreter>
+      <node-options />
+      <mocha-package />
+      <working-directory>$PROJECT_DIR$</working-directory>
+      <pass-parent-env>true</pass-parent-env>
+      <ui>bdd</ui>
+      <extra-mocha-options />
+      <test-kind>SUITE</test-kind>
+      <test-file>$PROJECT_DIR$/test/sample-test.js</test-file>
+      <test-names>
+        <name value="Greeter" />
+      </test-names>
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Batch.flatten" />
+        <item itemvalue="Mocha.Greeter" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="9674be5d-2bf8-4748-b86c-08b07840d5df" name="Default Changelist" comment="" />
+      <created>1605445563024</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1605445563024</updated>
+      <workItem from="1605445564215" duration="2467000" />
+      <workItem from="1605454826526" duration="15848000" />
+    </task>
+    <task id="LOCAL-00001" summary="Init repo">
+      <created>1605447389725</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1605447389725</updated>
+    </task>
+    <task id="LOCAL-00002" summary="Set package private + renamed author">
+      <created>1605447449793</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1605447449793</updated>
+    </task>
+    <task id="LOCAL-00003" summary="Added flattener script + PremiaErc20.sol">
+      <created>1605462922369</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1605462922369</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="oldMeFiltersMigrated" value="true" />
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="Init repo" />
+    <MESSAGE value="Set package private + renamed author" />
+    <MESSAGE value="Added flattener script + PremiaErc20.sol" />
+    <option name="LAST_COMMIT_MESSAGE" value="Added flattener script + PremiaErc20.sol" />
+  </component>
+  <component name="WindowStateProjectService">
+    <state x="896" y="145" width="1120" height="960" key="CommitChangelistDialog2" timestamp="1605462921560">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="896" y="145" width="1120" height="960" key="CommitChangelistDialog2/-2560.0.1707.933/0.0.2560.1400@0.0.2560.1400" timestamp="1605462921560" />
+    <state x="1060" y="455" key="FileChooserDialogImpl" timestamp="1605462323775">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="1060" y="455" key="FileChooserDialogImpl/-2560.0.1707.933/0.0.2560.1400@0.0.2560.1400" timestamp="1605462323775" />
+    <state width="2517" height="239" key="GridCell.Tab.0.bottom" timestamp="1605511204526">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state width="2517" height="239" key="GridCell.Tab.0.bottom/-2560.0.1707.933/0.0.2560.1400@0.0.2560.1400" timestamp="1605511204526" />
+    <state width="2517" height="239" key="GridCell.Tab.0.center" timestamp="1605511204526">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state width="2517" height="239" key="GridCell.Tab.0.center/-2560.0.1707.933/0.0.2560.1400@0.0.2560.1400" timestamp="1605511204526" />
+    <state width="2517" height="239" key="GridCell.Tab.0.left" timestamp="1605511204526">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state width="2517" height="239" key="GridCell.Tab.0.left/-2560.0.1707.933/0.0.2560.1400@0.0.2560.1400" timestamp="1605511204526" />
+    <state width="2517" height="239" key="GridCell.Tab.0.right" timestamp="1605511204526">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state width="2517" height="239" key="GridCell.Tab.0.right/-2560.0.1707.933/0.0.2560.1400@0.0.2560.1400" timestamp="1605511204526" />
+    <state x="781" y="345" key="SettingsEditor" timestamp="1605447365419">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="781" y="345" key="SettingsEditor/-2560.0.1707.933/0.0.2560.1400@0.0.2560.1400" timestamp="1605447365419" />
+    <state x="872" y="433" key="Vcs.Push.Dialog.v2" timestamp="1605462924207">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="872" y="433" key="Vcs.Push.Dialog.v2/-2560.0.1707.933/0.0.2560.1400@0.0.2560.1400" timestamp="1605462924207" />
+    <state x="936" y="330" key="run.anything.popup" timestamp="1605446889698">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="936" y="330" key="run.anything.popup/-2560.0.1707.933/0.0.2560.1400@0.0.2560.1400" timestamp="1605446889698" />
+    <state x="943" y="315" width="672" height="678" key="search.everywhere.popup" timestamp="1605509784749">
+      <screen x="0" y="0" width="2560" height="1400" />
+    </state>
+    <state x="943" y="315" width="672" height="678" key="search.everywhere.popup/-2560.0.1707.933/0.0.2560.1400@0.0.2560.1400" timestamp="1605509784749" />
+  </component>
+</project>
