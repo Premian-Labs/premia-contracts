@@ -34,10 +34,23 @@ contract PremiaOption is Ownable, ERC1155 {
 
     IERC20 public dai = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
 
-    mapping (uint256 => uint256) public tokenSupply;
+    //////////////////////////////////////////////////
 
     address[] public tokens;
     mapping (address => TokenSettings) public tokenSettings;
+
+    //////////////////////////////////////////////////
+
+    // Amount of circulating options (optionId => supply)
+    mapping (uint256 => uint256) public optionSupply;
+
+    // Amount of options which have been executed (optionId => executed)
+    mapping (uint256 => uint256) public optionExecuted;
+
+    // Amount of options from which the funds have been withdrawn post expiration
+    mapping (uint256 => uint256) public optionClaimed;
+
+    //////////////////////////////////////////////////
 
     uint256 public nextOptionId = 1;
 
@@ -52,6 +65,10 @@ contract PremiaOption is Ownable, ERC1155 {
 
     // account => optionId => amount of options written
     mapping (address => mapping (uint256 => uint256)) public nbWritten;
+
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
 
     constructor(string memory _uri) public ERC1155(_uri) {
 
@@ -149,8 +166,6 @@ contract PremiaOption is Ownable, ERC1155 {
         OptionData memory data = optionData[_optionId];
         TokenSettings memory settings = tokenSettings[data.token];
 
-        IERC20 tokenErc20 = IERC20(data.token);
-
         if (data.isCall) {
             uint256 amount = _contractAmount.mul(data.strikePrice);
             pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(amount);
@@ -158,7 +173,7 @@ contract PremiaOption is Ownable, ERC1155 {
         } else {
             IERC20 tokenErc20 = IERC20(data.token);
             uint256 amount = _contractAmount.mul(settings.contractSize);
-            pools[optionId].tokenAmount = pools[optionId].tokenAmount.sub(amount);
+            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(amount);
             tokenErc20.safeTransfer(msg.sender, amount);
         }
     }
@@ -170,6 +185,7 @@ contract PremiaOption is Ownable, ERC1155 {
         TokenSettings memory settings = tokenSettings[data.token];
 
         burn(msg.sender, _optionId, _contractAmount);
+        optionExecuted[_optionId] = optionExecuted[_optionId].add(_contractAmount);
 
         IERC20 tokenErc20 = IERC20(data.token);
 
@@ -193,7 +209,33 @@ contract PremiaOption is Ownable, ERC1155 {
 
     // Withdraw funds from an expired option
     function withdraw(uint256 _optionId) public expired(_optionId) {
-        // ToDo : Implement
+        // ToDo : Also allow withdraw if option not expired, but all options from the pool have been executed ?
+        require(nbWritten[msg.sender][_optionId] > 0, "No option funds to claim for this address");
+
+        uint256 nbTotal = optionSupply[_optionId].add(optionExecuted[_optionId]);
+        uint256 nbClaimed = optionClaimed[_optionId];
+
+        // Amount of options from which funds have not been claimed yet
+        uint256 claimsLeft = nbTotal.sub(nbClaimed);
+        // Amount of options user still has to claim funds from
+        uint256 claimsUser = nbWritten[msg.sender][_optionId];
+
+        //
+
+        uint256 daiAmount = pools[_optionId].daiAmount.mul(claimsLeft).div(claimsUser);
+        uint256 tokenAmount = pools[_optionId].tokenAmount.mul(claimsLeft).div(claimsUser);
+
+        //
+
+        IERC20 tokenErc20 = IERC20(optionData[_optionId].token);
+
+        pools[_optionId].daiAmount.sub(daiAmount);
+        pools[_optionId].tokenAmount.sub(tokenAmount);
+        optionClaimed[_optionId] = optionClaimed[_optionId].add(claimsUser);
+        delete nbWritten[msg.sender][_optionId];
+
+        dai.safeTransfer(msg.sender, daiAmount);
+        tokenErc20.safeTransfer(msg.sender, tokenAmount);
     }
 
     //////////////////////////////////////////////////
@@ -204,17 +246,16 @@ contract PremiaOption is Ownable, ERC1155 {
     // Internal //
     //////////////
 
-    function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) internal override {
-        // ToDo : Prevent transfer if option is expired
-    }
+//    function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) internal override {
+//    }
 
     function mint(address _account, uint256 _id, uint256 _amount) internal {
         _mint(_account, _id, _amount, "");
-        tokenSupply[_id] = tokenSupply[_id].add(_amount);
+        optionSupply[_id] = optionSupply[_id].add(_amount);
     }
 
     function burn(address _account, uint256 _id, uint256 _amount) internal {
-        tokenSupply[_id] = tokenSupply[_id].sub(_amount);
+        optionSupply[_id] = optionSupply[_id].sub(_amount);
         _burn(_account, _id, _amount);
     }
 
