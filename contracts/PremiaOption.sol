@@ -50,7 +50,8 @@ contract PremiaOption is Ownable, ERC1155 {
     // optionId => Pool
     mapping (uint256 => Pool) public pools;
 
-    // ToDo : Keep track of option writers, so that they can claim funds on expiration
+    // account => optionId => amount of options written
+    mapping (address => mapping (uint256 => uint256)) public nbWritten;
 
     constructor(string memory _uri) public ERC1155(_uri) {
 
@@ -59,6 +60,20 @@ contract PremiaOption is Ownable, ERC1155 {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
+
+    ///////////////
+    // Modifiers //
+    ///////////////
+
+    modifier notExpired(uint256 _optionId) {
+        require(block.timestamp < optionData[_optionId].expiration, "Option expired");
+        _;
+    }
+
+    modifier expired(uint256 _optionId) {
+        require(block.timestamp >= optionData[_optionId].expiration, "Option not expired");
+        _;
+    }
 
     //////////
     // View //
@@ -117,14 +132,43 @@ contract PremiaOption is Ownable, ERC1155 {
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
         }
 
+        nbWritten[msg.sender][optionId] = nbWritten[msg.sender][optionId].add(_contractAmount);
+
         mint(msg.sender, optionId, _contractAmount);
     }
 
-    function executeOption(uint256 _optionId, uint256 _contractAmount) public {
+    // Cancel an option before expiration, and withdraw deposit (Can only be called by writer of the option)
+    // Must be called before expiration
+    function cancelOption(uint256 _optionId, uint256 _contractAmount) public notExpired(_optionId) {
+        require(_contractAmount > 0, "ContractAmount must be > 0");
+        require(nbWritten[msg.sender][_optionId] >= _contractAmount, "Cant cancel more options than written");
+
+        burn(msg.sender, _optionId, _contractAmount);
+        nbWritten[msg.sender][_optionId] = nbWritten[msg.sender][_optionId].sub(_contractAmount);
+
         OptionData memory data = optionData[_optionId];
         TokenSettings memory settings = tokenSettings[data.token];
 
-        require(block.timestamp < data.expiration, "Option expired");
+        IERC20 tokenErc20 = IERC20(data.token);
+
+        if (data.isCall) {
+            uint256 amount = _contractAmount.mul(data.strikePrice);
+            pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(amount);
+            dai.safeTransfer(msg.sender, amount);
+        } else {
+            IERC20 tokenErc20 = IERC20(data.token);
+            uint256 amount = _contractAmount.mul(settings.contractSize);
+            pools[optionId].tokenAmount = pools[optionId].tokenAmount.sub(amount);
+            tokenErc20.safeTransfer(msg.sender, amount);
+        }
+    }
+
+    function executeOption(uint256 _optionId, uint256 _contractAmount) public notExpired(_optionId) {
+        require(_contractAmount > 0, "ContractAmount must be > 0");
+
+        OptionData memory data = optionData[_optionId];
+        TokenSettings memory settings = tokenSettings[data.token];
+
         burn(msg.sender, _optionId, _contractAmount);
 
         IERC20 tokenErc20 = IERC20(data.token);
@@ -148,7 +192,7 @@ contract PremiaOption is Ownable, ERC1155 {
     }
 
     // Withdraw funds from an expired option
-    function withdraw(uint256 _optionId) public {
+    function withdraw(uint256 _optionId) public expired(_optionId) {
         // ToDo : Implement
     }
 
@@ -159,6 +203,10 @@ contract PremiaOption is Ownable, ERC1155 {
     //////////////
     // Internal //
     //////////////
+
+    function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) internal override {
+        // ToDo : Prevent transfer if option is expired
+    }
 
     function mint(address _account, uint256 _id, uint256 _amount) internal {
         _mint(_account, _id, _amount, "");
