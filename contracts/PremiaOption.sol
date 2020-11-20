@@ -46,8 +46,8 @@ contract PremiaOption is Ownable, ERC1155 {
     // Amount of circulating options (optionId => supply)
     mapping (uint256 => uint256) public optionSupply;
 
-    // Amount of options which have been executed (optionId => executed)
-    mapping (uint256 => uint256) public optionExecuted;
+    // Amount of options which have been exercised (optionId => exercised)
+    mapping (uint256 => uint256) public optionExercised;
 
     // Amount of options from which the funds have been withdrawn post expiration
     mapping (uint256 => uint256) public optionClaimed;
@@ -182,14 +182,14 @@ contract PremiaOption is Ownable, ERC1155 {
         }
     }
 
-    function executeOption(uint256 _optionId, uint256 _contractAmount) public notExpired(_optionId) {
+    function exerciseOption(uint256 _optionId, uint256 _contractAmount) public notExpired(_optionId) {
         require(_contractAmount > 0, "ContractAmount must be > 0");
 
         OptionData memory data = optionData[_optionId];
         TokenSettings memory settings = tokenSettings[data.token];
 
         burn(msg.sender, _optionId, _contractAmount);
-        optionExecuted[_optionId] = optionExecuted[_optionId].add(_contractAmount);
+        optionExercised[_optionId] = optionExercised[_optionId].add(_contractAmount);
 
         IERC20 tokenErc20 = IERC20(data.token);
 
@@ -213,10 +213,10 @@ contract PremiaOption is Ownable, ERC1155 {
 
     // Withdraw funds from an expired option
     function withdraw(uint256 _optionId) public expired(_optionId) {
-        // ToDo : Also allow withdraw if option not expired, but all options from the pool have been executed ?
+        // ToDo : Also allow withdraw if option not expired, but all options from the pool have been exercised ?
         require(nbWritten[msg.sender][_optionId] > 0, "No option funds to claim for this address");
 
-        uint256 nbTotal = optionSupply[_optionId].add(optionExecuted[_optionId]);
+        uint256 nbTotal = optionSupply[_optionId].add(optionExercised[_optionId]);
         uint256 nbClaimed = optionClaimed[_optionId];
 
         // Amount of options from which funds have not been claimed yet
