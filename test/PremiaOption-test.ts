@@ -33,7 +33,7 @@ async function writeOption(args?: WriteOptionArgs) {
     args?.address ?? eth.address,
     args?.expiration ?? 1687996800,
     args?.strikePrice ?? utils.parseEther('10'),
-    args?.isCall ?? true,
+    args?.isCall == undefined ? true : args.isCall,
     args?.contractAmount == undefined ? 1 : args?.contractAmount,
   );
 }
@@ -95,6 +95,33 @@ describe('PremiaOption', function () {
       await expect(writeOption({ expiration: 1687996801 })).to.be.revertedWith(
         'Wrong expiration timestamp increment',
       );
+    });
+
+    it('should fail if address does not have enough ether for call', async () => {
+      await addEth();
+      await eth.mint(utils.parseEther('0.99'));
+      await eth.increaseAllowance(premiaOption.address, utils.parseEther('1'));
+      await expect(writeOption()).to.be.revertedWith(
+        'ERC20: transfer amount exceeds balance',
+      );
+    });
+
+    it('should fail if address does not have enough dai for put', async () => {
+      await addEth();
+      await dai.mint(utils.parseEther('9.99'));
+      await dai.increaseAllowance(premiaOption.address, utils.parseEther('10'));
+      await expect(writeOption({ isCall: false })).to.be.revertedWith(
+        'ERC20: transfer amount exceeds balance',
+      );
+    });
+
+    it('should successfully mint 2 options', async () => {
+      await addEth();
+      await eth.mint(utils.parseEther('2'));
+      await eth.increaseAllowance(premiaOption.address, utils.parseEther('2'));
+      await writeOption({ contractAmount: 2 });
+      const balance = await premiaOption.balanceOf(user1.address, 1);
+      expect(balance).to.eq(2);
     });
   });
 });

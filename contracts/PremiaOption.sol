@@ -7,6 +7,8 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
+import "hardhat/console.sol";
+
 contract PremiaOption is Ownable, ERC1155 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -139,14 +141,16 @@ contract PremiaOption is Ownable, ERC1155 {
         }
 
         if (_isCall) {
-            uint256 amount = _contractAmount.mul(_strikePrice);
-            dai.safeTransferFrom(msg.sender, address(this), amount);
-            pools[optionId].daiAmount = pools[optionId].daiAmount.add(amount);
-        } else {
             IERC20 tokenErc20 = IERC20(_token);
             uint256 amount = _contractAmount.mul(settings.contractSize);
+            console.log("Amount transfer : '%s'", amount);
             tokenErc20.safeTransferFrom(msg.sender, address(this), amount);
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
+        } else {
+            uint256 amount = _contractAmount.mul(_strikePrice);
+            console.log("Amount transfer : '%s'", amount);
+            dai.safeTransferFrom(msg.sender, address(this), amount);
+            pools[optionId].daiAmount = pools[optionId].daiAmount.add(amount);
         }
 
         nbWritten[msg.sender][optionId] = nbWritten[msg.sender][optionId].add(_contractAmount);
@@ -167,14 +171,14 @@ contract PremiaOption is Ownable, ERC1155 {
         TokenSettings memory settings = tokenSettings[data.token];
 
         if (data.isCall) {
-            uint256 amount = _contractAmount.mul(data.strikePrice);
-            pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(amount);
-            dai.safeTransfer(msg.sender, amount);
-        } else {
             IERC20 tokenErc20 = IERC20(data.token);
             uint256 amount = _contractAmount.mul(settings.contractSize);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(amount);
             tokenErc20.safeTransfer(msg.sender, amount);
+        } else {
+            uint256 amount = _contractAmount.mul(data.strikePrice);
+            pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(amount);
+            dai.safeTransfer(msg.sender, amount);
         }
     }
 
@@ -193,17 +197,17 @@ contract PremiaOption is Ownable, ERC1155 {
         uint256 daiAmount = _contractAmount.mul(data.strikePrice);
 
         if (data.isCall) {
-            pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(daiAmount);
-            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
-
-            tokenErc20.safeTransferFrom(msg.sender, address(this), tokenAmount);
-            dai.safeTransfer(msg.sender, daiAmount);
-        } else {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
             pools[_optionId].daiAmount = pools[_optionId].daiAmount.add(daiAmount);
 
             dai.safeTransferFrom(msg.sender, address(this), daiAmount);
             tokenErc20.safeTransfer(msg.sender, tokenAmount);
+        } else {
+            pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(daiAmount);
+            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
+
+            tokenErc20.safeTransferFrom(msg.sender, address(this), tokenAmount);
+            dai.safeTransfer(msg.sender, daiAmount);
         }
     }
 

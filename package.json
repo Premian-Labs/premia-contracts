@@ -7,7 +7,10 @@
   "author": "Premia",
   "license": "MIT",
   "scripts": {
-    "postinstall": "typechain --target ethers-v5 --outDir contractsTyped ./abi/*.json"
+    "compile": "hardhat compile && yarn run copyAbi && yarn run typechain",
+    "copyAbi": "ts-node ./copyAbi.ts",
+    "typechain": "typechain --target ethers-v5 --outDir contractsTyped ./abi/*.json",
+    "postinstall": "yarn run compile"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
