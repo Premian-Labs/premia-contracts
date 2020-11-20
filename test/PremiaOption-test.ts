@@ -74,6 +74,30 @@ async function addEthAndWriteOptions(contractAmount: number, isCall = true) {
   await writeOption({ contractAmount, isCall });
 }
 
+async function addEthAndWriteOptionsAndExercise(isCall: boolean) {
+  await addEthAndWriteOptions(2, isCall);
+  await premiaOption.safeTransferFrom(
+    user1.address,
+    user2.address,
+    1,
+    1,
+    '0x00',
+  );
+  if (isCall) {
+    await dai.connect(user2).mint(utils.parseEther('10'));
+    await dai
+      .connect(user2)
+      .increaseAllowance(premiaOption.address, utils.parseEther('10'));
+  } else {
+    await eth.connect(user2).mint(utils.parseEther('1'));
+    await eth
+      .connect(user2)
+      .increaseAllowance(premiaOption.address, utils.parseEther('1'));
+  }
+
+  await premiaOption.connect(user2).exerciseOption(1, 1);
+}
+
 describe('PremiaOption', function () {
   beforeEach(async () => {
     [user1, user2] = await ethers.getSigners();
@@ -252,19 +276,7 @@ describe('PremiaOption', function () {
     });
 
     it('should successfully exercise 1 call option', async () => {
-      await addEthAndWriteOptions(2);
-      await premiaOption.safeTransferFrom(
-        user1.address,
-        user2.address,
-        1,
-        1,
-        '0x00',
-      );
-      await dai.connect(user2).mint(utils.parseEther('10'));
-      await dai
-        .connect(user2)
-        .increaseAllowance(premiaOption.address, utils.parseEther('10'));
-      await premiaOption.connect(user2).exerciseOption(1, 1);
+      await addEthAndWriteOptionsAndExercise(true);
 
       const nftBalance = await premiaOption.balanceOf(user2.address, 1);
       const daiBalance = await dai.balanceOf(user2.address);
@@ -276,19 +288,7 @@ describe('PremiaOption', function () {
     });
 
     it('should successfully exercise 1 put option', async () => {
-      await addEthAndWriteOptions(2, false);
-      await premiaOption.safeTransferFrom(
-        user1.address,
-        user2.address,
-        1,
-        1,
-        '0x00',
-      );
-      await eth.connect(user2).mint(utils.parseEther('1'));
-      await eth
-        .connect(user2)
-        .increaseAllowance(premiaOption.address, utils.parseEther('1'));
-      await premiaOption.connect(user2).exerciseOption(1, 1);
+      await addEthAndWriteOptionsAndExercise(false);
 
       const nftBalance = await premiaOption.balanceOf(user2.address, 1);
       const daiBalance = await dai.balanceOf(user2.address);
@@ -297,6 +297,15 @@ describe('PremiaOption', function () {
       expect(nftBalance).to.eq(0);
       expect(daiBalance).to.eq(utils.parseEther('10'));
       expect(ethBalance).to.eq(0);
+    });
+  });
+
+  describe('withdraw', () => {
+    it('should fail withdrawing if option not expired', async () => {
+      await addEthAndWriteOptionsAndExercise(true);
+      await expect(premiaOption.withdraw(1)).to.revertedWith(
+        'Option not expired',
+      );
     });
   });
 });
