@@ -32,7 +32,7 @@ contract PremiaOption is Ownable, ERC1155 {
         uint256 daiAmount;
     }
 
-    IERC20 public dai = IERC20(0x6B175474E89094C44Da98b954EedeAC495271d0F);
+    IERC20 public dai;
 
     //////////////////////////////////////////////////
 
@@ -70,8 +70,8 @@ contract PremiaOption is Ownable, ERC1155 {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(string memory _uri) public ERC1155(_uri) {
-
+    constructor(string memory _uri, IERC20 _dai) public ERC1155(_uri) {
+        dai = _dai;
     }
 
     //////////////////////////////////////////////////
