@@ -9,8 +9,9 @@ import { TestErc20 } from '../contractsTyped/TestErc20';
 let eth: TestErc20;
 let dai: TestErc20;
 let premiaOption: TestPremiaOption;
+let writer1: SignerWithAddress;
+let writer2: SignerWithAddress;
 let user1: SignerWithAddress;
-let user2: SignerWithAddress;
 
 interface WriteOptionArgs {
   address?: string;
@@ -73,10 +74,10 @@ async function addEthAndWriteOptions(contractAmount: number, isCall = true) {
   await writeOption({ contractAmount, isCall });
 }
 
-async function transferOptionToUser2(amount?: number) {
+async function transferOptionToUser1(amount?: number) {
   await premiaOption.safeTransferFrom(
+    writer1.address,
     user1.address,
-    user2.address,
     1,
     amount ?? 1,
     '0x00',
@@ -89,40 +90,40 @@ async function addEthAndWriteOptionsAndExercise(
   amountToExercise: number,
 ) {
   await addEthAndWriteOptions(amountToWrite, isCall);
-  await transferOptionToUser2(amountToWrite);
+  await transferOptionToUser1(amountToWrite);
   if (isCall) {
     await dai
-      .connect(user2)
+      .connect(user1)
       .mint(utils.parseEther(String(amountToExercise * 10)));
     await dai
-      .connect(user2)
+      .connect(user1)
       .increaseAllowance(
         premiaOption.address,
         utils.parseEther(String(amountToExercise * 10)),
       );
   } else {
     await eth
-      .connect(user2)
+      .connect(user1)
       .mint(utils.parseEther(amountToExercise.toString()));
     await eth
-      .connect(user2)
+      .connect(user1)
       .increaseAllowance(
         premiaOption.address,
         utils.parseEther(amountToExercise.toString()),
       );
   }
 
-  await premiaOption.connect(user2).exerciseOption(1, amountToExercise);
+  await premiaOption.connect(user1).exerciseOption(1, amountToExercise);
 }
 
 describe('PremiaOption', function () {
   beforeEach(async () => {
-    [user1, user2] = await ethers.getSigners();
-    const erc20Factory = new TestErc20Factory(user1);
+    [writer1, writer2, user1] = await ethers.getSigners();
+    const erc20Factory = new TestErc20Factory(writer1);
     eth = await erc20Factory.deploy();
     dai = await erc20Factory.deploy();
 
-    const premiaOptionFactory = new TestPremiaOptionFactory(user1);
+    const premiaOptionFactory = new TestPremiaOptionFactory(writer1);
     premiaOption = await premiaOptionFactory.deploy('dummyURI', dai.address);
   });
 
@@ -195,7 +196,7 @@ describe('PremiaOption', function () {
 
     it('should successfully mint 2 options', async () => {
       await addEthAndWriteOptions(2);
-      const balance = await premiaOption.balanceOf(user1.address, 1);
+      const balance = await premiaOption.balanceOf(writer1.address, 1);
       expect(balance).to.eq(2);
     });
 
@@ -216,16 +217,16 @@ describe('PremiaOption', function () {
     it('should successfully cancel 1 call option', async () => {
       await addEthAndWriteOptions(2);
 
-      let optionBalance = await premiaOption.balanceOf(user1.address, 1);
-      let ethBalance = await eth.balanceOf(user1.address);
+      let optionBalance = await premiaOption.balanceOf(writer1.address, 1);
+      let ethBalance = await eth.balanceOf(writer1.address);
 
       expect(optionBalance).to.eq(2);
       expect(ethBalance).to.eq(0);
 
       await premiaOption.cancelOption(1, 1);
 
-      optionBalance = await premiaOption.balanceOf(user1.address, 1);
-      ethBalance = await eth.balanceOf(user1.address);
+      optionBalance = await premiaOption.balanceOf(writer1.address, 1);
+      ethBalance = await eth.balanceOf(writer1.address);
 
       expect(optionBalance).to.eq(1);
       expect(ethBalance.toString()).to.eq(utils.parseEther('1').toString());
@@ -234,16 +235,16 @@ describe('PremiaOption', function () {
     it('should successfully cancel 1 put option', async () => {
       await addEthAndWriteOptions(2, false);
 
-      let optionBalance = await premiaOption.balanceOf(user1.address, 1);
-      let daiBalance = await dai.balanceOf(user1.address);
+      let optionBalance = await premiaOption.balanceOf(writer1.address, 1);
+      let daiBalance = await dai.balanceOf(writer1.address);
 
       expect(optionBalance).to.eq(2);
       expect(daiBalance).to.eq(0);
 
       await premiaOption.cancelOption(1, 1);
 
-      optionBalance = await premiaOption.balanceOf(user1.address, 1);
-      daiBalance = await dai.balanceOf(user1.address);
+      optionBalance = await premiaOption.balanceOf(writer1.address, 1);
+      daiBalance = await dai.balanceOf(writer1.address);
 
       expect(optionBalance).to.eq(1);
       expect(daiBalance.toString()).to.eq(utils.parseEther('10').toString());
@@ -251,16 +252,16 @@ describe('PremiaOption', function () {
 
     it('should fail cancelling option if not a writer', async () => {
       await addEthAndWriteOptions(2);
-      await transferOptionToUser2();
+      await transferOptionToUser1();
       await expect(
-        premiaOption.connect(user2).cancelOption(1, 1),
+        premiaOption.connect(user1).cancelOption(1, 1),
       ).to.revertedWith('Cant cancel more options than written');
     });
 
     it('should subtract option written after cancelling', async () => {
       await addEthAndWriteOptions(2);
       await premiaOption.cancelOption(1, 1);
-      const nbWritten = await premiaOption.nbWritten(user1.address, 1);
+      const nbWritten = await premiaOption.nbWritten(writer1.address, 1);
       expect(nbWritten).to.eq(1);
     });
   });
@@ -269,24 +270,24 @@ describe('PremiaOption', function () {
     it('should fail exercising call option if not owned', async () => {
       await addEthAndWriteOptions(2);
       await expect(
-        premiaOption.connect(user2).exerciseOption(1, 1),
+        premiaOption.connect(user1).exerciseOption(1, 1),
       ).to.revertedWith('ERC1155: burn amount exceeds balance');
     });
 
     it('should fail exercising call option if not enough dai', async () => {
       await addEthAndWriteOptions(2);
-      await transferOptionToUser2();
+      await transferOptionToUser1();
       await expect(
-        premiaOption.connect(user2).exerciseOption(1, 1),
+        premiaOption.connect(user1).exerciseOption(1, 1),
       ).to.revertedWith('ERC20: transfer amount exceeds balance');
     });
 
     it('should successfully exercise 1 call option', async () => {
       await addEthAndWriteOptionsAndExercise(true, 2, 1);
 
-      const nftBalance = await premiaOption.balanceOf(user2.address, 1);
-      const daiBalance = await dai.balanceOf(user2.address);
-      const ethBalance = await eth.balanceOf(user2.address);
+      const nftBalance = await premiaOption.balanceOf(user1.address, 1);
+      const daiBalance = await dai.balanceOf(user1.address);
+      const ethBalance = await eth.balanceOf(user1.address);
 
       expect(nftBalance).to.eq(1);
       expect(daiBalance).to.eq(0);
@@ -296,9 +297,9 @@ describe('PremiaOption', function () {
     it('should successfully exercise 1 put option', async () => {
       await addEthAndWriteOptionsAndExercise(false, 2, 1);
 
-      const nftBalance = await premiaOption.balanceOf(user2.address, 1);
-      const daiBalance = await dai.balanceOf(user2.address);
-      const ethBalance = await eth.balanceOf(user2.address);
+      const nftBalance = await premiaOption.balanceOf(user1.address, 1);
+      const daiBalance = await dai.balanceOf(user1.address);
+      const ethBalance = await eth.balanceOf(user1.address);
 
       expect(nftBalance).to.eq(1);
       expect(daiBalance).to.eq(utils.parseEther('10'));
@@ -316,27 +317,27 @@ describe('PremiaOption', function () {
 
     it('should fail withdrawing from non-writer if option is expired', async () => {
       await addEthAndWriteOptions(2);
-      await transferOptionToUser2();
+      await transferOptionToUser1();
       await premiaOption.setTimestamp(1e6);
-      await expect(premiaOption.connect(user2).withdraw(1)).to.revertedWith(
+      await expect(premiaOption.connect(user1).withdraw(1)).to.revertedWith(
         'No option funds to claim for this address',
       );
     });
 
     it('should successfully allow writer withdrawal of 2 eth if 0/2 call option executed after expiration', async () => {
       await addEthAndWriteOptions(2);
-      await transferOptionToUser2(2);
+      await transferOptionToUser1(2);
       await premiaOption.setTimestamp(1e6);
 
-      let ethBalance = await eth.balanceOf(user1.address);
-      let daiBalance = await dai.balanceOf(user1.address);
+      let ethBalance = await eth.balanceOf(writer1.address);
+      let daiBalance = await dai.balanceOf(writer1.address);
       expect(ethBalance).to.eq(0);
       expect(daiBalance).to.eq(0);
 
-      await premiaOption.connect(user1).withdraw(1);
+      await premiaOption.connect(writer1).withdraw(1);
 
-      ethBalance = await eth.balanceOf(user1.address);
-      daiBalance = await dai.balanceOf(user1.address);
+      ethBalance = await eth.balanceOf(writer1.address);
+      daiBalance = await dai.balanceOf(writer1.address);
 
       expect(ethBalance).to.eq(utils.parseEther('2'));
       expect(daiBalance).to.eq(0);
@@ -346,15 +347,15 @@ describe('PremiaOption', function () {
       await addEthAndWriteOptionsAndExercise(true, 2, 1);
       await premiaOption.setTimestamp(1e6);
 
-      let ethBalance = await eth.balanceOf(user1.address);
-      let daiBalance = await dai.balanceOf(user1.address);
+      let ethBalance = await eth.balanceOf(writer1.address);
+      let daiBalance = await dai.balanceOf(writer1.address);
       expect(ethBalance).to.eq(0);
       expect(daiBalance).to.eq(0);
 
-      await premiaOption.connect(user1).withdraw(1);
+      await premiaOption.connect(writer1).withdraw(1);
 
-      ethBalance = await eth.balanceOf(user1.address);
-      daiBalance = await dai.balanceOf(user1.address);
+      ethBalance = await eth.balanceOf(writer1.address);
+      daiBalance = await dai.balanceOf(writer1.address);
 
       expect(ethBalance).to.eq(utils.parseEther('1'));
       expect(daiBalance).to.eq(utils.parseEther('10'));
@@ -364,15 +365,15 @@ describe('PremiaOption', function () {
       await addEthAndWriteOptionsAndExercise(true, 2, 2);
       await premiaOption.setTimestamp(1e6);
 
-      let ethBalance = await eth.balanceOf(user1.address);
-      let daiBalance = await dai.balanceOf(user1.address);
+      let ethBalance = await eth.balanceOf(writer1.address);
+      let daiBalance = await dai.balanceOf(writer1.address);
       expect(ethBalance).to.eq(0);
       expect(daiBalance).to.eq(0);
 
-      await premiaOption.connect(user1).withdraw(1);
+      await premiaOption.connect(writer1).withdraw(1);
 
-      ethBalance = await eth.balanceOf(user1.address);
-      daiBalance = await dai.balanceOf(user1.address);
+      ethBalance = await eth.balanceOf(writer1.address);
+      daiBalance = await dai.balanceOf(writer1.address);
 
       expect(ethBalance).to.eq(0);
       expect(daiBalance).to.eq(utils.parseEther('20'));
@@ -380,18 +381,18 @@ describe('PremiaOption', function () {
 
     it('should successfully allow writer withdrawal of 20 dai if 0/2 put option executed after expiration', async () => {
       await addEthAndWriteOptions(2, false);
-      await transferOptionToUser2(2);
+      await transferOptionToUser1(2);
       await premiaOption.setTimestamp(1e6);
 
-      let ethBalance = await eth.balanceOf(user1.address);
-      let daiBalance = await dai.balanceOf(user1.address);
+      let ethBalance = await eth.balanceOf(writer1.address);
+      let daiBalance = await dai.balanceOf(writer1.address);
       expect(ethBalance).to.eq(0);
       expect(daiBalance).to.eq(0);
 
-      await premiaOption.connect(user1).withdraw(1);
+      await premiaOption.connect(writer1).withdraw(1);
 
-      ethBalance = await eth.balanceOf(user1.address);
-      daiBalance = await dai.balanceOf(user1.address);
+      ethBalance = await eth.balanceOf(writer1.address);
+      daiBalance = await dai.balanceOf(writer1.address);
 
       expect(ethBalance).to.eq(0);
       expect(daiBalance).to.eq(utils.parseEther('20'));
@@ -401,15 +402,15 @@ describe('PremiaOption', function () {
       await addEthAndWriteOptionsAndExercise(false, 2, 1);
       await premiaOption.setTimestamp(1e6);
 
-      let ethBalance = await eth.balanceOf(user1.address);
-      let daiBalance = await dai.balanceOf(user1.address);
+      let ethBalance = await eth.balanceOf(writer1.address);
+      let daiBalance = await dai.balanceOf(writer1.address);
       expect(ethBalance).to.eq(0);
       expect(daiBalance).to.eq(0);
 
-      await premiaOption.connect(user1).withdraw(1);
+      await premiaOption.connect(writer1).withdraw(1);
 
-      ethBalance = await eth.balanceOf(user1.address);
-      daiBalance = await dai.balanceOf(user1.address);
+      ethBalance = await eth.balanceOf(writer1.address);
+      daiBalance = await dai.balanceOf(writer1.address);
 
       expect(ethBalance).to.eq(utils.parseEther('1'));
       expect(daiBalance).to.eq(utils.parseEther('10'));
@@ -419,15 +420,15 @@ describe('PremiaOption', function () {
       await addEthAndWriteOptionsAndExercise(false, 2, 2);
       await premiaOption.setTimestamp(1e6);
 
-      let ethBalance = await eth.balanceOf(user1.address);
-      let daiBalance = await dai.balanceOf(user1.address);
+      let ethBalance = await eth.balanceOf(writer1.address);
+      let daiBalance = await dai.balanceOf(writer1.address);
       expect(ethBalance).to.eq(0);
       expect(daiBalance).to.eq(0);
 
-      await premiaOption.connect(user1).withdraw(1);
+      await premiaOption.connect(writer1).withdraw(1);
 
-      ethBalance = await eth.balanceOf(user1.address);
-      daiBalance = await dai.balanceOf(user1.address);
+      ethBalance = await eth.balanceOf(writer1.address);
+      daiBalance = await dai.balanceOf(writer1.address);
 
       expect(ethBalance).to.eq(utils.parseEther('2'));
       expect(daiBalance).to.eq(0);
