@@ -1,15 +1,14 @@
 import { ethers } from 'hardhat';
 import { BigNumberish, utils } from 'ethers';
 import { expect } from 'chai';
-import { PremiaOptionFactory, TestErc20Factory } from '../contractsTyped';
+import { TestPremiaOptionFactory, TestErc20Factory } from '../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { PremiaOption } from '../contractsTyped/PremiaOption';
+import { TestPremiaOption } from '../contractsTyped/TestPremiaOption';
 import { TestErc20 } from '../contractsTyped/TestErc20';
-import exp from 'constants';
 
 let eth: TestErc20;
 let dai: TestErc20;
-let premiaOption: PremiaOption;
+let premiaOption: TestPremiaOption;
 let user1: SignerWithAddress;
 let user2: SignerWithAddress;
 
@@ -24,7 +23,7 @@ interface WriteOptionArgs {
 function getOptionDefaults() {
   return {
     address: eth.address,
-    expiration: 1687996800,
+    expiration: 604800,
     strikePrice: utils.parseEther('10'),
     isCall: true,
     contractAmount: 1,
@@ -105,7 +104,7 @@ describe('PremiaOption', function () {
     eth = await erc20Factory.deploy();
     dai = await erc20Factory.deploy();
 
-    const premiaOptionFactory = new PremiaOptionFactory(user1);
+    const premiaOptionFactory = new TestPremiaOptionFactory(user1);
     premiaOption = await premiaOptionFactory.deploy('dummyURI', dai.address);
   });
 
@@ -145,14 +144,15 @@ describe('PremiaOption', function () {
 
     it('should revert if timestamp already passed', async () => {
       await addEth();
-      await expect(writeOption({ expiration: 1605858784 })).to.be.revertedWith(
+      await premiaOption.setTimestamp(700000);
+      await expect(writeOption()).to.be.revertedWith(
         'Expiration already passed',
       );
     });
 
     it('should revert if timestamp increment is wrong', async () => {
       await addEth();
-      await expect(writeOption({ expiration: 1687996801 })).to.be.revertedWith(
+      await expect(writeOption({ expiration: 200 })).to.be.revertedWith(
         'Wrong expiration timestamp increment',
       );
     });

@@ -13,6 +13,14 @@ fs.copyFileSync(
   './abi/PremiaOption.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/TestErc20.sol/TestErc20.json',
+  './artifacts/contracts/test/TestErc20.sol/TestErc20.json',
   './abi/TestErc20.json',
+);
+fs.copyFileSync(
+  './artifacts/contracts/test/TestTime.sol/TestTime.json',
+  './abi/TestTime.json',
+);
+fs.copyFileSync(
+  './artifacts/contracts/test/TestPremiaOption.sol/TestPremiaOption.json',
+  './abi/TestPremiaOption.json',
 );

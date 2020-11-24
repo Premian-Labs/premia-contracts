@@ -1,6 +1,7 @@
 node_modules
 flattened
 contractsTyped
+.nyc_output
 
 #Hardhat files
 cache

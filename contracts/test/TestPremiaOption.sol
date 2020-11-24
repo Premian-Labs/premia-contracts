@@ -6,8 +6,11 @@ import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
+import "./TestTime.sol";
 
-contract PremiaOption is Ownable, ERC1155 {
+import "hardhat/console.sol";
+
+contract TestPremiaOption is Ownable, ERC1155, TestTime {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -83,12 +86,12 @@ contract PremiaOption is Ownable, ERC1155 {
     ///////////////
 
     modifier notExpired(uint256 _optionId) {
-        require(block.timestamp < optionData[_optionId].expiration, "Option expired");
+        require(timestamp < optionData[_optionId].expiration, "Option expired");
         _;
     }
 
     modifier expired(uint256 _optionId) {
-        require(block.timestamp >= optionData[_optionId].expiration, "Option not expired");
+        require(timestamp >= optionData[_optionId].expiration, "Option not expired");
         _;
     }
 
@@ -111,9 +114,9 @@ contract PremiaOption is Ownable, ERC1155 {
         tokens.push(_token);
 
         tokenSettings[_token] = TokenSettings({
-            contractSize: _contractSize,
-            strikePriceIncrement: _strikePriceIncrement,
-            isDisabled: false
+        contractSize: _contractSize,
+        strikePriceIncrement: _strikePriceIncrement,
+        isDisabled: false
         });
     }
 
@@ -129,10 +132,10 @@ contract PremiaOption is Ownable, ERC1155 {
 
             pools[optionId] = Pool({ tokenAmount: 0, daiAmount: 0});
             optionData[optionId] = OptionData({
-                token: _token,
-                expiration: _expiration,
-                strikePrice: _strikePrice,
-                isCall: _isCall
+            token: _token,
+            expiration: _expiration,
+            strikePrice: _strikePrice,
+            isCall: _isCall
             });
 
             nextOptionId = nextOptionId.add(1);
@@ -141,10 +144,12 @@ contract PremiaOption is Ownable, ERC1155 {
         if (_isCall) {
             IERC20 tokenErc20 = IERC20(_token);
             uint256 amount = _contractAmount.mul(settings.contractSize);
+            console.log("Amount transfer : '%s'", amount);
             tokenErc20.safeTransferFrom(msg.sender, address(this), amount);
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
         } else {
             uint256 amount = _contractAmount.mul(_strikePrice);
+            console.log("Amount transfer : '%s'", amount);
             dai.safeTransferFrom(msg.sender, address(this), amount);
             pools[optionId].daiAmount = pools[optionId].daiAmount.add(amount);
         }
@@ -246,8 +251,8 @@ contract PremiaOption is Ownable, ERC1155 {
     // Internal //
     //////////////
 
-//    function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) internal override {
-//    }
+    //    function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) internal override {
+    //    }
 
     function mint(address _account, uint256 _id, uint256 _amount) internal {
         _mint(_account, _id, _amount, "");
@@ -266,7 +271,8 @@ contract PremiaOption is Ownable, ERC1155 {
         require(_contractAmount > 0, "Contract amount must be > 0");
         require(_strikePrice > 0, "Strike price must be > 0");
         require(_strikePrice % settings.strikePriceIncrement == 0, "Wrong strikePrice increment");
-        require(_expiration > block.timestamp, "Expiration already passed");
+        console.log(_expiration, timestamp);
+        require(_expiration > timestamp, "Expiration already passed");
         require(_expiration % expirationIncrement == 0, "Wrong expiration timestamp increment");
     }
 
