@@ -218,15 +218,13 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
         uint256 nbTotal = optionSupply[_optionId].add(optionExercised[_optionId]);
         uint256 nbClaimed = optionClaimed[_optionId];
 
-        // Amount of options from which funds have not been claimed yet
-        uint256 claimsLeft = nbTotal.sub(nbClaimed);
         // Amount of options user still has to claim funds from
         uint256 claimsUser = nbWritten[msg.sender][_optionId];
 
         //
 
-        uint256 daiAmount = pools[_optionId].daiAmount.mul(claimsLeft).div(claimsUser);
-        uint256 tokenAmount = pools[_optionId].tokenAmount.mul(claimsLeft).div(claimsUser);
+        uint256 daiAmount = pools[_optionId].daiAmount.mul(claimsUser).div(nbTotal);
+        uint256 tokenAmount = pools[_optionId].tokenAmount.mul(claimsUser).div(nbTotal);
 
         //
 

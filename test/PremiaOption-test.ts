@@ -39,58 +39,61 @@ async function addEth() {
   );
 }
 
-async function writeOption(args?: WriteOptionArgs) {
+async function writeOption(user: SignerWithAddress, args?: WriteOptionArgs) {
   const defaults = getOptionDefaults();
 
-  return premiaOption.writeOption(
-    args?.address ?? defaults.address,
-    args?.expiration ?? defaults.expiration,
-    args?.strikePrice ?? defaults.strikePrice,
-    args?.isCall == undefined ? defaults.isCall : args.isCall,
-    args?.contractAmount == undefined
-      ? defaults.contractAmount
-      : args?.contractAmount,
-  );
+  return premiaOption
+    .connect(user)
+    .writeOption(
+      args?.address ?? defaults.address,
+      args?.expiration ?? defaults.expiration,
+      args?.strikePrice ?? defaults.strikePrice,
+      args?.isCall == undefined ? defaults.isCall : args.isCall,
+      args?.contractAmount == undefined
+        ? defaults.contractAmount
+        : args?.contractAmount,
+    );
+}
+
+async function mintAndWriteOption(
+  user: SignerWithAddress,
+  contractAmount: number,
+  isCall = true,
+) {
+  if (isCall) {
+    await eth.connect(user).mint(utils.parseEther(contractAmount.toString()));
+    await eth
+      .connect(user)
+      .increaseAllowance(
+        premiaOption.address,
+        utils.parseEther(contractAmount.toString()),
+      );
+  } else {
+    const amount = 10 * contractAmount;
+    await dai.connect(user).mint(utils.parseEther(amount.toString()));
+    await dai
+      .connect(user)
+      .increaseAllowance(
+        premiaOption.address,
+        utils.parseEther(amount.toString()),
+      );
+  }
+
+  await writeOption(user, { contractAmount, isCall });
 }
 
 async function addEthAndWriteOptions(contractAmount: number, isCall = true) {
   await addEth();
-
-  if (isCall) {
-    await eth.mint(utils.parseEther(contractAmount.toString()));
-    await eth.increaseAllowance(
-      premiaOption.address,
-      utils.parseEther(contractAmount.toString()),
-    );
-  } else {
-    const amount = 10 * contractAmount;
-    await dai.mint(utils.parseEther(amount.toString()));
-    await dai.increaseAllowance(
-      premiaOption.address,
-      utils.parseEther(amount.toString()),
-    );
-  }
-
-  await writeOption({ contractAmount, isCall });
+  await mintAndWriteOption(writer1, contractAmount, isCall);
 }
 
-async function transferOptionToUser1(amount?: number) {
-  await premiaOption.safeTransferFrom(
-    writer1.address,
-    user1.address,
-    1,
-    amount ?? 1,
-    '0x00',
-  );
+async function transferOptionToUser1(from: SignerWithAddress, amount?: number) {
+  await premiaOption
+    .connect(from)
+    .safeTransferFrom(from.address, user1.address, 1, amount ?? 1, '0x00');
 }
 
-async function addEthAndWriteOptionsAndExercise(
-  isCall: boolean,
-  amountToWrite: number,
-  amountToExercise: number,
-) {
-  await addEthAndWriteOptions(amountToWrite, isCall);
-  await transferOptionToUser1(amountToWrite);
+async function exerciseOption(isCall: boolean, amountToExercise: number) {
   if (isCall) {
     await dai
       .connect(user1)
@@ -116,6 +119,16 @@ async function addEthAndWriteOptionsAndExercise(
   await premiaOption.connect(user1).exerciseOption(1, amountToExercise);
 }
 
+async function addEthAndWriteOptionsAndExercise(
+  isCall: boolean,
+  amountToWrite: number,
+  amountToExercise: number,
+) {
+  await addEthAndWriteOptions(amountToWrite, isCall);
+  await transferOptionToUser1(writer1, amountToWrite);
+  await exerciseOption(isCall, amountToExercise);
+}
+
 describe('PremiaOption', function () {
   beforeEach(async () => {
     [writer1, writer2, user1] = await ethers.getSigners();
@@ -137,19 +150,21 @@ describe('PremiaOption', function () {
 
   describe('writeOption', () => {
     it('should fail if token not added', async () => {
-      await expect(writeOption()).to.be.revertedWith('Token not supported');
+      await expect(writeOption(writer1)).to.be.revertedWith(
+        'Token not supported',
+      );
     });
 
     it('should revert if contract amount <= 0', async () => {
       await addEth();
-      await expect(writeOption({ contractAmount: 0 })).to.be.revertedWith(
-        'Contract amount must be > 0',
-      );
+      await expect(
+        writeOption(writer1, { contractAmount: 0 }),
+      ).to.be.revertedWith('Contract amount must be > 0');
     });
 
     it('should revert if contract strike price <= 0', async () => {
       await addEth();
-      await expect(writeOption({ strikePrice: 0 })).to.be.revertedWith(
+      await expect(writeOption(writer1, { strikePrice: 0 })).to.be.revertedWith(
         'Strike price must be > 0',
       );
     });
@@ -157,30 +172,30 @@ describe('PremiaOption', function () {
     it('should revert if strike price increment is wrong', async () => {
       await addEth();
       await expect(
-        writeOption({ strikePrice: utils.parseEther('1') }),
+        writeOption(writer1, { strikePrice: utils.parseEther('1') }),
       ).to.be.revertedWith('Wrong strikePrice increment');
     });
 
     it('should revert if timestamp already passed', async () => {
       await addEth();
       await premiaOption.setTimestamp(700000);
-      await expect(writeOption()).to.be.revertedWith(
+      await expect(writeOption(writer1)).to.be.revertedWith(
         'Expiration already passed',
       );
     });
 
     it('should revert if timestamp increment is wrong', async () => {
       await addEth();
-      await expect(writeOption({ expiration: 200 })).to.be.revertedWith(
-        'Wrong expiration timestamp increment',
-      );
+      await expect(
+        writeOption(writer1, { expiration: 200 }),
+      ).to.be.revertedWith('Wrong expiration timestamp increment');
     });
 
     it('should fail if address does not have enough ether for call', async () => {
       await addEth();
       await eth.mint(utils.parseEther('0.99'));
       await eth.increaseAllowance(premiaOption.address, utils.parseEther('1'));
-      await expect(writeOption()).to.be.revertedWith(
+      await expect(writeOption(writer1)).to.be.revertedWith(
         'ERC20: transfer amount exceeds balance',
       );
     });
@@ -189,7 +204,7 @@ describe('PremiaOption', function () {
       await addEth();
       await dai.mint(utils.parseEther('9.99'));
       await dai.increaseAllowance(premiaOption.address, utils.parseEther('10'));
-      await expect(writeOption({ isCall: false })).to.be.revertedWith(
+      await expect(writeOption(writer1, { isCall: false })).to.be.revertedWith(
         'ERC20: transfer amount exceeds balance',
       );
     });
@@ -252,7 +267,7 @@ describe('PremiaOption', function () {
 
     it('should fail cancelling option if not a writer', async () => {
       await addEthAndWriteOptions(2);
-      await transferOptionToUser1();
+      await transferOptionToUser1(writer1);
       await expect(
         premiaOption.connect(user1).cancelOption(1, 1),
       ).to.revertedWith('Cant cancel more options than written');
@@ -276,7 +291,7 @@ describe('PremiaOption', function () {
 
     it('should fail exercising call option if not enough dai', async () => {
       await addEthAndWriteOptions(2);
-      await transferOptionToUser1();
+      await transferOptionToUser1(writer1);
       await expect(
         premiaOption.connect(user1).exerciseOption(1, 1),
       ).to.revertedWith('ERC20: transfer amount exceeds balance');
@@ -317,16 +332,16 @@ describe('PremiaOption', function () {
 
     it('should fail withdrawing from non-writer if option is expired', async () => {
       await addEthAndWriteOptions(2);
-      await transferOptionToUser1();
+      await transferOptionToUser1(writer1);
       await premiaOption.setTimestamp(1e6);
       await expect(premiaOption.connect(user1).withdraw(1)).to.revertedWith(
         'No option funds to claim for this address',
       );
     });
 
-    it('should successfully allow writer withdrawal of 2 eth if 0/2 call option executed after expiration', async () => {
+    it('should successfully allow writer withdrawal of 2 eth if 0/2 call option exercised', async () => {
       await addEthAndWriteOptions(2);
-      await transferOptionToUser1(2);
+      await transferOptionToUser1(writer1, 2);
       await premiaOption.setTimestamp(1e6);
 
       let ethBalance = await eth.balanceOf(writer1.address);
@@ -343,7 +358,7 @@ describe('PremiaOption', function () {
       expect(daiBalance).to.eq(0);
     });
 
-    it('should successfully allow writer withdrawal of 1 eth and 10 dai if 1/2 call option executed after expiration', async () => {
+    it('should successfully allow writer withdrawal of 1 eth and 10 dai if 1/2 call option exercised', async () => {
       await addEthAndWriteOptionsAndExercise(true, 2, 1);
       await premiaOption.setTimestamp(1e6);
 
@@ -361,7 +376,7 @@ describe('PremiaOption', function () {
       expect(daiBalance).to.eq(utils.parseEther('10'));
     });
 
-    it('should successfully allow writer withdrawal of 20 dai if 2/2 call option executed after expiration', async () => {
+    it('should successfully allow writer withdrawal of 20 dai if 2/2 call option exercised', async () => {
       await addEthAndWriteOptionsAndExercise(true, 2, 2);
       await premiaOption.setTimestamp(1e6);
 
@@ -379,9 +394,9 @@ describe('PremiaOption', function () {
       expect(daiBalance).to.eq(utils.parseEther('20'));
     });
 
-    it('should successfully allow writer withdrawal of 20 dai if 0/2 put option executed after expiration', async () => {
+    it('should successfully allow writer withdrawal of 20 dai if 0/2 put option exercised', async () => {
       await addEthAndWriteOptions(2, false);
-      await transferOptionToUser1(2);
+      await transferOptionToUser1(writer1, 2);
       await premiaOption.setTimestamp(1e6);
 
       let ethBalance = await eth.balanceOf(writer1.address);
@@ -398,7 +413,7 @@ describe('PremiaOption', function () {
       expect(daiBalance).to.eq(utils.parseEther('20'));
     });
 
-    it('should successfully allow writer withdrawal of 1 eth and 10 dai if 1/2 put option executed after expiration', async () => {
+    it('should successfully allow writer withdrawal of 1 eth and 10 dai if 1/2 put option exercised', async () => {
       await addEthAndWriteOptionsAndExercise(false, 2, 1);
       await premiaOption.setTimestamp(1e6);
 
@@ -416,7 +431,7 @@ describe('PremiaOption', function () {
       expect(daiBalance).to.eq(utils.parseEther('10'));
     });
 
-    it('should successfully allow writer withdrawal of 2 eth if 2/2 put option executed after expiration', async () => {
+    it('should successfully allow writer withdrawal of 2 eth if 2/2 put option exercised', async () => {
       await addEthAndWriteOptionsAndExercise(false, 2, 2);
       await premiaOption.setTimestamp(1e6);
 
@@ -432,6 +447,34 @@ describe('PremiaOption', function () {
 
       expect(ethBalance).to.eq(utils.parseEther('2'));
       expect(daiBalance).to.eq(0);
+    });
+
+    it('should withdraw 0.5 eth and 5 dai if 1/2 option exercised and 2 different writers', async () => {
+      await addEth();
+
+      await mintAndWriteOption(writer1, 1);
+      await mintAndWriteOption(writer2, 1);
+
+      await transferOptionToUser1(writer1);
+      await transferOptionToUser1(writer2);
+
+      await exerciseOption(true, 1);
+      await premiaOption.setTimestamp(1e6);
+
+      await premiaOption.connect(writer1).withdraw(1);
+      await premiaOption.connect(writer2).withdraw(1);
+
+      const writer1Eth = await eth.balanceOf(writer1.address);
+      const writer1Dai = await dai.balanceOf(writer1.address);
+
+      const writer2Eth = await eth.balanceOf(writer2.address);
+      const writer2Dai = await dai.balanceOf(writer2.address);
+
+      expect(writer1Eth).to.eq(utils.parseEther('0.5'));
+      expect(writer1Dai).to.eq(utils.parseEther('5'));
+
+      expect(writer2Eth).to.eq(utils.parseEther('0.5'));
+      expect(writer2Dai).to.eq(utils.parseEther('5'));
     });
   });
 });
