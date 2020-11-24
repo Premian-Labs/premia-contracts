@@ -144,12 +144,10 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
         if (_isCall) {
             IERC20 tokenErc20 = IERC20(_token);
             uint256 amount = _contractAmount.mul(settings.contractSize);
-            console.log("Amount transfer : '%s'", amount);
             tokenErc20.safeTransferFrom(msg.sender, address(this), amount);
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
         } else {
             uint256 amount = _contractAmount.mul(_strikePrice);
-            console.log("Amount transfer : '%s'", amount);
             dai.safeTransferFrom(msg.sender, address(this), amount);
             pools[optionId].daiAmount = pools[optionId].daiAmount.add(amount);
         }
@@ -271,7 +269,6 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
         require(_contractAmount > 0, "Contract amount must be > 0");
         require(_strikePrice > 0, "Strike price must be > 0");
         require(_strikePrice % settings.strikePriceIncrement == 0, "Wrong strikePrice increment");
-        console.log(_expiration, timestamp);
         require(_expiration > timestamp, "Expiration already passed");
         require(_expiration % expirationIncrement == 0, "Wrong expiration timestamp increment");
     }
