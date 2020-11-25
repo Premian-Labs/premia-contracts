@@ -14,7 +14,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    uint256 expirationIncrement = 3600 * 24 * 7; // 1 Week
+    uint256 public expirationIncrement = 3600 * 24 * 7; // 1 Week
 
     // ToDo : Add ability to modify increments
     struct TokenSettings {
@@ -33,6 +33,8 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
     struct Pool {
         uint256 tokenAmount;
         uint256 daiAmount;
+        uint256 tokenPerShare;
+        uint256 daiPerShare;
     }
 
     IERC20 public dai;
@@ -53,6 +55,9 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
     // Amount of options from which the funds have been withdrawn post expiration
     mapping (uint256 => uint256) public optionClaimed;
 
+    // Amount of options from which the funds have been withdrawn pre expiration
+    mapping (uint256 => uint256) public optionClaimedPreExp;
+
     //////////////////////////////////////////////////
 
     uint256 public nextOptionId = 1;
@@ -68,6 +73,15 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
 
     // account => optionId => amount of options written
     mapping (address => mapping (uint256 => uint256)) public nbWritten;
+
+    ////////////
+    // Events //
+    ////////////
+
+    event OptionWritten(address indexed owner, uint256 indexed optionId, uint256 amount);
+    event OptionCancelled(address indexed owner, uint256 indexed optionId, uint256 amount);
+    event OptionExercised(address indexed user, uint256 indexed optionId, uint256 amount);
+    event Withdraw(address indexed user, uint256 indexed optionId, uint256 amount);
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
@@ -130,7 +144,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
             optionId = nextOptionId;
             options[_token][_expiration][_strikePrice][_isCall] = optionId;
 
-            pools[optionId] = Pool({ tokenAmount: 0, daiAmount: 0});
+            pools[optionId] = Pool({ tokenAmount: 0, daiAmount: 0, tokenPerShare: 0, daiPerShare: 0});
             optionData[optionId] = OptionData({
             token: _token,
             expiration: _expiration,
@@ -155,9 +169,11 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
         nbWritten[msg.sender][optionId] = nbWritten[msg.sender][optionId].add(_contractAmount);
 
         mint(msg.sender, optionId, _contractAmount);
+
+        emit OptionWritten(msg.sender, optionId, _contractAmount);
     }
 
-    // Cancel an option before expiration, and withdraw deposit (Can only be called by writer of the option)
+    // Cancel an option before expiration, by burning the NFT for withdrawal of deposit (Can only be called by writer of the option)
     // Must be called before expiration
     function cancelOption(uint256 _optionId, uint256 _contractAmount) public notExpired(_optionId) {
         require(_contractAmount > 0, "ContractAmount must be > 0");
@@ -179,6 +195,8 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
             pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(amount);
             dai.safeTransfer(msg.sender, amount);
         }
+
+        emit OptionCancelled(msg.sender, _optionId, _contractAmount);
     }
 
     function exerciseOption(uint256 _optionId, uint256 _contractAmount) public notExpired(_optionId) {
@@ -208,15 +226,19 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
             tokenErc20.safeTransferFrom(msg.sender, address(this), tokenAmount);
             dai.safeTransfer(msg.sender, daiAmount);
         }
+
+        emit OptionExercised(msg.sender, _optionId, _contractAmount);
     }
 
-    // Withdraw funds from an expired option
+    // Withdraw funds from an expired option (Only callable by writers with unclaimed options)
+    // Funds are allocated pro-rate to writers.
+    // Ex : If there is 10 ETH and 6000 DAI, a user who got 10% of options unclaimed will get 1 ETH and 600 DAI
     function withdraw(uint256 _optionId) public expired(_optionId) {
-        // ToDo : Also allow withdraw if option not expired, but all options from the pool have been exercised ?
         require(nbWritten[msg.sender][_optionId] > 0, "No option funds to claim for this address");
 
-        uint256 nbTotal = optionSupply[_optionId].add(optionExercised[_optionId]);
-        uint256 nbClaimed = optionClaimed[_optionId];
+        uint256 nbTotalWithClaimedPreExp = optionSupply[_optionId].add(optionExercised[_optionId]);
+        uint256 nbClaimedPreExp = optionClaimedPreExp[_optionId];
+        uint256 nbTotal = nbTotalWithClaimedPreExp.sub(nbClaimedPreExp);
 
         // Amount of options user still has to claim funds from
         uint256 claimsUser = nbWritten[msg.sender][_optionId];
@@ -237,6 +259,43 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
 
         dai.safeTransfer(msg.sender, daiAmount);
         tokenErc20.safeTransfer(msg.sender, tokenAmount);
+
+        emit Withdraw(msg.sender, _optionId, claimsUser);
+    }
+
+    // Withdraw funds from exercised unexpired option (Only callable by writers with unclaimed options)
+    function withdrawPreExpiration(uint256 _optionId, uint256 _contractAmount) public notExpired(_optionId) {
+        require(_contractAmount > 0, "Contract amount must be > 0");
+        require(nbWritten[msg.sender][_optionId] > 0, "No option funds to claim for this address");
+
+        uint256 nbClaimedPreExp = optionClaimedPreExp[_optionId];
+        uint256 nbClaimable = optionExercised[_optionId].sub(nbClaimedPreExp);
+
+        // Amount of options user still has to claim funds from
+        uint256 claimsUser = nbWritten[msg.sender][_optionId];
+
+        require(nbClaimable > 0, "No option to claim funds from");
+        require(claimsUser >= nbClaimable, "Not enough options claimable");
+        require(claimsUser >= _contractAmount, "Address does not have enough claims left");
+
+        //
+
+        OptionData memory data = optionData[_optionId];
+        TokenSettings memory settings = tokenSettings[data.token];
+
+        if (data.isCall) {
+            uint256 amount = _contractAmount.mul(data.strikePrice);
+            dai.safeTransfer(msg.sender, amount);
+            pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(amount);
+        } else {
+            IERC20 tokenErc20 = IERC20(data.token);
+            uint256 amount = _contractAmount.mul(settings.contractSize);
+            tokenErc20.safeTransfer(msg.sender, amount);
+            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(amount);
+        }
+
+        nbWritten[msg.sender][_optionId] = nbWritten[msg.sender][_optionId].sub(_contractAmount);
+        optionClaimedPreExp[_optionId] = optionClaimedPreExp[_optionId].add(_contractAmount);
     }
 
     //////////////////////////////////////////////////
@@ -250,12 +309,12 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
     //    function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) internal override {
     //    }
 
-    function mint(address _account, uint256 _id, uint256 _amount) internal {
+    function mint(address _account, uint256 _id, uint256 _amount) internal notExpired(_id) {
         _mint(_account, _id, _amount, "");
         optionSupply[_id] = optionSupply[_id].add(_amount);
     }
 
-    function burn(address _account, uint256 _id, uint256 _amount) internal {
+    function burn(address _account, uint256 _id, uint256 _amount) internal notExpired(_id) {
         optionSupply[_id] = optionSupply[_id].sub(_amount);
         _burn(_account, _id, _amount);
     }
