@@ -87,18 +87,22 @@ contract PremiaOption is Ownable, ERC1155 {
     ///////////////
 
     modifier notExpired(uint256 _optionId) {
-        require(block.timestamp < optionData[_optionId].expiration, "Option expired");
+        require(getBlockTimestamp() < optionData[_optionId].expiration, "Option expired");
         _;
     }
 
     modifier expired(uint256 _optionId) {
-        require(block.timestamp >= optionData[_optionId].expiration, "Option not expired");
+        require(getBlockTimestamp() >= optionData[_optionId].expiration, "Option not expired");
         _;
     }
 
     //////////
     // View //
     //////////
+
+    function getBlockTimestamp() public view returns(uint256) {
+        return block.timestamp;
+    }
 
     function getOptionId(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public view returns(uint256) {
         return options[_token][_expiration][_strikePrice][_isCall];
@@ -323,7 +327,7 @@ contract PremiaOption is Ownable, ERC1155 {
         require(_contractAmount > 0, "Contract amount must be > 0");
         require(_strikePrice > 0, "Strike price must be > 0");
         require(_strikePrice % settings.strikePriceIncrement == 0, "Wrong strikePrice increment");
-        require(_expiration > block.timestamp, "Expiration already passed");
+        require(_expiration > getBlockTimestamp(), "Expiration already passed");
         require(_expiration % expirationIncrement == 0, "Wrong expiration timestamp increment");
     }
 
