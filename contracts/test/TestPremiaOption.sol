@@ -118,9 +118,9 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
         tokens.push(_token);
 
         tokenSettings[_token] = TokenSettings({
-        contractSize: _contractSize,
-        strikePriceIncrement: _strikePriceIncrement,
-        isDisabled: false
+            contractSize: _contractSize,
+            strikePriceIncrement: _strikePriceIncrement,
+            isDisabled: false
         });
     }
 
@@ -262,7 +262,11 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
     // Withdraw funds from exercised unexpired option (Only callable by writers with unclaimed options)
     function withdrawPreExpiration(uint256 _optionId, uint256 _contractAmount) public notExpired(_optionId) {
         require(_contractAmount > 0, "Contract amount must be > 0");
-        require(nbWritten[msg.sender][_optionId] > 0, "No option funds to claim for this address");
+
+        // Amount of options user still has to claim funds from
+        uint256 claimsUser = nbWritten[msg.sender][_optionId];
+
+        require(claimsUser >= _contractAmount, "Address does not have enough claims left");
 
         OptionData storage data = optionData[_optionId];
         TokenSettings memory settings = tokenSettings[data.token];
@@ -270,12 +274,8 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
         uint256 claimsPreExp = data.claimsPreExp;
         uint256 nbClaimable = data.exercised.sub(claimsPreExp);
 
-        // Amount of options user still has to claim funds from
-        uint256 claimsUser = nbWritten[msg.sender][_optionId];
-
         require(nbClaimable > 0, "No option to claim funds from");
-        require(claimsUser >= nbClaimable, "Not enough options claimable");
-        require(claimsUser >= _contractAmount, "Address does not have enough claims left");
+        require(nbClaimable >= _contractAmount, "Not enough options claimable");
 
         //
 

@@ -477,4 +477,41 @@ describe('PremiaOption', function () {
       expect(writer2Dai).to.eq(utils.parseEther('5'));
     });
   });
+
+  describe('withdrawPreExpiration', () => {
+    it('should fail withdrawing if option is expired', async () => {
+      await addEthAndWriteOptionsAndExercise(true, 2, 1);
+      await premiaOption.setTimestamp(1e6);
+      await expect(premiaOption.withdrawPreExpiration(1, 1)).to.revertedWith(
+        'Option expired',
+      );
+    });
+
+    it('should fail withdrawing from non-writer if option is not expired', async () => {
+      await addEthAndWriteOptions(2);
+      await transferOptionToUser1(writer1);
+      await expect(
+        premiaOption.connect(user1).withdrawPreExpiration(1, 1),
+      ).to.revertedWith('Address does not have enough claims left');
+    });
+
+    it('should fail withdrawing if no unclaimed exercised options', async () => {
+      await addEthAndWriteOptions(2);
+      await transferOptionToUser1(writer1, 2);
+
+      await expect(
+        premiaOption.connect(writer1).withdrawPreExpiration(1, 2),
+      ).to.revertedWith('No option to claim funds from');
+    });
+
+    it('should fail withdrawing if not enough unclaimed exercised options', async () => {
+      await addEthAndWriteOptions(2);
+      await transferOptionToUser1(writer1, 2);
+      await exerciseOption(true, 1);
+
+      await expect(
+        premiaOption.connect(writer1).withdrawPreExpiration(1, 2),
+      ).to.revertedWith('Not enough options claimable');
+    });
+  });
 });
