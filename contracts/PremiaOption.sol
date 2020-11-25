@@ -7,7 +7,7 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
-contract TestPremiaOption is Ownable, ERC1155 {
+contract PremiaOption is Ownable, ERC1155 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -25,6 +25,10 @@ contract TestPremiaOption is Ownable, ERC1155 {
         uint256 expiration;
         uint256 strikePrice;
         bool isCall;
+        uint256 claimsPreExp;  // Amount of options from which the funds have been withdrawn pre expiration
+        uint256 claimsPostExp; // Amount of options from which the funds have been withdrawn post expiration
+        uint256 exercised;     // Amount of options which have been exercised
+        uint256 supply;        // Total circulating supply
     }
 
     struct Pool {
@@ -40,20 +44,6 @@ contract TestPremiaOption is Ownable, ERC1155 {
 
     address[] public tokens;
     mapping (address => TokenSettings) public tokenSettings;
-
-    //////////////////////////////////////////////////
-
-    // Amount of circulating options (optionId => supply)
-    mapping (uint256 => uint256) public optionSupply;
-
-    // Amount of options which have been exercised (optionId => exercised)
-    mapping (uint256 => uint256) public optionExercised;
-
-    // Amount of options from which the funds have been withdrawn post expiration
-    mapping (uint256 => uint256) public optionClaimed;
-
-    // Amount of options from which the funds have been withdrawn pre expiration
-    mapping (uint256 => uint256) public optionClaimedPreExp;
 
     //////////////////////////////////////////////////
 
@@ -146,7 +136,11 @@ contract TestPremiaOption is Ownable, ERC1155 {
             token: _token,
             expiration: _expiration,
             strikePrice: _strikePrice,
-            isCall: _isCall
+            isCall: _isCall,
+            claimsPreExp: 0,
+            claimsPostExp: 0,
+            exercised: 0,
+            supply: 0
             });
 
             nextOptionId = nextOptionId.add(1);
@@ -199,11 +193,11 @@ contract TestPremiaOption is Ownable, ERC1155 {
     function exerciseOption(uint256 _optionId, uint256 _contractAmount) public notExpired(_optionId) {
         require(_contractAmount > 0, "ContractAmount must be > 0");
 
-        OptionData memory data = optionData[_optionId];
+        OptionData storage data = optionData[_optionId];
         TokenSettings memory settings = tokenSettings[data.token];
 
         burn(msg.sender, _optionId, _contractAmount);
-        optionExercised[_optionId] = optionExercised[_optionId].add(_contractAmount);
+        data.exercised = data.exercised.add(_contractAmount);
 
         IERC20 tokenErc20 = IERC20(data.token);
 
@@ -233,9 +227,11 @@ contract TestPremiaOption is Ownable, ERC1155 {
     function withdraw(uint256 _optionId) public expired(_optionId) {
         require(nbWritten[msg.sender][_optionId] > 0, "No option funds to claim for this address");
 
-        uint256 nbTotalWithClaimedPreExp = optionSupply[_optionId].add(optionExercised[_optionId]);
-        uint256 nbClaimedPreExp = optionClaimedPreExp[_optionId];
-        uint256 nbTotal = nbTotalWithClaimedPreExp.sub(nbClaimedPreExp);
+        OptionData storage data = optionData[_optionId];
+
+        uint256 nbTotalWithClaimedPreExp = data.supply.add(data.exercised);
+        uint256 claimsPreExp = data.claimsPreExp;
+        uint256 nbTotal = nbTotalWithClaimedPreExp.sub(claimsPreExp);
 
         // Amount of options user still has to claim funds from
         uint256 claimsUser = nbWritten[msg.sender][_optionId];
@@ -251,7 +247,7 @@ contract TestPremiaOption is Ownable, ERC1155 {
 
         pools[_optionId].daiAmount.sub(daiAmount);
         pools[_optionId].tokenAmount.sub(tokenAmount);
-        optionClaimed[_optionId] = optionClaimed[_optionId].add(claimsUser);
+        data.claimsPostExp = data.claimsPostExp.add(claimsUser);
         delete nbWritten[msg.sender][_optionId];
 
         dai.safeTransfer(msg.sender, daiAmount);
@@ -265,8 +261,11 @@ contract TestPremiaOption is Ownable, ERC1155 {
         require(_contractAmount > 0, "Contract amount must be > 0");
         require(nbWritten[msg.sender][_optionId] > 0, "No option funds to claim for this address");
 
-        uint256 nbClaimedPreExp = optionClaimedPreExp[_optionId];
-        uint256 nbClaimable = optionExercised[_optionId].sub(nbClaimedPreExp);
+        OptionData storage data = optionData[_optionId];
+        TokenSettings memory settings = tokenSettings[data.token];
+
+        uint256 claimsPreExp = data.claimsPreExp;
+        uint256 nbClaimable = data.exercised.sub(claimsPreExp);
 
         // Amount of options user still has to claim funds from
         uint256 claimsUser = nbWritten[msg.sender][_optionId];
@@ -276,9 +275,6 @@ contract TestPremiaOption is Ownable, ERC1155 {
         require(claimsUser >= _contractAmount, "Address does not have enough claims left");
 
         //
-
-        OptionData memory data = optionData[_optionId];
-        TokenSettings memory settings = tokenSettings[data.token];
 
         if (data.isCall) {
             uint256 amount = _contractAmount.mul(data.strikePrice);
@@ -292,7 +288,7 @@ contract TestPremiaOption is Ownable, ERC1155 {
         }
 
         nbWritten[msg.sender][_optionId] = nbWritten[msg.sender][_optionId].sub(_contractAmount);
-        optionClaimedPreExp[_optionId] = optionClaimedPreExp[_optionId].add(_contractAmount);
+        data.claimsPreExp = data.claimsPreExp.add(_contractAmount);
     }
 
     //////////////////////////////////////////////////
@@ -307,12 +303,16 @@ contract TestPremiaOption is Ownable, ERC1155 {
     //    }
 
     function mint(address _account, uint256 _id, uint256 _amount) internal notExpired(_id) {
+        OptionData storage data = optionData[_id];
+
         _mint(_account, _id, _amount, "");
-        optionSupply[_id] = optionSupply[_id].add(_amount);
+        data.supply = data.supply.add(_amount);
     }
 
     function burn(address _account, uint256 _id, uint256 _amount) internal notExpired(_id) {
-        optionSupply[_id] = optionSupply[_id].sub(_amount);
+        OptionData storage data = optionData[_id];
+
+        data.supply = data.supply.sub(_amount);
         _burn(_account, _id, _amount);
     }
 
