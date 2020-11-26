@@ -26,7 +26,7 @@ interface WriteOptionArgs {
 function getOptionDefaults() {
   return {
     address: eth.address,
-    expiration: 604800,
+    expiration: 777599,
     strikePrice: utils.parseEther('10'),
     isCall: true,
     contractAmount: 1,
@@ -183,7 +183,7 @@ describe('PremiaOption', function () {
 
     it('should revert if timestamp already passed', async () => {
       await addEth();
-      await premiaOption.setTimestamp(700000);
+      await premiaOption.setTimestamp(1e6);
       await expect(writeOption(writer1)).to.be.revertedWith(
         'Expiration already passed',
       );
@@ -194,6 +194,13 @@ describe('PremiaOption', function () {
       await expect(
         writeOption(writer1, { expiration: 200 }),
       ).to.be.revertedWith('Wrong expiration timestamp increment');
+    });
+
+    it('should revert if timestamp is beyond max expiration', async () => {
+      await addEth();
+      await expect(
+        writeOption(writer1, { expiration: 3600 * 24 * 400 }),
+      ).to.be.revertedWith('Expiration must be <= 1 year');
     });
 
     it('should fail if address does not have enough ether for call', async () => {

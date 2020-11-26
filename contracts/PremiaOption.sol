@@ -47,11 +47,12 @@ contract PremiaOption is Ownable, ERC1155 {
 
     address public treasury; // Treasury address receiving fees
 
-    // ToDo : Make increments end on Fri 23:59:59 UTC
-    uint256 public expirationIncrement = 3600 * 24 * 7; // 1 Week
+    uint256 public baseExpiration = 172799;         // Offset to add to Unix timestamp to make it Fri 23:59:59 UTC
+    uint256 public expirationIncrement = 1 weeks;   // Expiration increment
+    uint256 public maxExpiration = 365 days;         // Max expiration time from now
 
-    uint256 public writeFee = 1e3;   // 1%
-    uint256 public exerciseFee = 1e3;  // 1%
+    uint256 public writeFee = 1e3;                  // 1%
+    uint256 public exerciseFee = 1e3;               // 1%
 
     // token => expiration => strikePrice => isCall (1 for call, 0 for put) => optionId
     mapping (address => mapping(uint256 => mapping(uint256 => mapping (bool => uint256)))) public options;
@@ -124,6 +125,11 @@ contract PremiaOption is Ownable, ERC1155 {
     function setTreasury(address _treasury) public onlyOwner {
         require(_treasury != address(0), "Treasury cannot be 0x0 address");
         treasury = _treasury;
+    }
+
+    function setMaxExpiration(uint256 _max) public onlyOwner {
+        require(_max >= 0, "Max expiration cannot be negative");
+        maxExpiration = _max;
     }
 
     function setWriteFee(uint256 _fee) public onlyOwner {
@@ -370,7 +376,8 @@ contract PremiaOption is Ownable, ERC1155 {
         require(_strikePrice > 0, "Strike price must be > 0");
         require(_strikePrice % settings.strikePriceIncrement == 0, "Wrong strikePrice increment");
         require(_expiration > getBlockTimestamp(), "Expiration already passed");
-        require(_expiration % expirationIncrement == 0, "Wrong expiration timestamp increment");
+        require(_expiration.sub(getBlockTimestamp()) <= 365 days, "Expiration must be <= 1 year");
+        require(_expiration % expirationIncrement == baseExpiration, "Wrong expiration timestamp increment");
     }
 
     // Utility function to check if a value is inside an array
