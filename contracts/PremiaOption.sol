@@ -11,8 +11,6 @@ contract PremiaOption is Ownable, ERC1155 {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    uint256 public expirationIncrement = 3600 * 24 * 7; // 1 Week
-
     // ToDo : Add ability to modify increments
     struct TokenSettings {
         uint256 contractSize; // Amount of token per contract
@@ -20,14 +18,15 @@ contract PremiaOption is Ownable, ERC1155 {
     }
 
     struct OptionData {
-        address token;         // Token address
-        uint256 expiration;    // Expiration timestamp of the option (Must follow expirationIncrement)
-        uint256 strikePrice;   // Strike price (Must follow strikePriceIncrement of token)
-        bool isCall;           // If true : Call option | If false : Put option
-        uint256 claimsPreExp;  // Amount of options from which the funds have been withdrawn pre expiration
-        uint256 claimsPostExp; // Amount of options from which the funds have been withdrawn post expiration
-        uint256 exercised;     // Amount of options which have been exercised
-        uint256 supply;        // Total circulating supply
+        address token;                  // Token address
+        uint256 contractSize;           // Amount of token per contract
+        uint256 expiration;             // Expiration timestamp of the option (Must follow expirationIncrement)
+        uint256 strikePrice;            // Strike price (Must follow strikePriceIncrement of token)
+        bool isCall;                    // If true : Call option | If false : Put option
+        uint256 claimsPreExp;           // Amount of options from which the funds have been withdrawn pre expiration
+        uint256 claimsPostExp;          // Amount of options from which the funds have been withdrawn post expiration
+        uint256 exercised;              // Amount of options which have been exercised
+        uint256 supply;                 // Total circulating supply
     }
 
     struct Pool {
@@ -45,6 +44,14 @@ contract PremiaOption is Ownable, ERC1155 {
     //////////////////////////////////////////////////
 
     uint256 public nextOptionId = 1;
+
+    address public treasury; // Treasury address receiving fees
+
+    // ToDo : Make increments end on Fri 23:59:59 UTC
+    uint256 public expirationIncrement = 3600 * 24 * 7; // 1 Week
+
+    uint256 public writeFee = 1e3;   // 1%
+    uint256 public exerciseFee = 1e3;  // 1%
 
     // token => expiration => strikePrice => isCall (1 for call, 0 for put) => optionId
     mapping (address => mapping(uint256 => mapping(uint256 => mapping (bool => uint256)))) public options;
@@ -71,8 +78,9 @@ contract PremiaOption is Ownable, ERC1155 {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(string memory _uri, IERC20 _dai) public ERC1155(_uri) {
+    constructor(string memory _uri, IERC20 _dai, address _treasury) public ERC1155(_uri) {
         dai = _dai;
+        treasury = _treasury;
     }
 
     //////////////////////////////////////////////////
@@ -109,6 +117,25 @@ contract PremiaOption is Ownable, ERC1155 {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
+    ///////////
+    // Admin //
+    ///////////
+
+    function setTreasury(address _treasury) public onlyOwner {
+        require(_treasury != address(0), "Treasury cannot be 0x0 address");
+        treasury = _treasury;
+    }
+
+    function setWriteFee(uint256 _fee) public onlyOwner {
+        require(_fee >= 0, "Fee must be > 0");
+        writeFee = _fee;
+    }
+
+    function setExerciseFee(uint256 _fee) public onlyOwner {
+        require(_fee >= 0, "Fee must be > 0");
+        exerciseFee = _fee;
+    }
+
     // Add a new token to support writing of options paired to DAI
     function addToken(address _token, uint256 _contractSize, uint256 _strikePriceIncrement) public onlyOwner {
         require(_isInArray(_token, tokens) == false, "Token already added");
@@ -120,6 +147,8 @@ contract PremiaOption is Ownable, ERC1155 {
         strikePriceIncrement: _strikePriceIncrement
         });
     }
+
+    ////////
 
     function writeOption(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall, uint256 _contractAmount) public {
         _preCheckOptionWrite(_token, _contractAmount, _strikePrice, _expiration);
@@ -134,6 +163,7 @@ contract PremiaOption is Ownable, ERC1155 {
             pools[optionId] = Pool({ tokenAmount: 0, daiAmount: 0 });
             optionData[optionId] = OptionData({
             token: _token,
+            contractSize: settings.contractSize,
             expiration: _expiration,
             strikePrice: _strikePrice,
             isCall: _isCall,
@@ -146,14 +176,25 @@ contract PremiaOption is Ownable, ERC1155 {
             nextOptionId = nextOptionId.add(1);
         }
 
+        OptionData memory data = optionData[optionId];
+
         if (_isCall) {
             IERC20 tokenErc20 = IERC20(_token);
-            uint256 amount = _contractAmount.mul(settings.contractSize);
+
+            uint256 amount = _contractAmount.mul(data.contractSize);
+            uint256 feeAmount = amount.mul(writeFee).div(1e5);
+
             tokenErc20.safeTransferFrom(msg.sender, address(this), amount);
+            tokenErc20.safeTransferFrom(msg.sender, treasury, feeAmount);
+
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
         } else {
             uint256 amount = _contractAmount.mul(_strikePrice);
+            uint256 feeAmount = amount.mul(writeFee).div(1e5);
+
             dai.safeTransferFrom(msg.sender, address(this), amount);
+            dai.safeTransferFrom(msg.sender, treasury, feeAmount);
+
             pools[optionId].daiAmount = pools[optionId].daiAmount.add(amount);
         }
 
@@ -174,11 +215,10 @@ contract PremiaOption is Ownable, ERC1155 {
         nbWritten[msg.sender][_optionId] = nbWritten[msg.sender][_optionId].sub(_contractAmount);
 
         OptionData memory data = optionData[_optionId];
-        TokenSettings memory settings = tokenSettings[data.token];
 
         if (data.isCall) {
             IERC20 tokenErc20 = IERC20(data.token);
-            uint256 amount = _contractAmount.mul(settings.contractSize);
+            uint256 amount = _contractAmount.mul(data.contractSize);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(amount);
             tokenErc20.safeTransfer(msg.sender, amount);
         } else {
@@ -194,27 +234,34 @@ contract PremiaOption is Ownable, ERC1155 {
         require(_contractAmount > 0, "ContractAmount must be > 0");
 
         OptionData storage data = optionData[_optionId];
-        TokenSettings memory settings = tokenSettings[data.token];
 
         burn(msg.sender, _optionId, _contractAmount);
         data.exercised = data.exercised.add(_contractAmount);
 
         IERC20 tokenErc20 = IERC20(data.token);
 
-        uint256 tokenAmount = _contractAmount.mul(settings.contractSize);
+        uint256 tokenAmount = _contractAmount.mul(data.contractSize);
         uint256 daiAmount = _contractAmount.mul(data.strikePrice);
 
         if (data.isCall) {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
             pools[_optionId].daiAmount = pools[_optionId].daiAmount.add(daiAmount);
 
+            uint256 feeAmount = daiAmount.mul(exerciseFee).div(1e5);
+
             dai.safeTransferFrom(msg.sender, address(this), daiAmount);
+            dai.safeTransferFrom(msg.sender, treasury, feeAmount);
+
             tokenErc20.safeTransfer(msg.sender, tokenAmount);
         } else {
             pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(daiAmount);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
 
+            uint256 feeAmount = tokenAmount.mul(exerciseFee).div(1e5);
+
             tokenErc20.safeTransferFrom(msg.sender, address(this), tokenAmount);
+            tokenErc20.safeTransferFrom(msg.sender, treasury, feeAmount);
+
             dai.safeTransfer(msg.sender, daiAmount);
         }
 
@@ -266,7 +313,6 @@ contract PremiaOption is Ownable, ERC1155 {
         require(claimsUser >= _contractAmount, "Address does not have enough claims left");
 
         OptionData storage data = optionData[_optionId];
-        TokenSettings memory settings = tokenSettings[data.token];
 
         uint256 claimsPreExp = data.claimsPreExp;
         uint256 nbClaimable = data.exercised.sub(claimsPreExp);
@@ -282,7 +328,7 @@ contract PremiaOption is Ownable, ERC1155 {
             pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(amount);
         } else {
             IERC20 tokenErc20 = IERC20(data.token);
-            uint256 amount = _contractAmount.mul(settings.contractSize);
+            uint256 amount = _contractAmount.mul(data.contractSize);
             tokenErc20.safeTransfer(msg.sender, amount);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(amount);
         }

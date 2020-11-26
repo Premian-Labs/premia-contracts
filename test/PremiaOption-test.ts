@@ -12,6 +12,8 @@ let premiaOption: TestPremiaOption;
 let writer1: SignerWithAddress;
 let writer2: SignerWithAddress;
 let user1: SignerWithAddress;
+let treasury: SignerWithAddress;
+const tax = 0.01;
 
 interface WriteOptionArgs {
   address?: string;
@@ -61,15 +63,16 @@ async function mintAndWriteOption(
   isCall = true,
 ) {
   if (isCall) {
-    await eth.connect(user).mint(utils.parseEther(contractAmount.toString()));
+    const amount = contractAmount * (1 + tax);
+    await eth.connect(user).mint(utils.parseEther(amount.toString()));
     await eth
       .connect(user)
       .increaseAllowance(
         premiaOption.address,
-        utils.parseEther(contractAmount.toString()),
+        utils.parseEther(amount.toString()),
       );
   } else {
-    const amount = 10 * contractAmount;
+    const amount = 10 * contractAmount * (1 + tax);
     await dai.connect(user).mint(utils.parseEther(amount.toString()));
     await dai
       .connect(user)
@@ -95,24 +98,23 @@ async function transferOptionToUser1(from: SignerWithAddress, amount?: number) {
 
 async function exerciseOption(isCall: boolean, amountToExercise: number) {
   if (isCall) {
-    await dai
-      .connect(user1)
-      .mint(utils.parseEther(String(amountToExercise * 10)));
+    const amount = amountToExercise * 10 * (1 + tax);
+    await dai.connect(user1).mint(utils.parseEther(amount.toString()));
     await dai
       .connect(user1)
       .increaseAllowance(
         premiaOption.address,
-        utils.parseEther(String(amountToExercise * 10)),
+        utils.parseEther(amount.toString()),
       );
   } else {
-    await eth
-      .connect(user1)
-      .mint(utils.parseEther(amountToExercise.toString()));
+    const amount = amountToExercise * (1 + tax);
+
+    await eth.connect(user1).mint(utils.parseEther(amount.toString()));
     await eth
       .connect(user1)
       .increaseAllowance(
         premiaOption.address,
-        utils.parseEther(amountToExercise.toString()),
+        utils.parseEther(amount.toString()),
       );
   }
 
@@ -131,13 +133,17 @@ async function addEthAndWriteOptionsAndExercise(
 
 describe('PremiaOption', function () {
   beforeEach(async () => {
-    [writer1, writer2, user1] = await ethers.getSigners();
+    [writer1, writer2, user1, treasury] = await ethers.getSigners();
     const erc20Factory = new TestErc20Factory(writer1);
     eth = await erc20Factory.deploy();
     dai = await erc20Factory.deploy();
 
     const premiaOptionFactory = new TestPremiaOptionFactory(writer1);
-    premiaOption = await premiaOptionFactory.deploy('dummyURI', dai.address);
+    premiaOption = await premiaOptionFactory.deploy(
+      'dummyURI',
+      dai.address,
+      treasury.address,
+    );
   });
 
   it('Should add eth for trading', async function () {
@@ -318,6 +324,16 @@ describe('PremiaOption', function () {
       expect(nftBalance).to.eq(1);
       expect(daiBalance).to.eq(utils.parseEther('10'));
       expect(ethBalance).to.eq(0);
+    });
+
+    it('should have 0.01 eth and 0.1 dai in treasury after 1 option exercised', async () => {
+      await addEthAndWriteOptionsAndExercise(true, 1, 1);
+
+      const daiBalance = await dai.balanceOf(treasury.address);
+      const ethBalance = await eth.balanceOf(treasury.address);
+
+      expect(daiBalance).to.eq(utils.parseEther('0.1'));
+      expect(ethBalance).to.eq(utils.parseEther('0.01'));
     });
   });
 
