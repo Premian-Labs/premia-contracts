@@ -6,18 +6,21 @@ import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
-import "./TestTime.sol";
 
+import "../interface/TokenSettingsCalculator.sol";
+
+import "./TestTime.sol";
 import "hardhat/console.sol";
 
+// ToDo : Allow use of strikePriceIncrement if it has been used already before a change of strikePriceIncrement ?
 contract TestPremiaOption is Ownable, ERC1155, TestTime {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    // ToDo : Add ability to modify increments
     struct TokenSettings {
-        uint256 contractSize; // Amount of token per contract
-        uint256 strikePriceIncrement; // Increment for strike price
+        uint256 contractSize;           // Amount of token per contract
+        uint256 strikePriceIncrement;   // Increment for strike price
+        bool isDisabled;                // Whether this token is disabled or not
     }
 
     struct OptionData {
@@ -34,10 +37,10 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
 
     struct Pool {
         uint256 tokenAmount;
-        uint256 daiAmount;
+        uint256 denominatorAmount;
     }
 
-    IERC20 public dai;
+    IERC20 public denominator;
 
     //////////////////////////////////////////////////
 
@@ -52,10 +55,14 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
 
     uint256 public baseExpiration = 172799;         // Offset to add to Unix timestamp to make it Fri 23:59:59 UTC
     uint256 public expirationIncrement = 1 weeks;   // Expiration increment
-    uint256 public maxExpiration = 365 days;         // Max expiration time from now
+    uint256 public maxExpiration = 365 days;        // Max expiration time from now
 
     uint256 public writeFee = 1e3;                  // 1%
     uint256 public exerciseFee = 1e3;               // 1%
+
+    // This contract is used to define automatically an initial contractSize and strikePriceIncrement for a newly added token
+    // Disabled on launch, might be added later, so that admin does not need to add tokens manually
+    TokenSettingsCalculator public tokenSettingsCalculator;
 
     // token => expiration => strikePrice => isCall (1 for call, 0 for put) => optionId
     mapping (address => mapping(uint256 => mapping(uint256 => mapping (bool => uint256)))) public options;
@@ -82,8 +89,8 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(string memory _uri, IERC20 _dai, address _treasury) public ERC1155(_uri) {
-        dai = _dai;
+    constructor(string memory _uri, IERC20 _denominator, address _treasury) public ERC1155(_uri) {
+        denominator = _denominator;
         treasury = _treasury;
     }
 
@@ -125,6 +132,14 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
     // Admin //
     ///////////
 
+    function setTokenDisabled(address _token, bool _isDisabled) public onlyOwner {
+        tokenSettings[_token].isDisabled = _isDisabled;
+    }
+
+    function setTokenSettingsCalculator(TokenSettingsCalculator _addr) public onlyOwner {
+        tokenSettingsCalculator = _addr;
+    }
+
     function setTreasury(address _treasury) public onlyOwner {
         require(_treasury != address(0), "Treasury cannot be 0x0 address");
         treasury = _treasury;
@@ -145,21 +160,28 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
         exerciseFee = _fee;
     }
 
-    // Add a new token to support writing of options paired to DAI
-    function addToken(address _token, uint256 _contractSize, uint256 _strikePriceIncrement) public onlyOwner {
-        require(_isInArray(_token, tokens) == false, "Token already added");
-        require(_strikePriceIncrement > 0, "Strike increment must be > 0");
-        tokens.push(_token);
-
-        tokenSettings[_token] = TokenSettings({
-            contractSize: _contractSize,
-            strikePriceIncrement: _strikePriceIncrement
-        });
+    // Set settings for a token to support writing of options paired to denominator
+    function setToken(address _token, uint256 _contractSize, uint256 _strikePriceIncrement) public onlyOwner {
+        _setToken(_token, _contractSize, _strikePriceIncrement);
     }
 
     ////////
 
     function writeOption(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall, uint256 _contractAmount) public {
+        // ToDo : Add tests for this
+        // If token has never been used before, we request a default contractSize and strikePriceIncrement to initialize it
+        // (If tokenSettingsCalculator contract is defined)
+        if (address(tokenSettingsCalculator) != address(0) && _isInArray(_token, tokens) == false) {
+            (
+            uint256 contractSize,
+            uint256 strikePrinceIncrement
+            ) = tokenSettingsCalculator.getTokenSettings(_token, address(denominator));
+
+            _setToken(_token, contractSize, strikePrinceIncrement);
+        }
+
+        //
+
         _preCheckOptionWrite(_token, _contractAmount, _strikePrice, _expiration);
 
         TokenSettings memory settings = tokenSettings[_token];
@@ -169,7 +191,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
             optionId = nextOptionId;
             options[_token][_expiration][_strikePrice][_isCall] = optionId;
 
-            pools[optionId] = Pool({ tokenAmount: 0, daiAmount: 0 });
+            pools[optionId] = Pool({ tokenAmount: 0, denominatorAmount: 0 });
             optionData[optionId] = OptionData({
                 token: _token,
                 contractSize: settings.contractSize,
@@ -201,10 +223,10 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
             uint256 amount = _contractAmount.mul(_strikePrice);
             uint256 feeAmount = amount.mul(writeFee).div(1e5);
 
-            dai.safeTransferFrom(msg.sender, address(this), amount);
-            dai.safeTransferFrom(msg.sender, treasury, feeAmount);
+            denominator.safeTransferFrom(msg.sender, address(this), amount);
+            denominator.safeTransferFrom(msg.sender, treasury, feeAmount);
 
-            pools[optionId].daiAmount = pools[optionId].daiAmount.add(amount);
+            pools[optionId].denominatorAmount = pools[optionId].denominatorAmount.add(amount);
         }
 
         nbWritten[msg.sender][optionId] = nbWritten[msg.sender][optionId].add(_contractAmount);
@@ -232,8 +254,8 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
             tokenErc20.safeTransfer(msg.sender, amount);
         } else {
             uint256 amount = _contractAmount.mul(data.strikePrice);
-            pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(amount);
-            dai.safeTransfer(msg.sender, amount);
+            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(amount);
+            denominator.safeTransfer(msg.sender, amount);
         }
 
         emit OptionCancelled(msg.sender, _optionId, _contractAmount);
@@ -250,20 +272,20 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
         IERC20 tokenErc20 = IERC20(data.token);
 
         uint256 tokenAmount = _contractAmount.mul(data.contractSize);
-        uint256 daiAmount = _contractAmount.mul(data.strikePrice);
+        uint256 denominatorAmount = _contractAmount.mul(data.strikePrice);
 
         if (data.isCall) {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
-            pools[_optionId].daiAmount = pools[_optionId].daiAmount.add(daiAmount);
+            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(denominatorAmount);
 
-            uint256 feeAmount = daiAmount.mul(exerciseFee).div(1e5);
+            uint256 feeAmount = denominatorAmount.mul(exerciseFee).div(1e5);
 
-            dai.safeTransferFrom(msg.sender, address(this), daiAmount);
-            dai.safeTransferFrom(msg.sender, treasury, feeAmount);
+            denominator.safeTransferFrom(msg.sender, address(this), denominatorAmount);
+            denominator.safeTransferFrom(msg.sender, treasury, feeAmount);
 
             tokenErc20.safeTransfer(msg.sender, tokenAmount);
         } else {
-            pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(daiAmount);
+            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(denominatorAmount);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
 
             uint256 feeAmount = tokenAmount.mul(exerciseFee).div(1e5);
@@ -271,7 +293,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
             tokenErc20.safeTransferFrom(msg.sender, address(this), tokenAmount);
             tokenErc20.safeTransferFrom(msg.sender, treasury, feeAmount);
 
-            dai.safeTransfer(msg.sender, daiAmount);
+            denominator.safeTransfer(msg.sender, denominatorAmount);
         }
 
         emit OptionExercised(msg.sender, _optionId, _contractAmount);
@@ -279,7 +301,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
 
     // Withdraw funds from an expired option (Only callable by writers with unclaimed options)
     // Funds are allocated pro-rate to writers.
-    // Ex : If there is 10 ETH and 6000 DAI, a user who got 10% of options unclaimed will get 1 ETH and 600 DAI
+    // Ex : If there is 10 ETH and 6000 denominator, a user who got 10% of options unclaimed will get 1 ETH and 600 denominator
     function withdraw(uint256 _optionId) public expired(_optionId) {
         require(nbWritten[msg.sender][_optionId] > 0, "No option funds to claim for this address");
 
@@ -294,19 +316,19 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
 
         //
 
-        uint256 daiAmount = pools[_optionId].daiAmount.mul(claimsUser).div(nbTotal);
+        uint256 denominatorAmount = pools[_optionId].denominatorAmount.mul(claimsUser).div(nbTotal);
         uint256 tokenAmount = pools[_optionId].tokenAmount.mul(claimsUser).div(nbTotal);
 
         //
 
         IERC20 tokenErc20 = IERC20(optionData[_optionId].token);
 
-        pools[_optionId].daiAmount.sub(daiAmount);
+        pools[_optionId].denominatorAmount.sub(denominatorAmount);
         pools[_optionId].tokenAmount.sub(tokenAmount);
         data.claimsPostExp = data.claimsPostExp.add(claimsUser);
         delete nbWritten[msg.sender][_optionId];
 
-        dai.safeTransfer(msg.sender, daiAmount);
+        denominator.safeTransfer(msg.sender, denominatorAmount);
         tokenErc20.safeTransfer(msg.sender, tokenAmount);
 
         emit Withdraw(msg.sender, _optionId, claimsUser);
@@ -333,8 +355,8 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
 
         if (data.isCall) {
             uint256 amount = _contractAmount.mul(data.strikePrice);
-            dai.safeTransfer(msg.sender, amount);
-            pools[_optionId].daiAmount = pools[_optionId].daiAmount.sub(amount);
+            denominator.safeTransfer(msg.sender, amount);
+            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(amount);
         } else {
             IERC20 tokenErc20 = IERC20(data.token);
             uint256 amount = _contractAmount.mul(data.contractSize);
@@ -371,9 +393,26 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
         _burn(_account, _id, _amount);
     }
 
+    // Add a new token to support writing of options paired to denominator
+    function _setToken(address _token, uint256 _contractSize, uint256 _strikePriceIncrement) internal {
+        if (_isInArray(_token, tokens) == false) {
+            tokens.push(_token);
+        }
+
+        require(_contractSize > 0, "Contract size must be > 0");
+        require(_strikePriceIncrement > 0, "Strike increment must be > 0");
+
+        tokenSettings[_token] = TokenSettings({
+            contractSize: _contractSize,
+            strikePriceIncrement: _strikePriceIncrement,
+            isDisabled: false
+        });
+    }
+
     function _preCheckOptionWrite(address _token, uint256 _contractAmount, uint256 _strikePrice, uint256 _expiration) internal view {
         TokenSettings memory settings = tokenSettings[_token];
 
+        require(settings.isDisabled == false, "Token is disabled");
         require(_isInArray(_token, tokens) == true, "Token not supported");
         require(_contractAmount > 0, "Contract amount must be > 0");
         require(_strikePrice > 0, "Strike price must be > 0");

@@ -34,7 +34,7 @@ function getOptionDefaults() {
 }
 
 async function addEth() {
-  return premiaOption.addToken(
+  return premiaOption.setToken(
     eth.address,
     utils.parseEther('1'),
     utils.parseEther('10'),
@@ -157,6 +157,14 @@ describe('PremiaOption', function () {
     it('should fail if token not added', async () => {
       await expect(writeOption(writer1)).to.be.revertedWith(
         'Token not supported',
+      );
+    });
+
+    it('should disable eth for writing', async () => {
+      await addEth();
+      await premiaOption.setTokenDisabled(eth.address, true);
+      await expect(writeOption(writer1)).to.be.revertedWith(
+        'Token is disabled',
       );
     });
 
