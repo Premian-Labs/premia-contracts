@@ -145,7 +145,6 @@ describe('PremiaOption', function () {
     const settings = await premiaOption.tokenSettings(eth.address);
     expect(settings.contractSize.eq(utils.parseEther('1'))).to.true;
     expect(settings.strikePriceIncrement.eq(utils.parseEther('10'))).to.true;
-    expect(settings.isDisabled).to.false;
   });
 
   describe('writeOption', () => {
