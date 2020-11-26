@@ -20,14 +20,13 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
     struct TokenSettings {
         uint256 contractSize; // Amount of token per contract
         uint256 strikePriceIncrement; // Increment for strike price
-        bool isDisabled; // Whether this token is disabled or not
     }
 
     struct OptionData {
-        address token;
-        uint256 expiration;
-        uint256 strikePrice;
-        bool isCall;
+        address token;         // Token address
+        uint256 expiration;    // Expiration timestamp of the option (Must follow expirationIncrement)
+        uint256 strikePrice;   // Strike price (Must follow strikePriceIncrement of token)
+        bool isCall;           // If true : Call option | If false : Put option
         uint256 claimsPreExp;  // Amount of options from which the funds have been withdrawn pre expiration
         uint256 claimsPostExp; // Amount of options from which the funds have been withdrawn post expiration
         uint256 exercised;     // Amount of options which have been exercised
@@ -37,8 +36,6 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
     struct Pool {
         uint256 tokenAmount;
         uint256 daiAmount;
-        uint256 tokenPerShare;
-        uint256 daiPerShare;
     }
 
     IERC20 public dai;
@@ -68,10 +65,10 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
     // Events //
     ////////////
 
-    event OptionWritten(address indexed owner, uint256 indexed optionId, uint256 amount);
-    event OptionCancelled(address indexed owner, uint256 indexed optionId, uint256 amount);
-    event OptionExercised(address indexed user, uint256 indexed optionId, uint256 amount);
-    event Withdraw(address indexed user, uint256 indexed optionId, uint256 amount);
+    event OptionWritten(address indexed owner, uint256 indexed optionId, uint256 contractAmount);
+    event OptionCancelled(address indexed owner, uint256 indexed optionId, uint256 contractAmount);
+    event OptionExercised(address indexed user, uint256 indexed optionId, uint256 contractAmount);
+    event Withdraw(address indexed user, uint256 indexed optionId, uint256 contractAmount);
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
@@ -123,8 +120,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
 
         tokenSettings[_token] = TokenSettings({
             contractSize: _contractSize,
-            strikePriceIncrement: _strikePriceIncrement,
-            isDisabled: false
+            strikePriceIncrement: _strikePriceIncrement
         });
     }
 
@@ -138,7 +134,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
             optionId = nextOptionId;
             options[_token][_expiration][_strikePrice][_isCall] = optionId;
 
-            pools[optionId] = Pool({ tokenAmount: 0, daiAmount: 0, tokenPerShare: 0, daiPerShare: 0});
+            pools[optionId] = Pool({ tokenAmount: 0, daiAmount: 0 });
             optionData[optionId] = OptionData({
                 token: _token,
                 expiration: _expiration,
