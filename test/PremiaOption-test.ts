@@ -476,6 +476,54 @@ describe('PremiaOption', function () {
       expect(writer2Eth).to.eq(utils.parseEther('0.5'));
       expect(writer2Dai).to.eq(utils.parseEther('5'));
     });
+
+    it('should withdraw 1 eth, if 1/2 call executed and 1 withdrawPreExpiration', async () => {
+      await addEth();
+      await mintAndWriteOption(writer1, 1);
+      await mintAndWriteOption(writer2, 1);
+      await transferOptionToUser1(writer1, 1);
+      await transferOptionToUser1(writer2, 1);
+      await exerciseOption(true, 1);
+
+      await premiaOption.connect(writer2).withdrawPreExpiration(1, 1);
+
+      await premiaOption.setTimestamp(1e6);
+
+      await premiaOption.withdraw(1);
+
+      const daiBalance = await dai.balanceOf(writer1.address);
+      const ethBalance = await eth.balanceOf(writer1.address);
+
+      const nbWritten = await premiaOption.nbWritten(writer1.address, 1);
+
+      expect(daiBalance).to.eq(0);
+      expect(ethBalance).to.eq(utils.parseEther('1'));
+      expect(nbWritten).to.eq(0);
+    });
+
+    it('should withdraw 10 dai, if 1/2 put executed and 1 withdrawPreExpiration', async () => {
+      await addEth();
+      await mintAndWriteOption(writer1, 1, false);
+      await mintAndWriteOption(writer2, 1, false);
+      await transferOptionToUser1(writer1, 1);
+      await transferOptionToUser1(writer2, 1);
+      await exerciseOption(false, 1);
+
+      await premiaOption.connect(writer2).withdrawPreExpiration(1, 1);
+
+      await premiaOption.setTimestamp(1e6);
+
+      await premiaOption.withdraw(1);
+
+      const daiBalance = await dai.balanceOf(writer1.address);
+      const ethBalance = await eth.balanceOf(writer1.address);
+
+      const nbWritten = await premiaOption.nbWritten(writer1.address, 1);
+
+      expect(daiBalance).to.eq(utils.parseEther('10'));
+      expect(ethBalance).to.eq(0);
+      expect(nbWritten).to.eq(0);
+    });
   });
 
   describe('withdrawPreExpiration', () => {
@@ -512,6 +560,40 @@ describe('PremiaOption', function () {
       await expect(
         premiaOption.connect(writer1).withdrawPreExpiration(1, 2),
       ).to.revertedWith('Not enough options claimable');
+    });
+
+    it('should successfully withdraw 10 dai for withdrawPreExpiration of call option exercised', async () => {
+      await addEthAndWriteOptions(2);
+      await transferOptionToUser1(writer1, 2);
+      await exerciseOption(true, 1);
+
+      await premiaOption.connect(writer1).withdrawPreExpiration(1, 1);
+
+      const daiBalance = await dai.balanceOf(writer1.address);
+      const ethBalance = await eth.balanceOf(writer1.address);
+
+      const nbWritten = await premiaOption.nbWritten(writer1.address, 1);
+
+      expect(daiBalance).to.eq(utils.parseEther('10'));
+      expect(ethBalance).to.eq(0);
+      expect(nbWritten).to.eq(1);
+    });
+
+    it('should successfully withdraw 1 eth for withdrawPreExpiration of put option exercised', async () => {
+      await addEthAndWriteOptions(2, false);
+      await transferOptionToUser1(writer1, 2);
+      await exerciseOption(false, 1);
+
+      await premiaOption.connect(writer1).withdrawPreExpiration(1, 1);
+
+      const daiBalance = await dai.balanceOf(writer1.address);
+      const ethBalance = await eth.balanceOf(writer1.address);
+
+      const nbWritten = await premiaOption.nbWritten(writer1.address, 1);
+
+      expect(daiBalance).to.eq(0);
+      expect(ethBalance).to.eq(utils.parseEther('1'));
+      expect(nbWritten).to.eq(1);
     });
   });
 });
