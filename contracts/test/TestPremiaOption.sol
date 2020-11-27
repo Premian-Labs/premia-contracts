@@ -7,12 +7,11 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
-import "../interface/TokenSettingsCalculator.sol";
+import "../interface/ITokenSettingsCalculator.sol";
 
 import "./TestTime.sol";
 import "hardhat/console.sol";
 
-// ToDo : Allow use of strikePriceIncrement if it has been used already before a change of strikePriceIncrement ?
 contract TestPremiaOption is Ownable, ERC1155, TestTime {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -62,7 +61,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
 
     // This contract is used to define automatically an initial contractSize and strikePriceIncrement for a newly added token
     // Disabled on launch, might be added later, so that admin does not need to add tokens manually
-    TokenSettingsCalculator public tokenSettingsCalculator;
+    ITokenSettingsCalculator public tokenSettingsCalculator;
 
     // token => expiration => strikePrice => isCall (1 for call, 0 for put) => optionId
     mapping (address => mapping(uint256 => mapping(uint256 => mapping (bool => uint256)))) public options;
@@ -136,7 +135,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
         tokenSettings[_token].isDisabled = _isDisabled;
     }
 
-    function setTokenSettingsCalculator(TokenSettingsCalculator _addr) public onlyOwner {
+    function setTokenSettingsCalculator(ITokenSettingsCalculator _addr) public onlyOwner {
         tokenSettingsCalculator = _addr;
     }
 
@@ -151,12 +150,12 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
     }
 
     function setWriteFee(uint256 _fee) public onlyOwner {
-        require(_fee >= 0, "Fee must be > 0");
+        require(_fee >= 0, "Fee must be >= 0");
         writeFee = _fee;
     }
 
     function setExerciseFee(uint256 _fee) public onlyOwner {
-        require(_fee >= 0, "Fee must be > 0");
+        require(_fee >= 0, "Fee must be >= 0");
         exerciseFee = _fee;
     }
 
@@ -168,7 +167,6 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
     ////////
 
     function writeOption(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall, uint256 _contractAmount) public {
-        // ToDo : Add tests for this
         // If token has never been used before, we request a default contractSize and strikePriceIncrement to initialize it
         // (If tokenSettingsCalculator contract is defined)
         if (address(tokenSettingsCalculator) != address(0) && _isInArray(_token, tokens) == false) {

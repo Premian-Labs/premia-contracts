@@ -24,3 +24,7 @@ fs.copyFileSync(
   './artifacts/contracts/test/TestPremiaOption.sol/TestPremiaOption.json',
   './abi/TestPremiaOption.json',
 );
+fs.copyFileSync(
+  './artifacts/contracts/test/TestTokenSettingsCalculator.sol/TestTokenSettingsCalculator.json',
+  './abi/TestTokenSettingsCalculator.json',
+);

@@ -1,7 +1,11 @@
 import { ethers } from 'hardhat';
 import { BigNumberish, utils } from 'ethers';
 import { expect } from 'chai';
-import { TestPremiaOptionFactory, TestErc20Factory } from '../contractsTyped';
+import {
+  TestPremiaOptionFactory,
+  TestErc20Factory,
+  TestTokenSettingsCalculatorFactory,
+} from '../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { TestPremiaOption } from '../contractsTyped/TestPremiaOption';
 import { TestErc20 } from '../contractsTyped/TestErc20';
@@ -38,6 +42,16 @@ async function addEth() {
     eth.address,
     utils.parseEther('1'),
     utils.parseEther('10'),
+  );
+}
+
+async function addTokenSettingsCalculator() {
+  const tokenSettingsCalculatorFactory = new TestTokenSettingsCalculatorFactory(
+    writer1,
+  );
+  const tokenSettingsCalculator = await tokenSettingsCalculatorFactory.deploy();
+  await premiaOption.setTokenSettingsCalculator(
+    tokenSettingsCalculator.address,
   );
 }
 
@@ -131,7 +145,7 @@ async function addEthAndWriteOptionsAndExercise(
   await exerciseOption(isCall, amountToExercise);
 }
 
-describe('PremiaOption', function () {
+describe('PremiaOption', () => {
   beforeEach(async () => {
     [writer1, writer2, user1, treasury] = await ethers.getSigners();
     const erc20Factory = new TestErc20Factory(writer1);
@@ -146,11 +160,25 @@ describe('PremiaOption', function () {
     );
   });
 
-  it('Should add eth for trading', async function () {
+  it('Should add eth for trading', async () => {
     await addEth();
     const settings = await premiaOption.tokenSettings(eth.address);
     expect(settings.contractSize.eq(utils.parseEther('1'))).to.true;
     expect(settings.strikePriceIncrement.eq(utils.parseEther('10'))).to.true;
+  });
+
+  it('Should automatically add eth if tokenSettingsCalculator is set, when writing option', async () => {
+    await addTokenSettingsCalculator();
+    let tokenSettings = await premiaOption.tokenSettings(eth.address);
+
+    expect(tokenSettings.strikePriceIncrement).to.eq(0);
+    expect(tokenSettings.contractSize).to.eq(0);
+
+    await mintAndWriteOption(writer2, 1);
+    tokenSettings = await premiaOption.tokenSettings(eth.address);
+
+    expect(tokenSettings.strikePriceIncrement).to.eq(utils.parseEther('10'));
+    expect(tokenSettings.contractSize).to.eq(utils.parseEther('1'));
   });
 
   describe('writeOption', () => {
