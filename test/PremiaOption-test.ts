@@ -1,14 +1,12 @@
 import { ethers } from 'hardhat';
 import { BigNumberish, utils } from 'ethers';
 import { expect } from 'chai';
-import {
-  TestPremiaOptionFactory,
-  TestErc20Factory,
-  TestTokenSettingsCalculatorFactory,
-} from '../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { TestPremiaOption } from '../contractsTyped/TestPremiaOption';
-import { TestErc20 } from '../contractsTyped/TestErc20';
+import { TestPremiaOption } from '../contractsTyped';
+import { TestErc20 } from '../contractsTyped';
+import { TestTokenSettingsCalculatorFactory } from '../contractsTyped/TestTokenSettingsCalculatorFactory';
+import { TestErc20Factory } from '../contractsTyped/TestErc20Factory';
+import { TestPremiaOptionFactory } from '../contractsTyped/TestPremiaOptionFactory';
 
 let eth: TestErc20;
 let dai: TestErc20;
