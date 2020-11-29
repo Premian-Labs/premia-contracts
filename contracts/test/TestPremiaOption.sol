@@ -116,11 +116,15 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
     //////////
 
     function getBlockTimestamp() public view returns(uint256) {
-        return timestamp;
+        return block.timestamp;
     }
 
     function getOptionId(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public view returns(uint256) {
         return options[_token][_expiration][_strikePrice][_isCall];
+    }
+
+    function getAllTokens() public view returns(address[] memory) {
+        return tokens;
     }
 
     //////////////////////////////////////////////////

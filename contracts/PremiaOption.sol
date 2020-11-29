@@ -120,6 +120,10 @@ contract PremiaOption is Ownable, ERC1155 {
         return options[_token][_expiration][_strikePrice][_isCall];
     }
 
+    function getAllTokens() public view returns(address[] memory) {
+        return tokens;
+    }
+
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
