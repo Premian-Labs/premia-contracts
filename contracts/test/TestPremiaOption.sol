@@ -7,9 +7,12 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
-import "./interface/ITokenSettingsCalculator.sol";
+import "../interface/ITokenSettingsCalculator.sol";
 
-contract PremiaOption is Ownable, ERC1155 {
+import "./TestTime.sol";
+import "hardhat/console.sol";
+
+contract TestPremiaOption is Ownable, ERC1155, TestTime {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -192,15 +195,15 @@ contract PremiaOption is Ownable, ERC1155 {
 
             pools[optionId] = Pool({ tokenAmount: 0, denominatorAmount: 0 });
             optionData[optionId] = OptionData({
-            token: _token,
-            contractSize: settings.contractSize,
-            expiration: _expiration,
-            strikePrice: _strikePrice,
-            isCall: _isCall,
-            claimsPreExp: 0,
-            claimsPostExp: 0,
-            exercised: 0,
-            supply: 0
+                token: _token,
+                contractSize: settings.contractSize,
+                expiration: _expiration,
+                strikePrice: _strikePrice,
+                isCall: _isCall,
+                claimsPreExp: 0,
+                claimsPostExp: 0,
+                exercised: 0,
+                supply: 0
             });
 
             nextOptionId = nextOptionId.add(1);
@@ -402,9 +405,9 @@ contract PremiaOption is Ownable, ERC1155 {
         require(_strikePriceIncrement > 0, "Strike increment must be > 0");
 
         tokenSettings[_token] = TokenSettings({
-        contractSize: _contractSize,
-        strikePriceIncrement: _strikePriceIncrement,
-        isDisabled: false
+            contractSize: _contractSize,
+            strikePriceIncrement: _strikePriceIncrement,
+            isDisabled: false
         });
     }
 

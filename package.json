@@ -6,10 +6,18 @@
   "repository": "https://github.com/PremiaFinance/premia-contracts.git",
   "author": "Premia",
   "license": "MIT",
+  "scripts": {
+    "compile": "hardhat compile && yarn run copyAbi && yarn run typechain",
+    "copyAbi": "ts-node ./copyAbi.ts",
+    "typechain": "typechain --target ethers-v5 --outDir contractsTyped ./abi/*.json",
+    "postinstall": "yarn run compile",
+    "test": "hardhat test"
+  },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
     "@nomiclabs/hardhat-waffle": "^2.0.0",
     "@openzeppelin/contracts": "^3.2.0",
+    "@typechain/ethers-v5": "^4.0.0",
     "@types/chai": "^4.2.14",
     "@types/mocha": "^8.0.4",
     "@types/node": "^14.14.7",
@@ -19,6 +27,7 @@
     "hardhat": "^2.0.3",
     "prettier": "^2.1.2",
     "ts-node": "^9.0.0",
+    "typechain": "^4.0.0",
     "typescript": "^4.0.5"
   }
 }
