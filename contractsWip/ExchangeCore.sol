@@ -4,8 +4,8 @@ import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
-import '../util/ArrayUtils.sol';
-import '../util/ReentrancyGuarded.sol';
+import './util/ArrayUtils.sol';
+import './util/ReentrancyGuarded.sol';
 
 contract ExchangeCore is ReentrancyGuarded, Ownable {
   using SafeMath for uint256;
@@ -112,6 +112,11 @@ contract ExchangeCore is ReentrancyGuarded, Ownable {
     uint256 saleTokenAmount,
     bytes32 indexed metadata
   );
+
+  constructor(IERC20 _exchangeToken, address _protocolFeeRecipient) {
+    exchangeToken = _exchangeToken;
+    protocolFeeRecipient = _protocolFeeRecipient;
+  }
 
   /**
    * @dev Change the minimum maker fee paid to the protocol (owner only)
