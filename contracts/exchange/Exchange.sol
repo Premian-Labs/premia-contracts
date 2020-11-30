@@ -48,40 +48,13 @@ contract Exchange is ExchangeCore {
   }
 
   /**
-   * @dev Call calculateFinalPrice - library function exposed for testing.
-   */
-  function calculateFinalPrice(
-    SaleKindInterface.Side side,
-    SaleKindInterface.SaleKind saleKind,
-    uint256 basePrice,
-    uint256 extra,
-    uint256 listingTime,
-    uint256 expirationTime
-  ) public view returns (uint256) {
-    return
-      SaleKindInterface.calculateFinalPrice(
-        side,
-        saleKind,
-        basePrice,
-        extra,
-        listingTime,
-        expirationTime
-      );
-  }
-
-  /**
    * @dev Call hashOrder - Solidity ABI encoding limitation workaround, hopefully temporary.
    */
   function hashOrder_(
-    address[7] addrs,
+    address[6] addrs,
     uint256[9] uints,
     FeeMethod feeMethod,
-    SaleKindInterface.Side side,
-    SaleKindInterface.SaleKind saleKind,
-    AuthenticatedProxy.HowToCall howToCall,
-    bytes calldata _calldata,
-    bytes replacementPattern,
-    bytes staticExtradata
+    SaleSide side
   ) public pure returns (bytes32) {
     return
       hashOrder(
@@ -96,14 +69,8 @@ contract Exchange is ExchangeCore {
           addrs[3],
           feeMethod,
           side,
-          saleKind,
           addrs[4],
-          howToCall,
-          _calldata,
-          replacementPattern,
-          addrs[5],
-          staticExtradata,
-          ERC20(addrs[6]),
+          ERC20(addrs[5]),
           uints[4],
           uints[5],
           uints[6],
@@ -117,15 +84,10 @@ contract Exchange is ExchangeCore {
    * @dev Call hashToSign - Solidity ABI encoding limitation workaround, hopefully temporary.
    */
   function hashToSign_(
-    address[7] addrs,
+    address[6] addrs,
     uint256[9] uints,
     FeeMethod feeMethod,
-    SaleKindInterface.Side side,
-    SaleKindInterface.SaleKind saleKind,
-    AuthenticatedProxy.HowToCall howToCall,
-    bytes calldata _calldata,
-    bytes replacementPattern,
-    bytes staticExtradata
+    SaleSide side
   ) public pure returns (bytes32) {
     return
       hashToSign(
@@ -140,14 +102,8 @@ contract Exchange is ExchangeCore {
           addrs[3],
           feeMethod,
           side,
-          saleKind,
           addrs[4],
-          howToCall,
-          _calldata,
-          replacementPattern,
-          addrs[5],
-          staticExtradata,
-          ERC20(addrs[6]),
+          ERC20(addrs[5]),
           uints[4],
           uints[5],
           uints[6],
@@ -161,15 +117,10 @@ contract Exchange is ExchangeCore {
    * @dev Call validateOrderParameters - Solidity ABI encoding limitation workaround, hopefully temporary.
    */
   function validateOrderParameters_(
-    address[7] addrs,
+    address[6] addrs,
     uint256[9] uints,
     FeeMethod feeMethod,
-    SaleKindInterface.Side side,
-    SaleKindInterface.SaleKind saleKind,
-    AuthenticatedProxy.HowToCall howToCall,
-    bytes calldata _calldata,
-    bytes replacementPattern,
-    bytes staticExtradata
+    SaleSide side
   ) public view returns (bool) {
     Order memory order = Order(
       addrs[0],
@@ -182,14 +133,8 @@ contract Exchange is ExchangeCore {
       addrs[3],
       feeMethod,
       side,
-      saleKind,
       addrs[4],
-      howToCall,
-      _calldata,
-      replacementPattern,
-      addrs[5],
-      staticExtradata,
-      ERC20(addrs[6]),
+      ERC20(addrs[5]),
       uints[4],
       uints[5],
       uints[6],
@@ -203,15 +148,10 @@ contract Exchange is ExchangeCore {
    * @dev Call validateOrder - Solidity ABI encoding limitation workaround, hopefully temporary.
    */
   function validateOrder_(
-    address[7] addrs,
+    address[6] addrs,
     uint256[9] uints,
     FeeMethod feeMethod,
-    SaleKindInterface.Side side,
-    SaleKindInterface.SaleKind saleKind,
-    AuthenticatedProxy.HowToCall howToCall,
-    bytes calldata _calldata,
-    bytes replacementPattern,
-    bytes staticExtradata,
+    SaleSide side,
     uint8 v,
     bytes32 r,
     bytes32 s
@@ -227,14 +167,8 @@ contract Exchange is ExchangeCore {
       addrs[3],
       feeMethod,
       side,
-      saleKind,
       addrs[4],
-      howToCall,
-      _calldata,
-      replacementPattern,
-      addrs[5],
-      staticExtradata,
-      ERC20(addrs[6]),
+      ERC20(addrs[5]),
       uints[4],
       uints[5],
       uints[6],
@@ -248,15 +182,10 @@ contract Exchange is ExchangeCore {
    * @dev Call approveOrder - Solidity ABI encoding limitation workaround, hopefully temporary.
    */
   function approveOrder_(
-    address[7] addrs,
+    address[6] addrs,
     uint256[9] uints,
     FeeMethod feeMethod,
-    SaleKindInterface.Side side,
-    SaleKindInterface.SaleKind saleKind,
-    AuthenticatedProxy.HowToCall howToCall,
-    bytes calldata _calldata,
-    bytes replacementPattern,
-    bytes staticExtradata,
+    SaleSide side,
     bool orderbookInclusionDesired
   ) public {
     Order memory order = Order(
@@ -270,14 +199,8 @@ contract Exchange is ExchangeCore {
       addrs[3],
       feeMethod,
       side,
-      saleKind,
       addrs[4],
-      howToCall,
-      _calldata,
-      replacementPattern,
-      addrs[5],
-      staticExtradata,
-      ERC20(addrs[6]),
+      ERC20(addrs[5]),
       uints[4],
       uints[5],
       uints[6],
@@ -291,15 +214,10 @@ contract Exchange is ExchangeCore {
    * @dev Call cancelOrder - Solidity ABI encoding limitation workaround, hopefully temporary.
    */
   function cancelOrder_(
-    address[7] addrs,
+    address[6] addrs,
     uint256[9] uints,
     FeeMethod feeMethod,
-    SaleKindInterface.Side side,
-    SaleKindInterface.SaleKind saleKind,
-    AuthenticatedProxy.HowToCall howToCall,
-    bytes calldata _calldata,
-    bytes replacementPattern,
-    bytes staticExtradata,
+    SaleSide side,
     uint8 v,
     bytes32 r,
     bytes32 s
@@ -317,14 +235,8 @@ contract Exchange is ExchangeCore {
           addrs[3],
           feeMethod,
           side,
-          saleKind,
           addrs[4],
-          howToCall,
-          _calldata,
-          replacementPattern,
-          addrs[5],
-          staticExtradata,
-          ERC20(addrs[6]),
+          ERC20(addrs[5]),
           uints[4],
           uints[5],
           uints[6],
@@ -339,15 +251,10 @@ contract Exchange is ExchangeCore {
    * @dev Call calculateCurrentPrice - Solidity ABI encoding limitation workaround, hopefully temporary.
    */
   function calculateCurrentPrice_(
-    address[7] addrs,
+    address[6] addrs,
     uint256[9] uints,
     FeeMethod feeMethod,
-    SaleKindInterface.Side side,
-    SaleKindInterface.SaleKind saleKind,
-    AuthenticatedProxy.HowToCall howToCall,
-    bytes calldata _calldata,
-    bytes replacementPattern,
-    bytes staticExtradata
+    SaleSide side
   ) public view returns (uint256) {
     return
       calculateCurrentPrice(
@@ -362,14 +269,8 @@ contract Exchange is ExchangeCore {
           addrs[3],
           feeMethod,
           side,
-          saleKind,
           addrs[4],
-          howToCall,
-          _calldata,
-          replacementPattern,
-          addrs[5],
-          staticExtradata,
-          ERC20(addrs[6]),
+          ERC20(addrs[5]),
           uints[4],
           uints[5],
           uints[6],
@@ -403,15 +304,9 @@ contract Exchange is ExchangeCore {
       uints[3],
       addrs[3],
       FeeMethod(feeMethodsSidesKindsHowToCalls[0]),
-      SaleKindInterface.Side(feeMethodsSidesKindsHowToCalls[1]),
-      SaleKindInterface.SaleKind(feeMethodsSidesKindsHowToCalls[2]),
+      SaleSide(feeMethodsSidesKindsHowToCalls[1]),
       addrs[4],
-      AuthenticatedProxy.HowToCall(feeMethodsSidesKindsHowToCalls[3]),
-      calldataBuy,
-      replacementPatternBuy,
-      addrs[5],
-      staticExtradataBuy,
-      ERC20(addrs[6]),
+      ERC20(addrs[5]),
       uints[4],
       uints[5],
       uints[6],
@@ -428,14 +323,9 @@ contract Exchange is ExchangeCore {
       uints[12],
       addrs[10],
       FeeMethod(feeMethodsSidesKindsHowToCalls[4]),
-      SaleKindInterface.Side(feeMethodsSidesKindsHowToCalls[5]),
-      SaleKindInterface.SaleKind(feeMethodsSidesKindsHowToCalls[6]),
+      SaleSide(feeMethodsSidesKindsHowToCalls[5]),
       addrs[11],
-      AuthenticatedProxy.HowToCall(feeMethodsSidesKindsHowToCalls[7]),
-      calldataSell,
-      replacementPatternSell,
       addrs[12],
-      staticExtradataSell,
       ERC20(addrs[13]),
       uints[13],
       uints[14],
@@ -501,15 +391,9 @@ contract Exchange is ExchangeCore {
       uints[3],
       addrs[3],
       FeeMethod(feeMethodsSidesKindsHowToCalls[0]),
-      SaleKindInterface.Side(feeMethodsSidesKindsHowToCalls[1]),
-      SaleKindInterface.SaleKind(feeMethodsSidesKindsHowToCalls[2]),
+      SaleSide(feeMethodsSidesKindsHowToCalls[1]),
       addrs[4],
-      AuthenticatedProxy.HowToCall(feeMethodsSidesKindsHowToCalls[3]),
-      calldataBuy,
-      replacementPatternBuy,
-      addrs[5],
-      staticExtradataBuy,
-      ERC20(addrs[6]),
+      ERC20(addrs[5]),
       uints[4],
       uints[5],
       uints[6],
@@ -526,14 +410,10 @@ contract Exchange is ExchangeCore {
       uints[12],
       addrs[10],
       FeeMethod(feeMethodsSidesKindsHowToCalls[4]),
-      SaleKindInterface.Side(feeMethodsSidesKindsHowToCalls[5]),
+      SaleSide(feeMethodsSidesKindsHowToCalls[5]),
       SaleKindInterface.SaleKind(feeMethodsSidesKindsHowToCalls[6]),
       addrs[11],
-      AuthenticatedProxy.HowToCall(feeMethodsSidesKindsHowToCalls[7]),
-      calldataSell,
-      replacementPatternSell,
       addrs[12],
-      staticExtradataSell,
       ERC20(addrs[13]),
       uints[13],
       uints[14],
@@ -572,15 +452,11 @@ contract Exchange is ExchangeCore {
           uints[3],
           addrs[3],
           FeeMethod(feeMethodsSidesKindsHowToCalls[0]),
-          SaleKindInterface.Side(feeMethodsSidesKindsHowToCalls[1]),
+          SaleSide(feeMethodsSidesKindsHowToCalls[1]),
           SaleKindInterface.SaleKind(feeMethodsSidesKindsHowToCalls[2]),
           addrs[4],
-          AuthenticatedProxy.HowToCall(feeMethodsSidesKindsHowToCalls[3]),
-          calldataBuy,
-          replacementPatternBuy,
           addrs[5],
-          staticExtradataBuy,
-          ERC20(addrs[6]),
+          ERC20(addrs[5]),
           uints[4],
           uints[5],
           uints[6],
@@ -598,14 +474,10 @@ contract Exchange is ExchangeCore {
           uints[12],
           addrs[10],
           FeeMethod(feeMethodsSidesKindsHowToCalls[4]),
-          SaleKindInterface.Side(feeMethodsSidesKindsHowToCalls[5]),
+          SaleSide(feeMethodsSidesKindsHowToCalls[5]),
           SaleKindInterface.SaleKind(feeMethodsSidesKindsHowToCalls[6]),
           addrs[11],
-          AuthenticatedProxy.HowToCall(feeMethodsSidesKindsHowToCalls[7]),
-          calldataSell,
-          replacementPatternSell,
           addrs[12],
-          staticExtradataSell,
           ERC20(addrs[13]),
           uints[13],
           uints[14],
