@@ -533,7 +533,7 @@ describe('PremiaOption', () => {
       expect(writer2Dai).to.eq(utils.parseEther('5'));
     });
 
-    it('should withdraw 1 eth, if 1/2 call executed and 1 withdrawPreExpiration', async () => {
+    it('should withdraw 1 eth, if 1/2 call exercised and 1 withdrawPreExpiration', async () => {
       await addEth();
       await mintAndWriteOption(writer1, 1);
       await mintAndWriteOption(writer2, 1);
@@ -557,7 +557,7 @@ describe('PremiaOption', () => {
       expect(nbWritten).to.eq(0);
     });
 
-    it('should withdraw 10 dai, if 1/2 put executed and 1 withdrawPreExpiration', async () => {
+    it('should withdraw 10 dai, if 1/2 put exercised and 1 withdrawPreExpiration', async () => {
       await addEth();
       await mintAndWriteOption(writer1, 1, false);
       await mintAndWriteOption(writer2, 1, false);

@@ -76,10 +76,11 @@ contract PremiaOption is Ownable, ERC1155 {
     // Events //
     ////////////
 
-    event OptionWritten(address indexed owner, uint256 indexed optionId, uint256 contractAmount);
-    event OptionCancelled(address indexed owner, uint256 indexed optionId, uint256 contractAmount);
-    event OptionExercised(address indexed user, uint256 indexed optionId, uint256 contractAmount);
-    event Withdraw(address indexed user, uint256 indexed optionId, uint256 contractAmount);
+    event OptionIdCreated(uint256 indexed optionId, address indexed token);
+    event OptionWritten(address indexed owner, uint256 indexed optionId, address indexed token, uint256 contractAmount);
+    event OptionCancelled(address indexed owner, uint256 indexed optionId, address indexed token, uint256 contractAmount);
+    event OptionExercised(address indexed user, uint256 indexed optionId, address indexed token, uint256 contractAmount);
+    event Withdraw(address indexed user, uint256 indexed optionId, address indexed token, uint256 contractAmount);
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
@@ -203,6 +204,8 @@ contract PremiaOption is Ownable, ERC1155 {
             supply: 0
             });
 
+            emit OptionIdCreated(optionId, _token);
+
             nextOptionId = nextOptionId.add(1);
         }
 
@@ -232,7 +235,7 @@ contract PremiaOption is Ownable, ERC1155 {
 
         mint(msg.sender, optionId, _contractAmount);
 
-        emit OptionWritten(msg.sender, optionId, _contractAmount);
+        emit OptionWritten(msg.sender, optionId, _token, _contractAmount);
     }
 
     // Cancel an option before expiration, by burning the NFT for withdrawal of deposit (Can only be called by writer of the option)
@@ -257,7 +260,7 @@ contract PremiaOption is Ownable, ERC1155 {
             denominator.safeTransfer(msg.sender, amount);
         }
 
-        emit OptionCancelled(msg.sender, _optionId, _contractAmount);
+        emit OptionCancelled(msg.sender, _optionId, data.token, _contractAmount);
     }
 
     function exerciseOption(uint256 _optionId, uint256 _contractAmount) public notExpired(_optionId) {
@@ -295,7 +298,7 @@ contract PremiaOption is Ownable, ERC1155 {
             denominator.safeTransfer(msg.sender, denominatorAmount);
         }
 
-        emit OptionExercised(msg.sender, _optionId, _contractAmount);
+        emit OptionExercised(msg.sender, _optionId, data.token, _contractAmount);
     }
 
     // Withdraw funds from an expired option (Only callable by writers with unclaimed options)
@@ -330,7 +333,7 @@ contract PremiaOption is Ownable, ERC1155 {
         denominator.safeTransfer(msg.sender, denominatorAmount);
         tokenErc20.safeTransfer(msg.sender, tokenAmount);
 
-        emit Withdraw(msg.sender, _optionId, claimsUser);
+        emit Withdraw(msg.sender, _optionId, data.token, claimsUser);
     }
 
     // Withdraw funds from exercised unexpired option (Only callable by writers with unclaimed options)
