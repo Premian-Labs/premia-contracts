@@ -14,17 +14,38 @@ task('accounts', 'Prints the list of accounts', async (args, hre) => {
 // You need to export an object to set up your config
 // Go to https://hardhat.org/config/ to learn more
 
+const ETH_TEST_KEY = process.env.ETH_TEST_PKEY;
+const INFURA_PROJECT_ID = process.env.INFURA_PROJECT_ID;
+
 export default {
   solidity: {
     version: '0.6.12',
-    // optimizer: {
-    //   enabled: true,
-    //   runs: 200,
+    settings: {
+      optimizer: {
+        enabled: true,
+        runs: 200,
+      },
+    },
+    // overrides: {
+    //   'contracts/test/TestPremiaOption.sol': {
+    //     version: '0.6.12',
+    //     settings: {
+    //       enabled: false,
+    //     },
+    //   },
     // },
   },
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
+    },
+    rinkeby: {
+      url: `https://rinkeby.infura.io/v3/${INFURA_PROJECT_ID}`,
+      accounts: [ETH_TEST_KEY],
+      //gas: 120000000000,
+      blockGasLimit: 120000000000,
+      //gasPrice: 10,
+      timeout: 40000,
     },
   },
 };

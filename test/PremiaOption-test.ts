@@ -2,11 +2,13 @@ import { ethers } from 'hardhat';
 import { BigNumberish, utils } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { TestPremiaOption } from '../contractsTyped';
+import {
+  TestErc20__factory,
+  TestPremiaOption,
+  TestPremiaOption__factory,
+  TestTokenSettingsCalculator__factory,
+} from '../contractsTyped';
 import { TestErc20 } from '../contractsTyped';
-import { TestTokenSettingsCalculatorFactory } from '../contractsTyped/TestTokenSettingsCalculatorFactory';
-import { TestErc20Factory } from '../contractsTyped/TestErc20Factory';
-import { TestPremiaOptionFactory } from '../contractsTyped/TestPremiaOptionFactory';
 
 let eth: TestErc20;
 let dai: TestErc20;
@@ -44,7 +46,7 @@ async function addEth() {
 }
 
 async function addTokenSettingsCalculator() {
-  const tokenSettingsCalculatorFactory = new TestTokenSettingsCalculatorFactory(
+  const tokenSettingsCalculatorFactory = new TestTokenSettingsCalculator__factory(
     writer1,
   );
   const tokenSettingsCalculator = await tokenSettingsCalculatorFactory.deploy();
@@ -146,11 +148,11 @@ async function addEthAndWriteOptionsAndExercise(
 describe('PremiaOption', () => {
   beforeEach(async () => {
     [writer1, writer2, user1, treasury] = await ethers.getSigners();
-    const erc20Factory = new TestErc20Factory(writer1);
+    const erc20Factory = new TestErc20__factory(writer1);
     eth = await erc20Factory.deploy();
     dai = await erc20Factory.deploy();
 
-    const premiaOptionFactory = new TestPremiaOptionFactory(writer1);
+    const premiaOptionFactory = new TestPremiaOption__factory(writer1);
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
       dai.address,
