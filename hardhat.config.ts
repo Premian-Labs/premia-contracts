@@ -19,21 +19,27 @@ const INFURA_PROJECT_ID = process.env.INFURA_PROJECT_ID;
 
 export default {
   solidity: {
-    version: '0.6.12',
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200,
+    compilers: [
+      {
+        version: '0.6.12',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+    ],
+    overrides: {
+      'contracts/test/TestPremiaOption.sol': {
+        version: '0.6.12',
+        settings: {
+          optimizer: {
+            enabled: false,
+          },
+        },
       },
     },
-    // overrides: {
-    //   'contracts/test/TestPremiaOption.sol': {
-    //     version: '0.6.12',
-    //     settings: {
-    //       enabled: false,
-    //     },
-    //   },
-    // },
   },
   networks: {
     hardhat: {

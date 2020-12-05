@@ -28,3 +28,5 @@ fs.copyFileSync(
   './artifacts/contracts/test/TestTokenSettingsCalculator.sol/TestTokenSettingsCalculator.json',
   './abi/TestTokenSettingsCalculator.json',
 );
+
+fs.rmdirSync('./contractsTyped', { recursive: true });
