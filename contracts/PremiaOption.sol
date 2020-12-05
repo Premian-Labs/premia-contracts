@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.6.0;
+pragma experimental ABIEncoderV2;
 
 import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
@@ -123,6 +124,17 @@ contract PremiaOption is Ownable, ERC1155 {
 
     function getAllTokens() public view returns(address[] memory) {
         return tokens;
+    }
+
+    function getOptionDataBatch(uint256[] memory _optionIds) public view returns(OptionData[] memory) {
+        OptionData[] memory result = new OptionData[](_optionIds.length);
+
+        for (uint256 i = 0; i < _optionIds.length; ++i) {
+            uint256 optionId = _optionIds[i];
+            result[i] = optionData[optionId];
+        }
+
+        return result;
     }
 
     //////////////////////////////////////////////////
