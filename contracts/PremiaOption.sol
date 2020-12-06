@@ -137,6 +137,28 @@ contract PremiaOption is Ownable, ERC1155 {
         return result;
     }
 
+    function getNbOptionWrittenBatch(address _user, uint256[] memory _optionIds) public view returns(uint256[] memory) {
+        uint256[] memory result = new uint256[](_optionIds.length);
+
+        for (uint256 i = 0; i < _optionIds.length; ++i) {
+            uint256 optionId = _optionIds[i];
+            result[i] = nbWritten[_user][optionId];
+        }
+
+        return result;
+    }
+
+    function getPoolBatch(uint256[] memory _optionIds) public view returns(Pool[] memory) {
+        Pool[] memory result = new Pool[](_optionIds.length);
+
+        for (uint256 i = 0; i < _optionIds.length; ++i) {
+            uint256 optionId = _optionIds[i];
+            result[i] = pools[optionId];
+        }
+
+        return result;
+    }
+
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
