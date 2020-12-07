@@ -404,6 +404,43 @@ contract PremiaOption is Ownable, ERC1155 {
         data.claimsPreExp = data.claimsPreExp.add(_contractAmount);
     }
 
+    /////////////////////
+    // Batch functions //
+    /////////////////////
+
+    function batchWriteOption(address[] memory _token, uint256[] memory _expiration, uint256[] memory _strikePrice, bool[] memory _isCall, uint256[] memory _contractAmount) public {
+        require(_token.length == _expiration.length, "All arrays must have same length");
+        require(_token.length == _strikePrice.length, "All arrays must have same length");
+        require(_token.length == _isCall.length, "All arrays must have same length");
+        require(_token.length == _contractAmount.length, "All arrays must have same length");
+
+        for (uint256 i = 0; i < _token.length; ++i) {
+            writeOption(_token[i], _expiration[i], _strikePrice[i], _isCall[i], _contractAmount[i]);
+        }
+    }
+
+    function batchCancelOption(uint256[] memory _optionId, uint256[] memory _contractAmount) public {
+        require(_optionId.length == _contractAmount.length, "All arrays must have same length");
+
+        for (uint256 i = 0; i < _optionId.length; ++i) {
+            cancelOption(_optionId[i], _contractAmount[i]);
+        }
+    }
+
+    function batchWithdraw(uint256[] memory _optionId) public {
+        for (uint256 i = 0; i < _optionId.length; ++i) {
+            withdraw(_optionId[i]);
+        }
+    }
+
+    function batchWithdrawPreExpiration(uint256[] memory _optionId, uint256[] memory _contractAmount) public {
+        require(_optionId.length == _contractAmount.length, "All arrays must have same length");
+
+        for (uint256 i = 0; i < _optionId.length; ++i) {
+            withdrawPreExpiration(_optionId[i], _contractAmount[i]);
+        }
+    }
+
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
@@ -411,9 +448,6 @@ contract PremiaOption is Ownable, ERC1155 {
     //////////////
     // Internal //
     //////////////
-
-    //    function _beforeTokenTransfer(address operator, address from, address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) internal override {
-    //    }
 
     function mint(address _account, uint256 _id, uint256 _amount) internal notExpired(_id) {
         OptionData storage data = optionData[_id];
