@@ -392,19 +392,20 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime {
 
         //
 
+        nbWritten[msg.sender][_optionId] = nbWritten[msg.sender][_optionId].sub(_contractAmount);
+        data.claimsPreExp = data.claimsPreExp.add(_contractAmount);
+
         if (data.isCall) {
             uint256 amount = _contractAmount.mul(data.strikePrice);
-            denominator.safeTransfer(msg.sender, amount);
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(amount);
+            denominator.safeTransfer(msg.sender, amount);
         } else {
             IERC20 tokenErc20 = IERC20(data.token);
             uint256 amount = _contractAmount.mul(data.contractSize);
-            tokenErc20.safeTransfer(msg.sender, amount);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(amount);
+            tokenErc20.safeTransfer(msg.sender, amount);
         }
 
-        nbWritten[msg.sender][_optionId] = nbWritten[msg.sender][_optionId].sub(_contractAmount);
-        data.claimsPreExp = data.claimsPreExp.add(_contractAmount);
     }
 
     /////////////////////
