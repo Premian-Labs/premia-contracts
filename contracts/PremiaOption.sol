@@ -7,6 +7,7 @@ import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
+import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 import "./interface/ITokenSettingsCalculator.sol";
 
@@ -202,7 +203,7 @@ contract PremiaOption is Ownable, ERC1155 {
 
     ////////
 
-    function writeOption(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall, uint256 _contractAmount) public {
+    function writeOption(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall, uint256 _contractAmount) public nonReentrant {
         // If token has never been used before, we request a default contractSize and strikePriceIncrement to initialize it
         // (If tokenSettingsCalculator contract is defined)
         if (address(tokenSettingsCalculator) != address(0) && _isInArray(_token, tokens) == false) {
@@ -274,7 +275,7 @@ contract PremiaOption is Ownable, ERC1155 {
 
     // Cancel an option before expiration, by burning the NFT for withdrawal of deposit (Can only be called by writer of the option)
     // Must be called before expiration
-    function cancelOption(uint256 _optionId, uint256 _contractAmount) public notExpired(_optionId) {
+    function cancelOption(uint256 _optionId, uint256 _contractAmount) public nonReentrant notExpired(_optionId) {
         require(_contractAmount > 0, "ContractAmount must be > 0");
         require(nbWritten[msg.sender][_optionId] >= _contractAmount, "Cant cancel more options than written");
 
@@ -297,7 +298,7 @@ contract PremiaOption is Ownable, ERC1155 {
         emit OptionCancelled(msg.sender, _optionId, data.token, _contractAmount);
     }
 
-    function exerciseOption(uint256 _optionId, uint256 _contractAmount) public notExpired(_optionId) {
+    function exerciseOption(uint256 _optionId, uint256 _contractAmount) public nonReentrant notExpired(_optionId) {
         require(_contractAmount > 0, "ContractAmount must be > 0");
 
         OptionData storage data = optionData[_optionId];
@@ -338,7 +339,7 @@ contract PremiaOption is Ownable, ERC1155 {
     // Withdraw funds from an expired option (Only callable by writers with unclaimed options)
     // Funds are allocated pro-rate to writers.
     // Ex : If there is 10 ETH and 6000 denominator, a user who got 10% of options unclaimed will get 1 ETH and 600 denominator
-    function withdraw(uint256 _optionId) public expired(_optionId) {
+    function withdraw(uint256 _optionId) public nonReentrant expired(_optionId) {
         require(nbWritten[msg.sender][_optionId] > 0, "No option funds to claim for this address");
 
         OptionData storage data = optionData[_optionId];
@@ -371,7 +372,7 @@ contract PremiaOption is Ownable, ERC1155 {
     }
 
     // Withdraw funds from exercised unexpired option (Only callable by writers with unclaimed options)
-    function withdrawPreExpiration(uint256 _optionId, uint256 _contractAmount) public notExpired(_optionId) {
+    function withdrawPreExpiration(uint256 _optionId, uint256 _contractAmount) public nonReentrant notExpired(_optionId) {
         require(_contractAmount > 0, "Contract amount must be > 0");
 
         // Amount of options user still has to claim funds from
