@@ -11,7 +11,7 @@ import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 import "./interface/ITokenSettingsCalculator.sol";
 
-contract PremiaOption is Ownable, ERC1155 {
+contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
