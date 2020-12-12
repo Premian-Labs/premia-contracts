@@ -202,8 +202,10 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     //////////
 
     function createOrder(address _taker, SaleSide _side, address _optionContract, uint256 _optionAmount, uint256 _optionId, uint256 _pricePerUnit) public {
-        uint256 _expiration = IPremiaOption(_optionContract).getOptionExpiration(_optionId);
+        require(_whitelistedOptionContracts.contains(order.optionContract), "Option contract not whitelisted");
 
+
+        uint256 _expiration = IPremiaOption(_optionContract).getOptionExpiration(_optionId);
         require(_expiration < block.timestamp, "Option expired");
 
         Order memory order = Order({
@@ -217,7 +219,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             expirationTime: _expiration
         });
 
-        require(_whitelistedOptionContracts.contains(order.optionContract), "Option contract not whitelisted");
         bytes32 hash = keccak256(abi.encode(order, salt));
         salt = salt.add(1);
 
@@ -236,7 +237,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         );
     }
 
-    function createOrder(address[] memory _taker, SaleSide[] memory _side, address[] memory _optionContract, uint256[] memory _optionAmount, uint256[] memory _optionId, uint256[] memory _pricePerUnit) public {
+    function createOrders(address[] memory _taker, SaleSide[] memory _side, address[] memory _optionContract, uint256[] memory _optionAmount, uint256[] memory _optionId, uint256[] memory _pricePerUnit) public {
         require(_taker.length == _side.length, "Arrays must have same length");
         require(_taker.length == _optionContract.length, "Arrays must have same length");
         require(_taker.length == _optionAmount.length, "Arrays must have same length");

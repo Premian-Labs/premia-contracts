@@ -11,6 +11,7 @@ import {
   TestTokenSettingsCalculator__factory,
 } from '../contractsTyped';
 import { TestErc20 } from '../contractsTyped';
+import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
 
 let eth: TestErc20;
 let dai: TestErc20;
@@ -21,7 +22,9 @@ let writer1: SignerWithAddress;
 let writer2: SignerWithAddress;
 let user1: SignerWithAddress;
 let treasury: SignerWithAddress;
-// const tax = 0.01;
+const tax = 0.01;
+
+let optionTestUtil: PremiaOptionTestUtil;
 
 describe('PremiaMarket', () => {
   beforeEach(async () => {
@@ -33,11 +36,73 @@ describe('PremiaMarket', () => {
     const premiaOptionFactory = new TestPremiaOption__factory(writer1);
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
-      dai.address,
+      eth.address,
       treasury.address,
     );
 
     const premiaMarketFactory = new PremiaMarket__factory(writer1);
-    premiaMarket = await premiaMarketFactory.deploy(admin.address, eth.address);
+    premiaMarket = await premiaMarketFactory.deploy(admin.address, dai.address);
+
+    optionTestUtil = new PremiaOptionTestUtil({
+      eth,
+      dai,
+      premiaOption,
+      writer1,
+      writer2,
+      user1,
+      treasury,
+      tax,
+    });
+
+    await premiaMarket.addWhitelistedOptionContracts([premiaOption.address]);
+    await premiaOption.setApprovalForAll(premiaMarket.address, true);
+    await eth.increaseAllowance(
+      premiaOption.address,
+      ethers.utils.parseEther('10000'),
+    );
+    await dai.increaseAllowance(
+      premiaOption.address,
+      ethers.utils.parseEther('10000'),
+    );
+    await eth.increaseAllowance(
+      premiaMarket.address,
+      ethers.utils.parseEther('10000'),
+    );
+  });
+
+  it('Should create an order', async () => {
+    await premiaOption.setToken(
+      eth.address,
+      utils.parseEther('1'),
+      utils.parseEther('10'),
+    );
+
+    await optionTestUtil.mintAndWriteOption(admin, 5);
+
+    const tx = await premiaMarket.createOrder(
+      '0x0000000000000000000000000000000000000000',
+      1,
+      premiaOption.address,
+      1,
+      1,
+      ethers.utils.parseEther('1'),
+    );
+
+    console.log(tx);
+
+    // const filter = premiaMarket.filters.OrderCreated(
+    //   null,
+    //   null,
+    //   null,
+    //   null,
+    //   null,
+    //   null,
+    //   null,
+    //   null,
+    //   null,
+    // );
+    // const r = await premiaMarket.queryFilter(filter, 0);
+    //
+    // console.log(r);
   });
 });
