@@ -1,4 +1,5 @@
 import fs from 'fs';
+import rimraf from 'rimraf';
 
 if (!fs.existsSync('./abi')) {
   fs.mkdirSync('./abi');
@@ -11,6 +12,10 @@ fs.copyFileSync(
 fs.copyFileSync(
   './artifacts/contracts/PremiaOption.sol/PremiaOption.json',
   './abi/PremiaOption.json',
+);
+fs.copyFileSync(
+  './artifacts/contracts/PremiaMarket.sol/PremiaMarket.json',
+  './abi/PremiaMarket.json',
 );
 fs.copyFileSync(
   './artifacts/contracts/test/TestErc20.sol/TestErc20.json',
@@ -29,4 +34,4 @@ fs.copyFileSync(
   './abi/TestTokenSettingsCalculator.json',
 );
 
-fs.rmdirSync('./contractsTyped', { recursive: true });
+rimraf.sync('./contractsTyped');

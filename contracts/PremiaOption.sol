@@ -123,6 +123,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return options[_token][_expiration][_strikePrice][_isCall];
     }
 
+    function getOptionExpiration(uint256 _optionId) external view returns(uint256) {
+        return optionData[_optionId].expiration;
+    }
+
     function getAllTokens() public view returns(address[] memory) {
         return tokens;
     }
