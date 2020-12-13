@@ -10,14 +10,14 @@ import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 import "./interface/IPremiaOption.sol";
 
+//import "hardhat/console.sol";
+
 contract PremiaMarket is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private _whitelistedOptionContracts;
-
-    mapping(bytes32 => Order) public orders;
 
     /* For split fee orders, minimum required protocol maker fee, in basis points. Paid to owner (who can change it). */
     uint256 public makerFee = 1500; // 1.5%
@@ -48,15 +48,18 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         SaleSide side;
         /* Address of optionContract from which option is from. */
         address optionContract;
-        /* The amount of options being purchased/sold in the order. */
-        uint256 optionAmount;
         /* OptionId */
         uint256 optionId;
         /* Price per unit (in WETH). */
         uint256 pricePerUnit;
         /* Expiration timestamp of option (Which is also expiration of order). */
         uint256 expirationTime;
+        /* To ensure unique hash */
+        uint256 salt;
     }
+
+    /* OrderId -> Amount of options left to purchase/sell */
+    mapping(bytes32 => uint256) public amounts;
 
     ////////////
     // Events //
@@ -69,9 +72,10 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         SaleSide side,
         address taker,
         uint256 optionId,
-        uint256 optionAmount,
         uint256 pricePerUnit,
-        uint256 expirationTime
+        uint256 expirationTime,
+        uint256 salt,
+        uint256 amount
     );
 
     event OrderFilled(
@@ -161,37 +165,40 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return result;
     }
 
-    function isOrderValid(bytes32 _orderId) public view returns(bool) {
-        Order memory order = orders[_orderId];
+    function isOrderValid(Order memory _order) public view returns(bool) {
+        bytes32 hash = keccak256(abi.encode(_order));
+        uint256 amountLeft = amounts[hash];
+
+        if (amountLeft == 0) return false;
 
         // Expired
-        if (order.expirationTime == 0 || order.expirationTime > block.timestamp) return false;
+        if (_order.expirationTime == 0 || _order.expirationTime > block.timestamp) return false;
 
-        if (order.side == SaleSide.Buy) {
-            uint256 basePrice = order.pricePerUnit.mul(order.optionAmount);
+        if (_order.side == SaleSide.Buy) {
+            uint256 basePrice = _order.pricePerUnit.mul(amountLeft);
             uint256 orderMakerFee = basePrice.mul(makerFee).div(INVERSE_BASIS_POINT);
             uint256 totalPrice = basePrice.add(orderMakerFee);
 
-            uint256 userBalance = weth.balanceOf(order.maker);
-            uint256 allowance = weth.allowance(order.maker, address(this));
+            uint256 userBalance = weth.balanceOf(_order.maker);
+            uint256 allowance = weth.allowance(_order.maker, address(this));
 
             return userBalance >= totalPrice && allowance >= totalPrice;
-        } else if (order.side == SaleSide.Sell) {
-            IPremiaOption premiaOption = IPremiaOption(order.optionContract);
-            uint256 optionBalance = premiaOption.balanceOf(order.maker, order.optionAmount);
-            bool isApproved = premiaOption.isApprovedForAll(order.maker, address(this));
+        } else if (_order.side == SaleSide.Sell) {
+            IPremiaOption premiaOption = IPremiaOption(_order.optionContract);
+            uint256 optionBalance = premiaOption.balanceOf(_order.maker, amountLeft);
+            bool isApproved = premiaOption.isApprovedForAll(_order.maker, address(this));
 
-            return isApproved && optionBalance >= order.optionAmount;
+            return isApproved && optionBalance >= amountLeft;
         }
 
         return false;
     }
 
-    function areOrdersValid(bytes32[] memory _orderIds) public view returns(bool[] memory) {
-        bool[] memory result = new bool[](_orderIds.length);
+    function areOrdersValid(Order[] memory _orders) public view returns(bool[] memory) {
+        bool[] memory result = new bool[](_orders.length);
 
-        for (uint256 i=0; i < _orderIds.length; i++) {
-            result[i] = isOrderValid(_orderIds[i]);
+        for (uint256 i=0; i < _orders.length; i++) {
+            result[i] = isOrderValid(_orders[i]);
         }
 
         return result;
@@ -201,148 +208,135 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     // Main //
     //////////
 
-    function createOrder(address _taker, SaleSide _side, address _optionContract, uint256 _optionAmount, uint256 _optionId, uint256 _pricePerUnit) public {
-        require(_whitelistedOptionContracts.contains(order.optionContract), "Option contract not whitelisted");
+    // Make and expirationTime will be overridden by this function
+    function createOrder(Order memory _order, uint256 _amount) public {
+        require(_whitelistedOptionContracts.contains(_order.optionContract), "Option contract not whitelisted");
 
+        uint256 _expiration = IPremiaOption(_order.optionContract).getOptionExpiration(_order.optionId);
+        require(block.timestamp < _expiration, "Option expired");
 
-        uint256 _expiration = IPremiaOption(_optionContract).getOptionExpiration(_optionId);
-        require(_expiration < block.timestamp, "Option expired");
+        _order.maker = msg.sender;
+        _order.expirationTime = _expiration;
+        _order.salt = salt;
 
-        Order memory order = Order({
-            maker: msg.sender,
-            taker: _taker,
-            side: _side,
-            optionContract: _optionContract,
-            optionAmount: _optionAmount,
-            optionId: _optionId,
-            pricePerUnit: _pricePerUnit,
-            expirationTime: _expiration
-        });
-
-        bytes32 hash = keccak256(abi.encode(order, salt));
         salt = salt.add(1);
 
-        orders[hash] = order;
+        bytes32 hash = keccak256(abi.encode(_order));
+        amounts[hash] = _amount;
 
         emit OrderCreated(
             hash,
-            order.maker,
-            order.optionContract,
-            order.side,
-            order.taker,
-            order.optionId,
-            order.optionAmount,
-            order.pricePerUnit,
-            order.expirationTime
+            _order.maker,
+            _order.optionContract,
+            _order.side,
+            _order.taker,
+            _order.optionId,
+            _order.pricePerUnit,
+            _order.expirationTime,
+            _order.salt,
+            _amount
         );
     }
 
-    function createOrders(address[] memory _taker, SaleSide[] memory _side, address[] memory _optionContract, uint256[] memory _optionAmount, uint256[] memory _optionId, uint256[] memory _pricePerUnit) public {
-        require(_taker.length == _side.length, "Arrays must have same length");
-        require(_taker.length == _optionContract.length, "Arrays must have same length");
-        require(_taker.length == _optionAmount.length, "Arrays must have same length");
-        require(_taker.length == _optionId.length, "Arrays must have same length");
-        require(_taker.length == _pricePerUnit.length, "Arrays must have same length");
+    function createOrders(Order[] memory _orders, uint256[] memory _amounts) public {
+        require(_orders.length == _amounts.length, "Arrays must have same length");
 
-        for (uint256 i=0; i < _taker.length; i++) {
-            createOrder(_taker[i], _side[i], _optionContract[i], _optionAmount[i], _optionId[i], _pricePerUnit[i]);
+        for (uint256 i=0; i < _orders.length; i++) {
+            createOrder(_orders[i], _amounts[i]);
         }
     }
 
     /**
      * @dev Fill an existing order
-     * @param _orderId Order id
+     * @param _order The order
      * @param _maxAmount Max amount of options to buy/sell
      */
-    function fillOrder(bytes32 _orderId, uint256 _maxAmount) public nonReentrant {
-        Order storage order = orders[_orderId];
-        require(order.expirationTime != 0 && order.expirationTime < block.timestamp, "Order expired");
-        require(order.optionContract != address(0), "Order not found");
+    function fillOrder(Order memory _order, uint256 _maxAmount) public nonReentrant {
+        bytes32 hash = keccak256(abi.encode(_order));
+        uint256 amountLeft = amounts[hash];
+
+        require(amountLeft > 0, "Order not found");
+        require(_order.expirationTime != 0 && _order.expirationTime < block.timestamp, "Order expired");
+        require(_order.optionContract != address(0), "Order not found");
         require(_maxAmount > 0, "MaxAmount must be > 0");
-        require(order.taker == address(0) || order.taker == msg.sender, "Not specified taker");
+        require(_order.taker == address(0) || _order.taker == msg.sender, "Not specified taker");
 
         uint256 amount = _maxAmount;
-        if (order.optionAmount < _maxAmount) {
-            amount = order.optionAmount;
+        if (amountLeft < _maxAmount) {
+            amount = amountLeft;
         }
 
-        require(amount > 0, "Nothing left to fill");
+        amounts[hash] = amounts[hash].sub(amount);
 
-        order.optionAmount = order.optionAmount.sub(amount);
-
-        uint256 basePrice = order.pricePerUnit.mul(amount);
+        uint256 basePrice = _order.pricePerUnit.mul(amount);
         uint256 orderMakerFee = basePrice.mul(makerFee).div(INVERSE_BASIS_POINT);
         uint256 orderTakerFee = basePrice.mul(takerFee).div(INVERSE_BASIS_POINT);
 
-        IPremiaOption optionContract = IPremiaOption(order.optionContract);
+        IPremiaOption optionContract = IPremiaOption(_order.optionContract);
 
-        if (order.side == SaleSide.Buy) {
-            optionContract.safeTransferFrom(msg.sender, order.maker, order.optionId, amount, "");
+        if (_order.side == SaleSide.Buy) {
+            optionContract.safeTransferFrom(msg.sender, _order.maker, _order.optionId, amount, "");
 
-            weth.transferFrom(order.maker, treasury, orderMakerFee.add(orderTakerFee));
-            weth.transferFrom(order.maker, msg.sender, basePrice.sub(orderTakerFee));
+            weth.transferFrom(_order.maker, treasury, orderMakerFee.add(orderTakerFee));
+            weth.transferFrom(_order.maker, msg.sender, basePrice.sub(orderTakerFee));
 
         } else {
             weth.transferFrom(msg.sender, treasury, orderMakerFee.add(orderTakerFee));
-            weth.transferFrom(msg.sender, order.maker, basePrice.sub(orderMakerFee));
+            weth.transferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
 
-            optionContract.safeTransferFrom(order.maker, msg.sender, order.optionId, amount, "");
-        }
-
-        if (order.optionAmount == 0) {
-            delete orders[_orderId];
-        } else {
-            orders[_orderId].optionAmount = orders[_orderId].optionAmount.sub(amount);
+            optionContract.safeTransferFrom(_order.maker, msg.sender, _order.optionId, amount, "");
         }
 
         emit OrderFilled(
-            _orderId,
+            hash,
             msg.sender,
-            order.optionContract,
-            order.maker,
+            _order.optionContract,
+            _order.maker,
             amount,
-            order.pricePerUnit
+            _order.pricePerUnit
         );
     }
 
     /**
      * @dev Fill a list of existing orders
-     * @param _orderIdList Order id list
+     * @param _orders The orders
      * @param _maxAmounts Max amount of options to buy/sell
      */
-    function fillOrders(bytes32[] memory _orderIdList, uint256[] memory _maxAmounts) public {
-        require(_orderIdList.length == _maxAmounts.length, "Arrays must have same length");
-        for (uint256 i=0; i < _orderIdList.length; i++) {
-            fillOrder(_orderIdList[i], _maxAmounts[i]);
+    function fillOrders(Order[] memory _orders, uint256[] memory _maxAmounts) public {
+        require(_orders.length == _maxAmounts.length, "Arrays must have same length");
+        for (uint256 i=0; i < _orders.length; i++) {
+            fillOrder(_orders[i], _maxAmounts[i]);
         }
     }
 
     /**
      * @dev Cancel an existing order
-     * @param _orderId The order id
+     * @param _order The order
      */
-    function cancelOrder(bytes32 _orderId) public {
-        Order memory order = orders[_orderId];
-        require(order.optionContract != address(0), "Order not found");
-        require(order.maker == msg.sender, "Not order maker");
-        delete orders[_orderId];
+    function cancelOrder(Order memory _order) public {
+        bytes32 hash = keccak256(abi.encode(_order));
+        uint256 amountLeft = amounts[hash];
+
+        require(amountLeft > 0, "Order not found");
+        require(_order.maker == msg.sender, "Not order maker");
+        delete amounts[hash];
 
         emit OrderCancelled(
-            _orderId,
-            order.maker,
-            order.optionContract,
-            order.optionAmount,
-            order.pricePerUnit
+            hash,
+            _order.maker,
+            _order.optionContract,
+            amountLeft,
+            _order.pricePerUnit
         );
     }
 
     /**
      * @dev Cancel a list of existing orders
-     * @param _orderIdList The list of order ids
+     * @param _orders The orders
      */
-    function cancelOrders(bytes32[] memory _orderIdList) public {
-        for (uint256 i=0; i < _orderIdList.length; i++) {
-            cancelOrder(_orderIdList[i]);
+    function cancelOrders(Order[] memory _orders) public {
+        for (uint256 i=0; i < _orders.length; i++) {
+            cancelOrder(_orders[i]);
         }
     }
 

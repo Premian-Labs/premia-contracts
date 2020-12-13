@@ -80,12 +80,17 @@ describe('PremiaMarket', () => {
     await optionTestUtil.mintAndWriteOption(admin, 5);
 
     const tx = await premiaMarket.createOrder(
-      '0x0000000000000000000000000000000000000000',
+      {
+        maker: '0x0000000000000000000000000000000000000000',
+        taker: '0x0000000000000000000000000000000000000000',
+        side: 1,
+        optionContract: premiaOption.address,
+        pricePerUnit: ethers.utils.parseEther('1'),
+        optionId: 1,
+        expirationTime: 0,
+        salt: 0,
+      },
       1,
-      premiaOption.address,
-      1,
-      1,
-      ethers.utils.parseEther('1'),
     );
 
     console.log(tx);

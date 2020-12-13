@@ -31,29 +31,37 @@ async function main() {
     `premiaMarket deployed to ${premiaMarket.address} from ${deployer.address}`,
   );
 
-  // const weth = PremiaErc20__factory.connect(wethAddress, deployer);
-  // const dai = PremiaErc20__factory.connect(daiAddress, deployer);
-  // const rope = PremiaErc20__factory.connect(ropeAddress, deployer);
-  // const premiaOptionWeth = PremiaOption__factory.connect(
-  //   '0x49293cFed5BF22e9a0b3850711d4cE73299A40f7',
-  //   deployer,
-  // );
+  const weth = PremiaErc20__factory.connect(wethAddress, deployer);
+  const dai = PremiaErc20__factory.connect(daiAddress, deployer);
+  const rope = PremiaErc20__factory.connect(ropeAddress, deployer);
+  const premiaOptionWeth = PremiaOption__factory.connect(
+    '0x49293cFed5BF22e9a0b3850711d4cE73299A40f7',
+    deployer,
+  );
 
-  // await premiaMarket.addWhitelistedOptionContracts([premiaOptionWeth.address]);
-  // await premiaOptionWeth.setApprovalForAll(premiaMarket.address, true);
-  // const balance = await premiaOptionWeth.balanceOf(deployer.address, 1);
-  // console.log('Balance', balance);
-  //
-  // const tx = await premiaMarket.createOrder(
-  //   '0x0000000000000000000000000000000000000000',
-  //   1,
-  //   premiaOptionWeth.address,
-  //   1,
-  //   2,
-  //   ethers.utils.parseEther('1'),
-  // );
-  //
-  // console.log(tx);
+  await premiaMarket.addWhitelistedOptionContracts([premiaOptionWeth.address]);
+  await premiaOptionWeth.setApprovalForAll(premiaMarket.address, true);
+  const balance = await premiaOptionWeth.balanceOf(deployer.address, 1);
+  console.log('Balance', balance);
+
+  // const optionData = await premiaOptionWeth.getOptionDataBatch([1]);
+  // console.log(optionData);
+
+  const tx = await premiaMarket.createOrder(
+    {
+      maker: '0x0000000000000000000000000000000000000000',
+      taker: '0x0000000000000000000000000000000000000000',
+      side: 1,
+      optionContract: premiaOptionWeth.address,
+      pricePerUnit: ethers.utils.parseEther('1'),
+      optionId: 1,
+      expirationTime: 0,
+      salt: 0,
+    },
+    2,
+  );
+
+  console.log(tx);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
