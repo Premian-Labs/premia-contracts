@@ -30,6 +30,10 @@ fs.copyFileSync(
   './abi/TestPremiaOption.json',
 );
 fs.copyFileSync(
+  './artifacts/contracts/test/TestPremiaMarket.sol/TestPremiaMarket.json',
+  './abi/TestPremiaMarket.json',
+);
+fs.copyFileSync(
   './artifacts/contracts/test/TestTokenSettingsCalculator.sol/TestTokenSettingsCalculator.json',
   './abi/TestTokenSettingsCalculator.json',
 );

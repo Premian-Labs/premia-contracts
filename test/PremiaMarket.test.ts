@@ -3,12 +3,11 @@ import { BigNumberish, utils } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
-  PremiaMarket,
-  PremiaMarket__factory,
   TestErc20__factory,
+  TestPremiaMarket,
+  TestPremiaMarket__factory,
   TestPremiaOption,
   TestPremiaOption__factory,
-  TestTokenSettingsCalculator__factory,
 } from '../contractsTyped';
 import { TestErc20 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
@@ -16,7 +15,7 @@ import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
 let eth: TestErc20;
 let dai: TestErc20;
 let premiaOption: TestPremiaOption;
-let premiaMarket: PremiaMarket;
+let premiaMarket: TestPremiaMarket;
 let admin: SignerWithAddress;
 let writer1: SignerWithAddress;
 let writer2: SignerWithAddress;
@@ -40,7 +39,7 @@ describe('PremiaMarket', () => {
       treasury.address,
     );
 
-    const premiaMarketFactory = new PremiaMarket__factory(writer1);
+    const premiaMarketFactory = new TestPremiaMarket__factory(writer1);
     premiaMarket = await premiaMarketFactory.deploy(admin.address, dai.address);
 
     optionTestUtil = new PremiaOptionTestUtil({

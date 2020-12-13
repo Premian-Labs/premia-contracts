@@ -8,11 +8,12 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/EnumerableSet.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
-import "./interface/IPremiaOption.sol";
+import "../interface/IPremiaOption.sol";
 
-//import "hardhat/console.sol";
+import "hardhat/console.sol";
+import "./TestTime.sol";
 
-contract PremiaMarket is Ownable, ReentrancyGuard {
+contract TestPremiaMarket is Ownable, ReentrancyGuard, TestTime {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -155,7 +156,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     //////////
 
     function getBlockTimestamp() public view returns(uint256) {
-        return block.timestamp;
+        return timestamp;
     }
 
     function getWhitelistedOptionContracts() external view returns(address[] memory) {
