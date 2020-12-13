@@ -43,7 +43,7 @@ describe('PremiaMarket', () => {
     );
 
     const premiaMarketFactory = new TestPremiaMarket__factory(writer1);
-    premiaMarket = await premiaMarketFactory.deploy(admin.address, dai.address);
+    premiaMarket = await premiaMarketFactory.deploy(admin.address, eth.address);
 
     optionTestUtil = new PremiaOptionTestUtil({
       eth,
@@ -69,67 +69,180 @@ describe('PremiaMarket', () => {
     });
 
     await premiaMarket.addWhitelistedOptionContracts([premiaOption.address]);
-    await premiaOption.setApprovalForAll(premiaMarket.address, true);
-    await eth.increaseAllowance(
-      premiaOption.address,
-      ethers.utils.parseEther('10000'),
-    );
-    await dai.increaseAllowance(
-      premiaOption.address,
-      ethers.utils.parseEther('10000'),
-    );
-    await eth.increaseAllowance(
-      premiaMarket.address,
-      ethers.utils.parseEther('10000'),
-    );
-  });
+    await premiaOption
+      .connect(admin)
+      .setApprovalForAll(premiaMarket.address, true);
+    await eth
+      .connect(admin)
+      .increaseAllowance(
+        premiaOption.address,
+        ethers.utils.parseEther('10000'),
+      );
+    await dai
+      .connect(admin)
+      .increaseAllowance(
+        premiaOption.address,
+        ethers.utils.parseEther('10000'),
+      );
+    await eth
+      .connect(admin)
+      .increaseAllowance(
+        premiaMarket.address,
+        ethers.utils.parseEther('10000'),
+      );
 
-  it('Should create an order', async () => {
     await premiaOption.setToken(
       eth.address,
       utils.parseEther('1'),
       utils.parseEther('10'),
     );
+  });
 
-    await optionTestUtil.mintAndWriteOption(admin, 5);
+  describe('createOrder', () => {
+    it('Should create an order', async () => {
+      await optionTestUtil.mintAndWriteOption(admin, 5);
+      const orderCreated = await marketTestUtil.createOrder(admin);
 
-    const newOrder: IOrderCreateProps = {
-      maker: admin.address,
-      taker: '0x0000000000000000000000000000000000000000',
-      side: 1,
-      optionContract: premiaOption.address,
-      pricePerUnit: ethers.utils.parseEther('1'),
-      optionId: 1,
-    };
+      expect(orderCreated.hash).to.not.be.undefined;
 
-    const tx = await premiaMarket.connect(admin).createOrder(
-      {
-        ...newOrder,
-        expirationTime: 0,
-        salt: 0,
-      },
-      1,
-    );
+      let amount = await premiaMarket.amounts(orderCreated.hash);
 
-    const filter = premiaMarket.filters.OrderCreated(
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-      null,
-    );
-    const r = await premiaMarket.queryFilter(filter, tx.blockHash);
+      expect(amount).to.eq(1);
+    });
 
-    const events = r.map((el) => (el.args as any) as IOrderCreated);
-    const orderCreated = events.find((order) =>
-      marketTestUtil.isOrderSame(newOrder, order),
-    );
+    it('Should fail creating an order if option contract is not whitelisted', async () => {
+      await premiaMarket.removeWhitelistedOptionContracts([
+        premiaOption.address,
+      ]);
+      await optionTestUtil.mintAndWriteOption(admin, 5);
+      await expect(marketTestUtil.createOrder(admin)).to.be.revertedWith(
+        'Option contract not whitelisted',
+      );
+    });
 
-    expect(orderCreated?.hash).to.not.be.undefined;
+    it('Should fail creating an order if option is expired', async () => {
+      await optionTestUtil.mintAndWriteOption(admin, 5);
+      await premiaMarket.setTimestamp(1e7);
+      await expect(marketTestUtil.createOrder(admin)).to.be.revertedWith(
+        'Option expired',
+      );
+    });
+  });
+
+  describe('isOrderValid', () => {
+    describe('Sell order', () => {
+      it('Should detect sell order as valid if seller still own NFTs and transfer is approved', async () => {
+        await optionTestUtil.mintAndWriteOption(admin, 5);
+        const order = await marketTestUtil.createOrder(admin);
+
+        const isValid = await premiaMarket.isOrderValid(
+          marketTestUtil.convertOrderCreatedToOrder(order),
+        );
+        expect(isValid).to.be.true;
+      });
+
+      it('Should detect sell order as invalid if seller has not approved NFT transfers', async () => {
+        await optionTestUtil.mintAndWriteOption(admin, 5);
+        const order = await marketTestUtil.createOrder(admin);
+        await premiaOption
+          .connect(admin)
+          .setApprovalForAll(premiaMarket.address, false);
+
+        const isValid = await premiaMarket.isOrderValid(
+          marketTestUtil.convertOrderCreatedToOrder(order),
+        );
+        expect(isValid).to.be.false;
+      });
+
+      it('Should detect sell order as invalid if seller does not own NFTs anymore', async () => {
+        await optionTestUtil.mintAndWriteOption(admin, 5);
+        const order = await marketTestUtil.createOrder(admin);
+        await premiaOption.connect(admin).cancelOption(1, 5);
+
+        const isValid = await premiaMarket.isOrderValid(
+          marketTestUtil.convertOrderCreatedToOrder(order),
+        );
+        expect(isValid).to.be.false;
+      });
+
+      it('Should detect sell order as invalid if amount to sell left is 0', async () => {
+        await optionTestUtil.mintAndWriteOption(admin, 5);
+        const order = await marketTestUtil.createOrder(admin);
+
+        await eth.connect(writer1).mint(ethers.utils.parseEther('100'));
+        await eth
+          .connect(writer1)
+          .increaseAllowance(
+            premiaMarket.address,
+            ethers.utils.parseEther('10000'),
+          );
+        await premiaMarket
+          .connect(writer1)
+          .fillOrder(marketTestUtil.convertOrderCreatedToOrder(order), 5);
+
+        const isValid = await premiaMarket.isOrderValid(
+          marketTestUtil.convertOrderCreatedToOrder(order),
+        );
+        expect(isValid).to.be.false;
+      });
+    });
+
+    describe('Buy order', () => {
+      it('Should detect buy order as valid if seller still own ERC20 and transfer is approved', async () => {
+        await optionTestUtil.mintAndWriteOption(writer1, 1);
+
+        await eth.connect(admin).mint(ethers.utils.parseEther('1.015'));
+        const order = await marketTestUtil.createOrder(admin, false);
+
+        const isValid = await premiaMarket.isOrderValid(
+          marketTestUtil.convertOrderCreatedToOrder(order),
+        );
+        expect(isValid).to.be.true;
+      });
+
+      it('Should detect buy order as invalid if seller does not have enough to cover price + fee', async () => {
+        await optionTestUtil.mintAndWriteOption(writer1, 1);
+
+        await eth.connect(admin).mint(ethers.utils.parseEther('1.0'));
+        const order = await marketTestUtil.createOrder(admin, false);
+
+        const isValid = await premiaMarket.isOrderValid(
+          marketTestUtil.convertOrderCreatedToOrder(order),
+        );
+        expect(isValid).to.be.false;
+      });
+
+      it('Should detect buy order as invalid if seller did not approved ERC20', async () => {
+        await optionTestUtil.mintAndWriteOption(writer1, 1);
+
+        await eth.connect(admin).mint(ethers.utils.parseEther('10'));
+        await eth.connect(admin).approve(premiaMarket.address, 0);
+        const order = await marketTestUtil.createOrder(admin, false);
+
+        const isValid = await premiaMarket.isOrderValid(
+          marketTestUtil.convertOrderCreatedToOrder(order),
+        );
+        expect(isValid).to.be.false;
+      });
+
+      it('Should detect buy order as invalid if amount to buy left is 0', async () => {
+        await optionTestUtil.mintAndWriteOption(writer1, 1);
+
+        await eth.connect(admin).mint(ethers.utils.parseEther('1.015'));
+        const order = await marketTestUtil.createOrder(admin, false);
+
+        await premiaOption
+          .connect(writer1)
+          .setApprovalForAll(premiaMarket.address, true);
+        await premiaMarket
+          .connect(writer1)
+          .fillOrder(marketTestUtil.convertOrderCreatedToOrder(order), 1);
+
+        const isValid = await premiaMarket.isOrderValid(
+          marketTestUtil.convertOrderCreatedToOrder(order),
+        );
+        expect(isValid).to.be.false;
+      });
+    });
   });
 });

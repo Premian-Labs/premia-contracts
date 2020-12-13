@@ -10,6 +10,17 @@ interface IOrderCreateProps {
   optionId: BigNumberish;
 }
 
+interface IOrder {
+  maker: string;
+  taker: string;
+  side: BigNumberish;
+  optionContract: string;
+  optionId: BigNumberish;
+  pricePerUnit: BigNumberish;
+  expirationTime: BigNumberish;
+  salt: BigNumberish;
+}
+
 interface IOrderCreated {
   hash: BytesLike;
   maker: string;

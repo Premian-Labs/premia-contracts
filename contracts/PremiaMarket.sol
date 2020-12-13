@@ -180,7 +180,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         if (amountLeft == 0) return false;
 
         // Expired
-        if (_order.expirationTime == 0 || _order.expirationTime > getBlockTimestamp()) return false;
+        if (_order.expirationTime == 0 || getBlockTimestamp() > _order.expirationTime) return false;
 
         if (_order.side == SaleSide.Buy) {
             uint256 basePrice = _order.pricePerUnit.mul(amountLeft);
@@ -270,7 +270,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         uint256 amountLeft = amounts[hash];
 
         require(amountLeft > 0, "Order not found");
-        require(_order.expirationTime != 0 && _order.expirationTime < getBlockTimestamp(), "Order expired");
+        require(_order.expirationTime != 0 && getBlockTimestamp() < _order.expirationTime, "Order expired");
         require(_order.optionContract != address(0), "Order not found");
         require(_maxAmount > 0, "MaxAmount must be > 0");
         require(_order.taker == address(0) || _order.taker == msg.sender, "Not specified taker");
