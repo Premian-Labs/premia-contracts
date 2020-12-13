@@ -159,6 +159,10 @@ contract TestPremiaMarket is Ownable, ReentrancyGuard, TestTime {
         return timestamp;
     }
 
+    function getOrderHash(Order memory _order) public view returns(bytes32) {
+        return keccak256(abi.encode(_order));
+    }
+
     function getWhitelistedOptionContracts() external view returns(address[] memory) {
         uint256 length = _whitelistedOptionContracts.length();
         address[] memory result = new address[](length);
@@ -171,7 +175,7 @@ contract TestPremiaMarket is Ownable, ReentrancyGuard, TestTime {
     }
 
     function isOrderValid(Order memory _order) public view returns(bool) {
-        bytes32 hash = keccak256(abi.encode(_order));
+        bytes32 hash = getOrderHash(_order);
         uint256 amountLeft = amounts[hash];
 
         if (amountLeft == 0) return false;
@@ -214,7 +218,7 @@ contract TestPremiaMarket is Ownable, ReentrancyGuard, TestTime {
     //////////
 
     // Maker, salt and expirationTime will be overridden by this function
-    function createOrder(Order memory _order, uint256 _amount) public {
+    function createOrder(Order memory _order, uint256 _amount) public returns(bytes32) {
         require(_whitelistedOptionContracts.contains(_order.optionContract), "Option contract not whitelisted");
 
         uint256 _expiration = IPremiaOption(_order.optionContract).getOptionExpiration(_order.optionId);
@@ -226,7 +230,7 @@ contract TestPremiaMarket is Ownable, ReentrancyGuard, TestTime {
 
         salt = salt.add(1);
 
-        bytes32 hash = keccak256(abi.encode(_order));
+        bytes32 hash = getOrderHash(_order);
         amounts[hash] = _amount;
 
         emit OrderCreated(
@@ -241,14 +245,20 @@ contract TestPremiaMarket is Ownable, ReentrancyGuard, TestTime {
             _order.salt,
             _amount
         );
+
+        return hash;
     }
 
-    function createOrders(Order[] memory _orders, uint256[] memory _amounts) public {
+    function createOrders(Order[] memory _orders, uint256[] memory _amounts) public returns(bytes32[] memory) {
         require(_orders.length == _amounts.length, "Arrays must have same length");
 
+        bytes32[] memory result = new bytes32[](_orders.length);
+
         for (uint256 i=0; i < _orders.length; i++) {
-            createOrder(_orders[i], _amounts[i]);
+            result[i] = createOrder(_orders[i], _amounts[i]);
         }
+
+        return result;
     }
 
     /**
@@ -257,7 +267,7 @@ contract TestPremiaMarket is Ownable, ReentrancyGuard, TestTime {
      * @param _maxAmount Max amount of options to buy/sell
      */
     function fillOrder(Order memory _order, uint256 _maxAmount) public nonReentrant {
-        bytes32 hash = keccak256(abi.encode(_order));
+        bytes32 hash = getOrderHash(_order);
         uint256 amountLeft = amounts[hash];
 
         require(amountLeft > 0, "Order not found");
@@ -319,7 +329,7 @@ contract TestPremiaMarket is Ownable, ReentrancyGuard, TestTime {
      * @param _order The order
      */
     function cancelOrder(Order memory _order) public {
-        bytes32 hash = keccak256(abi.encode(_order));
+        bytes32 hash = getOrderHash(_order);
         uint256 amountLeft = amounts[hash];
 
         require(amountLeft > 0, "Order not found");

@@ -46,17 +46,6 @@ export class PremiaOptionTestUtil {
     this.tax = props.tax;
   }
 
-  init(props: PremiaOptionTestUtilProps) {
-    this.eth = props.eth;
-    this.dai = props.dai;
-    this.premiaOption = props.premiaOption;
-    this.writer1 = props.writer1;
-    this.writer2 = props.writer2;
-    this.user1 = props.user1;
-    this.treasury = props.treasury;
-    this.tax = props.tax;
-  }
-
   getOptionDefaults() {
     return {
       address: this.eth.address,

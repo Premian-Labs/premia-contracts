@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { BigNumberish, utils } from 'ethers';
+import { BigNumber, BigNumberish, utils } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
@@ -11,6 +11,8 @@ import {
 } from '../contractsTyped';
 import { TestErc20 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
+import { IOrderCreated, IOrderCreateProps } from '../types';
+import { PremiaMarketTestUtil } from './utils/PremiaMarketTestUtil';
 
 let eth: TestErc20;
 let dai: TestErc20;
@@ -24,6 +26,7 @@ let treasury: SignerWithAddress;
 const tax = 0.01;
 
 let optionTestUtil: PremiaOptionTestUtil;
+let marketTestUtil: PremiaMarketTestUtil;
 
 describe('PremiaMarket', () => {
   beforeEach(async () => {
@@ -53,6 +56,18 @@ describe('PremiaMarket', () => {
       tax,
     });
 
+    marketTestUtil = new PremiaMarketTestUtil({
+      eth,
+      dai,
+      premiaOption,
+      premiaMarket,
+      admin,
+      writer1,
+      writer2,
+      user1,
+      treasury,
+    });
+
     await premiaMarket.addWhitelistedOptionContracts([premiaOption.address]);
     await premiaOption.setApprovalForAll(premiaMarket.address, true);
     await eth.increaseAllowance(
@@ -78,35 +93,43 @@ describe('PremiaMarket', () => {
 
     await optionTestUtil.mintAndWriteOption(admin, 5);
 
-    const tx = await premiaMarket.createOrder(
+    const newOrder: IOrderCreateProps = {
+      maker: admin.address,
+      taker: '0x0000000000000000000000000000000000000000',
+      side: 1,
+      optionContract: premiaOption.address,
+      pricePerUnit: ethers.utils.parseEther('1'),
+      optionId: 1,
+    };
+
+    const tx = await premiaMarket.connect(admin).createOrder(
       {
-        maker: '0x0000000000000000000000000000000000000000',
-        taker: '0x0000000000000000000000000000000000000000',
-        side: 1,
-        optionContract: premiaOption.address,
-        pricePerUnit: ethers.utils.parseEther('1'),
-        optionId: 1,
+        ...newOrder,
         expirationTime: 0,
         salt: 0,
       },
       1,
     );
 
-    console.log(tx);
+    const filter = premiaMarket.filters.OrderCreated(
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+    );
+    const r = await premiaMarket.queryFilter(filter, tx.blockHash);
 
-    // const filter = premiaMarket.filters.OrderCreated(
-    //   null,
-    //   null,
-    //   null,
-    //   null,
-    //   null,
-    //   null,
-    //   null,
-    //   null,
-    //   null,
-    // );
-    // const r = await premiaMarket.queryFilter(filter, 0);
-    //
-    // console.log(r);
+    const events = r.map((el) => (el.args as any) as IOrderCreated);
+    const orderCreated = events.find((order) =>
+      marketTestUtil.isOrderSame(newOrder, order),
+    );
+
+    expect(orderCreated?.hash).to.not.be.undefined;
   });
 });
