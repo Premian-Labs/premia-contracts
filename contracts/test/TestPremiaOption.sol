@@ -198,13 +198,21 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
     }
 
     function setWriteFee(uint256 _fee) public onlyOwner {
-        require(_fee >= 0, "Fee must be >= 0");
+        // Hardcoded max fee we can set at 5%
+        require(_fee <= 5e3, "Over max fee limit");
         writeFee = _fee;
     }
 
     function setExerciseFee(uint256 _fee) public onlyOwner {
-        require(_fee >= 0, "Fee must be >= 0");
+        // Hardcoded max fee we can set at 5%
+        require(_fee <= 5e3, "Over max fee limit");
         exerciseFee = _fee;
+    }
+
+    function setFlashLoanFee(uint256 _fee) public onlyOwner {
+        // Hardcoded max fee we can set at 5%
+        require(_fee <= 5e3, "Over max fee limit");
+        flashLoanFee = _fee;
     }
 
     // Set settings for a token to support writing of options paired to denominator
