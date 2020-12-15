@@ -158,7 +158,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return block.timestamp;
     }
 
-    function getOrderHash(Order memory _order) public view returns(bytes32) {
+    function getOrderHash(Order memory _order) public pure returns(bytes32) {
         return keccak256(abi.encode(_order));
     }
 
