@@ -29,7 +29,7 @@ contract PremiaMiningErc20 is ERC20, Ownable {
     //
 
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
-        require(_whitelistedReceivers.contains(to), "Transfer not allowed");
+        require(_minters.contains(from) || _whitelistedReceivers.contains(to), "Transfer not allowed");
     }
 
     //
