@@ -9,6 +9,7 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
+import "./interface/IFlashLoanReceiver.sol";
 import "./interface/ITokenSettingsCalculator.sol";
 
 contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
@@ -57,6 +58,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     uint256 public writeFee = 1e3;                  // 1%
     uint256 public exerciseFee = 1e3;               // 1%
+    uint256 public flashLoanFee = 2e2;              // 0.2%
+
+    uint256 public constant INVERSE_BASIS_POINT = 1e5;
 
     // This contract is used to define automatically an initial contractSize and strikePriceIncrement for a newly added token
     // Disabled on launch, might be added later, so that admin does not need to add tokens manually
@@ -254,7 +258,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             IERC20 tokenErc20 = IERC20(_token);
 
             uint256 amount = _contractAmount.mul(data.contractSize);
-            uint256 feeAmount = amount.mul(writeFee).div(1e5);
+            uint256 feeAmount = amount.mul(writeFee).div(INVERSE_BASIS_POINT);
 
             tokenErc20.safeTransferFrom(msg.sender, address(this), amount);
             tokenErc20.safeTransferFrom(msg.sender, treasury, feeAmount);
@@ -262,7 +266,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
         } else {
             uint256 amount = _contractAmount.mul(_strikePrice);
-            uint256 feeAmount = amount.mul(writeFee).div(1e5);
+            uint256 feeAmount = amount.mul(writeFee).div(INVERSE_BASIS_POINT);
 
             denominator.safeTransferFrom(msg.sender, address(this), amount);
             denominator.safeTransferFrom(msg.sender, treasury, feeAmount);
@@ -319,7 +323,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(denominatorAmount);
 
-            uint256 feeAmount = denominatorAmount.mul(exerciseFee).div(1e5);
+            uint256 feeAmount = denominatorAmount.mul(exerciseFee).div(INVERSE_BASIS_POINT);
 
             denominator.safeTransferFrom(msg.sender, address(this), denominatorAmount);
             denominator.safeTransferFrom(msg.sender, treasury, feeAmount);
@@ -329,7 +333,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(denominatorAmount);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
 
-            uint256 feeAmount = tokenAmount.mul(exerciseFee).div(1e5);
+            uint256 feeAmount = tokenAmount.mul(exerciseFee).div(INVERSE_BASIS_POINT);
 
             tokenErc20.safeTransferFrom(msg.sender, address(this), tokenAmount);
             tokenErc20.safeTransferFrom(msg.sender, treasury, feeAmount);
@@ -408,6 +412,18 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             tokenErc20.safeTransfer(msg.sender, amount);
         }
 
+    }
+
+    function flashLoan(address _tokenAddress, uint256 _amount, IFlashLoanReceiver _receiver) public nonReentrant {
+        IERC20 _token = IERC20(_tokenAddress);
+        uint256 startBalance = _token.balanceOf(address(this));
+        require(_amount <= startBalance, "Not enough tokens available");
+        _token.safeTransfer(address(_receiver), _amount);
+        _receiver.execute(_tokenAddress, _amount);
+
+        uint256 endBalance = _token.balanceOf(address(this));
+        require(endBalance >= startBalance.add(startBalance.mul(flashLoanFee).div(INVERSE_BASIS_POINT)), "Failed to pay back");
+        _token.safeTransfer(treasury, endBalance.sub(startBalance));
     }
 
     /////////////////////
