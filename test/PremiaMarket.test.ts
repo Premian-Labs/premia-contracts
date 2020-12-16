@@ -11,7 +11,7 @@ import {
 } from '../contractsTyped';
 import { TestErc20 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
-import { IOrder } from '../types';
+import { IOrder, IOrderCreated } from '../types';
 import { PremiaMarketTestUtil } from './utils/PremiaMarketTestUtil';
 
 let eth: TestErc20;
@@ -110,6 +110,52 @@ describe('PremiaMarket', () => {
       expect(amount).to.eq(1);
     });
 
+    it('should create multiple orders', async () => {
+      await optionTestUtil.mintAndWriteOption(admin, 5);
+
+      const newOrder = marketTestUtil.getDefaultOrder(admin);
+
+      const tx = await premiaMarket.connect(admin).createOrders(
+        [
+          {
+            ...newOrder,
+            expirationTime: 0,
+            salt: 0,
+          },
+          {
+            ...newOrder,
+            expirationTime: 0,
+            salt: 0,
+          },
+        ],
+        [2, 3],
+      );
+
+      const filter = premiaMarket.filters.OrderCreated(
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+      );
+      const r = await premiaMarket.queryFilter(filter, tx.blockHash);
+
+      const events = r.map((el) => (el.args as any) as IOrderCreated);
+
+      expect(events.length).to.eq(2);
+
+      const order1Amount = await premiaMarket.amounts(events[0].hash);
+      const order2Amount = await premiaMarket.amounts(events[1].hash);
+
+      expect(order1Amount).to.eq(2);
+      expect(order2Amount).to.eq(3);
+    });
+
     it('should fail creating an order if option contract is not whitelisted', async () => {
       await premiaMarket.removeWhitelistedOptionContracts([
         premiaOption.address,
@@ -130,6 +176,20 @@ describe('PremiaMarket', () => {
   });
 
   describe('isOrderValid', () => {
+    it('should detect multiple orders as valid', async () => {
+      await optionTestUtil.mintAndWriteOption(admin, 5);
+      const order1 = await marketTestUtil.createOrder(admin);
+      const order2 = await marketTestUtil.createOrder(admin);
+
+      const areValid = await premiaMarket.areOrdersValid([
+        marketTestUtil.convertOrderCreatedToOrder(order1),
+        marketTestUtil.convertOrderCreatedToOrder(order2),
+      ]);
+      expect(areValid.length).to.eq(2);
+      expect(areValid[0]).to.be.true;
+      expect(areValid[1]).to.be.true;
+    });
+
     describe('sell order', () => {
       it('should detect sell order as valid if maker still own NFTs and transfer is approved', async () => {
         await optionTestUtil.mintAndWriteOption(admin, 5);
@@ -340,20 +400,30 @@ describe('PremiaMarket', () => {
         expect(optionBalanceMaker).to.eq(1);
         expect(optionBalanceTaker).to.eq(0);
       });
-    });
 
-    describe('sell order', () => {
-      it('should fill sell order', async () => {
+      it('should fill multiple orders', async () => {
         const maker = user1;
         const taker = user2;
-        const treasury = admin;
 
-        const order = await marketTestUtil.setupOrder(maker, taker, {
+        const order1 = await marketTestUtil.setupOrder(maker, taker, {
           isBuy: false,
+          amount: 2,
         });
+
+        const order2 = await marketTestUtil.setupOrder(maker, taker, {
+          isBuy: false,
+          amount: 2,
+        });
+
         await premiaMarket
           .connect(taker)
-          .fillOrder(marketTestUtil.convertOrderCreatedToOrder(order), 1);
+          .fillOrders(
+            [
+              marketTestUtil.convertOrderCreatedToOrder(order1),
+              marketTestUtil.convertOrderCreatedToOrder(order2),
+            ],
+            [2, 2],
+          );
 
         const optionBalanceMaker = await premiaOption.balanceOf(
           maker.address,
@@ -365,15 +435,50 @@ describe('PremiaMarket', () => {
         );
 
         expect(optionBalanceMaker).to.eq(0);
-        expect(optionBalanceTaker).to.eq(1);
+        expect(optionBalanceTaker).to.eq(4);
+      });
+    });
+
+    describe('sell order', () => {
+      it('should fill 2 sell orders', async () => {
+        const maker = user1;
+        const taker = user2;
+        const treasury = admin;
+
+        const order = await marketTestUtil.setupOrder(maker, taker, {
+          isBuy: false,
+          amount: 2,
+        });
+
+        let orderAmount = await premiaMarket.amounts(order.hash);
+        expect(orderAmount).to.eq(2);
+
+        await premiaMarket
+          .connect(taker)
+          .fillOrder(marketTestUtil.convertOrderCreatedToOrder(order), 2);
+
+        const optionBalanceMaker = await premiaOption.balanceOf(
+          maker.address,
+          1,
+        );
+        const optionBalanceTaker = await premiaOption.balanceOf(
+          taker.address,
+          1,
+        );
+
+        expect(optionBalanceMaker).to.eq(0);
+        expect(optionBalanceTaker).to.eq(2);
 
         const ethBalanceMaker = await eth.balanceOf(maker.address);
         const ethBalanceTaker = await eth.balanceOf(taker.address);
         const ethBalanceTreasury = await eth.balanceOf(treasury.address);
 
-        expect(ethBalanceMaker).to.eq(ethers.utils.parseEther('0.985'));
+        expect(ethBalanceMaker).to.eq(ethers.utils.parseEther('1.97'));
         expect(ethBalanceTaker).to.eq(0);
-        expect(ethBalanceTreasury).to.eq(ethers.utils.parseEther('0.03'));
+        expect(ethBalanceTreasury).to.eq(ethers.utils.parseEther('0.06'));
+
+        orderAmount = await premiaMarket.amounts(order.hash);
+        expect(orderAmount).to.eq(0);
       });
 
       it('should fail filling sell order if maker does not have options', async () => {
@@ -417,10 +522,11 @@ describe('PremiaMarket', () => {
 
         const order = await marketTestUtil.setupOrder(maker, taker, {
           isBuy: false,
+          amount: 1,
         });
         await premiaMarket
           .connect(taker)
-          .fillOrder(marketTestUtil.convertOrderCreatedToOrder(order), 1);
+          .fillOrder(marketTestUtil.convertOrderCreatedToOrder(order), 2);
 
         const optionBalanceMaker = await premiaOption.balanceOf(
           maker.address,
@@ -433,21 +539,34 @@ describe('PremiaMarket', () => {
 
         expect(optionBalanceMaker).to.eq(0);
         expect(optionBalanceTaker).to.eq(1);
-      })
+
+        const ethBalanceMaker = await eth.balanceOf(maker.address);
+        const ethBalanceTaker = await eth.balanceOf(taker.address);
+        const ethBalanceTreasury = await eth.balanceOf(treasury.address);
+
+        expect(ethBalanceMaker).to.eq(ethers.utils.parseEther('0.985'));
+        expect(ethBalanceTaker).to.eq(0);
+        expect(ethBalanceTreasury).to.eq(ethers.utils.parseEther('0.03'));
+      });
     });
 
     describe('buy order', () => {
-      it('should fill buy order', async () => {
+      it('should fill 2 buy orders', async () => {
         const maker = user1;
         const taker = user2;
         const treasury = admin;
 
         const order = await marketTestUtil.setupOrder(maker, taker, {
           isBuy: true,
+          amount: 2,
         });
+
+        let orderAmount = await premiaMarket.amounts(order.hash);
+        expect(orderAmount).to.eq(2);
+
         await premiaMarket
           .connect(taker)
-          .fillOrder(marketTestUtil.convertOrderCreatedToOrder(order), 1);
+          .fillOrder(marketTestUtil.convertOrderCreatedToOrder(order), 2);
 
         const optionBalanceMaker = await premiaOption.balanceOf(
           maker.address,
@@ -458,7 +577,7 @@ describe('PremiaMarket', () => {
           1,
         );
 
-        expect(optionBalanceMaker).to.eq(1);
+        expect(optionBalanceMaker).to.eq(2);
         expect(optionBalanceTaker).to.eq(0);
 
         const ethBalanceMaker = await eth.balanceOf(maker.address);
@@ -466,8 +585,11 @@ describe('PremiaMarket', () => {
         const ethBalanceTreasury = await eth.balanceOf(treasury.address);
 
         expect(ethBalanceMaker).to.eq(0);
-        expect(ethBalanceTaker).to.eq(ethers.utils.parseEther('0.985'));
-        expect(ethBalanceTreasury).to.eq(ethers.utils.parseEther('0.03'));
+        expect(ethBalanceTaker).to.eq(ethers.utils.parseEther('1.97'));
+        expect(ethBalanceTreasury).to.eq(ethers.utils.parseEther('0.06'));
+
+        orderAmount = await premiaMarket.amounts(order.hash);
+        expect(orderAmount).to.eq(0);
       });
 
       it('should fail filling buy order if maker does not have enough token', async () => {
@@ -504,7 +626,129 @@ describe('PremiaMarket', () => {
         ).to.be.revertedWith('ERC1155: insufficient balance for transfer');
       });
 
-      it('should fill buy order for 1/2 if only 1 left to buy', async () => {})
+      it('should fill buy order for 1/2 if only 1 left to buy', async () => {
+        const maker = user1;
+        const taker = user2;
+        const treasury = admin;
+
+        const order = await marketTestUtil.setupOrder(maker, taker, {
+          isBuy: true,
+          amount: 1,
+        });
+        await premiaMarket
+          .connect(taker)
+          .fillOrder(marketTestUtil.convertOrderCreatedToOrder(order), 2);
+
+        const optionBalanceMaker = await premiaOption.balanceOf(
+          maker.address,
+          1,
+        );
+        const optionBalanceTaker = await premiaOption.balanceOf(
+          taker.address,
+          1,
+        );
+
+        expect(optionBalanceMaker).to.eq(1);
+        expect(optionBalanceTaker).to.eq(0);
+
+        const ethBalanceMaker = await eth.balanceOf(maker.address);
+        const ethBalanceTaker = await eth.balanceOf(taker.address);
+        const ethBalanceTreasury = await eth.balanceOf(treasury.address);
+
+        expect(ethBalanceMaker).to.eq(0);
+        expect(ethBalanceTaker).to.eq(ethers.utils.parseEther('0.985'));
+        expect(ethBalanceTreasury).to.eq(ethers.utils.parseEther('0.03'));
+      });
+    });
+  });
+
+  describe('cancelOrder', () => {
+    it('should cancel an order', async () => {
+      const maker = user1;
+      const taker = user2;
+
+      const order = await marketTestUtil.setupOrder(maker, taker, {
+        isBuy: true,
+        amount: 1,
+      });
+
+      let orderAmount = await premiaMarket.amounts(order.hash);
+      expect(orderAmount).to.eq(1);
+
+      await premiaMarket
+        .connect(maker)
+        .cancelOrder(marketTestUtil.convertOrderCreatedToOrder(order));
+
+      orderAmount = await premiaMarket.amounts(order.hash);
+      expect(orderAmount).to.eq(0);
+    });
+
+    it('should fail cancelling order if not called by order maker', async () => {
+      const maker = user1;
+      const taker = user2;
+
+      const order = await marketTestUtil.setupOrder(maker, taker, {
+        isBuy: true,
+        amount: 1,
+      });
+
+      await expect(
+        premiaMarket
+          .connect(taker)
+          .cancelOrder(marketTestUtil.convertOrderCreatedToOrder(order)),
+      ).to.be.revertedWith('Not order maker');
+    });
+
+    it('should fail cancelling order if order not found', async () => {
+      const maker = user1;
+      const taker = user2;
+
+      const order = await marketTestUtil.setupOrder(maker, taker, {
+        isBuy: true,
+        amount: 1,
+      });
+
+      await premiaMarket
+        .connect(taker)
+        .fillOrder(marketTestUtil.convertOrderCreatedToOrder(order), 1);
+
+      await expect(
+        premiaMarket
+          .connect(taker)
+          .cancelOrder(marketTestUtil.convertOrderCreatedToOrder(order)),
+      ).to.be.revertedWith('Order not found');
+    });
+
+    it('should cancel multiple orders', async () => {
+      const maker = user1;
+      const taker = user2;
+
+      const order1 = await marketTestUtil.setupOrder(maker, taker, {
+        isBuy: true,
+        amount: 1,
+      });
+
+      const order2 = await marketTestUtil.setupOrder(maker, taker, {
+        isBuy: true,
+        amount: 1,
+      });
+
+      let order1Amount = await premiaMarket.amounts(order1.hash);
+      let order2Amount = await premiaMarket.amounts(order2.hash);
+      expect(order1Amount).to.eq(1);
+      expect(order2Amount).to.eq(1);
+
+      await premiaMarket
+        .connect(maker)
+        .cancelOrders([
+          marketTestUtil.convertOrderCreatedToOrder(order1),
+          marketTestUtil.convertOrderCreatedToOrder(order2),
+        ]);
+
+      order1Amount = await premiaMarket.amounts(order1.hash);
+      order2Amount = await premiaMarket.amounts(order2.hash);
+      expect(order1Amount).to.eq(0);
+      expect(order2Amount).to.eq(0);
     });
   });
 });

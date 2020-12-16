@@ -24,6 +24,7 @@ interface PremiaMarketTestUtilProps {
 interface OrderOptions {
   taker?: string;
   isBuy?: boolean;
+  amount?: number;
 }
 
 export class PremiaMarketTestUtil {
@@ -88,6 +89,7 @@ export class PremiaMarketTestUtil {
 
   async createOrder(user: SignerWithAddress, orderOptions?: OrderOptions) {
     const newOrder = this.getDefaultOrder(user, orderOptions);
+    const amount = orderOptions?.amount ?? 1;
 
     const tx = await this.premiaMarket.connect(user).createOrder(
       {
@@ -95,7 +97,7 @@ export class PremiaMarketTestUtil {
         expirationTime: 0,
         salt: 0,
       },
-      1,
+      amount,
     );
 
     const filter = this.premiaMarket.filters.OrderCreated(
@@ -137,14 +139,17 @@ export class PremiaMarketTestUtil {
       seller = maker;
     }
 
-    await this.optionTestUtil.mintAndWriteOption(seller, 1);
+    const amount = orderOptions?.amount ?? 1;
+    await this.optionTestUtil.mintAndWriteOption(seller, amount);
 
-    await this.eth.connect(buyer).mint(ethers.utils.parseEther('1.015'));
+    await this.eth
+      .connect(buyer)
+      .mint(ethers.utils.parseEther('1.015').mul(amount));
     await this.eth
       .connect(buyer)
       .increaseAllowance(
         this.premiaMarket.address,
-        ethers.utils.parseEther('1.015'),
+        ethers.utils.parseEther('1.015').mul(amount),
       );
 
     await this.premiaOption
