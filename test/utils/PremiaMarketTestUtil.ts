@@ -4,9 +4,10 @@ import {
   TestPremiaOption,
 } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { BigNumber, BigNumberish } from 'ethers';
+import { BigNumber } from 'ethers';
 import { IOrderCreated, IOrderCreateProps } from '../../types';
 import { ethers } from 'hardhat';
+import { PremiaOptionTestUtil } from './PremiaOptionTestUtil';
 
 interface PremiaMarketTestUtilProps {
   eth: TestErc20;
@@ -20,6 +21,11 @@ interface PremiaMarketTestUtilProps {
   treasury: SignerWithAddress;
 }
 
+interface OrderOptions {
+  taker?: string;
+  isBuy?: boolean;
+}
+
 export class PremiaMarketTestUtil {
   eth: TestErc20;
   dai: TestErc20;
@@ -30,6 +36,7 @@ export class PremiaMarketTestUtil {
   writer2: SignerWithAddress;
   user1: SignerWithAddress;
   treasury: SignerWithAddress;
+  optionTestUtil: PremiaOptionTestUtil;
 
   constructor(props: PremiaMarketTestUtilProps) {
     this.eth = props.eth;
@@ -41,6 +48,17 @@ export class PremiaMarketTestUtil {
     this.writer2 = props.writer2;
     this.user1 = props.user1;
     this.treasury = props.treasury;
+
+    this.optionTestUtil = new PremiaOptionTestUtil({
+      eth: this.eth,
+      dai: this.dai,
+      premiaOption: this.premiaOption,
+      writer1: this.writer1,
+      writer2: this.writer2,
+      user1: this.user1,
+      treasury: this.treasury,
+      tax: 0.01,
+    });
   }
 
   isOrderSame(order: IOrderCreateProps, orderCreated: IOrderCreated) {
@@ -54,11 +72,12 @@ export class PremiaMarketTestUtil {
     );
   }
 
-  getDefaultOrder(user: SignerWithAddress, isSell: boolean) {
+  getDefaultOrder(user: SignerWithAddress, orderOptions?: OrderOptions) {
     const newOrder: IOrderCreateProps = {
       maker: user.address,
-      taker: '0x0000000000000000000000000000000000000000',
-      side: Number(isSell),
+      taker:
+        orderOptions?.taker ?? '0x0000000000000000000000000000000000000000',
+      side: Number(!orderOptions?.isBuy),
       optionContract: this.premiaOption.address,
       pricePerUnit: ethers.utils.parseEther('1'),
       optionId: 1,
@@ -67,8 +86,8 @@ export class PremiaMarketTestUtil {
     return newOrder;
   }
 
-  async createOrder(user: SignerWithAddress, isSell = true) {
-    const newOrder = this.getDefaultOrder(user, isSell);
+  async createOrder(user: SignerWithAddress, orderOptions?: OrderOptions) {
+    const newOrder = this.getDefaultOrder(user, orderOptions);
 
     const tx = await this.premiaMarket.connect(user).createOrder(
       {
@@ -101,6 +120,38 @@ export class PremiaMarketTestUtil {
     }
 
     return order;
+  }
+
+  async setupOrder(
+    maker: SignerWithAddress,
+    taker: SignerWithAddress,
+    orderOptions?: OrderOptions,
+  ) {
+    let buyer: SignerWithAddress;
+    let seller: SignerWithAddress;
+    if (orderOptions?.isBuy) {
+      buyer = maker;
+      seller = taker;
+    } else {
+      buyer = taker;
+      seller = maker;
+    }
+
+    await this.optionTestUtil.mintAndWriteOption(seller, 1);
+
+    await this.eth.connect(buyer).mint(ethers.utils.parseEther('1.015'));
+    await this.eth
+      .connect(buyer)
+      .increaseAllowance(
+        this.premiaMarket.address,
+        ethers.utils.parseEther('1.015'),
+      );
+
+    await this.premiaOption
+      .connect(seller)
+      .setApprovalForAll(this.premiaMarket.address, true);
+
+    return await this.createOrder(maker, orderOptions);
   }
 
   convertOrderCreatedToOrder(orderCreated: IOrderCreated) {
