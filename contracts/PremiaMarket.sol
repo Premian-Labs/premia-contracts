@@ -160,6 +160,27 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return block.timestamp;
     }
 
+    // Returns the amounts left to buy/sell for an order
+    function getAmountsBatch(bytes32[] memory _orderIds) public view returns(uint256[] memory) {
+        uint256[] memory result = new uint256[](_orderIds.length);
+
+        for (uint256 i=0; i < _orderIds.length; i++) {
+            result[i] = amounts[_orderIds[i]];
+        }
+
+        return result;
+    }
+
+    function getOrderHashBatch(Order[] memory _orders) public pure returns(bytes32[] memory) {
+        bytes32[] memory result = new bytes32[](_orders.length);
+
+        for (uint256 i=0; i < _orders.length; i++) {
+            result[i] = getOrderHash(_orders[i]);
+        }
+
+        return result;
+    }
+
     function getOrderHash(Order memory _order) public pure returns(bytes32) {
         return keccak256(abi.encode(_order));
     }
