@@ -71,7 +71,7 @@ async function main() {
 
   console.log('ROPE/WETH added');
 
-  const premiaMarket = await premiaMarketFactory.deploy(deployer.address, weth);
+  const premiaMarket = await premiaMarketFactory.deploy(deployer.address);
 
   console.log(
     `premiaMarket deployed to ${premiaMarket.address} from ${deployer.address}`,
@@ -81,6 +81,8 @@ async function main() {
     premiaOptionEth.address,
     premiaOptionDai.address,
   ]);
+
+  await premiaMarket.addWhitelistedPaymentTokens([dai, weth]);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

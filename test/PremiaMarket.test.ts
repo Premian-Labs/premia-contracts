@@ -43,7 +43,7 @@ describe('PremiaMarket', () => {
     );
 
     const premiaMarketFactory = new TestPremiaMarket__factory(user1);
-    premiaMarket = await premiaMarketFactory.deploy(admin.address, eth.address);
+    premiaMarket = await premiaMarketFactory.deploy(admin.address);
 
     optionTestUtil = new PremiaOptionTestUtil({
       eth,
@@ -96,6 +96,8 @@ describe('PremiaMarket', () => {
       utils.parseEther('1'),
       utils.parseEther('10'),
     );
+
+    await premiaMarket.addWhitelistedPaymentTokens([eth.address]);
   });
 
   describe('createOrder', () => {
@@ -142,6 +144,7 @@ describe('PremiaMarket', () => {
         null,
         null,
         null,
+        null,
       );
       const r = await premiaMarket.queryFilter(filter, tx.blockHash);
 
@@ -163,6 +166,14 @@ describe('PremiaMarket', () => {
       await optionTestUtil.mintAndWriteOption(admin, 5);
       await expect(marketTestUtil.createOrder(admin)).to.be.revertedWith(
         'Option contract not whitelisted',
+      );
+    });
+
+    it('should fail creating an order if payment token is not whitelisted', async () => {
+      await premiaMarket.removeWhitelistedPaymentTokens([eth.address]);
+      await optionTestUtil.mintAndWriteOption(admin, 5);
+      await expect(marketTestUtil.createOrder(admin)).to.be.revertedWith(
+        'Payment token not whitelisted',
       );
     });
 

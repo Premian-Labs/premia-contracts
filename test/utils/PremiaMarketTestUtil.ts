@@ -25,6 +25,7 @@ interface OrderOptions {
   taker?: string;
   isBuy?: boolean;
   amount?: number;
+  paymentToken?: string;
 }
 
 export class PremiaMarketTestUtil {
@@ -82,6 +83,7 @@ export class PremiaMarketTestUtil {
       optionContract: this.premiaOption.address,
       pricePerUnit: ethers.utils.parseEther('1'),
       optionId: 1,
+      paymentToken: orderOptions?.paymentToken ?? this.eth.address,
     };
 
     return newOrder;
@@ -101,6 +103,7 @@ export class PremiaMarketTestUtil {
     );
 
     const filter = this.premiaMarket.filters.OrderCreated(
+      null,
       null,
       null,
       null,
@@ -166,6 +169,7 @@ export class PremiaMarketTestUtil {
       side: orderCreated.side,
       optionContract: orderCreated.optionContract,
       optionId: orderCreated.optionId,
+      paymentToken: orderCreated.paymentToken,
       pricePerUnit: orderCreated.pricePerUnit,
       expirationTime: orderCreated.expirationTime,
       salt: orderCreated.salt,

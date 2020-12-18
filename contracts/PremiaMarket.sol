@@ -18,6 +18,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     EnumerableSet.AddressSet private _whitelistedOptionContracts;
+    EnumerableSet.AddressSet private _whitelistedPaymentTokens;
 
     /* For split fee orders, minimum required protocol maker fee, in basis points. Paid to owner (who can change it). */
     uint256 public makerFee = 15e2; // 1.5%
@@ -32,8 +33,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
     /* Inverse basis point. */
     uint256 public constant INVERSE_BASIS_POINT = 1e5;
-
-    IERC20 public weth;
 
     /* Salt to prevent duplicate hash. */
     uint256 salt = 0;
@@ -50,7 +49,9 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         address optionContract;
         /* OptionId */
         uint256 optionId;
-        /* Price per unit (in WETH). */
+        /* Address of token used for payment. */
+        address paymentToken;
+        /* Price per unit (in paymentToken). */
         uint256 pricePerUnit;
         /* Expiration timestamp of option (Which is also expiration of order). */
         uint256 expirationTime;
@@ -72,6 +73,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         SaleSide side,
         address taker,
         uint256 optionId,
+        address paymentToken,
         uint256 pricePerUnit,
         uint256 expirationTime,
         uint256 salt,
@@ -83,6 +85,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         address indexed taker,
         address indexed optionContract,
         address maker,
+        address paymentToken,
         uint256 amount,
         uint256 pricePerUnit
     );
@@ -91,6 +94,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         bytes32 indexed hash,
         address indexed maker,
         address indexed optionContract,
+        address paymentToken,
         uint256 amount,
         uint256 pricePerUnit
     );
@@ -99,9 +103,8 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(address _treasury, IERC20 _weth) public {
+    constructor(address _treasury) public {
         treasury = _treasury;
-        weth = _weth;
     }
 
     //////////////////////////////////////////////////
@@ -152,6 +155,18 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         }
     }
 
+    function addWhitelistedPaymentTokens(address[] memory _addr) public onlyOwner {
+        for (uint256 i=0; i < _addr.length; i++) {
+            _whitelistedPaymentTokens.add(_addr[i]);
+        }
+    }
+
+    function removeWhitelistedPaymentTokens(address[] memory _addr) public onlyOwner {
+        for (uint256 i=0; i < _addr.length; i++) {
+            _whitelistedPaymentTokens.remove(_addr[i]);
+        }
+    }
+
     //////////
     // View //
     //////////
@@ -196,6 +211,17 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return result;
     }
 
+    function getWhitelistedPaymentTokens() external view returns(address[] memory) {
+        uint256 length = _whitelistedPaymentTokens.length();
+        address[] memory result = new address[](length);
+
+        for (uint256 i=0; i < length; i++) {
+            result[i] = _whitelistedPaymentTokens.at(i);
+        }
+
+        return result;
+    }
+
     function isOrderValid(Order memory _order) public view returns(bool) {
         bytes32 hash = getOrderHash(_order);
         uint256 amountLeft = amounts[hash];
@@ -205,13 +231,15 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         // Expired
         if (_order.expirationTime == 0 || getBlockTimestamp() > _order.expirationTime) return false;
 
+        IERC20 token = IERC20(_order.paymentToken);
+
         if (_order.side == SaleSide.Buy) {
             uint256 basePrice = _order.pricePerUnit.mul(amountLeft);
             uint256 orderMakerFee = basePrice.mul(makerFee).div(INVERSE_BASIS_POINT);
             uint256 totalPrice = basePrice.add(orderMakerFee);
 
-            uint256 userBalance = weth.balanceOf(_order.maker);
-            uint256 allowance = weth.allowance(_order.maker, address(this));
+            uint256 userBalance = token.balanceOf(_order.maker);
+            uint256 allowance = token.allowance(_order.maker, address(this));
 
             return userBalance >= totalPrice && allowance >= totalPrice;
         } else if (_order.side == SaleSide.Sell) {
@@ -242,6 +270,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     // Maker, salt and expirationTime will be overridden by this function
     function createOrder(Order memory _order, uint256 _amount) public returns(bytes32) {
         require(_whitelistedOptionContracts.contains(_order.optionContract), "Option contract not whitelisted");
+        require(_whitelistedPaymentTokens.contains(_order.paymentToken), "Payment token not whitelisted");
 
         uint256 _expiration = IPremiaOption(_order.optionContract).getOptionExpiration(_order.optionId);
         require(getBlockTimestamp() < _expiration, "Option expired");
@@ -262,6 +291,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             _order.side,
             _order.taker,
             _order.optionId,
+            _order.paymentToken,
             _order.pricePerUnit,
             _order.expirationTime,
             _order.salt,
@@ -309,19 +339,19 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         uint256 orderMakerFee = basePrice.mul(makerFee).div(INVERSE_BASIS_POINT);
         uint256 orderTakerFee = basePrice.mul(takerFee).div(INVERSE_BASIS_POINT);
 
-        IPremiaOption optionContract = IPremiaOption(_order.optionContract);
+        IERC20 token = IERC20(_order.paymentToken);
 
         if (_order.side == SaleSide.Buy) {
-            optionContract.safeTransferFrom(msg.sender, _order.maker, _order.optionId, amount, "");
+            IPremiaOption(_order.optionContract).safeTransferFrom(msg.sender, _order.maker, _order.optionId, amount, "");
 
-            weth.transferFrom(_order.maker, treasury, orderMakerFee.add(orderTakerFee));
-            weth.transferFrom(_order.maker, msg.sender, basePrice.sub(orderTakerFee));
+            token.transferFrom(_order.maker, treasury, orderMakerFee.add(orderTakerFee));
+            token.transferFrom(_order.maker, msg.sender, basePrice.sub(orderTakerFee));
 
         } else {
-            weth.transferFrom(msg.sender, treasury, orderMakerFee.add(orderTakerFee));
-            weth.transferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
+            token.transferFrom(msg.sender, treasury, orderMakerFee.add(orderTakerFee));
+            token.transferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
 
-            optionContract.safeTransferFrom(_order.maker, msg.sender, _order.optionId, amount, "");
+            IPremiaOption(_order.optionContract).safeTransferFrom(_order.maker, msg.sender, _order.optionId, amount, "");
         }
 
         emit OrderFilled(
@@ -329,6 +359,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             msg.sender,
             _order.optionContract,
             _order.maker,
+            _order.paymentToken,
             amount,
             _order.pricePerUnit
         );
@@ -362,6 +393,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             hash,
             _order.maker,
             _order.optionContract,
+            _order.paymentToken,
             amountLeft,
             _order.pricePerUnit
         );

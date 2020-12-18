@@ -8,6 +8,7 @@ interface IOrderCreateProps {
   optionContract: string;
   pricePerUnit: BigNumberish;
   optionId: BigNumberish;
+  paymentToken: string;
 }
 
 interface IOrder {
@@ -16,6 +17,7 @@ interface IOrder {
   side: BigNumberish;
   optionContract: string;
   optionId: BigNumberish;
+  paymentToken: string;
   pricePerUnit: BigNumberish;
   expirationTime: BigNumberish;
   salt: BigNumberish;
@@ -28,6 +30,7 @@ interface IOrderCreated {
   side: BigNumberish;
   optionContract: string;
   optionId: BigNumberish;
+  paymentToken: string;
   pricePerUnit: BigNumberish;
   expirationTime: BigNumberish;
   salt: BigNumberish;
