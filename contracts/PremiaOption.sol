@@ -176,6 +176,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     // Admin //
     ///////////
 
+    function setURI(string memory newuri) public onlyOwner {
+        _setURI(newuri);
+    }
+
     function setTokenDisabled(address _token, bool _isDisabled) public onlyOwner {
         tokenSettings[_token].isDisabled = _isDisabled;
     }

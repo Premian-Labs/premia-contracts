@@ -5,8 +5,8 @@ import {
   PremiaOption__factory,
   TestErc20__factory,
   TestPremiaOption__factory,
-} from '../contractsTyped';
-import { PremiaOptionTestUtil } from '../test/utils/PremiaOptionTestUtil';
+} from '../../contractsTyped';
+import { PremiaOptionTestUtil } from '../../test/utils/PremiaOptionTestUtil';
 
 async function main() {
   // We get the contract to deploy

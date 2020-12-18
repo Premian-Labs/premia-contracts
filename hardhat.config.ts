@@ -15,6 +15,7 @@ task('accounts', 'Prints the list of accounts', async (args, hre) => {
 // Go to https://hardhat.org/config/ to learn more
 
 const ETH_TEST_KEY = process.env.ETH_TEST_PKEY;
+const ALCHEMY_KEY = process.env.ALCHEMY_KEY;
 const INFURA_PROJECT_ID = process.env.INFURA_PROJECT_ID;
 
 export default {
@@ -46,12 +47,12 @@ export default {
       allowUnlimitedContractSize: true,
     },
     rinkeby: {
-      url: `https://rinkeby.infura.io/v3/${INFURA_PROJECT_ID}`,
+      url: `https://eth-rinkeby.alchemyapi.io/v2/${ALCHEMY_KEY}`,
       accounts: [ETH_TEST_KEY],
       //gas: 120000000000,
       blockGasLimit: 120000000000,
       //gasPrice: 10,
-      timeout: 40000,
+      timeout: 100000,
     },
   },
 };

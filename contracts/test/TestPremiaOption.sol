@@ -179,6 +179,10 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
     // Admin //
     ///////////
 
+    function setURI(string memory newuri) public onlyOwner {
+        _setURI(newuri);
+    }
+
     function setTokenDisabled(address _token, bool _isDisabled) public onlyOwner {
         tokenSettings[_token].isDisabled = _isDisabled;
     }

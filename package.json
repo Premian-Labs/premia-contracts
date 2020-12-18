@@ -13,7 +13,7 @@
     "typechain": "typechain --target ethers-v5 --outDir contractsTyped ./abi/*.json",
     "postinstall": "yarn run compile",
     "test": "hardhat test",
-    "deploy:rinkeby": "hardhat run ./scripts/PremiaOption-script.ts --network rinkeby"
+    "deploy:rinkeby": "hardhat run scripts/deploy/0001-PremiaOption.ts --network rinkeby"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
