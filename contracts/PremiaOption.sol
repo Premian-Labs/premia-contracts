@@ -8,12 +8,14 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
+import '@openzeppelin/contracts/utils/SafeCast.sol';
 
 import "./interface/IFlashLoanReceiver.sol";
 import "./interface/ITokenSettingsCalculator.sol";
 
 contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     using SafeMath for uint256;
+    using SafeCast for uint256;
     using SafeERC20 for IERC20;
 
     struct TokenSettings {
@@ -25,13 +27,13 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     struct OptionData {
         address token;                  // Token address
         uint256 contractSize;           // Amount of token per contract
-        uint256 expiration;             // Expiration timestamp of the option (Must follow expirationIncrement)
         uint256 strikePrice;            // Strike price (Must follow strikePriceIncrement of token)
+        uint64 expiration;             // Expiration timestamp of the option (Must follow expirationIncrement)
         bool isCall;                    // If true : Call option | If false : Put option
-        uint256 claimsPreExp;           // Amount of options from which the funds have been withdrawn pre expiration
-        uint256 claimsPostExp;          // Amount of options from which the funds have been withdrawn post expiration
-        uint256 exercised;              // Amount of options which have been exercised
-        uint256 supply;                 // Total circulating supply
+        uint32 claimsPreExp;           // Amount of options from which the funds have been withdrawn pre expiration
+        uint32 claimsPostExp;          // Amount of options from which the funds have been withdrawn post expiration
+        uint32 exercised;              // Amount of options which have been exercised
+        uint32 supply;                 // Total circulating supply
     }
 
     struct Pool {
@@ -250,7 +252,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             optionData[optionId] = OptionData({
             token: _token,
             contractSize: settings.contractSize,
-            expiration: _expiration,
+            expiration: _expiration.toUint32(),
             strikePrice: _strikePrice,
             isCall: _isCall,
             claimsPreExp: 0,
@@ -324,7 +326,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         OptionData storage data = optionData[_optionId];
 
         burn(msg.sender, _optionId, _contractAmount);
-        data.exercised = data.exercised.add(_contractAmount);
+        data.exercised = uint256(data.exercised).add(_contractAmount).toUint32();
 
         IERC20 tokenErc20 = IERC20(data.token);
 
@@ -364,7 +366,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
         OptionData storage data = optionData[_optionId];
 
-        uint256 nbTotalWithClaimedPreExp = data.supply.add(data.exercised);
+        uint256 nbTotalWithClaimedPreExp = uint256(data.supply).add(data.exercised);
         uint256 claimsPreExp = data.claimsPreExp;
         uint256 nbTotal = nbTotalWithClaimedPreExp.sub(claimsPreExp);
 
@@ -382,7 +384,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
         pools[_optionId].denominatorAmount.sub(denominatorAmount);
         pools[_optionId].tokenAmount.sub(tokenAmount);
-        data.claimsPostExp = data.claimsPostExp.add(claimsUser);
+        data.claimsPostExp = uint256(data.claimsPostExp).add(claimsUser).toUint32();
         delete nbWritten[msg.sender][_optionId];
 
         denominator.safeTransfer(msg.sender, denominatorAmount);
@@ -403,7 +405,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         OptionData storage data = optionData[_optionId];
 
         uint256 claimsPreExp = data.claimsPreExp;
-        uint256 nbClaimable = data.exercised.sub(claimsPreExp);
+        uint256 nbClaimable = uint256(data.exercised).sub(claimsPreExp);
 
         require(nbClaimable > 0, "No option to claim funds from");
         require(nbClaimable >= _contractAmount, "Not enough options claimable");
@@ -411,7 +413,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         //
 
         nbWritten[msg.sender][_optionId] = nbWritten[msg.sender][_optionId].sub(_contractAmount);
-        data.claimsPreExp = data.claimsPreExp.add(_contractAmount);
+        data.claimsPreExp = uint256(data.claimsPreExp).add(_contractAmount).toUint32();
 
         if (data.isCall) {
             uint256 amount = _contractAmount.mul(data.strikePrice);
@@ -487,13 +489,13 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         OptionData storage data = optionData[_id];
 
         _mint(_account, _id, _amount, "");
-        data.supply = data.supply.add(_amount);
+        data.supply = uint256(data.supply).add(_amount).toUint32();
     }
 
     function burn(address _account, uint256 _id, uint256 _amount) internal notExpired(_id) {
         OptionData storage data = optionData[_id];
 
-        data.supply = data.supply.sub(_amount);
+        data.supply = uint256(data.supply).sub(_amount).toUint32();
         _burn(_account, _id, _amount);
     }
 
