@@ -22,6 +22,15 @@ export default {
   solidity: {
     compilers: [
       {
+        version: '0.7.6',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+      {
         version: '0.6.12',
         settings: {
           optimizer: {
@@ -33,7 +42,7 @@ export default {
     ],
     overrides: {
       'contracts/test/TestPremiaOption.sol': {
-        version: '0.6.12',
+        version: '0.7.6',
         settings: {
           optimizer: {
             enabled: false,
@@ -48,6 +57,14 @@ export default {
     },
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${ALCHEMY_KEY}`,
+      accounts: [ETH_TEST_KEY],
+      //gas: 120000000000,
+      blockGasLimit: 120000000000,
+      //gasPrice: 10,
+      timeout: 100000,
+    },
+    kovan: {
+      url: `https://eth-kovan.alchemyapi.io/v2/${ALCHEMY_KEY}`,
       accounts: [ETH_TEST_KEY],
       //gas: 120000000000,
       blockGasLimit: 120000000000,

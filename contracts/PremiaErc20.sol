@@ -3,10 +3,12 @@
 pragma solidity >=0.6.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import '@openzeppelin/contracts/math/SafeMath.sol';
 import '@openzeppelin/contracts/utils/EnumerableSet.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
 contract PremiaErc20 is ERC20, Ownable {
+    using SafeMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // Addresses with minting rights

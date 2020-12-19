@@ -28,6 +28,8 @@ async function main() {
     `premiaMarket deployed to ${premiaMarket.address} from ${deployer.address}`,
   );
 
+  await premiaMarket.deployed();
+
   const weth = PremiaErc20__factory.connect(wethAddress, deployer);
   const dai = PremiaErc20__factory.connect(daiAddress, deployer);
   const rope = PremiaErc20__factory.connect(ropeAddress, deployer);
@@ -44,8 +46,11 @@ async function main() {
     premiaOptionDai.address,
     premiaOptionWeth.address,
   ]);
+  console.log('Whitelisted option contracts');
 
   await premiaMarket.addWhitelistedPaymentTokens([daiAddress, wethAddress]);
+  console.log('Whitelisted payment tokens');
+
   // await premiaOptionWeth.setApprovalForAll(premiaMarket.address, true);
   // const balance = await premiaOptionWeth.balanceOf(deployer.address, 1);
   // console.log('Balance', balance);
