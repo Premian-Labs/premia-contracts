@@ -161,7 +161,7 @@ export class PremiaOptionTestUtil {
         );
     }
 
-    await this.premiaOption
+    return this.premiaOption
       .connect(this.user1)
       .exerciseOption(1, amountToExercise);
   }

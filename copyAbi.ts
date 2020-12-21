@@ -22,6 +22,12 @@ fs.copyFileSync(
   './abi/PremiaMarket.json',
 );
 fs.copyFileSync(
+  './artifacts/contracts/PremiaReferral.sol/PremiaReferral.json',
+  './abi/PremiaReferral.json',
+);
+
+// Test contracts
+fs.copyFileSync(
   './artifacts/contracts/test/TestErc20.sol/TestErc20.json',
   './abi/TestErc20.json',
 );
