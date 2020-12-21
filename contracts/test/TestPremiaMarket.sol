@@ -314,24 +314,57 @@ contract TestPremiaMarket is Ownable, ReentrancyGuard, TestTime {
         return result;
     }
 
+    // Will try to fill orderCandidates. If it cannot fill _amount, it will create a new order for the remaining amount to fill
+    function createOrderAndTryToFill(Order memory _order, uint256 _amount, Order[] memory _orderCandidates) public {
+        require(_amount > 0, "Amount must be > 0");
+
+        uint256 totalFilled = 0;
+        uint256 leftToFill = _amount;
+
+        for (uint256 i=0; i < _orderCandidates.length; i++) {
+            Order memory candidate = _orderCandidates[i];
+            require(candidate.side != _order.side, "Candidate order : Same order side");
+            require(candidate.optionContract == _order.optionContract, "Candidate order : Diff option contract");
+            require(candidate.optionId == _order.optionId, "Candidate order : Diff optionId");
+
+            bytes32 hash = getOrderHash(candidate);
+            uint256 amountLeft = amounts[hash];
+
+            if (amountLeft == 0) continue;
+
+            uint256 toFill = amountLeft;
+            if (amountLeft > leftToFill) {
+                toFill = leftToFill;
+            }
+
+            uint256 amountFilled = fillOrder(candidate, toFill);
+            totalFilled = totalFilled.add(amountFilled);
+
+            leftToFill = _amount.sub(totalFilled);
+            // If we filled everything, we can just return
+            if (leftToFill == 0) return;
+        }
+
+        createOrder(_order, leftToFill);
+    }
+
     /**
      * @dev Fill an existing order
      * @param _order The order
      * @param _maxAmount Max amount of options to buy/sell
      */
-    function fillOrder(Order memory _order, uint256 _maxAmount) public nonReentrant {
+    function fillOrder(Order memory _order, uint256 _maxAmount) public nonReentrant returns(uint256 _amountFilled) {
         bytes32 hash = getOrderHash(_order);
-        uint256 amountLeft = amounts[hash];
 
-        require(amountLeft > 0, "Order not found");
+        require(amounts[hash] > 0, "Order not found");
         require(_order.expirationTime != 0 && getBlockTimestamp() < _order.expirationTime, "Order expired");
         require(_order.optionContract != address(0), "Order not found");
         require(_maxAmount > 0, "MaxAmount must be > 0");
         require(_order.taker == address(0) || _order.taker == msg.sender, "Not specified taker");
 
         uint256 amount = _maxAmount;
-        if (amountLeft < _maxAmount) {
-            amount = amountLeft;
+        if (amounts[hash] < _maxAmount) {
+            amount = amounts[hash];
         }
 
         amounts[hash] = amounts[hash].sub(amount);
@@ -364,6 +397,8 @@ contract TestPremiaMarket is Ownable, ReentrancyGuard, TestTime {
             amount,
             _order.pricePerUnit
         );
+
+        return amount;
     }
 
     /**

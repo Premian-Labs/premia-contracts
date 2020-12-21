@@ -26,6 +26,8 @@ interface OrderOptions {
   isBuy?: boolean;
   amount?: number;
   paymentToken?: string;
+  optionContract?: string;
+  optionId?: number;
 }
 
 export class PremiaMarketTestUtil {
@@ -80,9 +82,9 @@ export class PremiaMarketTestUtil {
       taker:
         orderOptions?.taker ?? '0x0000000000000000000000000000000000000000',
       side: Number(!orderOptions?.isBuy),
-      optionContract: this.premiaOption.address,
+      optionContract: orderOptions?.optionContract ?? this.premiaOption.address,
       pricePerUnit: ethers.utils.parseEther('1'),
-      optionId: 1,
+      optionId: orderOptions?.optionId ?? 1,
       paymentToken: orderOptions?.paymentToken ?? this.eth.address,
     };
 
@@ -124,7 +126,11 @@ export class PremiaMarketTestUtil {
       throw new Error('Order not found in events');
     }
 
-    return order;
+    return {
+      order: this.convertOrderCreatedToOrder(order),
+      hash: order.hash,
+      amount: order.amount,
+    };
   }
 
   async setupOrder(
