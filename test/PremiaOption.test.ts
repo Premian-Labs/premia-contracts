@@ -1,19 +1,26 @@
 import { ethers } from 'hardhat';
-import { BigNumberish, utils } from 'ethers';
+import { utils } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
+  PremiaReferral,
+  PremiaReferral__factory,
   TestErc20__factory,
   TestPremiaOption,
   TestPremiaOption__factory,
-  TestTokenSettingsCalculator__factory,
+  TestPremiaStaking,
+  TestPremiaStaking__factory,
 } from '../contractsTyped';
 import { TestErc20 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
+import { ZERO_ADDRESS } from './utils/constants';
 
 let eth: TestErc20;
 let dai: TestErc20;
 let premiaOption: TestPremiaOption;
+let premiaReferral: PremiaReferral;
+let premiaStaking: TestPremiaStaking;
+let admin: SignerWithAddress;
 let writer1: SignerWithAddress;
 let writer2: SignerWithAddress;
 let user1: SignerWithAddress;
@@ -24,22 +31,28 @@ let optionTestUtil: PremiaOptionTestUtil;
 
 describe('PremiaOption', () => {
   beforeEach(async () => {
-    [writer1, writer2, user1, treasury] = await ethers.getSigners();
-    const erc20Factory = new TestErc20__factory(writer1);
+    [admin, writer1, writer2, user1, treasury] = await ethers.getSigners();
+    const erc20Factory = new TestErc20__factory(admin);
     eth = await erc20Factory.deploy();
     dai = await erc20Factory.deploy();
 
-    const premiaOptionFactory = new TestPremiaOption__factory(writer1);
+    const premiaOptionFactory = new TestPremiaOption__factory(admin);
+    const premiaReferralFactory = new PremiaReferral__factory(admin);
+    const premiaStakingFactory = new TestPremiaStaking__factory(admin);
+
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
       dai.address,
       treasury.address,
     );
+    premiaReferral = await premiaReferralFactory.deploy();
+    premiaStaking = await premiaStakingFactory.deploy();
 
     optionTestUtil = new PremiaOptionTestUtil({
       eth,
       dai,
       premiaOption,
+      admin,
       writer1,
       writer2,
       user1,
@@ -176,7 +189,7 @@ describe('PremiaOption', () => {
       expect(optionBalance).to.eq(2);
       expect(ethBalance).to.eq(0);
 
-      await premiaOption.cancelOption(1, 1);
+      await premiaOption.connect(writer1).cancelOption(1, 1);
 
       optionBalance = await premiaOption.balanceOf(writer1.address, 1);
       ethBalance = await eth.balanceOf(writer1.address);
@@ -194,7 +207,7 @@ describe('PremiaOption', () => {
       expect(optionBalance).to.eq(2);
       expect(daiBalance).to.eq(0);
 
-      await premiaOption.cancelOption(1, 1);
+      await premiaOption.connect(writer1).cancelOption(1, 1);
 
       optionBalance = await premiaOption.balanceOf(writer1.address, 1);
       daiBalance = await dai.balanceOf(writer1.address);
@@ -213,7 +226,7 @@ describe('PremiaOption', () => {
 
     it('should subtract option written after cancelling', async () => {
       await optionTestUtil.addEthAndWriteOptions(2);
-      await premiaOption.cancelOption(1, 1);
+      await premiaOption.connect(writer1).cancelOption(1, 1);
       const nbWritten = await premiaOption.nbWritten(writer1.address, 1);
       expect(nbWritten).to.eq(1);
     });
@@ -223,7 +236,7 @@ describe('PremiaOption', () => {
     it('should fail exercising call option if not owned', async () => {
       await optionTestUtil.addEthAndWriteOptions(2);
       await expect(
-        premiaOption.connect(user1).exerciseOption(1, 1),
+        premiaOption.connect(user1).exerciseOption(1, 1, ZERO_ADDRESS),
       ).to.revertedWith('ERC1155: burn amount exceeds balance');
     });
 
@@ -231,7 +244,7 @@ describe('PremiaOption', () => {
       await optionTestUtil.addEthAndWriteOptions(2);
       await optionTestUtil.transferOptionToUser1(writer1);
       await expect(
-        premiaOption.connect(user1).exerciseOption(1, 1),
+        premiaOption.connect(user1).exerciseOption(1, 1, ZERO_ADDRESS),
       ).to.revertedWith('ERC20: transfer amount exceeds balance');
     });
 
@@ -437,7 +450,7 @@ describe('PremiaOption', () => {
 
       await premiaOption.setTimestamp(1e6);
 
-      await premiaOption.withdraw(1);
+      await premiaOption.connect(writer1).withdraw(1);
 
       const daiBalance = await dai.balanceOf(writer1.address);
       const ethBalance = await eth.balanceOf(writer1.address);
@@ -461,7 +474,7 @@ describe('PremiaOption', () => {
 
       await premiaOption.setTimestamp(1e6);
 
-      await premiaOption.withdraw(1);
+      await premiaOption.connect(writer1).withdraw(1);
 
       const daiBalance = await dai.balanceOf(writer1.address);
       const ethBalance = await eth.balanceOf(writer1.address);

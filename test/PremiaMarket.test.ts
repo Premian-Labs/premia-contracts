@@ -49,6 +49,7 @@ describe('PremiaMarket', () => {
       eth,
       dai,
       premiaOption,
+      admin: admin,
       writer1: user1,
       writer2: user2,
       user1: user3,

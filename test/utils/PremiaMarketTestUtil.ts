@@ -8,6 +8,7 @@ import { BigNumber } from 'ethers';
 import { IOrderCreated, IOrderCreateProps } from '../../types';
 import { ethers } from 'hardhat';
 import { PremiaOptionTestUtil } from './PremiaOptionTestUtil';
+import { ZERO_ADDRESS } from './constants';
 
 interface PremiaMarketTestUtilProps {
   eth: TestErc20;
@@ -57,6 +58,7 @@ export class PremiaMarketTestUtil {
       eth: this.eth,
       dai: this.dai,
       premiaOption: this.premiaOption,
+      admin: this.admin,
       writer1: this.writer1,
       writer2: this.writer2,
       user1: this.user1,
@@ -79,8 +81,7 @@ export class PremiaMarketTestUtil {
   getDefaultOrder(user: SignerWithAddress, orderOptions?: OrderOptions) {
     const newOrder: IOrderCreateProps = {
       maker: user.address,
-      taker:
-        orderOptions?.taker ?? '0x0000000000000000000000000000000000000000',
+      taker: orderOptions?.taker ?? ZERO_ADDRESS,
       side: Number(!orderOptions?.isBuy),
       optionContract: orderOptions?.optionContract ?? this.premiaOption.address,
       pricePerUnit: ethers.utils.parseEther('1'),

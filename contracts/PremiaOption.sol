@@ -12,6 +12,8 @@ import '@openzeppelin/contracts/utils/SafeCast.sol';
 
 import "./interface/IFlashLoanReceiver.sol";
 import "./interface/ITokenSettingsCalculator.sol";
+import "./interface/IPremiaReferral.sol";
+import "./interface/IPremiaStaking.sol";
 
 contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     using SafeMath for uint256;
@@ -45,6 +47,11 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     //////////////////////////////////////////////////
 
+    IPremiaReferral public premiaReferral;
+    IPremiaStaking public premiaStaking;
+
+    //////////////////////////////////////////////////
+
     address[] public tokens;
     mapping (address => TokenSettings) public tokenSettings;
 
@@ -61,6 +68,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     uint256 public writeFee = 1e3;                  // 1%
     uint256 public exerciseFee = 1e3;               // 1%
     uint256 public flashLoanFee = 2e2;              // 0.2%
+
+    uint256 public referrerFee = 1e4;               // 10% of write/exercise fee | Referrer fee calculated after all discounts applied
+    uint256 public referredDiscount = 1e4;          // -10% from write/exercise fee
 
     uint256 public constant INVERSE_BASIS_POINT = 1e5;
 
@@ -200,6 +210,23 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         maxExpiration = _max;
     }
 
+    function setPremiaReferral(IPremiaReferral _premiaReferral) public onlyOwner {
+        premiaReferral = _premiaReferral;
+    }
+
+    function setPremiaStaking(IPremiaStaking _premiaStaking) public onlyOwner {
+        premiaStaking = _premiaStaking;
+    }
+
+    // Set settings for a token to support writing of options paired to denominator
+    function setToken(address _token, uint256 _contractSize, uint256 _strikePriceIncrement) public onlyOwner {
+        _setToken(_token, _contractSize, _strikePriceIncrement);
+    }
+
+    //////////
+    // Fees //
+    //////////
+
     function setWriteFee(uint256 _fee) public onlyOwner {
         // Hardcoded max fee we can set at 5%
         require(_fee <= 5e3, "Over max fee limit");
@@ -218,14 +245,21 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         flashLoanFee = _fee;
     }
 
-    // Set settings for a token to support writing of options paired to denominator
-    function setToken(address _token, uint256 _contractSize, uint256 _strikePriceIncrement) public onlyOwner {
-        _setToken(_token, _contractSize, _strikePriceIncrement);
+    function setReferrerFee(uint256 _fee) public onlyOwner {
+        // Hardcoded max we can set at 100% of write/exercise fee
+        require(_fee <= 1e5, "Over max fee limit");
+        referrerFee = _fee;
+    }
+
+    function setReferredDiscount(uint256 _discount) public onlyOwner {
+        // Hardcoded max we can set at 100% of write/exercise fee
+        require(_discount <= 1e5, "Over max discount limit");
+        referredDiscount = _discount;
     }
 
     ////////
 
-    function writeOption(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall, uint256 _contractAmount) public nonReentrant {
+    function writeOption(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall, uint256 _contractAmount, address _referrer) public nonReentrant {
         // If token has never been used before, we request a default contractSize and strikePriceIncrement to initialize it
         // (If tokenSettingsCalculator contract is defined)
         if (address(tokenSettingsCalculator) != address(0) && _isInArray(_token, tokens) == false) {
@@ -275,7 +309,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             uint256 feeAmount = amount.mul(writeFee).div(INVERSE_BASIS_POINT);
 
             tokenErc20.safeTransferFrom(msg.sender, address(this), amount);
-            tokenErc20.safeTransferFrom(msg.sender, treasury, feeAmount);
+            payFees(tokenErc20, _referrer, feeAmount);
 
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
         } else {
@@ -283,7 +317,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             uint256 feeAmount = amount.mul(writeFee).div(INVERSE_BASIS_POINT);
 
             denominator.safeTransferFrom(msg.sender, address(this), amount);
-            denominator.safeTransferFrom(msg.sender, treasury, feeAmount);
+            payFees(denominator, _referrer, feeAmount);
 
             pools[optionId].denominatorAmount = pools[optionId].denominatorAmount.add(amount);
         }
@@ -320,7 +354,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         emit OptionCancelled(msg.sender, _optionId, data.token, _contractAmount);
     }
 
-    function exerciseOption(uint256 _optionId, uint256 _contractAmount) public nonReentrant notExpired(_optionId) {
+    function exerciseOption(uint256 _optionId, uint256 _contractAmount, address _referrer) public nonReentrant notExpired(_optionId) {
         require(_contractAmount > 0, "ContractAmount must be > 0");
 
         OptionData storage data = optionData[_optionId];
@@ -340,7 +374,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             uint256 feeAmount = denominatorAmount.mul(exerciseFee).div(INVERSE_BASIS_POINT);
 
             denominator.safeTransferFrom(msg.sender, address(this), denominatorAmount);
-            denominator.safeTransferFrom(msg.sender, treasury, feeAmount);
+            payFees(denominator, _referrer, feeAmount);
 
             tokenErc20.safeTransfer(msg.sender, tokenAmount);
         } else {
@@ -350,7 +384,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             uint256 feeAmount = tokenAmount.mul(exerciseFee).div(INVERSE_BASIS_POINT);
 
             tokenErc20.safeTransferFrom(msg.sender, address(this), tokenAmount);
-            tokenErc20.safeTransferFrom(msg.sender, treasury, feeAmount);
+            payFees(tokenErc20, _referrer, feeAmount);
 
             denominator.safeTransfer(msg.sender, denominatorAmount);
         }
@@ -444,14 +478,14 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     // Batch functions //
     /////////////////////
 
-    function batchWriteOption(address[] memory _token, uint256[] memory _expiration, uint256[] memory _strikePrice, bool[] memory _isCall, uint256[] memory _contractAmount) public {
+    function batchWriteOption(address[] memory _token, uint256[] memory _expiration, uint256[] memory _strikePrice, bool[] memory _isCall, uint256[] memory _contractAmount, address _referrer) public {
         require(_token.length == _expiration.length, "All arrays must have same length");
         require(_token.length == _strikePrice.length, "All arrays must have same length");
         require(_token.length == _isCall.length, "All arrays must have same length");
         require(_token.length == _contractAmount.length, "All arrays must have same length");
 
         for (uint256 i = 0; i < _token.length; ++i) {
-            writeOption(_token[i], _expiration[i], _strikePrice[i], _isCall[i], _contractAmount[i]);
+            writeOption(_token[i], _expiration[i], _strikePrice[i], _isCall[i], _contractAmount[i], _referrer);
         }
     }
 
@@ -466,6 +500,14 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     function batchWithdraw(uint256[] memory _optionId) public {
         for (uint256 i = 0; i < _optionId.length; ++i) {
             withdraw(_optionId[i]);
+        }
+    }
+
+    function batchExerciseOption(uint256[] memory _optionId, uint256[] memory _contractAmount, address _referrer) public {
+        require(_optionId.length == _contractAmount.length, "All arrays must have same length");
+
+        for (uint256 i = 0; i < _optionId.length; ++i) {
+            exerciseOption(_optionId[i], _contractAmount[i], _referrer);
         }
     }
 
@@ -540,4 +582,37 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return false;
     }
 
+    function payFees(IERC20 _token, address _referrer, uint256 _feeAmountBase) internal {
+        uint256 feeTreasury = _feeAmountBase;
+        uint256 feeReferrer = 0;
+        uint256 feeDiscount = 0;
+
+        // If premiaStaking contract is set, we calculate discount
+        if (address(premiaStaking) != address(0)) {
+            uint256 stakingDiscount = premiaStaking.getDiscount(msg.sender);
+            require(stakingDiscount <= INVERSE_BASIS_POINT, "Staking discount above max");
+            feeDiscount = _feeAmountBase.mul(stakingDiscount).div(INVERSE_BASIS_POINT);
+        }
+
+        // If premiaReferral contract is set, we calculate discount
+        if (address(premiaReferral) != address(0)) {
+            address referrer = premiaReferral.getReferrer(msg.sender, _referrer);
+
+            if (referrer != address(0)) {
+                // feeDiscount = feeDiscount + ( (_feeAmountBase - feeDiscount ) * referredDiscountRate)
+                feeDiscount = feeDiscount.add(_feeAmountBase.sub(feeDiscount).mul(referredDiscount).div(INVERSE_BASIS_POINT));
+                feeReferrer = _feeAmountBase.sub(feeDiscount).mul(referrerFee).div(INVERSE_BASIS_POINT);
+            }
+        }
+
+        feeTreasury = _feeAmountBase.sub(feeDiscount).sub(feeReferrer);
+
+        if (feeTreasury > 0) {
+            _token.safeTransferFrom(msg.sender, treasury, feeTreasury);
+        }
+
+        if (feeReferrer > 0) {
+            _token.safeTransferFrom(msg.sender, _referrer, feeReferrer);
+        }
+    }
 }

@@ -47,5 +47,9 @@ fs.copyFileSync(
   './artifacts/contracts/test/TestTokenSettingsCalculator.sol/TestTokenSettingsCalculator.json',
   './abi/TestTokenSettingsCalculator.json',
 );
+fs.copyFileSync(
+  './artifacts/contracts/test/TestPremiaStaking.sol/TestPremiaStaking.json',
+  './abi/TestPremiaStaking.json',
+);
 
 rimraf.sync('./contractsTyped');

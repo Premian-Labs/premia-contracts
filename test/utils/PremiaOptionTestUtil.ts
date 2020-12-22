@@ -5,6 +5,7 @@ import {
 } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumberish, utils } from 'ethers';
+import { ZERO_ADDRESS } from './constants';
 
 interface WriteOptionArgs {
   address?: string;
@@ -18,6 +19,7 @@ interface PremiaOptionTestUtilProps {
   eth: TestErc20;
   dai: TestErc20;
   premiaOption: TestPremiaOption;
+  admin: SignerWithAddress;
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
   user1: SignerWithAddress;
@@ -29,6 +31,7 @@ export class PremiaOptionTestUtil {
   eth: TestErc20;
   dai: TestErc20;
   premiaOption: TestPremiaOption;
+  admin: SignerWithAddress;
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
   user1: SignerWithAddress;
@@ -39,6 +42,7 @@ export class PremiaOptionTestUtil {
     this.eth = props.eth;
     this.dai = props.dai;
     this.premiaOption = props.premiaOption;
+    this.admin = props.admin;
     this.writer1 = props.writer1;
     this.writer2 = props.writer2;
     this.user1 = props.user1;
@@ -87,6 +91,7 @@ export class PremiaOptionTestUtil {
         args?.contractAmount == undefined
           ? defaults.contractAmount
           : args?.contractAmount,
+        ZERO_ADDRESS,
       );
   }
 
@@ -163,7 +168,7 @@ export class PremiaOptionTestUtil {
 
     return this.premiaOption
       .connect(this.user1)
-      .exerciseOption(1, amountToExercise);
+      .exerciseOption(1, amountToExercise, ZERO_ADDRESS);
   }
 
   async addEthAndWriteOptionsAndExercise(

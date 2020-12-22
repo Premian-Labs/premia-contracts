@@ -10,8 +10,6 @@ import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 import "./interface/IPremiaOption.sol";
 
-//import "hardhat/console.sol";
-
 contract PremiaMarket is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
