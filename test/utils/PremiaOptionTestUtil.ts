@@ -13,6 +13,7 @@ interface WriteOptionArgs {
   strikePrice?: BigNumberish;
   isCall?: boolean;
   contractAmount?: number;
+  referrer?: string;
 }
 
 interface PremiaOptionTestUtilProps {
@@ -91,7 +92,7 @@ export class PremiaOptionTestUtil {
         args?.contractAmount == undefined
           ? defaults.contractAmount
           : args?.contractAmount,
-        ZERO_ADDRESS,
+        args?.referrer ?? ZERO_ADDRESS,
       );
   }
 
@@ -99,6 +100,7 @@ export class PremiaOptionTestUtil {
     user: SignerWithAddress,
     contractAmount: number,
     isCall = true,
+    referrer?: string,
   ) {
     if (isCall) {
       const amount = contractAmount * (1 + this.tax);
@@ -120,12 +122,21 @@ export class PremiaOptionTestUtil {
         );
     }
 
-    await this.writeOption(user, { contractAmount, isCall });
+    await this.writeOption(user, { contractAmount, isCall, referrer });
   }
 
-  async addEthAndWriteOptions(contractAmount: number, isCall = true) {
+  async addEthAndWriteOptions(
+    contractAmount: number,
+    isCall = true,
+    referrer?: string,
+  ) {
     await this.addEth();
-    await this.mintAndWriteOption(this.writer1, contractAmount, isCall);
+    await this.mintAndWriteOption(
+      this.writer1,
+      contractAmount,
+      isCall,
+      referrer,
+    );
   }
 
   async transferOptionToUser1(from: SignerWithAddress, amount?: number) {
@@ -140,7 +151,11 @@ export class PremiaOptionTestUtil {
       );
   }
 
-  async exerciseOption(isCall: boolean, amountToExercise: number) {
+  async exerciseOption(
+    isCall: boolean,
+    amountToExercise: number,
+    referrer?: string,
+  ) {
     if (isCall) {
       const amount = amountToExercise * 10 * (1 + this.tax);
       await this.dai
@@ -168,16 +183,17 @@ export class PremiaOptionTestUtil {
 
     return this.premiaOption
       .connect(this.user1)
-      .exerciseOption(1, amountToExercise, ZERO_ADDRESS);
+      .exerciseOption(1, amountToExercise, referrer ?? ZERO_ADDRESS);
   }
 
   async addEthAndWriteOptionsAndExercise(
     isCall: boolean,
     amountToWrite: number,
     amountToExercise: number,
+    referrer?: string,
   ) {
     await this.addEthAndWriteOptions(amountToWrite, isCall);
     await this.transferOptionToUser1(this.writer1, amountToWrite);
-    await this.exerciseOption(isCall, amountToExercise);
+    await this.exerciseOption(isCall, amountToExercise, referrer);
   }
 }

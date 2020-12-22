@@ -102,6 +102,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     //////////////////////////////////////////////////
 
     constructor(address _treasury) public {
+        require(_treasury != address(0), "Treasury cannot be 0x0 address");
         treasury = _treasury;
     }
 
@@ -117,7 +118,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
      * @dev Set the minimum maker fee paid to the protocol (owner only)
      * @param _fee New fee to set in basis points
      */
-    function setMakerFee(uint256 _fee) public onlyOwner {
+    function setMakerFee(uint256 _fee) external onlyOwner {
         // Hardcoded max fee we can set at 5%
         require(_fee <= 5e3, "Over max fee limit");
         makerFee = _fee;
@@ -127,7 +128,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
      * @dev Change the minimum taker fee paid to the protocol (owner only)
      * @param _fee New fee to set in basis points
      */
-    function setTakerFee(uint256 _fee) public onlyOwner {
+    function setTakerFee(uint256 _fee) external onlyOwner {
         // Hardcoded max fee we can set at 5%
         require(_fee <= 5e3, "Over max fee limit");
         takerFee = _fee;
@@ -137,29 +138,30 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
      * @dev Change the protocol fee recipient (owner only)
      * @param _treasury New protocol fee recipient address
      */
-    function setTreasury(address _treasury) public onlyOwner {
+    function setTreasury(address _treasury) external onlyOwner {
+        require(_treasury != address(0), "Treasury cannot be 0x0 address");
         treasury = _treasury;
     }
 
-    function addWhitelistedOptionContracts(address[] memory _addr) public onlyOwner {
+    function addWhitelistedOptionContracts(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedOptionContracts.add(_addr[i]);
         }
     }
 
-    function removeWhitelistedOptionContracts(address[] memory _addr) public onlyOwner {
+    function removeWhitelistedOptionContracts(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedOptionContracts.remove(_addr[i]);
         }
     }
 
-    function addWhitelistedPaymentTokens(address[] memory _addr) public onlyOwner {
+    function addWhitelistedPaymentTokens(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedPaymentTokens.add(_addr[i]);
         }
     }
 
-    function removeWhitelistedPaymentTokens(address[] memory _addr) public onlyOwner {
+    function removeWhitelistedPaymentTokens(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedPaymentTokens.remove(_addr[i]);
         }
@@ -174,7 +176,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     }
 
     // Returns the amounts left to buy/sell for an order
-    function getAmountsBatch(bytes32[] memory _orderIds) public view returns(uint256[] memory) {
+    function getAmountsBatch(bytes32[] memory _orderIds) external view returns(uint256[] memory) {
         uint256[] memory result = new uint256[](_orderIds.length);
 
         for (uint256 i=0; i < _orderIds.length; i++) {
@@ -184,7 +186,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return result;
     }
 
-    function getOrderHashBatch(Order[] memory _orders) public pure returns(bytes32[] memory) {
+    function getOrderHashBatch(Order[] memory _orders) external pure returns(bytes32[] memory) {
         bytes32[] memory result = new bytes32[](_orders.length);
 
         for (uint256 i=0; i < _orders.length; i++) {
@@ -251,7 +253,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return false;
     }
 
-    function areOrdersValid(Order[] memory _orders) public view returns(bool[] memory) {
+    function areOrdersValid(Order[] memory _orders) external view returns(bool[] memory) {
         bool[] memory result = new bool[](_orders.length);
 
         for (uint256 i=0; i < _orders.length; i++) {
@@ -299,7 +301,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return hash;
     }
 
-    function createOrders(Order[] memory _orders, uint256[] memory _amounts) public returns(bytes32[] memory) {
+    function createOrders(Order[] memory _orders, uint256[] memory _amounts) external returns(bytes32[] memory) {
         require(_orders.length == _amounts.length, "Arrays must have same length");
 
         bytes32[] memory result = new bytes32[](_orders.length);
@@ -312,7 +314,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     }
 
     // Will try to fill orderCandidates. If it cannot fill _amount, it will create a new order for the remaining amount to fill
-    function createOrderAndTryToFill(Order memory _order, uint256 _amount, Order[] memory _orderCandidates) public {
+    function createOrderAndTryToFill(Order memory _order, uint256 _amount, Order[] memory _orderCandidates) external {
         require(_amount > 0, "Amount must be > 0");
 
         uint256 totalFilled = 0;
@@ -403,7 +405,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
      * @param _orders The orders
      * @param _maxAmounts Max amount of options to buy/sell
      */
-    function fillOrders(Order[] memory _orders, uint256[] memory _maxAmounts) public {
+    function fillOrders(Order[] memory _orders, uint256[] memory _maxAmounts) external {
         require(_orders.length == _maxAmounts.length, "Arrays must have same length");
         for (uint256 i=0; i < _orders.length; i++) {
             fillOrder(_orders[i], _maxAmounts[i]);
@@ -436,7 +438,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
      * @dev Cancel a list of existing orders
      * @param _orders The orders
      */
-    function cancelOrders(Order[] memory _orders) public {
+    function cancelOrders(Order[] memory _orders) external {
         for (uint256 i=0; i < _orders.length; i++) {
             cancelOrder(_orders[i]);
         }

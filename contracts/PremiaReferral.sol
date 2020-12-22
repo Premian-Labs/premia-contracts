@@ -26,7 +26,7 @@ contract PremiaReferral is Ownable {
     //
 
     // Set a new referrer if none has been set for referred address + return referrers for given referred
-    function getReferrer(address _referred, address _potentialReferrer) public onlyWhitelisted returns(address) {
+    function trySetReferrer(address _referred, address _potentialReferrer) external onlyWhitelisted returns(address) {
         if (_referred == address(0)) return address(0);
 
         if (referrals[_referred] == address(0) && _potentialReferrer != address(0)) {
@@ -39,13 +39,13 @@ contract PremiaReferral is Ownable {
 
     //
 
-    function addWhitelisted(address[] memory _addr) public onlyOwner {
+    function addWhitelisted(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelisted.add(_addr[i]);
         }
     }
 
-    function removeWhitelisted(address[] memory _addr) public onlyOwner {
+    function removeWhitelisted(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelisted.remove(_addr[i]);
         }

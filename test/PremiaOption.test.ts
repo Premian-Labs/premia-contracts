@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { utils } from 'ethers';
+import { BigNumber, utils } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
@@ -47,6 +47,10 @@ describe('PremiaOption', () => {
     );
     premiaReferral = await premiaReferralFactory.deploy();
     premiaStaking = await premiaStakingFactory.deploy();
+
+    await premiaReferral.addWhitelisted([premiaOption.address]);
+    await premiaOption.setPremiaReferral(premiaReferral.address);
+    await premiaOption.setPremiaStaking(premiaStaking.address);
 
     optionTestUtil = new PremiaOptionTestUtil({
       eth,
@@ -555,6 +559,58 @@ describe('PremiaOption', () => {
       expect(daiBalance).to.eq(0);
       expect(ethBalance).to.eq(utils.parseEther('1'));
       expect(nbWritten).to.eq(1);
+    });
+  });
+
+  describe('referral', () => {
+    it('should register user1 as referrer', async () => {
+      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+      const referrer = await premiaReferral.referrals(writer1.address);
+      expect(referrer).to.eq(user1.address);
+    });
+
+    it('should keep user1 as referrer, if try to set another referrer', async () => {
+      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+      await optionTestUtil.addEthAndWriteOptions(2, true, writer2.address);
+      const referrer = await premiaReferral.referrals(writer1.address);
+      expect(referrer).to.eq(user1.address);
+    });
+
+    it('should give user with referrer, 10% discount on write fee + give referrer 10% of fee', async () => {
+      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+
+      const writer1Options = await premiaOption.balanceOf(writer1.address, 1);
+      const writer1Eth = await eth.balanceOf(writer1.address);
+      const referrerEth = await eth.balanceOf(user1.address);
+
+      expect(writer1Options).to.eq(2);
+      expect(writer1Eth).to.eq(
+        ethers.utils.parseEther('0.02').div(10), // Expect 10% of tax of 2 options writing
+      );
+      expect(referrerEth).to.eq(
+        ethers.utils.parseEther('0.02').mul(9).div(10).div(10), // Expect 10% of 90% of tax for 2 options
+      );
+    });
+
+    it('should give user with referrer, 10% discount on exercise fee + give referrer 10% of fee', async () => {
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        true,
+        2,
+        2,
+        writer2.address,
+      );
+
+      const user1Options = await premiaOption.balanceOf(writer1.address, 1);
+      const user1Dai = await dai.balanceOf(user1.address);
+      const referrerDai = await dai.balanceOf(writer2.address);
+
+      expect(user1Options).to.eq(0);
+      expect(user1Dai).to.eq(
+        BigNumber.from(ethers.utils.parseEther('0.2')).div(10), // Expect 10% of the 1% tax of 2 options exercised at strike price of 10 DAI
+      );
+      expect(referrerDai).to.eq(
+        ethers.utils.parseEther('0.2').mul(9).div(10).div(10), // Expect 10% of 90% of tax
+      );
     });
   });
 });

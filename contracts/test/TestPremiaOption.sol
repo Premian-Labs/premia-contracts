@@ -108,6 +108,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
     //////////////////////////////////////////////////
 
     constructor(string memory _uri, IERC20 _denominator, address _treasury) public ERC1155(_uri) {
+        require(_treasury != address(0), "Treasury cannot be 0x0 address");
         denominator = _denominator;
         treasury = _treasury;
     }
@@ -265,7 +266,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
     function writeOption(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall, uint256 _contractAmount, address _referrer) public nonReentrant {
         // If token has never been used before, we request a default contractSize and strikePriceIncrement to initialize it
         // (If tokenSettingsCalculator contract is defined)
-        if (address(tokenSettingsCalculator) != address(0) && _isInArray(_token, tokens) == false) {
+        if (address(tokenSettingsCalculator) != address(0) && !_isInArray(_token, tokens)) {
             (
             uint256 contractSize,
             uint256 strikePrinceIncrement
@@ -546,7 +547,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
 
     // Add a new token to support writing of options paired to denominator
     function _setToken(address _token, uint256 _contractSize, uint256 _strikePriceIncrement) internal {
-        if (_isInArray(_token, tokens) == false) {
+        if (!_isInArray(_token, tokens)) {
             tokens.push(_token);
         }
 
@@ -563,8 +564,8 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
     function _preCheckOptionWrite(address _token, uint256 _contractAmount, uint256 _strikePrice, uint256 _expiration) internal view {
         TokenSettings memory settings = tokenSettings[_token];
 
-        require(settings.isDisabled == false, "Token is disabled");
-        require(_isInArray(_token, tokens) == true, "Token not supported");
+        require(!settings.isDisabled, "Token is disabled");
+        require(_isInArray(_token, tokens), "Token not supported");
         require(_contractAmount > 0, "Contract amount must be > 0");
         require(_strikePrice > 0, "Strike price must be > 0");
         require(_strikePrice % settings.strikePriceIncrement == 0, "Wrong strikePrice increment");
@@ -599,7 +600,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
 
         // If premiaReferral contract is set, we calculate discount
         if (address(premiaReferral) != address(0)) {
-            address referrer = premiaReferral.getReferrer(msg.sender, _referrer);
+            address referrer = premiaReferral.trySetReferrer(msg.sender, _referrer);
 
             if (referrer != address(0)) {
                 // feeDiscount = feeDiscount + ( (_feeAmountBase - feeDiscount ) * referredDiscountRate)

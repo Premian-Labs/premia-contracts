@@ -3,5 +3,5 @@
 pragma solidity ^0.7.0;
 
 interface IPremiaReferral {
-    function getReferrer(address _referred, address _potentialReferrer) external returns(address);
+    function trySetReferrer(address _referred, address _potentialReferrer) external returns(address);
 }

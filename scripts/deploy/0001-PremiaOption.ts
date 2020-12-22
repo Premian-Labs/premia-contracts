@@ -2,6 +2,7 @@ import { ethers } from 'hardhat';
 import {
   PremiaMarket__factory,
   PremiaOption__factory,
+  PremiaReferral__factory,
 } from '../../contractsTyped';
 
 async function main() {
@@ -15,8 +16,12 @@ async function main() {
 
   let uri = 'https://rope.lol/api/RMU/{id}.json';
 
+  const premiaReferralFactory = new PremiaReferral__factory(deployer);
   const premiaOptionFactory = new PremiaOption__factory(deployer);
   const premiaMarketFactory = new PremiaMarket__factory(deployer);
+
+  //
+
   const premiaOptionDai = await premiaOptionFactory.deploy(
     uri,
     dai,
@@ -71,6 +76,27 @@ async function main() {
 
   console.log('ROPE/WETH added');
 
+  //
+
+  const premiaReferral = await premiaReferralFactory.deploy();
+
+  console.log(
+    `premiaReferral deployed to ${premiaReferral.address} from ${deployer.address}`,
+  );
+
+  await premiaReferral.addWhitelisted([
+    premiaOptionDai.address,
+    premiaOptionEth.address,
+    // premiaOptionWbtc.address,
+  ]);
+
+  await premiaOptionDai.setPremiaReferral(premiaReferral.address);
+  await premiaOptionEth.setPremiaReferral(premiaReferral.address);
+  // await premiaOptionWbtc.setPremiaReferral(premiaReferral.address);
+  // await premiaOption.setPremiaStaking(premiaStaking.address);
+
+  //
+
   const premiaMarket = await premiaMarketFactory.deploy(deployer.address);
 
   console.log(
@@ -80,6 +106,7 @@ async function main() {
   await premiaMarket.addWhitelistedOptionContracts([
     premiaOptionEth.address,
     premiaOptionDai.address,
+    // premiaOptionWbtc.address,
   ]);
 
   await premiaMarket.addWhitelistedPaymentTokens([dai, weth]);
