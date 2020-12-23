@@ -39,6 +39,7 @@ describe('PremiaMarket', () => {
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
       eth.address,
+      eth.address,
       treasury.address,
     );
 

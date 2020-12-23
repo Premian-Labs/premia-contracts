@@ -7,6 +7,7 @@ import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
+import '@openzeppelin/contracts/utils/EnumerableSet.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/utils/SafeCast.sol';
 
@@ -14,6 +15,7 @@ import "../interface/IFlashLoanReceiver.sol";
 import "../interface/ITokenSettingsCalculator.sol";
 import "../interface/IPremiaReferral.sol";
 import "../interface/IPremiaStaking.sol";
+import "../interface/uniswap/IUniswapV2Router02.sol";
 
 import "./TestTime.sol";
 import "hardhat/console.sol";
@@ -22,6 +24,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
+    using EnumerableSet for EnumerableSet.AddressSet;
 
     struct TokenSettings {
         uint256 contractSize;           // Amount of token per contract
@@ -47,6 +50,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
     }
 
     IERC20 public denominator;
+    address public weth;
 
     //////////////////////////////////////////////////
 
@@ -55,7 +59,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
 
     //////////////////////////////////////////////////
 
-    address[] public tokens;
+    EnumerableSet.AddressSet private _tokens;
     mapping (address => TokenSettings) public tokenSettings;
 
     //////////////////////////////////////////////////
@@ -74,6 +78,9 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
 
     uint256 public referrerFee = 1e4;               // 10% of write/exercise fee | Referrer fee calculated after all discounts applied
     uint256 public referredDiscount = 1e4;          // -10% from write/exercise fee
+
+    EnumerableSet.AddressSet private _whitelistedFlashLoanReceivers; // List of addresses allowed to do a flash loan without fee
+    EnumerableSet.AddressSet private _whitelistedUniswapRouters;     // List of accepted uniswap routers
 
     uint256 public constant INVERSE_BASIS_POINT = 1e5;
 
@@ -107,9 +114,10 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(string memory _uri, IERC20 _denominator, address _treasury) public ERC1155(_uri) {
+    constructor(string memory _uri, IERC20 _denominator, address _weth, address _treasury) public ERC1155(_uri) {
         require(_treasury != address(0), "Treasury cannot be 0x0 address");
         denominator = _denominator;
+        weth = _weth;
         treasury = _treasury;
     }
 
@@ -148,7 +156,14 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
     }
 
     function getAllTokens() public view returns(address[] memory) {
-        return tokens;
+        uint256 length = _tokens.length();
+        address[] memory result = new address[](length);
+
+        for (uint256 i=0; i < length; i++) {
+            result[i] = _tokens.at(i);
+        }
+
+        return result;
     }
 
     function getOptionDataBatch(uint256[] memory _optionIds) public view returns(OptionData[] memory) {
@@ -182,6 +197,56 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         }
 
         return result;
+    }
+
+    function getWhitelistedFlashLoanReceivers() external view returns(address[] memory) {
+        uint256 length = _whitelistedFlashLoanReceivers.length();
+        address[] memory result = new address[](length);
+
+        for (uint256 i=0; i < length; i++) {
+            result[i] = _whitelistedFlashLoanReceivers.at(i);
+        }
+
+        return result;
+    }
+
+    function getWhitelistedUniswapRouters() external view returns(address[] memory) {
+        uint256 length = _whitelistedUniswapRouters.length();
+        address[] memory result = new address[](length);
+
+        for (uint256 i=0; i < length; i++) {
+            result[i] = _whitelistedUniswapRouters.at(i);
+        }
+
+        return result;
+    }
+
+    function getTotalFee(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256) {
+        uint256 feeAmountBase;
+        if (_isWrite) {
+            feeAmountBase = _price.mul(writeFee).div(INVERSE_BASIS_POINT);
+        } else {
+            feeAmountBase = _price.mul(exerciseFee).div(INVERSE_BASIS_POINT);
+        }
+
+        uint256 feeDiscount = 0;
+
+        // If premiaStaking contract is set, we calculate discount
+        if (address(premiaStaking) != address(0)) {
+            uint256 stakingDiscount = premiaStaking.getDiscount(_user);
+            require(stakingDiscount <= INVERSE_BASIS_POINT, "Staking discount above max");
+            feeDiscount = feeAmountBase.mul(stakingDiscount).div(INVERSE_BASIS_POINT);
+        }
+
+        // If premiaReferral contract is set, we calculate discount
+        if (address(premiaReferral) != address(0)) {
+            if (_hasReferrer || premiaReferral.referrals(_user) != address(0)) {
+                // feeDiscount = feeDiscount + ( (feeAmountBase - feeDiscount ) * referredDiscountRate)
+                feeDiscount = feeDiscount.add(feeAmountBase.sub(feeDiscount).mul(referredDiscount).div(INVERSE_BASIS_POINT));
+            }
+        }
+
+        return feeAmountBase.sub(feeDiscount);
     }
 
     //////////////////////////////////////////////////
@@ -227,6 +292,30 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         _setToken(_token, _contractSize, _strikePriceIncrement);
     }
 
+    function addWhitelistedFlashLoanReceivers(address[] memory _addr) external onlyOwner {
+        for (uint256 i=0; i < _addr.length; i++) {
+            _whitelistedFlashLoanReceivers.add(_addr[i]);
+        }
+    }
+
+    function removeWhitelistedFlashLoanReceivers(address[] memory _addr) external onlyOwner {
+        for (uint256 i=0; i < _addr.length; i++) {
+            _whitelistedFlashLoanReceivers.remove(_addr[i]);
+        }
+    }
+
+    function addWhitelistedUniswapRouters(address[] memory _addr) external onlyOwner {
+        for (uint256 i=0; i < _addr.length; i++) {
+            _whitelistedUniswapRouters.add(_addr[i]);
+        }
+    }
+
+    function removeWhitelistedUniswapRouters(address[] memory _addr) external onlyOwner {
+        for (uint256 i=0; i < _addr.length; i++) {
+            _whitelistedUniswapRouters.remove(_addr[i]);
+        }
+    }
+
     //////////
     // Fees //
     //////////
@@ -266,7 +355,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
     function writeOption(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall, uint256 _contractAmount, address _referrer) public nonReentrant {
         // If token has never been used before, we request a default contractSize and strikePriceIncrement to initialize it
         // (If tokenSettingsCalculator contract is defined)
-        if (address(tokenSettingsCalculator) != address(0) && !_isInArray(_token, tokens)) {
+        if (address(tokenSettingsCalculator) != address(0) && !_tokens.contains(_token)) {
             (
             uint256 contractSize,
             uint256 strikePrinceIncrement
@@ -306,6 +395,9 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
 
         OptionData memory data = optionData[optionId];
 
+        // Set referrer or get current if one already exists
+        _referrer = _trySetReferrer(_referrer);
+
         if (_isCall) {
             IERC20 tokenErc20 = IERC20(_token);
 
@@ -313,7 +405,9 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
             uint256 feeAmount = amount.mul(writeFee).div(INVERSE_BASIS_POINT);
 
             tokenErc20.safeTransferFrom(msg.sender, address(this), amount);
-            payFees(tokenErc20, _referrer, feeAmount);
+
+            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer, feeAmount);
+            _payFees(msg.sender, tokenErc20, _referrer, feeTreasury, feeReferrer);
 
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
         } else {
@@ -321,7 +415,9 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
             uint256 feeAmount = amount.mul(writeFee).div(INVERSE_BASIS_POINT);
 
             denominator.safeTransferFrom(msg.sender, address(this), amount);
-            payFees(denominator, _referrer, feeAmount);
+
+            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer, feeAmount);
+            _payFees(msg.sender, denominator, _referrer, feeTreasury, feeReferrer);
 
             pools[optionId].denominatorAmount = pools[optionId].denominatorAmount.add(amount);
         }
@@ -358,7 +454,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         emit OptionCancelled(msg.sender, _optionId, data.token, _contractAmount);
     }
 
-    function exerciseOption(uint256 _optionId, uint256 _contractAmount, address _referrer) public nonReentrant notExpired(_optionId) {
+    function exerciseOption(uint256 _optionId, uint256 _contractAmount, address _referrer) public nonReentrant {
         require(_contractAmount > 0, "ContractAmount must be > 0");
 
         OptionData storage data = optionData[_optionId];
@@ -371,6 +467,9 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         uint256 tokenAmount = _contractAmount.mul(data.contractSize);
         uint256 denominatorAmount = _contractAmount.mul(data.strikePrice);
 
+        // Set referrer or get current if one already exists
+        _referrer = _trySetReferrer(_referrer);
+
         if (data.isCall) {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(denominatorAmount);
@@ -378,7 +477,9 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
             uint256 feeAmount = denominatorAmount.mul(exerciseFee).div(INVERSE_BASIS_POINT);
 
             denominator.safeTransferFrom(msg.sender, address(this), denominatorAmount);
-            payFees(denominator, _referrer, feeAmount);
+
+            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer, feeAmount);
+            _payFees(msg.sender, denominator, _referrer, feeTreasury, feeReferrer);
 
             tokenErc20.safeTransfer(msg.sender, tokenAmount);
         } else {
@@ -388,7 +489,9 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
             uint256 feeAmount = tokenAmount.mul(exerciseFee).div(INVERSE_BASIS_POINT);
 
             tokenErc20.safeTransferFrom(msg.sender, address(this), tokenAmount);
-            payFees(tokenErc20, _referrer, feeAmount);
+
+            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer, feeAmount);
+            _payFees(msg.sender, tokenErc20, _referrer, feeTreasury, feeReferrer);
 
             denominator.safeTransfer(msg.sender, denominatorAmount);
         }
@@ -474,8 +577,90 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         _receiver.execute(_tokenAddress, _amount);
 
         uint256 endBalance = _token.balanceOf(address(this));
-        require(endBalance >= startBalance.add(startBalance.mul(flashLoanFee).div(INVERSE_BASIS_POINT)), "Failed to pay back");
+
+        uint256 endBalanceRequired = startBalance;
+        if (!_whitelistedFlashLoanReceivers.contains(msg.sender)) {
+            endBalanceRequired = endBalanceRequired.add(startBalance.mul(flashLoanFee).div(INVERSE_BASIS_POINT));
+        }
+
+        require(endBalance >= endBalanceRequired, "Failed to pay back");
         _token.safeTransfer(treasury, endBalance.sub(startBalance));
+
+        endBalance = _token.balanceOf(address(this));
+        require(endBalance >= endBalanceRequired, "Failed to pay back");
+    }
+
+    function exerciseOptionWithFlashLoan(uint256 _optionId, uint256 _contractAmount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) public nonReentrant {
+        require(_contractAmount > 0, "ContractAmount must be > 0");
+
+        burn(msg.sender, _optionId, _contractAmount);
+        optionData[_optionId].exercised = uint256(optionData[_optionId].exercised).add(_contractAmount).toUint32();
+
+        IERC20 tokenErc20 = IERC20(optionData[_optionId].token);
+
+        uint256 tokenAmount = _contractAmount.mul(optionData[_optionId].contractSize);
+        uint256 denominatorAmount = _contractAmount.mul(optionData[_optionId].strikePrice);
+
+        uint256 tokenAmountStart = tokenErc20.balanceOf(address(this));
+        uint256 denominatorAmountStart = denominator.balanceOf(address(this));
+
+        // Set referrer or get current if one already exists
+        _referrer = _trySetReferrer(_referrer);
+
+        if (optionData[_optionId].isCall) {
+            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
+            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(denominatorAmount);
+
+            uint256 feeAmount = denominatorAmount.mul(exerciseFee).div(INVERSE_BASIS_POINT);
+            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer, feeAmount);
+
+            // Swap enough denominator to tokenErc20 to pay fee + strike price
+            uint256[] memory swapAmounts = _swap(_router, address(tokenErc20), address(denominator), denominatorAmount.add(feeTreasury).add(feeReferrer), _amountInMax);
+            uint256 tokenAmountUsed = swapAmounts[0];
+
+            // Pay fees
+            _payFees(address(this), denominator, _referrer, feeTreasury, feeReferrer);
+
+            // Pay flashLoan fee
+            if (!_whitelistedFlashLoanReceivers.contains(msg.sender)) {
+                tokenErc20.safeTransfer(treasury, tokenAmount.mul(flashLoanFee).div(INVERSE_BASIS_POINT));
+            }
+
+            uint256 profit = tokenAmount.sub(flashLoanFee).sub(tokenAmountUsed);
+
+            // Send profit to sender
+            tokenErc20.safeTransfer(msg.sender, profit);
+
+            require(denominator.balanceOf(address(this)) >= denominatorAmountStart.add(denominatorAmount), "Wrong final denominator balance");
+            require(tokenErc20.balanceOf(address(this)) >= tokenAmountStart.sub(tokenAmount), "Wrong final token balance");
+        } else {
+            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(denominatorAmount);
+            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
+
+            uint256 feeAmount = tokenAmount.mul(exerciseFee).div(INVERSE_BASIS_POINT);
+            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer, feeAmount);
+
+            // Swap enough denominator to tokenErc20 to pay fee + strike price
+            uint256[] memory swapAmounts = _swap(_router, address(denominator), address(tokenErc20), tokenAmount.add(feeTreasury).add(feeReferrer), _amountInMax);
+            uint256 denominatorAmountUsed = swapAmounts[0];
+
+            _payFees(address(this), tokenErc20, _referrer, feeTreasury, feeAmount);
+
+            // Pay flashLoan fee
+            if (!_whitelistedFlashLoanReceivers.contains(msg.sender)) {
+                denominator.safeTransfer(treasury, denominatorAmount.mul(flashLoanFee).div(INVERSE_BASIS_POINT));
+            }
+
+            uint256 profit = denominatorAmount.sub(flashLoanFee).sub(denominatorAmountUsed);
+
+            // Send profit to sender
+            denominator.safeTransfer(msg.sender, profit);
+
+            require(denominator.balanceOf(address(this)) >= denominatorAmountStart.sub(denominatorAmount), "Wrong final denominator balance");
+            require(tokenErc20.balanceOf(address(this)) >= tokenAmountStart.add(tokenAmount), "Wrong final token balance");
+        }
+
+        emit OptionExercised(msg.sender, _optionId, optionData[_optionId].token, _contractAmount);
     }
 
     /////////////////////
@@ -547,8 +732,8 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
 
     // Add a new token to support writing of options paired to denominator
     function _setToken(address _token, uint256 _contractSize, uint256 _strikePriceIncrement) internal {
-        if (!_isInArray(_token, tokens)) {
-            tokens.push(_token);
+        if (!_tokens.contains(_token)) {
+            _tokens.add(_token);
         }
 
         require(_contractSize > 0, "Contract size must be > 0");
@@ -565,7 +750,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         TokenSettings memory settings = tokenSettings[_token];
 
         require(!settings.isDisabled, "Token is disabled");
-        require(_isInArray(_token, tokens), "Token not supported");
+        require(_tokens.contains(_token), "Token not supported");
         require(_contractAmount > 0, "Contract amount must be > 0");
         require(_strikePrice > 0, "Strike price must be > 0");
         require(_strikePrice % settings.strikePriceIncrement == 0, "Wrong strikePrice increment");
@@ -574,19 +759,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         require(_expiration % expirationIncrement == baseExpiration, "Wrong expiration timestamp increment");
     }
 
-    // Utility function to check if a value is inside an array
-    function _isInArray(address _value, address[] memory _array) internal pure returns(bool) {
-        uint256 length = _array.length;
-        for (uint256 i = 0; i < length; ++i) {
-            if (_array[i] == _value) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    function payFees(IERC20 _token, address _referrer, uint256 _feeAmountBase) internal {
+    function _getFees(address _referrer, uint256 _feeAmountBase) internal returns(uint256 _feeTreasury, uint256 _feeReferrer) {
         uint256 feeTreasury = _feeAmountBase;
         uint256 feeReferrer = 0;
         uint256 feeDiscount = 0;
@@ -599,24 +772,64 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         }
 
         // If premiaReferral contract is set, we calculate discount
-        if (address(premiaReferral) != address(0)) {
-            address referrer = premiaReferral.trySetReferrer(msg.sender, _referrer);
-
-            if (referrer != address(0)) {
-                // feeDiscount = feeDiscount + ( (_feeAmountBase - feeDiscount ) * referredDiscountRate)
-                feeDiscount = feeDiscount.add(_feeAmountBase.sub(feeDiscount).mul(referredDiscount).div(INVERSE_BASIS_POINT));
-                feeReferrer = _feeAmountBase.sub(feeDiscount).mul(referrerFee).div(INVERSE_BASIS_POINT);
-            }
+        if (address(premiaReferral) != address(0) && _referrer != address(0)) {
+            // feeDiscount = feeDiscount + ( (_feeAmountBase - feeDiscount ) * referredDiscountRate)
+            feeDiscount = feeDiscount.add(_feeAmountBase.sub(feeDiscount).mul(referredDiscount).div(INVERSE_BASIS_POINT));
+            feeReferrer = _feeAmountBase.sub(feeDiscount).mul(referrerFee).div(INVERSE_BASIS_POINT);
         }
 
         feeTreasury = _feeAmountBase.sub(feeDiscount).sub(feeReferrer);
 
-        if (feeTreasury > 0) {
-            _token.safeTransferFrom(msg.sender, treasury, feeTreasury);
+        return (feeTreasury, feeReferrer);
+    }
+
+    function _payFees(address _from, IERC20 _token, address _referrer, uint256 _feeTreasury, uint256 _feeReferrer) internal {
+        if (_feeTreasury > 0) {
+            _token.safeTransferFrom(_from, treasury, _feeTreasury);
         }
 
-        if (feeReferrer > 0) {
-            _token.safeTransferFrom(msg.sender, _referrer, feeReferrer);
+        if (_feeReferrer > 0) {
+            _token.safeTransferFrom(_from, _referrer, _feeReferrer);
         }
+    }
+
+    // Try to set given referrer, returns current referrer if one already exists
+    function _trySetReferrer(address _referrer) internal returns(address) {
+        if (address(premiaReferral) != address(0)) {
+            _referrer = premiaReferral.trySetReferrer(msg.sender, _referrer);
+        } else {
+            _referrer = address(0);
+        }
+
+        return _referrer;
+    }
+
+    function _swap(IUniswapV2Router02 _router, address _from, address _to, uint256 _amount,uint256 _amountInMax) internal returns (uint256[] memory amounts) {
+        IERC20(_from).safeApprove(address(_router), _amountInMax);
+
+        address[] memory path;
+
+        if (_from == weth || _to == weth) {
+            path = new address[](2);
+            path[0] = _from;
+            path[1] = _to;
+        } else {
+            path = new address[](3);
+            path[0] = _from;
+            path[1] = weth;
+            path[2] = _to;
+        }
+
+        uint256[] memory amounts = _router.swapTokensForExactTokens(
+            _amount,
+            _amountInMax,
+            path,
+            address(this),
+            getBlockTimestamp().add(60)
+        );
+
+        IERC20(_from).safeApprove(address(_router), 0);
+
+        return amounts;
     }
 }

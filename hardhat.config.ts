@@ -54,6 +54,7 @@ export default {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
+      blockGasLimit: 120000000000,
     },
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${ALCHEMY_KEY}`,

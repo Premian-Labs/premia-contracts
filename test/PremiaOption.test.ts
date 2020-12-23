@@ -43,6 +43,7 @@ describe('PremiaOption', () => {
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
       dai.address,
+      eth.address,
       treasury.address,
     );
     premiaReferral = await premiaReferralFactory.deploy();
