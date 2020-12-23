@@ -622,8 +622,10 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
             _payFees(address(this), denominator, _referrer, feeTreasury, feeReferrer);
 
             // Pay flashLoan fee
+            uint256 feeFlashLoan;
             if (!_whitelistedFlashLoanReceivers.contains(msg.sender)) {
-                tokenErc20.safeTransfer(treasury, tokenAmount.mul(flashLoanFee).div(INVERSE_BASIS_POINT));
+                feeFlashLoan = tokenAmount.mul(flashLoanFee).div(INVERSE_BASIS_POINT);
+                tokenErc20.safeTransfer(treasury, feeFlashLoan);
             }
 
             uint256 profit = tokenAmount.sub(flashLoanFee).sub(tokenAmountUsed);
@@ -647,8 +649,10 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
             _payFees(address(this), tokenErc20, _referrer, feeTreasury, feeAmount);
 
             // Pay flashLoan fee
+            uint256 feeFlashLoan;
             if (!_whitelistedFlashLoanReceivers.contains(msg.sender)) {
-                denominator.safeTransfer(treasury, denominatorAmount.mul(flashLoanFee).div(INVERSE_BASIS_POINT));
+                feeFlashLoan = tokenAmount.mul(flashLoanFee).div(INVERSE_BASIS_POINT);
+                denominator.safeTransfer(treasury, feeFlashLoan);
             }
 
             uint256 profit = denominatorAmount.sub(flashLoanFee).sub(denominatorAmountUsed);
