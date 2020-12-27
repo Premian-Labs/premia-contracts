@@ -590,7 +590,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         require(endBalance >= endBalanceRequired, "Failed to pay back");
     }
 
-    function exerciseOptionWithFlashLoan(uint256 _optionId, uint256 _contractAmount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) public nonReentrant {
+    function flashExerciseOption(uint256 _optionId, uint256 _contractAmount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) public nonReentrant {
         require(_contractAmount > 0, "ContractAmount must be > 0");
 
         burn(msg.sender, _optionId, _contractAmount);
@@ -621,14 +621,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
             // Pay fees
             _payFees(address(this), denominator, _referrer, feeTreasury, feeReferrer);
 
-            // Pay flashLoan fee
-            uint256 feeFlashLoan;
-            if (!_whitelistedFlashLoanReceivers.contains(msg.sender)) {
-                feeFlashLoan = tokenAmount.mul(flashLoanFee).div(INVERSE_BASIS_POINT);
-                tokenErc20.safeTransfer(treasury, feeFlashLoan);
-            }
-
-            uint256 profit = tokenAmount.sub(flashLoanFee).sub(tokenAmountUsed);
+            uint256 profit = tokenAmount.sub(tokenAmountUsed);
 
             // Send profit to sender
             tokenErc20.safeTransfer(msg.sender, profit);
@@ -648,14 +641,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
 
             _payFees(address(this), tokenErc20, _referrer, feeTreasury, feeAmount);
 
-            // Pay flashLoan fee
-            uint256 feeFlashLoan;
-            if (!_whitelistedFlashLoanReceivers.contains(msg.sender)) {
-                feeFlashLoan = tokenAmount.mul(flashLoanFee).div(INVERSE_BASIS_POINT);
-                denominator.safeTransfer(treasury, feeFlashLoan);
-            }
-
-            uint256 profit = denominatorAmount.sub(flashLoanFee).sub(denominatorAmountUsed);
+            uint256 profit = denominatorAmount.sub(denominatorAmountUsed);
 
             // Send profit to sender
             denominator.safeTransfer(msg.sender, profit);
