@@ -4,7 +4,7 @@ import {
   TestTokenSettingsCalculator__factory,
 } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { BigNumberish, utils } from 'ethers';
+import { BigNumber, BigNumberish, utils } from 'ethers';
 import { ZERO_ADDRESS } from './constants';
 
 interface WriteOptionArgs {
@@ -82,18 +82,19 @@ export class PremiaOptionTestUtil {
   async writeOption(user: SignerWithAddress, args?: WriteOptionArgs) {
     const defaults = this.getOptionDefaults();
 
-    return this.premiaOption
-      .connect(user)
-      .writeOption(
-        args?.address ?? defaults.address,
-        args?.expiration ?? defaults.expiration,
-        args?.strikePrice ?? defaults.strikePrice,
-        args?.isCall == undefined ? defaults.isCall : args.isCall,
-        args?.contractAmount == undefined
-          ? defaults.contractAmount
-          : args?.contractAmount,
-        args?.referrer ?? ZERO_ADDRESS,
-      );
+    return this.premiaOption.connect(user).writeOption(
+      {
+        token: args?.address ?? defaults.address,
+        expiration: args?.expiration ?? defaults.expiration,
+        strikePrice: args?.strikePrice ?? defaults.strikePrice,
+        isCall: args?.isCall == undefined ? defaults.isCall : args.isCall,
+        contractAmount:
+          args?.contractAmount == undefined
+            ? defaults.contractAmount
+            : args?.contractAmount,
+      },
+      args?.referrer ?? ZERO_ADDRESS,
+    );
   }
 
   async mintAndWriteOption(
@@ -103,8 +104,11 @@ export class PremiaOptionTestUtil {
     referrer?: string,
   ) {
     if (isCall) {
-      const amount = contractAmount * (1 + this.tax);
-      await this.eth.connect(user).mint(utils.parseEther(amount.toString()));
+      const amount = utils
+        .parseEther(contractAmount.toString())
+        .mul(1e5 + this.tax * 1e5)
+        .div(1e5);
+      await this.eth.connect(user).mint(amount.toString());
       await this.eth
         .connect(user)
         .increaseAllowance(
@@ -112,8 +116,12 @@ export class PremiaOptionTestUtil {
           utils.parseEther(amount.toString()),
         );
     } else {
-      const amount = 10 * contractAmount * (1 + this.tax);
-      await this.dai.connect(user).mint(utils.parseEther(amount.toString()));
+      const amount = utils
+        .parseEther('10')
+        .mul(contractAmount)
+        .mul(1e5 + this.tax * 1e5)
+        .div(1e5);
+      await this.dai.connect(user).mint(amount);
       await this.dai
         .connect(user)
         .increaseAllowance(
@@ -139,13 +147,17 @@ export class PremiaOptionTestUtil {
     );
   }
 
-  async transferOptionToUser1(from: SignerWithAddress, amount?: number) {
+  async transferOptionToUser1(
+    from: SignerWithAddress,
+    amount?: number,
+    optionId?: number,
+  ) {
     await this.premiaOption
       .connect(from)
       .safeTransferFrom(
         from.address,
         this.user1.address,
-        1,
+        optionId ?? 1,
         amount ?? 1,
         '0x00',
       );
@@ -155,6 +167,7 @@ export class PremiaOptionTestUtil {
     isCall: boolean,
     amountToExercise: number,
     referrer?: string,
+    optionId?: number,
   ) {
     if (isCall) {
       const amount = amountToExercise * 10 * (1 + this.tax);
@@ -183,7 +196,11 @@ export class PremiaOptionTestUtil {
 
     return this.premiaOption
       .connect(this.user1)
-      .exerciseOption(1, amountToExercise, referrer ?? ZERO_ADDRESS);
+      .exerciseOption(
+        optionId ?? 1,
+        amountToExercise,
+        referrer ?? ZERO_ADDRESS,
+      );
   }
 
   async addEthAndWriteOptionsAndExercise(

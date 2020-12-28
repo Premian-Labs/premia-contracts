@@ -32,16 +32,24 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         bool isDisabled;                // Whether this token is disabled or not
     }
 
+    struct OptionWriteArgs {
+        address token;                  // Token address
+        uint256 contractAmount;         // Amount of contracts to write
+        uint256 strikePrice;            // Strike price (Must follow strikePriceIncrement of token)
+        uint64 expiration;              // Expiration timestamp of the option (Must follow expirationIncrement)
+        bool isCall;                    // If true : Call option | If false : Put option
+    }
+
     struct OptionData {
         address token;                  // Token address
         uint256 contractSize;           // Amount of token per contract
         uint256 strikePrice;            // Strike price (Must follow strikePriceIncrement of token)
-        uint64 expiration;             // Expiration timestamp of the option (Must follow expirationIncrement)
+        uint64 expiration;              // Expiration timestamp of the option (Must follow expirationIncrement)
         bool isCall;                    // If true : Call option | If false : Put option
-        uint32 claimsPreExp;           // Amount of options from which the funds have been withdrawn pre expiration
-        uint32 claimsPostExp;          // Amount of options from which the funds have been withdrawn post expiration
-        uint32 exercised;              // Amount of options which have been exercised
-        uint32 supply;                 // Total circulating supply
+        uint64 claimsPreExp;            // Amount of options from which the funds have been withdrawn pre expiration
+        uint64 claimsPostExp;           // Amount of options from which the funds have been withdrawn post expiration
+        uint64 exercised;               // Amount of options which have been exercised
+        uint64 supply;                  // Total circulating supply
     }
 
     struct Pool {
@@ -352,43 +360,43 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
 
     ////////
 
-    function writeOption(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall, uint256 _contractAmount, address _referrer) public nonReentrant {
+    function writeOption(OptionWriteArgs memory _option, address _referrer) public nonReentrant {
         // If token has never been used before, we request a default contractSize and strikePriceIncrement to initialize it
         // (If tokenSettingsCalculator contract is defined)
-        if (address(tokenSettingsCalculator) != address(0) && !_tokens.contains(_token)) {
+        if (address(tokenSettingsCalculator) != address(0) && !_tokens.contains(_option.token)) {
             (
             uint256 contractSize,
             uint256 strikePrinceIncrement
-            ) = tokenSettingsCalculator.getTokenSettings(_token, address(denominator));
+            ) = tokenSettingsCalculator.getTokenSettings(_option.token, address(denominator));
 
-            _setToken(_token, contractSize, strikePrinceIncrement);
+            _setToken(_option.token, contractSize, strikePrinceIncrement);
         }
 
         //
 
-        _preCheckOptionWrite(_token, _contractAmount, _strikePrice, _expiration);
+        _preCheckOptionWrite(_option.token, _option.contractAmount, _option.strikePrice, _option.expiration);
 
-        TokenSettings memory settings = tokenSettings[_token];
+        TokenSettings memory settings = tokenSettings[_option.token];
 
-        uint256 optionId = getOptionId(_token, _expiration, _strikePrice, _isCall);
+        uint256 optionId = getOptionId(_option.token, _option.expiration, _option.strikePrice, _option.isCall);
         if (optionId == 0) {
             optionId = nextOptionId;
-            options[_token][_expiration][_strikePrice][_isCall] = optionId;
+            options[_option.token][_option.expiration][_option.strikePrice][_option.isCall] = optionId;
 
             pools[optionId] = Pool({ tokenAmount: 0, denominatorAmount: 0 });
             optionData[optionId] = OptionData({
-                token: _token,
+                token: _option.token,
                 contractSize: settings.contractSize,
-                expiration: _expiration.toUint32(),
-                strikePrice: _strikePrice,
-                isCall: _isCall,
+                expiration: _option.expiration,
+                strikePrice: _option.strikePrice,
+                isCall: _option.isCall,
                 claimsPreExp: 0,
                 claimsPostExp: 0,
                 exercised: 0,
                 supply: 0
             });
 
-            emit OptionIdCreated(optionId, _token);
+            emit OptionIdCreated(optionId, _option.token);
 
             nextOptionId = nextOptionId.add(1);
         }
@@ -398,10 +406,10 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         // Set referrer or get current if one already exists
         _referrer = _trySetReferrer(_referrer);
 
-        if (_isCall) {
-            IERC20 tokenErc20 = IERC20(_token);
+        if (_option.isCall) {
+            IERC20 tokenErc20 = IERC20(_option.token);
 
-            uint256 amount = _contractAmount.mul(data.contractSize);
+            uint256 amount = _option.contractAmount.mul(data.contractSize);
             uint256 feeAmount = amount.mul(writeFee).div(INVERSE_BASIS_POINT);
 
             tokenErc20.safeTransferFrom(msg.sender, address(this), amount);
@@ -411,7 +419,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
 
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
         } else {
-            uint256 amount = _contractAmount.mul(_strikePrice);
+            uint256 amount = _option.contractAmount.mul(_option.strikePrice);
             uint256 feeAmount = amount.mul(writeFee).div(INVERSE_BASIS_POINT);
 
             denominator.safeTransferFrom(msg.sender, address(this), amount);
@@ -422,11 +430,11 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
             pools[optionId].denominatorAmount = pools[optionId].denominatorAmount.add(amount);
         }
 
-        nbWritten[msg.sender][optionId] = nbWritten[msg.sender][optionId].add(_contractAmount);
+        nbWritten[msg.sender][optionId] = nbWritten[msg.sender][optionId].add(_option.contractAmount);
 
-        mint(msg.sender, optionId, _contractAmount);
+        mint(msg.sender, optionId, _option.contractAmount);
 
-        emit OptionWritten(msg.sender, optionId, _token, _contractAmount);
+        emit OptionWritten(msg.sender, optionId, _option.token, _option.contractAmount);
     }
 
     // Cancel an option before expiration, by burning the NFT for withdrawal of deposit (Can only be called by writer of the option)
@@ -460,7 +468,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         OptionData storage data = optionData[_optionId];
 
         burn(msg.sender, _optionId, _contractAmount);
-        data.exercised = uint256(data.exercised).add(_contractAmount).toUint32();
+        data.exercised = uint256(data.exercised).add(_contractAmount).toUint64();
 
         IERC20 tokenErc20 = IERC20(data.token);
 
@@ -525,7 +533,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
 
         pools[_optionId].denominatorAmount.sub(denominatorAmount);
         pools[_optionId].tokenAmount.sub(tokenAmount);
-        data.claimsPostExp = uint256(data.claimsPostExp).add(claimsUser).toUint32();
+        data.claimsPostExp = uint256(data.claimsPostExp).add(claimsUser).toUint64();
         delete nbWritten[msg.sender][_optionId];
 
         denominator.safeTransfer(msg.sender, denominatorAmount);
@@ -554,7 +562,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         //
 
         nbWritten[msg.sender][_optionId] = nbWritten[msg.sender][_optionId].sub(_contractAmount);
-        data.claimsPreExp = uint256(data.claimsPreExp).add(_contractAmount).toUint32();
+        data.claimsPreExp = uint256(data.claimsPreExp).add(_contractAmount).toUint64();
 
         if (data.isCall) {
             uint256 amount = _contractAmount.mul(data.strikePrice);
@@ -594,7 +602,7 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         require(_contractAmount > 0, "ContractAmount must be > 0");
 
         burn(msg.sender, _optionId, _contractAmount);
-        optionData[_optionId].exercised = uint256(optionData[_optionId].exercised).add(_contractAmount).toUint32();
+        optionData[_optionId].exercised = uint256(optionData[_optionId].exercised).add(_contractAmount).toUint64();
 
         IERC20 tokenErc20 = IERC20(optionData[_optionId].token);
 
@@ -657,14 +665,9 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
     // Batch functions //
     /////////////////////
 
-    function batchWriteOption(address[] memory _token, uint256[] memory _expiration, uint256[] memory _strikePrice, bool[] memory _isCall, uint256[] memory _contractAmount, address _referrer) public {
-        require(_token.length == _expiration.length, "All arrays must have same length");
-        require(_token.length == _strikePrice.length, "All arrays must have same length");
-        require(_token.length == _isCall.length, "All arrays must have same length");
-        require(_token.length == _contractAmount.length, "All arrays must have same length");
-
-        for (uint256 i = 0; i < _token.length; ++i) {
-            writeOption(_token[i], _expiration[i], _strikePrice[i], _isCall[i], _contractAmount[i], _referrer);
+    function batchWriteOption(OptionWriteArgs[] memory _options, address _referrer) public {
+        for (uint256 i = 0; i < _options.length; ++i) {
+            writeOption(_options[i], _referrer);
         }
     }
 
@@ -710,13 +713,13 @@ contract TestPremiaOption is Ownable, ERC1155, TestTime, ReentrancyGuard {
         OptionData storage data = optionData[_id];
 
         _mint(_account, _id, _amount, "");
-        data.supply = uint256(data.supply).add(_amount).toUint32();
+        data.supply = uint256(data.supply).add(_amount).toUint64();
     }
 
     function burn(address _account, uint256 _id, uint256 _amount) internal notExpired(_id) {
         OptionData storage data = optionData[_id];
 
-        data.supply = uint256(data.supply).sub(_amount).toUint32();
+        data.supply = uint256(data.supply).sub(_amount).toUint64();
         _burn(_account, _id, _amount);
     }
 

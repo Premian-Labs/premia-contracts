@@ -25,6 +25,7 @@ async function main() {
   const premiaOptionDai = await premiaOptionFactory.deploy(
     uri,
     dai,
+    weth,
     deployer.address,
   );
 
@@ -34,6 +35,7 @@ async function main() {
 
   const premiaOptionEth = await premiaOptionFactory.deploy(
     uri,
+    weth,
     weth,
     deployer.address,
   );

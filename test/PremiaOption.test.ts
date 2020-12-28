@@ -182,6 +182,64 @@ describe('PremiaOption', () => {
       );
       expect(optionId).to.eq(1);
     });
+
+    it('should successfully batchWriteOption', async () => {
+      await optionTestUtil.addEth();
+
+      const defaultOption = optionTestUtil.getOptionDefaults();
+
+      const contractAmount1 = 2;
+      const contractAmount2 = 3;
+
+      let amount = utils
+        .parseEther(contractAmount1.toString())
+        .mul(1e5 + tax * 1e5)
+        .div(1e5);
+      await eth.connect(writer1).mint(amount.toString());
+      await eth
+        .connect(writer1)
+        .increaseAllowance(
+          premiaOption.address,
+          utils.parseEther(amount.toString()),
+        );
+
+      amount = utils
+        .parseEther(contractAmount2.toString())
+        .mul(10)
+        .mul(3)
+        .mul(1e5 + tax * 1e5)
+        .div(1e5);
+      await dai.connect(writer1).mint(utils.parseEther(amount.toString()));
+      await dai
+        .connect(writer1)
+        .increaseAllowance(
+          premiaOption.address,
+          utils.parseEther(amount.toString()),
+        );
+
+      await premiaOption.connect(writer1).batchWriteOption(
+        [
+          {
+            ...defaultOption,
+            token: eth.address,
+            isCall: true,
+            contractAmount: contractAmount1,
+          },
+          {
+            ...defaultOption,
+            token: eth.address,
+            isCall: false,
+            contractAmount: contractAmount2,
+          },
+        ],
+        ZERO_ADDRESS,
+      );
+
+      const balance1 = await premiaOption.balanceOf(writer1.address, 1);
+      const balance2 = await premiaOption.balanceOf(writer1.address, 2);
+      expect(balance1).to.eq(contractAmount1);
+      expect(balance2).to.eq(contractAmount2);
+    });
   });
 
   describe('cancelOption', () => {
@@ -235,6 +293,34 @@ describe('PremiaOption', () => {
       const nbWritten = await premiaOption.nbWritten(writer1.address, 1);
       expect(nbWritten).to.eq(1);
     });
+
+    it('should successfully batchCancelOption', async () => {
+      await optionTestUtil.addEthAndWriteOptions(3);
+      await optionTestUtil.addEthAndWriteOptions(3, false);
+
+      let optionBalance1 = await premiaOption.balanceOf(writer1.address, 1);
+      let optionBalance2 = await premiaOption.balanceOf(writer1.address, 2);
+      let ethBalance = await eth.balanceOf(writer1.address);
+      let daiBalance = await dai.balanceOf(writer1.address);
+
+      expect(optionBalance1).to.eq(3);
+      expect(ethBalance).to.eq(0);
+      expect(optionBalance2).to.eq(3);
+      expect(daiBalance).to.eq(0);
+
+      await premiaOption.connect(writer1).batchCancelOption([1, 2], [2, 1]);
+
+      optionBalance1 = await premiaOption.balanceOf(writer1.address, 1);
+      optionBalance2 = await premiaOption.balanceOf(writer1.address, 2);
+
+      ethBalance = await eth.balanceOf(writer1.address);
+      daiBalance = await dai.balanceOf(writer1.address);
+
+      expect(optionBalance1).to.eq(1);
+      expect(optionBalance2).to.eq(2);
+      expect(ethBalance.toString()).to.eq(utils.parseEther('2').toString());
+      expect(daiBalance.toString()).to.eq(utils.parseEther('10').toString());
+    });
   });
 
   describe('exerciseOption', () => {
@@ -285,6 +371,47 @@ describe('PremiaOption', () => {
 
       expect(daiBalance).to.eq(utils.parseEther('0.1'));
       expect(ethBalance).to.eq(utils.parseEther('0.01'));
+    });
+
+    it('should successfully batchExerciseOption', async () => {
+      await optionTestUtil.addEthAndWriteOptions(2, true);
+      await optionTestUtil.addEthAndWriteOptions(3, false);
+
+      await optionTestUtil.transferOptionToUser1(writer1, 2, 1);
+      await optionTestUtil.transferOptionToUser1(writer1, 3, 2);
+
+      let amount = 1 * 10 * (1 + tax);
+      await dai.connect(user1).mint(utils.parseEther(amount.toString()));
+      await dai
+        .connect(user1)
+        .increaseAllowance(
+          premiaOption.address,
+          utils.parseEther(amount.toString()),
+        );
+
+      amount = 2 * (1 + tax);
+
+      await eth.connect(user1).mint(utils.parseEther(amount.toString()));
+      await eth
+        .connect(user1)
+        .increaseAllowance(
+          premiaOption.address,
+          utils.parseEther(amount.toString()),
+        );
+
+      await premiaOption
+        .connect(user1)
+        .batchExerciseOption([1, 2], [1, 2], ZERO_ADDRESS);
+
+      const nftBalance1 = await premiaOption.balanceOf(user1.address, 1);
+      const nftBalance2 = await premiaOption.balanceOf(user1.address, 2);
+      const daiBalance = await dai.balanceOf(user1.address);
+      const ethBalance = await eth.balanceOf(user1.address);
+
+      expect(nftBalance1).to.eq(1);
+      expect(nftBalance2).to.eq(1);
+      expect(daiBalance).to.eq(utils.parseEther('20'));
+      expect(ethBalance).to.eq(utils.parseEther('1'));
     });
   });
 
@@ -490,6 +617,39 @@ describe('PremiaOption', () => {
       expect(ethBalance).to.eq(0);
       expect(nbWritten).to.eq(0);
     });
+
+    it('should successfully batchWithdraw', async () => {
+      await optionTestUtil.addEth();
+      await optionTestUtil.mintAndWriteOption(writer1, 1);
+      await optionTestUtil.mintAndWriteOption(writer2, 1);
+      await optionTestUtil.transferOptionToUser1(writer1, 1);
+      await optionTestUtil.transferOptionToUser1(writer2, 1);
+      await optionTestUtil.exerciseOption(true, 1);
+
+      await premiaOption.connect(writer2).withdrawPreExpiration(1, 1);
+
+      await optionTestUtil.mintAndWriteOption(writer1, 1, false);
+      await optionTestUtil.mintAndWriteOption(writer2, 1, false);
+      await optionTestUtil.transferOptionToUser1(writer1, 1, 2);
+      await optionTestUtil.transferOptionToUser1(writer2, 1, 2);
+      await optionTestUtil.exerciseOption(false, 1, undefined, 2);
+
+      await premiaOption.connect(writer2).withdrawPreExpiration(2, 1);
+
+      await premiaOption.setTimestamp(1e6);
+
+      await premiaOption.connect(writer1).batchWithdraw([1, 2]);
+
+      const daiBalance = await dai.balanceOf(writer1.address);
+      const ethBalance = await eth.balanceOf(writer1.address);
+      const nbWritten1 = await premiaOption.nbWritten(writer1.address, 1);
+      const nbWritten2 = await premiaOption.nbWritten(writer1.address, 2);
+
+      expect(daiBalance).to.eq(utils.parseEther('10'));
+      expect(ethBalance).to.eq(utils.parseEther('1'));
+      expect(nbWritten1).to.eq(0);
+      expect(nbWritten2).to.eq(0);
+    });
   });
 
   describe('withdrawPreExpiration', () => {
@@ -560,6 +720,32 @@ describe('PremiaOption', () => {
       expect(daiBalance).to.eq(0);
       expect(ethBalance).to.eq(utils.parseEther('1'));
       expect(nbWritten).to.eq(1);
+    });
+
+    it('should successfully batchWithdrawPreExpiration', async () => {
+      await optionTestUtil.addEth();
+      await optionTestUtil.mintAndWriteOption(writer1, 3, true);
+      await optionTestUtil.mintAndWriteOption(writer1, 3, false);
+
+      await optionTestUtil.transferOptionToUser1(writer1, 3);
+      await optionTestUtil.transferOptionToUser1(writer1, 3, 2);
+      await optionTestUtil.exerciseOption(true, 2);
+      await optionTestUtil.exerciseOption(false, 1, undefined, 2);
+
+      await premiaOption
+        .connect(writer1)
+        .batchWithdrawPreExpiration([1, 2], [2, 1]);
+
+      const daiBalance = await dai.balanceOf(writer1.address);
+      const ethBalance = await eth.balanceOf(writer1.address);
+
+      const nbWritten1 = await premiaOption.nbWritten(writer1.address, 1);
+      const nbWritten2 = await premiaOption.nbWritten(writer1.address, 2);
+
+      expect(daiBalance).to.eq(utils.parseEther('20'));
+      expect(ethBalance).to.eq(utils.parseEther('1'));
+      expect(nbWritten1).to.eq(1);
+      expect(nbWritten2).to.eq(2);
     });
   });
 
