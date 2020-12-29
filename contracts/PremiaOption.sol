@@ -90,10 +90,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     uint256 public constant INVERSE_BASIS_POINT = 1e5;
 
-    // This contract is used to define automatically an initial contractSize and strikePriceIncrement for a newly added token
-    // Disabled on launch, might be added later, so that admin does not need to add tokens manually
-    ITokenSettingsCalculator public tokenSettingsCalculator;
-
     // token => expiration => strikePrice => isCall (1 for call, 0 for put) => optionId
     mapping (address => mapping(uint256 => mapping(uint256 => mapping (bool => uint256)))) public options;
 
@@ -282,10 +278,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         tokenSettings[_token].isDisabled = _isDisabled;
     }
 
-    function setTokenSettingsCalculator(ITokenSettingsCalculator _addr) public onlyOwner {
-        tokenSettingsCalculator = _addr;
-    }
-
     function setTreasury(address _treasury) public onlyOwner {
         require(_treasury != address(0), "Treasury cannot be 0x0 address");
         treasury = _treasury;
@@ -382,19 +374,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     ////////
 
     function writeOption(OptionWriteArgs memory _option, address _referrer) public nonReentrant {
-        // If token has never been used before, we request a default contractSize and strikePriceIncrement to initialize it
-        // (If tokenSettingsCalculator contract is defined)
-        if (address(tokenSettingsCalculator) != address(0) && !_tokens.contains(_option.token)) {
-            (
-            uint256 contractSize,
-            uint256 strikePrinceIncrement
-            ) = tokenSettingsCalculator.getTokenSettings(_option.token, address(denominator));
-
-            _setToken(_option.token, contractSize, strikePrinceIncrement);
-        }
-
-        //
-
         _preCheckOptionWrite(_option.token, _option.contractAmount, _option.strikePrice, _option.expiration);
 
         TokenSettings memory settings = tokenSettings[_option.token];

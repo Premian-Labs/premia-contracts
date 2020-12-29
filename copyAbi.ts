@@ -10,8 +10,8 @@ fs.copyFileSync(
   './abi/PremiaErc20.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaMiningErc20.sol/PremiaMiningErc20.json',
-  './abi/PremiaMiningErc20.json',
+  './artifacts/contracts/PremiaFluxErc20.sol/PremiaFluxErc20.json',
+  './abi/PremiaFluxErc20.json',
 );
 fs.copyFileSync(
   './artifacts/contracts/PremiaOption.sol/PremiaOption.json',
