@@ -800,4 +800,42 @@ describe('PremiaOption', () => {
       );
     });
   });
+
+  describe('fees', () => {
+    it('should calculate total fee correctly without discount', async () => {
+      const fee = await premiaOption.getTotalFee(
+        writer1.address,
+        utils.parseEther('2'),
+        false,
+        true,
+      );
+
+      expect(fee).to.eq(utils.parseEther('0.02'));
+    });
+
+    it('should calculate total fee correctly with a referral', async () => {
+      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+      const fee = await premiaOption.getTotalFee(
+        writer1.address,
+        utils.parseEther('2'),
+        false,
+        true,
+      );
+
+      expect(fee).to.eq(utils.parseEther('0.018'));
+    });
+
+    it('should correctly calculate total fee with a referral + staking discount', async () => {
+      await premiaOption.setPre;
+      await premiaStaking.setDiscount(2e4);
+      const fee = await premiaOption.getTotalFee(
+        writer1.address,
+        utils.parseEther('2'),
+        true,
+        true,
+      );
+
+      expect(fee).to.eq(utils.parseEther('0.0144'));
+    });
+  });
 });

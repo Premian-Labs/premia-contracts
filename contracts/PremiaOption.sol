@@ -234,24 +234,24 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             feeAmountBase = _price.mul(exerciseFee).div(INVERSE_BASIS_POINT);
         }
 
-        uint256 feeDiscount = 0;
+        bool hasReferrer = _hasReferrer || premiaReferral.referrals(_user) != address(0);
 
-        // If premiaStaking contract is set, we calculate discount
-        if (address(premiaStaking) != address(0)) {
-            uint256 stakingDiscount = premiaStaking.getDiscount(_user);
-            require(stakingDiscount <= INVERSE_BASIS_POINT, "Staking discount above max");
-            feeDiscount = feeAmountBase.mul(stakingDiscount).div(INVERSE_BASIS_POINT);
+        (uint256 feeTreasury, uint256 feeReferrer) = _getFees(hasReferrer, feeAmountBase);
+
+        return feeTreasury.add(feeReferrer);
+    }
+
+    function getFees(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256 _feeTreasury, uint256 _feeReferrer) {
+        uint256 feeAmountBase;
+        if (_isWrite) {
+            feeAmountBase = _price.mul(writeFee).div(INVERSE_BASIS_POINT);
+        } else {
+            feeAmountBase = _price.mul(exerciseFee).div(INVERSE_BASIS_POINT);
         }
 
-        // If premiaReferral contract is set, we calculate discount
-        if (address(premiaReferral) != address(0)) {
-            if (_hasReferrer || premiaReferral.referrals(_user) != address(0)) {
-                // feeDiscount = feeDiscount + ( (feeAmountBase - feeDiscount ) * referredDiscountRate)
-                feeDiscount = feeDiscount.add(feeAmountBase.sub(feeDiscount).mul(referredDiscount).div(INVERSE_BASIS_POINT));
-            }
-        }
+        bool hasReferrer = _hasReferrer || premiaReferral.referrals(_user) != address(0);
 
-        return feeAmountBase.sub(feeDiscount);
+        return _getFees(hasReferrer, feeAmountBase);
     }
 
     //////////////////////////////////////////////////
@@ -411,7 +411,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
             tokenErc20.safeTransferFrom(msg.sender, address(this), amount);
 
-            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer, feeAmount);
+            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
             _payFees(msg.sender, tokenErc20, _referrer, feeTreasury, feeReferrer);
 
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
@@ -421,7 +421,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
             denominator.safeTransferFrom(msg.sender, address(this), amount);
 
-            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer, feeAmount);
+            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
             _payFees(msg.sender, denominator, _referrer, feeTreasury, feeReferrer);
 
             pools[optionId].denominatorAmount = pools[optionId].denominatorAmount.add(amount);
@@ -483,7 +483,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
             denominator.safeTransferFrom(msg.sender, address(this), denominatorAmount);
 
-            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer, feeAmount);
+            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
             _payFees(msg.sender, denominator, _referrer, feeTreasury, feeReferrer);
 
             tokenErc20.safeTransfer(msg.sender, tokenAmount);
@@ -495,7 +495,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
             tokenErc20.safeTransferFrom(msg.sender, address(this), tokenAmount);
 
-            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer, feeAmount);
+            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
             _payFees(msg.sender, tokenErc20, _referrer, feeTreasury, feeReferrer);
 
             denominator.safeTransfer(msg.sender, denominatorAmount);
@@ -617,7 +617,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(denominatorAmount);
 
             uint256 feeAmount = denominatorAmount.mul(exerciseFee).div(INVERSE_BASIS_POINT);
-            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer, feeAmount);
+            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
 
             // Swap enough denominator to tokenErc20 to pay fee + strike price
             uint256[] memory swapAmounts = _swap(_router, address(tokenErc20), address(denominator), denominatorAmount.add(feeTreasury).add(feeReferrer), _amountInMax);
@@ -638,7 +638,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
 
             uint256 feeAmount = tokenAmount.mul(exerciseFee).div(INVERSE_BASIS_POINT);
-            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer, feeAmount);
+            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
 
             // Swap enough denominator to tokenErc20 to pay fee + strike price
             uint256[] memory swapAmounts = _swap(_router, address(denominator), address(tokenErc20), tokenAmount.add(feeTreasury).add(feeReferrer), _amountInMax);
@@ -749,7 +749,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         require(_expiration % expirationIncrement == baseExpiration, "Wrong expiration timestamp increment");
     }
 
-    function _getFees(address _referrer, uint256 _feeAmountBase) internal returns(uint256 _feeTreasury, uint256 _feeReferrer) {
+    function _getFees(bool _hasReferrer, uint256 _feeAmountBase) internal view returns(uint256 _feeTreasury, uint256 _feeReferrer) {
         uint256 feeTreasury = _feeAmountBase;
         uint256 feeReferrer = 0;
         uint256 feeDiscount = 0;
@@ -762,7 +762,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         }
 
         // If premiaReferral contract is set, we calculate discount
-        if (address(premiaReferral) != address(0) && _referrer != address(0)) {
+        if (address(premiaReferral) != address(0) && _hasReferrer) {
             // feeDiscount = feeDiscount + ( (_feeAmountBase - feeDiscount ) * referredDiscountRate)
             feeDiscount = feeDiscount.add(_feeAmountBase.sub(feeDiscount).mul(referredDiscount).div(INVERSE_BASIS_POINT));
             feeReferrer = _feeAmountBase.sub(feeDiscount).mul(referrerFee).div(INVERSE_BASIS_POINT);
