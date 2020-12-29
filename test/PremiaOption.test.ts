@@ -849,7 +849,6 @@ describe('PremiaOption', () => {
     });
 
     it('should correctly calculate total fee with a referral + staking discount', async () => {
-      await premiaOption.setPre;
       await premiaStaking.setDiscount(2e4);
       const fee = await premiaOption.getTotalFee(
         writer1.address,
@@ -859,6 +858,43 @@ describe('PremiaOption', () => {
       );
 
       expect(fee).to.eq(utils.parseEther('0.0144'));
+    });
+
+    it('should correctly give a 30% discount from premia staking', async () => {
+      await premiaStaking.setDiscount(3e4);
+
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 2);
+
+      const user1Options = await premiaOption.balanceOf(writer1.address, 1);
+      const user1Dai = await dai.balanceOf(user1.address);
+
+      expect(user1Options).to.eq(0);
+      expect(user1Dai).to.eq(
+        BigNumber.from(ethers.utils.parseEther('0.06')), // Expect 30% of the 1% tax of 2 options exercised at strike price of 10 DAI
+      );
+    });
+
+    it('should correctly give a 30% discount from premia staking + 10% discount from referral', async () => {
+      await premiaStaking.setDiscount(3e4);
+
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        true,
+        2,
+        2,
+        writer2.address,
+      );
+
+      const user1Options = await premiaOption.balanceOf(writer1.address, 1);
+      const user1Dai = await dai.balanceOf(user1.address);
+      const referrerDai = await dai.balanceOf(writer2.address);
+
+      expect(user1Options).to.eq(0);
+      expect(user1Dai).to.eq(
+        BigNumber.from(ethers.utils.parseEther('0.074')), // Expect 30% of the 1% tax of 2 options exercised at strike price of 10 DAI + 10% discount from referral
+      );
+      expect(referrerDai).to.eq(
+        ethers.utils.parseEther('0.0126'), // Expect 10% of 90% of tax (After premia staking discount)
+      );
     });
   });
 
