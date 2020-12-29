@@ -51,5 +51,9 @@ fs.copyFileSync(
   './artifacts/contracts/test/TestPremiaStaking.sol/TestPremiaStaking.json',
   './abi/TestPremiaStaking.json',
 );
+fs.copyFileSync(
+  './artifacts/contracts/test/TestFlashLoan.sol/TestFlashLoan.json',
+  './abi/TestFlashLoan.json',
+);
 
 rimraf.sync('./contractsTyped');

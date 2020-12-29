@@ -6,6 +6,7 @@ import {
   PremiaReferral,
   PremiaReferral__factory,
   TestErc20__factory,
+  TestFlashLoan__factory,
   TestPremiaOption,
   TestPremiaOption__factory,
   TestPremiaStaking,
@@ -836,6 +837,102 @@ describe('PremiaOption', () => {
       );
 
       expect(fee).to.eq(utils.parseEther('0.0144'));
+    });
+  });
+
+  describe('flashLoan', () => {
+    it('should revert if loan not paid back', async () => {
+      const flashLoanFactory = new TestFlashLoan__factory(writer1);
+
+      const flashLoan = await flashLoanFactory.deploy();
+      await flashLoan.setMode(2);
+
+      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+
+      let ethBalance = await eth.balanceOf(premiaOption.address);
+
+      expect(ethBalance).to.eq(utils.parseEther('2'));
+
+      await expect(
+        premiaOption.flashLoan(
+          eth.address,
+          utils.parseEther('2'),
+          flashLoan.address,
+        ),
+      ).to.be.revertedWith('Failed to pay back');
+    });
+
+    it('should revert if loan paid back without fee', async () => {
+      const flashLoanFactory = new TestFlashLoan__factory(writer1);
+
+      const flashLoan = await flashLoanFactory.deploy();
+      await flashLoan.setMode(1);
+
+      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+
+      let ethBalance = await eth.balanceOf(premiaOption.address);
+
+      expect(ethBalance).to.eq(utils.parseEther('2'));
+
+      await expect(
+        premiaOption.flashLoan(
+          eth.address,
+          utils.parseEther('2'),
+          flashLoan.address,
+        ),
+      ).to.be.revertedWith('Failed to pay back');
+    });
+
+    it('should successfully complete flashLoan if paid back with fee', async () => {
+      await premiaOption.setWriteFee(0);
+      const flashLoanFactory = new TestFlashLoan__factory(writer1);
+
+      const flashLoan = await flashLoanFactory.deploy();
+      await flashLoan.setMode(0);
+
+      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+
+      await eth.mint(utils.parseEther('0.004'));
+      await eth.transfer(flashLoan.address, utils.parseEther('0.004'));
+
+      let ethBalance = await eth.balanceOf(premiaOption.address);
+      expect(ethBalance).to.eq(utils.parseEther('2'));
+
+      await premiaOption.flashLoan(
+        eth.address,
+        utils.parseEther('2'),
+        flashLoan.address,
+      );
+
+      ethBalance = await eth.balanceOf(premiaOption.address);
+      expect(ethBalance).to.eq(utils.parseEther('2'));
+
+      const ethBalanceTreasury = await eth.balanceOf(treasury.address);
+      expect(ethBalanceTreasury).to.eq(utils.parseEther('0.004'));
+    });
+
+    it('should successfully complete flashLoan if paid back without fee and user on fee whitelist', async () => {
+      await premiaOption.setWriteFee(0);
+      const flashLoanFactory = new TestFlashLoan__factory(writer1);
+
+      const flashLoan = await flashLoanFactory.deploy();
+      await flashLoan.setMode(1);
+      await premiaOption.addWhitelistedFlashLoanReceivers([writer1.address]);
+
+      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+
+      let ethBalance = await eth.balanceOf(premiaOption.address);
+      expect(ethBalance).to.eq(utils.parseEther('2'));
+
+      await premiaOption
+        .connect(writer1)
+        .flashLoan(eth.address, utils.parseEther('2'), flashLoan.address);
+
+      ethBalance = await eth.balanceOf(premiaOption.address);
+      expect(ethBalance).to.eq(utils.parseEther('2'));
+
+      const ethBalanceTreasury = await eth.balanceOf(treasury.address);
+      expect(ethBalanceTreasury).to.eq(0);
     });
   });
 });

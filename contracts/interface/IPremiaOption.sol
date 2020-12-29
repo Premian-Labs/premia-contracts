@@ -4,6 +4,8 @@ pragma solidity ^0.7.0;
 pragma experimental ABIEncoderV2;
 
 import '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
+import "../interface/IFlashLoanReceiver.sol";
+import "../interface/uniswap/IUniswapV2Router02.sol";
 
 interface IPremiaOption is IERC1155 {
     struct TokenSettings {
@@ -35,6 +37,10 @@ interface IPremiaOption is IERC1155 {
     function getOptionDataBatch(uint256[] memory _optionIds) external view returns(OptionData[] memory);
     function getNbOptionWrittenBatch(address _user, uint256[] memory _optionIds) external view returns(uint256[] memory);
     function getPoolBatch(uint256[] memory _optionIds) external view returns(Pool[] memory);
+    function getWhitelistedFlashLoanReceivers() external view returns(address[] memory);
+    function getWhitelistedUniswapRouters() external view returns(address[] memory);
+    function getTotalFee(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256);
+    function getFees(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256 _feeTreasury, uint256 _feeReferrer);
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
@@ -45,6 +51,8 @@ interface IPremiaOption is IERC1155 {
     function exerciseOption(uint256 _optionId, uint256 _contractAmount) external;
     function withdraw(uint256 _optionId) external;
     function withdrawPreExpiration(uint256 _optionId, uint256 _contractAmount) external;
+    function flashLoan(address _tokenAddress, uint256 _amount, IFlashLoanReceiver _receiver) external;
+    function flashExerciseOption(uint256 _optionId, uint256 _contractAmount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) external;
 
     /////////////////////
     // Batch functions //
@@ -53,5 +61,6 @@ interface IPremiaOption is IERC1155 {
     function batchWriteOption(address[] memory _token, uint256[] memory _expiration, uint256[] memory _strikePrice, bool[] memory _isCall, uint256[] memory _contractAmount) external;
     function batchCancelOption(uint256[] memory _optionId, uint256[] memory _contractAmount) external;
     function batchWithdraw(uint256[] memory _optionId) external;
+    function batchExerciseOption(uint256[] memory _optionId, uint256[] memory _contractAmount, address _referrer) external;
     function batchWithdrawPreExpiration(uint256[] memory _optionId, uint256[] memory _contractAmount) external;
 }

@@ -579,7 +579,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 startBalance = _token.balanceOf(address(this));
         require(_amount <= startBalance, "Not enough tokens available");
         _token.safeTransfer(address(_receiver), _amount);
-        _receiver.execute(_tokenAddress, _amount);
+
+        _receiver.execute(_tokenAddress, _amount, _amount.add(_amount.mul(flashLoanFee).div(INVERSE_BASIS_POINT)));
 
         uint256 endBalance = _token.balanceOf(address(this));
 
@@ -592,7 +593,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         _token.safeTransfer(treasury, endBalance.sub(startBalance));
 
         endBalance = _token.balanceOf(address(this));
-        require(endBalance >= endBalanceRequired, "Failed to pay back");
+        require(endBalance >= startBalance, "Failed to pay back");
     }
 
     function flashExerciseOption(uint256 _optionId, uint256 _contractAmount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) public nonReentrant {
