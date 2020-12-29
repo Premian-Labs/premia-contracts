@@ -84,6 +84,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     uint256 public referrerFee = 1e4;               // 10% of write/exercise fee | Referrer fee calculated after all discounts applied
     uint256 public referredDiscount = 1e4;          // -10% from write/exercise fee
 
+    EnumerableSet.AddressSet private _whitelistedWriteExercise;      // List of addresses allowed to write / exercise without fee
     EnumerableSet.AddressSet private _whitelistedFlashLoanReceivers; // List of addresses allowed to do a flash loan without fee
     EnumerableSet.AddressSet private _whitelistedUniswapRouters;     // List of accepted uniswap routers
 
@@ -226,6 +227,17 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return result;
     }
 
+    function getWhitelistedWriteExercise() external view returns(address[] memory) {
+        uint256 length = _whitelistedWriteExercise.length();
+        address[] memory result = new address[](length);
+
+        for (uint256 i=0; i < length; i++) {
+            result[i] = _whitelistedWriteExercise.at(i);
+        }
+
+        return result;
+    }
+
     function getTotalFee(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256) {
         uint256 feeAmountBase;
         if (_isWrite) {
@@ -318,6 +330,18 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     function removeWhitelistedUniswapRouters(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedUniswapRouters.remove(_addr[i]);
+        }
+    }
+
+    function addWhitelistedWriteExercise(address[] memory _addr) external onlyOwner {
+        for (uint256 i=0; i < _addr.length; i++) {
+            _whitelistedWriteExercise.add(_addr[i]);
+        }
+    }
+
+    function removeWhitelistedWriteExercise(address[] memory _addr) external onlyOwner {
+        for (uint256 i=0; i < _addr.length; i++) {
+            _whitelistedWriteExercise.remove(_addr[i]);
         }
     }
 
@@ -775,6 +799,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     }
 
     function _payFees(address _from, IERC20 _token, address _referrer, uint256 _feeTreasury, uint256 _feeReferrer) internal {
+        // If address is whitelisted, it doesnt need to pay fees
+        if (_whitelistedWriteExercise.contains(msg.sender)) return;
+
         if (_feeTreasury > 0) {
             _token.safeTransferFrom(_from, treasury, _feeTreasury);
         }

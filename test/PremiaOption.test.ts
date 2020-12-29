@@ -374,6 +374,28 @@ describe('PremiaOption', () => {
       expect(ethBalance).to.eq(utils.parseEther('0.01'));
     });
 
+    it('should have 0 eth and 0.1 dai in treasury after 1 option exercised if writer is whitelisted', async () => {
+      await premiaOption.addWhitelistedWriteExercise([writer1.address]);
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 1, 1);
+
+      const daiBalance = await dai.balanceOf(treasury.address);
+      const ethBalance = await eth.balanceOf(treasury.address);
+
+      expect(daiBalance).to.eq(utils.parseEther('0.1'));
+      expect(ethBalance).to.eq(utils.parseEther('0'));
+    });
+
+    it('should have 0.1 eth and 0 dai in treasury after 1 option exercised if exerciser is whitelisted', async () => {
+      await premiaOption.addWhitelistedWriteExercise([user1.address]);
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 1, 1);
+
+      const daiBalance = await dai.balanceOf(treasury.address);
+      const ethBalance = await eth.balanceOf(treasury.address);
+
+      expect(daiBalance).to.eq(utils.parseEther('0'));
+      expect(ethBalance).to.eq(utils.parseEther('0.01'));
+    });
+
     it('should successfully batchExerciseOption', async () => {
       await optionTestUtil.addEthAndWriteOptions(2, true);
       await optionTestUtil.addEthAndWriteOptions(3, false);
