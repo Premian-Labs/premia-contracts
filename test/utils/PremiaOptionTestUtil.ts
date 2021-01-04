@@ -1,11 +1,7 @@
-import {
-  TestErc20,
-  TestPremiaOption,
-  TestTokenSettingsCalculator__factory,
-} from '../../contractsTyped';
+import { PremiaOption, TestErc20 } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { BigNumber, BigNumberish, utils } from 'ethers';
-import { ZERO_ADDRESS } from './constants';
+import { BigNumberish, utils } from 'ethers';
+import { ONE_WEEK, ZERO_ADDRESS } from './constants';
 
 interface WriteOptionArgs {
   address?: string;
@@ -19,7 +15,7 @@ interface WriteOptionArgs {
 interface PremiaOptionTestUtilProps {
   eth: TestErc20;
   dai: TestErc20;
-  premiaOption: TestPremiaOption;
+  premiaOption: PremiaOption;
   admin: SignerWithAddress;
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
@@ -31,7 +27,7 @@ interface PremiaOptionTestUtilProps {
 export class PremiaOptionTestUtil {
   eth: TestErc20;
   dai: TestErc20;
-  premiaOption: TestPremiaOption;
+  premiaOption: PremiaOption;
   admin: SignerWithAddress;
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
@@ -51,10 +47,20 @@ export class PremiaOptionTestUtil {
     this.tax = props.tax;
   }
 
+  getNextExpiration() {
+    const now = new Date();
+    const baseExpiration = 172799; // Offset to add to Unix timestamp to make it Fri 23:59:59 UTC
+    return (
+      ONE_WEEK *
+        (Math.floor((now.getTime() / 1000 - baseExpiration) / ONE_WEEK) + 1) +
+      baseExpiration
+    );
+  }
+
   getOptionDefaults() {
     return {
       address: this.eth.address,
-      expiration: 777599,
+      expiration: this.getNextExpiration(),
       strikePrice: utils.parseEther('10'),
       isCall: true,
       contractAmount: 1,
@@ -66,16 +72,6 @@ export class PremiaOptionTestUtil {
       this.eth.address,
       utils.parseEther('1'),
       utils.parseEther('10'),
-    );
-  }
-
-  async addTokenSettingsCalculator() {
-    const tokenSettingsCalculatorFactory = new TestTokenSettingsCalculator__factory(
-      this.writer1,
-    );
-    const tokenSettingsCalculator = await tokenSettingsCalculatorFactory.deploy();
-    await this.premiaOption.setTokenSettingsCalculator(
-      tokenSettingsCalculator.address,
     );
   }
 

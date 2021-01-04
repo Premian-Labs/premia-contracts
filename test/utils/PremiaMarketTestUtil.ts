@@ -1,8 +1,4 @@
-import {
-  TestErc20,
-  TestPremiaMarket,
-  TestPremiaOption,
-} from '../../contractsTyped';
+import { PremiaMarket, TestErc20, PremiaOption } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber } from 'ethers';
 import { IOrderCreated, IOrderCreateProps } from '../../types';
@@ -13,8 +9,8 @@ import { ZERO_ADDRESS } from './constants';
 interface PremiaMarketTestUtilProps {
   eth: TestErc20;
   dai: TestErc20;
-  premiaOption: TestPremiaOption;
-  premiaMarket: TestPremiaMarket;
+  premiaOption: PremiaOption;
+  premiaMarket: PremiaMarket;
   admin: SignerWithAddress;
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
@@ -34,8 +30,8 @@ interface OrderOptions {
 export class PremiaMarketTestUtil {
   eth: TestErc20;
   dai: TestErc20;
-  premiaOption: TestPremiaOption;
-  premiaMarket: TestPremiaMarket;
+  premiaOption: PremiaOption;
+  premiaMarket: PremiaMarket;
   admin: SignerWithAddress;
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;

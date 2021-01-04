@@ -171,10 +171,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     // View //
     //////////
 
-    function getBlockTimestamp() public view returns(uint256) {
-        return block.timestamp;
-    }
-
     // Returns the amounts left to buy/sell for an order
     function getAmountsBatch(bytes32[] memory _orderIds) external view returns(uint256[] memory) {
         uint256[] memory result = new uint256[](_orderIds.length);
@@ -229,7 +225,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         if (amountLeft == 0) return false;
 
         // Expired
-        if (_order.expirationTime == 0 || getBlockTimestamp() > _order.expirationTime) return false;
+        if (_order.expirationTime == 0 || block.timestamp > _order.expirationTime) return false;
 
         IERC20 token = IERC20(_order.paymentToken);
 
@@ -273,7 +269,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         require(_whitelistedPaymentTokens.contains(_order.paymentToken), "Payment token not whitelisted");
 
         uint256 _expiration = IPremiaOption(_order.optionContract).getOptionExpiration(_order.optionId);
-        require(getBlockTimestamp() < _expiration, "Option expired");
+        require(block.timestamp < _expiration, "Option expired");
 
         _order.maker = msg.sender;
         _order.expirationTime = _expiration;
@@ -356,7 +352,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         bytes32 hash = getOrderHash(_order);
 
         require(amounts[hash] > 0, "Order not found");
-        require(_order.expirationTime != 0 && getBlockTimestamp() < _order.expirationTime, "Order expired");
+        require(_order.expirationTime != 0 && block.timestamp < _order.expirationTime, "Order expired");
         require(_order.optionContract != address(0), "Order not found");
         require(_maxAmount > 0, "MaxAmount must be > 0");
         require(_order.taker == address(0) || _order.taker == msg.sender, "Not specified taker");

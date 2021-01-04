@@ -4,20 +4,21 @@ import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
   TestErc20__factory,
-  TestPremiaMarket,
-  TestPremiaMarket__factory,
-  TestPremiaOption,
-  TestPremiaOption__factory,
+  PremiaMarket,
+  PremiaMarket__factory,
+  PremiaOption,
+  PremiaOption__factory,
 } from '../contractsTyped';
 import { TestErc20 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
 import { IOrder, IOrderCreated } from '../types';
 import { PremiaMarketTestUtil } from './utils/PremiaMarketTestUtil';
+import { setTimestampPostExpiration } from './utils/evm';
 
 let eth: TestErc20;
 let dai: TestErc20;
-let premiaOption: TestPremiaOption;
-let premiaMarket: TestPremiaMarket;
+let premiaOption: PremiaOption;
+let premiaMarket: PremiaMarket;
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
 let user2: SignerWithAddress;
@@ -30,12 +31,14 @@ let marketTestUtil: PremiaMarketTestUtil;
 
 describe('PremiaMarket', () => {
   beforeEach(async () => {
+    await ethers.provider.send('hardhat_reset', []);
+
     [admin, user1, user2, user3, treasury] = await ethers.getSigners();
     const erc20Factory = new TestErc20__factory(user1);
     eth = await erc20Factory.deploy();
     dai = await erc20Factory.deploy();
 
-    const premiaOptionFactory = new TestPremiaOption__factory(user1);
+    const premiaOptionFactory = new PremiaOption__factory(user1);
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
       eth.address,
@@ -43,7 +46,7 @@ describe('PremiaMarket', () => {
       treasury.address,
     );
 
-    const premiaMarketFactory = new TestPremiaMarket__factory(user1);
+    const premiaMarketFactory = new PremiaMarket__factory(user1);
     premiaMarket = await premiaMarketFactory.deploy(admin.address);
 
     optionTestUtil = new PremiaOptionTestUtil({
@@ -181,7 +184,7 @@ describe('PremiaMarket', () => {
 
     it('should fail creating an order if option is expired', async () => {
       await optionTestUtil.mintAndWriteOption(admin, 5);
-      await premiaMarket.setTimestamp(1e7);
+      await setTimestampPostExpiration();
       await expect(marketTestUtil.createOrder(admin)).to.be.revertedWith(
         'Option expired',
       );
@@ -626,7 +629,7 @@ describe('PremiaMarket', () => {
 
         await eth.connect(admin).mint(ethers.utils.parseEther('1.015'));
         const order = await marketTestUtil.createOrder(admin, { isBuy: true });
-        await premiaMarket.setTimestamp(1e8);
+        await setTimestampPostExpiration();
 
         const isValid = await premiaMarket.isOrderValid(order.order);
         expect(isValid).to.be.false;
@@ -653,7 +656,7 @@ describe('PremiaMarket', () => {
         const order = await marketTestUtil.setupOrder(maker, taker, {
           isBuy: true,
         });
-        await premiaMarket.setTimestamp(1e8);
+        await setTimestampPostExpiration();
 
         await expect(
           premiaMarket.connect(taker).fillOrder(order.order, 1),

@@ -1,6 +1,8 @@
 import fs from 'fs';
 import rimraf from 'rimraf';
 
+rimraf.sync('./abi');
+
 if (!fs.existsSync('./abi')) {
   fs.mkdirSync('./abi');
 }
@@ -30,22 +32,6 @@ fs.copyFileSync(
 fs.copyFileSync(
   './artifacts/contracts/test/TestErc20.sol/TestErc20.json',
   './abi/TestErc20.json',
-);
-fs.copyFileSync(
-  './artifacts/contracts/test/TestTime.sol/TestTime.json',
-  './abi/TestTime.json',
-);
-fs.copyFileSync(
-  './artifacts/contracts/test/TestPremiaOption.sol/TestPremiaOption.json',
-  './abi/TestPremiaOption.json',
-);
-fs.copyFileSync(
-  './artifacts/contracts/test/TestPremiaMarket.sol/TestPremiaMarket.json',
-  './abi/TestPremiaMarket.json',
-);
-fs.copyFileSync(
-  './artifacts/contracts/test/TestTokenSettingsCalculator.sol/TestTokenSettingsCalculator.json',
-  './abi/TestTokenSettingsCalculator.json',
 );
 fs.copyFileSync(
   './artifacts/contracts/test/TestPremiaStaking.sol/TestPremiaStaking.json',

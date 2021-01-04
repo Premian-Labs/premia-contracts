@@ -7,18 +7,19 @@ import {
   PremiaReferral__factory,
   TestErc20__factory,
   TestFlashLoan__factory,
-  TestPremiaOption,
-  TestPremiaOption__factory,
+  PremiaOption,
+  PremiaOption__factory,
   TestPremiaStaking,
   TestPremiaStaking__factory,
 } from '../contractsTyped';
 import { TestErc20 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
-import { ZERO_ADDRESS } from './utils/constants';
+import { ONE_WEEK, ZERO_ADDRESS } from './utils/constants';
+import { setTimestampPostExpiration } from './utils/evm';
 
 let eth: TestErc20;
 let dai: TestErc20;
-let premiaOption: TestPremiaOption;
+let premiaOption: PremiaOption;
 let premiaReferral: PremiaReferral;
 let premiaStaking: TestPremiaStaking;
 let admin: SignerWithAddress;
@@ -32,12 +33,14 @@ let optionTestUtil: PremiaOptionTestUtil;
 
 describe('PremiaOption', () => {
   beforeEach(async () => {
+    await ethers.provider.send('hardhat_reset', []);
+
     [admin, writer1, writer2, user1, treasury] = await ethers.getSigners();
     const erc20Factory = new TestErc20__factory(admin);
     eth = await erc20Factory.deploy();
     dai = await erc20Factory.deploy();
 
-    const premiaOptionFactory = new TestPremiaOption__factory(admin);
+    const premiaOptionFactory = new PremiaOption__factory(admin);
     const premiaReferralFactory = new PremiaReferral__factory(admin);
     const premiaStakingFactory = new TestPremiaStaking__factory(admin);
 
@@ -72,20 +75,6 @@ describe('PremiaOption', () => {
     const settings = await premiaOption.tokenSettings(eth.address);
     expect(settings.contractSize.eq(utils.parseEther('1'))).to.true;
     expect(settings.strikePriceIncrement.eq(utils.parseEther('10'))).to.true;
-  });
-
-  it('Should automatically add eth if tokenSettingsCalculator is set, when writing option', async () => {
-    await optionTestUtil.addTokenSettingsCalculator();
-    let tokenSettings = await premiaOption.tokenSettings(eth.address);
-
-    expect(tokenSettings.strikePriceIncrement).to.eq(0);
-    expect(tokenSettings.contractSize).to.eq(0);
-
-    await optionTestUtil.mintAndWriteOption(writer2, 1);
-    tokenSettings = await premiaOption.tokenSettings(eth.address);
-
-    expect(tokenSettings.strikePriceIncrement).to.eq(utils.parseEther('10'));
-    expect(tokenSettings.contractSize).to.eq(utils.parseEther('1'));
   });
 
   describe('writeOption', () => {
@@ -128,7 +117,7 @@ describe('PremiaOption', () => {
 
     it('should revert if timestamp already passed', async () => {
       await optionTestUtil.addEth();
-      await premiaOption.setTimestamp(1e6);
+      await setTimestampPostExpiration();
       await expect(optionTestUtil.writeOption(writer1)).to.be.revertedWith(
         'Expiration already passed',
       );
@@ -137,14 +126,18 @@ describe('PremiaOption', () => {
     it('should revert if timestamp increment is wrong', async () => {
       await optionTestUtil.addEth();
       await expect(
-        optionTestUtil.writeOption(writer1, { expiration: 200 }),
+        optionTestUtil.writeOption(writer1, {
+          expiration: optionTestUtil.getNextExpiration() + 200,
+        }),
       ).to.be.revertedWith('Wrong expiration timestamp increment');
     });
 
     it('should revert if timestamp is beyond max expiration', async () => {
       await optionTestUtil.addEth();
       await expect(
-        optionTestUtil.writeOption(writer1, { expiration: 3600 * 24 * 400 }),
+        optionTestUtil.writeOption(writer1, {
+          expiration: Math.floor(new Date().getTime() / 1000 + 60 * ONE_WEEK),
+        }),
       ).to.be.revertedWith('Expiration must be <= 1 year');
     });
 
@@ -449,7 +442,7 @@ describe('PremiaOption', () => {
     it('should fail withdrawing from non-writer if option is expired', async () => {
       await optionTestUtil.addEthAndWriteOptions(2);
       await optionTestUtil.transferOptionToUser1(writer1);
-      await premiaOption.setTimestamp(1e6);
+      await setTimestampPostExpiration();
       await expect(premiaOption.connect(user1).withdraw(1)).to.revertedWith(
         'No option funds to claim for this address',
       );
@@ -458,7 +451,7 @@ describe('PremiaOption', () => {
     it('should successfully allow writer withdrawal of 2 eth if 0/2 call option exercised', async () => {
       await optionTestUtil.addEthAndWriteOptions(2);
       await optionTestUtil.transferOptionToUser1(writer1, 2);
-      await premiaOption.setTimestamp(1e6);
+      await setTimestampPostExpiration();
 
       let ethBalance = await eth.balanceOf(writer1.address);
       let daiBalance = await dai.balanceOf(writer1.address);
@@ -476,7 +469,7 @@ describe('PremiaOption', () => {
 
     it('should successfully allow writer withdrawal of 1 eth and 10 dai if 1/2 call option exercised', async () => {
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 1);
-      await premiaOption.setTimestamp(1e6);
+      await setTimestampPostExpiration();
 
       let ethBalance = await eth.balanceOf(writer1.address);
       let daiBalance = await dai.balanceOf(writer1.address);
@@ -494,7 +487,7 @@ describe('PremiaOption', () => {
 
     it('should successfully allow writer withdrawal of 20 dai if 2/2 call option exercised', async () => {
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 2);
-      await premiaOption.setTimestamp(1e6);
+      await setTimestampPostExpiration();
 
       let ethBalance = await eth.balanceOf(writer1.address);
       let daiBalance = await dai.balanceOf(writer1.address);
@@ -513,7 +506,7 @@ describe('PremiaOption', () => {
     it('should successfully allow writer withdrawal of 20 dai if 0/2 put option exercised', async () => {
       await optionTestUtil.addEthAndWriteOptions(2, false);
       await optionTestUtil.transferOptionToUser1(writer1, 2);
-      await premiaOption.setTimestamp(1e6);
+      await setTimestampPostExpiration();
 
       let ethBalance = await eth.balanceOf(writer1.address);
       let daiBalance = await dai.balanceOf(writer1.address);
@@ -531,7 +524,7 @@ describe('PremiaOption', () => {
 
     it('should successfully allow writer withdrawal of 1 eth and 10 dai if 1/2 put option exercised', async () => {
       await optionTestUtil.addEthAndWriteOptionsAndExercise(false, 2, 1);
-      await premiaOption.setTimestamp(1e6);
+      await setTimestampPostExpiration();
 
       let ethBalance = await eth.balanceOf(writer1.address);
       let daiBalance = await dai.balanceOf(writer1.address);
@@ -549,7 +542,7 @@ describe('PremiaOption', () => {
 
     it('should successfully allow writer withdrawal of 2 eth if 2/2 put option exercised', async () => {
       await optionTestUtil.addEthAndWriteOptionsAndExercise(false, 2, 2);
-      await premiaOption.setTimestamp(1e6);
+      await setTimestampPostExpiration();
 
       let ethBalance = await eth.balanceOf(writer1.address);
       let daiBalance = await dai.balanceOf(writer1.address);
@@ -575,7 +568,7 @@ describe('PremiaOption', () => {
       await optionTestUtil.transferOptionToUser1(writer2);
 
       await optionTestUtil.exerciseOption(true, 1);
-      await premiaOption.setTimestamp(1e6);
+      await setTimestampPostExpiration();
 
       await premiaOption.connect(writer1).withdraw(1);
       await premiaOption.connect(writer2).withdraw(1);
@@ -603,7 +596,7 @@ describe('PremiaOption', () => {
 
       await premiaOption.connect(writer2).withdrawPreExpiration(1, 1);
 
-      await premiaOption.setTimestamp(1e6);
+      await setTimestampPostExpiration();
 
       await premiaOption.connect(writer1).withdraw(1);
 
@@ -627,7 +620,7 @@ describe('PremiaOption', () => {
 
       await premiaOption.connect(writer2).withdrawPreExpiration(1, 1);
 
-      await premiaOption.setTimestamp(1e6);
+      await setTimestampPostExpiration();
 
       await premiaOption.connect(writer1).withdraw(1);
 
@@ -659,7 +652,7 @@ describe('PremiaOption', () => {
 
       await premiaOption.connect(writer2).withdrawPreExpiration(2, 1);
 
-      await premiaOption.setTimestamp(1e6);
+      await setTimestampPostExpiration();
 
       await premiaOption.connect(writer1).batchWithdraw([1, 2]);
 
@@ -678,7 +671,7 @@ describe('PremiaOption', () => {
   describe('withdrawPreExpiration', () => {
     it('should fail withdrawing if option is expired', async () => {
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 1);
-      await premiaOption.setTimestamp(1e6);
+      await setTimestampPostExpiration();
       await expect(premiaOption.withdrawPreExpiration(1, 1)).to.revertedWith(
         'Option expired',
       );

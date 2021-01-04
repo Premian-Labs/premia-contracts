@@ -20,17 +20,12 @@ contract PremiaVesting is Ownable {
     uint256 public lastWithdrawalTimestamp;
 
     constructor() public {
-        uint256 timestamp = getBlockTimestamp();
-        endTimestamp = timestamp.add(releasePeriod);
-        lastWithdrawalTimestamp = timestamp;
-    }
-
-    function getBlockTimestamp() public view returns(uint256) {
-        return block.timestamp;
+        endTimestamp = block.timestamp.add(releasePeriod);
+        lastWithdrawalTimestamp = block.timestamp;
     }
 
     function withdraw() public onlyOwner {
-        uint256 timestamp = getBlockTimestamp();
+        uint256 timestamp = block.timestamp;
 
         if (timestamp == lastWithdrawalTimestamp) return;
 
