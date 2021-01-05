@@ -27,7 +27,7 @@ export default {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 20,
+            runs: 200,
           },
         },
       },
@@ -36,7 +36,7 @@ export default {
         settings: {
           optimizer: {
             enabled: true,
-            runs: 20,
+            runs: 200,
           },
         },
       },
