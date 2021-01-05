@@ -46,8 +46,8 @@ fs.copyFileSync(
   './abi/TestErc20.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/test/TestPremiaStaking.sol/TestPremiaStaking.json',
-  './abi/TestPremiaStaking.json',
+  './artifacts/contracts/test/TestPremiaFeeDiscount.sol/TestPremiaFeeDiscount.json',
+  './abi/TestPremiaFeeDiscount.json',
 );
 fs.copyFileSync(
   './artifacts/contracts/test/TestFlashLoan.sol/TestFlashLoan.json',

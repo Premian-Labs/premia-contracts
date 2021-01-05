@@ -72,6 +72,7 @@ export class PremiaOptionTestUtil {
       this.eth.address,
       utils.parseEther('1'),
       utils.parseEther('10'),
+      false,
     );
   }
 

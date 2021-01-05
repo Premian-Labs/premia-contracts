@@ -100,6 +100,7 @@ describe('PremiaMarket', () => {
       eth.address,
       utils.parseEther('1'),
       utils.parseEther('10'),
+      false,
     );
 
     await premiaMarket.addWhitelistedPaymentTokens([eth.address]);

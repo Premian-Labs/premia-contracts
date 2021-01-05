@@ -41,10 +41,21 @@ export default {
         },
       },
     ],
+    overrides: {
+      'contracts/PremiaOption.sol': {
+        version: '0.7.6',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 50,
+          },
+        },
+      },
+    },
   },
   networks: {
     hardhat: {
-      // allowUnlimitedContractSize: true,
+      allowUnlimitedContractSize: true,
       blockGasLimit: 120000000000,
     },
     rinkeby: {

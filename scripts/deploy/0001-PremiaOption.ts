@@ -58,6 +58,7 @@ async function main() {
     weth,
     ethers.utils.parseEther('1'),
     ethers.utils.parseEther('10'),
+    false,
   );
 
   console.log('WETH/DAI added');
@@ -66,6 +67,7 @@ async function main() {
     rope,
     ethers.utils.parseEther('1'),
     ethers.utils.parseEther('1'),
+    false,
   );
 
   console.log('ROPE/DAI added');
@@ -74,6 +76,7 @@ async function main() {
     rope,
     ethers.utils.parseEther('1'),
     ethers.utils.parseEther('0.1'),
+    false,
   );
 
   console.log('ROPE/WETH added');

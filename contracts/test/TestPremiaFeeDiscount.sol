@@ -4,7 +4,7 @@
 pragma solidity ^0.7.0;
 
 // Used to mock PremiaStaking contract
-contract TestPremiaStaking {
+contract TestPremiaFeeDiscount {
     uint256 public discount;
 
     function setDiscount(uint256 _value) external {

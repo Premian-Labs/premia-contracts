@@ -13,7 +13,7 @@ import '@openzeppelin/contracts/utils/SafeCast.sol';
 import "./interface/IFlashLoanReceiver.sol";
 import "./interface/ITokenSettingsCalculator.sol";
 import "./interface/IPremiaReferral.sol";
-import "./interface/IPremiaStaking.sol";
+import "./interface/IPremiaFeeDiscount.sol";
 import "./interface/uniswap/IUniswapV2Router02.sol";
 
 contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
@@ -64,7 +64,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     //////////////////////////////////////////////////
 
     IPremiaReferral public premiaReferral;
-    IPremiaStaking public premiaStaking;
+    IPremiaFeeDiscount public premiaFeeDiscount;
 
     //////////////////////////////////////////////////
 
@@ -75,7 +75,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     uint256 public nextOptionId = 1;
 
-    address public treasury; // Treasury address receiving fees
+    address public treasury;                        // Treasury address receiving fees
 
     uint256 public baseExpiration = 172799;         // Offset to add to Unix timestamp to make it Fri 23:59:59 UTC
     uint256 public expirationIncrement = 1 weeks;   // Expiration increment
@@ -135,12 +135,12 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     ///////////////
 
     modifier notExpired(uint256 _optionId) {
-        require(block.timestamp < optionData[_optionId].expiration, "Option expired");
+        require(block.timestamp < optionData[_optionId].expiration, "Expired");
         _;
     }
 
     modifier expired(uint256 _optionId) {
-        require(block.timestamp >= optionData[_optionId].expiration, "Option not expired");
+        require(block.timestamp >= optionData[_optionId].expiration, "Not expired");
         _;
     }
 
@@ -158,54 +158,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     function tokensLength() external view returns(uint256) {
         return tokens.length;
-    }
-
-//    function getOptionDataBatch(uint256[] memory _optionIds) external view returns(OptionData[] memory) {
-//        OptionData[] memory result = new OptionData[](_optionIds.length);
-//
-//        for (uint256 i = 0; i < _optionIds.length; ++i) {
-//            uint256 optionId = _optionIds[i];
-//            result[i] = optionData[optionId];
-//        }
-//
-//        return result;
-//    }
-//
-//    function getNbOptionWrittenBatch(address _user, uint256[] memory _optionIds) external view returns(uint256[] memory) {
-//        uint256[] memory result = new uint256[](_optionIds.length);
-//
-//        for (uint256 i = 0; i < _optionIds.length; ++i) {
-//            uint256 optionId = _optionIds[i];
-//            result[i] = nbWritten[_user][optionId];
-//        }
-//
-//        return result;
-//    }
-//
-//    function getPoolBatch(uint256[] memory _optionIds) external view returns(Pool[] memory) {
-//        Pool[] memory result = new Pool[](_optionIds.length);
-//
-//        for (uint256 i = 0; i < _optionIds.length; ++i) {
-//            uint256 optionId = _optionIds[i];
-//            result[i] = pools[optionId];
-//        }
-//
-//        return result;
-//    }
-
-    function getTotalFee(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256) {
-        uint256 feeAmountBase;
-        if (_isWrite) {
-            feeAmountBase = _price.mul(writeFee).div(INVERSE_BASIS_POINT);
-        } else {
-            feeAmountBase = _price.mul(exerciseFee).div(INVERSE_BASIS_POINT);
-        }
-
-        bool hasReferrer = _hasReferrer || premiaReferral.referrals(_user) != address(0);
-
-        (uint256 feeTreasury, uint256 feeReferrer) = _getFees(hasReferrer, feeAmountBase);
-
-        return feeTreasury.add(feeReferrer);
     }
 
     function getFees(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256 _feeTreasury, uint256 _feeReferrer) {
@@ -229,44 +181,40 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     // Admin //
     ///////////
 
-    function setURI(string memory newuri) public onlyOwner {
+    function setURI(string memory newuri) external onlyOwner {
         _setURI(newuri);
     }
 
-    function setTokenDisabled(address _token, bool _isDisabled) public onlyOwner {
-        tokenSettings[_token].isDisabled = _isDisabled;
-    }
-
-    function setTreasury(address _treasury) public onlyOwner {
+    function setTreasury(address _treasury) external onlyOwner {
         require(_treasury != address(0), "0x0 addr");
         treasury = _treasury;
     }
 
-    function setMaxExpiration(uint256 _max) public onlyOwner {
+    function setMaxExpiration(uint256 _max) external onlyOwner {
         maxExpiration = _max;
     }
 
-    function setPremiaReferral(IPremiaReferral _premiaReferral) public onlyOwner {
+    function setPremiaReferral(IPremiaReferral _premiaReferral) external onlyOwner {
         premiaReferral = _premiaReferral;
     }
 
-    function setPremiaStaking(IPremiaStaking _premiaStaking) public onlyOwner {
-        premiaStaking = _premiaStaking;
+    function setPremiaFeeDiscount(IPremiaFeeDiscount _premiaFeeDiscount) external onlyOwner {
+        premiaFeeDiscount = _premiaFeeDiscount;
     }
 
     // Set settings for a token to support writing of options paired to denominator
-    function setToken(address _token, uint256 _contractSize, uint256 _strikePriceIncrement) public onlyOwner {
+    function setToken(address _token, uint256 _contractSize, uint256 _strikePriceIncrement, bool _isDisabled) external onlyOwner {
         if (!_isInArray(_token, tokens)) {
             tokens.push(_token);
         }
 
-        require(_contractSize > 0, "Contract size <= 0");
-        require(_strikePriceIncrement > 0, "Strike <= 0");
+        require(_isDisabled || _contractSize > 0, "Contract size <= 0");
+        require(_isDisabled || _strikePriceIncrement > 0, "Strike <= 0");
 
         tokenSettings[_token] = TokenSettings({
             contractSize: _contractSize,
             strikePriceIncrement: _strikePriceIncrement,
-            isDisabled: false
+            isDisabled: _isDisabled
         });
     }
 
@@ -282,11 +230,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         }
     }
 
-    //////////
-    // Fees //
-    //////////
-
-    function setFees(uint256 _writeFee, uint256 _exerciseFee, uint256 _flashLoanFee, uint256 _referrerFee, uint256 _referredDiscount) public onlyOwner {
+    function setFees(uint256 _writeFee, uint256 _exerciseFee, uint256 _flashLoanFee, uint256 _referrerFee, uint256 _referredDiscount) external onlyOwner {
         require(_writeFee <= 5e3, "> Write max");
         require(_exerciseFee <= 5e3, "> Exercise max");
         require(_flashLoanFee <= 5e3, "> FlashLoan max");
@@ -361,8 +305,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     }
 
     // Cancel an option before expiration, by burning the NFT for withdrawal of deposit (Can only be called by writer of the option)
-    // Must be called before expiration
-    function cancelOption(uint256 _optionId, uint256 _contractAmount) public nonReentrant notExpired(_optionId) {
+    // Must be called before expiration (Expiration check is done in burn function call)
+    function cancelOption(uint256 _optionId, uint256 _contractAmount) public nonReentrant {
         require(_contractAmount > 0, "Amount <= 0");
         require(nbWritten[msg.sender][_optionId] >= _contractAmount, "Not enough written");
 
@@ -435,8 +379,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
         OptionData storage data = optionData[_optionId];
 
-        uint256 nbTotalWithClaimedPreExp = uint256(data.supply).add(data.exercised);
-        uint256 nbTotal = nbTotalWithClaimedPreExp.sub(data.claimsPreExp);
+        uint256 nbTotal = uint256(data.supply).add(data.exercised).sub(data.claimsPreExp);
 
         // Amount of options user still has to claim funds from
         uint256 claimsUser = nbWritten[msg.sender][_optionId];
@@ -470,8 +413,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
         OptionData storage data = optionData[_optionId];
 
-        uint256 claimsPreExp = data.claimsPreExp;
-        uint256 nbClaimable = uint256(data.exercised).sub(claimsPreExp);
+        uint256 nbClaimable = uint256(data.exercised).sub(data.claimsPreExp);
 
         require(nbClaimable > 0, "No option to claim");
         require(nbClaimable >= _contractAmount, "Not enough claimable");
@@ -562,7 +504,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             // Swap enough denominator to tokenErc20 to pay fee + strike price
             uint256 denominatorAmountUsed =  _swap(_router, address(denominator), address(tokenErc20), tokenAmount.add(feeTreasury).add(feeReferrer), _amountInMax)[0];
 
-            _payFees(address(this), tokenErc20, _referrer, feeTreasury, feeAmount);
+            _payFees(address(this), tokenErc20, _referrer, feeTreasury, feeReferrer);
 
             uint256 profit = denominatorAmount.sub(denominatorAmountUsed);
 
@@ -580,13 +522,13 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     // Batch functions //
     /////////////////////
 
-    function batchWriteOption(OptionWriteArgs[] memory _options, address _referrer) public {
+    function batchWriteOption(OptionWriteArgs[] memory _options, address _referrer) external {
         for (uint256 i = 0; i < _options.length; ++i) {
             writeOption(_options[i], _referrer);
         }
     }
 
-    function batchCancelOption(uint256[] memory _optionId, uint256[] memory _contractAmount) public {
+    function batchCancelOption(uint256[] memory _optionId, uint256[] memory _contractAmount) external {
         require(_optionId.length == _contractAmount.length, "Arrays diff len");
 
         for (uint256 i = 0; i < _optionId.length; ++i) {
@@ -594,13 +536,13 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         }
     }
 
-    function batchWithdraw(uint256[] memory _optionId) public {
+    function batchWithdraw(uint256[] memory _optionId) external {
         for (uint256 i = 0; i < _optionId.length; ++i) {
             withdraw(_optionId[i]);
         }
     }
 
-    function batchExerciseOption(uint256[] memory _optionId, uint256[] memory _contractAmount, address _referrer) public {
+    function batchExerciseOption(uint256[] memory _optionId, uint256[] memory _contractAmount, address _referrer) external {
         require(_optionId.length == _contractAmount.length, "Arrays diff len");
 
         for (uint256 i = 0; i < _optionId.length; ++i) {
@@ -608,7 +550,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         }
     }
 
-    function batchWithdrawPreExpiration(uint256[] memory _optionId, uint256[] memory _contractAmount) public {
+    function batchWithdrawPreExpiration(uint256[] memory _optionId, uint256[] memory _contractAmount) external {
         require(_optionId.length == _contractAmount.length, "Arrays diff len");
 
         for (uint256 i = 0; i < _optionId.length; ++i) {
@@ -662,15 +604,14 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     }
 
     function _getFees(bool _hasReferrer, uint256 _feeAmountBase) internal view returns(uint256 _feeTreasury, uint256 _feeReferrer) {
-        uint256 feeTreasury = _feeAmountBase;
         uint256 feeReferrer = 0;
         uint256 feeDiscount = 0;
 
-        // If premiaStaking contract is set, we calculate discount
-        if (address(premiaStaking) != address(0)) {
-            uint256 stakingDiscount = premiaStaking.getDiscount(msg.sender);
-            require(stakingDiscount <= INVERSE_BASIS_POINT, "Discount > max");
-            feeDiscount = _feeAmountBase.mul(stakingDiscount).div(INVERSE_BASIS_POINT);
+        // If premiaFeeDiscount contract is set, we calculate discount
+        if (address(premiaFeeDiscount) != address(0)) {
+            uint256 discount = premiaFeeDiscount.getDiscount(msg.sender);
+            require(discount <= INVERSE_BASIS_POINT, "Discount > max");
+            feeDiscount = _feeAmountBase.mul(discount).div(INVERSE_BASIS_POINT);
         }
 
         // If premiaReferral contract is set, we calculate discount
@@ -680,9 +621,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             feeReferrer = _feeAmountBase.sub(feeDiscount).mul(referrerFee).div(INVERSE_BASIS_POINT);
         }
 
-        feeTreasury = _feeAmountBase.sub(feeDiscount).sub(feeReferrer);
-
-        return (feeTreasury, feeReferrer);
+        return (_feeAmountBase.sub(feeDiscount).sub(feeReferrer), feeReferrer);
     }
 
     function _payFees(address _from, IERC20 _token, address _referrer, uint256 _feeTreasury, uint256 _feeReferrer) internal {

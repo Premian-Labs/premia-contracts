@@ -9,20 +9,19 @@ import {
   TestFlashLoan__factory,
   PremiaOption,
   PremiaOption__factory,
-  TestPremiaStaking,
-  TestPremiaStaking__factory,
+  TestPremiaFeeDiscount,
+  TestPremiaFeeDiscount__factory,
 } from '../contractsTyped';
 import { TestErc20 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
 import { ONE_WEEK, ZERO_ADDRESS } from './utils/constants';
 import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
-import { writer } from 'repl';
 
 let eth: TestErc20;
 let dai: TestErc20;
 let premiaOption: PremiaOption;
 let premiaReferral: PremiaReferral;
-let premiaStaking: TestPremiaStaking;
+let premiaFeeDiscount: TestPremiaFeeDiscount;
 let admin: SignerWithAddress;
 let writer1: SignerWithAddress;
 let writer2: SignerWithAddress;
@@ -43,7 +42,7 @@ describe('PremiaOption', () => {
 
     const premiaOptionFactory = new PremiaOption__factory(admin);
     const premiaReferralFactory = new PremiaReferral__factory(admin);
-    const premiaStakingFactory = new TestPremiaStaking__factory(admin);
+    const premiaFeeDiscountFactory = new TestPremiaFeeDiscount__factory(admin);
 
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
@@ -52,11 +51,11 @@ describe('PremiaOption', () => {
       treasury.address,
     );
     premiaReferral = await premiaReferralFactory.deploy();
-    premiaStaking = await premiaStakingFactory.deploy();
+    premiaFeeDiscount = await premiaFeeDiscountFactory.deploy();
 
     await premiaReferral.addWhitelisted([premiaOption.address]);
     await premiaOption.setPremiaReferral(premiaReferral.address);
-    await premiaOption.setPremiaStaking(premiaStaking.address);
+    await premiaOption.setPremiaFeeDiscount(premiaFeeDiscount.address);
 
     optionTestUtil = new PremiaOptionTestUtil({
       eth,
@@ -87,7 +86,7 @@ describe('PremiaOption', () => {
 
     it('should disable eth for writing', async () => {
       await optionTestUtil.addEth();
-      await premiaOption.setTokenDisabled(eth.address, true);
+      await premiaOption.setToken(eth.address, 0, 0, true);
       await expect(optionTestUtil.writeOption(writer1)).to.be.revertedWith(
         'Token disabled',
       );
@@ -457,9 +456,7 @@ describe('PremiaOption', () => {
   describe('withdraw', () => {
     it('should fail withdrawing if option not expired', async () => {
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 1);
-      await expect(premiaOption.withdraw(1)).to.revertedWith(
-        'Option not expired',
-      );
+      await expect(premiaOption.withdraw(1)).to.revertedWith('Not expired');
     });
 
     it('should fail withdrawing from non-writer if option is expired', async () => {
@@ -696,7 +693,7 @@ describe('PremiaOption', () => {
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 1);
       await setTimestampPostExpiration();
       await expect(premiaOption.withdrawPreExpiration(1, 1)).to.revertedWith(
-        'Option expired',
+        'Expired',
       );
     });
 
@@ -842,42 +839,42 @@ describe('PremiaOption', () => {
 
   describe('fees', () => {
     it('should calculate total fee correctly without discount', async () => {
-      const fee = await premiaOption.getTotalFee(
+      const fee = await premiaOption.getFees(
         writer1.address,
         utils.parseEther('2'),
         false,
         true,
       );
 
-      expect(fee).to.eq(utils.parseEther('0.02'));
+      expect(fee[0].add(fee[1])).to.eq(utils.parseEther('0.02'));
     });
 
     it('should calculate total fee correctly with a referral', async () => {
       await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
-      const fee = await premiaOption.getTotalFee(
+      const fee = await premiaOption.getFees(
         writer1.address,
         utils.parseEther('2'),
         false,
         true,
       );
 
-      expect(fee).to.eq(utils.parseEther('0.018'));
+      expect(fee[0].add(fee[1])).to.eq(utils.parseEther('0.018'));
     });
 
     it('should correctly calculate total fee with a referral + staking discount', async () => {
-      await premiaStaking.setDiscount(2e4);
-      const fee = await premiaOption.getTotalFee(
+      await premiaFeeDiscount.setDiscount(2e4);
+      const fee = await premiaOption.getFees(
         writer1.address,
         utils.parseEther('2'),
         true,
         true,
       );
 
-      expect(fee).to.eq(utils.parseEther('0.0144'));
+      expect(fee[0].add(fee[1])).to.eq(utils.parseEther('0.0144'));
     });
 
     it('should correctly give a 30% discount from premia staking', async () => {
-      await premiaStaking.setDiscount(3e4);
+      await premiaFeeDiscount.setDiscount(3e4);
 
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 2);
 
@@ -891,7 +888,7 @@ describe('PremiaOption', () => {
     });
 
     it('should correctly give a 30% discount from premia staking + 10% discount from referral', async () => {
-      await premiaStaking.setDiscount(3e4);
+      await premiaFeeDiscount.setDiscount(3e4);
 
       await optionTestUtil.addEthAndWriteOptionsAndExercise(
         true,
