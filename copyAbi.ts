@@ -16,16 +16,28 @@ fs.copyFileSync(
   './abi/PremiaFluxErc20.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaOption.sol/PremiaOption.json',
-  './abi/PremiaOption.json',
-);
-fs.copyFileSync(
   './artifacts/contracts/PremiaMarket.sol/PremiaMarket.json',
   './abi/PremiaMarket.json',
 );
 fs.copyFileSync(
+  './artifacts/contracts/PremiaMining.sol/PremiaMining.json',
+  './abi/PremiaMining.json',
+);
+fs.copyFileSync(
+  './artifacts/contracts/PremiaOption.sol/PremiaOption.json',
+  './abi/PremiaOption.json',
+);
+fs.copyFileSync(
   './artifacts/contracts/PremiaReferral.sol/PremiaReferral.json',
   './abi/PremiaReferral.json',
+);
+fs.copyFileSync(
+  './artifacts/contracts/PremiaStaking.sol/PremiaStaking.json',
+  './abi/PremiaStaking.json',
+);
+fs.copyFileSync(
+  './artifacts/contracts/PremiaVesting.sol/PremiaVesting.json',
+  './abi/PremiaVesting.json',
 );
 
 // Test contracts

@@ -13,7 +13,7 @@ import { TestErc20 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
 import { IOrder, IOrderCreated } from '../types';
 import { PremiaMarketTestUtil } from './utils/PremiaMarketTestUtil';
-import { setTimestampPostExpiration } from './utils/evm';
+import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
 
 let eth: TestErc20;
 let dai: TestErc20;
@@ -31,7 +31,7 @@ let marketTestUtil: PremiaMarketTestUtil;
 
 describe('PremiaMarket', () => {
   beforeEach(async () => {
-    await ethers.provider.send('hardhat_reset', []);
+    await resetHardhat();
 
     [admin, user1, user2, user3, treasury] = await ethers.getSigners();
     const erc20Factory = new TestErc20__factory(user1);

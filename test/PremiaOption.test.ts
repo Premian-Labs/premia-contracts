@@ -15,7 +15,7 @@ import {
 import { TestErc20 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
 import { ONE_WEEK, ZERO_ADDRESS } from './utils/constants';
-import { setTimestampPostExpiration } from './utils/evm';
+import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
 
 let eth: TestErc20;
 let dai: TestErc20;
@@ -33,7 +33,7 @@ let optionTestUtil: PremiaOptionTestUtil;
 
 describe('PremiaOption', () => {
   beforeEach(async () => {
-    await ethers.provider.send('hardhat_reset', []);
+    await resetHardhat();
 
     [admin, writer1, writer2, user1, treasury] = await ethers.getSigners();
     const erc20Factory = new TestErc20__factory(admin);

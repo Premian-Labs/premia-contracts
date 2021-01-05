@@ -11,7 +11,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 
 // Fork of SushiSwap's MasterChef contract
-contract MasterChef is Ownable {
+contract PremiaMining is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -159,7 +159,7 @@ contract MasterChef is Ownable {
         pool.lastRewardBlock = block.number;
     }
 
-    // Deposit LP tokens to MasterChef for PREMIA allocation.
+    // Deposit LP tokens to PremiaMining for PREMIA allocation.
     function deposit(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -178,7 +178,7 @@ contract MasterChef is Ownable {
         emit Deposit(msg.sender, _pid, _amount);
     }
 
-    // Withdraw LP tokens from MasterChef.
+    // Withdraw LP tokens from PremiaMining.
     function withdraw(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];

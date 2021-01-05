@@ -19,7 +19,8 @@ contract PremiaVesting is Ownable {
     // The timestamp at which last withdrawal has been done
     uint256 public lastWithdrawalTimestamp;
 
-    constructor() public {
+    constructor(IERC20 _premia) public {
+        premia = _premia;
         endTimestamp = block.timestamp.add(releasePeriod);
         lastWithdrawalTimestamp = block.timestamp;
     }
@@ -37,10 +38,10 @@ contract PremiaVesting is Ownable {
         if (timestamp >= endTimestamp) {
             premia.safeTransfer(msg.sender, balance);
         } else {
+
             uint256 elapsedSinceLastWithdrawal = timestamp.sub(_lastWithdrawalTimestamp);
             uint256 timeLeft = endTimestamp.sub(_lastWithdrawalTimestamp);
-
-            premia.safeTransfer(msg.sender, balance.mul(timeLeft).div(elapsedSinceLastWithdrawal));
+            premia.safeTransfer(msg.sender, balance.mul(elapsedSinceLastWithdrawal).div(timeLeft));
         }
     }
 }
