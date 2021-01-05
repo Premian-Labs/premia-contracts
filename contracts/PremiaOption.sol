@@ -229,11 +229,11 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     }
 
     function setFees(uint256 _writeFee, uint256 _exerciseFee, uint256 _flashLoanFee, uint256 _referrerFee, uint256 _referredDiscount) external onlyOwner {
-        require(_writeFee <= 5e3, "> Write max");
-        require(_exerciseFee <= 5e3, "> Exercise max");
-        require(_flashLoanFee <= 5e3, "> FlashLoan max");
-        require(_referrerFee <= 1e5, "> Referrer max");
-        require(_referredDiscount <= 1e5, "> Referred max");
+        require(_writeFee <= 5e3);
+        require(_exerciseFee <= 5e3);
+        require(_flashLoanFee <= 5e3);
+        require(_referrerFee <= 1e5);
+        require(_referredDiscount <= 1e5);
 
         writeFee = _writeFee;
         exerciseFee = _exerciseFee;
@@ -433,7 +433,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     function flashLoan(address _tokenAddress, uint256 _amount, IFlashLoanReceiver _receiver) public nonReentrant {
         IERC20 _token = IERC20(_tokenAddress);
         uint256 startBalance = _token.balanceOf(address(this));
-        require(_amount <= startBalance, "Not enough tokens");
         _token.safeTransfer(address(_receiver), _amount);
 
         _receiver.execute(_tokenAddress, _amount, _amount.add(_amount.mul(flashLoanFee).div(INVERSE_BASIS_POINT)));

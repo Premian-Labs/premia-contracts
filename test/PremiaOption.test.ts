@@ -711,7 +711,7 @@ describe('PremiaOption', () => {
 
       await expect(
         premiaOption.connect(writer1).withdrawPreExpiration(1, 2),
-      ).to.revertedWith('No option to claim');
+      ).to.revertedWith('Not enough claimable');
     });
 
     it('should fail withdrawing if not enough unclaimed exercised options', async () => {
