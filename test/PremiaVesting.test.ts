@@ -27,21 +27,8 @@ describe('PremiaVesting', () => {
     premiaVesting = await premiaVestingFactory.deploy(premia.address);
 
     const amount = ethers.utils.parseEther('730');
-    await premia.connect(admin).mint(amount);
-    await premia.connect(admin).transfer(premiaVesting.address, amount);
+    await premia.mint(premiaVesting.address, amount);
     await premiaVesting.transferOwnership(user1.address);
-  });
-
-  it('should withdraw 200 premia if withdrawing 100 days after vesting start', async () => {
-    const lastWithdraw = await premiaVesting.lastWithdrawalTimestamp();
-    // We remove 1s to timestamp, as it will increment when transaction is mined in hardhat network
-    await setTimestamp(lastWithdraw.add(100 * 24 * 3600 - 1).toNumber());
-    await premiaVesting.connect(user1).withdraw();
-
-    const balance = await premia.balanceOf(user1.address);
-    const balanceLeft = await premia.balanceOf(premiaVesting.address);
-    expect(balance).to.eq(ethers.utils.parseEther('200'));
-    expect(balanceLeft).to.eq(ethers.utils.parseEther('530'));
   });
 
   it('should withdraw 200 premia, then 50 premia if withdrawing after 100 days and then after 25 days', async () => {

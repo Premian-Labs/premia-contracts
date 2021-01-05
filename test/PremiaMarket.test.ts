@@ -563,7 +563,7 @@ describe('PremiaMarket', () => {
         await optionTestUtil.mintAndWriteOption(admin, 5);
         const order = await marketTestUtil.createOrder(admin);
 
-        await eth.connect(user1).mint(ethers.utils.parseEther('100'));
+        await eth.mint(user1.address, ethers.utils.parseEther('100'));
         await eth
           .connect(user1)
           .increaseAllowance(
@@ -581,7 +581,7 @@ describe('PremiaMarket', () => {
       it('should detect buy order as valid if maker still own ERC20 and transfer is approved', async () => {
         await optionTestUtil.mintAndWriteOption(user1, 1);
 
-        await eth.connect(admin).mint(ethers.utils.parseEther('1.015'));
+        await eth.mint(admin.address, ethers.utils.parseEther('1.015'));
         const order = await marketTestUtil.createOrder(admin, { isBuy: true });
 
         const isValid = await premiaMarket.isOrderValid(order.order);
@@ -591,7 +591,7 @@ describe('PremiaMarket', () => {
       it('should detect buy order as invalid if maker does not have enough to cover price + fee', async () => {
         await optionTestUtil.mintAndWriteOption(user1, 1);
 
-        await eth.connect(admin).mint(ethers.utils.parseEther('1.0'));
+        await eth.mint(admin.address, ethers.utils.parseEther('1.0'));
         const order = await marketTestUtil.createOrder(admin, { isBuy: true });
 
         const isValid = await premiaMarket.isOrderValid(order.order);
@@ -601,7 +601,7 @@ describe('PremiaMarket', () => {
       it('should detect buy order as invalid if maker did not approved ERC20', async () => {
         await optionTestUtil.mintAndWriteOption(user1, 1);
 
-        await eth.connect(admin).mint(ethers.utils.parseEther('10'));
+        await eth.mint(admin.address, ethers.utils.parseEther('10'));
         await eth.connect(admin).approve(premiaMarket.address, 0);
         const order = await marketTestUtil.createOrder(admin, { isBuy: true });
 
@@ -612,7 +612,7 @@ describe('PremiaMarket', () => {
       it('should detect buy order as invalid if amount to buy left is 0', async () => {
         await optionTestUtil.mintAndWriteOption(user1, 1);
 
-        await eth.connect(admin).mint(ethers.utils.parseEther('1.015'));
+        await eth.mint(admin.address, ethers.utils.parseEther('1.015'));
         const order = await marketTestUtil.createOrder(admin, { isBuy: true });
 
         await premiaOption
@@ -627,7 +627,7 @@ describe('PremiaMarket', () => {
       it('should detect order as invalid if expired', async () => {
         await optionTestUtil.mintAndWriteOption(user1, 1);
 
-        await eth.connect(admin).mint(ethers.utils.parseEther('1.015'));
+        await eth.mint(admin.address, ethers.utils.parseEther('1.015'));
         const order = await marketTestUtil.createOrder(admin, { isBuy: true });
         await setTimestampPostExpiration();
 

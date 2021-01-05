@@ -148,9 +148,10 @@ export class PremiaMarketTestUtil {
     const amount = orderOptions?.amount ?? 1;
     await this.optionTestUtil.mintAndWriteOption(seller, amount);
 
-    await this.eth
-      .connect(buyer)
-      .mint(ethers.utils.parseEther('1.015').mul(amount));
+    await this.eth.mint(
+      buyer.address,
+      ethers.utils.parseEther('1.015').mul(amount),
+    );
     await this.eth
       .connect(buyer)
       .increaseAllowance(

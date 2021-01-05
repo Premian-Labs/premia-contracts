@@ -9,7 +9,7 @@ contract TestErc20 is ERC20 {
     constructor() public ERC20("Test", "TEST") {
     }
 
-    function mint(uint256 _amount) public {
-        _mint(msg.sender, _amount);
+    function mint(address _account, uint256 _amount) public {
+        _mint(_account, _amount);
     }
 }

@@ -104,7 +104,7 @@ export class PremiaOptionTestUtil {
         .parseEther(contractAmount.toString())
         .mul(1e5 + this.tax * 1e5)
         .div(1e5);
-      await this.eth.connect(user).mint(amount.toString());
+      await this.eth.mint(user.address, amount.toString());
       await this.eth
         .connect(user)
         .increaseAllowance(
@@ -117,7 +117,7 @@ export class PremiaOptionTestUtil {
         .mul(contractAmount)
         .mul(1e5 + this.tax * 1e5)
         .div(1e5);
-      await this.dai.connect(user).mint(amount);
+      await this.dai.mint(user.address, amount);
       await this.dai
         .connect(user)
         .increaseAllowance(
@@ -167,9 +167,10 @@ export class PremiaOptionTestUtil {
   ) {
     if (isCall) {
       const amount = amountToExercise * 10 * (1 + this.tax);
-      await this.dai
-        .connect(this.user1)
-        .mint(utils.parseEther(amount.toString()));
+      await this.dai.mint(
+        this.user1.address,
+        utils.parseEther(amount.toString()),
+      );
       await this.dai
         .connect(this.user1)
         .increaseAllowance(
@@ -179,9 +180,10 @@ export class PremiaOptionTestUtil {
     } else {
       const amount = amountToExercise * (1 + this.tax);
 
-      await this.eth
-        .connect(this.user1)
-        .mint(utils.parseEther(amount.toString()));
+      await this.eth.mint(
+        this.user1.address,
+        utils.parseEther(amount.toString()),
+      );
       await this.eth
         .connect(this.user1)
         .increaseAllowance(

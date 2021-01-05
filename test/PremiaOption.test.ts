@@ -16,6 +16,7 @@ import { TestErc20 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
 import { ONE_WEEK, ZERO_ADDRESS } from './utils/constants';
 import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
+import { writer } from 'repl';
 
 let eth: TestErc20;
 let dai: TestErc20;
@@ -143,8 +144,10 @@ describe('PremiaOption', () => {
 
     it('should fail if address does not have enough ether for call', async () => {
       await optionTestUtil.addEth();
-      await eth.mint(utils.parseEther('0.99'));
-      await eth.increaseAllowance(premiaOption.address, utils.parseEther('1'));
+      await eth.mint(writer1.address, utils.parseEther('0.99'));
+      await eth
+        .connect(writer1)
+        .increaseAllowance(premiaOption.address, utils.parseEther('1'));
       await expect(optionTestUtil.writeOption(writer1)).to.be.revertedWith(
         'ERC20: transfer amount exceeds balance',
       );
@@ -152,8 +155,10 @@ describe('PremiaOption', () => {
 
     it('should fail if address does not have enough dai for put', async () => {
       await optionTestUtil.addEth();
-      await dai.mint(utils.parseEther('9.99'));
-      await dai.increaseAllowance(premiaOption.address, utils.parseEther('10'));
+      await dai.mint(writer1.address, utils.parseEther('9.99'));
+      await dai
+        .connect(writer1)
+        .increaseAllowance(premiaOption.address, utils.parseEther('10'));
       await expect(
         optionTestUtil.writeOption(writer1, { isCall: false }),
       ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
@@ -189,7 +194,7 @@ describe('PremiaOption', () => {
         .parseEther(contractAmount1.toString())
         .mul(1e5 + tax * 1e5)
         .div(1e5);
-      await eth.connect(writer1).mint(amount.toString());
+      await eth.mint(writer1.address, amount.toString());
       await eth
         .connect(writer1)
         .increaseAllowance(
@@ -203,7 +208,7 @@ describe('PremiaOption', () => {
         .mul(3)
         .mul(1e5 + tax * 1e5)
         .div(1e5);
-      await dai.connect(writer1).mint(utils.parseEther(amount.toString()));
+      await dai.mint(writer1.address, utils.parseEther(amount.toString()));
       await dai
         .connect(writer1)
         .increaseAllowance(
@@ -397,7 +402,7 @@ describe('PremiaOption', () => {
       await optionTestUtil.transferOptionToUser1(writer1, 3, 2);
 
       let amount = 1 * 10 * (1 + tax);
-      await dai.connect(user1).mint(utils.parseEther(amount.toString()));
+      await dai.mint(user1.address, utils.parseEther(amount.toString()));
       await dai
         .connect(user1)
         .increaseAllowance(
@@ -407,7 +412,7 @@ describe('PremiaOption', () => {
 
       amount = 2 * (1 + tax);
 
-      await eth.connect(user1).mint(utils.parseEther(amount.toString()));
+      await eth.mint(user1.address, utils.parseEther(amount.toString()));
       await eth
         .connect(user1)
         .increaseAllowance(
@@ -943,8 +948,7 @@ describe('PremiaOption', () => {
 
       await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
 
-      await eth.mint(utils.parseEther('0.004'));
-      await eth.transfer(flashLoan.address, utils.parseEther('0.004'));
+      await eth.mint(flashLoan.address, utils.parseEther('0.004'));
 
       let ethBalance = await eth.balanceOf(premiaOption.address);
       expect(ethBalance).to.eq(utils.parseEther('2'));

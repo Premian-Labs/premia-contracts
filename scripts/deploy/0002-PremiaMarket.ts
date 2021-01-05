@@ -4,7 +4,6 @@ import {
   PremiaMarket__factory,
   PremiaOption__factory,
   TestErc20__factory,
-  TestPremiaOption__factory,
 } from '../../contractsTyped';
 import { PremiaOptionTestUtil } from '../../test/utils/PremiaOptionTestUtil';
 
