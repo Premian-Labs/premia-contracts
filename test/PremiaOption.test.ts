@@ -89,7 +89,7 @@ describe('PremiaOption', () => {
       await optionTestUtil.addEth();
       await premiaOption.setTokenDisabled(eth.address, true);
       await expect(optionTestUtil.writeOption(writer1)).to.be.revertedWith(
-        'Token is disabled',
+        'Token disabled',
       );
     });
 
@@ -97,14 +97,14 @@ describe('PremiaOption', () => {
       await optionTestUtil.addEth();
       await expect(
         optionTestUtil.writeOption(writer1, { contractAmount: 0 }),
-      ).to.be.revertedWith('Contract amount must be > 0');
+      ).to.be.revertedWith('Amount <= 0');
     });
 
     it('should revert if contract strike price <= 0', async () => {
       await optionTestUtil.addEth();
       await expect(
         optionTestUtil.writeOption(writer1, { strikePrice: 0 }),
-      ).to.be.revertedWith('Strike price must be > 0');
+      ).to.be.revertedWith('Strike <= 0');
     });
 
     it('should revert if strike price increment is wrong', async () => {
@@ -113,14 +113,14 @@ describe('PremiaOption', () => {
         optionTestUtil.writeOption(writer1, {
           strikePrice: utils.parseEther('1'),
         }),
-      ).to.be.revertedWith('Wrong strikePrice increment');
+      ).to.be.revertedWith('Wrong strike incr');
     });
 
     it('should revert if timestamp already passed', async () => {
       await optionTestUtil.addEth();
       await setTimestampPostExpiration();
       await expect(optionTestUtil.writeOption(writer1)).to.be.revertedWith(
-        'Expiration already passed',
+        'Exp passed',
       );
     });
 
@@ -130,7 +130,7 @@ describe('PremiaOption', () => {
         optionTestUtil.writeOption(writer1, {
           expiration: optionTestUtil.getNextExpiration() + 200,
         }),
-      ).to.be.revertedWith('Wrong expiration timestamp increment');
+      ).to.be.revertedWith('Wrong exp incr');
     });
 
     it('should revert if timestamp is beyond max expiration', async () => {
@@ -139,7 +139,7 @@ describe('PremiaOption', () => {
         optionTestUtil.writeOption(writer1, {
           expiration: Math.floor(new Date().getTime() / 1000 + 60 * ONE_WEEK),
         }),
-      ).to.be.revertedWith('Expiration must be <= 1 year');
+      ).to.be.revertedWith('Exp > 1 yr');
     });
 
     it('should fail if address does not have enough ether for call', async () => {
@@ -283,7 +283,7 @@ describe('PremiaOption', () => {
       await optionTestUtil.transferOptionToUser1(writer1);
       await expect(
         premiaOption.connect(user1).cancelOption(1, 1),
-      ).to.revertedWith('Cant cancel more options than written');
+      ).to.revertedWith('Not enough written');
     });
 
     it('should subtract option written after cancelling', async () => {
@@ -373,7 +373,16 @@ describe('PremiaOption', () => {
     });
 
     it('should have 0 eth and 0.1 dai in treasury after 1 option exercised if writer is whitelisted', async () => {
-      await premiaOption.addWhitelistedWriteExercise([writer1.address]);
+      await premiaOption.setPrivileges(
+        [writer1.address],
+        [
+          {
+            isWhitelistedFlashLoanReceiver: false,
+            isWhitelistedUniswapRouter: false,
+            isWhitelistedWriteExercise: true,
+          },
+        ],
+      );
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 1, 1);
 
       const daiBalance = await dai.balanceOf(treasury.address);
@@ -384,7 +393,16 @@ describe('PremiaOption', () => {
     });
 
     it('should have 0.1 eth and 0 dai in treasury after 1 option exercised if exerciser is whitelisted', async () => {
-      await premiaOption.addWhitelistedWriteExercise([user1.address]);
+      await premiaOption.setPrivileges(
+        [user1.address],
+        [
+          {
+            isWhitelistedFlashLoanReceiver: false,
+            isWhitelistedUniswapRouter: false,
+            isWhitelistedWriteExercise: true,
+          },
+        ],
+      );
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 1, 1);
 
       const daiBalance = await dai.balanceOf(treasury.address);
@@ -449,7 +467,7 @@ describe('PremiaOption', () => {
       await optionTestUtil.transferOptionToUser1(writer1);
       await setTimestampPostExpiration();
       await expect(premiaOption.connect(user1).withdraw(1)).to.revertedWith(
-        'No option funds to claim for this address',
+        'No option to claim',
       );
     });
 
@@ -687,7 +705,7 @@ describe('PremiaOption', () => {
       await optionTestUtil.transferOptionToUser1(writer1);
       await expect(
         premiaOption.connect(user1).withdrawPreExpiration(1, 1),
-      ).to.revertedWith('Address does not have enough claims left');
+      ).to.revertedWith('Not enough claims');
     });
 
     it('should fail withdrawing if no unclaimed exercised options', async () => {
@@ -696,7 +714,7 @@ describe('PremiaOption', () => {
 
       await expect(
         premiaOption.connect(writer1).withdrawPreExpiration(1, 2),
-      ).to.revertedWith('No option to claim funds from');
+      ).to.revertedWith('No option to claim');
     });
 
     it('should fail withdrawing if not enough unclaimed exercised options', async () => {
@@ -706,7 +724,7 @@ describe('PremiaOption', () => {
 
       await expect(
         premiaOption.connect(writer1).withdrawPreExpiration(1, 2),
-      ).to.revertedWith('Not enough options claimable');
+      ).to.revertedWith('Not enough claimable');
     });
 
     it('should successfully withdraw 10 dai for withdrawPreExpiration of call option exercised', async () => {
@@ -940,7 +958,7 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully complete flashLoan if paid back with fee', async () => {
-      await premiaOption.setWriteFee(0);
+      await premiaOption.setFees(0, 1e3, 2e2, 1e4, 1e4);
       const flashLoanFactory = new TestFlashLoan__factory(writer1);
 
       const flashLoan = await flashLoanFactory.deploy();
@@ -967,12 +985,21 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully complete flashLoan if paid back without fee and user on fee whitelist', async () => {
-      await premiaOption.setWriteFee(0);
+      await premiaOption.setFees(0, 1e3, 2e2, 1e4, 1e4);
       const flashLoanFactory = new TestFlashLoan__factory(writer1);
 
       const flashLoan = await flashLoanFactory.deploy();
       await flashLoan.setMode(1);
-      await premiaOption.addWhitelistedFlashLoanReceivers([writer1.address]);
+      await premiaOption.setPrivileges(
+        [writer1.address],
+        [
+          {
+            isWhitelistedFlashLoanReceiver: true,
+            isWhitelistedUniswapRouter: false,
+            isWhitelistedWriteExercise: false,
+          },
+        ],
+      );
 
       await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
 

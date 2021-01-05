@@ -7,7 +7,6 @@ import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
-import '@openzeppelin/contracts/utils/EnumerableSet.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/utils/SafeCast.sol';
 
@@ -21,7 +20,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeCast for uint256;
     using SafeERC20 for IERC20;
-    using EnumerableSet for EnumerableSet.AddressSet;
 
     struct TokenSettings {
         uint256 contractSize;           // Amount of token per contract
@@ -54,6 +52,12 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 denominatorAmount;
     }
 
+    struct Privileges {
+        bool isWhitelistedWriteExercise;          // If address is allowed to write / exercise without fee
+        bool isWhitelistedFlashLoanReceiver;     // If address is allowed to do a flash loan without fee
+        bool isWhitelistedUniswapRouter;         // If address is an accepted uniswap router
+    }
+
     IERC20 public denominator;
     address public weth;
 
@@ -64,7 +68,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     //////////////////////////////////////////////////
 
-    EnumerableSet.AddressSet private _tokens;
+    address[] public tokens;
     mapping (address => TokenSettings) public tokenSettings;
 
     //////////////////////////////////////////////////
@@ -84,9 +88,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     uint256 public referrerFee = 1e4;               // 10% of write/exercise fee | Referrer fee calculated after all discounts applied
     uint256 public referredDiscount = 1e4;          // -10% from write/exercise fee
 
-    EnumerableSet.AddressSet private _whitelistedWriteExercise;      // List of addresses allowed to write / exercise without fee
-    EnumerableSet.AddressSet private _whitelistedFlashLoanReceivers; // List of addresses allowed to do a flash loan without fee
-    EnumerableSet.AddressSet private _whitelistedUniswapRouters;     // List of accepted uniswap routers
+    address[] public withPrivileges;
+    mapping (address => Privileges) public privileges;
 
     uint256 public constant INVERSE_BASIS_POINT = 1e5;
 
@@ -153,15 +156,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return optionData[_optionId].expiration;
     }
 
-    function getAllTokens() external view returns(address[] memory) {
-        uint256 length = _tokens.length();
-        address[] memory result = new address[](length);
-
-        for (uint256 i=0; i < length; i++) {
-            result[i] = _tokens.at(i);
-        }
-
-        return result;
+    function tokensLength() external view returns(uint256) {
+        return tokens.length;
     }
 
 //    function getOptionDataBatch(uint256[] memory _optionIds) external view returns(OptionData[] memory) {
@@ -196,39 +192,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 //
 //        return result;
 //    }
-
-    function getWhitelistedFlashLoanReceivers() external view returns(address[] memory) {
-        uint256 length = _whitelistedFlashLoanReceivers.length();
-        address[] memory result = new address[](length);
-
-        for (uint256 i=0; i < length; i++) {
-            result[i] = _whitelistedFlashLoanReceivers.at(i);
-        }
-
-        return result;
-    }
-
-    function getWhitelistedUniswapRouters() external view returns(address[] memory) {
-        uint256 length = _whitelistedUniswapRouters.length();
-        address[] memory result = new address[](length);
-
-        for (uint256 i=0; i < length; i++) {
-            result[i] = _whitelistedUniswapRouters.at(i);
-        }
-
-        return result;
-    }
-
-    function getWhitelistedWriteExercise() external view returns(address[] memory) {
-        uint256 length = _whitelistedWriteExercise.length();
-        address[] memory result = new address[](length);
-
-        for (uint256 i=0; i < length; i++) {
-            result[i] = _whitelistedWriteExercise.at(i);
-        }
-
-        return result;
-    }
 
     function getTotalFee(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256) {
         uint256 feeAmountBase;
@@ -293,8 +256,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     // Set settings for a token to support writing of options paired to denominator
     function setToken(address _token, uint256 _contractSize, uint256 _strikePriceIncrement) public onlyOwner {
-        if (!_tokens.contains(_token)) {
-            _tokens.add(_token);
+        if (!_isInArray(_token, tokens)) {
+            tokens.push(_token);
         }
 
         require(_contractSize > 0, "Contract size <= 0");
@@ -307,39 +270,15 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         });
     }
 
-    function addWhitelistedFlashLoanReceivers(address[] memory _addr) external onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
-            _whitelistedFlashLoanReceivers.add(_addr[i]);
-        }
-    }
+    function setPrivileges(address[] memory _addrList, Privileges[] memory _privileges) external onlyOwner {
+        require(_addrList.length == _privileges.length, "Arrays diff len");
 
-    function removeWhitelistedFlashLoanReceivers(address[] memory _addr) external onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
-            _whitelistedFlashLoanReceivers.remove(_addr[i]);
-        }
-    }
+        for (uint256 i=0; i < _addrList.length; i++) {
+            if (!_isInArray(_addrList[i], withPrivileges)) {
+                withPrivileges.push(_addrList[i]);
+            }
 
-    function addWhitelistedUniswapRouters(address[] memory _addr) external onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
-            _whitelistedUniswapRouters.add(_addr[i]);
-        }
-    }
-
-    function removeWhitelistedUniswapRouters(address[] memory _addr) external onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
-            _whitelistedUniswapRouters.remove(_addr[i]);
-        }
-    }
-
-    function addWhitelistedWriteExercise(address[] memory _addr) external onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
-            _whitelistedWriteExercise.add(_addr[i]);
-        }
-    }
-
-    function removeWhitelistedWriteExercise(address[] memory _addr) external onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
-            _whitelistedWriteExercise.remove(_addr[i]);
+            privileges[_addrList[i]] = _privileges[i];
         }
     }
 
@@ -366,8 +305,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     function writeOption(OptionWriteArgs memory _option, address _referrer) public nonReentrant {
         _preCheckOptionWrite(_option.token, _option.contractAmount, _option.strikePrice, _option.expiration);
 
-        TokenSettings memory settings = tokenSettings[_option.token];
-
         uint256 optionId = getOptionId(_option.token, _option.expiration, _option.strikePrice, _option.isCall);
         if (optionId == 0) {
             optionId = nextOptionId;
@@ -376,7 +313,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[optionId] = Pool({ tokenAmount: 0, denominatorAmount: 0 });
             optionData[optionId] = OptionData({
             token: _option.token,
-            contractSize: settings.contractSize,
+            contractSize: tokenSettings[_option.token].contractSize,
             expiration: _option.expiration,
             strikePrice: _option.strikePrice,
             isCall: _option.isCall,
@@ -391,21 +328,17 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             nextOptionId = nextOptionId.add(1);
         }
 
-        OptionData memory data = optionData[optionId];
-
         // Set referrer or get current if one already exists
         _referrer = _trySetReferrer(_referrer);
 
         if (_option.isCall) {
-            IERC20 tokenErc20 = IERC20(_option.token);
-
-            uint256 amount = _option.contractAmount.mul(data.contractSize);
+            uint256 amount = _option.contractAmount.mul(optionData[optionId].contractSize);
             uint256 feeAmount = amount.mul(writeFee).div(INVERSE_BASIS_POINT);
 
-            tokenErc20.safeTransferFrom(msg.sender, address(this), amount);
+            IERC20(_option.token).safeTransferFrom(msg.sender, address(this), amount);
 
             (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
-            _payFees(msg.sender, tokenErc20, _referrer, feeTreasury, feeReferrer);
+            _payFees(msg.sender, IERC20(_option.token), _referrer, feeTreasury, feeReferrer);
 
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
         } else {
@@ -437,10 +370,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         nbWritten[msg.sender][_optionId] = nbWritten[msg.sender][_optionId].sub(_contractAmount);
 
         if (optionData[_optionId].isCall) {
-            IERC20 tokenErc20 = IERC20(optionData[_optionId].token);
             uint256 amount = _contractAmount.mul(optionData[_optionId].contractSize);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(amount);
-            tokenErc20.safeTransfer(msg.sender, amount);
+            IERC20(optionData[_optionId].token).safeTransfer(msg.sender, amount);
         } else {
             uint256 amount = _contractAmount.mul(optionData[_optionId].strikePrice);
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(amount);
@@ -504,8 +436,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         OptionData storage data = optionData[_optionId];
 
         uint256 nbTotalWithClaimedPreExp = uint256(data.supply).add(data.exercised);
-        uint256 claimsPreExp = data.claimsPreExp;
-        uint256 nbTotal = nbTotalWithClaimedPreExp.sub(claimsPreExp);
+        uint256 nbTotal = nbTotalWithClaimedPreExp.sub(data.claimsPreExp);
 
         // Amount of options user still has to claim funds from
         uint256 claimsUser = nbWritten[msg.sender][_optionId];
@@ -517,15 +448,13 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
         //
 
-        IERC20 tokenErc20 = IERC20(optionData[_optionId].token);
-
         pools[_optionId].denominatorAmount.sub(denominatorAmount);
         pools[_optionId].tokenAmount.sub(tokenAmount);
         data.claimsPostExp = uint256(data.claimsPostExp).add(claimsUser).toUint64();
         delete nbWritten[msg.sender][_optionId];
 
         denominator.safeTransfer(msg.sender, denominatorAmount);
-        tokenErc20.safeTransfer(msg.sender, tokenAmount);
+        IERC20(optionData[_optionId].token).safeTransfer(msg.sender, tokenAmount);
 
         emit Withdraw(msg.sender, _optionId, data.token, claimsUser);
     }
@@ -557,10 +486,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(amount);
             denominator.safeTransfer(msg.sender, amount);
         } else {
-            IERC20 tokenErc20 = IERC20(data.token);
             uint256 amount = _contractAmount.mul(data.contractSize);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(amount);
-            tokenErc20.safeTransfer(msg.sender, amount);
+            IERC20(data.token).safeTransfer(msg.sender, amount);
         }
 
     }
@@ -576,7 +504,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 endBalance = _token.balanceOf(address(this));
 
         uint256 endBalanceRequired = startBalance;
-        if (!_whitelistedFlashLoanReceivers.contains(msg.sender)) {
+        if (!privileges[msg.sender].isWhitelistedFlashLoanReceiver) {
             endBalanceRequired = endBalanceRequired.add(startBalance.mul(flashLoanFee).div(INVERSE_BASIS_POINT));
         }
 
@@ -710,9 +638,21 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         _burn(_account, _id, _amount);
     }
 
+    // Utility function to check if a value is inside an array
+    function _isInArray(address _value, address[] memory _array) internal pure returns(bool) {
+        uint256 length = _array.length;
+        for (uint256 i = 0; i < length; ++i) {
+            if (_array[i] == _value) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     function _preCheckOptionWrite(address _token, uint256 _contractAmount, uint256 _strikePrice, uint256 _expiration) internal view {
         require(!tokenSettings[_token].isDisabled, "Token disabled");
-        require(_tokens.contains(_token), "Token not supported");
+        require(tokenSettings[_token].contractSize != 0, "Token not supported");
         require(_contractAmount > 0, "Amount <= 0");
         require(_strikePrice > 0, "Strike <= 0");
         require(_strikePrice % tokenSettings[_token].strikePriceIncrement == 0, "Wrong strike incr");
@@ -747,7 +687,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     function _payFees(address _from, IERC20 _token, address _referrer, uint256 _feeTreasury, uint256 _feeReferrer) internal {
         // If address is whitelisted, it doesnt need to pay fees
-        if (_whitelistedWriteExercise.contains(msg.sender)) return;
+        if (privileges[msg.sender].isWhitelistedWriteExercise) return;
 
         if (_feeTreasury > 0) {
             _token.safeTransferFrom(_from, treasury, _feeTreasury);
@@ -770,7 +710,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     }
 
     function _swap(IUniswapV2Router02 _router, address _from, address _to, uint256 _amount,uint256 _amountInMax) internal returns (uint256[] memory amounts) {
-        require(_router.contains(_router), "Router not whitelisted");
+        require(privileges[address(_router)].isWhitelistedUniswapRouter, "Router not whitelisted");
 
         IERC20(_from).safeApprove(address(_router), _amountInMax);
 
