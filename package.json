@@ -13,6 +13,7 @@
     "typechain": "typechain --target ethers-v5 --outDir contractsTyped ./abi/*.json",
     "postinstall": "yarn run compile",
     "test": "hardhat test",
+    "contract-size": "yarn run hardhat size-contracts",
     "deploy:rinkeby": "hardhat run scripts/deploy/0001-PremiaOption.ts --network rinkeby"
   },
   "devDependencies": {
@@ -28,6 +29,7 @@
     "ethereum-waffle": "^3.0.0",
     "ethers": "^5.0.24",
     "hardhat": "^2.0.6",
+    "hardhat-contract-sizer": "^2.0.2",
     "prettier": "^2.2.1",
     "rimraf": "^3.0.2",
     "ts-node": "^9.0.0",
