@@ -117,7 +117,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     //////////////////////////////////////////////////
 
     constructor(string memory _uri, IERC20 _denominator, address _weth, address _treasury) public ERC1155(_uri) {
-        require(_treasury != address(0), "Treasury cannot be 0x0 address");
+        require(_treasury != address(0), "0x0 addr");
         denominator = _denominator;
         weth = _weth;
         treasury = _treasury;
@@ -153,7 +153,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return optionData[_optionId].expiration;
     }
 
-    function getAllTokens() public view returns(address[] memory) {
+    function getAllTokens() external view returns(address[] memory) {
         uint256 length = _tokens.length();
         address[] memory result = new address[](length);
 
@@ -164,38 +164,38 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return result;
     }
 
-    function getOptionDataBatch(uint256[] memory _optionIds) public view returns(OptionData[] memory) {
-        OptionData[] memory result = new OptionData[](_optionIds.length);
-
-        for (uint256 i = 0; i < _optionIds.length; ++i) {
-            uint256 optionId = _optionIds[i];
-            result[i] = optionData[optionId];
-        }
-
-        return result;
-    }
-
-    function getNbOptionWrittenBatch(address _user, uint256[] memory _optionIds) public view returns(uint256[] memory) {
-        uint256[] memory result = new uint256[](_optionIds.length);
-
-        for (uint256 i = 0; i < _optionIds.length; ++i) {
-            uint256 optionId = _optionIds[i];
-            result[i] = nbWritten[_user][optionId];
-        }
-
-        return result;
-    }
-
-    function getPoolBatch(uint256[] memory _optionIds) public view returns(Pool[] memory) {
-        Pool[] memory result = new Pool[](_optionIds.length);
-
-        for (uint256 i = 0; i < _optionIds.length; ++i) {
-            uint256 optionId = _optionIds[i];
-            result[i] = pools[optionId];
-        }
-
-        return result;
-    }
+//    function getOptionDataBatch(uint256[] memory _optionIds) external view returns(OptionData[] memory) {
+//        OptionData[] memory result = new OptionData[](_optionIds.length);
+//
+//        for (uint256 i = 0; i < _optionIds.length; ++i) {
+//            uint256 optionId = _optionIds[i];
+//            result[i] = optionData[optionId];
+//        }
+//
+//        return result;
+//    }
+//
+//    function getNbOptionWrittenBatch(address _user, uint256[] memory _optionIds) external view returns(uint256[] memory) {
+//        uint256[] memory result = new uint256[](_optionIds.length);
+//
+//        for (uint256 i = 0; i < _optionIds.length; ++i) {
+//            uint256 optionId = _optionIds[i];
+//            result[i] = nbWritten[_user][optionId];
+//        }
+//
+//        return result;
+//    }
+//
+//    function getPoolBatch(uint256[] memory _optionIds) external view returns(Pool[] memory) {
+//        Pool[] memory result = new Pool[](_optionIds.length);
+//
+//        for (uint256 i = 0; i < _optionIds.length; ++i) {
+//            uint256 optionId = _optionIds[i];
+//            result[i] = pools[optionId];
+//        }
+//
+//        return result;
+//    }
 
     function getWhitelistedFlashLoanReceivers() external view returns(address[] memory) {
         uint256 length = _whitelistedFlashLoanReceivers.length();
@@ -436,20 +436,18 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         burn(msg.sender, _optionId, _contractAmount);
         nbWritten[msg.sender][_optionId] = nbWritten[msg.sender][_optionId].sub(_contractAmount);
 
-        OptionData memory data = optionData[_optionId];
-
-        if (data.isCall) {
-            IERC20 tokenErc20 = IERC20(data.token);
-            uint256 amount = _contractAmount.mul(data.contractSize);
+        if (optionData[_optionId].isCall) {
+            IERC20 tokenErc20 = IERC20(optionData[_optionId].token);
+            uint256 amount = _contractAmount.mul(optionData[_optionId].contractSize);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(amount);
             tokenErc20.safeTransfer(msg.sender, amount);
         } else {
-            uint256 amount = _contractAmount.mul(data.strikePrice);
+            uint256 amount = _contractAmount.mul(optionData[_optionId].strikePrice);
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(amount);
             denominator.safeTransfer(msg.sender, amount);
         }
 
-        emit OptionCancelled(msg.sender, _optionId, data.token, _contractAmount);
+        emit OptionCancelled(msg.sender, _optionId, optionData[_optionId].token, _contractAmount);
     }
 
     function exerciseOption(uint256 _optionId, uint256 _contractAmount, address _referrer) public nonReentrant {
@@ -614,8 +612,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
 
             // Swap enough denominator to tokenErc20 to pay fee + strike price
-            uint256[] memory swapAmounts = _swap(_router, address(tokenErc20), address(denominator), denominatorAmount.add(feeTreasury).add(feeReferrer), _amountInMax);
-            uint256 tokenAmountUsed = swapAmounts[0];
+            uint256 tokenAmountUsed = _swap(_router, address(tokenErc20), address(denominator), denominatorAmount.add(feeTreasury).add(feeReferrer), _amountInMax)[0];
 
             // Pay fees
             _payFees(address(this), denominator, _referrer, feeTreasury, feeReferrer);
@@ -635,8 +632,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
 
             // Swap enough denominator to tokenErc20 to pay fee + strike price
-            uint256[] memory swapAmounts = _swap(_router, address(denominator), address(tokenErc20), tokenAmount.add(feeTreasury).add(feeReferrer), _amountInMax);
-            uint256 denominatorAmountUsed = swapAmounts[0];
+            uint256 denominatorAmountUsed =  _swap(_router, address(denominator), address(tokenErc20), tokenAmount.add(feeTreasury).add(feeReferrer), _amountInMax)[0];
 
             _payFees(address(this), tokenErc20, _referrer, feeTreasury, feeAmount);
 
@@ -646,7 +642,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             denominator.safeTransfer(msg.sender, profit);
 
             require(denominator.balanceOf(address(this)) >= denominatorAmountStart.sub(denominatorAmount), "Wrong denom bal");
-            require(tokenErc20.balanceOf(address(this)) >= tokenAmountStart.add(tokenAmount), "Wrong final token bal");
+            require(tokenErc20.balanceOf(address(this)) >= tokenAmountStart.add(tokenAmount), "Wrong token bal");
         }
 
         emit OptionExercised(msg.sender, _optionId, optionData[_optionId].token, _contractAmount);
@@ -715,13 +711,11 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     }
 
     function _preCheckOptionWrite(address _token, uint256 _contractAmount, uint256 _strikePrice, uint256 _expiration) internal view {
-        TokenSettings memory settings = tokenSettings[_token];
-
-        require(!settings.isDisabled, "Token disabled");
+        require(!tokenSettings[_token].isDisabled, "Token disabled");
         require(_tokens.contains(_token), "Token not supported");
         require(_contractAmount > 0, "Amount <= 0");
         require(_strikePrice > 0, "Strike <= 0");
-        require(_strikePrice % settings.strikePriceIncrement == 0, "Wrong strike incr");
+        require(_strikePrice % tokenSettings[_token].strikePriceIncrement == 0, "Wrong strike incr");
         require(_expiration > block.timestamp, "Exp passed");
         require(_expiration.sub(block.timestamp) <= 365 days, "Exp > 1 yr");
         require(_expiration % expirationIncrement == baseExpiration, "Wrong exp incr");
@@ -776,6 +770,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     }
 
     function _swap(IUniswapV2Router02 _router, address _from, address _to, uint256 _amount,uint256 _amountInMax) internal returns (uint256[] memory amounts) {
+        require(_router.contains(_router), "Router not whitelisted");
+
         IERC20(_from).safeApprove(address(_router), _amountInMax);
 
         address[] memory path;
