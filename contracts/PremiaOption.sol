@@ -120,7 +120,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     //////////////////////////////////////////////////
 
     constructor(string memory _uri, IERC20 _denominator, address _weth, address _treasury) public ERC1155(_uri) {
-        require(_treasury != address(0), "0x0 addr");
         denominator = _denominator;
         weth = _weth;
         treasury = _treasury;
@@ -186,7 +185,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     }
 
     function setTreasury(address _treasury) external onlyOwner {
-        require(_treasury != address(0), "0x0 addr");
         treasury = _treasury;
     }
 
@@ -408,14 +406,11 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
         // Amount of options user still has to claim funds from
         uint256 claimsUser = nbWritten[msg.sender][_optionId];
-
         require(claimsUser >= _contractAmount, "Not enough claims");
 
         OptionData storage data = optionData[_optionId];
 
         uint256 nbClaimable = uint256(data.exercised).sub(data.claimsPreExp);
-
-        require(nbClaimable > 0, "No option to claim");
         require(nbClaimable >= _contractAmount, "Not enough claimable");
 
         //
@@ -468,8 +463,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 tokenAmount = _contractAmount.mul(optionData[_optionId].contractSize);
         uint256 denominatorAmount = _contractAmount.mul(optionData[_optionId].strikePrice);
 
-        uint256 tokenAmountStart = tokenErc20.balanceOf(address(this));
-        uint256 denominatorAmountStart = denominator.balanceOf(address(this));
+        uint256 tokenAmountRequired = tokenErc20.balanceOf(address(this));
+        uint256 denominatorAmountRequired = denominator.balanceOf(address(this));
 
         // Set referrer or get current if one already exists
         _referrer = _trySetReferrer(_referrer);
@@ -492,8 +487,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             // Send profit to sender
             tokenErc20.safeTransfer(msg.sender, profit);
 
-            require(denominator.balanceOf(address(this)) >= denominatorAmountStart.add(denominatorAmount), "Wrong denom bal");
-            require(tokenErc20.balanceOf(address(this)) >= tokenAmountStart.sub(tokenAmount), "Wrong token bal");
+            denominatorAmountRequired = denominatorAmountRequired.add(denominatorAmount);
+            tokenAmountRequired = tokenAmountRequired.sub(tokenAmount);
         } else {
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(denominatorAmount);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
@@ -511,9 +506,12 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             // Send profit to sender
             denominator.safeTransfer(msg.sender, profit);
 
-            require(denominator.balanceOf(address(this)) >= denominatorAmountStart.sub(denominatorAmount), "Wrong denom bal");
-            require(tokenErc20.balanceOf(address(this)) >= tokenAmountStart.add(tokenAmount), "Wrong token bal");
+            denominatorAmountRequired = denominatorAmountRequired.sub(denominatorAmount);
+            tokenAmountRequired = tokenAmountRequired.add(tokenAmount);
         }
+
+        require(denominator.balanceOf(address(this)) >= denominatorAmountRequired, "Wrong denom bal");
+        require(tokenErc20.balanceOf(address(this)) >= tokenAmountRequired, "Wrong token bal");
 
         emit OptionExercised(msg.sender, _optionId, optionData[_optionId].token, _contractAmount);
     }
