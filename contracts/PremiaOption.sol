@@ -83,10 +83,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     uint256 public writeFee = 100;                  // 1%
     uint256 public exerciseFee = 100;               // 1%
-    uint256 public flashLoanFee = 20;              // 0.2%
+    uint256 public flashLoanFee = 20;               // 0.2%
 
-    uint256 public referrerFee = 1000;               // 10% of write/exercise fee | Referrer fee calculated after all discounts applied
-    uint256 public referredDiscount = 1000;          // -10% from write/exercise fee
+    uint256 public referrerFee = 1000;              // 10% of write/exercise fee | Referrer fee calculated after all discounts applied
+    uint256 public referredDiscount = 1000;         // -10% from write/exercise fee
 
     address[] public withPrivileges;
     mapping (address => Privileges) public privileges;

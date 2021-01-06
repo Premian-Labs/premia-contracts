@@ -12,6 +12,10 @@ fs.copyFileSync(
   './abi/PremiaErc20.json',
 );
 fs.copyFileSync(
+  './artifacts/contracts/PremiaFeeDiscount.sol/PremiaFeeDiscount.json',
+  './abi/PremiaFeeDiscount.json',
+);
+fs.copyFileSync(
   './artifacts/contracts/PremiaFluxErc20.sol/PremiaFluxErc20.json',
   './abi/PremiaFluxErc20.json',
 );
