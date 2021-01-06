@@ -19,10 +19,10 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     EnumerableSet.AddressSet private _whitelistedPaymentTokens;
 
     /* For split fee orders, minimum required protocol maker fee, in basis points. Paid to owner (who can change it). */
-    uint256 public makerFee = 15e2; // 1.5%
+    uint256 public makerFee = 150; // 1.5%
 
     /* For split fee orders, minimum required protocol taker fee, in basis points. Paid to owner (who can change it). */
-    uint256 public takerFee = 15e2; // 1.5%
+    uint256 public takerFee = 150; // 1.5%
 
     /* Recipient of protocol fees. */
     address public treasury;
@@ -30,7 +30,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     enum SaleSide {Buy, Sell}
 
     /* Inverse basis point. */
-    uint256 public constant INVERSE_BASIS_POINT = 1e5;
+    uint256 public constant INVERSE_BASIS_POINT = 1e4;
 
     /* Salt to prevent duplicate hash. */
     uint256 salt = 0;
@@ -120,7 +120,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
      */
     function setMakerFee(uint256 _fee) external onlyOwner {
         // Hardcoded max fee we can set at 5%
-        require(_fee <= 5e3, "Over max fee limit");
+        require(_fee <= 500, "Over max fee limit");
         makerFee = _fee;
     }
 
@@ -130,7 +130,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
      */
     function setTakerFee(uint256 _fee) external onlyOwner {
         // Hardcoded max fee we can set at 5%
-        require(_fee <= 5e3, "Over max fee limit");
+        require(_fee <= 500, "Over max fee limit");
         takerFee = _fee;
     }
 

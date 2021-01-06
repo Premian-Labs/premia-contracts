@@ -81,17 +81,17 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     uint256 public expirationIncrement = 1 weeks;   // Expiration increment
     uint256 public maxExpiration = 365 days;        // Max expiration time from now
 
-    uint256 public writeFee = 1e3;                  // 1%
-    uint256 public exerciseFee = 1e3;               // 1%
-    uint256 public flashLoanFee = 2e2;              // 0.2%
+    uint256 public writeFee = 100;                  // 1%
+    uint256 public exerciseFee = 100;               // 1%
+    uint256 public flashLoanFee = 20;              // 0.2%
 
-    uint256 public referrerFee = 1e4;               // 10% of write/exercise fee | Referrer fee calculated after all discounts applied
-    uint256 public referredDiscount = 1e4;          // -10% from write/exercise fee
+    uint256 public referrerFee = 1000;               // 10% of write/exercise fee | Referrer fee calculated after all discounts applied
+    uint256 public referredDiscount = 1000;          // -10% from write/exercise fee
 
     address[] public withPrivileges;
     mapping (address => Privileges) public privileges;
 
-    uint256 public constant INVERSE_BASIS_POINT = 1e5;
+    uint256 public constant INVERSE_BASIS_POINT = 1e4;
 
     // token => expiration => strikePrice => isCall (1 for call, 0 for put) => optionId
     mapping (address => mapping(uint256 => mapping(uint256 => mapping (bool => uint256)))) public options;
@@ -229,11 +229,11 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     }
 
     function setFees(uint256 _writeFee, uint256 _exerciseFee, uint256 _flashLoanFee, uint256 _referrerFee, uint256 _referredDiscount) external onlyOwner {
-        require(_writeFee <= 5e3);
-        require(_exerciseFee <= 5e3);
-        require(_flashLoanFee <= 5e3);
-        require(_referrerFee <= 1e5);
-        require(_referredDiscount <= 1e5);
+        require(_writeFee <= 500);
+        require(_exerciseFee <= 500);
+        require(_flashLoanFee <= 500);
+        require(_referrerFee <= 1e4);
+        require(_referredDiscount <= 1e4);
 
         writeFee = _writeFee;
         exerciseFee = _exerciseFee;

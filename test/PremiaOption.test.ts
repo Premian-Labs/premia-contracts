@@ -862,7 +862,7 @@ describe('PremiaOption', () => {
     });
 
     it('should correctly calculate total fee with a referral + staking discount', async () => {
-      await premiaFeeDiscount.setDiscount(2e4);
+      await premiaFeeDiscount.setDiscount(2000);
       const fee = await premiaOption.getFees(
         writer1.address,
         utils.parseEther('2'),
@@ -874,7 +874,7 @@ describe('PremiaOption', () => {
     });
 
     it('should correctly give a 30% discount from premia staking', async () => {
-      await premiaFeeDiscount.setDiscount(3e4);
+      await premiaFeeDiscount.setDiscount(3000);
 
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 2);
 
@@ -888,7 +888,7 @@ describe('PremiaOption', () => {
     });
 
     it('should correctly give a 30% discount from premia staking + 10% discount from referral', async () => {
-      await premiaFeeDiscount.setDiscount(3e4);
+      await premiaFeeDiscount.setDiscount(3000);
 
       await optionTestUtil.addEthAndWriteOptionsAndExercise(
         true,
@@ -955,7 +955,7 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully complete flashLoan if paid back with fee', async () => {
-      await premiaOption.setFees(0, 1e3, 2e2, 1e4, 1e4);
+      await premiaOption.setFees(0, 100, 20, 1000, 1000);
       const flashLoanFactory = new TestFlashLoan__factory(writer1);
 
       const flashLoan = await flashLoanFactory.deploy();
@@ -982,7 +982,7 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully complete flashLoan if paid back without fee and user on fee whitelist', async () => {
-      await premiaOption.setFees(0, 1e3, 2e2, 1e4, 1e4);
+      await premiaOption.setFees(0, 100, 20, 1000, 1000);
       const flashLoanFactory = new TestFlashLoan__factory(writer1);
 
       const flashLoan = await flashLoanFactory.deploy();
