@@ -98,14 +98,14 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
 
     // Allow a user to migrate their stake to a new PremiaFeeDiscount contract, while preserving same lockup expiration date
     function migrateStake() external nonReentrant {
-        require(newContract != address(0), "Migration disabled");
+        require(address(newContract) != address(0), "Migration disabled");
 
         UserInfo memory user = userInfo[msg.sender];
 
         delete userInfo[msg.sender];
 
         newContract.migrate(msg.sender, user.balance, user.stakePeriod, user.lockedUntil);
-        emit StakeMigrated(msg.sender, newContract, user.balance, user.stakePeriod, user.lockedUntil);
+        emit StakeMigrated(msg.sender, address(newContract), user.balance, user.stakePeriod, user.lockedUntil);
     }
 
 

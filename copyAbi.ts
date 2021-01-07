@@ -20,6 +20,10 @@ fs.copyFileSync(
   './abi/PremiaFluxErc20.json',
 );
 fs.copyFileSync(
+  './artifacts/contracts/PremiaInitialBootstrapContribution.sol/PremiaInitialBootstrapContribution.json',
+  './abi/PremiaInitialBootstrapContribution.json',
+);
+fs.copyFileSync(
   './artifacts/contracts/PremiaMarket.sol/PremiaMarket.json',
   './abi/PremiaMarket.json',
 );
