@@ -3,6 +3,8 @@ flattened
 contractsTyped
 .nyc_output
 todoList.txt
+.env
+.env.local
 
 #Hardhat files
 cache

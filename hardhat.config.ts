@@ -1,5 +1,9 @@
 import { task } from 'hardhat/config';
+import Dotenv from 'dotenv';
 import '@nomiclabs/hardhat-waffle';
+import '@nomiclabs/hardhat-etherscan';
+
+Dotenv.config();
 
 // This is a sample Hardhat task. To learn how to create your own go to
 // https://hardhat.org/guides/create-task.html
@@ -17,6 +21,7 @@ task('accounts', 'Prints the list of accounts', async (args, hre) => {
 const ETH_TEST_KEY = process.env.ETH_TEST_PKEY;
 const ALCHEMY_KEY = process.env.ALCHEMY_KEY;
 const INFURA_PROJECT_ID = process.env.INFURA_PROJECT_ID;
+const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
 
 export default {
   solidity: {
@@ -72,4 +77,11 @@ export default {
       timeout: 100000,
     },
   },
+  ...(ETHERSCAN_KEY
+    ? {
+        etherscan: {
+          apiKey: ETHERSCAN_KEY,
+        },
+      }
+    : {}),
 };

@@ -9,14 +9,15 @@
   "scripts": {
     "compile": "hardhat compile && yarn run copyAbi && yarn run typechain",
     "compile:force": "hardhat compile --force && yarn run copyAbi && yarn run typechain",
-    "copyAbi": "ts-node ./copyAbi.ts",
-    "typechain": "typechain --target ethers-v5 --outDir contractsTyped ./abi/*.json",
+    "copyAbi": "ts-node \"./copyAbi.ts\"",
     "postinstall": "yarn run compile",
+    "typechain": "typechain --target ethers-v5 --outDir contractsTyped \"./abi/*.json\"",
     "test": "hardhat test",
     "deploy:rinkeby": "hardhat run scripts/deploy/0001-PremiaOption.ts --network rinkeby"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",
+    "@nomiclabs/hardhat-etherscan": "^2.1.0",
     "@nomiclabs/hardhat-waffle": "^2.0.0",
     "@openzeppelin/contracts": "^3.2.0",
     "@typechain/ethers-v5": "^4.0.0",
@@ -25,6 +26,7 @@
     "@types/node": "^14.14.7",
     "@types/rimraf": "^3.0.0",
     "chai": "^4.2.0",
+    "dotenv": "^8.2.0",
     "ethereum-waffle": "^3.0.0",
     "ethers": "^5.0.0",
     "hardhat": "^2.0.3",
