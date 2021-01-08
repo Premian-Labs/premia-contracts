@@ -105,7 +105,7 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
 
         delete userInfo[msg.sender];
 
-        xPremia.approve(address(newContract), user.balance);
+        xPremia.safeIncreaseAllowance(address(newContract), user.balance);
         newContract.migrate(msg.sender, user.balance, user.stakePeriod, user.lockedUntil);
         emit StakeMigrated(msg.sender, address(newContract), user.balance, user.stakePeriod, user.lockedUntil);
     }

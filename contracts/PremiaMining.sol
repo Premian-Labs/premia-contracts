@@ -211,9 +211,9 @@ contract PremiaMining is Ownable {
     function safePremiaTransfer(address _to, uint256 _amount) internal {
         uint256 premiaBal = premia.balanceOf(address(this));
         if (_amount > premiaBal) {
-            premia.transfer(_to, premiaBal);
+            premia.safeTransfer(_to, premiaBal);
         } else {
-            premia.transfer(_to, _amount);
+            premia.safeTransfer(_to, _amount);
         }
     }
 }

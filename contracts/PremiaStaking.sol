@@ -4,13 +4,14 @@ pragma solidity ^0.7.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
+import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 
 // Fork from SushiBar contract from SushiSwap
 
 // This contract handles swapping to and from xPremia, PremiaSwap's staking token.
 contract PremiaStaking is ERC20("PremiaStaking", "xPREMIA"){
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
     IERC20 public premia;
 
     // Define the Premia token contract
@@ -35,7 +36,7 @@ contract PremiaStaking is ERC20("PremiaStaking", "xPREMIA"){
             _mint(msg.sender, what);
         }
         // Lock the Premia in the contract
-        premia.transferFrom(msg.sender, address(this), _amount);
+        premia.safeTransferFrom(msg.sender, address(this), _amount);
     }
 
     // Leave the staking contract. Claim back your PREMIAs.
@@ -46,6 +47,6 @@ contract PremiaStaking is ERC20("PremiaStaking", "xPREMIA"){
         // Calculates the amount of Premia the xPremia is worth
         uint256 what = _share.mul(premia.balanceOf(address(this))).div(totalShares);
         _burn(msg.sender, _share);
-        premia.transfer(msg.sender, what);
+        premia.safeTransfer(msg.sender, what);
     }
 }

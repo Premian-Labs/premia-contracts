@@ -14,6 +14,7 @@ import "./interface/IPremiaBondingCurve.sol";
 // Primary Bootstrap Contribution
 contract PremiaPBS is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
+    using SafeERC20 for IERC20;
 
     IERC20 public premia;
 
@@ -52,7 +53,7 @@ contract PremiaPBS is Ownable, ReentrancyGuard {
     function addPremia(uint256 _amount) external onlyOwner {
         require(block.number < endBlock, "PBS ended");
 
-        premia.transferFrom(msg.sender, address(this), _amount);
+        premia.safeTransferFrom(msg.sender, address(this), _amount);
         premiaTotal = premiaTotal.add(_amount);
     }
 
@@ -104,9 +105,9 @@ contract PremiaPBS is Ownable, ReentrancyGuard {
     function safePremiaTransfer(address _to, uint256 _amount) internal {
         uint256 premiaBal = premia.balanceOf(address(this));
         if (_amount > premiaBal) {
-            premia.transfer(_to, premiaBal);
+            premia.safeTransfer(_to, premiaBal);
         } else {
-            premia.transfer(_to, _amount);
+            premia.safeTransfer(_to, _amount);
         }
     }
 }

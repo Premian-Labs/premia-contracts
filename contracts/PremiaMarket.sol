@@ -373,12 +373,12 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         if (_order.side == SaleSide.Buy) {
             IPremiaOption(_order.optionContract).safeTransferFrom(msg.sender, _order.maker, _order.optionId, amount, "");
 
-            token.transferFrom(_order.maker, treasury, orderMakerFee.add(orderTakerFee));
-            token.transferFrom(_order.maker, msg.sender, basePrice.sub(orderTakerFee));
+            token.safeTransferFrom(_order.maker, treasury, orderMakerFee.add(orderTakerFee));
+            token.safeTransferFrom(_order.maker, msg.sender, basePrice.sub(orderTakerFee));
 
         } else {
-            token.transferFrom(msg.sender, treasury, orderMakerFee.add(orderTakerFee));
-            token.transferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
+            token.safeTransferFrom(msg.sender, treasury, orderMakerFee.add(orderTakerFee));
+            token.safeTransferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
 
             IPremiaOption(_order.optionContract).safeTransferFrom(_order.maker, msg.sender, _order.optionId, amount, "");
         }
