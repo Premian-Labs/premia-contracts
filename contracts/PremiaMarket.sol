@@ -101,7 +101,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(address _treasury) public {
+    constructor(address _treasury) {
         require(_treasury != address(0), "Treasury cannot be 0x0 address");
         treasury = _treasury;
     }

@@ -14,7 +14,7 @@ contract PremiaStaking is ERC20("PremiaStaking", "xPREMIA"){
     IERC20 public premia;
 
     // Define the Premia token contract
-    constructor(IERC20 _premia) public {
+    constructor(IERC20 _premia) {
         premia = _premia;
     }
 

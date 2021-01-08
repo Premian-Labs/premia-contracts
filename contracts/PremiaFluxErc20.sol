@@ -17,7 +17,7 @@ contract PremiaFluxErc20 is ERC20, Ownable {
 
     //
 
-    constructor() public ERC20("PremiaFlux", "pFlux") { }
+    constructor() ERC20("PremiaFlux", "pFlux") { }
 
     //
 

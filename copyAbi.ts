@@ -8,6 +8,10 @@ if (!fs.existsSync('./abi')) {
 }
 
 fs.copyFileSync(
+  './artifacts/contracts/PremiaBondingCurve.sol/PremiaBondingCurve.json',
+  './abi/PremiaBondingCurve.json',
+);
+fs.copyFileSync(
   './artifacts/contracts/PremiaErc20.sol/PremiaErc20.json',
   './abi/PremiaErc20.json',
 );
@@ -20,8 +24,8 @@ fs.copyFileSync(
   './abi/PremiaFluxErc20.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaInitialBootstrapContribution.sol/PremiaInitialBootstrapContribution.json',
-  './abi/PremiaInitialBootstrapContribution.json',
+  './artifacts/contracts/PremiaPBS.sol/PremiaPBS.json',
+  './abi/PremiaPBS.json',
 );
 fs.copyFileSync(
   './artifacts/contracts/PremiaMarket.sol/PremiaMarket.json',

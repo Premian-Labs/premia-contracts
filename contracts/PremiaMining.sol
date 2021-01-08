@@ -64,7 +64,7 @@ contract PremiaMining is Ownable {
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
-    constructor(IERC20 _premia, uint256 _startBlock) public {
+    constructor(IERC20 _premia, uint256 _startBlock) {
         premia = _premia;
 
         startBlock = _startBlock;

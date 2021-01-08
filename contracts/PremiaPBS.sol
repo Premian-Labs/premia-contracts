@@ -11,7 +11,8 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import "./interface/IPremiaBondingCurve.sol";
 
 
-contract PremiaInitialBootstrapContribution is Ownable, ReentrancyGuard {
+// Primary Bootstrap Contribution
+contract PremiaPBS is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
 
     IERC20 public premia;
@@ -27,7 +28,16 @@ contract PremiaInitialBootstrapContribution is Ownable, ReentrancyGuard {
 
     IPremiaBondingCurve public premiaBondingCurve;
 
-    constructor(IERC20 _premia, uint256 _startBlock, uint256 _endBlock) public {
+    ////////////
+    // Events //
+    ////////////
+
+    event Contributed(address indexed user, uint256 amount);
+    event Collected(address indexed user, uint256 amount);
+
+    ///////////
+
+    constructor(IERC20 _premia, uint256 _startBlock, uint256 _endBlock) {
         require(_startBlock < _endBlock, "EndBlock must be greater than StartBlock");
         premia = _premia;
         startBlock = _startBlock;
@@ -38,42 +48,48 @@ contract PremiaInitialBootstrapContribution is Ownable, ReentrancyGuard {
     // Admin //
     ///////////
 
-    // Add premia which will be distributed in the Initial Bootstrap Contribution
+    // Add premia which will be distributed in the PBS
     function addPremia(uint256 _amount) external onlyOwner {
-        require(block.number < endBlock, "Contribution has ended");
+        require(block.number < endBlock, "PBS ended");
 
         premia.transferFrom(msg.sender, address(this), _amount);
         premiaTotal = premiaTotal.add(_amount);
     }
 
-    // Send eth collected during the Initial Bootstrap Contribution, to the _to address
+    // Send eth collected during the PBS, to the _to address
     function sendEth(address payable _to) external onlyOwner {
         _to.transfer(address(this).balance);
     }
 
-    //
-
-    // Initialize the start price of the bonding price, using the final PREMIA:ETH ratio defined by the Initial Bootstrap Contribution
-    function initializeBondingCurve() external nonReentrant {
-        require(block.number > endBlock, "Contribution has not ended");
-        require(premiaBondingCurve.isInitialized() == false, "Bonding curve already initialized");
-
-        premiaBondingCurve.initialize(premiaTotal.div(ethTotal));
+    // Set the PremiaBondingCurve contract address, to be able to initialize the bonding curve once contribution has ended
+    function setPremiaBondingCurve(IPremiaBondingCurve _premiaBondingCurve) external onlyOwner {
+        premiaBondingCurve = _premiaBondingCurve;
     }
 
-    // Deposit ETH to participate in the Initial Bootstrap Contribution
-    function deposit() external payable nonReentrant {
-        require(block.number >= startBlock, "Contribution has not started");
+    //
+
+    // Initialize the start price of the bonding price, using the final PREMIA:ETH ratio defined by the PBS
+    function initializeBondingCurve() external {
+        require(block.number > endBlock, "PBS not ended");
+        require(premiaBondingCurve.isInitialized() == false, "Bonding curve already initialized");
+
+        premiaBondingCurve.initialize(premiaTotal.mul(1e18).div(ethTotal));
+    }
+
+    // Deposit ETH to participate in the PBS
+    function contribute() external payable nonReentrant {
+        require(block.number >= startBlock, "PBS not started");
         require(msg.value > 0, "No eth sent");
-        require(block.number < endBlock, "Contribution has ended");
+        require(block.number < endBlock, "PBS ended");
 
         amountDeposited[msg.sender] = amountDeposited[msg.sender].add(msg.value);
         ethTotal = ethTotal.add(msg.value);
+        emit Contributed(msg.sender, msg.value);
     }
 
-    // Collect Premia after Initial Bootstrap Contribution has ended
+    // Collect Premia after PBS has ended
     function collect() external nonReentrant {
-        require(block.number > endBlock, "Contribution has not ended");
+        require(block.number > endBlock, "PBS not ended");
         require(hasCollected[msg.sender] == false, "Address already collected its reward");
         require(amountDeposited[msg.sender] > 0, "Address did not contribute");
 
@@ -81,6 +97,7 @@ contract PremiaInitialBootstrapContribution is Ownable, ReentrancyGuard {
         uint256 contribution = amountDeposited[msg.sender].mul(1e12).div(ethTotal);
         uint256 premiaAmount = premiaTotal.mul(contribution).div(1e12);
         safePremiaTransfer(msg.sender, premiaAmount);
+        emit Collected(msg.sender, premiaAmount);
     }
 
     // Safe premia transfer function, just in case if rounding error causes contract to not have enough PREMIAs.

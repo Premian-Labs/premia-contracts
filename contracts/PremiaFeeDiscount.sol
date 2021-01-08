@@ -57,7 +57,7 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
 
     ///////////
 
-    constructor(IERC20 _xPremia) public {
+    constructor(IERC20 _xPremia) {
         xPremia = _xPremia;
     }
 
@@ -145,7 +145,7 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
 
     // Return the % of the fee that user must pay, based on his stake
     function getDiscount(address _user) external view returns(uint256) {
-        UserInfo memory user = userInfo[msg.sender];
+        UserInfo memory user = userInfo[_user];
         uint256 userBalance = user.balance.mul(stakePeriods[user.stakePeriod]).div(INVERSE_BASIS_POINT);
 
         for (uint256 i=0; i < stakeLevels.length; i++) {

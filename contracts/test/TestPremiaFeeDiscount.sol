@@ -11,7 +11,7 @@ contract TestPremiaFeeDiscount {
         discount = _value;
     }
 
-    function getDiscount(address _user) external returns(uint256) {
+    function getDiscount(address _user) external view returns(uint256) {
         return discount;
     }
 }

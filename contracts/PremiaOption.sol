@@ -119,7 +119,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(string memory _uri, IERC20 _denominator, address _weth, address _treasury) public ERC1155(_uri) {
+    constructor(string memory _uri, IERC20 _denominator, address _weth, address _treasury) ERC1155(_uri) {
         denominator = _denominator;
         weth = _weth;
         treasury = _treasury;
@@ -645,7 +645,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return _referrer;
     }
 
-    function _swap(IUniswapV2Router02 _router, address _from, address _to, uint256 _amount,uint256 _amountInMax) internal returns (uint256[] memory amounts) {
+    function _swap(IUniswapV2Router02 _router, address _from, address _to, uint256 _amount,uint256 _amountInMax) internal returns (uint256[] memory _amounts) {
         require(privileges[address(_router)].isWhitelistedUniswapRouter, "Router not whitelisted");
 
         IERC20(_from).safeApprove(address(_router), _amountInMax);

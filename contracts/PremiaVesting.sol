@@ -19,7 +19,7 @@ contract PremiaVesting is Ownable {
     // The timestamp at which last withdrawal has been done
     uint256 public lastWithdrawalTimestamp;
 
-    constructor(IERC20 _premia) public {
+    constructor(IERC20 _premia) {
         premia = _premia;
         endTimestamp = block.timestamp.add(releasePeriod);
         lastWithdrawalTimestamp = block.timestamp;

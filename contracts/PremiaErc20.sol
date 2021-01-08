@@ -16,7 +16,7 @@ contract PremiaErc20 is ERC20, Ownable {
 
     uint256 private _maxSupply = 1e26; // Hardcoded 100m max supply
 
-    constructor(uint256 amount) public ERC20("Premia", "PREMIA") {
+    constructor(uint256 amount) ERC20("Premia", "PREMIA") {
         require(amount <= _maxSupply);
         _mint(msg.sender, amount);
     }
