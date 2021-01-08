@@ -101,9 +101,11 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         require(address(newContract) != address(0), "Migration disabled");
 
         UserInfo memory user = userInfo[msg.sender];
+        require(user.balance > 0, "No stake");
 
         delete userInfo[msg.sender];
 
+        xPremia.approve(address(newContract), user.balance);
         newContract.migrate(msg.sender, user.balance, user.stakePeriod, user.lockedUntil);
         emit StakeMigrated(msg.sender, address(newContract), user.balance, user.stakePeriod, user.lockedUntil);
     }
@@ -118,7 +120,7 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         uint256 lockedUntil = block.timestamp.add(_period);
         require(lockedUntil > user.lockedUntil, "Cannot add stake with lower stake period");
 
-        xPremia.transferFrom(msg.sender, address(this), _amount);
+        xPremia.safeTransferFrom(msg.sender, address(this), _amount);
         user.balance = user.balance.add(_amount);
         user.lockedUntil = lockedUntil.toUint64();
         user.stakePeriod = _period.toUint64();
@@ -134,7 +136,7 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         require(stakePeriods[user.stakePeriod] == 0 || user.lockedUntil <= block.timestamp, "Stake still locked");
 
         user.balance = user.balance.sub(_amount);
-        xPremia.transfer(msg.sender, _amount);
+        xPremia.safeTransfer(msg.sender, _amount);
 
         emit Unstaked(msg.sender, _amount);
     }
@@ -161,16 +163,22 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
                 uint256 discountPrevLevel;
 
                 // If stake is lower, user is in this level, and we need to LERP with prev level to get discount value
-                // If this is the first level, prev level is 0 / 0
                 if (i > 0) {
                     amountPrevLevel = stakeLevels[i - 1].amount;
                     discountPrevLevel = stakeLevels[i - 1].discount;
+                } else {
+                    // If this is the first level, prev level is 0 / 1e4
+                    amountPrevLevel = 0;
+                    discountPrevLevel = INVERSE_BASIS_POINT;
                 }
 
-                uint256 remappedDiscount = level.discount.sub(discountPrevLevel);
-                uint256 remappedBalance = userBalance.sub(amountPrevLevel);
+                uint256 remappedDiscount = discountPrevLevel.sub(level.discount);
 
-                return discountPrevLevel.add(remappedBalance.mul(level.discount.sub(discountPrevLevel)).div(remappedDiscount));
+                uint256 remappedAmount = level.amount.sub(amountPrevLevel);
+                uint256 remappedBalance = userBalance.sub(amountPrevLevel);
+                uint256 levelProgress = remappedBalance.mul(INVERSE_BASIS_POINT).div(remappedAmount);
+
+                return discountPrevLevel.sub(remappedDiscount.mul(levelProgress).div(INVERSE_BASIS_POINT));
             }
         }
 

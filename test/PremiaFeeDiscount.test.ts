@@ -6,9 +6,11 @@ import {
   PremiaStaking__factory,
   TestErc20,
   TestErc20__factory,
+  TestNewPremiaFeeDiscount__factory,
 } from '../contractsTyped';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { resetHardhat, setTimestamp } from './utils/evm';
 
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
@@ -16,12 +18,12 @@ let premia: TestErc20;
 let xPremia: PremiaStaking;
 let premiaFeeDiscount: PremiaFeeDiscount;
 
-const stakeAmount = ethers.utils.parseEther('10000');
-const oneMonth = 30 * 24 * 36000;
-const inverseBasisPoint = 1e4;
+const stakeAmount = ethers.utils.parseEther('120000');
+const oneMonth = 30 * 24 * 3600;
 
 describe('PremiaFeeDiscount', () => {
   beforeEach(async () => {
+    await resetHardhat();
     [admin, user1] = await ethers.getSigners();
 
     const premiaFactory = new TestErc20__factory(admin);
@@ -83,12 +85,24 @@ describe('PremiaFeeDiscount', () => {
 
   it('should stake and calculate discount successfully', async () => {
     await premiaFeeDiscount.connect(user1).stake(stakeAmount, 3 * oneMonth);
-    const amountWithBonus = await premiaFeeDiscount.getStakeAmountWithBonus(
+    let amountWithBonus = await premiaFeeDiscount.getStakeAmountWithBonus(
       user1.address,
     );
-    expect(amountWithBonus).to.eq(
-      stakeAmount.mul(12500).div(inverseBasisPoint),
+    expect(amountWithBonus).to.eq(ethers.utils.parseEther('150000'));
+    expect(await premiaFeeDiscount.getDiscount(user1.address)).to.eq(5000);
+
+    const newTimestamp = new Date().getTime() / 1000 + 91 * 24 * 3600;
+    await setTimestamp(newTimestamp);
+    await premiaFeeDiscount
+      .connect(user1)
+      .unstake(ethers.utils.parseEther('10000'));
+
+    amountWithBonus = await premiaFeeDiscount.getStakeAmountWithBonus(
+      user1.address,
     );
+
+    expect(amountWithBonus).to.eq(ethers.utils.parseEther('137500'));
+    expect(await premiaFeeDiscount.getDiscount(user1.address)).to.eq(5313);
   });
 
   it('should fail unstaking if stake is still locked', async () => {
@@ -106,5 +120,69 @@ describe('PremiaFeeDiscount', () => {
       await premiaFeeDiscount.getStakeAmountWithBonus(user1.address),
     ).to.eq(0);
     expect(await xPremia.balanceOf(user1.address)).to.eq(stakeAmount);
+  });
+
+  it('should not allow adding to stake with smaller period than period of stake left', async () => {
+    await premiaFeeDiscount
+      .connect(user1)
+      .stake(stakeAmount.div(2), 3 * oneMonth);
+    const newTimestamp = new Date().getTime() / 1000 + oneMonth;
+    await setTimestamp(newTimestamp);
+
+    // Fail setting one month stake
+    await expect(
+      premiaFeeDiscount.connect(user1).stake(stakeAmount.div(4), oneMonth),
+    ).to.be.revertedWith('Cannot add stake with lower stake period');
+
+    // Success adding 3 months stake
+    await premiaFeeDiscount
+      .connect(user1)
+      .stake(stakeAmount.div(4), 3 * oneMonth);
+    let userInfo = await premiaFeeDiscount.userInfo(user1.address);
+    expect(userInfo.balance).to.eq(stakeAmount.div(4).mul(3));
+    expect(userInfo.stakePeriod).to.eq(3 * oneMonth);
+
+    // Success adding for 6 months stake
+    await premiaFeeDiscount
+      .connect(user1)
+      .stake(stakeAmount.div(4), 6 * oneMonth);
+    userInfo = await premiaFeeDiscount.userInfo(user1.address);
+    expect(userInfo.balance).to.eq(stakeAmount);
+    expect(userInfo.stakePeriod).to.eq(6 * oneMonth);
+  });
+
+  it('should fail migration if migration contract not set', async () => {
+    await expect(premiaFeeDiscount.migrateStake()).to.be.revertedWith(
+      'Migration disabled',
+    );
+  });
+
+  it('should migrate stake successfully to new contract', async () => {
+    await premiaFeeDiscount.connect(user1).stake(stakeAmount, 3 * oneMonth);
+
+    const factory = new TestNewPremiaFeeDiscount__factory(admin);
+    const newContract = await factory.deploy(
+      premiaFeeDiscount.address,
+      xPremia.address,
+    );
+    await premiaFeeDiscount.setNewContract(newContract.address);
+
+    const userInfoOldBefore = await premiaFeeDiscount.userInfo(user1.address);
+    expect(userInfoOldBefore.stakePeriod).to.not.eq(0);
+    expect(userInfoOldBefore.lockedUntil).to.not.eq(0);
+    expect(userInfoOldBefore.balance).to.not.eq(0);
+
+    await premiaFeeDiscount.connect(user1).migrateStake();
+
+    const userInfoOldAfter = await premiaFeeDiscount.userInfo(user1.address);
+    const userInfoNew = await newContract.userInfo(user1.address);
+
+    expect(userInfoOldAfter.stakePeriod).to.eq(0);
+    expect(userInfoOldAfter.lockedUntil).to.eq(0);
+    expect(userInfoOldAfter.balance).to.eq(0);
+
+    expect(userInfoNew.stakePeriod).to.eq(userInfoOldBefore.stakePeriod);
+    expect(userInfoNew.lockedUntil).to.eq(userInfoOldBefore.lockedUntil);
+    expect(userInfoNew.balance).to.eq(userInfoOldBefore.balance);
   });
 });
