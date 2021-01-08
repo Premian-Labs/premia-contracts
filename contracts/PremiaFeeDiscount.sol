@@ -121,6 +121,7 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         xPremia.transferFrom(msg.sender, address(this), _amount);
         user.balance = user.balance.add(_amount);
         user.lockedUntil = lockedUntil.toUint64();
+        user.stakePeriod = _period.toUint64();
 
         emit Staked(msg.sender, _amount, _period, lockedUntil);
     }
@@ -143,10 +144,14 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         return stakeLevels.length;
     }
 
+    function getStakeAmountWithBonus(address _user) public view returns(uint256) {
+        UserInfo memory user = userInfo[_user];
+        return user.balance.mul(stakePeriods[user.stakePeriod]).div(INVERSE_BASIS_POINT);
+    }
+
     // Return the % of the fee that user must pay, based on his stake
     function getDiscount(address _user) external view returns(uint256) {
-        UserInfo memory user = userInfo[_user];
-        uint256 userBalance = user.balance.mul(stakePeriods[user.stakePeriod]).div(INVERSE_BASIS_POINT);
+        uint256 userBalance = getStakeAmountWithBonus(_user);
 
         for (uint256 i=0; i < stakeLevels.length; i++) {
             StakeLevel memory level = stakeLevels[i];

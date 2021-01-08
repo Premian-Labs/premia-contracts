@@ -16,6 +16,10 @@ let premia: TestErc20;
 let xPremia: PremiaStaking;
 let premiaFeeDiscount: PremiaFeeDiscount;
 
+const stakeAmount = ethers.utils.parseEther('10000');
+const oneMonth = 30 * 24 * 36000;
+const inverseBasisPoint = 1e4;
+
 describe('PremiaFeeDiscount', () => {
   beforeEach(async () => {
     [admin, user1] = await ethers.getSigners();
@@ -35,9 +39,17 @@ describe('PremiaFeeDiscount', () => {
       { amount: ethers.utils.parseEther('500000'), discount: 1000 }, // 10% of fee (= -90%)
     ]);
 
-    await premiaFeeDiscount.setStakePeriod(30 * 24 * 3600, 1e4);
-    await premiaFeeDiscount.setStakePeriod(60 * 24 * 3600, 15e3);
-    await premiaFeeDiscount.setStakePeriod(90 * 24 * 3600, 2e4);
+    await premiaFeeDiscount.setStakePeriod(oneMonth, 10000);
+    await premiaFeeDiscount.setStakePeriod(3 * oneMonth, 12500);
+    await premiaFeeDiscount.setStakePeriod(6 * oneMonth, 15000);
+    await premiaFeeDiscount.setStakePeriod(12 * oneMonth, 20000);
+
+    await premia.mint(user1.address, stakeAmount);
+    await premia.connect(user1).increaseAllowance(xPremia.address, stakeAmount);
+    await xPremia.connect(user1).enter(stakeAmount);
+    await xPremia
+      .connect(user1)
+      .increaseAllowance(premiaFeeDiscount.address, stakeAmount);
   });
 
   it('should correctly overwrite existing stake levels', async () => {
@@ -61,5 +73,38 @@ describe('PremiaFeeDiscount', () => {
     expect(level0.discount).to.eq(8000);
     expect(level1.discount).to.eq(4000);
     expect(level2.discount).to.eq(2000);
+  });
+
+  it('should fail staking if stake period does not exists', async () => {
+    await expect(
+      premiaFeeDiscount.connect(user1).stake(stakeAmount, 2 * oneMonth),
+    ).to.be.revertedWith('Stake period does not exists');
+  });
+
+  it('should stake and calculate discount successfully', async () => {
+    await premiaFeeDiscount.connect(user1).stake(stakeAmount, 3 * oneMonth);
+    const amountWithBonus = await premiaFeeDiscount.getStakeAmountWithBonus(
+      user1.address,
+    );
+    expect(amountWithBonus).to.eq(
+      stakeAmount.mul(12500).div(inverseBasisPoint),
+    );
+  });
+
+  it('should fail unstaking if stake is still locked', async () => {
+    await premiaFeeDiscount.connect(user1).stake(stakeAmount, oneMonth);
+    await expect(
+      premiaFeeDiscount.connect(user1).unstake(1),
+    ).to.be.revertedWith('Stake still locked');
+  });
+
+  it('should allow unstaking if stake is still locked but stakePeriod has been disabled', async () => {
+    await premiaFeeDiscount.connect(user1).stake(stakeAmount, oneMonth);
+    await premiaFeeDiscount.connect(admin).setStakePeriod(oneMonth, 0);
+    await premiaFeeDiscount.connect(user1).unstake(stakeAmount);
+    expect(
+      await premiaFeeDiscount.getStakeAmountWithBonus(user1.address),
+    ).to.eq(0);
+    expect(await xPremia.balanceOf(user1.address)).to.eq(stakeAmount);
   });
 });
