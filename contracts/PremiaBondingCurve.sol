@@ -97,6 +97,8 @@ contract PremiaBondingCurve is Ownable {
 
     //////////////////////////////////////////////////
 
+    // Buy exact amount of premia
+    // Will refund user any extra eth paid
     function buyExactTokenAmount(uint256 _tokenAmount) external payable notUpgraded {
         uint256 nextSold = soldAmount.add(_tokenAmount);
         uint256 ethAmount = getEthCost(soldAmount, nextSold);
@@ -108,6 +110,8 @@ contract PremiaBondingCurve is Ownable {
         emit Bought(msg.sender, _tokenAmount, ethAmount);
     }
 
+    // Buy premia with exact eth amount
+    // Will revert if tokenAmount is less than minimum specified
     function buyTokenWithExactEthAmount(uint256 _minToken) external payable notUpgraded {
         uint256 ethAmount = msg.value;
         uint256 tokenAmount = getTokensPurchasable(ethAmount);
@@ -117,6 +121,7 @@ contract PremiaBondingCurve is Ownable {
         emit Bought(msg.sender, tokenAmount, ethAmount);
     }
 
+    // Sell premia for ETH
     function sell(uint256 _tokenAmount) external notUpgraded {
         uint256 nextSold = soldAmount.sub(_tokenAmount);
         uint256 ethAmount = getEthCost(nextSold, soldAmount);
@@ -131,19 +136,22 @@ contract PremiaBondingCurve is Ownable {
         emit Sold(msg.sender, _tokenAmount, refund, commission);
     }
 
-    function getEthCost(uint256 x0, uint256 x1) public view returns (uint256) {
-        require(x1 > x0);
-        return x1.add(x0).mul(x1.sub(x0))
+    // Return eth cost to purchase tokens from x0 to x1
+    function getEthCost(uint256 _x0, uint256 _x1) public view returns (uint256) {
+        require(_x1 > _x0);
+        return _x1.add(_x0).mul(_x1.sub(_x0))
         .div(2).div(k)
-        .add(startPrice.mul(x1.sub(x0)))
+        .add(startPrice.mul(_x1.sub(_x0)))
         .div(1e18);
     }
 
+    // Return the amount of tokens purchasable with given ethAmount
     function getTokensPurchasable(uint256 _ethAmount) public view returns(uint256) {
         uint256 x1 = sqrt(_ethAmount.mul(2e18).mul(k).add(k.mul(k).mul(startPrice).mul(startPrice)).add(k.mul(2).mul(startPrice).mul(soldAmount)).add(soldAmount.mul(soldAmount))).sub(k.mul(startPrice));
         return x1 - soldAmount;
     }
 
+    // Square root
     function sqrt(uint256 x) public pure returns (uint256 y) {
         uint256 z = (x + 1) / 2;
         y = x;
