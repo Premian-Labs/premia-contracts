@@ -16,8 +16,8 @@ contract PremiaBondingCurve is Ownable {
     IERC20 public premia;
     address payable public treasury;
 
-    uint256 internal immutable K;
-    uint256 internal immutable START_PRICE;
+    uint256 internal immutable k;
+    uint256 internal immutable startPrice;
     uint256 public soldAmount;
 
     IPremiaBondingCurveUpgrade public newContract;
@@ -44,8 +44,8 @@ contract PremiaBondingCurve is Ownable {
     constructor(IERC20 _premia, address payable _treasury, uint256 _startPrice, uint256 _k) {
         premia = _premia;
         treasury = _treasury;
-        START_PRICE = _startPrice;
-        K = _k;
+        startPrice = _startPrice;
+        k = _k;
     }
 
     //////////////////////////////////////////////////
@@ -97,36 +97,59 @@ contract PremiaBondingCurve is Ownable {
 
     //////////////////////////////////////////////////
 
-    function buy(uint256 tokenAmount) external payable notUpgraded {
-        uint256 nextSold = soldAmount.add(tokenAmount);
-        uint256 ethAmount = s(soldAmount, nextSold);
+    function buyExactTokenAmount(uint256 _tokenAmount) external payable notUpgraded {
+        uint256 nextSold = soldAmount.add(_tokenAmount);
+        uint256 ethAmount = getEthCost(soldAmount, nextSold);
         soldAmount = nextSold;
         require(msg.value >= ethAmount, "Value is too small");
-        premia.safeTransfer(msg.sender, tokenAmount);
+        premia.safeTransfer(msg.sender, _tokenAmount);
         if (msg.value > ethAmount)
             msg.sender.transfer(msg.value.sub(ethAmount));
+        emit Bought(msg.sender, _tokenAmount, ethAmount);
+    }
+
+    function buyTokenWithExactEthAmount(uint256 _minToken) external payable notUpgraded {
+        uint256 ethAmount = msg.value;
+        uint256 tokenAmount = getTokensPurchasable(ethAmount);
+        require(tokenAmount >= _minToken, "Slippage too high");
+        soldAmount = soldAmount.add(tokenAmount);
+        premia.safeTransfer(msg.sender, tokenAmount);
         emit Bought(msg.sender, tokenAmount, ethAmount);
     }
 
-    function sell(uint256 tokenAmount) external notUpgraded {
-        uint256 nextSold = soldAmount.sub(tokenAmount);
-        uint256 ethAmount = s(nextSold, soldAmount);
+    function sell(uint256 _tokenAmount) external notUpgraded {
+        uint256 nextSold = soldAmount.sub(_tokenAmount);
+        uint256 ethAmount = getEthCost(nextSold, soldAmount);
         uint256 commission = ethAmount.div(10);
         uint256 refund = ethAmount.sub(commission);
         require(commission > 0);
 
         soldAmount = nextSold;
-        premia.safeTransferFrom(msg.sender, address(this), tokenAmount);
+        premia.safeTransferFrom(msg.sender, address(this), _tokenAmount);
         treasury.transfer(commission);
         msg.sender.transfer(refund);
-        emit Sold(msg.sender, tokenAmount, refund, commission);
+        emit Sold(msg.sender, _tokenAmount, refund, commission);
     }
 
-    function s(uint256 x0, uint256 x1) public view returns (uint256) {
+    function getEthCost(uint256 x0, uint256 x1) public view returns (uint256) {
         require(x1 > x0);
         return x1.add(x0).mul(x1.sub(x0))
-        .div(2).div(K)
-        .add(START_PRICE.mul(x1.sub(x0)))
+        .div(2).div(k)
+        .add(startPrice.mul(x1.sub(x0)))
         .div(1e18);
+    }
+
+    function getTokensPurchasable(uint256 _ethAmount) public view returns(uint256) {
+        uint256 x1 = sqrt(_ethAmount.mul(2e18).mul(k).add(k.mul(k).mul(startPrice).mul(startPrice)).add(k.mul(2).mul(startPrice).mul(soldAmount)).add(soldAmount.mul(soldAmount))).sub(k.mul(startPrice));
+        return x1 - soldAmount;
+    }
+
+    function sqrt(uint256 x) public pure returns (uint256 y) {
+        uint256 z = (x + 1) / 2;
+        y = x;
+        while (z < y) {
+            y = z;
+            z = (x / z + z) / 2;
+        }
     }
 }
