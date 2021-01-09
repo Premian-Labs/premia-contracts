@@ -1,7 +1,5 @@
 import { expect } from 'chai';
 import {
-  PremiaBondingCurve,
-  PremiaBondingCurve__factory,
   PremiaPBS,
   PremiaPBS__factory,
   TestErc20,
@@ -10,34 +8,34 @@ import {
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { getEthBalance, mineBlockUntil, resetHardhat } from './utils/evm';
+import { BigNumber } from 'ethers';
 
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
 let user2: SignerWithAddress;
 let user3: SignerWithAddress;
+let treasury: SignerWithAddress;
 let premia: TestErc20;
 let premiaPBS: PremiaPBS;
-let premiaBondingCurve: PremiaBondingCurve;
 const pbsAmount = ethers.utils.parseEther('10000000'); // 10m
 
 describe('PremiaPBS', () => {
   beforeEach(async () => {
     await resetHardhat();
 
-    [admin, user1, user2, user3] = await ethers.getSigners();
+    [admin, user1, user2, user3, treasury] = await ethers.getSigners();
 
     const premiaFactory = new TestErc20__factory(admin);
     const premiaIBCFactory = new PremiaPBS__factory(admin);
-    const premiaBondingCurveFactory = new PremiaBondingCurve__factory(admin);
 
     premia = await premiaFactory.deploy();
     await premia.mint(admin.address, pbsAmount);
-    premiaPBS = await premiaIBCFactory.deploy(premia.address, 0, 100);
-    premiaBondingCurve = await premiaBondingCurveFactory.deploy(
+    premiaPBS = await premiaIBCFactory.deploy(
       premia.address,
-      premiaPBS.address,
+      0,
+      100,
+      treasury.address,
     );
-    await premiaPBS.setPremiaBondingCurve(premiaBondingCurve.address);
 
     await premia.increaseAllowance(premiaPBS.address, pbsAmount);
     await premiaPBS.addPremia(pbsAmount);
@@ -129,26 +127,6 @@ describe('PremiaPBS', () => {
     );
   });
 
-  it('should fail initializing bonding curve if PBS not ended', async () => {
-    await expect(premiaPBS.initializeBondingCurve()).to.be.revertedWith(
-      'PBS not ended',
-    );
-  });
-
-  it('should initialize bonding curve', async () => {
-    await premiaPBS
-      .connect(user1)
-      .contribute({ value: ethers.utils.parseEther('1000') });
-
-    await mineBlockUntil(101);
-
-    await premiaPBS.initializeBondingCurve();
-    expect(await premiaBondingCurve.isInitialized()).to.be.true;
-    expect(await premiaBondingCurve.startPrice()).to.eq(
-      ethers.utils.parseEther('10000'),
-    );
-  });
-
   it('should allow owner to withdraw eth', async () => {
     await premiaPBS
       .connect(user1)
@@ -157,13 +135,35 @@ describe('PremiaPBS', () => {
     const user2Eth = await getEthBalance(user2.address);
 
     await expect(
-      premiaPBS.connect(user1).sendEth(user2.address),
+      premiaPBS.connect(user1).sendEthToTreasury(),
     ).to.be.revertedWith('Ownable: caller is not the owner');
-    await premiaPBS.connect(admin).sendEth(user2.address);
+    await premiaPBS.connect(admin).sendEthToTreasury();
 
     expect(await getEthBalance(premiaPBS.address)).to.eq(0);
-    expect(await getEthBalance(user2.address)).to.eq(
+    expect(await getEthBalance(treasury.address)).to.eq(
       user2Eth.add(ethers.utils.parseEther('1000')),
+    );
+  });
+
+  it('should calculate current premia price correctly', async () => {
+    await premiaPBS
+      .connect(user1)
+      .contribute({ value: ethers.utils.parseEther('12') });
+
+    expect(await premiaPBS.getPremiaPrice()).to.eq(
+      BigNumber.from(ethers.utils.parseEther('12'))
+        .mul(ethers.utils.parseEther('1'))
+        .div(pbsAmount),
+    );
+
+    await premiaPBS
+      .connect(user1)
+      .contribute({ value: ethers.utils.parseEther('28') });
+
+    expect(await premiaPBS.getPremiaPrice()).to.eq(
+      BigNumber.from(ethers.utils.parseEther('40'))
+        .mul(ethers.utils.parseEther('1'))
+        .div(pbsAmount),
     );
   });
 });

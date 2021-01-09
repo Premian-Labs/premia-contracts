@@ -8,7 +8,6 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
-import "./interface/IPremiaBondingCurve.sol";
 
 
 // Primary Bootstrap Contribution
@@ -24,10 +23,10 @@ contract PremiaPBS is Ownable, ReentrancyGuard {
     uint256 public premiaTotal;
     uint256 public ethTotal;
 
+    address payable public treasury;
+
     mapping (address => uint256) public amountDeposited;
     mapping (address => bool) public hasCollected;
-
-    IPremiaBondingCurve public premiaBondingCurve;
 
     ////////////
     // Events //
@@ -38,11 +37,12 @@ contract PremiaPBS is Ownable, ReentrancyGuard {
 
     ///////////
 
-    constructor(IERC20 _premia, uint256 _startBlock, uint256 _endBlock) {
+    constructor(IERC20 _premia, uint256 _startBlock, uint256 _endBlock, address payable _treasury) {
         require(_startBlock < _endBlock, "EndBlock must be greater than StartBlock");
         premia = _premia;
         startBlock = _startBlock;
         endBlock = _endBlock;
+        treasury = _treasury;
     }
 
     ///////////
@@ -57,24 +57,16 @@ contract PremiaPBS is Ownable, ReentrancyGuard {
         premiaTotal = premiaTotal.add(_amount);
     }
 
-    // Send eth collected during the PBS, to the _to address
-    function sendEth(address payable _to) external onlyOwner {
-        _to.transfer(address(this).balance);
-    }
-
-    // Set the PremiaBondingCurve contract address, to be able to initialize the bonding curve once contribution has ended
-    function setPremiaBondingCurve(IPremiaBondingCurve _premiaBondingCurve) external onlyOwner {
-        premiaBondingCurve = _premiaBondingCurve;
+    // Send eth collected during the PBS, to the treasury address
+    function sendEthToTreasury() external onlyOwner {
+        treasury.transfer(address(this).balance);
     }
 
     //
 
-    // Initialize the start price of the bonding price, using the final PREMIA:ETH ratio defined by the PBS
-    function initializeBondingCurve() external {
-        require(block.number > endBlock, "PBS not ended");
-        require(premiaBondingCurve.isInitialized() == false, "Bonding curve already initialized");
-
-        premiaBondingCurve.initialize(premiaTotal.mul(1e18).div(ethTotal));
+    // Return the current premia price in wei per premia
+    function getPremiaPrice() external view returns(uint256) {
+        return ethTotal.mul(1e18).div(premiaTotal);
     }
 
     // Deposit ETH to participate in the PBS
