@@ -58,10 +58,13 @@ fs.copyFileSync(
   './abi/TestErc20.json',
 );
 fs.copyFileSync(
+  './artifacts/contracts/test/TestPremiaBondingCurveUpgrade.sol/TestPremiaBondingCurveUpgrade.json',
+  './abi/TestPremiaBondingCurveUpgrade.json',
+);
+fs.copyFileSync(
   './artifacts/contracts/test/TestPremiaFeeDiscount.sol/TestPremiaFeeDiscount.json',
   './abi/TestPremiaFeeDiscount.json',
 );
-
 fs.copyFileSync(
   './artifacts/contracts/test/TestNewPremiaFeeDiscount.sol/TestNewPremiaFeeDiscount.json',
   './abi/TestNewPremiaFeeDiscount.json',

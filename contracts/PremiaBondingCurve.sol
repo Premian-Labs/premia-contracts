@@ -16,8 +16,6 @@ contract PremiaBondingCurve is Ownable {
     IERC20 public premia;
     address payable public treasury;
 
-    bool public isInitialized = false;
-
     uint256 internal immutable K;
     uint256 internal immutable START_PRICE;
     uint256 public soldAmount;
@@ -80,9 +78,8 @@ contract PremiaBondingCurve is Ownable {
         uint256 premiaBalance = premia.balanceOf(address(this));
         uint256 ethBalance = address(this).balance;
         premia.safeTransfer(address(newContract), premiaBalance);
-        payable(address(newContract)).transfer(ethBalance);
 
-        newContract.initialize(premiaBalance, ethBalance, soldAmount);
+        newContract.initialize{value: ethBalance}(premiaBalance, ethBalance, soldAmount);
         isUpgradeDone = true;
         emit UpgradePerformed(address(newContract), premiaBalance, ethBalance, soldAmount);
     }
@@ -101,7 +98,6 @@ contract PremiaBondingCurve is Ownable {
     //////////////////////////////////////////////////
 
     function buy(uint256 tokenAmount) external payable notUpgraded {
-        require(isInitialized, "Not initialized");
         uint256 nextSold = soldAmount.add(tokenAmount);
         uint256 ethAmount = s(soldAmount, nextSold);
         soldAmount = nextSold;
