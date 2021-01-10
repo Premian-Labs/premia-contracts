@@ -8,6 +8,10 @@ if (!fs.existsSync('./abi')) {
 }
 
 fs.copyFileSync(
+  './artifacts/contracts/FeeCalculator.sol/FeeCalculator.json',
+  './abi/FeeCalculator.json',
+);
+fs.copyFileSync(
   './artifacts/contracts/PremiaBondingCurve.sol/PremiaBondingCurve.json',
   './abi/PremiaBondingCurve.json',
 );

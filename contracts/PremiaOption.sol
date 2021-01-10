@@ -10,12 +10,14 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/utils/SafeCast.sol';
 
+import "./interface/IFeeCalculator.sol";
 import "./interface/IFlashLoanReceiver.sol";
 import "./interface/IPremiaReferral.sol";
 import "./interface/IPremiaFeeDiscount.sol";
 import "./interface/IPremiaUncutErc20.sol";
 
 import "./interface/uniswap/IUniswapV2Router02.sol";
+
 
 contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     using SafeMath for uint256;
@@ -53,20 +55,15 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 denominatorAmount;
     }
 
-    struct Privileges {
-        bool isWhitelistedWriteExercise;         // If address is allowed to write / exercise without fee
-        bool isWhitelistedFlashLoanReceiver;     // If address is allowed to do a flash loan without fee
-        bool isWhitelistedUniswapRouter;         // If address is an accepted uniswap router
-    }
-
     IERC20 public denominator;
 
     //////////////////////////////////////////////////
 
-    IPremiaReferral public premiaReferral;
-    IPremiaFeeDiscount public premiaFeeDiscount;
     address public feeRecipient;                     // Address receiving fees
+
+    IPremiaReferral public premiaReferral;
     IPremiaUncutErc20 public uPremia;
+    IFeeCalculator public feeCalculator;
 
     //////////////////////////////////////////////////
 
@@ -84,19 +81,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     // Max expiration time from now
     uint256 public maxExpiration = 365 days;
 
-    uint256 public writeFee = 100; // 1%
-    uint256 public exerciseFee = 100; // 1%
-    uint256 public flashLoanFee = 20; // 0.2%
-
-    // 10% of write/exercise fee | Referrer fee calculated after all discounts applied
-    uint256 public referrerFee = 1000;
-    // -10% from write/exercise fee
-    uint256 public referredDiscount = 1000;
-
-    address[] public withPrivileges;
-    mapping (address => Privileges) public privileges;
-
-    uint256 private constant _inverseBasisPoint = 1e4;
+    // Uniswap routers allowed to be used for swap from flashExercise
+    address[] public whitelistedUniswapRouters;
 
     // token => expiration => strikePrice => isCall (1 for call, 0 for put) => optionId
     mapping (address => mapping(uint256 => mapping(uint256 => mapping (bool => uint256)))) public options;
@@ -124,9 +110,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(string memory _uri, IERC20 _denominator, IPremiaUncutErc20 _uPremia, address _feeRecipient) ERC1155(_uri) {
+    constructor(string memory _uri, IERC20 _denominator, IPremiaUncutErc20 _uPremia, IFeeCalculator _feeCalculator, address _feeRecipient) ERC1155(_uri) {
         denominator = _denominator;
         uPremia = _uPremia;
+        feeCalculator = _feeCalculator;
         feeRecipient = _feeRecipient;
     }
 
@@ -164,19 +151,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return tokens.length;
     }
 
-    function getFees(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256 _fee, uint256 _feeReferrer) {
-        uint256 feeAmountBase;
-        if (_isWrite) {
-            feeAmountBase = _price.mul(writeFee).div(_inverseBasisPoint);
-        } else {
-            feeAmountBase = _price.mul(exerciseFee).div(_inverseBasisPoint);
-        }
-
-        bool hasReferrer = _hasReferrer || premiaReferral.referrals(_user) != address(0);
-
-        return _getFees(hasReferrer, feeAmountBase);
-    }
-
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
@@ -201,12 +175,12 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         premiaReferral = _premiaReferral;
     }
 
-    function setPremiaFeeDiscount(IPremiaFeeDiscount _premiaFeeDiscount) external onlyOwner {
-        premiaFeeDiscount = _premiaFeeDiscount;
-    }
-
     function setPremiaUncutErc20(IPremiaUncutErc20 _uPremia) external onlyOwner {
         uPremia = _uPremia;
+    }
+
+    function setFeeCalculator(IFeeCalculator _feeCalculator) external onlyOwner {
+        feeCalculator = _feeCalculator;
     }
 
     // Set settings for a token to support writing of options paired to denominator
@@ -225,30 +199,12 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         });
     }
 
-    function setPrivileges(address[] memory _addrList, Privileges[] memory _privileges) external onlyOwner {
-        require(_addrList.length == _privileges.length, "Arrays diff len");
+    function setWhitelistedUniswapRouters(address[] memory _addrList) external onlyOwner {
+        delete whitelistedUniswapRouters;
 
         for (uint256 i=0; i < _addrList.length; i++) {
-            if (!_isInArray(_addrList[i], withPrivileges)) {
-                withPrivileges.push(_addrList[i]);
-            }
-
-            privileges[_addrList[i]] = _privileges[i];
+            whitelistedUniswapRouters.push(_addrList[i]);
         }
-    }
-
-    function setFees(uint256 _writeFee, uint256 _exerciseFee, uint256 _flashLoanFee, uint256 _referrerFee, uint256 _referredDiscount) external onlyOwner {
-        require(_writeFee <= 500);
-        require(_exerciseFee <= 500);
-        require(_flashLoanFee <= 500);
-        require(_referrerFee <= 1e4);
-        require(_referredDiscount <= 1e4);
-
-        writeFee = _writeFee;
-        exerciseFee = _exerciseFee;
-        flashLoanFee = _flashLoanFee;
-        referrerFee = _referrerFee;
-        referredDiscount = _referredDiscount;
     }
 
     ////////
@@ -284,21 +240,19 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
         if (_option.isCall) {
             uint256 amount = _option.contractAmount.mul(optionData[optionId].contractSize);
-            uint256 feeAmount = amount.mul(writeFee).div(_inverseBasisPoint);
 
             IERC20(_option.token).safeTransferFrom(msg.sender, address(this), amount);
 
-            (uint256 fee, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(msg.sender, _referrer != address(0), amount, IFeeCalculator.FeeType.Write);
             _payFees(msg.sender, IERC20(_option.token), _referrer, fee, feeReferrer);
 
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
         } else {
             uint256 amount = _option.contractAmount.mul(_option.strikePrice);
-            uint256 feeAmount = amount.mul(writeFee).div(_inverseBasisPoint);
 
             denominator.safeTransferFrom(msg.sender, address(this), amount);
 
-            (uint256 fee, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(msg.sender, _referrer != address(0), amount, IFeeCalculator.FeeType.Write);
             _payFees(msg.sender, denominator, _referrer, fee, feeReferrer);
 
             pools[optionId].denominatorAmount = pools[optionId].denominatorAmount.add(amount);
@@ -353,11 +307,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(denominatorAmount);
 
-            uint256 feeAmount = denominatorAmount.mul(exerciseFee).div(_inverseBasisPoint);
-
             denominator.safeTransferFrom(msg.sender, address(this), denominatorAmount);
 
-            (uint256 fee, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(msg.sender, _referrer != address(0), denominatorAmount, IFeeCalculator.FeeType.Exercise);
             _payFees(msg.sender, denominator, _referrer, fee, feeReferrer);
 
             tokenErc20.safeTransfer(msg.sender, tokenAmount);
@@ -365,11 +317,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(denominatorAmount);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
 
-            uint256 feeAmount = tokenAmount.mul(exerciseFee).div(_inverseBasisPoint);
-
             tokenErc20.safeTransferFrom(msg.sender, address(this), tokenAmount);
 
-            (uint256 fee, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(msg.sender, _referrer != address(0), tokenAmount, IFeeCalculator.FeeType.Exercise);
             _payFees(msg.sender, tokenErc20, _referrer, fee, feeReferrer);
 
             denominator.safeTransfer(msg.sender, denominatorAmount);
@@ -444,14 +394,13 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 startBalance = _token.balanceOf(address(this));
         _token.safeTransfer(address(_receiver), _amount);
 
-        _receiver.execute(_tokenAddress, _amount, _amount.add(_amount.mul(flashLoanFee).div(_inverseBasisPoint)));
+        (uint256 fee,) = feeCalculator.getFees(msg.sender, false, _amount, IFeeCalculator.FeeType.FlashLoan);
+
+        _receiver.execute(_tokenAddress, _amount, _amount.add(fee));
 
         uint256 endBalance = _token.balanceOf(address(this));
 
-        uint256 endBalanceRequired = startBalance;
-        if (!privileges[msg.sender].isWhitelistedFlashLoanReceiver) {
-            endBalanceRequired = endBalanceRequired.add(startBalance.mul(flashLoanFee).div(_inverseBasisPoint));
-        }
+        uint256 endBalanceRequired = startBalance.add(fee);
 
         require(endBalance >= endBalanceRequired, "Failed to pay back");
         _token.safeTransfer(feeRecipient, endBalance.sub(startBalance));
@@ -481,8 +430,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(denominatorAmount);
 
-            uint256 feeAmount = denominatorAmount.mul(exerciseFee).div(_inverseBasisPoint);
-            (uint256 fee, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(msg.sender, _referrer != address(0), denominatorAmount, IFeeCalculator.FeeType.Exercise);
 
             // Swap enough denominator to tokenErc20 to pay fee + strike price
             uint256 tokenAmountUsed = _swap(_router, address(tokenErc20), address(denominator), denominatorAmount.add(fee).add(feeReferrer), _amountInMax)[0];
@@ -501,8 +449,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(denominatorAmount);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
 
-            uint256 feeAmount = tokenAmount.mul(exerciseFee).div(_inverseBasisPoint);
-            (uint256 fee, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(msg.sender, _referrer != address(0), tokenAmount, IFeeCalculator.FeeType.Exercise);
 
             // Swap enough denominator to tokenErc20 to pay fee + strike price
             uint256 denominatorAmountUsed =  _swap(_router, address(denominator), address(tokenErc20), tokenAmount.add(fee).add(feeReferrer), _amountInMax)[0];
@@ -609,31 +556,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         require(_expiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");
     }
 
-    function _getFees(bool _hasReferrer, uint256 _feeAmountBase) internal view returns(uint256 _fee, uint256 _feeReferrer) {
-        uint256 feeReferrer = 0;
-        uint256 feeDiscount = 0;
-
-        // If premiaFeeDiscount contract is set, we calculate discount
-        if (address(premiaFeeDiscount) != address(0)) {
-            uint256 discount = premiaFeeDiscount.getDiscount(msg.sender);
-            require(discount <= _inverseBasisPoint, "Discount > max");
-            feeDiscount = _feeAmountBase.mul(discount).div(_inverseBasisPoint);
-        }
-
-        // If premiaReferral contract is set, we calculate discount
-        if (address(premiaReferral) != address(0) && _hasReferrer) {
-            // feeDiscount = feeDiscount + ( (_feeAmountBase - feeDiscount ) * referredDiscountRate)
-            feeDiscount = feeDiscount.add(_feeAmountBase.sub(feeDiscount).mul(referredDiscount).div(_inverseBasisPoint));
-            feeReferrer = _feeAmountBase.sub(feeDiscount).mul(referrerFee).div(_inverseBasisPoint);
-        }
-
-        return (_feeAmountBase.sub(feeDiscount).sub(feeReferrer), feeReferrer);
-    }
-
     function _payFees(address _from, IERC20 _token, address _referrer, uint256 _fee, uint256 _feeReferrer) internal {
-        // If address is whitelisted, it doesnt need to pay fees
-        if (privileges[msg.sender].isWhitelistedWriteExercise) return;
-
         if (_fee > 0) {
             _token.safeTransferFrom(_from, feeRecipient, _fee);
         }
@@ -645,7 +568,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         // If uPremia rewards are enabled
         if (address(uPremia) != address(0)) {
             uint256 totalFee = _fee.add(_feeReferrer);
-            uPremia.mintReward(_from, address(_token), totalFee);
+            if (totalFee > 0) {
+                uPremia.mintReward(_from, address(_token), totalFee);
+            }
         }
     }
 
@@ -661,7 +586,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     }
 
     function _swap(IUniswapV2Router02 _router, address _from, address _to, uint256 _amount,uint256 _amountInMax) internal returns (uint256[] memory) {
-        require(privileges[address(_router)].isWhitelistedUniswapRouter, "Router not whitelisted");
+        require(_isInArray(address(_router), whitelistedUniswapRouters), "Router not whitelisted");
 
         IERC20(_from).safeApprove(address(_router), _amountInMax);
 

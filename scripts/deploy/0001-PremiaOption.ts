@@ -2,10 +2,8 @@ import { ethers } from 'hardhat';
 import {
   PremiaMarket__factory,
   PremiaOption__factory,
-  PremiaReferral__factory,
-  PremiaUncutErc20__factory,
-  PriceProvider__factory,
 } from '../../contractsTyped';
+import { deployContracts } from '../deployContracts';
 
 async function main() {
   // We get the contract to deploy
@@ -18,50 +16,51 @@ async function main() {
 
   let uri = 'https://rope.lol/api/RMU/{id}.json';
 
-  const premiaReferralFactory = new PremiaReferral__factory(deployer);
-  const priceProviderFactory = new PriceProvider__factory(deployer);
-  const premiaUncutErc20Factory = new PremiaUncutErc20__factory(deployer);
   const premiaOptionFactory = new PremiaOption__factory(deployer);
   const premiaMarketFactory = new PremiaMarket__factory(deployer);
 
   //
 
-  const priceProvider = await priceProviderFactory.deploy();
-  const premiaUncutErc20 = await premiaUncutErc20Factory.deploy(
-    priceProvider.address,
-  );
+  const contracts = await deployContracts(deployer);
+
+  Object.keys(contracts).forEach((k) => {
+    console.log(`${k} : ${(contracts as any)[k]}`);
+  });
 
   const premiaOptionDai = await premiaOptionFactory.deploy(
     uri,
     dai,
-    premiaUncutErc20.address,
+    contracts.premiaUncutErc20.address,
+    contracts.feeCalculator.address,
     deployer.address,
   );
 
   console.log(
-    `premiaOption dai deployed to ${premiaOptionDai.address} from ${deployer.address}`,
+    `premiaOption dai deployed at ${premiaOptionDai.address} from ${deployer.address}`,
   );
 
   const premiaOptionEth = await premiaOptionFactory.deploy(
     uri,
     weth,
-    premiaUncutErc20.address,
+    contracts.premiaUncutErc20.address,
+    contracts.feeCalculator.address,
     deployer.address,
   );
 
   console.log(
-    `premiaOption weth deployed to ${premiaOptionEth.address} from ${deployer.address}`,
+    `premiaOption weth deployed at ${premiaOptionEth.address} from ${deployer.address}`,
   );
 
   // const premiaOptionWbtc = await premiaOptionFactory.deploy(
   //   uri,
   //   wbtc,
   //   premiaUncutErc20.address,
+  //   feeCalculator.address,
   //   deployer.address,
   // );
   //
   // console.log(
-  //   `premiaOption wbtc deployed to ${premiaOptionWbtc.address} from ${deployer.address}`,
+  //   `premiaOption wbtc deployed at ${premiaOptionWbtc.address} from ${deployer.address}`,
   // );
 
   await premiaOptionDai.setToken(
@@ -93,20 +92,14 @@ async function main() {
 
   //
 
-  const premiaReferral = await premiaReferralFactory.deploy();
-
-  console.log(
-    `premiaReferral deployed to ${premiaReferral.address} from ${deployer.address}`,
-  );
-
-  await premiaReferral.addWhitelisted([
+  await contracts.premiaReferral.addWhitelisted([
     premiaOptionDai.address,
     premiaOptionEth.address,
     // premiaOptionWbtc.address,
   ]);
 
-  await premiaOptionDai.setPremiaReferral(premiaReferral.address);
-  await premiaOptionEth.setPremiaReferral(premiaReferral.address);
+  await premiaOptionDai.setPremiaReferral(contracts.premiaReferral.address);
+  await premiaOptionEth.setPremiaReferral(contracts.premiaReferral.address);
   // await premiaOptionWbtc.setPremiaReferral(premiaReferral.address);
   // await premiaOption.setPremiaStaking(premiaStaking.address);
 
@@ -115,7 +108,7 @@ async function main() {
   const premiaMarket = await premiaMarketFactory.deploy(deployer.address);
 
   console.log(
-    `premiaMarket deployed to ${premiaMarket.address} from ${deployer.address}`,
+    `premiaMarket deployed at ${premiaMarket.address} from ${deployer.address}`,
   );
 
   await premiaMarket.addWhitelistedOptionContracts([
@@ -126,7 +119,7 @@ async function main() {
 
   await premiaMarket.addWhitelistedPaymentTokens([dai, weth]);
 
-  await premiaUncutErc20.addMinter([
+  await contracts.premiaUncutErc20.addMinter([
     premiaOptionEth.address,
     premiaOptionDai.address,
     premiaMarket.address,

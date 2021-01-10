@@ -15,6 +15,7 @@ import { IOrder, IOrderCreated } from '../types';
 import { PremiaMarketTestUtil } from './utils/PremiaMarketTestUtil';
 import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
 import { ZERO_ADDRESS } from './utils/constants';
+import { deployContracts } from '../scripts/deployContracts';
 
 let eth: TestErc20;
 let dai: TestErc20;
@@ -39,11 +40,15 @@ describe('PremiaMarket', () => {
     eth = await erc20Factory.deploy();
     dai = await erc20Factory.deploy();
 
+    const contracts = await deployContracts(admin);
+    await contracts.feeCalculator.setPremiaFeeDiscount(ZERO_ADDRESS);
+
     const premiaOptionFactory = new PremiaOption__factory(admin);
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
       eth.address,
       ZERO_ADDRESS,
+      contracts.feeCalculator.address,
       feeRecipient.address,
     );
 

@@ -4,28 +4,28 @@ import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
   PremiaReferral,
-  PremiaReferral__factory,
   TestErc20__factory,
   TestFlashLoan__factory,
   PremiaOption,
   PremiaOption__factory,
   TestPremiaFeeDiscount,
   TestPremiaFeeDiscount__factory,
-  PriceProvider__factory,
-  PremiaUncutErc20__factory,
   PriceProvider,
   PremiaUncutErc20,
+  FeeCalculator,
 } from '../contractsTyped';
 import { TestErc20 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
 import { ONE_WEEK, ZERO_ADDRESS } from './utils/constants';
 import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
+import { deployContracts } from '../scripts/deployContracts';
 
 let eth: TestErc20;
 let dai: TestErc20;
 let premiaOption: PremiaOption;
 let premiaReferral: PremiaReferral;
 let premiaFeeDiscount: TestPremiaFeeDiscount;
+let feeCalculator: FeeCalculator;
 let priceProvider: PriceProvider;
 let premiaUncut: PremiaUncutErc20;
 let admin: SignerWithAddress;
@@ -46,30 +46,32 @@ describe('PremiaOption', () => {
     eth = await erc20Factory.deploy();
     dai = await erc20Factory.deploy();
 
+    const contracts = await deployContracts(admin);
+
     const premiaOptionFactory = new PremiaOption__factory(admin);
-    const premiaReferralFactory = new PremiaReferral__factory(admin);
     const premiaFeeDiscountFactory = new TestPremiaFeeDiscount__factory(admin);
 
-    const priceProviderFactory = new PriceProvider__factory(admin);
-    const premiaUncutErc20Factory = new PremiaUncutErc20__factory(admin);
-
-    priceProvider = await priceProviderFactory.deploy();
-    premiaUncut = await premiaUncutErc20Factory.deploy(priceProvider.address);
+    priceProvider = contracts.priceProvider;
+    premiaUncut = contracts.premiaUncutErc20;
+    feeCalculator = contracts.feeCalculator;
 
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
       dai.address,
       premiaUncut.address,
+      contracts.feeCalculator.address,
       feeRecipient.address,
     );
 
     await premiaUncut.addMinter([premiaOption.address]);
-    premiaReferral = await premiaReferralFactory.deploy();
+    premiaReferral = contracts.premiaReferral;
     premiaFeeDiscount = await premiaFeeDiscountFactory.deploy();
+    await contracts.feeCalculator.setPremiaFeeDiscount(
+      premiaFeeDiscount.address,
+    );
 
     await premiaReferral.addWhitelisted([premiaOption.address]);
     await premiaOption.setPremiaReferral(premiaReferral.address);
-    await premiaOption.setPremiaFeeDiscount(premiaFeeDiscount.address);
 
     optionTestUtil = new PremiaOptionTestUtil({
       eth,
@@ -386,16 +388,7 @@ describe('PremiaOption', () => {
     });
 
     it('should have 0 eth and 0.1 dai in feeRecipient after 1 option exercised if writer is whitelisted', async () => {
-      await premiaOption.setPrivileges(
-        [writer1.address],
-        [
-          {
-            isWhitelistedFlashLoanReceiver: false,
-            isWhitelistedUniswapRouter: false,
-            isWhitelistedWriteExercise: true,
-          },
-        ],
-      );
+      await feeCalculator.addWhitelisted([writer1.address]);
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 1, 1);
 
       const daiBalance = await dai.balanceOf(feeRecipient.address);
@@ -406,16 +399,7 @@ describe('PremiaOption', () => {
     });
 
     it('should have 0.1 eth and 0 dai in feeRecipient after 1 option exercised if exerciser is whitelisted', async () => {
-      await premiaOption.setPrivileges(
-        [user1.address],
-        [
-          {
-            isWhitelistedFlashLoanReceiver: false,
-            isWhitelistedUniswapRouter: false,
-            isWhitelistedWriteExercise: true,
-          },
-        ],
-      );
+      await feeCalculator.addWhitelisted([user1.address]);
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 1, 1);
 
       const daiBalance = await dai.balanceOf(feeRecipient.address);
@@ -853,11 +837,11 @@ describe('PremiaOption', () => {
 
   describe('fees', () => {
     it('should calculate total fee correctly without discount', async () => {
-      const fee = await premiaOption.getFees(
+      const fee = await feeCalculator.getFees(
         writer1.address,
-        utils.parseEther('2'),
         false,
-        true,
+        utils.parseEther('2'),
+        0,
       );
 
       expect(fee[0].add(fee[1])).to.eq(utils.parseEther('0.02'));
@@ -865,11 +849,11 @@ describe('PremiaOption', () => {
 
     it('should calculate total fee correctly with a referral', async () => {
       await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
-      const fee = await premiaOption.getFees(
+      const fee = await feeCalculator.getFees(
         writer1.address,
-        utils.parseEther('2'),
-        false,
         true,
+        utils.parseEther('2'),
+        0,
       );
 
       expect(fee[0].add(fee[1])).to.eq(utils.parseEther('0.018'));
@@ -877,11 +861,11 @@ describe('PremiaOption', () => {
 
     it('should correctly calculate total fee with a referral + staking discount', async () => {
       await premiaFeeDiscount.setDiscount(2000);
-      const fee = await premiaOption.getFees(
+      const fee = await feeCalculator.getFees(
         writer1.address,
+        true,
         utils.parseEther('2'),
-        true,
-        true,
+        0,
       );
 
       expect(fee[0].add(fee[1])).to.eq(utils.parseEther('0.0144'));
@@ -969,7 +953,7 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully complete flashLoan if paid back with fee', async () => {
-      await premiaOption.setFees(0, 100, 20, 1000, 1000);
+      await feeCalculator.setWriteFee(0);
       const flashLoanFactory = new TestFlashLoan__factory(writer1);
 
       const flashLoan = await flashLoanFactory.deploy();
@@ -996,21 +980,12 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully complete flashLoan if paid back without fee and user on fee whitelist', async () => {
-      await premiaOption.setFees(0, 100, 20, 1000, 1000);
+      await feeCalculator.setWriteFee(0);
       const flashLoanFactory = new TestFlashLoan__factory(writer1);
 
       const flashLoan = await flashLoanFactory.deploy();
       await flashLoan.setMode(1);
-      await premiaOption.setPrivileges(
-        [writer1.address],
-        [
-          {
-            isWhitelistedFlashLoanReceiver: true,
-            isWhitelistedUniswapRouter: false,
-            isWhitelistedWriteExercise: false,
-          },
-        ],
-      );
+      await feeCalculator.addWhitelisted([writer1.address]);
 
       await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
 

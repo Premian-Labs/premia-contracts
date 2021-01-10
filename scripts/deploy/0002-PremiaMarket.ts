@@ -3,9 +3,7 @@ import {
   PremiaErc20__factory,
   PremiaMarket__factory,
   PremiaOption__factory,
-  TestErc20__factory,
 } from '../../contractsTyped';
-import { PremiaOptionTestUtil } from '../../test/utils/PremiaOptionTestUtil';
 
 async function main() {
   // We get the contract to deploy
@@ -24,7 +22,7 @@ async function main() {
 
   // await premiaOption.deployed();
   console.log(
-    `premiaMarket deployed to ${premiaMarket.address} from ${deployer.address}`,
+    `premiaMarket deployed at ${premiaMarket.address} from ${deployer.address}`,
   );
 
   await premiaMarket.deployed();
