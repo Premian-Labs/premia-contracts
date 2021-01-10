@@ -64,6 +64,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     IPremiaReferral public premiaReferral;
     IPremiaFeeDiscount public premiaFeeDiscount;
+    address public premiaMaker;                     // PremiaMaker address receiving fees
 
     //////////////////////////////////////////////////
 
@@ -73,8 +74,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     //////////////////////////////////////////////////
 
     uint256 public nextOptionId = 1;
-
-    address public treasury;                        // Treasury address receiving fees
 
     uint256 public baseExpiration = 172799;         // Offset to add to Unix timestamp to make it Fri 23:59:59 UTC
     uint256 public expirationIncrement = 1 weeks;   // Expiration increment
@@ -118,10 +117,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(string memory _uri, IERC20 _denominator, address _weth, address _treasury) ERC1155(_uri) {
+    constructor(string memory _uri, IERC20 _denominator, address _weth, address _premiaMaker) ERC1155(_uri) {
         denominator = _denominator;
         weth = _weth;
-        treasury = _treasury;
+        premiaMaker = _premiaMaker;
     }
 
     //////////////////////////////////////////////////
@@ -158,7 +157,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return tokens.length;
     }
 
-    function getFees(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256 _feeTreasury, uint256 _feeReferrer) {
+    function getFees(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256 _fee, uint256 _feeReferrer) {
         uint256 feeAmountBase;
         if (_isWrite) {
             feeAmountBase = _price.mul(writeFee).div(INVERSE_BASIS_POINT);
@@ -183,8 +182,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         _setURI(newuri);
     }
 
-    function setTreasury(address _treasury) external onlyOwner {
-        treasury = _treasury;
+    function setPremiaMaker(address _premiaMaker) external onlyOwner {
+        premiaMaker = _premiaMaker;
     }
 
     function setMaxExpiration(uint256 _max) external onlyOwner {
@@ -278,8 +277,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
             IERC20(_option.token).safeTransferFrom(msg.sender, address(this), amount);
 
-            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
-            _payFees(msg.sender, IERC20(_option.token), _referrer, feeTreasury, feeReferrer);
+            (uint256 fee, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
+            _payFees(msg.sender, IERC20(_option.token), _referrer, fee, feeReferrer);
 
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
         } else {
@@ -288,8 +287,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
             denominator.safeTransferFrom(msg.sender, address(this), amount);
 
-            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
-            _payFees(msg.sender, denominator, _referrer, feeTreasury, feeReferrer);
+            (uint256 fee, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
+            _payFees(msg.sender, denominator, _referrer, fee, feeReferrer);
 
             pools[optionId].denominatorAmount = pools[optionId].denominatorAmount.add(amount);
         }
@@ -347,8 +346,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
             denominator.safeTransferFrom(msg.sender, address(this), denominatorAmount);
 
-            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
-            _payFees(msg.sender, denominator, _referrer, feeTreasury, feeReferrer);
+            (uint256 fee, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
+            _payFees(msg.sender, denominator, _referrer, fee, feeReferrer);
 
             tokenErc20.safeTransfer(msg.sender, tokenAmount);
         } else {
@@ -359,8 +358,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
             tokenErc20.safeTransferFrom(msg.sender, address(this), tokenAmount);
 
-            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
-            _payFees(msg.sender, tokenErc20, _referrer, feeTreasury, feeReferrer);
+            (uint256 fee, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
+            _payFees(msg.sender, tokenErc20, _referrer, fee, feeReferrer);
 
             denominator.safeTransfer(msg.sender, denominatorAmount);
         }
@@ -444,7 +443,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         }
 
         require(endBalance >= endBalanceRequired, "Failed to pay back");
-        _token.safeTransfer(treasury, endBalance.sub(startBalance));
+        _token.safeTransfer(premiaMaker, endBalance.sub(startBalance));
 
         endBalance = _token.balanceOf(address(this));
         require(endBalance >= startBalance, "Failed to pay back");
@@ -472,13 +471,13 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(denominatorAmount);
 
             uint256 feeAmount = denominatorAmount.mul(exerciseFee).div(INVERSE_BASIS_POINT);
-            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
+            (uint256 fee, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
 
             // Swap enough denominator to tokenErc20 to pay fee + strike price
-            uint256 tokenAmountUsed = _swap(_router, address(tokenErc20), address(denominator), denominatorAmount.add(feeTreasury).add(feeReferrer), _amountInMax)[0];
+            uint256 tokenAmountUsed = _swap(_router, address(tokenErc20), address(denominator), denominatorAmount.add(fee).add(feeReferrer), _amountInMax)[0];
 
             // Pay fees
-            _payFees(address(this), denominator, _referrer, feeTreasury, feeReferrer);
+            _payFees(address(this), denominator, _referrer, fee, feeReferrer);
 
             uint256 profit = tokenAmount.sub(tokenAmountUsed);
 
@@ -492,12 +491,12 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
 
             uint256 feeAmount = tokenAmount.mul(exerciseFee).div(INVERSE_BASIS_POINT);
-            (uint256 feeTreasury, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
+            (uint256 fee, uint256 feeReferrer) = _getFees(_referrer != address(0), feeAmount);
 
             // Swap enough denominator to tokenErc20 to pay fee + strike price
-            uint256 denominatorAmountUsed =  _swap(_router, address(denominator), address(tokenErc20), tokenAmount.add(feeTreasury).add(feeReferrer), _amountInMax)[0];
+            uint256 denominatorAmountUsed =  _swap(_router, address(denominator), address(tokenErc20), tokenAmount.add(fee).add(feeReferrer), _amountInMax)[0];
 
-            _payFees(address(this), tokenErc20, _referrer, feeTreasury, feeReferrer);
+            _payFees(address(this), tokenErc20, _referrer, fee, feeReferrer);
 
             uint256 profit = denominatorAmount.sub(denominatorAmountUsed);
 
@@ -599,7 +598,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         require(_expiration % expirationIncrement == baseExpiration, "Wrong exp incr");
     }
 
-    function _getFees(bool _hasReferrer, uint256 _feeAmountBase) internal view returns(uint256 _feeTreasury, uint256 _feeReferrer) {
+    function _getFees(bool _hasReferrer, uint256 _feeAmountBase) internal view returns(uint256 _fee, uint256 _feeReferrer) {
         uint256 feeReferrer = 0;
         uint256 feeDiscount = 0;
 
@@ -620,12 +619,12 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return (_feeAmountBase.sub(feeDiscount).sub(feeReferrer), feeReferrer);
     }
 
-    function _payFees(address _from, IERC20 _token, address _referrer, uint256 _feeTreasury, uint256 _feeReferrer) internal {
+    function _payFees(address _from, IERC20 _token, address _referrer, uint256 _fee, uint256 _feeReferrer) internal {
         // If address is whitelisted, it doesnt need to pay fees
         if (privileges[msg.sender].isWhitelistedWriteExercise) return;
 
-        if (_feeTreasury > 0) {
-            _token.safeTransferFrom(_from, treasury, _feeTreasury);
+        if (_fee > 0) {
+            _token.safeTransferFrom(_from, premiaMaker, _fee);
         }
 
         if (_feeReferrer > 0) {

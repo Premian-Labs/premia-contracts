@@ -87,7 +87,7 @@ contract PremiaMaker is Ownable {
         path[0] = _token;
         path[1] = _router.WETH();
 
-        uint256[] memory amounts = _router.swapExactTokensForETH(
+        _router.swapExactTokensForETH(
             amount,
             0,
             path,

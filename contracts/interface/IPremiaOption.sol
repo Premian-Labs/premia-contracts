@@ -31,16 +31,17 @@ interface IPremiaOption is IERC1155 {
         uint256 denominatorAmount;
     }
 
+    struct Privileges {
+        bool isWhitelistedWriteExercise;          // If address is allowed to write / exercise without fee
+        bool isWhitelistedFlashLoanReceiver;     // If address is allowed to do a flash loan without fee
+        bool isWhitelistedUniswapRouter;         // If address is an accepted uniswap router
+    }
+
     function getOptionId(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) external view returns(uint256);
     function getOptionExpiration(uint256 _optionId) external view returns(uint256);
-    function getAllTokens() external view returns(address[] memory);
-    function getOptionDataBatch(uint256[] memory _optionIds) external view returns(OptionData[] memory);
-    function getNbOptionWrittenBatch(address _user, uint256[] memory _optionIds) external view returns(uint256[] memory);
-    function getPoolBatch(uint256[] memory _optionIds) external view returns(Pool[] memory);
-    function getWhitelistedFlashLoanReceivers() external view returns(address[] memory);
-    function getWhitelistedUniswapRouters() external view returns(address[] memory);
+    function privileges(address _user) external view returns(Privileges memory);
     function getTotalFee(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256);
-    function getFees(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256 _feeTreasury, uint256 _feeReferrer);
+    function getFees(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256 _fee, uint256 _feeReferrer);
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
