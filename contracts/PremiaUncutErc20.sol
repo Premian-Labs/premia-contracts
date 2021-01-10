@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import '@openzeppelin/contracts/utils/EnumerableSet.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
-contract PremiaFluxErc20 is ERC20, Ownable {
+contract PremiaUncutErc20 is ERC20, Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // Addresses with minting rights
@@ -17,7 +17,7 @@ contract PremiaFluxErc20 is ERC20, Ownable {
 
     //
 
-    constructor() ERC20("PremiaFlux", "pFlux") { }
+    constructor() ERC20("PremiaUncut", "uPremia") { }
 
     //
 

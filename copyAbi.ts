@@ -20,8 +20,8 @@ fs.copyFileSync(
   './abi/PremiaFeeDiscount.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaFluxErc20.sol/PremiaFluxErc20.json',
-  './abi/PremiaFluxErc20.json',
+  './artifacts/contracts/PremiaUncutErc20.sol/PremiaUncutErc20.json',
+  './abi/PremiaUncutErc20.json',
 );
 fs.copyFileSync(
   './artifacts/contracts/PremiaPBS.sol/PremiaPBS.json',
