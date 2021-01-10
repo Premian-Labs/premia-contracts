@@ -23,7 +23,7 @@ let admin: SignerWithAddress;
 let user1: SignerWithAddress;
 let user2: SignerWithAddress;
 let user3: SignerWithAddress;
-let treasury: SignerWithAddress;
+let feeRecipient: SignerWithAddress;
 const tax = 0.01;
 
 let optionTestUtil: PremiaOptionTestUtil;
@@ -33,7 +33,7 @@ describe('PremiaMarket', () => {
   beforeEach(async () => {
     await resetHardhat();
 
-    [admin, user1, user2, user3, treasury] = await ethers.getSigners();
+    [admin, user1, user2, user3, feeRecipient] = await ethers.getSigners();
     const erc20Factory = new TestErc20__factory(user1);
     eth = await erc20Factory.deploy();
     dai = await erc20Factory.deploy();
@@ -43,7 +43,7 @@ describe('PremiaMarket', () => {
       'dummyURI',
       eth.address,
       eth.address,
-      treasury.address,
+      feeRecipient.address,
     );
 
     const premiaMarketFactory = new PremiaMarket__factory(user1);
@@ -57,7 +57,7 @@ describe('PremiaMarket', () => {
       writer1: user1,
       writer2: user2,
       user1: user3,
-      treasury,
+      feeRecipient,
       tax,
     });
 
@@ -70,7 +70,7 @@ describe('PremiaMarket', () => {
       writer1: user1,
       writer2: user2,
       user1: user3,
-      treasury,
+      feeRecipient,
     });
 
     await premiaMarket.addWhitelistedOptionContracts([premiaOption.address]);
@@ -748,7 +748,7 @@ describe('PremiaMarket', () => {
       it('should fill 2 sell orders', async () => {
         const maker = user1;
         const taker = user2;
-        const treasury = admin;
+        const feeRecipient = admin;
 
         const order = await marketTestUtil.setupOrder(maker, taker, {
           isBuy: false,
@@ -774,11 +774,13 @@ describe('PremiaMarket', () => {
 
         const ethBalanceMaker = await eth.balanceOf(maker.address);
         const ethBalanceTaker = await eth.balanceOf(taker.address);
-        const ethBalanceTreasury = await eth.balanceOf(treasury.address);
+        const ethBalanceFeeRecipient = await eth.balanceOf(
+          feeRecipient.address,
+        );
 
         expect(ethBalanceMaker).to.eq(ethers.utils.parseEther('1.97'));
         expect(ethBalanceTaker).to.eq(0);
-        expect(ethBalanceTreasury).to.eq(ethers.utils.parseEther('0.06'));
+        expect(ethBalanceFeeRecipient).to.eq(ethers.utils.parseEther('0.06'));
 
         orderAmount = await premiaMarket.amounts(order.hash);
         expect(orderAmount).to.eq(0);
@@ -817,7 +819,7 @@ describe('PremiaMarket', () => {
       it('should fill sell order for 1/2 if only 1 left to sell', async () => {
         const maker = user1;
         const taker = user2;
-        const treasury = admin;
+        const feeRecipient = admin;
 
         const order = await marketTestUtil.setupOrder(maker, taker, {
           isBuy: false,
@@ -839,11 +841,13 @@ describe('PremiaMarket', () => {
 
         const ethBalanceMaker = await eth.balanceOf(maker.address);
         const ethBalanceTaker = await eth.balanceOf(taker.address);
-        const ethBalanceTreasury = await eth.balanceOf(treasury.address);
+        const ethBalanceFeeRecipient = await eth.balanceOf(
+          feeRecipient.address,
+        );
 
         expect(ethBalanceMaker).to.eq(ethers.utils.parseEther('0.985'));
         expect(ethBalanceTaker).to.eq(0);
-        expect(ethBalanceTreasury).to.eq(ethers.utils.parseEther('0.03'));
+        expect(ethBalanceFeeRecipient).to.eq(ethers.utils.parseEther('0.03'));
       });
     });
 
@@ -851,7 +855,7 @@ describe('PremiaMarket', () => {
       it('should fill 2 buy orders', async () => {
         const maker = user1;
         const taker = user2;
-        const treasury = admin;
+        const feeRecipient = admin;
 
         const order = await marketTestUtil.setupOrder(maker, taker, {
           isBuy: true,
@@ -877,11 +881,13 @@ describe('PremiaMarket', () => {
 
         const ethBalanceMaker = await eth.balanceOf(maker.address);
         const ethBalanceTaker = await eth.balanceOf(taker.address);
-        const ethBalanceTreasury = await eth.balanceOf(treasury.address);
+        const ethBalanceFeeRecipient = await eth.balanceOf(
+          feeRecipient.address,
+        );
 
         expect(ethBalanceMaker).to.eq(0);
         expect(ethBalanceTaker).to.eq(ethers.utils.parseEther('1.97'));
-        expect(ethBalanceTreasury).to.eq(ethers.utils.parseEther('0.06'));
+        expect(ethBalanceFeeRecipient).to.eq(ethers.utils.parseEther('0.06'));
 
         orderAmount = await premiaMarket.amounts(order.hash);
         expect(orderAmount).to.eq(0);
@@ -920,7 +926,7 @@ describe('PremiaMarket', () => {
       it('should fill buy order for 1/2 if only 1 left to buy', async () => {
         const maker = user1;
         const taker = user2;
-        const treasury = admin;
+        const feeRecipient = admin;
 
         const order = await marketTestUtil.setupOrder(maker, taker, {
           isBuy: true,
@@ -942,11 +948,13 @@ describe('PremiaMarket', () => {
 
         const ethBalanceMaker = await eth.balanceOf(maker.address);
         const ethBalanceTaker = await eth.balanceOf(taker.address);
-        const ethBalanceTreasury = await eth.balanceOf(treasury.address);
+        const ethBalanceFeeRecipient = await eth.balanceOf(
+          feeRecipient.address,
+        );
 
         expect(ethBalanceMaker).to.eq(0);
         expect(ethBalanceTaker).to.eq(ethers.utils.parseEther('0.985'));
-        expect(ethBalanceTreasury).to.eq(ethers.utils.parseEther('0.03'));
+        expect(ethBalanceFeeRecipient).to.eq(ethers.utils.parseEther('0.03'));
       });
     });
   });

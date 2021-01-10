@@ -26,7 +26,7 @@ let admin: SignerWithAddress;
 let writer1: SignerWithAddress;
 let writer2: SignerWithAddress;
 let user1: SignerWithAddress;
-let treasury: SignerWithAddress;
+let feeRecipient: SignerWithAddress;
 const tax = 0.01;
 
 let optionTestUtil: PremiaOptionTestUtil;
@@ -35,7 +35,7 @@ describe('PremiaOption', () => {
   beforeEach(async () => {
     await resetHardhat();
 
-    [admin, writer1, writer2, user1, treasury] = await ethers.getSigners();
+    [admin, writer1, writer2, user1, feeRecipient] = await ethers.getSigners();
     const erc20Factory = new TestErc20__factory(admin);
     eth = await erc20Factory.deploy();
     dai = await erc20Factory.deploy();
@@ -48,7 +48,7 @@ describe('PremiaOption', () => {
       'dummyURI',
       dai.address,
       eth.address,
-      treasury.address,
+      feeRecipient.address,
     );
     premiaReferral = await premiaReferralFactory.deploy();
     premiaFeeDiscount = await premiaFeeDiscountFactory.deploy();
@@ -65,7 +65,7 @@ describe('PremiaOption', () => {
       writer1,
       writer2,
       user1,
-      treasury,
+      feeRecipient,
       tax,
     });
   });
@@ -361,17 +361,17 @@ describe('PremiaOption', () => {
       expect(ethBalance).to.eq(0);
     });
 
-    it('should have 0.01 eth and 0.1 dai in treasury after 1 option exercised', async () => {
+    it('should have 0.01 eth and 0.1 dai in feeRecipient after 1 option exercised', async () => {
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 1, 1);
 
-      const daiBalance = await dai.balanceOf(treasury.address);
-      const ethBalance = await eth.balanceOf(treasury.address);
+      const daiBalance = await dai.balanceOf(feeRecipient.address);
+      const ethBalance = await eth.balanceOf(feeRecipient.address);
 
       expect(daiBalance).to.eq(utils.parseEther('0.1'));
       expect(ethBalance).to.eq(utils.parseEther('0.01'));
     });
 
-    it('should have 0 eth and 0.1 dai in treasury after 1 option exercised if writer is whitelisted', async () => {
+    it('should have 0 eth and 0.1 dai in feeRecipient after 1 option exercised if writer is whitelisted', async () => {
       await premiaOption.setPrivileges(
         [writer1.address],
         [
@@ -384,14 +384,14 @@ describe('PremiaOption', () => {
       );
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 1, 1);
 
-      const daiBalance = await dai.balanceOf(treasury.address);
-      const ethBalance = await eth.balanceOf(treasury.address);
+      const daiBalance = await dai.balanceOf(feeRecipient.address);
+      const ethBalance = await eth.balanceOf(feeRecipient.address);
 
       expect(daiBalance).to.eq(utils.parseEther('0.1'));
       expect(ethBalance).to.eq(utils.parseEther('0'));
     });
 
-    it('should have 0.1 eth and 0 dai in treasury after 1 option exercised if exerciser is whitelisted', async () => {
+    it('should have 0.1 eth and 0 dai in feeRecipient after 1 option exercised if exerciser is whitelisted', async () => {
       await premiaOption.setPrivileges(
         [user1.address],
         [
@@ -404,8 +404,8 @@ describe('PremiaOption', () => {
       );
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 1, 1);
 
-      const daiBalance = await dai.balanceOf(treasury.address);
-      const ethBalance = await eth.balanceOf(treasury.address);
+      const daiBalance = await dai.balanceOf(feeRecipient.address);
+      const ethBalance = await eth.balanceOf(feeRecipient.address);
 
       expect(daiBalance).to.eq(utils.parseEther('0'));
       expect(ethBalance).to.eq(utils.parseEther('0.01'));
@@ -977,8 +977,8 @@ describe('PremiaOption', () => {
       ethBalance = await eth.balanceOf(premiaOption.address);
       expect(ethBalance).to.eq(utils.parseEther('2'));
 
-      const ethBalanceTreasury = await eth.balanceOf(treasury.address);
-      expect(ethBalanceTreasury).to.eq(utils.parseEther('0.004'));
+      const ethBalanceFeeRecipient = await eth.balanceOf(feeRecipient.address);
+      expect(ethBalanceFeeRecipient).to.eq(utils.parseEther('0.004'));
     });
 
     it('should successfully complete flashLoan if paid back without fee and user on fee whitelist', async () => {
@@ -1010,8 +1010,8 @@ describe('PremiaOption', () => {
       ethBalance = await eth.balanceOf(premiaOption.address);
       expect(ethBalance).to.eq(utils.parseEther('2'));
 
-      const ethBalanceTreasury = await eth.balanceOf(treasury.address);
-      expect(ethBalanceTreasury).to.eq(0);
+      const ethBalanceFeeRecipient = await eth.balanceOf(feeRecipient.address);
+      expect(ethBalanceFeeRecipient).to.eq(0);
     });
   });
 });

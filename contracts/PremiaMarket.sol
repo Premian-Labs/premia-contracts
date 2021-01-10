@@ -25,7 +25,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     uint256 public takerFee = 150; // 1.5%
 
     /* Recipient of protocol fees. */
-    address public treasury;
+    address public feeRecipient;
 
     enum SaleSide {Buy, Sell}
 
@@ -101,9 +101,9 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(address _treasury) {
-        require(_treasury != address(0), "Treasury cannot be 0x0 address");
-        treasury = _treasury;
+    constructor(address _feeRecipient) {
+        require(_feeRecipient != address(0), "FeeRecipient cannot be 0x0 address");
+        feeRecipient = _feeRecipient;
     }
 
     //////////////////////////////////////////////////
@@ -136,11 +136,11 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
     /**
      * @dev Change the protocol fee recipient (owner only)
-     * @param _treasury New protocol fee recipient address
+     * @param _feeRecipient New protocol fee recipient address
      */
-    function setTreasury(address _treasury) external onlyOwner {
-        require(_treasury != address(0), "Treasury cannot be 0x0 address");
-        treasury = _treasury;
+    function setFeeRecipient(address _feeRecipient) external onlyOwner {
+        require(_feeRecipient != address(0), "FeeRecipient cannot be 0x0 address");
+        feeRecipient = _feeRecipient;
     }
 
     function addWhitelistedOptionContracts(address[] memory _addr) external onlyOwner {
@@ -373,11 +373,11 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         if (_order.side == SaleSide.Buy) {
             IPremiaOption(_order.optionContract).safeTransferFrom(msg.sender, _order.maker, _order.optionId, amount, "");
 
-            token.safeTransferFrom(_order.maker, treasury, orderMakerFee.add(orderTakerFee));
+            token.safeTransferFrom(_order.maker, feeRecipient, orderMakerFee.add(orderTakerFee));
             token.safeTransferFrom(_order.maker, msg.sender, basePrice.sub(orderTakerFee));
 
         } else {
-            token.safeTransferFrom(msg.sender, treasury, orderMakerFee.add(orderTakerFee));
+            token.safeTransferFrom(msg.sender, feeRecipient, orderMakerFee.add(orderTakerFee));
             token.safeTransferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
 
             IPremiaOption(_order.optionContract).safeTransferFrom(_order.maker, msg.sender, _order.optionId, amount, "");

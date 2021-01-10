@@ -15,7 +15,7 @@ interface PremiaMarketTestUtilProps {
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
   user1: SignerWithAddress;
-  treasury: SignerWithAddress;
+  feeRecipient: SignerWithAddress;
 }
 
 interface OrderOptions {
@@ -36,7 +36,7 @@ export class PremiaMarketTestUtil {
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
   user1: SignerWithAddress;
-  treasury: SignerWithAddress;
+  feeRecipient: SignerWithAddress;
   optionTestUtil: PremiaOptionTestUtil;
 
   constructor(props: PremiaMarketTestUtilProps) {
@@ -48,7 +48,7 @@ export class PremiaMarketTestUtil {
     this.writer1 = props.writer1;
     this.writer2 = props.writer2;
     this.user1 = props.user1;
-    this.treasury = props.treasury;
+    this.feeRecipient = props.feeRecipient;
 
     this.optionTestUtil = new PremiaOptionTestUtil({
       eth: this.eth,
@@ -58,7 +58,7 @@ export class PremiaMarketTestUtil {
       writer1: this.writer1,
       writer2: this.writer2,
       user1: this.user1,
-      treasury: this.treasury,
+      feeRecipient: this.feeRecipient,
       tax: 0.01,
     });
   }

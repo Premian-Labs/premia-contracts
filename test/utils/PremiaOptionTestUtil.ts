@@ -20,7 +20,7 @@ interface PremiaOptionTestUtilProps {
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
   user1: SignerWithAddress;
-  treasury: SignerWithAddress;
+  feeRecipient: SignerWithAddress;
   tax: number;
 }
 
@@ -32,7 +32,7 @@ export class PremiaOptionTestUtil {
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
   user1: SignerWithAddress;
-  treasury: SignerWithAddress;
+  feeRecipient: SignerWithAddress;
   tax: number;
 
   constructor(props: PremiaOptionTestUtilProps) {
@@ -43,7 +43,7 @@ export class PremiaOptionTestUtil {
     this.writer1 = props.writer1;
     this.writer2 = props.writer2;
     this.user1 = props.user1;
-    this.treasury = props.treasury;
+    this.feeRecipient = props.feeRecipient;
     this.tax = props.tax;
   }
 

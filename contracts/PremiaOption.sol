@@ -64,7 +64,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     IPremiaReferral public premiaReferral;
     IPremiaFeeDiscount public premiaFeeDiscount;
-    address public premiaMaker;                     // PremiaMaker address receiving fees
+    address public feeRecipient;                     // Address receiving fees
+    IERC20 public uPremia;
 
     //////////////////////////////////////////////////
 
@@ -117,10 +118,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(string memory _uri, IERC20 _denominator, address _weth, address _premiaMaker) ERC1155(_uri) {
+    constructor(string memory _uri, IERC20 _denominator, address _weth, address _feeRecipient) ERC1155(_uri) {
         denominator = _denominator;
         weth = _weth;
-        premiaMaker = _premiaMaker;
+        feeRecipient = _feeRecipient;
     }
 
     //////////////////////////////////////////////////
@@ -182,8 +183,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         _setURI(newuri);
     }
 
-    function setPremiaMaker(address _premiaMaker) external onlyOwner {
-        premiaMaker = _premiaMaker;
+    function setFeeRecipient(address _feeRecipient) external onlyOwner {
+        feeRecipient = _feeRecipient;
     }
 
     function setMaxExpiration(uint256 _max) external onlyOwner {
@@ -443,7 +444,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         }
 
         require(endBalance >= endBalanceRequired, "Failed to pay back");
-        _token.safeTransfer(premiaMaker, endBalance.sub(startBalance));
+        _token.safeTransfer(feeRecipient, endBalance.sub(startBalance));
 
         endBalance = _token.balanceOf(address(this));
         require(endBalance >= startBalance, "Failed to pay back");
@@ -624,7 +625,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         if (privileges[msg.sender].isWhitelistedWriteExercise) return;
 
         if (_fee > 0) {
-            _token.safeTransferFrom(_from, premiaMaker, _fee);
+            _token.safeTransferFrom(_from, feeRecipient, _fee);
         }
 
         if (_feeReferrer > 0) {
