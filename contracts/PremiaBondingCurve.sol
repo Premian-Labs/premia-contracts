@@ -30,7 +30,7 @@ contract PremiaBondingCurve is Ownable {
     // Events //
     ////////////
 
-    event Bought(address indexed account, uint256 amount, uint256 ethAmount);
+    event Bought(address indexed account, address indexed sentTo, uint256 amount, uint256 ethAmount);
     event Sold(address indexed account, uint256 amount, uint256 ethAmount, uint256 comission);
 
     event UpgradeStarted(address newContract, uint256 eta);
@@ -107,18 +107,21 @@ contract PremiaBondingCurve is Ownable {
         premia.safeTransfer(msg.sender, _tokenAmount);
         if (msg.value > ethAmount)
             msg.sender.transfer(msg.value.sub(ethAmount));
-        emit Bought(msg.sender, _tokenAmount, ethAmount);
+        emit Bought(msg.sender, msg.sender, _tokenAmount, ethAmount);
     }
 
     // Buy premia with exact eth amount
     // Will revert if tokenAmount is less than minimum specified
-    function buyTokenWithExactEthAmount(uint256 _minToken) external payable notUpgraded {
+    // Premia tokens will be sent to _sendTo address
+    function buyTokenWithExactEthAmount(uint256 _minToken, address _sendTo) external payable notUpgraded returns(uint256) {
         uint256 ethAmount = msg.value;
         uint256 tokenAmount = getTokensPurchasable(ethAmount);
         require(tokenAmount >= _minToken, "Slippage too high");
         soldAmount = soldAmount.add(tokenAmount);
-        premia.safeTransfer(msg.sender, tokenAmount);
-        emit Bought(msg.sender, tokenAmount, ethAmount);
+        premia.safeTransfer(_sendTo, tokenAmount);
+        emit Bought(msg.sender, _sendTo, tokenAmount, ethAmount);
+
+        return tokenAmount;
     }
 
     // Sell premia for ETH
@@ -147,7 +150,14 @@ contract PremiaBondingCurve is Ownable {
 
     // Return the amount of tokens purchasable with given ethAmount
     function getTokensPurchasable(uint256 _ethAmount) public view returns(uint256) {
-        uint256 x1 = sqrt(_ethAmount.mul(2e18).mul(k).add(k.mul(k).mul(startPrice).mul(startPrice)).add(k.mul(2).mul(startPrice).mul(soldAmount)).add(soldAmount.mul(soldAmount))).sub(k.mul(startPrice));
+        // x0 = soldAmount
+        uint256 x1 = sqrt(
+            _ethAmount.mul(2e18).mul(k)
+            .add(k.mul(k).mul(startPrice).mul(startPrice))
+            .add(k.mul(2).mul(startPrice).mul(soldAmount))
+            .add(soldAmount.mul(soldAmount)))
+        .sub(k.mul(startPrice));
+
         return x1 - soldAmount;
     }
 

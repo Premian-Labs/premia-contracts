@@ -348,7 +348,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
      * @param _order The order
      * @param _maxAmount Max amount of options to buy/sell
      */
-    function fillOrder(Order memory _order, uint256 _maxAmount) public nonReentrant returns(uint256 _amountFilled) {
+    function fillOrder(Order memory _order, uint256 _maxAmount) public nonReentrant returns(uint256) {
         bytes32 hash = getOrderHash(_order);
 
         require(amounts[hash] > 0, "Order not found");
@@ -393,6 +393,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             _order.pricePerUnit
         );
 
+        // Returns the amount filled
         return amount;
     }
 

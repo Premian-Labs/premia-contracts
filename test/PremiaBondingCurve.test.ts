@@ -156,7 +156,9 @@ describe('PremiaBondingCurve', () => {
     );
     await premiaBondingCurve
       .connect(user1)
-      .buyTokenWithExactEthAmount(0, { value: ethers.utils.parseEther('100') });
+      .buyTokenWithExactEthAmount(0, user1.address, {
+        value: ethers.utils.parseEther('100'),
+      });
     expect(await premia.balanceOf(user1.address)).to.eq(tokenAmount);
     expect(await getEthBalance(premiaBondingCurve.address)).to.eq(
       ethers.utils.parseEther('100'),
