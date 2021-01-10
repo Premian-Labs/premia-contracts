@@ -51,6 +51,10 @@ fs.copyFileSync(
   './artifacts/contracts/PremiaVesting.sol/PremiaVesting.json',
   './abi/PremiaVesting.json',
 );
+fs.copyFileSync(
+  './artifacts/contracts/PriceProvider.sol/PriceProvider.json',
+  './abi/PriceProvider.json',
+);
 
 // Test contracts
 fs.copyFileSync(

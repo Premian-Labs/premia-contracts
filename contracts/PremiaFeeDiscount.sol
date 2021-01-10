@@ -30,7 +30,7 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
 
     IERC20 public xPremia;
 
-    uint256 public constant INVERSE_BASIS_POINT = 1e4;
+    uint256 private constant _inverseBasisPoint = 1e4;
 
     // User data with balance staked and date at which lock ends
     mapping (address => UserInfo) public userInfo;
@@ -148,7 +148,7 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
 
     function getStakeAmountWithBonus(address _user) public view returns(uint256) {
         UserInfo memory user = userInfo[_user];
-        return user.balance.mul(stakePeriods[user.stakePeriod]).div(INVERSE_BASIS_POINT);
+        return user.balance.mul(stakePeriods[user.stakePeriod]).div(_inverseBasisPoint);
     }
 
     // Return the % of the fee that user must pay, based on his stake
@@ -169,16 +169,16 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
                 } else {
                     // If this is the first level, prev level is 0 / 1e4
                     amountPrevLevel = 0;
-                    discountPrevLevel = INVERSE_BASIS_POINT;
+                    discountPrevLevel = _inverseBasisPoint;
                 }
 
                 uint256 remappedDiscount = discountPrevLevel.sub(level.discount);
 
                 uint256 remappedAmount = level.amount.sub(amountPrevLevel);
                 uint256 remappedBalance = userBalance.sub(amountPrevLevel);
-                uint256 levelProgress = remappedBalance.mul(INVERSE_BASIS_POINT).div(remappedAmount);
+                uint256 levelProgress = remappedBalance.mul(_inverseBasisPoint).div(remappedAmount);
 
-                return discountPrevLevel.sub(remappedDiscount.mul(levelProgress).div(INVERSE_BASIS_POINT));
+                return discountPrevLevel.sub(remappedDiscount.mul(levelProgress).div(_inverseBasisPoint));
             }
         }
 

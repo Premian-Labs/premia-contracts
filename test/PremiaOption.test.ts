@@ -11,6 +11,10 @@ import {
   PremiaOption__factory,
   TestPremiaFeeDiscount,
   TestPremiaFeeDiscount__factory,
+  PriceProvider__factory,
+  PremiaUncutErc20__factory,
+  PriceProvider,
+  PremiaUncutErc20,
 } from '../contractsTyped';
 import { TestErc20 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
@@ -22,6 +26,8 @@ let dai: TestErc20;
 let premiaOption: PremiaOption;
 let premiaReferral: PremiaReferral;
 let premiaFeeDiscount: TestPremiaFeeDiscount;
+let priceProvider: PriceProvider;
+let premiaUncut: PremiaUncutErc20;
 let admin: SignerWithAddress;
 let writer1: SignerWithAddress;
 let writer2: SignerWithAddress;
@@ -44,12 +50,20 @@ describe('PremiaOption', () => {
     const premiaReferralFactory = new PremiaReferral__factory(admin);
     const premiaFeeDiscountFactory = new TestPremiaFeeDiscount__factory(admin);
 
+    const priceProviderFactory = new PriceProvider__factory(admin);
+    const premiaUncutErc20Factory = new PremiaUncutErc20__factory(admin);
+
+    priceProvider = await priceProviderFactory.deploy();
+    premiaUncut = await premiaUncutErc20Factory.deploy(priceProvider.address);
+
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
       dai.address,
-      eth.address,
+      premiaUncut.address,
       feeRecipient.address,
     );
+
+    await premiaUncut.addMinter([premiaOption.address]);
     premiaReferral = await premiaReferralFactory.deploy();
     premiaFeeDiscount = await premiaFeeDiscountFactory.deploy();
 
@@ -1012,6 +1026,40 @@ describe('PremiaOption', () => {
 
       const ethBalanceFeeRecipient = await eth.balanceOf(feeRecipient.address);
       expect(ethBalanceFeeRecipient).to.eq(0);
+    });
+  });
+
+  describe('premiaUncut', () => {
+    it('should not reward any uPremia if price not set for token in priceProvider', async () => {
+      await optionTestUtil.addEthAndWriteOptions(2);
+      expect(await premiaUncut.balanceOf(writer1.address)).to.eq(0);
+    });
+
+    it('should reward uPremia on writeOption', async () => {
+      await priceProvider.setTokenPrices(
+        [dai.address, eth.address],
+        [ethers.utils.parseEther('1'), ethers.utils.parseEther('10')],
+      );
+
+      await optionTestUtil.addEthAndWriteOptions(2);
+      expect(await premiaUncut.balanceOf(writer1.address)).to.eq(
+        ethers.utils.parseEther('0.2'),
+      );
+    });
+
+    it('should reward uPremia on exerciseOption', async () => {
+      await priceProvider.setTokenPrices(
+        [dai.address, eth.address],
+        [ethers.utils.parseEther('1'), ethers.utils.parseEther('10')],
+      );
+
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 1);
+      expect(await premiaUncut.balanceOf(writer1.address)).to.eq(
+        ethers.utils.parseEther('0.2'),
+      );
+      expect(await premiaUncut.balanceOf(user1.address)).to.eq(
+        ethers.utils.parseEther('0.1'),
+      );
     });
   });
 });

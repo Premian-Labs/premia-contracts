@@ -3,6 +3,8 @@ import {
   PremiaMarket__factory,
   PremiaOption__factory,
   PremiaReferral__factory,
+  PremiaUncutErc20__factory,
+  PriceProvider__factory,
 } from '../../contractsTyped';
 
 async function main() {
@@ -17,15 +19,22 @@ async function main() {
   let uri = 'https://rope.lol/api/RMU/{id}.json';
 
   const premiaReferralFactory = new PremiaReferral__factory(deployer);
+  const priceProviderFactory = new PriceProvider__factory(deployer);
+  const premiaUncutErc20Factory = new PremiaUncutErc20__factory(deployer);
   const premiaOptionFactory = new PremiaOption__factory(deployer);
   const premiaMarketFactory = new PremiaMarket__factory(deployer);
 
   //
 
+  const priceProvider = await priceProviderFactory.deploy();
+  const premiaUncutErc20 = await premiaUncutErc20Factory.deploy(
+    priceProvider.address,
+  );
+
   const premiaOptionDai = await premiaOptionFactory.deploy(
     uri,
     dai,
-    weth,
+    premiaUncutErc20.address,
     deployer.address,
   );
 
@@ -36,7 +45,7 @@ async function main() {
   const premiaOptionEth = await premiaOptionFactory.deploy(
     uri,
     weth,
-    weth,
+    premiaUncutErc20.address,
     deployer.address,
   );
 
@@ -47,6 +56,7 @@ async function main() {
   // const premiaOptionWbtc = await premiaOptionFactory.deploy(
   //   uri,
   //   wbtc,
+  //   premiaUncutErc20.address,
   //   deployer.address,
   // );
   //
@@ -115,6 +125,12 @@ async function main() {
   ]);
 
   await premiaMarket.addWhitelistedPaymentTokens([dai, weth]);
+
+  await premiaUncutErc20.addMinter([
+    premiaOptionEth.address,
+    premiaOptionDai.address,
+    premiaMarket.address,
+  ]);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

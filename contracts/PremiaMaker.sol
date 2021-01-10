@@ -25,7 +25,7 @@ contract PremiaMaker is Ownable {
 
     address public treasury;
     uint256 public treasuryFee = 2e3; // 20%
-    uint256 public constant INVERSE_BASIS_POINT = 1e4;
+    uint256 private constant _inverseBasisPoint = 1e4;
 
     event Converted(address indexed account, address indexed router, address indexed token, uint256 tokenAmount, uint256 premiaAmount);
 
@@ -41,7 +41,7 @@ contract PremiaMaker is Ownable {
     ///////////
 
     function setTreasuryFee(uint256 _fee) external onlyOwner {
-        require(_fee <= INVERSE_BASIS_POINT);
+        require(_fee <= _inverseBasisPoint);
         treasuryFee = _fee;
     }
 
@@ -78,7 +78,7 @@ contract PremiaMaker is Ownable {
 
         uint256 amount = token.balanceOf(address(this));
 
-        uint256 fee = amount.mul(treasuryFee).div(INVERSE_BASIS_POINT);
+        uint256 fee = amount.mul(treasuryFee).div(_inverseBasisPoint);
         token.safeTransfer(treasury, fee);
 
         token.safeIncreaseAllowance(address(_router), amount.sub(fee));

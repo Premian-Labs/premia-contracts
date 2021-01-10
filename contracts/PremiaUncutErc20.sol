@@ -5,8 +5,10 @@ pragma solidity ^0.7.0;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import '@openzeppelin/contracts/utils/EnumerableSet.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
+import "./interface/IPriceProvider.sol";
 
 contract PremiaUncutErc20 is ERC20, Ownable {
+    using SafeMath for uint256;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // Addresses with minting rights
@@ -15,9 +17,15 @@ contract PremiaUncutErc20 is ERC20, Ownable {
     // Whitelisted receiver can receive from any address
     EnumerableSet.AddressSet private _whitelistedReceivers;
 
+    IPriceProvider public priceProvider;
+
+    event Rewarded(address indexed account, address indexed token, uint256 feePaid, uint256 rewardAmount);
+
     //
 
-    constructor() ERC20("PremiaUncut", "uPremia") { }
+    constructor(IPriceProvider _priceProvider) ERC20("PremiaUncut", "uPremia") {
+        priceProvider = _priceProvider;
+    }
 
     //
 
@@ -29,24 +37,34 @@ contract PremiaUncutErc20 is ERC20, Ownable {
     //
 
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
-        require(_minters.contains(from) || _whitelistedReceivers.contains(to), "Transfer not allowed");
+        require(from == address(0) || _whitelistedReceivers.contains(to), "Transfer not allowed");
     }
 
     //
 
-    function mint(address account, uint256 amount) public onlyMinter {
-        _mint(account, amount);
+    function mintReward(address _account, address _token, uint256 _feePaid) external onlyMinter {
+        uint256 tokenPrice = priceProvider.getTokenPrice(_token);
+        if (tokenPrice == 0) return;
+
+        uint256 rewardAmount = _feePaid.mul(tokenPrice).div(1e18);
+        _mint(_account, rewardAmount);
+
+        emit Rewarded(_account, _token, _feePaid, rewardAmount);
     }
 
     //
 
-    function addMinter(address[] memory _addr) public onlyOwner {
+    function setPriceProvider(IPriceProvider _priceProvider) external onlyOwner {
+        priceProvider = _priceProvider;
+    }
+
+    function addMinter(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _minters.add(_addr[i]);
         }
     }
 
-    function removeMinter(address[] memory _addr) public onlyOwner {
+    function removeMinter(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _minters.remove(_addr[i]);
         }
@@ -65,13 +83,13 @@ contract PremiaUncutErc20 is ERC20, Ownable {
 
     //
 
-    function addWhitelistedReceiver(address[] memory _addr) public onlyOwner {
+    function addWhitelistedReceiver(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedReceivers.add(_addr[i]);
         }
     }
 
-    function removeWhitelistedReceiver(address[] memory _addr) public onlyOwner {
+    function removeWhitelistedReceiver(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedReceivers.remove(_addr[i]);
         }

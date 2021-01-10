@@ -30,7 +30,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     enum SaleSide {Buy, Sell}
 
     /* Inverse basis point. */
-    uint256 public constant INVERSE_BASIS_POINT = 1e4;
+    uint256 private constant _inverseBasisPoint = 1e4;
 
     /* Salt to prevent duplicate hash. */
     uint256 salt = 0;
@@ -231,7 +231,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
         if (_order.side == SaleSide.Buy) {
             uint256 basePrice = _order.pricePerUnit.mul(amountLeft);
-            uint256 orderMakerFee = basePrice.mul(makerFee).div(INVERSE_BASIS_POINT);
+            uint256 orderMakerFee = basePrice.mul(makerFee).div(_inverseBasisPoint);
             uint256 totalPrice = basePrice.add(orderMakerFee);
 
             uint256 userBalance = token.balanceOf(_order.maker);
@@ -365,8 +365,8 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         amounts[hash] = amounts[hash].sub(amount);
 
         uint256 basePrice = _order.pricePerUnit.mul(amount);
-        uint256 orderMakerFee = basePrice.mul(makerFee).div(INVERSE_BASIS_POINT);
-        uint256 orderTakerFee = basePrice.mul(takerFee).div(INVERSE_BASIS_POINT);
+        uint256 orderMakerFee = basePrice.mul(makerFee).div(_inverseBasisPoint);
+        uint256 orderTakerFee = basePrice.mul(takerFee).div(_inverseBasisPoint);
 
         IERC20 token = IERC20(_order.paymentToken);
 

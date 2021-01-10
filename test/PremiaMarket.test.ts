@@ -3,17 +3,18 @@ import { utils } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
-  TestErc20__factory,
   PremiaMarket,
   PremiaMarket__factory,
   PremiaOption,
   PremiaOption__factory,
+  TestErc20,
+  TestErc20__factory,
 } from '../contractsTyped';
-import { TestErc20 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
 import { IOrder, IOrderCreated } from '../types';
 import { PremiaMarketTestUtil } from './utils/PremiaMarketTestUtil';
 import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
+import { ZERO_ADDRESS } from './utils/constants';
 
 let eth: TestErc20;
 let dai: TestErc20;
@@ -38,15 +39,15 @@ describe('PremiaMarket', () => {
     eth = await erc20Factory.deploy();
     dai = await erc20Factory.deploy();
 
-    const premiaOptionFactory = new PremiaOption__factory(user1);
+    const premiaOptionFactory = new PremiaOption__factory(admin);
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
       eth.address,
-      eth.address,
+      ZERO_ADDRESS,
       feeRecipient.address,
     );
 
-    const premiaMarketFactory = new PremiaMarket__factory(user1);
+    const premiaMarketFactory = new PremiaMarket__factory(admin);
     premiaMarket = await premiaMarketFactory.deploy(admin.address);
 
     optionTestUtil = new PremiaOptionTestUtil({
