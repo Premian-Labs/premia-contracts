@@ -11,7 +11,6 @@ import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/utils/SafeCast.sol';
 
 import "./interface/IFlashLoanReceiver.sol";
-import "./interface/ITokenSettingsCalculator.sol";
 import "./interface/IPremiaReferral.sol";
 import "./interface/IPremiaFeeDiscount.sol";
 import "./interface/uniswap/IUniswapV2Router02.sol";
