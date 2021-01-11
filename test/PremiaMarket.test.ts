@@ -7,6 +7,8 @@ import {
   PremiaMarket__factory,
   PremiaOption,
   PremiaOption__factory,
+  PremiaUncutErc20,
+  PriceProvider,
   TestErc20,
   TestErc20__factory,
 } from '../contractsTyped';
@@ -21,6 +23,8 @@ let eth: TestErc20;
 let dai: TestErc20;
 let premiaOption: PremiaOption;
 let premiaMarket: PremiaMarket;
+let premiaUncut: PremiaUncutErc20;
+let priceProvider: PriceProvider;
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
 let user2: SignerWithAddress;
@@ -42,6 +46,8 @@ describe('PremiaMarket', () => {
 
     const contracts = await deployContracts(admin);
     await contracts.feeCalculator.setPremiaFeeDiscount(ZERO_ADDRESS);
+    premiaUncut = contracts.premiaUncutErc20;
+    priceProvider = contracts.priceProvider;
 
     const premiaOptionFactory = new PremiaOption__factory(admin);
     premiaOption = await premiaOptionFactory.deploy(
@@ -49,11 +55,18 @@ describe('PremiaMarket', () => {
       eth.address,
       ZERO_ADDRESS,
       contracts.feeCalculator.address,
+      ZERO_ADDRESS,
       feeRecipient.address,
     );
 
     const premiaMarketFactory = new PremiaMarket__factory(admin);
-    premiaMarket = await premiaMarketFactory.deploy(admin.address);
+    premiaMarket = await premiaMarketFactory.deploy(
+      contracts.premiaUncutErc20.address,
+      contracts.feeCalculator.address,
+      admin.address,
+    );
+
+    await premiaUncut.addMinter([premiaMarket.address]);
 
     optionTestUtil = new PremiaOptionTestUtil({
       eth,
@@ -1042,5 +1055,28 @@ describe('PremiaMarket', () => {
       expect(order1Amount).to.eq(0);
       expect(order2Amount).to.eq(0);
     });
+  });
+
+  it('should reward uPremia on fillOrder for both maker and taker', async () => {
+    await priceProvider.setTokenPrices(
+      [dai.address, eth.address],
+      [ethers.utils.parseEther('1'), ethers.utils.parseEther('10')],
+    );
+
+    const maker = user1;
+    const taker = user2;
+    const order = await marketTestUtil.setupOrder(maker, taker, {
+      taker: taker.address,
+      isBuy: true,
+    });
+
+    await premiaMarket.connect(taker).fillOrder(order.order, 1);
+
+    expect(await premiaUncut.balanceOf(maker.address)).to.eq(
+      ethers.utils.parseEther('0.15'),
+    ); // 0.015 eth fee at 1 eth = 10 usd
+    expect(await premiaUncut.balanceOf(taker.address)).to.eq(
+      ethers.utils.parseEther('0.15'),
+    ); // 0.015 eth fee at 1 eth = 10 usd
   });
 });

@@ -13,7 +13,6 @@ import '@openzeppelin/contracts/utils/SafeCast.sol';
 import "./interface/IFeeCalculator.sol";
 import "./interface/IFlashLoanReceiver.sol";
 import "./interface/IPremiaReferral.sol";
-import "./interface/IPremiaFeeDiscount.sol";
 import "./interface/IPremiaUncutErc20.sol";
 
 import "./interface/uniswap/IUniswapV2Router02.sol";
@@ -110,11 +109,13 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(string memory _uri, IERC20 _denominator, IPremiaUncutErc20 _uPremia, IFeeCalculator _feeCalculator, address _feeRecipient) ERC1155(_uri) {
+    constructor(string memory _uri, IERC20 _denominator, IPremiaUncutErc20 _uPremia, IFeeCalculator _feeCalculator,
+        IPremiaReferral _premiaReferral, address _feeRecipient) ERC1155(_uri) {
         denominator = _denominator;
         uPremia = _uPremia;
         feeCalculator = _feeCalculator;
         feeRecipient = _feeRecipient;
+        premiaReferral = _premiaReferral;
     }
 
     //////////////////////////////////////////////////

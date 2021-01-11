@@ -9,11 +9,17 @@ import '@openzeppelin/contracts/utils/EnumerableSet.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 import "./interface/IPremiaOption.sol";
+import "./interface/IFeeCalculator.sol";
+import "./interface/IPremiaReferral.sol";
+import "./interface/IPremiaUncutErc20.sol";
 
 contract PremiaMarket is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
+
+    IPremiaUncutErc20 public uPremia;
+    IFeeCalculator public feeCalculator;
 
     EnumerableSet.AddressSet private _whitelistedOptionContracts;
     EnumerableSet.AddressSet private _whitelistedPaymentTokens;
@@ -101,9 +107,11 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(address _feeRecipient) {
+    constructor(IPremiaUncutErc20 _uPremia, IFeeCalculator _feeCalculator, address _feeRecipient) {
         require(_feeRecipient != address(0), "FeeRecipient cannot be 0x0 address");
         feeRecipient = _feeRecipient;
+        uPremia = _uPremia;
+        feeCalculator = _feeCalculator;
     }
 
     //////////////////////////////////////////////////
@@ -141,6 +149,14 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     function setFeeRecipient(address _feeRecipient) external onlyOwner {
         require(_feeRecipient != address(0), "FeeRecipient cannot be 0x0 address");
         feeRecipient = _feeRecipient;
+    }
+
+    function setPremiaUncutErc20(IPremiaUncutErc20 _uPremia) external onlyOwner {
+        uPremia = _uPremia;
+    }
+
+    function setFeeCalculator(IFeeCalculator _feeCalculator) external onlyOwner {
+        feeCalculator = _feeCalculator;
     }
 
     function addWhitelistedOptionContracts(address[] memory _addr) external onlyOwner {
@@ -365,8 +381,9 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         amounts[hash] = amounts[hash].sub(amount);
 
         uint256 basePrice = _order.pricePerUnit.mul(amount);
-        uint256 orderMakerFee = basePrice.mul(makerFee).div(_inverseBasisPoint);
-        uint256 orderTakerFee = basePrice.mul(takerFee).div(_inverseBasisPoint);
+
+        (uint256 orderMakerFee,) = feeCalculator.getFees(_order.maker, false, basePrice, IFeeCalculator.FeeType.Maker);
+        (uint256 orderTakerFee,) = feeCalculator.getFees(_order.taker, false, basePrice, IFeeCalculator.FeeType.Taker);
 
         IERC20 token = IERC20(_order.paymentToken);
 
@@ -381,6 +398,12 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             token.safeTransferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
 
             IPremiaOption(_order.optionContract).safeTransferFrom(_order.maker, msg.sender, _order.optionId, amount, "");
+        }
+
+        // Mint uPremia
+        if (address(uPremia) != address(0)) {
+            uPremia.mintReward(_order.maker, address(token), orderMakerFee);
+            uPremia.mintReward(msg.sender, address(token), orderTakerFee);
         }
 
         emit OrderFilled(

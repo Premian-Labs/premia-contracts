@@ -60,6 +60,7 @@ describe('PremiaOption', () => {
       dai.address,
       premiaUncut.address,
       contracts.feeCalculator.address,
+      contracts.premiaReferral.address,
       feeRecipient.address,
     );
 
@@ -71,7 +72,6 @@ describe('PremiaOption', () => {
     );
 
     await premiaReferral.addWhitelisted([premiaOption.address]);
-    await premiaOption.setPremiaReferral(premiaReferral.address);
 
     optionTestUtil = new PremiaOptionTestUtil({
       eth,

@@ -32,6 +32,7 @@ async function main() {
     dai,
     contracts.premiaUncutErc20.address,
     contracts.feeCalculator.address,
+    contracts.premiaReferral.address,
     deployer.address,
   );
 
@@ -44,6 +45,7 @@ async function main() {
     weth,
     contracts.premiaUncutErc20.address,
     contracts.feeCalculator.address,
+    contracts.premiaReferral.address,
     deployer.address,
   );
 
@@ -105,7 +107,11 @@ async function main() {
 
   //
 
-  const premiaMarket = await premiaMarketFactory.deploy(deployer.address);
+  const premiaMarket = await premiaMarketFactory.deploy(
+    contracts.premiaUncutErc20.address,
+    contracts.feeCalculator.address,
+    deployer.address,
+  );
 
   console.log(
     `premiaMarket deployed at ${premiaMarket.address} from ${deployer.address}`,

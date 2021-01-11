@@ -44,7 +44,7 @@ contract PremiaUncutErc20 is ERC20, Ownable {
 
     function mintReward(address _account, address _token, uint256 _feePaid) external onlyMinter {
         uint256 tokenPrice = priceProvider.getTokenPrice(_token);
-        if (tokenPrice == 0) return;
+        if (tokenPrice == 0 || _feePaid == 0) return;
 
         uint256 rewardAmount = _feePaid.mul(tokenPrice).div(1e18);
         _mint(_account, rewardAmount);
