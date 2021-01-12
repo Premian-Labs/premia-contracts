@@ -2,9 +2,9 @@
 
 pragma solidity ^0.7.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "./ERC20Permit.sol";
 
-contract PremiaErc20 is ERC20 {
+contract PremiaErc20 is ERC20Permit {
     constructor() ERC20("Premia", "PREMIA") {
         _mint(msg.sender, 1e26); // 100m
     }
