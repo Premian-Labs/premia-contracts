@@ -3,31 +3,24 @@ import { BigNumber, utils } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
-  PremiaReferral,
-  TestErc20__factory,
-  TestFlashLoan__factory,
   PremiaOption,
   PremiaOption__factory,
+  TestErc20,
+  TestErc20__factory,
+  TestFlashLoan__factory,
   TestPremiaFeeDiscount,
   TestPremiaFeeDiscount__factory,
-  PriceProvider,
-  PremiaUncutErc20,
-  FeeCalculator,
 } from '../contractsTyped';
-import { TestErc20 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
 import { ONE_WEEK, ZERO_ADDRESS } from './utils/constants';
 import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
-import { deployContracts } from '../scripts/deployContracts';
+import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
 
+let p: IPremiaContracts;
 let eth: TestErc20;
 let dai: TestErc20;
 let premiaOption: PremiaOption;
-let premiaReferral: PremiaReferral;
 let premiaFeeDiscount: TestPremiaFeeDiscount;
-let feeCalculator: FeeCalculator;
-let priceProvider: PriceProvider;
-let premiaUncut: PremiaUncutErc20;
 let admin: SignerWithAddress;
 let writer1: SignerWithAddress;
 let writer2: SignerWithAddress;
@@ -46,32 +39,26 @@ describe('PremiaOption', () => {
     eth = await erc20Factory.deploy();
     dai = await erc20Factory.deploy();
 
-    const contracts = await deployContracts(admin);
+    p = await deployContracts(admin, feeRecipient, true);
 
     const premiaOptionFactory = new PremiaOption__factory(admin);
-    const premiaFeeDiscountFactory = new TestPremiaFeeDiscount__factory(admin);
-
-    priceProvider = contracts.priceProvider;
-    premiaUncut = contracts.premiaUncutErc20;
-    feeCalculator = contracts.feeCalculator;
 
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
       dai.address,
-      premiaUncut.address,
-      contracts.feeCalculator.address,
-      contracts.premiaReferral.address,
+      p.uPremia.address,
+      p.feeCalculator.address,
+      p.premiaReferral.address,
       feeRecipient.address,
     );
 
-    await premiaUncut.addMinter([premiaOption.address]);
-    premiaReferral = contracts.premiaReferral;
-    premiaFeeDiscount = await premiaFeeDiscountFactory.deploy();
-    await contracts.feeCalculator.setPremiaFeeDiscount(
-      premiaFeeDiscount.address,
-    );
+    await p.uPremia.addMinter([premiaOption.address]);
+    premiaFeeDiscount = await new TestPremiaFeeDiscount__factory(
+      admin,
+    ).deploy();
+    await p.feeCalculator.setPremiaFeeDiscount(premiaFeeDiscount.address);
 
-    await premiaReferral.addWhitelisted([premiaOption.address]);
+    await p.premiaReferral.addWhitelisted([premiaOption.address]);
 
     optionTestUtil = new PremiaOptionTestUtil({
       eth,
@@ -388,7 +375,7 @@ describe('PremiaOption', () => {
     });
 
     it('should have 0 eth and 0.1 dai in feeRecipient after 1 option exercised if writer is whitelisted', async () => {
-      await feeCalculator.addWhitelisted([writer1.address]);
+      await p.feeCalculator.addWhitelisted([writer1.address]);
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 1, 1);
 
       const daiBalance = await dai.balanceOf(feeRecipient.address);
@@ -399,7 +386,7 @@ describe('PremiaOption', () => {
     });
 
     it('should have 0.1 eth and 0 dai in feeRecipient after 1 option exercised if exerciser is whitelisted', async () => {
-      await feeCalculator.addWhitelisted([user1.address]);
+      await p.feeCalculator.addWhitelisted([user1.address]);
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 1, 1);
 
       const daiBalance = await dai.balanceOf(feeRecipient.address);
@@ -786,14 +773,14 @@ describe('PremiaOption', () => {
   describe('referral', () => {
     it('should register user1 as referrer', async () => {
       await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
-      const referrer = await premiaReferral.referrals(writer1.address);
+      const referrer = await p.premiaReferral.referrals(writer1.address);
       expect(referrer).to.eq(user1.address);
     });
 
     it('should keep user1 as referrer, if try to set another referrer', async () => {
       await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
       await optionTestUtil.addEthAndWriteOptions(2, true, writer2.address);
-      const referrer = await premiaReferral.referrals(writer1.address);
+      const referrer = await p.premiaReferral.referrals(writer1.address);
       expect(referrer).to.eq(user1.address);
     });
 
@@ -837,7 +824,7 @@ describe('PremiaOption', () => {
 
   describe('fees', () => {
     it('should calculate total fee correctly without discount', async () => {
-      const fee = await feeCalculator.getFees(
+      const fee = await p.feeCalculator.getFees(
         writer1.address,
         false,
         utils.parseEther('2'),
@@ -849,7 +836,7 @@ describe('PremiaOption', () => {
 
     it('should calculate total fee correctly with a referral', async () => {
       await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
-      const fee = await feeCalculator.getFees(
+      const fee = await p.feeCalculator.getFees(
         writer1.address,
         true,
         utils.parseEther('2'),
@@ -861,7 +848,7 @@ describe('PremiaOption', () => {
 
     it('should correctly calculate total fee with a referral + staking discount', async () => {
       await premiaFeeDiscount.setDiscount(2000);
-      const fee = await feeCalculator.getFees(
+      const fee = await p.feeCalculator.getFees(
         writer1.address,
         true,
         utils.parseEther('2'),
@@ -953,7 +940,7 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully complete flashLoan if paid back with fee', async () => {
-      await feeCalculator.setWriteFee(0);
+      await p.feeCalculator.setWriteFee(0);
       const flashLoanFactory = new TestFlashLoan__factory(writer1);
 
       const flashLoan = await flashLoanFactory.deploy();
@@ -980,12 +967,12 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully complete flashLoan if paid back without fee and user on fee whitelist', async () => {
-      await feeCalculator.setWriteFee(0);
+      await p.feeCalculator.setWriteFee(0);
       const flashLoanFactory = new TestFlashLoan__factory(writer1);
 
       const flashLoan = await flashLoanFactory.deploy();
       await flashLoan.setMode(1);
-      await feeCalculator.addWhitelisted([writer1.address]);
+      await p.feeCalculator.addWhitelisted([writer1.address]);
 
       await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
 
@@ -1007,32 +994,32 @@ describe('PremiaOption', () => {
   describe('premiaUncut', () => {
     it('should not reward any uPremia if price not set for token in priceProvider', async () => {
       await optionTestUtil.addEthAndWriteOptions(2);
-      expect(await premiaUncut.balanceOf(writer1.address)).to.eq(0);
+      expect(await p.uPremia.balanceOf(writer1.address)).to.eq(0);
     });
 
     it('should reward uPremia on writeOption', async () => {
-      await priceProvider.setTokenPrices(
+      await p.priceProvider.setTokenPrices(
         [dai.address, eth.address],
         [ethers.utils.parseEther('1'), ethers.utils.parseEther('10')],
       );
 
       await optionTestUtil.addEthAndWriteOptions(2);
-      expect(await premiaUncut.balanceOf(writer1.address)).to.eq(
+      expect(await p.uPremia.balanceOf(writer1.address)).to.eq(
         ethers.utils.parseEther('0.2'),
       );
     });
 
     it('should reward uPremia on exerciseOption', async () => {
-      await priceProvider.setTokenPrices(
+      await p.priceProvider.setTokenPrices(
         [dai.address, eth.address],
         [ethers.utils.parseEther('1'), ethers.utils.parseEther('10')],
       );
 
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 1);
-      expect(await premiaUncut.balanceOf(writer1.address)).to.eq(
+      expect(await p.uPremia.balanceOf(writer1.address)).to.eq(
         ethers.utils.parseEther('0.2'),
       );
-      expect(await premiaUncut.balanceOf(user1.address)).to.eq(
+      expect(await p.uPremia.balanceOf(user1.address)).to.eq(
         ethers.utils.parseEther('0.1'),
       );
     });

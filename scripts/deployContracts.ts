@@ -1,44 +1,111 @@
 import {
+  FeeCalculator,
   FeeCalculator__factory,
+  PremiaBondingCurve,
+  PremiaBondingCurve__factory,
+  PremiaErc20,
   PremiaErc20__factory,
+  PremiaFeeDiscount,
   PremiaFeeDiscount__factory,
+  PremiaMaker,
+  PremiaMaker__factory,
+  PremiaMining,
+  PremiaMining__factory,
+  PremiaPBS,
+  PremiaPBS__factory,
+  PremiaReferral,
   PremiaReferral__factory,
+  PremiaStaking,
   PremiaStaking__factory,
+  PremiaUncutErc20,
   PremiaUncutErc20__factory,
+  PriceProvider,
   PriceProvider__factory,
+  TestErc20,
+  TestErc20__factory,
 } from '../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-export async function deployContracts(deployer: SignerWithAddress) {
-  const premiaFactory = new PremiaErc20__factory(deployer);
-  const priceProviderFactory = new PriceProvider__factory(deployer);
-  const premiaReferralFactory = new PremiaReferral__factory(deployer);
-  const premiaFeeDiscountFactory = new PremiaFeeDiscount__factory(deployer);
-  const feeCalculatorFactory = new FeeCalculator__factory(deployer);
-  const premiaStakingFactory = new PremiaStaking__factory(deployer);
-  const premiaUncutErc20Factory = new PremiaUncutErc20__factory(deployer);
+export async function deployContracts(
+  deployer: SignerWithAddress,
+  treasury: SignerWithAddress,
+  isTest: boolean,
+): Promise<IPremiaContracts> {
+  let premia: PremiaErc20 | TestErc20;
+  if (isTest) {
+    premia = await new TestErc20__factory(deployer).deploy();
+  } else {
+    premia = await new PremiaErc20__factory(deployer).deploy();
+  }
 
-  const premia = await premiaFactory.deploy();
-  const priceProvider = await priceProviderFactory.deploy();
-  const premiaUncutErc20 = await premiaUncutErc20Factory.deploy(
+  const priceProvider = await new PriceProvider__factory(deployer).deploy();
+
+  const uPremia = await new PremiaUncutErc20__factory(deployer).deploy(
     priceProvider.address,
   );
-  const premiaStaking = await premiaStakingFactory.deploy(premia.address);
-  const premiaFeeDiscount = await premiaFeeDiscountFactory.deploy(
-    premiaStaking.address,
+
+  const xPremia = await new PremiaStaking__factory(deployer).deploy(
+    premia.address,
   );
-  const feeCalculator = await feeCalculatorFactory.deploy(
+
+  const premiaBondingCurve = await new PremiaBondingCurve__factory(
+    deployer,
+  ).deploy(premia.address, treasury.address, '200000000000000', '1000000000');
+
+  const premiaPBS = await new PremiaPBS__factory(deployer).deploy(
+    premia.address,
+    0,
+    100,
+    treasury.address,
+  );
+
+  const premiaMaker = await new PremiaMaker__factory(deployer).deploy(
+    premia.address,
+    premiaBondingCurve.address,
+    xPremia.address,
+    treasury.address,
+  );
+
+  const premiaMining = await new PremiaMining__factory(deployer).deploy(
+    premia.address,
+    0,
+  );
+
+  const premiaFeeDiscount = await new PremiaFeeDiscount__factory(
+    deployer,
+  ).deploy(xPremia.address);
+
+  const feeCalculator = await new FeeCalculator__factory(deployer).deploy(
     premiaFeeDiscount.address,
   );
-  const premiaReferral = await premiaReferralFactory.deploy();
+
+  const premiaReferral = await new PremiaReferral__factory(deployer).deploy();
 
   return {
     premia,
+    premiaBondingCurve,
+    premiaMaker,
+    premiaMining,
+    premiaPBS,
     priceProvider,
-    premiaUncutErc20,
-    premiaStaking,
+    uPremia,
+    xPremia,
     premiaFeeDiscount,
     feeCalculator,
     premiaReferral,
   };
+}
+
+export interface IPremiaContracts {
+  premia: PremiaErc20;
+  premiaMining: PremiaMining;
+  premiaPBS: PremiaPBS;
+  priceProvider: PriceProvider;
+  uPremia: PremiaUncutErc20;
+  xPremia: PremiaStaking;
+  premiaBondingCurve: PremiaBondingCurve;
+  premiaFeeDiscount: PremiaFeeDiscount;
+  premiaMaker: PremiaMaker;
+  feeCalculator: FeeCalculator;
+  premiaReferral: PremiaReferral;
 }

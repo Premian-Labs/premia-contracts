@@ -7,8 +7,6 @@ import {
   PremiaMarket__factory,
   PremiaOption,
   PremiaOption__factory,
-  PremiaUncutErc20,
-  PriceProvider,
   TestErc20,
   TestErc20__factory,
 } from '../contractsTyped';
@@ -17,14 +15,13 @@ import { IOrder, IOrderCreated } from '../types';
 import { PremiaMarketTestUtil } from './utils/PremiaMarketTestUtil';
 import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
 import { ZERO_ADDRESS } from './utils/constants';
-import { deployContracts } from '../scripts/deployContracts';
+import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
 
+let p: IPremiaContracts;
 let eth: TestErc20;
 let dai: TestErc20;
 let premiaOption: PremiaOption;
 let premiaMarket: PremiaMarket;
-let premiaUncut: PremiaUncutErc20;
-let priceProvider: PriceProvider;
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
 let user2: SignerWithAddress;
@@ -44,29 +41,27 @@ describe('PremiaMarket', () => {
     eth = await erc20Factory.deploy();
     dai = await erc20Factory.deploy();
 
-    const contracts = await deployContracts(admin);
-    await contracts.feeCalculator.setPremiaFeeDiscount(ZERO_ADDRESS);
-    premiaUncut = contracts.premiaUncutErc20;
-    priceProvider = contracts.priceProvider;
+    p = await deployContracts(admin, feeRecipient, true);
+    await p.feeCalculator.setPremiaFeeDiscount(ZERO_ADDRESS);
 
     const premiaOptionFactory = new PremiaOption__factory(admin);
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
       eth.address,
       ZERO_ADDRESS,
-      contracts.feeCalculator.address,
+      p.feeCalculator.address,
       ZERO_ADDRESS,
       feeRecipient.address,
     );
 
     const premiaMarketFactory = new PremiaMarket__factory(admin);
     premiaMarket = await premiaMarketFactory.deploy(
-      contracts.premiaUncutErc20.address,
-      contracts.feeCalculator.address,
+      p.uPremia.address,
+      p.feeCalculator.address,
       admin.address,
     );
 
-    await premiaUncut.addMinter([premiaMarket.address]);
+    await p.uPremia.addMinter([premiaMarket.address]);
 
     optionTestUtil = new PremiaOptionTestUtil({
       eth,
@@ -1058,7 +1053,7 @@ describe('PremiaMarket', () => {
   });
 
   it('should reward uPremia on fillOrder for both maker and taker', async () => {
-    await priceProvider.setTokenPrices(
+    await p.priceProvider.setTokenPrices(
       [dai.address, eth.address],
       [ethers.utils.parseEther('1'), ethers.utils.parseEther('10')],
     );
@@ -1072,10 +1067,10 @@ describe('PremiaMarket', () => {
 
     await premiaMarket.connect(taker).fillOrder(order.order, 1);
 
-    expect(await premiaUncut.balanceOf(maker.address)).to.eq(
+    expect(await p.uPremia.balanceOf(maker.address)).to.eq(
       ethers.utils.parseEther('0.15'),
     ); // 0.015 eth fee at 1 eth = 10 usd
-    expect(await premiaUncut.balanceOf(taker.address)).to.eq(
+    expect(await p.uPremia.balanceOf(taker.address)).to.eq(
       ethers.utils.parseEther('0.15'),
     ); // 0.015 eth fee at 1 eth = 10 usd
   });
