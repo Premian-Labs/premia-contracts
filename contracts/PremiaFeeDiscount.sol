@@ -112,8 +112,8 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
     }
 
     // Stake using IERC2612 permit
-    function stakeWithPermit(uint256 _amount, uint256 _period, uint8 _v, bytes32 _r, bytes32 _s) external {
-        IERC2612Permit(address(xPremia)).permit(msg.sender, address(this), _amount, block.timestamp + 60, _v, _r, _s);
+    function stakeWithPermit(uint256 _amount, uint256 _period, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) external {
+        IERC2612Permit(address(xPremia)).permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
         stake(_amount, _period);
     }
 

@@ -11,6 +11,7 @@ import {
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { resetHardhat, setTimestamp } from './utils/evm';
+import { signERC2612Permit } from './eth-permit/eth-permit';
 
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
@@ -103,6 +104,36 @@ describe('PremiaFeeDiscount', () => {
 
     expect(amountWithBonus).to.eq(ethers.utils.parseEther('137500'));
     expect(await premiaFeeDiscount.getDiscount(user1.address)).to.eq(5313);
+  });
+
+  it('should stake successfully with permit', async () => {
+    await xPremia.connect(user1).approve(premiaFeeDiscount.address, 0);
+    const deadline = Math.floor(new Date().getTime() / 1000 + 3600);
+
+    const result = await signERC2612Permit(
+      user1.provider,
+      xPremia.address,
+      user1.address,
+      premiaFeeDiscount.address,
+      stakeAmount.toString(),
+      deadline,
+    );
+
+    await premiaFeeDiscount
+      .connect(user1)
+      .stakeWithPermit(
+        stakeAmount,
+        3 * oneMonth,
+        deadline,
+        result.v,
+        result.r,
+        result.s,
+      );
+
+    const amountWithBonus = await premiaFeeDiscount.getStakeAmountWithBonus(
+      user1.address,
+    );
+    expect(amountWithBonus).to.eq(ethers.utils.parseEther('150000'));
   });
 
   it('should fail unstaking if stake is still locked', async () => {

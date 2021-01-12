@@ -10,6 +10,7 @@ import {
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { getEthBalance, resetHardhat, setTimestamp } from './utils/evm';
+import { signERC2612Permit } from './eth-permit/eth-permit';
 
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
@@ -93,6 +94,79 @@ describe('PremiaBondingCurve', () => {
       ethers.utils.parseEther('10000000'),
     );
     expect(await getEthBalance(premiaBondingCurve.address)).to.eq(0);
+  });
+
+  it('should sell successfully with permit', async () => {
+    const initialEthTreasury = await getEthBalance(treasury.address);
+
+    const premiaAmount = ethers.utils.parseEther('100000');
+    const ethAmount = await premiaBondingCurve.getEthCost(0, premiaAmount);
+    await premiaBondingCurve.connect(user1).buyExactTokenAmount(premiaAmount, {
+      value: ethAmount,
+    });
+
+    await premia
+      .connect(user1)
+      .approve(premiaBondingCurve.address, premiaAmount);
+
+    const deadline = Math.floor(new Date().getTime() / 1000 + 3600);
+
+    const result = await signERC2612Permit(
+      user1.provider,
+      premia.address,
+      user1.address,
+      premiaBondingCurve.address,
+      premiaAmount.toString(),
+      deadline,
+    );
+
+    await premiaBondingCurve
+      .connect(user1)
+      .sellWithPermit(premiaAmount, 0, deadline, result.v, result.r, result.s);
+
+    const ethTreasury = await getEthBalance(treasury.address);
+
+    expect(ethTreasury.sub(initialEthTreasury)).to.eq(ethAmount.div(10));
+    expect(await premia.balanceOf(premiaBondingCurve.address)).to.eq(
+      ethers.utils.parseEther('10000000'),
+    );
+    expect(await getEthBalance(premiaBondingCurve.address)).to.eq(0);
+  });
+
+  it('should fail selling with permit if permit is invalid', async () => {
+    const premiaAmount = ethers.utils.parseEther('100000');
+    const ethAmount = await premiaBondingCurve.getEthCost(0, premiaAmount);
+    await premiaBondingCurve.connect(user1).buyExactTokenAmount(premiaAmount, {
+      value: ethAmount,
+    });
+
+    await premia
+      .connect(user1)
+      .approve(premiaBondingCurve.address, premiaAmount);
+
+    const deadline = Math.floor(new Date().getTime() / 1000 + 3600);
+
+    const result = await signERC2612Permit(
+      user1.provider,
+      premia.address,
+      user1.address,
+      premiaBondingCurve.address,
+      premiaAmount.toString(),
+      deadline,
+    );
+
+    await expect(
+      premiaBondingCurve
+        .connect(user1)
+        .sellWithPermit(
+          premiaAmount,
+          0,
+          deadline + 3600,
+          result.v,
+          result.r,
+          result.s,
+        ),
+    ).to.be.revertedWith('ERC20Permit: invalid signature');
   });
 
   it('should only allow performing upgrade after 7 days timelock', async () => {

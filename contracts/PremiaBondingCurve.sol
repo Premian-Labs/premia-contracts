@@ -126,8 +126,8 @@ contract PremiaBondingCurve is Ownable {
     }
 
     // Sell using IERC2612 permit
-    function sellWithPermit(uint256 _tokenAmount, uint256 _minEth, uint8 _v, bytes32 _r, bytes32 _s) external {
-        IERC2612Permit(address(premia)).permit(msg.sender, address(this), _tokenAmount, block.timestamp + 60, _v, _r, _s);
+    function sellWithPermit(uint256 _tokenAmount, uint256 _minEth, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) external {
+        IERC2612Permit(address(premia)).permit(msg.sender, address(this), _tokenAmount, _deadline, _v, _r, _s);
         sell(_tokenAmount, _minEth);
     }
 

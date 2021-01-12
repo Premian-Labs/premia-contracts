@@ -162,9 +162,9 @@ contract PremiaMining is Ownable {
     }
 
     // Deposit using IERC2612 permit
-    function depositWithPermit(uint256 _pid, uint256 _amount, uint8 _v, bytes32 _r, bytes32 _s) external {
+    function depositWithPermit(uint256 _pid, uint256 _amount, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) external {
         // Will revert if pool token doesnt implement permit
-        IERC2612Permit(address(poolInfo[_pid].lpToken)).permit(msg.sender, address(this), _amount, block.timestamp + 60, _v, _r, _s);
+        IERC2612Permit(address(poolInfo[_pid].lpToken)).permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
         deposit(_pid, _amount);
     }
 

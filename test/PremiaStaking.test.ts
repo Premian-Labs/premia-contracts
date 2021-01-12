@@ -7,6 +7,7 @@ import {
 } from '../contractsTyped';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { signERC2612Permit } from './eth-permit/eth-permit';
 
 let admin: SignerWithAddress;
 let alice: SignerWithAddress;
@@ -28,6 +29,25 @@ describe('PremiaStaking', () => {
     await premia.mint(alice.address, '100');
     await premia.mint(bob.address, '100');
     await premia.mint(carol.address, '100');
+  });
+
+  it('should successfully enter with permit', async () => {
+    const deadline = Math.floor(new Date().getTime() / 1000 + 3600);
+
+    const result = await signERC2612Permit(
+      alice.provider,
+      premia.address,
+      alice.address,
+      premiaStaking.address,
+      '100',
+      deadline,
+    );
+
+    await premiaStaking
+      .connect(alice)
+      .enterWithPermit('100', deadline, result.v, result.r, result.s);
+    const balance = await premiaStaking.balanceOf(alice.address);
+    expect(balance).to.eq(100);
   });
 
   it('should not allow enter if not enough approve', async () => {

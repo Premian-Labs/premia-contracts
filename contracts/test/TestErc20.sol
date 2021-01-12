@@ -2,10 +2,10 @@
 
 pragma solidity >=0.6.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import "../ERC20Permit.sol";
 
 // Only used for unit tests
-contract TestErc20 is ERC20 {
+contract TestErc20 is ERC20Permit {
     constructor() ERC20("Test", "TEST") {
     }
 

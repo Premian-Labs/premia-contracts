@@ -12,19 +12,19 @@ import "./interface/IERC2612Permit.sol";
 // Fork from SushiBar contract from SushiSwap
 
 // This contract handles swapping to and from xPremia, PremiaSwap's staking token.
-contract PremiaStaking is ERC20("PremiaStaking", "xPREMIA"){
+contract PremiaStaking is ERC20Permit {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     IERC20 public premia;
 
     // Define the Premia token contract
-    constructor(IERC20 _premia) {
+    constructor(IERC20 _premia) ERC20("PremiaStaking", "xPREMIA") {
         premia = _premia;
     }
 
     // Enter using IERC2612 permit
-    function enterWithPermit(uint256 _amount, uint8 _v, bytes32 _r, bytes32 _s) public {
-        IERC2612Permit(address(premia)).permit(msg.sender, address(this), _amount, block.timestamp + 60, _v, _r, _s);
+    function enterWithPermit(uint256 _amount, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
+        IERC2612Permit(address(premia)).permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
         enter(_amount);
     }
 
