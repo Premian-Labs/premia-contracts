@@ -9,6 +9,8 @@ import "@openzeppelin/contracts/utils/EnumerableSet.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "./interface/IERC2612Permit.sol";
+
 
 // Fork of SushiSwap's MasterChef contract
 contract PremiaMining is Ownable {
@@ -157,6 +159,13 @@ contract PremiaMining is Ownable {
         uint256 premiaReward = multiplier.mul(premiaPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
         pool.accPremiaPerShare = pool.accPremiaPerShare.add(premiaReward.mul(1e12).div(lpSupply));
         pool.lastRewardBlock = block.number;
+    }
+
+    // Deposit using IERC2612 permit
+    function depositWithPermit(uint256 _pid, uint256 _amount, uint8 _v, bytes32 _r, bytes32 _s) external {
+        // Will revert if pool token doesnt implement permit
+        IERC2612Permit(address(poolInfo[_pid].lpToken)).permit(msg.sender, address(this), _amount, block.timestamp + 60, _v, _r, _s);
+        deposit(_pid, _amount);
     }
 
     // Deposit LP tokens to PremiaMining for PREMIA allocation.

@@ -11,6 +11,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
 import "./interface/INewPremiaFeeDiscount.sol";
+import "./interface/IERC2612Permit.sol";
 
 contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
@@ -110,10 +111,15 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         emit StakeMigrated(msg.sender, address(newContract), user.balance, user.stakePeriod, user.lockedUntil);
     }
 
+    // Stake using IERC2612 permit
+    function stakeWithPermit(uint256 _amount, uint256 _period, uint8 _v, bytes32 _r, bytes32 _s) external {
+        IERC2612Permit(address(xPremia)).permit(msg.sender, address(this), _amount, block.timestamp + 60, _v, _r, _s);
+        stake(_amount, _period);
+    }
 
     // Stake specified amount. The amount will be locked for the given period.
     // Longer period of locking will apply a multiplier on the amount staked, in the fee discount calculation
-    function stake(uint256 _amount, uint256 _period) external nonReentrant {
+    function stake(uint256 _amount, uint256 _period) public nonReentrant {
         require(stakePeriods[_period] > 0, "Stake period does not exists");
         UserInfo storage user = userInfo[msg.sender];
 

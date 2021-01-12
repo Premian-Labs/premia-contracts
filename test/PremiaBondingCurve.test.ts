@@ -84,7 +84,7 @@ describe('PremiaBondingCurve', () => {
     await premia
       .connect(user1)
       .approve(premiaBondingCurve.address, premiaAmount);
-    await premiaBondingCurve.connect(user1).sell(premiaAmount);
+    await premiaBondingCurve.connect(user1).sell(premiaAmount, 0);
 
     const ethTreasury = await getEthBalance(treasury.address);
 

@@ -7,6 +7,7 @@ import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
 import "./interface/IPremiaBondingCurveUpgrade.sol";
+import "./interface/IERC2612Permit.sol";
 
 // This contract is forked from Hegic's LinearBondingCurve
 contract PremiaBondingCurve is Ownable {
@@ -116,7 +117,7 @@ contract PremiaBondingCurve is Ownable {
     function buyTokenWithExactEthAmount(uint256 _minToken, address _sendTo) external payable notUpgraded returns(uint256) {
         uint256 ethAmount = msg.value;
         uint256 tokenAmount = getTokensPurchasable(ethAmount);
-        require(tokenAmount >= _minToken, "Slippage too high");
+        require(tokenAmount >= _minToken, "< _minToken");
         soldAmount = soldAmount.add(tokenAmount);
         premia.safeTransfer(_sendTo, tokenAmount);
         emit Bought(msg.sender, _sendTo, tokenAmount, ethAmount);
@@ -124,10 +125,18 @@ contract PremiaBondingCurve is Ownable {
         return tokenAmount;
     }
 
+    // Sell using IERC2612 permit
+    function sellWithPermit(uint256 _tokenAmount, uint256 _minEth, uint8 _v, bytes32 _r, bytes32 _s) external {
+        IERC2612Permit(address(premia)).permit(msg.sender, address(this), _tokenAmount, block.timestamp + 60, _v, _r, _s);
+        sell(_tokenAmount, _minEth);
+    }
+
     // Sell premia for ETH
-    function sell(uint256 _tokenAmount) external notUpgraded {
+    // Will revert if eth amount < _minEth
+    function sell(uint256 _tokenAmount, uint256 _minEth) public notUpgraded {
         uint256 nextSold = soldAmount.sub(_tokenAmount);
         uint256 ethAmount = getEthCost(nextSold, soldAmount);
+        require(ethAmount >= _minEth, "< _minEth");
         uint256 commission = ethAmount.div(10);
         uint256 refund = ethAmount.sub(commission);
         require(commission > 0);

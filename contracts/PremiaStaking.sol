@@ -7,6 +7,8 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import "./ERC20Permit.sol";
 
+import "./interface/IERC2612Permit.sol";
+
 // Fork from SushiBar contract from SushiSwap
 
 // This contract handles swapping to and from xPremia, PremiaSwap's staking token.
@@ -18,6 +20,12 @@ contract PremiaStaking is ERC20("PremiaStaking", "xPREMIA"){
     // Define the Premia token contract
     constructor(IERC20 _premia) {
         premia = _premia;
+    }
+
+    // Enter using IERC2612 permit
+    function enterWithPermit(uint256 _amount, uint8 _v, bytes32 _r, bytes32 _s) public {
+        IERC2612Permit(address(premia)).permit(msg.sender, address(this), _amount, block.timestamp + 60, _v, _r, _s);
+        enter(_amount);
     }
 
     // Enter the staking contract. Pay some PREMIAs. Earn some shares.
