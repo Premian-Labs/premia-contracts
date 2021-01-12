@@ -654,17 +654,6 @@ describe('PremiaMarket', () => {
 
   describe('fillOrder', () => {
     describe('any side', () => {
-      it('should fail filling order if order is not found', async () => {
-        const order: IOrder = {
-          ...marketTestUtil.getDefaultOrder(admin, { isBuy: true }),
-          expirationTime: 0,
-          salt: 0,
-        };
-        await expect(
-          premiaMarket.connect(admin.address).fillOrder(order, 1),
-        ).to.be.revertedWith('Order not found');
-      });
-
       it('should fail filling order if order is expired', async () => {
         const maker = user1;
         const taker = user2;

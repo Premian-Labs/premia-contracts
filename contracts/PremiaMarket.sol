@@ -367,7 +367,9 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     function fillOrder(Order memory _order, uint256 _maxAmount) public nonReentrant returns(uint256) {
         bytes32 hash = getOrderHash(_order);
 
-        require(amounts[hash] > 0, "Order not found");
+        // If nothing left to fill, return
+        if (amounts[hash] == 0) return 0;
+
         require(_order.expirationTime != 0 && block.timestamp < _order.expirationTime, "Order expired");
         require(_order.optionContract != address(0), "Order not found");
         require(_maxAmount > 0, "MaxAmount must be > 0");
