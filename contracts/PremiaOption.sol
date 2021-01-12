@@ -15,7 +15,7 @@ import "./interface/IFlashLoanReceiver.sol";
 import "./interface/IPremiaReferral.sol";
 import "./interface/IPremiaUncutErc20.sol";
 
-import "./interface/uniswap/IUniswapV2Router02.sol";
+import "./uniswapV2/interfaces/IUniswapV2Router02.sol";
 
 
 contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {

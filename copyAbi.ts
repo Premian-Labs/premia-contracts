@@ -32,6 +32,10 @@ fs.copyFileSync(
   './abi/PremiaPBS.json',
 );
 fs.copyFileSync(
+  './artifacts/contracts/PremiaMaker.sol/PremiaMaker.json',
+  './abi/PremiaMaker.json',
+);
+fs.copyFileSync(
   './artifacts/contracts/PremiaMarket.sol/PremiaMarket.json',
   './abi/PremiaMarket.json',
 );
@@ -80,6 +84,24 @@ fs.copyFileSync(
 fs.copyFileSync(
   './artifacts/contracts/test/TestFlashLoan.sol/TestFlashLoan.json',
   './abi/TestFlashLoan.json',
+);
+
+// UniswapV2
+fs.copyFileSync(
+  './contracts/uniswapV2/abi/UniswapV2Factory.json',
+  './abi/UniswapV2Factory.json',
+);
+fs.copyFileSync(
+  './contracts/uniswapV2/abi/UniswapV2Pair.json',
+  './abi/UniswapV2Pair.json',
+);
+fs.copyFileSync(
+  './contracts/uniswapV2/abi/UniswapV2Router02.json',
+  './abi/UniswapV2Router02.json',
+);
+fs.copyFileSync(
+  './artifacts/contracts/uniswapV2/WETH.sol/WETH9.json',
+  './abi/WETH9.json',
 );
 
 rimraf.sync('./contractsTyped');

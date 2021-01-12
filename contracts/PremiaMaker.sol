@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import "@openzeppelin/contracts/math/SafeMath.sol";
 import '@openzeppelin/contracts/utils/EnumerableSet.sol';
 
-import "./interface/uniswap/IUniswapV2Router02.sol";
+import "./uniswapV2/interfaces/IUniswapV2Router02.sol";
 import "./PremiaBondingCurve.sol";
 
 contract PremiaMaker is Ownable {
@@ -35,6 +35,8 @@ contract PremiaMaker is Ownable {
         premiaStaking = _premiaStaking;
         treasury = _treasury;
     }
+
+    receive() external payable {}
 
     ///////////
     // Admin //
@@ -77,18 +79,18 @@ contract PremiaMaker is Ownable {
         IERC20 token = IERC20(_token);
 
         uint256 amount = token.balanceOf(address(this));
-
         uint256 fee = amount.mul(treasuryFee).div(_inverseBasisPoint);
-        token.safeTransfer(treasury, fee);
+        uint256 amountMinusFee = amount.sub(fee);
 
-        token.safeIncreaseAllowance(address(_router), amount.sub(fee));
+        token.safeTransfer(treasury, fee);
+        token.safeIncreaseAllowance(address(_router), amountMinusFee);
 
         address[] memory path = new address[](2);
         path[0] = _token;
         path[1] = _router.WETH();
 
         _router.swapExactTokensForETH(
-            amount,
+            amountMinusFee,
             0,
             path,
             address(this),
@@ -97,6 +99,6 @@ contract PremiaMaker is Ownable {
 
         uint256 premiaAmount = premiaBondingCurve.buyTokenWithExactEthAmount{value: address(this).balance}(0, premiaStaking);
 
-        emit Converted(msg.sender, address(_router), _token, amount.sub(fee), premiaAmount);
+        emit Converted(msg.sender, address(_router), _token, amountMinusFee, premiaAmount);
     }
 }

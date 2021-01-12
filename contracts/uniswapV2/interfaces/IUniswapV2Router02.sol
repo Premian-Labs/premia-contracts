@@ -1,5 +1,4 @@
-// SPDX-License-Identifier: J-J-J-JENGA!!!
-pragma solidity >=0.6.0;
+pragma solidity >=0.6.2;
 
 import './IUniswapV2Router01.sol';
 
