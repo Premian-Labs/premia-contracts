@@ -10,6 +10,7 @@ import '@openzeppelin/contracts/utils/EnumerableSet.sol';
 
 import "./uniswapV2/interfaces/IUniswapV2Router02.sol";
 import "./PremiaBondingCurve.sol";
+import "./uniswapV2/interfaces/IWETH.sol";
 
 contract PremiaMaker is Ownable {
     using SafeMath for uint256;
@@ -85,19 +86,33 @@ contract PremiaMaker is Ownable {
         token.safeTransfer(treasury, fee);
         token.safeIncreaseAllowance(address(_router), amountMinusFee);
 
-        address[] memory path = new address[](2);
-        path[0] = _token;
-        path[1] = _router.WETH();
+        address weth = _router.WETH();
+        uint256 premiaAmount;
 
-        _router.swapExactTokensForETH(
-            amountMinusFee,
-            0,
-            path,
-            address(this),
-            block.timestamp.add(60)
-        );
+        if (_token != address(premia)) {
+            if (_token != weth) {
+                address[] memory path = new address[](2);
+                path[0] = _token;
+                path[1] = weth;
 
-        uint256 premiaAmount = premiaBondingCurve.buyTokenWithExactEthAmount{value: address(this).balance}(0, premiaStaking);
+                _router.swapExactTokensForETH(
+                    amountMinusFee,
+                    0,
+                    path,
+                    address(this),
+                    block.timestamp.add(60)
+                );
+            } else {
+                IWETH(weth).withdraw(amountMinusFee);
+            }
+
+            premiaAmount = premiaBondingCurve.buyTokenWithExactEthAmount{value: address(this).balance}(0, premiaStaking);
+        } else {
+            premiaAmount = amountMinusFee;
+            premia.safeTransfer(premiaStaking, premiaAmount);
+            // Just for the event
+            _router = IUniswapV2Router02(0);
+        }
 
         emit Converted(msg.sender, address(_router), _token, amountMinusFee, premiaAmount);
     }
