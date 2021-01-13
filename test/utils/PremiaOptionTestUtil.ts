@@ -1,6 +1,6 @@
-import { PremiaOption, TestErc20 } from '../../contractsTyped';
+import { PremiaOption, TestErc20, WETH9 } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { BigNumberish, utils } from 'ethers';
+import { BigNumberish } from 'ethers';
 import { ONE_WEEK, ZERO_ADDRESS } from './constants';
 import { parseEther } from 'ethers/lib/utils';
 
@@ -14,7 +14,7 @@ interface WriteOptionArgs {
 }
 
 interface PremiaOptionTestUtilProps {
-  eth: TestErc20;
+  weth: WETH9;
   dai: TestErc20;
   premiaOption: PremiaOption;
   admin: SignerWithAddress;
@@ -26,7 +26,7 @@ interface PremiaOptionTestUtilProps {
 }
 
 export class PremiaOptionTestUtil {
-  eth: TestErc20;
+  weth: WETH9;
   dai: TestErc20;
   premiaOption: PremiaOption;
   admin: SignerWithAddress;
@@ -37,7 +37,7 @@ export class PremiaOptionTestUtil {
   tax: number;
 
   constructor(props: PremiaOptionTestUtilProps) {
-    this.eth = props.eth;
+    this.weth = props.weth;
     this.dai = props.dai;
     this.premiaOption = props.premiaOption;
     this.admin = props.admin;
@@ -60,7 +60,7 @@ export class PremiaOptionTestUtil {
 
   getOptionDefaults() {
     return {
-      address: this.eth.address,
+      address: this.weth.address,
       expiration: this.getNextExpiration(),
       strikePrice: parseEther('10'),
       isCall: true,
@@ -70,7 +70,7 @@ export class PremiaOptionTestUtil {
 
   async addEth() {
     return this.premiaOption.setToken(
-      this.eth.address,
+      this.weth.address,
       parseEther('1'),
       parseEther('10'),
       false,
@@ -105,13 +105,10 @@ export class PremiaOptionTestUtil {
       const amount = parseEther(contractAmount.toString())
         .mul(1e5 + this.tax * 1e5)
         .div(1e5);
-      await this.eth.mint(user.address, amount.toString());
-      await this.eth
+      await this.weth.connect(user).deposit({ value: amount });
+      await this.weth
         .connect(user)
-        .increaseAllowance(
-          this.premiaOption.address,
-          parseEther(amount.toString()),
-        );
+        .approve(this.premiaOption.address, parseEther(amount.toString()));
     } else {
       const amount = parseEther('10')
         .mul(contractAmount)
@@ -177,13 +174,12 @@ export class PremiaOptionTestUtil {
     } else {
       const amount = amountToExercise * (1 + this.tax);
 
-      await this.eth.mint(this.user1.address, parseEther(amount.toString()));
-      await this.eth
+      await this.weth
         .connect(this.user1)
-        .increaseAllowance(
-          this.premiaOption.address,
-          parseEther(amount.toString()),
-        );
+        .deposit({ value: parseEther(amount.toString()) });
+      await this.weth
+        .connect(this.user1)
+        .approve(this.premiaOption.address, parseEther(amount.toString()));
     }
 
     return this.premiaOption

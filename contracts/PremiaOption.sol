@@ -433,6 +433,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
             (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(msg.sender, _referrer != address(0), denominatorAmount, IFeeCalculator.FeeType.Exercise);
 
+            if (tokenAmount < _amountInMax) {
+                _amountInMax = tokenAmount;
+            }
+
             // Swap enough denominator to tokenErc20 to pay fee + strike price
             uint256 tokenAmountUsed = _swap(_router, address(tokenErc20), address(denominator), denominatorAmount.add(fee).add(feeReferrer), _amountInMax)[0];
 
@@ -451,6 +455,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
 
             (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(msg.sender, _referrer != address(0), tokenAmount, IFeeCalculator.FeeType.Exercise);
+
+            if (denominatorAmount < _amountInMax) {
+                _amountInMax = denominatorAmount;
+            }
 
             // Swap enough denominator to tokenErc20 to pay fee + strike price
             uint256 denominatorAmountUsed =  _swap(_router, address(denominator), address(tokenErc20), tokenAmount.add(fee).add(feeReferrer), _amountInMax)[0];
@@ -559,11 +567,22 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     function _payFees(address _from, IERC20 _token, address _referrer, uint256 _fee, uint256 _feeReferrer) internal {
         if (_fee > 0) {
-            _token.safeTransferFrom(_from, feeRecipient, _fee);
+            // For flash exercise
+            if (_from == address(this)) {
+                _token.safeTransfer(feeRecipient, _fee);
+            } else {
+                _token.safeTransferFrom(_from, feeRecipient, _fee);
+            }
+
         }
 
         if (_feeReferrer > 0) {
-            _token.safeTransferFrom(_from, _referrer, _feeReferrer);
+            // For flash exercise
+            if (_from == address(this)) {
+                _token.safeTransfer(_referrer, _feeReferrer);
+            } else {
+                _token.safeTransferFrom(_from, _referrer, _feeReferrer);
+            }
         }
 
         // If uPremia rewards are enabled
@@ -586,10 +605,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return _referrer;
     }
 
-    function _swap(IUniswapV2Router02 _router, address _from, address _to, uint256 _amount,uint256 _amountInMax) internal returns (uint256[] memory) {
+    function _swap(IUniswapV2Router02 _router, address _from, address _to, uint256 _amount, uint256 _amountInMax) internal returns (uint256[] memory) {
         require(_isInArray(address(_router), whitelistedUniswapRouters), "Router not whitelisted");
 
-        IERC20(_from).safeApprove(address(_router), _amountInMax);
+        IERC20(_from).approve(address(_router), _amountInMax);
 
         address[] memory path;
         address weth = _router.WETH();
@@ -613,7 +632,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             block.timestamp.add(60)
         );
 
-        IERC20(_from).safeApprove(address(_router), 0);
+        IERC20(_from).approve(address(_router), 0);
 
         return amounts;
     }

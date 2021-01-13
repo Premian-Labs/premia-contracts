@@ -1,4 +1,9 @@
-import { PremiaMarket, TestErc20, PremiaOption } from '../../contractsTyped';
+import {
+  PremiaMarket,
+  TestErc20,
+  PremiaOption,
+  WETH9,
+} from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber } from 'ethers';
 import { IOrderCreated, IOrderCreateProps } from '../../types';
@@ -8,7 +13,7 @@ import { ZERO_ADDRESS } from './constants';
 import { parseEther } from 'ethers/lib/utils';
 
 interface PremiaMarketTestUtilProps {
-  eth: TestErc20;
+  weth: WETH9;
   dai: TestErc20;
   premiaOption: PremiaOption;
   premiaMarket: PremiaMarket;
@@ -29,7 +34,7 @@ interface OrderOptions {
 }
 
 export class PremiaMarketTestUtil {
-  eth: TestErc20;
+  weth: WETH9;
   dai: TestErc20;
   premiaOption: PremiaOption;
   premiaMarket: PremiaMarket;
@@ -41,7 +46,7 @@ export class PremiaMarketTestUtil {
   optionTestUtil: PremiaOptionTestUtil;
 
   constructor(props: PremiaMarketTestUtilProps) {
-    this.eth = props.eth;
+    this.weth = props.weth;
     this.dai = props.dai;
     this.premiaOption = props.premiaOption;
     this.premiaMarket = props.premiaMarket;
@@ -52,7 +57,7 @@ export class PremiaMarketTestUtil {
     this.feeRecipient = props.feeRecipient;
 
     this.optionTestUtil = new PremiaOptionTestUtil({
-      eth: this.eth,
+      weth: this.weth,
       dai: this.dai,
       premiaOption: this.premiaOption,
       admin: this.admin,
@@ -83,7 +88,7 @@ export class PremiaMarketTestUtil {
       optionContract: orderOptions?.optionContract ?? this.premiaOption.address,
       pricePerUnit: parseEther('1'),
       optionId: orderOptions?.optionId ?? 1,
-      paymentToken: orderOptions?.paymentToken ?? this.eth.address,
+      paymentToken: orderOptions?.paymentToken ?? this.weth.address,
     };
 
     return newOrder;
@@ -149,13 +154,12 @@ export class PremiaMarketTestUtil {
     const amount = orderOptions?.amount ?? 1;
     await this.optionTestUtil.mintAndWriteOption(seller, amount);
 
-    await this.eth.mint(buyer.address, parseEther('1.015').mul(amount));
-    await this.eth
+    await this.weth
       .connect(buyer)
-      .increaseAllowance(
-        this.premiaMarket.address,
-        parseEther('1.015').mul(amount),
-      );
+      .deposit({ value: parseEther('1.015').mul(amount) });
+    await this.weth
+      .connect(buyer)
+      .approve(this.premiaMarket.address, parseEther('10000000000000'));
 
     await this.premiaOption
       .connect(seller)
