@@ -14,8 +14,8 @@ contract PremiaUncutErc20 is ERC20Permit, Ownable {
     // Addresses with minting rights
     EnumerableSet.AddressSet private _minters;
 
-    // Whitelisted receiver can receive from any address
-    EnumerableSet.AddressSet private _whitelistedReceivers;
+    // Whitelisted addresses which can receive/send uPremia
+    EnumerableSet.AddressSet private _whitelisted;
 
     IPriceProvider public priceProvider;
 
@@ -37,7 +37,7 @@ contract PremiaUncutErc20 is ERC20Permit, Ownable {
     //
 
     function _beforeTokenTransfer(address from, address to, uint256 amount) internal override {
-        require(from == address(0) || _whitelistedReceivers.contains(to), "Transfer not allowed");
+        require(from == address(0) || _whitelisted.contains(to) || _whitelisted.contains(from), "Transfer not allowed");
     }
 
     //
@@ -83,24 +83,24 @@ contract PremiaUncutErc20 is ERC20Permit, Ownable {
 
     //
 
-    function addWhitelistedReceiver(address[] memory _addr) external onlyOwner {
+    function addWhitelisted(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
-            _whitelistedReceivers.add(_addr[i]);
+            _whitelisted.add(_addr[i]);
         }
     }
 
-    function removeWhitelistedReceiver(address[] memory _addr) external onlyOwner {
+    function removeWhitelisted(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
-            _whitelistedReceivers.remove(_addr[i]);
+            _whitelisted.remove(_addr[i]);
         }
     }
 
-    function getWhitelistedReceivers() external view returns(address[] memory) {
-        uint256 length = _whitelistedReceivers.length();
+    function getWhitelisted() external view returns(address[] memory) {
+        uint256 length = _whitelisted.length();
         address[] memory result = new address[](length);
 
         for (uint256 i=0; i < length; i++) {
-            result[i] = _whitelistedReceivers.at(i);
+            result[i] = _whitelisted.at(i);
         }
 
         return result;

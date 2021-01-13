@@ -32,10 +32,29 @@ export async function deployContracts(
   isTest: boolean,
 ): Promise<IPremiaContracts> {
   let premia: PremiaErc20 | TestErc20;
+  let miningBlockStart: number;
+  let pbcBlockStart: number;
+  let pbcBlockEnd: number;
+  let miningBonusLength: number;
+  let miningPostBonusLength: number;
+
   if (isTest) {
     premia = await new TestErc20__factory(deployer).deploy();
+
+    pbcBlockStart = 0;
+    pbcBlockEnd = 100;
+
+    miningBlockStart = 100;
+    miningBonusLength = 100;
+    miningPostBonusLength = 200;
   } else {
     premia = await new PremiaErc20__factory(deployer).deploy();
+
+    pbcBlockStart = 0;
+    pbcBlockEnd = 100;
+    miningBlockStart = 100;
+    miningBonusLength = 360e3;
+    miningPostBonusLength = 3600e3;
   }
 
   const priceProvider = await new PriceProvider__factory(deployer).deploy();
@@ -54,8 +73,8 @@ export async function deployContracts(
 
   const premiaPBC = await new PremiaPBC__factory(deployer).deploy(
     premia.address,
-    0,
-    100,
+    pbcBlockStart,
+    pbcBlockEnd,
     treasury.address,
   );
 
@@ -68,7 +87,9 @@ export async function deployContracts(
 
   const premiaMining = await new PremiaMining__factory(deployer).deploy(
     premia.address,
-    0,
+    miningBlockStart,
+    miningBonusLength,
+    miningPostBonusLength,
   );
 
   const premiaFeeDiscount = await new PremiaFeeDiscount__factory(

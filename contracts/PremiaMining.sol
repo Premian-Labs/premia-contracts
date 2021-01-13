@@ -49,9 +49,9 @@ contract PremiaMining is Ownable {
     // Block number when bonus PREMIA period ends.
     uint256 public bonusEndBlock;
     // PREMIA tokens distributed per block.
-    uint256 public premiaPerBlock = 10e18;
+    uint256 public premiaPerBlock = 4e18;
     // Bonus multiplier for early premia makers.
-    uint256 public constant BONUS_MULTIPLIER = 2;
+    uint256 public constant BONUS_MULTIPLIER = 25000; // 2.5x
 
     // Info of each pool.
     PoolInfo[] public poolInfo;
@@ -66,12 +66,14 @@ contract PremiaMining is Ownable {
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
-    constructor(IERC20 _premia, uint256 _startBlock) {
+    // Accelerated period : 360e3 blocks : 10 PREMIA per bloc for 360k blocks (~7.7 weeks)
+    // Regular period :     3600e3 blocks : 4 PREMIA per bloc for 3.6m blocks (~77 weeks)
+    constructor(IERC20 _premia, uint256 _startBlock, uint256 _bonusLength, uint256 _postBonusLength) {
         premia = _premia;
 
         startBlock = _startBlock;
-        bonusEndBlock = _startBlock + 400e3; // 20 PREMIA per bloc for 400k blocks (~61 days)
-        endBlock = bonusEndBlock + 2200e3; // 10 PREMIA per bloc for 2.2m blocks (~336 days)
+        bonusEndBlock = _startBlock.add(_bonusLength);
+        endBlock = bonusEndBlock.add(_postBonusLength);
     }
 
     function poolLength() external view returns (uint256) {
@@ -103,7 +105,7 @@ contract PremiaMining is Ownable {
         poolInfo[_pid].allocPoint = _allocPoint;
     }
 
-    // Return reward multiplier over the given _from to _to block.
+    // Return reward multiplier over the given _from to _to block. (Multiplier must be divided by 1e4)
     function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
         if (_from > endBlock) {
             return 0;
@@ -114,10 +116,10 @@ contract PremiaMining is Ownable {
         if (_to <= bonusEndBlock) {
             return _to.sub(_from).mul(BONUS_MULTIPLIER);
         } else if (_from >= bonusEndBlock) {
-            return _to.sub(_from);
+            return _to.sub(_from).mul(1e4);
         } else {
             return bonusEndBlock.sub(_from).mul(BONUS_MULTIPLIER).add(
-                _to.sub(bonusEndBlock)
+                _to.sub(bonusEndBlock).mul(1e4)
             );
         }
     }
@@ -130,7 +132,7 @@ contract PremiaMining is Ownable {
         uint256 lpSupply = pool.lpToken.balanceOf(address(this));
         if (block.number > pool.lastRewardBlock && lpSupply != 0) {
             uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-            uint256 premiaReward = multiplier.mul(premiaPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+            uint256 premiaReward = multiplier.mul(premiaPerBlock).div(1e4).mul(pool.allocPoint).div(totalAllocPoint);
             accPremiaPerShare = accPremiaPerShare.add(premiaReward.mul(1e12).div(lpSupply));
         }
         return user.amount.mul(accPremiaPerShare).div(1e12).sub(user.rewardDebt);
@@ -156,7 +158,7 @@ contract PremiaMining is Ownable {
             return;
         }
         uint256 multiplier = getMultiplier(pool.lastRewardBlock, block.number);
-        uint256 premiaReward = multiplier.mul(premiaPerBlock).mul(pool.allocPoint).div(totalAllocPoint);
+        uint256 premiaReward = multiplier.mul(premiaPerBlock).div(1e4).mul(pool.allocPoint).div(totalAllocPoint);
         pool.accPremiaPerShare = pool.accPremiaPerShare.add(premiaReward.mul(1e12).div(lpSupply));
         pool.lastRewardBlock = block.number;
     }
