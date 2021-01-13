@@ -28,8 +28,8 @@ fs.copyFileSync(
   './abi/PremiaUncutErc20.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaPBS.sol/PremiaPBS.json',
-  './abi/PremiaPBS.json',
+  './artifacts/contracts/PremiaPBC.sol/PremiaPBC.json',
+  './abi/PremiaPBC.json',
 );
 fs.copyFileSync(
   './artifacts/contracts/PremiaMaker.sol/PremiaMaker.json',

@@ -14,7 +14,7 @@
 
 **PremiaOption.sol** - Option ERC1155 contract (One per denomination)
 
-**PremiaPBS.sol** - Primary Bootstrap Contribution
+**PremiaPBC.sol** - Primary Bootstrap Contribution
 
 **PremiaReferral.sol** - Keep record of all Premia referrals
 

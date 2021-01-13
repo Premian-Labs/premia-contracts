@@ -11,7 +11,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 
 
 // Primary Bootstrap Contribution
-contract PremiaPBS is Ownable, ReentrancyGuard {
+contract PremiaPBC is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
@@ -49,15 +49,15 @@ contract PremiaPBS is Ownable, ReentrancyGuard {
     // Admin //
     ///////////
 
-    // Add premia which will be distributed in the PBS
+    // Add premia which will be distributed in the PBC
     function addPremia(uint256 _amount) external onlyOwner {
-        require(block.number < endBlock, "PBS ended");
+        require(block.number < endBlock, "PBC ended");
 
         premia.safeTransferFrom(msg.sender, address(this), _amount);
         premiaTotal = premiaTotal.add(_amount);
     }
 
-    // Send eth collected during the PBS, to the treasury address
+    // Send eth collected during the PBC, to the treasury address
     function sendEthToTreasury() external onlyOwner {
         treasury.transfer(address(this).balance);
     }
@@ -69,20 +69,20 @@ contract PremiaPBS is Ownable, ReentrancyGuard {
         return ethTotal.mul(1e18).div(premiaTotal);
     }
 
-    // Deposit ETH to participate in the PBS
+    // Deposit ETH to participate in the PBC
     function contribute() external payable nonReentrant {
-        require(block.number >= startBlock, "PBS not started");
+        require(block.number >= startBlock, "PBC not started");
         require(msg.value > 0, "No eth sent");
-        require(block.number < endBlock, "PBS ended");
+        require(block.number < endBlock, "PBC ended");
 
         amountDeposited[msg.sender] = amountDeposited[msg.sender].add(msg.value);
         ethTotal = ethTotal.add(msg.value);
         emit Contributed(msg.sender, msg.value);
     }
 
-    // Collect Premia after PBS has ended
+    // Collect Premia after PBC has ended
     function collect() external nonReentrant {
-        require(block.number > endBlock, "PBS not ended");
+        require(block.number > endBlock, "PBC not ended");
         require(hasCollected[msg.sender] == false, "Address already collected its reward");
         require(amountDeposited[msg.sender] > 0, "Address did not contribute");
 

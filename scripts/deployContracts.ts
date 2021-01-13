@@ -11,8 +11,8 @@ import {
   PremiaMaker__factory,
   PremiaMining,
   PremiaMining__factory,
-  PremiaPBS,
-  PremiaPBS__factory,
+  PremiaPBC,
+  PremiaPBC__factory,
   PremiaReferral,
   PremiaReferral__factory,
   PremiaStaking,
@@ -52,7 +52,7 @@ export async function deployContracts(
     deployer,
   ).deploy(premia.address, treasury.address, '200000000000000', '1000000000');
 
-  const premiaPBS = await new PremiaPBS__factory(deployer).deploy(
+  const premiaPBC = await new PremiaPBC__factory(deployer).deploy(
     premia.address,
     0,
     100,
@@ -86,7 +86,7 @@ export async function deployContracts(
     premiaBondingCurve,
     premiaMaker,
     premiaMining,
-    premiaPBS,
+    premiaPBC,
     priceProvider,
     uPremia,
     xPremia,
@@ -99,7 +99,7 @@ export async function deployContracts(
 export interface IPremiaContracts {
   premia: PremiaErc20;
   premiaMining: PremiaMining;
-  premiaPBS: PremiaPBS;
+  premiaPBC: PremiaPBC;
   priceProvider: PriceProvider;
   uPremia: PremiaUncutErc20;
   xPremia: PremiaStaking;
