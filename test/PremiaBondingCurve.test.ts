@@ -9,6 +9,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { getEthBalance, resetHardhat, setTimestamp } from './utils/evm';
 import { signERC2612Permit } from './eth-permit/eth-permit';
 import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
+import { parseEther } from 'ethers/lib/utils';
 
 let p: IPremiaContracts;
 let admin: SignerWithAddress;
@@ -26,23 +27,17 @@ describe('PremiaBondingCurve', () => {
       admin,
     ).deploy();
 
-    await p.premia.mint(
-      p.premiaBondingCurve.address,
-      ethers.utils.parseEther('10000000'),
-    );
+    await p.premia.mint(p.premiaBondingCurve.address, parseEther('10000000'));
   });
 
   it('should require 52k eth to purchase all premia from the bonding curve', async () => {
     expect(
-      await p.premiaBondingCurve.getEthCost(
-        0,
-        ethers.utils.parseEther('10000000'),
-      ), // 10m premia
-    ).to.eq(ethers.utils.parseEther('52000'));
+      await p.premiaBondingCurve.getEthCost(0, parseEther('10000000')), // 10m premia
+    ).to.eq(parseEther('52000'));
   });
 
   it('should successfully buyExactTokenAmount 100k premia', async () => {
-    const premiaAmount = ethers.utils.parseEther('100000');
+    const premiaAmount = parseEther('100000');
     const ethAmount = await p.premiaBondingCurve.getEthCost(0, premiaAmount);
     await p.premiaBondingCurve
       .connect(user1)
@@ -51,7 +46,7 @@ describe('PremiaBondingCurve', () => {
   });
 
   it('should fail buyExactTokenAmount if not enough eth', async () => {
-    const premiaAmount = ethers.utils.parseEther('100000');
+    const premiaAmount = parseEther('100000');
     const ethAmount = await p.premiaBondingCurve.getEthCost(0, premiaAmount);
     await expect(
       p.premiaBondingCurve.connect(user1).buyExactTokenAmount(premiaAmount, {
@@ -63,7 +58,7 @@ describe('PremiaBondingCurve', () => {
   it('should sell successfully and send 10% fee to treasury', async () => {
     const initialEthTreasury = await getEthBalance(treasury.address);
 
-    const premiaAmount = ethers.utils.parseEther('100000');
+    const premiaAmount = parseEther('100000');
     const ethAmount = await p.premiaBondingCurve.getEthCost(0, premiaAmount);
     await p.premiaBondingCurve
       .connect(user1)
@@ -80,7 +75,7 @@ describe('PremiaBondingCurve', () => {
 
     expect(ethTreasury.sub(initialEthTreasury)).to.eq(ethAmount.div(10));
     expect(await p.premia.balanceOf(p.premiaBondingCurve.address)).to.eq(
-      ethers.utils.parseEther('10000000'),
+      parseEther('10000000'),
     );
     expect(await getEthBalance(p.premiaBondingCurve.address)).to.eq(0);
   });
@@ -88,7 +83,7 @@ describe('PremiaBondingCurve', () => {
   it('should sell successfully with permit', async () => {
     const initialEthTreasury = await getEthBalance(treasury.address);
 
-    const premiaAmount = ethers.utils.parseEther('100000');
+    const premiaAmount = parseEther('100000');
     const ethAmount = await p.premiaBondingCurve.getEthCost(0, premiaAmount);
     await p.premiaBondingCurve
       .connect(user1)
@@ -119,13 +114,13 @@ describe('PremiaBondingCurve', () => {
 
     expect(ethTreasury.sub(initialEthTreasury)).to.eq(ethAmount.div(10));
     expect(await p.premia.balanceOf(p.premiaBondingCurve.address)).to.eq(
-      ethers.utils.parseEther('10000000'),
+      parseEther('10000000'),
     );
     expect(await getEthBalance(p.premiaBondingCurve.address)).to.eq(0);
   });
 
   it('should fail selling with permit if permit is invalid', async () => {
-    const premiaAmount = ethers.utils.parseEther('100000');
+    const premiaAmount = parseEther('100000');
     const ethAmount = await p.premiaBondingCurve.getEthCost(0, premiaAmount);
     await p.premiaBondingCurve
       .connect(user1)
@@ -163,7 +158,7 @@ describe('PremiaBondingCurve', () => {
   });
 
   it('should only allow performing upgrade after 7 days timelock', async () => {
-    const premiaAmount = ethers.utils.parseEther('1000000');
+    const premiaAmount = parseEther('1000000');
     const ethAmount = await p.premiaBondingCurve.getEthCost(0, premiaAmount);
     await p.premiaBondingCurve
       .connect(user1)
@@ -192,7 +187,7 @@ describe('PremiaBondingCurve', () => {
     expect(await p.premia.balanceOf(p.premiaBondingCurve.address)).to.eq(0);
     expect(
       await p.premia.balanceOf(testPremiaBondingCurveUpgrade.address),
-    ).to.eq(ethers.utils.parseEther('9000000'));
+    ).to.eq(parseEther('9000000'));
     expect(await getEthBalance(p.premiaBondingCurve.address)).to.eq(0);
     expect(await getEthBalance(testPremiaBondingCurveUpgrade.address)).to.eq(
       ethAmount,
@@ -221,21 +216,21 @@ describe('PremiaBondingCurve', () => {
 
   it('should buyTokenWithExactEthAmount successfully', async () => {
     const tokenAmount = await p.premiaBondingCurve.getTokensPurchasable(
-      ethers.utils.parseEther('100'),
+      parseEther('100'),
     );
     await p.premiaBondingCurve
       .connect(user1)
       .buyTokenWithExactEthAmount(0, user1.address, {
-        value: ethers.utils.parseEther('100'),
+        value: parseEther('100'),
       });
     expect(await p.premia.balanceOf(user1.address)).to.eq(tokenAmount);
     expect(await getEthBalance(p.premiaBondingCurve.address)).to.eq(
-      ethers.utils.parseEther('100'),
+      parseEther('100'),
     );
   });
 
   it('should calculate correctly tokens purchasable', async () => {
-    const premiaAmount = ethers.utils.parseEther('1000000');
+    const premiaAmount = parseEther('1000000');
 
     let ethAmount = await p.premiaBondingCurve.getEthCost(0, premiaAmount);
     let tokensPurchasable = await p.premiaBondingCurve.getTokensPurchasable(
@@ -244,25 +239,19 @@ describe('PremiaBondingCurve', () => {
 
     expect(tokensPurchasable).to.eq(premiaAmount);
 
-    ethAmount = await p.premiaBondingCurve.getEthCost(
-      0,
-      ethers.utils.parseEther('2000000'),
-    );
-    await p.premiaBondingCurve.buyExactTokenAmount(
-      ethers.utils.parseEther('2000000'),
-      {
-        value: ethAmount,
-      },
-    );
+    ethAmount = await p.premiaBondingCurve.getEthCost(0, parseEther('2000000'));
+    await p.premiaBondingCurve.buyExactTokenAmount(parseEther('2000000'), {
+      value: ethAmount,
+    });
 
     ethAmount = await p.premiaBondingCurve.getEthCost(
-      ethers.utils.parseEther('2000000'),
-      ethers.utils.parseEther('5500000'),
+      parseEther('2000000'),
+      parseEther('5500000'),
     );
     tokensPurchasable = await p.premiaBondingCurve.getTokensPurchasable(
       ethAmount,
     );
 
-    expect(tokensPurchasable).to.eq(ethers.utils.parseEther('3500000'));
+    expect(tokensPurchasable).to.eq(parseEther('3500000'));
   });
 });

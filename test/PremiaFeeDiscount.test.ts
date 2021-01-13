@@ -8,13 +8,14 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { resetHardhat, setTimestamp } from './utils/evm';
 import { signERC2612Permit } from './eth-permit/eth-permit';
 import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
+import { parseEther } from 'ethers/lib/utils';
 
 let p: IPremiaContracts;
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
 let treasury: SignerWithAddress;
 
-const stakeAmount = ethers.utils.parseEther('120000');
+const stakeAmount = parseEther('120000');
 const oneMonth = 30 * 24 * 3600;
 
 describe('PremiaFeeDiscount', () => {
@@ -25,10 +26,10 @@ describe('PremiaFeeDiscount', () => {
     p = await deployContracts(admin, treasury, true);
 
     await p.premiaFeeDiscount.setStakeLevels([
-      { amount: ethers.utils.parseEther('5000'), discount: 9000 }, // 90% of fee (= -10%)
-      { amount: ethers.utils.parseEther('50000'), discount: 7500 }, // 75% of fee (= -25%)
-      { amount: ethers.utils.parseEther('250000'), discount: 2500 }, // 25% of fee (= -75%)
-      { amount: ethers.utils.parseEther('500000'), discount: 1000 }, // 10% of fee (= -90%)
+      { amount: parseEther('5000'), discount: 9000 }, // 90% of fee (= -10%)
+      { amount: parseEther('50000'), discount: 7500 }, // 75% of fee (= -25%)
+      { amount: parseEther('250000'), discount: 2500 }, // 25% of fee (= -75%)
+      { amount: parseEther('500000'), discount: 1000 }, // 10% of fee (= -90%)
     ]);
 
     await p.premiaFeeDiscount.setStakePeriod(oneMonth, 10000);
@@ -48,9 +49,9 @@ describe('PremiaFeeDiscount', () => {
 
   it('should correctly overwrite existing stake levels', async () => {
     await p.premiaFeeDiscount.setStakeLevels([
-      { amount: ethers.utils.parseEther('5000'), discount: 8000 },
-      { amount: ethers.utils.parseEther('25000'), discount: 4000 },
-      { amount: ethers.utils.parseEther('50000'), discount: 2000 },
+      { amount: parseEther('5000'), discount: 8000 },
+      { amount: parseEther('25000'), discount: 4000 },
+      { amount: parseEther('50000'), discount: 2000 },
     ]);
 
     const length = await p.premiaFeeDiscount.stakeLevelsLength();
@@ -60,9 +61,9 @@ describe('PremiaFeeDiscount', () => {
     const level1 = await p.premiaFeeDiscount.stakeLevels(1);
     const level2 = await p.premiaFeeDiscount.stakeLevels(2);
 
-    expect(level0.amount).to.eq(ethers.utils.parseEther('5000'));
-    expect(level1.amount).to.eq(ethers.utils.parseEther('25000'));
-    expect(level2.amount).to.eq(ethers.utils.parseEther('50000'));
+    expect(level0.amount).to.eq(parseEther('5000'));
+    expect(level1.amount).to.eq(parseEther('25000'));
+    expect(level2.amount).to.eq(parseEther('50000'));
 
     expect(level0.discount).to.eq(8000);
     expect(level1.discount).to.eq(4000);
@@ -80,20 +81,18 @@ describe('PremiaFeeDiscount', () => {
     let amountWithBonus = await p.premiaFeeDiscount.getStakeAmountWithBonus(
       user1.address,
     );
-    expect(amountWithBonus).to.eq(ethers.utils.parseEther('150000'));
+    expect(amountWithBonus).to.eq(parseEther('150000'));
     expect(await p.premiaFeeDiscount.getDiscount(user1.address)).to.eq(5000);
 
     const newTimestamp = new Date().getTime() / 1000 + 91 * 24 * 3600;
     await setTimestamp(newTimestamp);
-    await p.premiaFeeDiscount
-      .connect(user1)
-      .unstake(ethers.utils.parseEther('10000'));
+    await p.premiaFeeDiscount.connect(user1).unstake(parseEther('10000'));
 
     amountWithBonus = await p.premiaFeeDiscount.getStakeAmountWithBonus(
       user1.address,
     );
 
-    expect(amountWithBonus).to.eq(ethers.utils.parseEther('137500'));
+    expect(amountWithBonus).to.eq(parseEther('137500'));
     expect(await p.premiaFeeDiscount.getDiscount(user1.address)).to.eq(5313);
   });
 
@@ -124,7 +123,7 @@ describe('PremiaFeeDiscount', () => {
     const amountWithBonus = await p.premiaFeeDiscount.getStakeAmountWithBonus(
       user1.address,
     );
-    expect(amountWithBonus).to.eq(ethers.utils.parseEther('150000'));
+    expect(amountWithBonus).to.eq(parseEther('150000'));
   });
 
   it('should fail unstaking if stake is still locked', async () => {

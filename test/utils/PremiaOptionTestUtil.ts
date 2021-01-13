@@ -2,6 +2,7 @@ import { PremiaOption, TestErc20 } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumberish, utils } from 'ethers';
 import { ONE_WEEK, ZERO_ADDRESS } from './constants';
+import { parseEther } from 'ethers/lib/utils';
 
 interface WriteOptionArgs {
   address?: string;
@@ -61,7 +62,7 @@ export class PremiaOptionTestUtil {
     return {
       address: this.eth.address,
       expiration: this.getNextExpiration(),
-      strikePrice: utils.parseEther('10'),
+      strikePrice: parseEther('10'),
       isCall: true,
       contractAmount: 1,
     };
@@ -70,8 +71,8 @@ export class PremiaOptionTestUtil {
   async addEth() {
     return this.premiaOption.setToken(
       this.eth.address,
-      utils.parseEther('1'),
-      utils.parseEther('10'),
+      parseEther('1'),
+      parseEther('10'),
       false,
     );
   }
@@ -101,8 +102,7 @@ export class PremiaOptionTestUtil {
     referrer?: string,
   ) {
     if (isCall) {
-      const amount = utils
-        .parseEther(contractAmount.toString())
+      const amount = parseEther(contractAmount.toString())
         .mul(1e5 + this.tax * 1e5)
         .div(1e5);
       await this.eth.mint(user.address, amount.toString());
@@ -110,11 +110,10 @@ export class PremiaOptionTestUtil {
         .connect(user)
         .increaseAllowance(
           this.premiaOption.address,
-          utils.parseEther(amount.toString()),
+          parseEther(amount.toString()),
         );
     } else {
-      const amount = utils
-        .parseEther('10')
+      const amount = parseEther('10')
         .mul(contractAmount)
         .mul(1e5 + this.tax * 1e5)
         .div(1e5);
@@ -123,7 +122,7 @@ export class PremiaOptionTestUtil {
         .connect(user)
         .increaseAllowance(
           this.premiaOption.address,
-          utils.parseEther(amount.toString()),
+          parseEther(amount.toString()),
         );
     }
 
@@ -168,28 +167,22 @@ export class PremiaOptionTestUtil {
   ) {
     if (isCall) {
       const amount = amountToExercise * 10 * (1 + this.tax);
-      await this.dai.mint(
-        this.user1.address,
-        utils.parseEther(amount.toString()),
-      );
+      await this.dai.mint(this.user1.address, parseEther(amount.toString()));
       await this.dai
         .connect(this.user1)
         .increaseAllowance(
           this.premiaOption.address,
-          utils.parseEther(amount.toString()),
+          parseEther(amount.toString()),
         );
     } else {
       const amount = amountToExercise * (1 + this.tax);
 
-      await this.eth.mint(
-        this.user1.address,
-        utils.parseEther(amount.toString()),
-      );
+      await this.eth.mint(this.user1.address, parseEther(amount.toString()));
       await this.eth
         .connect(this.user1)
         .increaseAllowance(
           this.premiaOption.address,
-          utils.parseEther(amount.toString()),
+          parseEther(amount.toString()),
         );
     }
 

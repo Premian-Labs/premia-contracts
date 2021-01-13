@@ -5,6 +5,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { getEthBalance, mineBlockUntil, resetHardhat } from './utils/evm';
 import { BigNumber } from 'ethers';
 import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
+import { parseEther } from 'ethers/lib/utils';
 
 let p: IPremiaContracts;
 let admin: SignerWithAddress;
@@ -12,7 +13,7 @@ let user1: SignerWithAddress;
 let user2: SignerWithAddress;
 let user3: SignerWithAddress;
 let treasury: SignerWithAddress;
-const pbcAmount = ethers.utils.parseEther('10000000'); // 10m
+const pbcAmount = parseEther('10000000'); // 10m
 
 describe('PremiaPBC', () => {
   beforeEach(async () => {
@@ -33,40 +34,26 @@ describe('PremiaPBC', () => {
   });
 
   it('should deposit successfully', async () => {
-    await p.premiaPBC
-      .connect(user1)
-      .contribute({ value: ethers.utils.parseEther('1') });
-    expect(await p.premiaPBC.ethTotal()).to.eq(ethers.utils.parseEther('1'));
-    expect(await getEthBalance(p.premiaPBC.address)).to.eq(
-      ethers.utils.parseEther('1'),
-    );
+    await p.premiaPBC.connect(user1).contribute({ value: parseEther('1') });
+    expect(await p.premiaPBC.ethTotal()).to.eq(parseEther('1'));
+    expect(await getEthBalance(p.premiaPBC.address)).to.eq(parseEther('1'));
   });
 
   it('should fail depositing if PBC has ended', async () => {
     await mineBlockUntil(101);
     await expect(
-      p.premiaPBC
-        .connect(user1)
-        .contribute({ value: ethers.utils.parseEther('1') }),
+      p.premiaPBC.connect(user1).contribute({ value: parseEther('1') }),
     ).to.be.revertedWith('PBC ended');
   });
 
   it('should calculate allocations correctly and withdraw successfully', async () => {
-    await p.premiaPBC
-      .connect(user1)
-      .contribute({ value: ethers.utils.parseEther('10') });
+    await p.premiaPBC.connect(user1).contribute({ value: parseEther('10') });
 
-    await p.premiaPBC
-      .connect(user2)
-      .contribute({ value: ethers.utils.parseEther('10') });
+    await p.premiaPBC.connect(user2).contribute({ value: parseEther('10') });
 
-    await p.premiaPBC
-      .connect(user2)
-      .contribute({ value: ethers.utils.parseEther('20') });
+    await p.premiaPBC.connect(user2).contribute({ value: parseEther('20') });
 
-    await p.premiaPBC
-      .connect(user3)
-      .contribute({ value: ethers.utils.parseEther('60') });
+    await p.premiaPBC.connect(user3).contribute({ value: parseEther('60') });
 
     await mineBlockUntil(101);
 
@@ -85,13 +72,9 @@ describe('PremiaPBC', () => {
   });
 
   it('should fail collecting if address already did', async () => {
-    await p.premiaPBC
-      .connect(user1)
-      .contribute({ value: ethers.utils.parseEther('10') });
+    await p.premiaPBC.connect(user1).contribute({ value: parseEther('10') });
 
-    await p.premiaPBC
-      .connect(user2)
-      .contribute({ value: ethers.utils.parseEther('10') });
+    await p.premiaPBC.connect(user2).contribute({ value: parseEther('10') });
 
     await mineBlockUntil(101);
 
@@ -102,9 +85,7 @@ describe('PremiaPBC', () => {
   });
 
   it('should fail collecting if address did not contribute', async () => {
-    await p.premiaPBC
-      .connect(user1)
-      .contribute({ value: ethers.utils.parseEther('10') });
+    await p.premiaPBC.connect(user1).contribute({ value: parseEther('10') });
 
     await mineBlockUntil(101);
 
@@ -114,9 +95,7 @@ describe('PremiaPBC', () => {
   });
 
   it('should allow owner to withdraw eth', async () => {
-    await p.premiaPBC
-      .connect(user1)
-      .contribute({ value: ethers.utils.parseEther('1000') });
+    await p.premiaPBC.connect(user1).contribute({ value: parseEther('1000') });
 
     const user2Eth = await getEthBalance(user2.address);
 
@@ -127,29 +106,21 @@ describe('PremiaPBC', () => {
 
     expect(await getEthBalance(p.premiaPBC.address)).to.eq(0);
     expect(await getEthBalance(treasury.address)).to.eq(
-      user2Eth.add(ethers.utils.parseEther('1000')),
+      user2Eth.add(parseEther('1000')),
     );
   });
 
   it('should calculate current premia price correctly', async () => {
-    await p.premiaPBC
-      .connect(user1)
-      .contribute({ value: ethers.utils.parseEther('12') });
+    await p.premiaPBC.connect(user1).contribute({ value: parseEther('12') });
 
     expect(await p.premiaPBC.getPremiaPrice()).to.eq(
-      BigNumber.from(ethers.utils.parseEther('12'))
-        .mul(ethers.utils.parseEther('1'))
-        .div(pbcAmount),
+      BigNumber.from(parseEther('12')).mul(parseEther('1')).div(pbcAmount),
     );
 
-    await p.premiaPBC
-      .connect(user1)
-      .contribute({ value: ethers.utils.parseEther('28') });
+    await p.premiaPBC.connect(user1).contribute({ value: parseEther('28') });
 
     expect(await p.premiaPBC.getPremiaPrice()).to.eq(
-      BigNumber.from(ethers.utils.parseEther('40'))
-        .mul(ethers.utils.parseEther('1'))
-        .div(pbcAmount),
+      BigNumber.from(parseEther('40')).mul(parseEther('1')).div(pbcAmount),
     );
   });
 });

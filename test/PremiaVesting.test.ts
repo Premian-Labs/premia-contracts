@@ -8,6 +8,7 @@ import {
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { resetHardhat, setTimestamp } from './utils/evm';
+import { parseEther } from 'ethers/lib/utils';
 
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
@@ -26,7 +27,7 @@ describe('PremiaVesting', () => {
     premia = await premiaFactory.deploy();
     premiaVesting = await premiaVestingFactory.deploy(premia.address);
 
-    const amount = ethers.utils.parseEther('730');
+    const amount = parseEther('730');
     await premia.mint(premiaVesting.address, amount);
     await premiaVesting.transferOwnership(user1.address);
   });
@@ -39,8 +40,8 @@ describe('PremiaVesting', () => {
 
     let balance = await premia.balanceOf(user1.address);
     let balanceLeft = await premia.balanceOf(premiaVesting.address);
-    expect(balance).to.eq(ethers.utils.parseEther('200'));
-    expect(balanceLeft).to.eq(ethers.utils.parseEther('530'));
+    expect(balance).to.eq(parseEther('200'));
+    expect(balanceLeft).to.eq(parseEther('530'));
 
     lastWithdraw = await premiaVesting.lastWithdrawalTimestamp();
     await setTimestamp(lastWithdraw.add(25 * 24 * 3600 - 1).toNumber());
@@ -48,8 +49,8 @@ describe('PremiaVesting', () => {
 
     balance = await premia.balanceOf(user1.address);
     balanceLeft = await premia.balanceOf(premiaVesting.address);
-    expect(balance).to.eq(ethers.utils.parseEther('250'));
-    expect(balanceLeft).to.eq(ethers.utils.parseEther('480'));
+    expect(balance).to.eq(parseEther('250'));
+    expect(balanceLeft).to.eq(parseEther('480'));
   });
 
   it('should withdraw all premia if withdrawing after endTimestamp', async () => {
@@ -60,7 +61,7 @@ describe('PremiaVesting', () => {
 
     const balance = await premia.balanceOf(user1.address);
     const balanceLeft = await premia.balanceOf(premiaVesting.address);
-    expect(balance).to.eq(ethers.utils.parseEther('730'));
+    expect(balance).to.eq(parseEther('730'));
     expect(balanceLeft).to.eq(0);
   });
 

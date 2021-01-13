@@ -4,6 +4,7 @@ import {
   PremiaOption__factory,
 } from '../../contractsTyped';
 import { deployContracts } from '../deployContracts';
+import { parseEther } from 'ethers/lib/utils';
 
 async function main() {
   // We get the contract to deploy
@@ -67,26 +68,21 @@ async function main() {
 
   await premiaOptionDai.setToken(
     weth,
-    ethers.utils.parseEther('1'),
-    ethers.utils.parseEther('10'),
+    parseEther('1'),
+    parseEther('10'),
     false,
   );
 
   console.log('WETH/DAI added');
 
-  await premiaOptionDai.setToken(
-    rope,
-    ethers.utils.parseEther('1'),
-    ethers.utils.parseEther('1'),
-    false,
-  );
+  await premiaOptionDai.setToken(rope, parseEther('1'), parseEther('1'), false);
 
   console.log('ROPE/DAI added');
 
   await premiaOptionEth.setToken(
     rope,
-    ethers.utils.parseEther('1'),
-    ethers.utils.parseEther('0.1'),
+    parseEther('1'),
+    parseEther('0.1'),
     false,
   );
 

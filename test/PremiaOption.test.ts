@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { BigNumber, utils } from 'ethers';
+import { BigNumber } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
@@ -15,6 +15,7 @@ import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
 import { ONE_WEEK, ZERO_ADDRESS } from './utils/constants';
 import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
 import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
+import { parseEther } from 'ethers/lib/utils';
 
 let p: IPremiaContracts;
 let eth: TestErc20;
@@ -76,8 +77,8 @@ describe('PremiaOption', () => {
   it('Should add eth for trading', async () => {
     await optionTestUtil.addEth();
     const settings = await premiaOption.tokenSettings(eth.address);
-    expect(settings.contractSize.eq(utils.parseEther('1'))).to.true;
-    expect(settings.strikePriceIncrement.eq(utils.parseEther('10'))).to.true;
+    expect(settings.contractSize.eq(parseEther('1'))).to.true;
+    expect(settings.strikePriceIncrement.eq(parseEther('10'))).to.true;
   });
 
   describe('writeOption', () => {
@@ -113,7 +114,7 @@ describe('PremiaOption', () => {
       await optionTestUtil.addEth();
       await expect(
         optionTestUtil.writeOption(writer1, {
-          strikePrice: utils.parseEther('1'),
+          strikePrice: parseEther('1'),
         }),
       ).to.be.revertedWith('Wrong strike incr');
     });
@@ -146,10 +147,10 @@ describe('PremiaOption', () => {
 
     it('should fail if address does not have enough ether for call', async () => {
       await optionTestUtil.addEth();
-      await eth.mint(writer1.address, utils.parseEther('0.99'));
+      await eth.mint(writer1.address, parseEther('0.99'));
       await eth
         .connect(writer1)
-        .increaseAllowance(premiaOption.address, utils.parseEther('1'));
+        .increaseAllowance(premiaOption.address, parseEther('1'));
       await expect(optionTestUtil.writeOption(writer1)).to.be.revertedWith(
         'ERC20: transfer amount exceeds balance',
       );
@@ -157,10 +158,10 @@ describe('PremiaOption', () => {
 
     it('should fail if address does not have enough dai for put', async () => {
       await optionTestUtil.addEth();
-      await dai.mint(writer1.address, utils.parseEther('9.99'));
+      await dai.mint(writer1.address, parseEther('9.99'));
       await dai
         .connect(writer1)
-        .increaseAllowance(premiaOption.address, utils.parseEther('10'));
+        .increaseAllowance(premiaOption.address, parseEther('10'));
       await expect(
         optionTestUtil.writeOption(writer1, { isCall: false }),
       ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
@@ -192,31 +193,23 @@ describe('PremiaOption', () => {
       const contractAmount1 = 2;
       const contractAmount2 = 3;
 
-      let amount = utils
-        .parseEther(contractAmount1.toString())
+      let amount = parseEther(contractAmount1.toString())
         .mul(1e5 + tax * 1e5)
         .div(1e5);
       await eth.mint(writer1.address, amount.toString());
       await eth
         .connect(writer1)
-        .increaseAllowance(
-          premiaOption.address,
-          utils.parseEther(amount.toString()),
-        );
+        .increaseAllowance(premiaOption.address, parseEther(amount.toString()));
 
-      amount = utils
-        .parseEther(contractAmount2.toString())
+      amount = parseEther(contractAmount2.toString())
         .mul(10)
         .mul(3)
         .mul(1e5 + tax * 1e5)
         .div(1e5);
-      await dai.mint(writer1.address, utils.parseEther(amount.toString()));
+      await dai.mint(writer1.address, parseEther(amount.toString()));
       await dai
         .connect(writer1)
-        .increaseAllowance(
-          premiaOption.address,
-          utils.parseEther(amount.toString()),
-        );
+        .increaseAllowance(premiaOption.address, parseEther(amount.toString()));
 
       await premiaOption.connect(writer1).batchWriteOption(
         [
@@ -259,7 +252,7 @@ describe('PremiaOption', () => {
       ethBalance = await eth.balanceOf(writer1.address);
 
       expect(optionBalance).to.eq(1);
-      expect(ethBalance.toString()).to.eq(utils.parseEther('1').toString());
+      expect(ethBalance.toString()).to.eq(parseEther('1').toString());
     });
 
     it('should successfully cancel 1 put option', async () => {
@@ -277,7 +270,7 @@ describe('PremiaOption', () => {
       daiBalance = await dai.balanceOf(writer1.address);
 
       expect(optionBalance).to.eq(1);
-      expect(daiBalance.toString()).to.eq(utils.parseEther('10').toString());
+      expect(daiBalance.toString()).to.eq(parseEther('10').toString());
     });
 
     it('should fail cancelling option if not a writer', async () => {
@@ -319,8 +312,8 @@ describe('PremiaOption', () => {
 
       expect(optionBalance1).to.eq(1);
       expect(optionBalance2).to.eq(2);
-      expect(ethBalance.toString()).to.eq(utils.parseEther('2').toString());
-      expect(daiBalance.toString()).to.eq(utils.parseEther('10').toString());
+      expect(ethBalance.toString()).to.eq(parseEther('2').toString());
+      expect(daiBalance.toString()).to.eq(parseEther('10').toString());
     });
   });
 
@@ -349,7 +342,7 @@ describe('PremiaOption', () => {
 
       expect(nftBalance).to.eq(1);
       expect(daiBalance).to.eq(0);
-      expect(ethBalance).to.eq(utils.parseEther('1'));
+      expect(ethBalance).to.eq(parseEther('1'));
     });
 
     it('should successfully exercise 1 put option', async () => {
@@ -360,7 +353,7 @@ describe('PremiaOption', () => {
       const ethBalance = await eth.balanceOf(user1.address);
 
       expect(nftBalance).to.eq(1);
-      expect(daiBalance).to.eq(utils.parseEther('10'));
+      expect(daiBalance).to.eq(parseEther('10'));
       expect(ethBalance).to.eq(0);
     });
 
@@ -370,8 +363,8 @@ describe('PremiaOption', () => {
       const daiBalance = await dai.balanceOf(feeRecipient.address);
       const ethBalance = await eth.balanceOf(feeRecipient.address);
 
-      expect(daiBalance).to.eq(utils.parseEther('0.1'));
-      expect(ethBalance).to.eq(utils.parseEther('0.01'));
+      expect(daiBalance).to.eq(parseEther('0.1'));
+      expect(ethBalance).to.eq(parseEther('0.01'));
     });
 
     it('should have 0 eth and 0.1 dai in feeRecipient after 1 option exercised if writer is whitelisted', async () => {
@@ -381,8 +374,8 @@ describe('PremiaOption', () => {
       const daiBalance = await dai.balanceOf(feeRecipient.address);
       const ethBalance = await eth.balanceOf(feeRecipient.address);
 
-      expect(daiBalance).to.eq(utils.parseEther('0.1'));
-      expect(ethBalance).to.eq(utils.parseEther('0'));
+      expect(daiBalance).to.eq(parseEther('0.1'));
+      expect(ethBalance).to.eq(parseEther('0'));
     });
 
     it('should have 0.1 eth and 0 dai in feeRecipient after 1 option exercised if exerciser is whitelisted', async () => {
@@ -392,8 +385,8 @@ describe('PremiaOption', () => {
       const daiBalance = await dai.balanceOf(feeRecipient.address);
       const ethBalance = await eth.balanceOf(feeRecipient.address);
 
-      expect(daiBalance).to.eq(utils.parseEther('0'));
-      expect(ethBalance).to.eq(utils.parseEther('0.01'));
+      expect(daiBalance).to.eq(parseEther('0'));
+      expect(ethBalance).to.eq(parseEther('0.01'));
     });
 
     it('should successfully batchExerciseOption', async () => {
@@ -404,23 +397,17 @@ describe('PremiaOption', () => {
       await optionTestUtil.transferOptionToUser1(writer1, 3, 2);
 
       let amount = 1 * 10 * (1 + tax);
-      await dai.mint(user1.address, utils.parseEther(amount.toString()));
+      await dai.mint(user1.address, parseEther(amount.toString()));
       await dai
         .connect(user1)
-        .increaseAllowance(
-          premiaOption.address,
-          utils.parseEther(amount.toString()),
-        );
+        .increaseAllowance(premiaOption.address, parseEther(amount.toString()));
 
       amount = 2 * (1 + tax);
 
-      await eth.mint(user1.address, utils.parseEther(amount.toString()));
+      await eth.mint(user1.address, parseEther(amount.toString()));
       await eth
         .connect(user1)
-        .increaseAllowance(
-          premiaOption.address,
-          utils.parseEther(amount.toString()),
-        );
+        .increaseAllowance(premiaOption.address, parseEther(amount.toString()));
 
       await premiaOption
         .connect(user1)
@@ -433,8 +420,8 @@ describe('PremiaOption', () => {
 
       expect(nftBalance1).to.eq(1);
       expect(nftBalance2).to.eq(1);
-      expect(daiBalance).to.eq(utils.parseEther('20'));
-      expect(ethBalance).to.eq(utils.parseEther('1'));
+      expect(daiBalance).to.eq(parseEther('20'));
+      expect(ethBalance).to.eq(parseEther('1'));
     });
   });
 
@@ -468,7 +455,7 @@ describe('PremiaOption', () => {
       ethBalance = await eth.balanceOf(writer1.address);
       daiBalance = await dai.balanceOf(writer1.address);
 
-      expect(ethBalance).to.eq(utils.parseEther('2'));
+      expect(ethBalance).to.eq(parseEther('2'));
       expect(daiBalance).to.eq(0);
     });
 
@@ -486,8 +473,8 @@ describe('PremiaOption', () => {
       ethBalance = await eth.balanceOf(writer1.address);
       daiBalance = await dai.balanceOf(writer1.address);
 
-      expect(ethBalance).to.eq(utils.parseEther('1'));
-      expect(daiBalance).to.eq(utils.parseEther('10'));
+      expect(ethBalance).to.eq(parseEther('1'));
+      expect(daiBalance).to.eq(parseEther('10'));
     });
 
     it('should successfully allow writer withdrawal of 20 dai if 2/2 call option exercised', async () => {
@@ -505,7 +492,7 @@ describe('PremiaOption', () => {
       daiBalance = await dai.balanceOf(writer1.address);
 
       expect(ethBalance).to.eq(0);
-      expect(daiBalance).to.eq(utils.parseEther('20'));
+      expect(daiBalance).to.eq(parseEther('20'));
     });
 
     it('should successfully allow writer withdrawal of 20 dai if 0/2 put option exercised', async () => {
@@ -524,7 +511,7 @@ describe('PremiaOption', () => {
       daiBalance = await dai.balanceOf(writer1.address);
 
       expect(ethBalance).to.eq(0);
-      expect(daiBalance).to.eq(utils.parseEther('20'));
+      expect(daiBalance).to.eq(parseEther('20'));
     });
 
     it('should successfully allow writer withdrawal of 1 eth and 10 dai if 1/2 put option exercised', async () => {
@@ -541,8 +528,8 @@ describe('PremiaOption', () => {
       ethBalance = await eth.balanceOf(writer1.address);
       daiBalance = await dai.balanceOf(writer1.address);
 
-      expect(ethBalance).to.eq(utils.parseEther('1'));
-      expect(daiBalance).to.eq(utils.parseEther('10'));
+      expect(ethBalance).to.eq(parseEther('1'));
+      expect(daiBalance).to.eq(parseEther('10'));
     });
 
     it('should successfully allow writer withdrawal of 2 eth if 2/2 put option exercised', async () => {
@@ -559,7 +546,7 @@ describe('PremiaOption', () => {
       ethBalance = await eth.balanceOf(writer1.address);
       daiBalance = await dai.balanceOf(writer1.address);
 
-      expect(ethBalance).to.eq(utils.parseEther('2'));
+      expect(ethBalance).to.eq(parseEther('2'));
       expect(daiBalance).to.eq(0);
     });
 
@@ -584,11 +571,11 @@ describe('PremiaOption', () => {
       const writer2Eth = await eth.balanceOf(writer2.address);
       const writer2Dai = await dai.balanceOf(writer2.address);
 
-      expect(writer1Eth).to.eq(utils.parseEther('0.5'));
-      expect(writer1Dai).to.eq(utils.parseEther('5'));
+      expect(writer1Eth).to.eq(parseEther('0.5'));
+      expect(writer1Dai).to.eq(parseEther('5'));
 
-      expect(writer2Eth).to.eq(utils.parseEther('0.5'));
-      expect(writer2Dai).to.eq(utils.parseEther('5'));
+      expect(writer2Eth).to.eq(parseEther('0.5'));
+      expect(writer2Dai).to.eq(parseEther('5'));
     });
 
     it('should withdraw 1 eth, if 1/2 call exercised and 1 withdrawPreExpiration', async () => {
@@ -611,7 +598,7 @@ describe('PremiaOption', () => {
       const nbWritten = await premiaOption.nbWritten(writer1.address, 1);
 
       expect(daiBalance).to.eq(0);
-      expect(ethBalance).to.eq(utils.parseEther('1'));
+      expect(ethBalance).to.eq(parseEther('1'));
       expect(nbWritten).to.eq(0);
     });
 
@@ -634,7 +621,7 @@ describe('PremiaOption', () => {
 
       const nbWritten = await premiaOption.nbWritten(writer1.address, 1);
 
-      expect(daiBalance).to.eq(utils.parseEther('10'));
+      expect(daiBalance).to.eq(parseEther('10'));
       expect(ethBalance).to.eq(0);
       expect(nbWritten).to.eq(0);
     });
@@ -666,8 +653,8 @@ describe('PremiaOption', () => {
       const nbWritten1 = await premiaOption.nbWritten(writer1.address, 1);
       const nbWritten2 = await premiaOption.nbWritten(writer1.address, 2);
 
-      expect(daiBalance).to.eq(utils.parseEther('10'));
-      expect(ethBalance).to.eq(utils.parseEther('1'));
+      expect(daiBalance).to.eq(parseEther('10'));
+      expect(ethBalance).to.eq(parseEther('1'));
       expect(nbWritten1).to.eq(0);
       expect(nbWritten2).to.eq(0);
     });
@@ -721,7 +708,7 @@ describe('PremiaOption', () => {
 
       const nbWritten = await premiaOption.nbWritten(writer1.address, 1);
 
-      expect(daiBalance).to.eq(utils.parseEther('10'));
+      expect(daiBalance).to.eq(parseEther('10'));
       expect(ethBalance).to.eq(0);
       expect(nbWritten).to.eq(1);
     });
@@ -739,7 +726,7 @@ describe('PremiaOption', () => {
       const nbWritten = await premiaOption.nbWritten(writer1.address, 1);
 
       expect(daiBalance).to.eq(0);
-      expect(ethBalance).to.eq(utils.parseEther('1'));
+      expect(ethBalance).to.eq(parseEther('1'));
       expect(nbWritten).to.eq(1);
     });
 
@@ -763,8 +750,8 @@ describe('PremiaOption', () => {
       const nbWritten1 = await premiaOption.nbWritten(writer1.address, 1);
       const nbWritten2 = await premiaOption.nbWritten(writer1.address, 2);
 
-      expect(daiBalance).to.eq(utils.parseEther('20'));
-      expect(ethBalance).to.eq(utils.parseEther('1'));
+      expect(daiBalance).to.eq(parseEther('20'));
+      expect(ethBalance).to.eq(parseEther('1'));
       expect(nbWritten1).to.eq(1);
       expect(nbWritten2).to.eq(2);
     });
@@ -793,10 +780,10 @@ describe('PremiaOption', () => {
 
       expect(writer1Options).to.eq(2);
       expect(writer1Eth).to.eq(
-        ethers.utils.parseEther('0.02').div(10), // Expect 10% of tax of 2 options writing
+        parseEther('0.02').div(10), // Expect 10% of tax of 2 options writing
       );
       expect(referrerEth).to.eq(
-        ethers.utils.parseEther('0.02').mul(9).div(10).div(10), // Expect 10% of 90% of tax for 2 options
+        parseEther('0.02').mul(9).div(10).div(10), // Expect 10% of 90% of tax for 2 options
       );
     });
 
@@ -814,10 +801,10 @@ describe('PremiaOption', () => {
 
       expect(user1Options).to.eq(0);
       expect(user1Dai).to.eq(
-        BigNumber.from(ethers.utils.parseEther('0.2')).div(10), // Expect 10% of the 1% tax of 2 options exercised at strike price of 10 DAI
+        BigNumber.from(parseEther('0.2')).div(10), // Expect 10% of the 1% tax of 2 options exercised at strike price of 10 DAI
       );
       expect(referrerDai).to.eq(
-        ethers.utils.parseEther('0.2').mul(9).div(10).div(10), // Expect 10% of 90% of tax
+        parseEther('0.2').mul(9).div(10).div(10), // Expect 10% of 90% of tax
       );
     });
   });
@@ -827,11 +814,11 @@ describe('PremiaOption', () => {
       const fee = await p.feeCalculator.getFees(
         writer1.address,
         false,
-        utils.parseEther('2'),
+        parseEther('2'),
         0,
       );
 
-      expect(fee[0].add(fee[1])).to.eq(utils.parseEther('0.02'));
+      expect(fee[0].add(fee[1])).to.eq(parseEther('0.02'));
     });
 
     it('should calculate total fee correctly with a referral', async () => {
@@ -839,11 +826,11 @@ describe('PremiaOption', () => {
       const fee = await p.feeCalculator.getFees(
         writer1.address,
         true,
-        utils.parseEther('2'),
+        parseEther('2'),
         0,
       );
 
-      expect(fee[0].add(fee[1])).to.eq(utils.parseEther('0.018'));
+      expect(fee[0].add(fee[1])).to.eq(parseEther('0.018'));
     });
 
     it('should correctly calculate total fee with a referral + staking discount', async () => {
@@ -851,11 +838,11 @@ describe('PremiaOption', () => {
       const fee = await p.feeCalculator.getFees(
         writer1.address,
         true,
-        utils.parseEther('2'),
+        parseEther('2'),
         0,
       );
 
-      expect(fee[0].add(fee[1])).to.eq(utils.parseEther('0.0144'));
+      expect(fee[0].add(fee[1])).to.eq(parseEther('0.0144'));
     });
 
     it('should correctly give a 30% discount from premia staking', async () => {
@@ -868,7 +855,7 @@ describe('PremiaOption', () => {
 
       expect(user1Options).to.eq(0);
       expect(user1Dai).to.eq(
-        BigNumber.from(ethers.utils.parseEther('0.06')), // Expect 30% of the 1% tax of 2 options exercised at strike price of 10 DAI
+        BigNumber.from(parseEther('0.06')), // Expect 30% of the 1% tax of 2 options exercised at strike price of 10 DAI
       );
     });
 
@@ -888,10 +875,10 @@ describe('PremiaOption', () => {
 
       expect(user1Options).to.eq(0);
       expect(user1Dai).to.eq(
-        BigNumber.from(ethers.utils.parseEther('0.074')), // Expect 30% of the 1% tax of 2 options exercised at strike price of 10 DAI + 10% discount from referral
+        BigNumber.from(parseEther('0.074')), // Expect 30% of the 1% tax of 2 options exercised at strike price of 10 DAI + 10% discount from referral
       );
       expect(referrerDai).to.eq(
-        ethers.utils.parseEther('0.0126'), // Expect 10% of 90% of tax (After premia staking discount)
+        parseEther('0.0126'), // Expect 10% of 90% of tax (After premia staking discount)
       );
     });
   });
@@ -907,14 +894,10 @@ describe('PremiaOption', () => {
 
       let ethBalance = await eth.balanceOf(premiaOption.address);
 
-      expect(ethBalance).to.eq(utils.parseEther('2'));
+      expect(ethBalance).to.eq(parseEther('2'));
 
       await expect(
-        premiaOption.flashLoan(
-          eth.address,
-          utils.parseEther('2'),
-          flashLoan.address,
-        ),
+        premiaOption.flashLoan(eth.address, parseEther('2'), flashLoan.address),
       ).to.be.revertedWith('Failed to pay back');
     });
 
@@ -928,14 +911,10 @@ describe('PremiaOption', () => {
 
       let ethBalance = await eth.balanceOf(premiaOption.address);
 
-      expect(ethBalance).to.eq(utils.parseEther('2'));
+      expect(ethBalance).to.eq(parseEther('2'));
 
       await expect(
-        premiaOption.flashLoan(
-          eth.address,
-          utils.parseEther('2'),
-          flashLoan.address,
-        ),
+        premiaOption.flashLoan(eth.address, parseEther('2'), flashLoan.address),
       ).to.be.revertedWith('Failed to pay back');
     });
 
@@ -948,22 +927,22 @@ describe('PremiaOption', () => {
 
       await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
 
-      await eth.mint(flashLoan.address, utils.parseEther('0.004'));
+      await eth.mint(flashLoan.address, parseEther('0.004'));
 
       let ethBalance = await eth.balanceOf(premiaOption.address);
-      expect(ethBalance).to.eq(utils.parseEther('2'));
+      expect(ethBalance).to.eq(parseEther('2'));
 
       await premiaOption.flashLoan(
         eth.address,
-        utils.parseEther('2'),
+        parseEther('2'),
         flashLoan.address,
       );
 
       ethBalance = await eth.balanceOf(premiaOption.address);
-      expect(ethBalance).to.eq(utils.parseEther('2'));
+      expect(ethBalance).to.eq(parseEther('2'));
 
       const ethBalanceFeeRecipient = await eth.balanceOf(feeRecipient.address);
-      expect(ethBalanceFeeRecipient).to.eq(utils.parseEther('0.004'));
+      expect(ethBalanceFeeRecipient).to.eq(parseEther('0.004'));
     });
 
     it('should successfully complete flashLoan if paid back without fee and user on fee whitelist', async () => {
@@ -977,14 +956,14 @@ describe('PremiaOption', () => {
       await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
 
       let ethBalance = await eth.balanceOf(premiaOption.address);
-      expect(ethBalance).to.eq(utils.parseEther('2'));
+      expect(ethBalance).to.eq(parseEther('2'));
 
       await premiaOption
         .connect(writer1)
-        .flashLoan(eth.address, utils.parseEther('2'), flashLoan.address);
+        .flashLoan(eth.address, parseEther('2'), flashLoan.address);
 
       ethBalance = await eth.balanceOf(premiaOption.address);
-      expect(ethBalance).to.eq(utils.parseEther('2'));
+      expect(ethBalance).to.eq(parseEther('2'));
 
       const ethBalanceFeeRecipient = await eth.balanceOf(feeRecipient.address);
       expect(ethBalanceFeeRecipient).to.eq(0);
@@ -1000,28 +979,26 @@ describe('PremiaOption', () => {
     it('should reward uPremia on writeOption', async () => {
       await p.priceProvider.setTokenPrices(
         [dai.address, eth.address],
-        [ethers.utils.parseEther('1'), ethers.utils.parseEther('10')],
+        [parseEther('1'), parseEther('10')],
       );
 
       await optionTestUtil.addEthAndWriteOptions(2);
       expect(await p.uPremia.balanceOf(writer1.address)).to.eq(
-        ethers.utils.parseEther('0.2'),
+        parseEther('0.2'),
       );
     });
 
     it('should reward uPremia on exerciseOption', async () => {
       await p.priceProvider.setTokenPrices(
         [dai.address, eth.address],
-        [ethers.utils.parseEther('1'), ethers.utils.parseEther('10')],
+        [parseEther('1'), parseEther('10')],
       );
 
       await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 1);
       expect(await p.uPremia.balanceOf(writer1.address)).to.eq(
-        ethers.utils.parseEther('0.2'),
+        parseEther('0.2'),
       );
-      expect(await p.uPremia.balanceOf(user1.address)).to.eq(
-        ethers.utils.parseEther('0.1'),
-      );
+      expect(await p.uPremia.balanceOf(user1.address)).to.eq(parseEther('0.1'));
     });
   });
 });

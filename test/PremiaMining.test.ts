@@ -220,12 +220,7 @@ describe('PremiaMining', () => {
 
     // Add first LP to the pool with allocation 1
     await mineBlockUntil(109);
-    await depositWithPermit(
-      alice,
-      p.uPremia.address,
-      0,
-      ethers.utils.parseEther('10'),
-    );
+    await depositWithPermit(alice, p.uPremia.address, 0, parseEther('10'));
 
     await mineBlockUntil(119);
     await p.premiaMining.add(2e4, dai.address, true);

@@ -1,5 +1,4 @@
 import { ethers } from 'hardhat';
-import { utils } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
@@ -11,11 +10,12 @@ import {
   TestErc20__factory,
 } from '../contractsTyped';
 import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
-import { IOrder, IOrderCreated } from '../types';
+import { IOrderCreated } from '../types';
 import { PremiaMarketTestUtil } from './utils/PremiaMarketTestUtil';
 import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
 import { ZERO_ADDRESS } from './utils/constants';
 import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
+import { parseEther } from 'ethers/lib/utils';
 
 let p: IPremiaContracts;
 let eth: TestErc20;
@@ -93,27 +93,18 @@ describe('PremiaMarket', () => {
       .setApprovalForAll(premiaMarket.address, true);
     await eth
       .connect(admin)
-      .increaseAllowance(
-        premiaOption.address,
-        ethers.utils.parseEther('10000'),
-      );
+      .increaseAllowance(premiaOption.address, parseEther('10000'));
     await dai
       .connect(admin)
-      .increaseAllowance(
-        premiaOption.address,
-        ethers.utils.parseEther('10000'),
-      );
+      .increaseAllowance(premiaOption.address, parseEther('10000'));
     await eth
       .connect(admin)
-      .increaseAllowance(
-        premiaMarket.address,
-        ethers.utils.parseEther('10000'),
-      );
+      .increaseAllowance(premiaMarket.address, parseEther('10000'));
 
     await premiaOption.setToken(
       eth.address,
-      utils.parseEther('1'),
-      utils.parseEther('10'),
+      parseEther('1'),
+      parseEther('10'),
       false,
     );
 
@@ -578,13 +569,10 @@ describe('PremiaMarket', () => {
         await optionTestUtil.mintAndWriteOption(admin, 5);
         const order = await marketTestUtil.createOrder(admin);
 
-        await eth.mint(user1.address, ethers.utils.parseEther('100'));
+        await eth.mint(user1.address, parseEther('100'));
         await eth
           .connect(user1)
-          .increaseAllowance(
-            premiaMarket.address,
-            ethers.utils.parseEther('10000'),
-          );
+          .increaseAllowance(premiaMarket.address, parseEther('10000'));
         await premiaMarket.connect(user1).fillOrder(order.order, 5);
 
         const isValid = await premiaMarket.isOrderValid(order.order);
@@ -596,7 +584,7 @@ describe('PremiaMarket', () => {
       it('should detect buy order as valid if maker still own ERC20 and transfer is approved', async () => {
         await optionTestUtil.mintAndWriteOption(user1, 1);
 
-        await eth.mint(admin.address, ethers.utils.parseEther('1.015'));
+        await eth.mint(admin.address, parseEther('1.015'));
         const order = await marketTestUtil.createOrder(admin, { isBuy: true });
 
         const isValid = await premiaMarket.isOrderValid(order.order);
@@ -606,7 +594,7 @@ describe('PremiaMarket', () => {
       it('should detect buy order as invalid if maker does not have enough to cover price + fee', async () => {
         await optionTestUtil.mintAndWriteOption(user1, 1);
 
-        await eth.mint(admin.address, ethers.utils.parseEther('1.0'));
+        await eth.mint(admin.address, parseEther('1.0'));
         const order = await marketTestUtil.createOrder(admin, { isBuy: true });
 
         const isValid = await premiaMarket.isOrderValid(order.order);
@@ -616,7 +604,7 @@ describe('PremiaMarket', () => {
       it('should detect buy order as invalid if maker did not approved ERC20', async () => {
         await optionTestUtil.mintAndWriteOption(user1, 1);
 
-        await eth.mint(admin.address, ethers.utils.parseEther('10'));
+        await eth.mint(admin.address, parseEther('10'));
         await eth.connect(admin).approve(premiaMarket.address, 0);
         const order = await marketTestUtil.createOrder(admin, { isBuy: true });
 
@@ -627,7 +615,7 @@ describe('PremiaMarket', () => {
       it('should detect buy order as invalid if amount to buy left is 0', async () => {
         await optionTestUtil.mintAndWriteOption(user1, 1);
 
-        await eth.mint(admin.address, ethers.utils.parseEther('1.015'));
+        await eth.mint(admin.address, parseEther('1.015'));
         const order = await marketTestUtil.createOrder(admin, { isBuy: true });
 
         await premiaOption
@@ -642,7 +630,7 @@ describe('PremiaMarket', () => {
       it('should detect order as invalid if expired', async () => {
         await optionTestUtil.mintAndWriteOption(user1, 1);
 
-        await eth.mint(admin.address, ethers.utils.parseEther('1.015'));
+        await eth.mint(admin.address, parseEther('1.015'));
         const order = await marketTestUtil.createOrder(admin, { isBuy: true });
         await setTimestampPostExpiration();
 
@@ -781,9 +769,9 @@ describe('PremiaMarket', () => {
           feeRecipient.address,
         );
 
-        expect(ethBalanceMaker).to.eq(ethers.utils.parseEther('1.97'));
+        expect(ethBalanceMaker).to.eq(parseEther('1.97'));
         expect(ethBalanceTaker).to.eq(0);
-        expect(ethBalanceFeeRecipient).to.eq(ethers.utils.parseEther('0.06'));
+        expect(ethBalanceFeeRecipient).to.eq(parseEther('0.06'));
 
         orderAmount = await premiaMarket.amounts(order.hash);
         expect(orderAmount).to.eq(0);
@@ -811,9 +799,7 @@ describe('PremiaMarket', () => {
         const order = await marketTestUtil.setupOrder(maker, taker, {
           isBuy: false,
         });
-        await eth
-          .connect(taker)
-          .transfer(admin.address, ethers.utils.parseEther('0.01'));
+        await eth.connect(taker).transfer(admin.address, parseEther('0.01'));
         await expect(
           premiaMarket.connect(taker).fillOrder(order.order, 1),
         ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
@@ -848,9 +834,9 @@ describe('PremiaMarket', () => {
           feeRecipient.address,
         );
 
-        expect(ethBalanceMaker).to.eq(ethers.utils.parseEther('0.985'));
+        expect(ethBalanceMaker).to.eq(parseEther('0.985'));
         expect(ethBalanceTaker).to.eq(0);
-        expect(ethBalanceFeeRecipient).to.eq(ethers.utils.parseEther('0.03'));
+        expect(ethBalanceFeeRecipient).to.eq(parseEther('0.03'));
       });
     });
 
@@ -889,8 +875,8 @@ describe('PremiaMarket', () => {
         );
 
         expect(ethBalanceMaker).to.eq(0);
-        expect(ethBalanceTaker).to.eq(ethers.utils.parseEther('1.97'));
-        expect(ethBalanceFeeRecipient).to.eq(ethers.utils.parseEther('0.06'));
+        expect(ethBalanceTaker).to.eq(parseEther('1.97'));
+        expect(ethBalanceFeeRecipient).to.eq(parseEther('0.06'));
 
         orderAmount = await premiaMarket.amounts(order.hash);
         expect(orderAmount).to.eq(0);
@@ -903,9 +889,7 @@ describe('PremiaMarket', () => {
         const order = await marketTestUtil.setupOrder(maker, taker, {
           isBuy: true,
         });
-        await eth
-          .connect(maker)
-          .transfer(admin.address, ethers.utils.parseEther('0.01'));
+        await eth.connect(maker).transfer(admin.address, parseEther('0.01'));
         await expect(
           premiaMarket.connect(taker).fillOrder(order.order, 1),
         ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
@@ -956,8 +940,8 @@ describe('PremiaMarket', () => {
         );
 
         expect(ethBalanceMaker).to.eq(0);
-        expect(ethBalanceTaker).to.eq(ethers.utils.parseEther('0.985'));
-        expect(ethBalanceFeeRecipient).to.eq(ethers.utils.parseEther('0.03'));
+        expect(ethBalanceTaker).to.eq(parseEther('0.985'));
+        expect(ethBalanceFeeRecipient).to.eq(parseEther('0.03'));
       });
     });
   });
@@ -1044,7 +1028,7 @@ describe('PremiaMarket', () => {
   it('should reward uPremia on fillOrder for both maker and taker', async () => {
     await p.priceProvider.setTokenPrices(
       [dai.address, eth.address],
-      [ethers.utils.parseEther('1'), ethers.utils.parseEther('10')],
+      [parseEther('1'), parseEther('10')],
     );
 
     const maker = user1;
@@ -1056,11 +1040,7 @@ describe('PremiaMarket', () => {
 
     await premiaMarket.connect(taker).fillOrder(order.order, 1);
 
-    expect(await p.uPremia.balanceOf(maker.address)).to.eq(
-      ethers.utils.parseEther('0.15'),
-    ); // 0.015 eth fee at 1 eth = 10 usd
-    expect(await p.uPremia.balanceOf(taker.address)).to.eq(
-      ethers.utils.parseEther('0.15'),
-    ); // 0.015 eth fee at 1 eth = 10 usd
+    expect(await p.uPremia.balanceOf(maker.address)).to.eq(parseEther('0.15')); // 0.015 eth fee at 1 eth = 10 usd
+    expect(await p.uPremia.balanceOf(taker.address)).to.eq(parseEther('0.15')); // 0.015 eth fee at 1 eth = 10 usd
   });
 });

@@ -5,6 +5,7 @@ import { IOrderCreated, IOrderCreateProps } from '../../types';
 import { ethers } from 'hardhat';
 import { PremiaOptionTestUtil } from './PremiaOptionTestUtil';
 import { ZERO_ADDRESS } from './constants';
+import { parseEther } from 'ethers/lib/utils';
 
 interface PremiaMarketTestUtilProps {
   eth: TestErc20;
@@ -80,7 +81,7 @@ export class PremiaMarketTestUtil {
       taker: orderOptions?.taker ?? ZERO_ADDRESS,
       side: Number(!orderOptions?.isBuy),
       optionContract: orderOptions?.optionContract ?? this.premiaOption.address,
-      pricePerUnit: ethers.utils.parseEther('1'),
+      pricePerUnit: parseEther('1'),
       optionId: orderOptions?.optionId ?? 1,
       paymentToken: orderOptions?.paymentToken ?? this.eth.address,
     };
@@ -148,15 +149,12 @@ export class PremiaMarketTestUtil {
     const amount = orderOptions?.amount ?? 1;
     await this.optionTestUtil.mintAndWriteOption(seller, amount);
 
-    await this.eth.mint(
-      buyer.address,
-      ethers.utils.parseEther('1.015').mul(amount),
-    );
+    await this.eth.mint(buyer.address, parseEther('1.015').mul(amount));
     await this.eth
       .connect(buyer)
       .increaseAllowance(
         this.premiaMarket.address,
-        ethers.utils.parseEther('1.015').mul(amount),
+        parseEther('1.015').mul(amount),
       );
 
     await this.premiaOption
