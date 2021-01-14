@@ -48,7 +48,7 @@ describe('PremiaMarket', () => {
     const premiaOptionFactory = new PremiaOption__factory(admin);
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
-      weth.address,
+      dai.address,
       ZERO_ADDRESS,
       p.feeCalculator.address,
       ZERO_ADDRESS,
@@ -988,6 +988,52 @@ describe('PremiaMarket', () => {
         expect(ethBalanceMaker).to.eq(0);
         expect(ethBalanceTaker).to.eq(parseEther('0.985'));
         expect(ethBalanceFeeRecipient).to.eq(parseEther('0.03'));
+      });
+
+      it('should write option + fill order', async () => {
+        const maker = user1;
+        const taker = user2;
+
+        // Mint dai and approve premiaOption for taker
+        const amount = parseEther('10')
+          .mul(1e5 + tax * 1e5)
+          .div(1e5);
+        await dai.mint(taker.address, amount);
+        await dai
+          .connect(taker)
+          .increaseAllowance(
+            premiaOption.address,
+            parseEther(amount.toString()),
+          );
+        await premiaOption
+          .connect(taker)
+          .setApprovalForAll(premiaMarket.address, true);
+
+        // Approve weth from maker (buyer)
+        await weth.connect(maker).deposit({ value: parseEther('1.015') });
+        await weth
+          .connect(maker)
+          .approve(premiaMarket.address, parseEther('10000000000000'));
+
+        //
+
+        const defaultOption = optionTestUtil.getOptionDefaults();
+
+        await premiaOption.getOptionIdOrCreate(
+          weth.address,
+          defaultOption.expiration,
+          defaultOption.strikePrice,
+          false,
+        );
+
+        const order = await marketTestUtil.createOrder(maker, {
+          isBuy: true,
+          amount: 1,
+        });
+
+        await premiaMarket
+          .connect(taker)
+          .writeAndFillOrder(order.order, 1, ZERO_ADDRESS);
       });
     });
   });

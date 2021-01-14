@@ -192,6 +192,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
         require(_isDisabled || _contractSize > 0, "Contract size <= 0");
         require(_isDisabled || _strikePriceIncrement > 0, "Strike <= 0");
+        require(_token != address(denominator), "Cant add denominator");
 
         tokenSettings[_token] = TokenSettings({
             contractSize: _contractSize,
@@ -239,7 +240,16 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return optionId;
     }
 
-    function writeOption(OptionWriteArgs memory _option, address _referrer) public {
+    function writeOptionFrom(address _from, OptionWriteArgs memory _option, address _referrer) public nonReentrant {
+        require(isApprovedForAll(_from, msg.sender), "Not approved");
+        _writeOption(_from, _option, _referrer);
+    }
+
+    function writeOption(OptionWriteArgs memory _option, address _referrer) public nonReentrant {
+        _writeOption(msg.sender, _option, _referrer);
+    }
+
+    function _writeOption(address _from, OptionWriteArgs memory _option, address _referrer) internal {
         require(_option.contractAmount > 0, "Amount <= 0");
 
         uint256 optionId = getOptionIdOrCreate(_option.token, _option.expiration, _option.strikePrice, _option.isCall);
@@ -250,28 +260,27 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         if (_option.isCall) {
             uint256 amount = _option.contractAmount.mul(optionData[optionId].contractSize);
 
-            IERC20(_option.token).safeTransferFrom(msg.sender, address(this), amount);
+            IERC20(_option.token).safeTransferFrom(_from, address(this), amount);
 
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(msg.sender, _referrer != address(0), amount, IFeeCalculator.FeeType.Write);
-            _payFees(msg.sender, IERC20(_option.token), _referrer, fee, feeReferrer);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(_from, _referrer != address(0), amount, IFeeCalculator.FeeType.Write);
+            _payFees(_from, IERC20(_option.token), _referrer, fee, feeReferrer);
 
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(amount);
         } else {
             uint256 amount = _option.contractAmount.mul(_option.strikePrice);
+            denominator.safeTransferFrom(_from, address(this), amount);
 
-            denominator.safeTransferFrom(msg.sender, address(this), amount);
-
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(msg.sender, _referrer != address(0), amount, IFeeCalculator.FeeType.Write);
-            _payFees(msg.sender, denominator, _referrer, fee, feeReferrer);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(_from, _referrer != address(0), amount, IFeeCalculator.FeeType.Write);
+            _payFees(_from, denominator, _referrer, fee, feeReferrer);
 
             pools[optionId].denominatorAmount = pools[optionId].denominatorAmount.add(amount);
         }
 
-        nbWritten[msg.sender][optionId] = nbWritten[msg.sender][optionId].add(_option.contractAmount);
+        nbWritten[_from][optionId] = nbWritten[_from][optionId].add(_option.contractAmount);
 
-        mint(msg.sender, optionId, _option.contractAmount);
+        mint(_from, optionId, _option.contractAmount);
 
-        emit OptionWritten(msg.sender, optionId, _option.token, _option.contractAmount);
+        emit OptionWritten(_from, optionId, _option.token, _option.contractAmount);
     }
 
     // Cancel an option before expiration, by burning the NFT for withdrawal of deposit (Can only be called by writer of the option)
@@ -296,12 +305,21 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         emit OptionCancelled(msg.sender, _optionId, optionData[_optionId].token, _contractAmount);
     }
 
+    function exerciseOptionFrom(address _from, uint256 _optionId, uint256 _contractAmount, address _referrer) public nonReentrant {
+        require(isApprovedForAll(_from, msg.sender), "Not approved");
+        _exerciseOption(_from, _optionId, _contractAmount, _referrer);
+    }
+
     function exerciseOption(uint256 _optionId, uint256 _contractAmount, address _referrer) public nonReentrant {
+        _exerciseOption(msg.sender, _optionId, _contractAmount, _referrer);
+    }
+
+    function _exerciseOption(address _from, uint256 _optionId, uint256 _contractAmount, address _referrer) internal {
         require(_contractAmount > 0, "Amount <= 0");
 
         OptionData storage data = optionData[_optionId];
 
-        burn(msg.sender, _optionId, _contractAmount);
+        burn(_from, _optionId, _contractAmount);
         data.exercised = uint256(data.exercised).add(_contractAmount).toUint64();
 
         IERC20 tokenErc20 = IERC20(data.token);
@@ -316,25 +334,25 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(denominatorAmount);
 
-            denominator.safeTransferFrom(msg.sender, address(this), denominatorAmount);
+            denominator.safeTransferFrom(_from, address(this), denominatorAmount);
 
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(msg.sender, _referrer != address(0), denominatorAmount, IFeeCalculator.FeeType.Exercise);
-            _payFees(msg.sender, denominator, _referrer, fee, feeReferrer);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(_from, _referrer != address(0), denominatorAmount, IFeeCalculator.FeeType.Exercise);
+            _payFees(_from, denominator, _referrer, fee, feeReferrer);
 
-            tokenErc20.safeTransfer(msg.sender, tokenAmount);
+            tokenErc20.safeTransfer(_from, tokenAmount);
         } else {
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(denominatorAmount);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
 
-            tokenErc20.safeTransferFrom(msg.sender, address(this), tokenAmount);
+            tokenErc20.safeTransferFrom(_from, address(this), tokenAmount);
 
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(msg.sender, _referrer != address(0), tokenAmount, IFeeCalculator.FeeType.Exercise);
-            _payFees(msg.sender, tokenErc20, _referrer, fee, feeReferrer);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(_from, _referrer != address(0), tokenAmount, IFeeCalculator.FeeType.Exercise);
+            _payFees(_from, tokenErc20, _referrer, fee, feeReferrer);
 
-            denominator.safeTransfer(msg.sender, denominatorAmount);
+            denominator.safeTransfer(_from, denominatorAmount);
         }
 
-        emit OptionExercised(msg.sender, _optionId, data.token, _contractAmount);
+        emit OptionExercised(_from, _optionId, data.token, _contractAmount);
     }
 
     // Withdraw funds from an expired option (Only callable by writers with unclaimed options)

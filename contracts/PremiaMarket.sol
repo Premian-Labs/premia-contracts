@@ -375,6 +375,32 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         createOrder(_order, leftToFill);
     }
 
+    function writeAndFillOrder(Order memory _order, uint256 _maxAmount, address _referrer) public returns(uint256) {
+        bytes32 hash = getOrderHash(_order);
+
+        // If nothing left to fill, return
+        if (amounts[hash] == 0) return 0;
+
+        uint256 amount = _maxAmount;
+        if (amounts[hash] < amount) {
+            amount = amounts[hash];
+        }
+
+        IPremiaOption optionContract = IPremiaOption(_order.optionContract);
+        IPremiaOption.OptionData memory data = optionContract.optionData(_order.optionId);
+
+        IPremiaOption.OptionWriteArgs memory writeArgs = IPremiaOption.OptionWriteArgs({
+            token: data.token,
+            contractAmount: amount,
+            strikePrice: data.strikePrice,
+            expiration: data.expiration,
+            isCall: data.isCall
+        });
+
+        optionContract.writeOptionFrom(msg.sender, writeArgs, _referrer);
+        return fillOrder(_order, _maxAmount);
+    }
+
     /**
      * @dev Fill an existing order
      * @param _order The order
