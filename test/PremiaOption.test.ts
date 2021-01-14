@@ -77,11 +77,28 @@ describe('PremiaOption', () => {
     });
   });
 
-  it('Should add eth for trading', async () => {
+  it('should add eth for trading', async () => {
     await optionTestUtil.addEth();
     const settings = await premiaOption.tokenSettings(weth.address);
     expect(settings.contractSize.eq(parseEther('1'))).to.true;
     expect(settings.strikePriceIncrement.eq(parseEther('10'))).to.true;
+  });
+
+  it('should create a new optionId', async () => {
+    await optionTestUtil.addEth();
+    const defaultOption = optionTestUtil.getOptionDefaults();
+    await premiaOption.getOptionIdOrCreate(
+      weth.address,
+      defaultOption.expiration,
+      defaultOption.strikePrice,
+      true,
+    );
+
+    const option = await premiaOption.optionData(1);
+    expect(option.token).to.eq(weth.address);
+    expect(option.expiration).to.eq(defaultOption.expiration);
+    expect(option.strikePrice).to.eq(defaultOption.strikePrice);
+    expect(option.isCall).to.be.true;
   });
 
   describe('writeOption', () => {

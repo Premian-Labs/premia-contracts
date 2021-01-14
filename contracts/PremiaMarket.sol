@@ -63,6 +63,17 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         uint256 salt;
     }
 
+    struct Option {
+        /* Token address */
+        address token;
+        /* Expiration timestamp of the option (Must follow expirationIncrement) */
+        uint256 expiration;
+        /* Strike price (Must follow strikePriceIncrement of token) */
+        uint256 strikePrice;
+        /* If true : Call option | If false : Put option */
+        bool isCall;
+    }
+
     /* OrderId -> Amount of options left to purchase/sell */
     mapping(bytes32 => uint256) public amounts;
 
@@ -311,6 +322,11 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         );
 
         return hash;
+    }
+
+    function createOrderForNewOption(Order memory _order, uint256 _amount, Option memory _option) public returns(bytes32) {
+        _order.optionId = IPremiaOption(_order.optionContract).getOptionIdOrCreate(_option.token, _option.expiration, _option.strikePrice, _option.isCall);
+        return createOrder(_order, _amount);
     }
 
     function createOrders(Order[] memory _orders, uint256[] memory _amounts) external returns(bytes32[] memory) {

@@ -210,31 +210,39 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     ////////
 
-    function writeOption(OptionWriteArgs memory _option, address _referrer) public nonReentrant {
-        _preCheckOptionWrite(_option.token, _option.contractAmount, _option.strikePrice, _option.expiration);
+    function getOptionIdOrCreate(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public returns(uint256) {
+        _preCheckOptionIdCreate(_token, _strikePrice, _expiration);
 
-        uint256 optionId = getOptionId(_option.token, _option.expiration, _option.strikePrice, _option.isCall);
+        uint256 optionId = getOptionId(_token, _expiration, _strikePrice, _isCall);
         if (optionId == 0) {
             optionId = nextOptionId;
-            options[_option.token][_option.expiration][_option.strikePrice][_option.isCall] = optionId;
+            options[_token][_expiration][_strikePrice][_isCall] = optionId;
 
             pools[optionId] = Pool({ tokenAmount: 0, denominatorAmount: 0 });
             optionData[optionId] = OptionData({
-            token: _option.token,
-            contractSize: tokenSettings[_option.token].contractSize,
-            expiration: _option.expiration,
-            strikePrice: _option.strikePrice,
-            isCall: _option.isCall,
+            token: _token,
+            contractSize: tokenSettings[_token].contractSize,
+            expiration: _expiration.toUint64(),
+            strikePrice: _strikePrice,
+            isCall: _isCall,
             claimsPreExp: 0,
             claimsPostExp: 0,
             exercised: 0,
             supply: 0
             });
 
-            emit OptionIdCreated(optionId, _option.token);
+            emit OptionIdCreated(optionId, _token);
 
             nextOptionId = nextOptionId.add(1);
         }
+
+        return optionId;
+    }
+
+    function writeOption(OptionWriteArgs memory _option, address _referrer) public {
+        require(_option.contractAmount > 0, "Amount <= 0");
+
+        uint256 optionId = getOptionIdOrCreate(_option.token, _option.expiration, _option.strikePrice, _option.isCall);
 
         // Set referrer or get current if one already exists
         _referrer = _trySetReferrer(_referrer);
@@ -554,14 +562,13 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return false;
     }
 
-    function _preCheckOptionWrite(address _token, uint256 _contractAmount, uint256 _strikePrice, uint256 _expiration) internal view {
+    function _preCheckOptionIdCreate(address _token, uint256 _strikePrice, uint256 _expiration) internal view {
         require(!tokenSettings[_token].isDisabled, "Token disabled");
         require(tokenSettings[_token].contractSize != 0, "Token not supported");
-        require(_contractAmount > 0, "Amount <= 0");
         require(_strikePrice > 0, "Strike <= 0");
         require(_strikePrice % tokenSettings[_token].strikePriceIncrement == 0, "Wrong strike incr");
         require(_expiration > block.timestamp, "Exp passed");
-        require(_expiration.sub(block.timestamp) <= 365 days, "Exp > 1 yr");
+        require(_expiration.sub(block.timestamp) <= maxExpiration, "Exp > 1 yr");
         require(_expiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");
     }
 

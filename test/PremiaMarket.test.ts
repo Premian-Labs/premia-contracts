@@ -124,6 +124,52 @@ describe('PremiaMarket', () => {
       expect(amount).to.eq(1);
     });
 
+    it('should create an order for a non existing option', async () => {
+      const optionDefault = optionTestUtil.getOptionDefaults();
+      const tx = await premiaMarket.createOrderForNewOption(
+        {
+          ...marketTestUtil.getDefaultOrder(user1),
+          expirationTime: optionDefault.expiration,
+          salt: 1,
+        },
+        1,
+        {
+          token: weth.address,
+          expiration: optionDefault.expiration,
+          strikePrice: optionDefault.strikePrice.mul(3),
+          isCall: true,
+        },
+      );
+
+      const filter = premiaMarket.filters.OrderCreated(
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+      );
+      const r = await premiaMarket.queryFilter(filter, tx.blockHash);
+
+      const events = r.map((el) => (el.args as any) as IOrderCreated);
+      expect(events.length).to.eq(1);
+      const orderAmount = await premiaMarket.amounts(events[0].hash);
+      expect(orderAmount).to.eq(1);
+
+      const optionId = events[0].optionId;
+      const optionData = await premiaOption.optionData(optionId);
+
+      expect(optionData.token).to.eq(weth.address);
+      expect(optionData.expiration).to.eq(optionDefault.expiration);
+      expect(optionData.strikePrice).to.eq(optionDefault.strikePrice.mul(3));
+      expect(optionData.isCall).to.be.true;
+    });
+
     it('should create multiple orders', async () => {
       await optionTestUtil.mintAndWriteOption(admin, 5);
 

@@ -38,6 +38,7 @@ interface IPremiaOption is IERC1155 {
     }
 
     function getOptionId(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) external view returns(uint256);
+    function getOptionIdOrCreate(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) external returns(uint256);
     function getOptionExpiration(uint256 _optionId) external view returns(uint256);
     function privileges(address _user) external view returns(Privileges memory);
     function getTotalFee(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256);
