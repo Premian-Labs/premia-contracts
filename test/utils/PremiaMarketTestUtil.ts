@@ -1,49 +1,52 @@
 import {
+  PremiaMarket,
   TestErc20,
-  TestPremiaMarket,
-  TestPremiaOption,
+  PremiaOption,
+  WETH9,
 } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber } from 'ethers';
 import { IOrderCreated, IOrderCreateProps } from '../../types';
 import { ethers } from 'hardhat';
 import { PremiaOptionTestUtil } from './PremiaOptionTestUtil';
+import { ZERO_ADDRESS } from './constants';
+import { parseEther } from 'ethers/lib/utils';
 
 interface PremiaMarketTestUtilProps {
-  eth: TestErc20;
+  weth: WETH9;
   dai: TestErc20;
-  premiaOption: TestPremiaOption;
-  premiaMarket: TestPremiaMarket;
+  premiaOption: PremiaOption;
+  premiaMarket: PremiaMarket;
   admin: SignerWithAddress;
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
   user1: SignerWithAddress;
-  treasury: SignerWithAddress;
+  feeRecipient: SignerWithAddress;
 }
 
 interface OrderOptions {
   taker?: string;
   isBuy?: boolean;
-  amount?: number;
+  amount?: BigNumber;
   paymentToken?: string;
   optionContract?: string;
   optionId?: number;
 }
 
 export class PremiaMarketTestUtil {
-  eth: TestErc20;
+  weth: WETH9;
   dai: TestErc20;
-  premiaOption: TestPremiaOption;
-  premiaMarket: TestPremiaMarket;
+  premiaOption: PremiaOption;
+  premiaMarket: PremiaMarket;
   admin: SignerWithAddress;
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
   user1: SignerWithAddress;
-  treasury: SignerWithAddress;
+  feeRecipient: SignerWithAddress;
   optionTestUtil: PremiaOptionTestUtil;
 
   constructor(props: PremiaMarketTestUtilProps) {
-    this.eth = props.eth;
+    this.weth = props.weth;
     this.dai = props.dai;
     this.premiaOption = props.premiaOption;
     this.premiaMarket = props.premiaMarket;
@@ -51,17 +54,18 @@ export class PremiaMarketTestUtil {
     this.writer1 = props.writer1;
     this.writer2 = props.writer2;
     this.user1 = props.user1;
-    this.treasury = props.treasury;
+    this.feeRecipient = props.feeRecipient;
 
     this.optionTestUtil = new PremiaOptionTestUtil({
-      eth: this.eth,
+      weth: this.weth,
       dai: this.dai,
       premiaOption: this.premiaOption,
+      admin: this.admin,
       writer1: this.writer1,
       writer2: this.writer2,
       user1: this.user1,
-      treasury: this.treasury,
-      tax: 0.01,
+      feeRecipient: this.feeRecipient,
+      tax: 100,
     });
   }
 
@@ -79,13 +83,12 @@ export class PremiaMarketTestUtil {
   getDefaultOrder(user: SignerWithAddress, orderOptions?: OrderOptions) {
     const newOrder: IOrderCreateProps = {
       maker: user.address,
-      taker:
-        orderOptions?.taker ?? '0x0000000000000000000000000000000000000000',
+      taker: orderOptions?.taker ?? ZERO_ADDRESS,
       side: Number(!orderOptions?.isBuy),
       optionContract: orderOptions?.optionContract ?? this.premiaOption.address,
-      pricePerUnit: ethers.utils.parseEther('1'),
+      pricePerUnit: parseEther('1'),
       optionId: orderOptions?.optionId ?? 1,
-      paymentToken: orderOptions?.paymentToken ?? this.eth.address,
+      paymentToken: orderOptions?.paymentToken ?? this.weth.address,
     };
 
     return newOrder;
@@ -93,7 +96,7 @@ export class PremiaMarketTestUtil {
 
   async createOrder(user: SignerWithAddress, orderOptions?: OrderOptions) {
     const newOrder = this.getDefaultOrder(user, orderOptions);
-    const amount = orderOptions?.amount ?? 1;
+    const amount = orderOptions?.amount ?? parseEther('1');
 
     const tx = await this.premiaMarket.connect(user).createOrder(
       {
@@ -103,6 +106,8 @@ export class PremiaMarketTestUtil {
       },
       amount,
     );
+
+    // console.log(tx.gasLimit.toString());
 
     const filter = this.premiaMarket.filters.OrderCreated(
       null,
@@ -148,18 +153,15 @@ export class PremiaMarketTestUtil {
       seller = maker;
     }
 
-    const amount = orderOptions?.amount ?? 1;
+    const amount = orderOptions?.amount ?? parseEther('1');
     await this.optionTestUtil.mintAndWriteOption(seller, amount);
 
-    await this.eth
+    await this.weth
       .connect(buyer)
-      .mint(ethers.utils.parseEther('1.015').mul(amount));
-    await this.eth
+      .deposit({ value: amount.add(amount.mul(150).div(1e4)) });
+    await this.weth
       .connect(buyer)
-      .increaseAllowance(
-        this.premiaMarket.address,
-        ethers.utils.parseEther('1.015').mul(amount),
-      );
+      .approve(this.premiaMarket.address, parseEther('10000000000000'));
 
     await this.premiaOption
       .connect(seller)

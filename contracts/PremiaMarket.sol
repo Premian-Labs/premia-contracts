@@ -8,31 +8,37 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/EnumerableSet.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
+import "./interface/IERC20Extended.sol";
 import "./interface/IPremiaOption.sol";
+import "./interface/IFeeCalculator.sol";
+import "./interface/IPremiaReferral.sol";
+import "./interface/IPremiaUncutErc20.sol";
 
-//import "hardhat/console.sol";
 
 contract PremiaMarket is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Extended;
     using EnumerableSet for EnumerableSet.AddressSet;
+
+    IPremiaUncutErc20 public uPremia;
+    IFeeCalculator public feeCalculator;
 
     EnumerableSet.AddressSet private _whitelistedOptionContracts;
     EnumerableSet.AddressSet private _whitelistedPaymentTokens;
 
     /* For split fee orders, minimum required protocol maker fee, in basis points. Paid to owner (who can change it). */
-    uint256 public makerFee = 15e2; // 1.5%
+    uint256 public makerFee = 150; // 1.5%
 
     /* For split fee orders, minimum required protocol taker fee, in basis points. Paid to owner (who can change it). */
-    uint256 public takerFee = 15e2; // 1.5%
+    uint256 public takerFee = 150; // 1.5%
 
     /* Recipient of protocol fees. */
-    address public treasury;
+    address public feeRecipient;
 
     enum SaleSide {Buy, Sell}
 
     /* Inverse basis point. */
-    uint256 public constant INVERSE_BASIS_POINT = 1e5;
+    uint256 private constant _inverseBasisPoint = 1e4;
 
     /* Salt to prevent duplicate hash. */
     uint256 salt = 0;
@@ -57,6 +63,17 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         uint256 expirationTime;
         /* To ensure unique hash */
         uint256 salt;
+    }
+
+    struct Option {
+        /* Token address */
+        address token;
+        /* Expiration timestamp of the option (Must follow expirationIncrement) */
+        uint256 expiration;
+        /* Strike price (Must follow strikePriceIncrement of token) */
+        uint256 strikePrice;
+        /* If true : Call option | If false : Put option */
+        bool isCall;
     }
 
     /* OrderId -> Amount of options left to purchase/sell */
@@ -103,8 +120,11 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(address _treasury) public {
-        treasury = _treasury;
+    constructor(IPremiaUncutErc20 _uPremia, IFeeCalculator _feeCalculator, address _feeRecipient) {
+        require(_feeRecipient != address(0), "FeeRecipient cannot be 0x0 address");
+        feeRecipient = _feeRecipient;
+        uPremia = _uPremia;
+        feeCalculator = _feeCalculator;
     }
 
     //////////////////////////////////////////////////
@@ -119,9 +139,9 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
      * @dev Set the minimum maker fee paid to the protocol (owner only)
      * @param _fee New fee to set in basis points
      */
-    function setMakerFee(uint256 _fee) public onlyOwner {
+    function setMakerFee(uint256 _fee) external onlyOwner {
         // Hardcoded max fee we can set at 5%
-        require(_fee <= 5e3, "Over max fee limit");
+        require(_fee <= 500, "Over max fee limit");
         makerFee = _fee;
     }
 
@@ -129,39 +149,48 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
      * @dev Change the minimum taker fee paid to the protocol (owner only)
      * @param _fee New fee to set in basis points
      */
-    function setTakerFee(uint256 _fee) public onlyOwner {
+    function setTakerFee(uint256 _fee) external onlyOwner {
         // Hardcoded max fee we can set at 5%
-        require(_fee <= 5e3, "Over max fee limit");
+        require(_fee <= 500, "Over max fee limit");
         takerFee = _fee;
     }
 
     /**
      * @dev Change the protocol fee recipient (owner only)
-     * @param _treasury New protocol fee recipient address
+     * @param _feeRecipient New protocol fee recipient address
      */
-    function setTreasury(address _treasury) public onlyOwner {
-        treasury = _treasury;
+    function setFeeRecipient(address _feeRecipient) external onlyOwner {
+        require(_feeRecipient != address(0), "FeeRecipient cannot be 0x0 address");
+        feeRecipient = _feeRecipient;
     }
 
-    function addWhitelistedOptionContracts(address[] memory _addr) public onlyOwner {
+    function setPremiaUncutErc20(IPremiaUncutErc20 _uPremia) external onlyOwner {
+        uPremia = _uPremia;
+    }
+
+    function setFeeCalculator(IFeeCalculator _feeCalculator) external onlyOwner {
+        feeCalculator = _feeCalculator;
+    }
+
+    function addWhitelistedOptionContracts(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedOptionContracts.add(_addr[i]);
         }
     }
 
-    function removeWhitelistedOptionContracts(address[] memory _addr) public onlyOwner {
+    function removeWhitelistedOptionContracts(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedOptionContracts.remove(_addr[i]);
         }
     }
 
-    function addWhitelistedPaymentTokens(address[] memory _addr) public onlyOwner {
+    function addWhitelistedPaymentTokens(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedPaymentTokens.add(_addr[i]);
         }
     }
 
-    function removeWhitelistedPaymentTokens(address[] memory _addr) public onlyOwner {
+    function removeWhitelistedPaymentTokens(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedPaymentTokens.remove(_addr[i]);
         }
@@ -171,12 +200,8 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     // View //
     //////////
 
-    function getBlockTimestamp() public view returns(uint256) {
-        return block.timestamp;
-    }
-
     // Returns the amounts left to buy/sell for an order
-    function getAmountsBatch(bytes32[] memory _orderIds) public view returns(uint256[] memory) {
+    function getAmountsBatch(bytes32[] memory _orderIds) external view returns(uint256[] memory) {
         uint256[] memory result = new uint256[](_orderIds.length);
 
         for (uint256 i=0; i < _orderIds.length; i++) {
@@ -186,7 +211,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return result;
     }
 
-    function getOrderHashBatch(Order[] memory _orders) public pure returns(bytes32[] memory) {
+    function getOrderHashBatch(Order[] memory _orders) external pure returns(bytes32[] memory) {
         bytes32[] memory result = new bytes32[](_orders.length);
 
         for (uint256 i=0; i < _orders.length; i++) {
@@ -229,13 +254,16 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         if (amountLeft == 0) return false;
 
         // Expired
-        if (_order.expirationTime == 0 || getBlockTimestamp() > _order.expirationTime) return false;
+        if (_order.expirationTime == 0 || block.timestamp > _order.expirationTime) return false;
 
-        IERC20 token = IERC20(_order.paymentToken);
+        IERC20Extended token = IERC20Extended(_order.paymentToken);
+
+        IPremiaOption.OptionData memory optionData = IPremiaOption(_order.optionContract).optionData(_order.optionId);
+        uint8 decimals = IERC20Extended(optionData.token).decimals();
 
         if (_order.side == SaleSide.Buy) {
-            uint256 basePrice = _order.pricePerUnit.mul(amountLeft);
-            uint256 orderMakerFee = basePrice.mul(makerFee).div(INVERSE_BASIS_POINT);
+            uint256 basePrice = _order.pricePerUnit.mul(amountLeft).div(10 ** decimals);
+            uint256 orderMakerFee = basePrice.mul(makerFee).div(_inverseBasisPoint);
             uint256 totalPrice = basePrice.add(orderMakerFee);
 
             uint256 userBalance = token.balanceOf(_order.maker);
@@ -244,7 +272,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             return userBalance >= totalPrice && allowance >= totalPrice;
         } else if (_order.side == SaleSide.Sell) {
             IPremiaOption premiaOption = IPremiaOption(_order.optionContract);
-            uint256 optionBalance = premiaOption.balanceOf(_order.maker, amountLeft);
+            uint256 optionBalance = premiaOption.balanceOf(_order.maker, _order.optionId);
             bool isApproved = premiaOption.isApprovedForAll(_order.maker, address(this));
 
             return isApproved && optionBalance >= amountLeft;
@@ -253,7 +281,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return false;
     }
 
-    function areOrdersValid(Order[] memory _orders) public view returns(bool[] memory) {
+    function areOrdersValid(Order[] memory _orders) external view returns(bool[] memory) {
         bool[] memory result = new bool[](_orders.length);
 
         for (uint256 i=0; i < _orders.length; i++) {
@@ -273,7 +301,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         require(_whitelistedPaymentTokens.contains(_order.paymentToken), "Payment token not whitelisted");
 
         uint256 _expiration = IPremiaOption(_order.optionContract).getOptionExpiration(_order.optionId);
-        require(getBlockTimestamp() < _expiration, "Option expired");
+        require(block.timestamp < _expiration, "Option expired");
 
         _order.maker = msg.sender;
         _order.expirationTime = _expiration;
@@ -301,7 +329,12 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return hash;
     }
 
-    function createOrders(Order[] memory _orders, uint256[] memory _amounts) public returns(bytes32[] memory) {
+    function createOrderForNewOption(Order memory _order, uint256 _amount, Option memory _option) public returns(bytes32) {
+        _order.optionId = IPremiaOption(_order.optionContract).getOptionIdOrCreate(_option.token, _option.expiration, _option.strikePrice, _option.isCall);
+        return createOrder(_order, _amount);
+    }
+
+    function createOrders(Order[] memory _orders, uint256[] memory _amounts) external returns(bytes32[] memory) {
         require(_orders.length == _amounts.length, "Arrays must have same length");
 
         bytes32[] memory result = new bytes32[](_orders.length);
@@ -314,7 +347,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     }
 
     // Will try to fill orderCandidates. If it cannot fill _amount, it will create a new order for the remaining amount to fill
-    function createOrderAndTryToFill(Order memory _order, uint256 _amount, Order[] memory _orderCandidates) public {
+    function createOrderAndTryToFill(Order memory _order, uint256 _amount, Order[] memory _orderCandidates) external {
         require(_amount > 0, "Amount must be > 0");
 
         uint256 totalFilled = 0;
@@ -347,16 +380,44 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         createOrder(_order, leftToFill);
     }
 
+    function writeAndFillOrder(Order memory _order, uint256 _maxAmount, address _referrer) public returns(uint256) {
+        bytes32 hash = getOrderHash(_order);
+
+        // If nothing left to fill, return
+        if (amounts[hash] == 0) return 0;
+
+        uint256 amount = _maxAmount;
+        if (amounts[hash] < amount) {
+            amount = amounts[hash];
+        }
+
+        IPremiaOption optionContract = IPremiaOption(_order.optionContract);
+        IPremiaOption.OptionData memory data = optionContract.optionData(_order.optionId);
+
+        IPremiaOption.OptionWriteArgs memory writeArgs = IPremiaOption.OptionWriteArgs({
+            token: data.token,
+            amount: amount,
+            strikePrice: data.strikePrice,
+            expiration: data.expiration,
+            isCall: data.isCall
+        });
+
+        optionContract.writeOptionFrom(msg.sender, writeArgs, _referrer);
+        return fillOrder(_order, _maxAmount);
+    }
+
     /**
      * @dev Fill an existing order
      * @param _order The order
      * @param _maxAmount Max amount of options to buy/sell
      */
-    function fillOrder(Order memory _order, uint256 _maxAmount) public nonReentrant returns(uint256 _amountFilled) {
+    function fillOrder(Order memory _order, uint256 _maxAmount) public nonReentrant returns(uint256) {
         bytes32 hash = getOrderHash(_order);
 
-        require(amounts[hash] > 0, "Order not found");
-        require(_order.expirationTime != 0 && getBlockTimestamp() < _order.expirationTime, "Order expired");
+        // If nothing left to fill, return
+        if (amounts[hash] == 0) return 0;
+
+        require(_order.expirationTime != 0 && block.timestamp < _order.expirationTime, "Order expired");
         require(_order.optionContract != address(0), "Order not found");
         require(_maxAmount > 0, "MaxAmount must be > 0");
         require(_order.taker == address(0) || _order.taker == msg.sender, "Not specified taker");
@@ -368,23 +429,30 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
         amounts[hash] = amounts[hash].sub(amount);
 
-        uint256 basePrice = _order.pricePerUnit.mul(amount);
-        uint256 orderMakerFee = basePrice.mul(makerFee).div(INVERSE_BASIS_POINT);
-        uint256 orderTakerFee = basePrice.mul(takerFee).div(INVERSE_BASIS_POINT);
+        IPremiaOption.OptionData memory optionData = IPremiaOption(_order.optionContract).optionData(_order.optionId);
 
-        IERC20 token = IERC20(_order.paymentToken);
+        uint256 basePrice = _order.pricePerUnit.mul(amount).div(10 ** IERC20Extended(optionData.token).decimals());
+
+        (uint256 orderMakerFee,) = feeCalculator.getFees(_order.maker, false, basePrice, IFeeCalculator.FeeType.Maker);
+        (uint256 orderTakerFee,) = feeCalculator.getFees(_order.taker, false, basePrice, IFeeCalculator.FeeType.Taker);
 
         if (_order.side == SaleSide.Buy) {
             IPremiaOption(_order.optionContract).safeTransferFrom(msg.sender, _order.maker, _order.optionId, amount, "");
 
-            token.transferFrom(_order.maker, treasury, orderMakerFee.add(orderTakerFee));
-            token.transferFrom(_order.maker, msg.sender, basePrice.sub(orderTakerFee));
+            IERC20Extended(_order.paymentToken).safeTransferFrom(_order.maker, feeRecipient, orderMakerFee.add(orderTakerFee));
+            IERC20Extended(_order.paymentToken).safeTransferFrom(_order.maker, msg.sender, basePrice.sub(orderTakerFee));
 
         } else {
-            token.transferFrom(msg.sender, treasury, orderMakerFee.add(orderTakerFee));
-            token.transferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
+            IERC20Extended(_order.paymentToken).safeTransferFrom(msg.sender, feeRecipient, orderMakerFee.add(orderTakerFee));
+            IERC20Extended(_order.paymentToken).safeTransferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
 
             IPremiaOption(_order.optionContract).safeTransferFrom(_order.maker, msg.sender, _order.optionId, amount, "");
+        }
+
+        // Mint uPremia
+        if (address(uPremia) != address(0)) {
+            uPremia.mintReward(_order.maker, _order.paymentToken, orderMakerFee);
+            uPremia.mintReward(msg.sender, _order.paymentToken, orderTakerFee);
         }
 
         emit OrderFilled(
@@ -397,6 +465,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             _order.pricePerUnit
         );
 
+        // Returns the amount filled
         return amount;
     }
 
@@ -405,7 +474,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
      * @param _orders The orders
      * @param _maxAmounts Max amount of options to buy/sell
      */
-    function fillOrders(Order[] memory _orders, uint256[] memory _maxAmounts) public {
+    function fillOrders(Order[] memory _orders, uint256[] memory _maxAmounts) external {
         require(_orders.length == _maxAmounts.length, "Arrays must have same length");
         for (uint256 i=0; i < _orders.length; i++) {
             fillOrder(_orders[i], _maxAmounts[i]);
@@ -438,7 +507,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
      * @dev Cancel a list of existing orders
      * @param _orders The orders
      */
-    function cancelOrders(Order[] memory _orders) public {
+    function cancelOrders(Order[] memory _orders) external {
         for (uint256 i=0; i < _orders.length; i++) {
             cancelOrder(_orders[i]);
         }

@@ -3,5 +3,5 @@
 pragma solidity ^0.7.0;
 
 interface IFlashLoanReceiver {
-    function execute(address _tokenAddress, uint256 _amount) external;
+    function execute(address _tokenAddress, uint256 _amount, uint256 _amountWithFee) external;
 }

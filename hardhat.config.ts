@@ -2,6 +2,7 @@ import { task } from 'hardhat/config';
 import Dotenv from 'dotenv';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
+import 'hardhat-contract-sizer';
 
 Dotenv.config();
 
@@ -44,13 +45,23 @@ export default {
           },
         },
       },
+      {
+        version: '0.4.18',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
     ],
     overrides: {
-      'contracts/test/TestPremiaOption.sol': {
+      'contracts/PremiaOption.sol': {
         version: '0.7.6',
         settings: {
           optimizer: {
-            enabled: false,
+            enabled: true,
+            runs: 50,
           },
         },
       },
@@ -59,6 +70,7 @@ export default {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
+      blockGasLimit: 120000000000,
     },
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${ALCHEMY_KEY}`,

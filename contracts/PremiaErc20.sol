@@ -1,66 +1,11 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity >=0.6.0;
+pragma solidity ^0.7.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import '@openzeppelin/contracts/math/SafeMath.sol';
-import '@openzeppelin/contracts/utils/EnumerableSet.sol';
-import '@openzeppelin/contracts/access/Ownable.sol';
+import "./ERC20Permit.sol";
 
-contract PremiaErc20 is ERC20, Ownable {
-    using SafeMath for uint256;
-    using EnumerableSet for EnumerableSet.AddressSet;
-
-    // Addresses with minting rights
-    EnumerableSet.AddressSet private _minters;
-
-    uint256 private _maxSupply = 1e26; // Hardcoded 100m max supply
-
-    constructor(uint256 amount) public ERC20("Premia", "PREMIA") {
-        require(amount <= _maxSupply);
-        _mint(msg.sender, amount);
-    }
-
-    //
-
-    modifier onlyMinter() {
-        require(_minters.contains(msg.sender), "No minting rights");
-        _;
-    }
-
-    //
-
-    function mint(address account, uint256 amount) public onlyMinter {
-        require(totalSupply().add(amount) <= _maxSupply);
-        _mint(account, amount);
-    }
-
-    function burn(uint256 amount) public {
-        _burn(msg.sender, amount);
-    }
-
-    //
-
-    function addMinter(address[] memory _addr) public onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
-            _minters.add(_addr[i]);
-        }
-    }
-
-    function removeMinter(address[] memory _addr) public onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
-            _minters.remove(_addr[i]);
-        }
-    }
-
-    function getMinters() external view returns(address[] memory) {
-        uint256 length = _minters.length();
-        address[] memory result = new address[](length);
-
-        for (uint256 i=0; i < length; i++) {
-            result[i] = _minters.at(i);
-        }
-
-        return result;
+contract PremiaErc20 is ERC20Permit {
+    constructor() ERC20("Premia", "PREMIA") {
+        _mint(msg.sender, 1e26); // 100m
     }
 }
