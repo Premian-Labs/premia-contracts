@@ -300,7 +300,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         require(_whitelistedOptionContracts.contains(_order.optionContract), "Option contract not whitelisted");
         require(_whitelistedPaymentTokens.contains(_order.paymentToken), "Payment token not whitelisted");
 
-        uint256 _expiration = IPremiaOption(_order.optionContract).getOptionExpiration(_order.optionId);
+        uint256 _expiration = IPremiaOption(_order.optionContract).optionData(_order.optionId).expiration;
         require(block.timestamp < _expiration, "Option expired");
 
         _order.maker = msg.sender;
