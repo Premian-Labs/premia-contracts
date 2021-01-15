@@ -1,6 +1,6 @@
 import { PremiaOption, TestErc20, WETH9 } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { BigNumberish } from 'ethers';
+import { BigNumberish, BigNumber } from 'ethers';
 import { ONE_WEEK, ZERO_ADDRESS } from './constants';
 import { parseEther } from 'ethers/lib/utils';
 
@@ -9,7 +9,7 @@ interface WriteOptionArgs {
   expiration?: number;
   strikePrice?: BigNumberish;
   isCall?: boolean;
-  contractAmount?: number;
+  amount?: BigNumber;
   referrer?: string;
 }
 
@@ -64,14 +64,13 @@ export class PremiaOptionTestUtil {
       expiration: this.getNextExpiration(),
       strikePrice: parseEther('10'),
       isCall: true,
-      contractAmount: 1,
+      amount: parseEther('1'),
     };
   }
 
   async addEth() {
     return this.premiaOption.setToken(
       this.weth.address,
-      parseEther('1'),
       parseEther('10'),
       false,
     );
@@ -86,10 +85,7 @@ export class PremiaOptionTestUtil {
         expiration: args?.expiration ?? defaults.expiration,
         strikePrice: args?.strikePrice ?? defaults.strikePrice,
         isCall: args?.isCall == undefined ? defaults.isCall : args.isCall,
-        contractAmount:
-          args?.contractAmount == undefined
-            ? defaults.contractAmount
-            : args?.contractAmount,
+        amount: args?.amount == undefined ? defaults.amount : args?.amount,
       },
       args?.referrer ?? ZERO_ADDRESS,
     );
@@ -97,52 +93,42 @@ export class PremiaOptionTestUtil {
 
   async mintAndWriteOption(
     user: SignerWithAddress,
-    contractAmount: number,
+    amount: BigNumber,
     isCall = true,
     referrer?: string,
   ) {
     if (isCall) {
-      const amount = parseEther(contractAmount.toString())
-        .mul(1e5 + this.tax * 1e5)
-        .div(1e5);
-      await this.weth.connect(user).deposit({ value: amount });
+      const amountWithFee = amount.add(amount.mul(this.tax).div(1e4));
+      await this.weth.connect(user).deposit({ value: amountWithFee });
       await this.weth
         .connect(user)
-        .approve(this.premiaOption.address, parseEther(amount.toString()));
+        .approve(this.premiaOption.address, amountWithFee);
     } else {
-      const amount = parseEther('10')
-        .mul(contractAmount)
-        .mul(1e5 + this.tax * 1e5)
-        .div(1e5);
-      await this.dai.mint(user.address, amount);
+      const baseAmount = amount.mul(10);
+      const amountWithFee = baseAmount.add(baseAmount.mul(this.tax).div(1e4));
+      await this.dai.mint(user.address, amountWithFee);
       await this.dai
         .connect(user)
-        .increaseAllowance(
-          this.premiaOption.address,
-          parseEther(amount.toString()),
-        );
+        .increaseAllowance(this.premiaOption.address, amountWithFee);
     }
 
-    await this.writeOption(user, { contractAmount, isCall, referrer });
+    await this.writeOption(user, { amount, isCall, referrer });
+    // const tx = await this.writeOption(user, { amount, isCall, referrer });
+    // console.log(tx.gasLimit.toString());
   }
 
   async addEthAndWriteOptions(
-    contractAmount: number,
+    amount: BigNumber,
     isCall = true,
     referrer?: string,
   ) {
     await this.addEth();
-    await this.mintAndWriteOption(
-      this.writer1,
-      contractAmount,
-      isCall,
-      referrer,
-    );
+    await this.mintAndWriteOption(this.writer1, amount, isCall, referrer);
   }
 
   async transferOptionToUser1(
     from: SignerWithAddress,
-    amount?: number,
+    amount?: BigNumber,
     optionId?: number,
   ) {
     await this.premiaOption
@@ -151,35 +137,33 @@ export class PremiaOptionTestUtil {
         from.address,
         this.user1.address,
         optionId ?? 1,
-        amount ?? 1,
+        amount ?? parseEther('1'),
         '0x00',
       );
   }
 
   async exerciseOption(
     isCall: boolean,
-    amountToExercise: number,
+    amountToExercise: BigNumber,
     referrer?: string,
     optionId?: number,
   ) {
     if (isCall) {
-      const amount = amountToExercise * 10 * (1 + this.tax);
-      await this.dai.mint(this.user1.address, parseEther(amount.toString()));
+      const baseAmount = amountToExercise.mul(10);
+      const amount = baseAmount.add(baseAmount.mul(this.tax).div(1e4));
+      await this.dai.mint(this.user1.address, amount);
       await this.dai
         .connect(this.user1)
-        .increaseAllowance(
-          this.premiaOption.address,
-          parseEther(amount.toString()),
-        );
+        .increaseAllowance(this.premiaOption.address, amount);
     } else {
-      const amount = amountToExercise * (1 + this.tax);
+      const amount = amountToExercise.add(
+        amountToExercise.mul(this.tax).div(1e4),
+      );
 
+      await this.weth.connect(this.user1).deposit({ value: amount });
       await this.weth
         .connect(this.user1)
-        .deposit({ value: parseEther(amount.toString()) });
-      await this.weth
-        .connect(this.user1)
-        .approve(this.premiaOption.address, parseEther(amount.toString()));
+        .approve(this.premiaOption.address, amount);
     }
 
     return this.premiaOption
@@ -193,8 +177,8 @@ export class PremiaOptionTestUtil {
 
   async addEthAndWriteOptionsAndExercise(
     isCall: boolean,
-    amountToWrite: number,
-    amountToExercise: number,
+    amountToWrite: BigNumber,
+    amountToExercise: BigNumber,
     referrer?: string,
   ) {
     await this.addEthAndWriteOptions(amountToWrite, isCall);

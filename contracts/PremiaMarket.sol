@@ -8,14 +8,16 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/EnumerableSet.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
+import "./interface/IERC20Extended.sol";
 import "./interface/IPremiaOption.sol";
 import "./interface/IFeeCalculator.sol";
 import "./interface/IPremiaReferral.sol";
 import "./interface/IPremiaUncutErc20.sol";
 
+
 contract PremiaMarket is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20;
+    using SafeERC20 for IERC20Extended;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     IPremiaUncutErc20 public uPremia;
@@ -254,10 +256,13 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         // Expired
         if (_order.expirationTime == 0 || block.timestamp > _order.expirationTime) return false;
 
-        IERC20 token = IERC20(_order.paymentToken);
+        IERC20Extended token = IERC20Extended(_order.paymentToken);
+
+        IPremiaOption.OptionData memory optionData = IPremiaOption(_order.optionContract).optionData(_order.optionId);
+        uint8 decimals = IERC20Extended(optionData.token).decimals();
 
         if (_order.side == SaleSide.Buy) {
-            uint256 basePrice = _order.pricePerUnit.mul(amountLeft);
+            uint256 basePrice = _order.pricePerUnit.mul(amountLeft).div(10 ** decimals);
             uint256 orderMakerFee = basePrice.mul(makerFee).div(_inverseBasisPoint);
             uint256 totalPrice = basePrice.add(orderMakerFee);
 
@@ -267,7 +272,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             return userBalance >= totalPrice && allowance >= totalPrice;
         } else if (_order.side == SaleSide.Sell) {
             IPremiaOption premiaOption = IPremiaOption(_order.optionContract);
-            uint256 optionBalance = premiaOption.balanceOf(_order.maker, amountLeft);
+            uint256 optionBalance = premiaOption.balanceOf(_order.maker, _order.optionId);
             bool isApproved = premiaOption.isApprovedForAll(_order.maker, address(this));
 
             return isApproved && optionBalance >= amountLeft;
@@ -391,7 +396,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
         IPremiaOption.OptionWriteArgs memory writeArgs = IPremiaOption.OptionWriteArgs({
             token: data.token,
-            contractAmount: amount,
+            amount: amount,
             strikePrice: data.strikePrice,
             expiration: data.expiration,
             isCall: data.isCall
@@ -424,30 +429,30 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
         amounts[hash] = amounts[hash].sub(amount);
 
-        uint256 basePrice = _order.pricePerUnit.mul(amount);
+        IPremiaOption.OptionData memory optionData = IPremiaOption(_order.optionContract).optionData(_order.optionId);
+
+        uint256 basePrice = _order.pricePerUnit.mul(amount).div(10 ** IERC20Extended(optionData.token).decimals());
 
         (uint256 orderMakerFee,) = feeCalculator.getFees(_order.maker, false, basePrice, IFeeCalculator.FeeType.Maker);
         (uint256 orderTakerFee,) = feeCalculator.getFees(_order.taker, false, basePrice, IFeeCalculator.FeeType.Taker);
 
-        IERC20 token = IERC20(_order.paymentToken);
-
         if (_order.side == SaleSide.Buy) {
             IPremiaOption(_order.optionContract).safeTransferFrom(msg.sender, _order.maker, _order.optionId, amount, "");
 
-            token.safeTransferFrom(_order.maker, feeRecipient, orderMakerFee.add(orderTakerFee));
-            token.safeTransferFrom(_order.maker, msg.sender, basePrice.sub(orderTakerFee));
+            IERC20Extended(_order.paymentToken).safeTransferFrom(_order.maker, feeRecipient, orderMakerFee.add(orderTakerFee));
+            IERC20Extended(_order.paymentToken).safeTransferFrom(_order.maker, msg.sender, basePrice.sub(orderTakerFee));
 
         } else {
-            token.safeTransferFrom(msg.sender, feeRecipient, orderMakerFee.add(orderTakerFee));
-            token.safeTransferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
+            IERC20Extended(_order.paymentToken).safeTransferFrom(msg.sender, feeRecipient, orderMakerFee.add(orderTakerFee));
+            IERC20Extended(_order.paymentToken).safeTransferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
 
             IPremiaOption(_order.optionContract).safeTransferFrom(_order.maker, msg.sender, _order.optionId, amount, "");
         }
 
         // Mint uPremia
         if (address(uPremia) != address(0)) {
-            uPremia.mintReward(_order.maker, address(token), orderMakerFee);
-            uPremia.mintReward(msg.sender, address(token), orderTakerFee);
+            uPremia.mintReward(_order.maker, _order.paymentToken, orderMakerFee);
+            uPremia.mintReward(msg.sender, _order.paymentToken, orderTakerFee);
         }
 
         emit OrderFilled(

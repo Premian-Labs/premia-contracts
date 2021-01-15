@@ -31,7 +31,7 @@ let writer1: SignerWithAddress;
 let writer2: SignerWithAddress;
 let user1: SignerWithAddress;
 let feeRecipient: SignerWithAddress;
-const tax = 0.01;
+const tax = 100;
 
 let optionTestUtil: PremiaOptionTestUtil;
 
@@ -80,7 +80,6 @@ describe('PremiaOption', () => {
   it('should add eth for trading', async () => {
     await optionTestUtil.addEth();
     const settings = await premiaOption.tokenSettings(weth.address);
-    expect(settings.contractSize.eq(parseEther('1'))).to.true;
     expect(settings.strikePriceIncrement.eq(parseEther('10'))).to.true;
   });
 
@@ -110,7 +109,7 @@ describe('PremiaOption', () => {
 
     it('should disable eth for writing', async () => {
       await optionTestUtil.addEth();
-      await premiaOption.setToken(weth.address, 0, 0, true);
+      await premiaOption.setToken(weth.address, 0, true);
       await expect(optionTestUtil.writeOption(writer1)).to.be.revertedWith(
         'Token disabled',
       );
@@ -119,7 +118,7 @@ describe('PremiaOption', () => {
     it('should revert if contract amount <= 0', async () => {
       await optionTestUtil.addEth();
       await expect(
-        optionTestUtil.writeOption(writer1, { contractAmount: 0 }),
+        optionTestUtil.writeOption(writer1, { amount: BigNumber.from(0) }),
       ).to.be.revertedWith('Amount <= 0');
     });
 
@@ -187,14 +186,14 @@ describe('PremiaOption', () => {
       ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
     });
 
-    it('should successfully mint 2 options', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2);
+    it('should successfully mint options for 2 weth', async () => {
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
       const balance = await premiaOption.balanceOf(writer1.address, 1);
-      expect(balance).to.eq(2);
+      expect(balance).to.eq(parseEther('2'));
     });
 
     it('should be optionId 1', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
       const defaults = optionTestUtil.getOptionDefaults();
       const optionId = await premiaOption.getOptionId(
         weth.address,
@@ -210,22 +209,17 @@ describe('PremiaOption', () => {
 
       const defaultOption = optionTestUtil.getOptionDefaults();
 
-      const contractAmount1 = 2;
-      const contractAmount2 = 3;
+      const contractAmount1 = parseEther('2');
+      const contractAmount2 = parseEther('3');
 
-      let amount = parseEther(contractAmount1.toString())
-        .mul(1e5 + tax * 1e5)
-        .div(1e5);
+      let amount = contractAmount1.add(contractAmount1.mul(tax).div(1e4));
       await weth.connect(writer1).deposit({ value: amount });
       await weth
         .connect(writer1)
         .approve(premiaOption.address, parseEther(amount.toString()));
 
-      amount = parseEther(contractAmount2.toString())
-        .mul(10)
-        .mul(3)
-        .mul(1e5 + tax * 1e5)
-        .div(1e5);
+      const baseAmount = contractAmount2.mul(10).mul(3);
+      amount = baseAmount.add(baseAmount.mul(tax).div(1e4));
       await dai.mint(writer1.address, parseEther(amount.toString()));
       await dai
         .connect(writer1)
@@ -237,13 +231,13 @@ describe('PremiaOption', () => {
             ...defaultOption,
             token: weth.address,
             isCall: true,
-            contractAmount: contractAmount1,
+            amount: contractAmount1,
           },
           {
             ...defaultOption,
             token: weth.address,
             isCall: false,
-            contractAmount: contractAmount2,
+            amount: contractAmount2,
           },
         ],
         ZERO_ADDRESS,
@@ -258,71 +252,73 @@ describe('PremiaOption', () => {
 
   describe('cancelOption', () => {
     it('should successfully cancel 1 call option', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
 
       let optionBalance = await premiaOption.balanceOf(writer1.address, 1);
       let ethBalance = await weth.balanceOf(writer1.address);
 
-      expect(optionBalance).to.eq(2);
+      expect(optionBalance).to.eq(parseEther('2'));
       expect(ethBalance).to.eq(0);
 
-      await premiaOption.connect(writer1).cancelOption(1, 1);
+      await premiaOption.connect(writer1).cancelOption(1, parseEther('1'));
 
       optionBalance = await premiaOption.balanceOf(writer1.address, 1);
       ethBalance = await weth.balanceOf(writer1.address);
 
-      expect(optionBalance).to.eq(1);
-      expect(ethBalance.toString()).to.eq(parseEther('1').toString());
+      expect(optionBalance).to.eq(parseEther('1'));
+      expect(ethBalance.toString()).to.eq(parseEther('1'));
     });
 
     it('should successfully cancel 1 put option', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2, false);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'), false);
 
       let optionBalance = await premiaOption.balanceOf(writer1.address, 1);
       let daiBalance = await dai.balanceOf(writer1.address);
 
-      expect(optionBalance).to.eq(2);
+      expect(optionBalance).to.eq(parseEther('2'));
       expect(daiBalance).to.eq(0);
 
-      await premiaOption.connect(writer1).cancelOption(1, 1);
+      await premiaOption.connect(writer1).cancelOption(1, parseEther('1'));
 
       optionBalance = await premiaOption.balanceOf(writer1.address, 1);
       daiBalance = await dai.balanceOf(writer1.address);
 
-      expect(optionBalance).to.eq(1);
-      expect(daiBalance.toString()).to.eq(parseEther('10').toString());
+      expect(optionBalance).to.eq(parseEther('1'));
+      expect(daiBalance.toString()).to.eq(parseEther('10'));
     });
 
     it('should fail cancelling option if not a writer', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
       await optionTestUtil.transferOptionToUser1(writer1);
       await expect(
-        premiaOption.connect(user1).cancelOption(1, 1),
+        premiaOption.connect(user1).cancelOption(1, parseEther('1')),
       ).to.revertedWith('Not enough written');
     });
 
     it('should subtract option written after cancelling', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2);
-      await premiaOption.connect(writer1).cancelOption(1, 1);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
+      await premiaOption.connect(writer1).cancelOption(1, parseEther('1'));
       const nbWritten = await premiaOption.nbWritten(writer1.address, 1);
-      expect(nbWritten).to.eq(1);
+      expect(nbWritten).to.eq(parseEther('1'));
     });
 
     it('should successfully batchCancelOption', async () => {
-      await optionTestUtil.addEthAndWriteOptions(3);
-      await optionTestUtil.addEthAndWriteOptions(3, false);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('3'));
+      await optionTestUtil.addEthAndWriteOptions(parseEther('3'), false);
 
       let optionBalance1 = await premiaOption.balanceOf(writer1.address, 1);
       let optionBalance2 = await premiaOption.balanceOf(writer1.address, 2);
       let ethBalance = await weth.balanceOf(writer1.address);
       let daiBalance = await dai.balanceOf(writer1.address);
 
-      expect(optionBalance1).to.eq(3);
+      expect(optionBalance1).to.eq(parseEther('3'));
       expect(ethBalance).to.eq(0);
-      expect(optionBalance2).to.eq(3);
+      expect(optionBalance2).to.eq(parseEther('3'));
       expect(daiBalance).to.eq(0);
 
-      await premiaOption.connect(writer1).batchCancelOption([1, 2], [2, 1]);
+      await premiaOption
+        .connect(writer1)
+        .batchCancelOption([1, 2], [parseEther('2'), parseEther('1')]);
 
       optionBalance1 = await premiaOption.balanceOf(writer1.address, 1);
       optionBalance2 = await premiaOption.balanceOf(writer1.address, 2);
@@ -330,55 +326,71 @@ describe('PremiaOption', () => {
       ethBalance = await weth.balanceOf(writer1.address);
       daiBalance = await dai.balanceOf(writer1.address);
 
-      expect(optionBalance1).to.eq(1);
-      expect(optionBalance2).to.eq(2);
-      expect(ethBalance.toString()).to.eq(parseEther('2').toString());
-      expect(daiBalance.toString()).to.eq(parseEther('10').toString());
+      expect(optionBalance1).to.eq(parseEther('1'));
+      expect(optionBalance2).to.eq(parseEther('2'));
+      expect(ethBalance.toString()).to.eq(parseEther('2'));
+      expect(daiBalance.toString()).to.eq(parseEther('10'));
     });
   });
 
   describe('exerciseOption', () => {
     it('should fail exercising call option if not owned', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
       await expect(
-        premiaOption.connect(user1).exerciseOption(1, 1, ZERO_ADDRESS),
+        premiaOption
+          .connect(user1)
+          .exerciseOption(1, parseEther('1'), ZERO_ADDRESS),
       ).to.revertedWith('ERC1155: burn amount exceeds balance');
     });
 
     it('should fail exercising call option if not enough dai', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
       await optionTestUtil.transferOptionToUser1(writer1);
       await expect(
-        premiaOption.connect(user1).exerciseOption(1, 1, ZERO_ADDRESS),
+        premiaOption
+          .connect(user1)
+          .exerciseOption(1, parseEther('1'), ZERO_ADDRESS),
       ).to.revertedWith('ERC20: transfer amount exceeds balance');
     });
 
     it('should successfully exercise 1 call option', async () => {
-      await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 1);
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        true,
+        parseEther('2'),
+        parseEther('1'),
+      );
 
-      const nftBalance = await premiaOption.balanceOf(user1.address, 1);
+      const optionBalance = await premiaOption.balanceOf(user1.address, 1);
       const daiBalance = await dai.balanceOf(user1.address);
       const ethBalance = await weth.balanceOf(user1.address);
 
-      expect(nftBalance).to.eq(1);
+      expect(optionBalance).to.eq(parseEther('1'));
       expect(daiBalance).to.eq(0);
       expect(ethBalance).to.eq(parseEther('1'));
     });
 
     it('should successfully exercise 1 put option', async () => {
-      await optionTestUtil.addEthAndWriteOptionsAndExercise(false, 2, 1);
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        false,
+        parseEther('2'),
+        parseEther('1'),
+      );
 
-      const nftBalance = await premiaOption.balanceOf(user1.address, 1);
+      const optionBalance = await premiaOption.balanceOf(user1.address, 1);
       const daiBalance = await dai.balanceOf(user1.address);
       const ethBalance = await weth.balanceOf(user1.address);
 
-      expect(nftBalance).to.eq(1);
+      expect(optionBalance).to.eq(parseEther('1'));
       expect(daiBalance).to.eq(parseEther('10'));
       expect(ethBalance).to.eq(0);
     });
 
     it('should have 0.01 eth and 0.1 dai in feeRecipient after 1 option exercised', async () => {
-      await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 1, 1);
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        true,
+        parseEther('1'),
+        parseEther('1'),
+      );
 
       const daiBalance = await dai.balanceOf(feeRecipient.address);
       const ethBalance = await weth.balanceOf(feeRecipient.address);
@@ -389,7 +401,11 @@ describe('PremiaOption', () => {
 
     it('should have 0 eth and 0.1 dai in feeRecipient after 1 option exercised if writer is whitelisted', async () => {
       await p.feeCalculator.addWhitelisted([writer1.address]);
-      await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 1, 1);
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        true,
+        parseEther('1'),
+        parseEther('1'),
+      );
 
       const daiBalance = await dai.balanceOf(feeRecipient.address);
       const ethBalance = await weth.balanceOf(feeRecipient.address);
@@ -400,7 +416,11 @@ describe('PremiaOption', () => {
 
     it('should have 0.1 eth and 0 dai in feeRecipient after 1 option exercised if exerciser is whitelisted', async () => {
       await p.feeCalculator.addWhitelisted([user1.address]);
-      await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 1, 1);
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        true,
+        parseEther('1'),
+        parseEther('1'),
+      );
 
       const daiBalance = await dai.balanceOf(feeRecipient.address);
       const ethBalance = await weth.balanceOf(feeRecipient.address);
@@ -410,38 +430,38 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully batchExerciseOption', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2, true);
-      await optionTestUtil.addEthAndWriteOptions(3, false);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'), true);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('3'), false);
 
-      await optionTestUtil.transferOptionToUser1(writer1, 2, 1);
-      await optionTestUtil.transferOptionToUser1(writer1, 3, 2);
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'), 1);
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('3'), 2);
 
-      let amount = 1 * 10 * (1 + tax);
-      await dai.mint(user1.address, parseEther(amount.toString()));
-      await dai
-        .connect(user1)
-        .increaseAllowance(premiaOption.address, parseEther(amount.toString()));
+      let baseAmount = parseEther('10');
+      let amount = parseEther('10').add(baseAmount.mul(tax).div(1e4));
+      await dai.mint(user1.address, amount);
+      await dai.connect(user1).increaseAllowance(premiaOption.address, amount);
 
-      amount = 2 * (1 + tax);
+      baseAmount = parseEther('2');
+      amount = baseAmount.add(baseAmount.mul(tax).div(1e4));
 
-      await weth
-        .connect(user1)
-        .deposit({ value: parseEther(amount.toString()) });
-      await weth
-        .connect(user1)
-        .approve(premiaOption.address, parseEther(amount.toString()));
+      await weth.connect(user1).deposit({ value: amount });
+      await weth.connect(user1).approve(premiaOption.address, amount);
 
       await premiaOption
         .connect(user1)
-        .batchExerciseOption([1, 2], [1, 2], ZERO_ADDRESS);
+        .batchExerciseOption(
+          [1, 2],
+          [parseEther('1'), parseEther('2')],
+          ZERO_ADDRESS,
+        );
 
-      const nftBalance1 = await premiaOption.balanceOf(user1.address, 1);
-      const nftBalance2 = await premiaOption.balanceOf(user1.address, 2);
+      const optionBalance1 = await premiaOption.balanceOf(user1.address, 1);
+      const optionBalance2 = await premiaOption.balanceOf(user1.address, 2);
       const daiBalance = await dai.balanceOf(user1.address);
       const ethBalance = await weth.balanceOf(user1.address);
 
-      expect(nftBalance1).to.eq(1);
-      expect(nftBalance2).to.eq(1);
+      expect(optionBalance1).to.eq(parseEther('1'));
+      expect(optionBalance2).to.eq(parseEther('1'));
       expect(daiBalance).to.eq(parseEther('20'));
       expect(ethBalance).to.eq(parseEther('1'));
     });
@@ -449,12 +469,18 @@ describe('PremiaOption', () => {
 
   describe('withdraw', () => {
     it('should fail withdrawing if option not expired', async () => {
-      await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 1);
-      await expect(premiaOption.withdraw(1)).to.revertedWith('Not expired');
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        true,
+        parseEther('2'),
+        parseEther('1'),
+      );
+      await expect(premiaOption.connect(writer1).withdraw(1)).to.revertedWith(
+        'Not expired',
+      );
     });
 
     it('should fail withdrawing from non-writer if option is expired', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
       await optionTestUtil.transferOptionToUser1(writer1);
       await setTimestampPostExpiration();
       await expect(premiaOption.connect(user1).withdraw(1)).to.revertedWith(
@@ -463,8 +489,8 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully allow writer withdrawal of 2 eth if 0/2 call option exercised', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2);
-      await optionTestUtil.transferOptionToUser1(writer1, 2);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'));
       await setTimestampPostExpiration();
 
       let ethBalance = await weth.balanceOf(writer1.address);
@@ -482,7 +508,11 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully allow writer withdrawal of 1 eth and 10 dai if 1/2 call option exercised', async () => {
-      await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 1);
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        true,
+        parseEther('2'),
+        parseEther('1'),
+      );
       await setTimestampPostExpiration();
 
       let ethBalance = await weth.balanceOf(writer1.address);
@@ -500,7 +530,11 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully allow writer withdrawal of 20 dai if 2/2 call option exercised', async () => {
-      await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 2);
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        true,
+        parseEther('2'),
+        parseEther('2'),
+      );
       await setTimestampPostExpiration();
 
       let ethBalance = await weth.balanceOf(writer1.address);
@@ -518,8 +552,8 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully allow writer withdrawal of 20 dai if 0/2 put option exercised', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2, false);
-      await optionTestUtil.transferOptionToUser1(writer1, 2);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'), false);
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'));
       await setTimestampPostExpiration();
 
       let ethBalance = await weth.balanceOf(writer1.address);
@@ -537,7 +571,11 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully allow writer withdrawal of 1 eth and 10 dai if 1/2 put option exercised', async () => {
-      await optionTestUtil.addEthAndWriteOptionsAndExercise(false, 2, 1);
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        false,
+        parseEther('2'),
+        parseEther('1'),
+      );
       await setTimestampPostExpiration();
 
       let ethBalance = await weth.balanceOf(writer1.address);
@@ -555,7 +593,11 @@ describe('PremiaOption', () => {
     });
 
     it('should successfully allow writer withdrawal of 2 eth if 2/2 put option exercised', async () => {
-      await optionTestUtil.addEthAndWriteOptionsAndExercise(false, 2, 2);
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        false,
+        parseEther('2'),
+        parseEther('2'),
+      );
       await setTimestampPostExpiration();
 
       let ethBalance = await weth.balanceOf(writer1.address);
@@ -575,13 +617,13 @@ describe('PremiaOption', () => {
     it('should withdraw 0.5 eth and 5 dai if 1/2 option exercised and 2 different writers', async () => {
       await optionTestUtil.addEth();
 
-      await optionTestUtil.mintAndWriteOption(writer1, 1);
-      await optionTestUtil.mintAndWriteOption(writer2, 1);
+      await optionTestUtil.mintAndWriteOption(writer1, parseEther('1'));
+      await optionTestUtil.mintAndWriteOption(writer2, parseEther('1'));
 
       await optionTestUtil.transferOptionToUser1(writer1);
       await optionTestUtil.transferOptionToUser1(writer2);
 
-      await optionTestUtil.exerciseOption(true, 1);
+      await optionTestUtil.exerciseOption(true, parseEther('1'));
       await setTimestampPostExpiration();
 
       await premiaOption.connect(writer1).withdraw(1);
@@ -602,13 +644,15 @@ describe('PremiaOption', () => {
 
     it('should withdraw 1 eth, if 1/2 call exercised and 1 withdrawPreExpiration', async () => {
       await optionTestUtil.addEth();
-      await optionTestUtil.mintAndWriteOption(writer1, 1);
-      await optionTestUtil.mintAndWriteOption(writer2, 1);
-      await optionTestUtil.transferOptionToUser1(writer1, 1);
-      await optionTestUtil.transferOptionToUser1(writer2, 1);
-      await optionTestUtil.exerciseOption(true, 1);
+      await optionTestUtil.mintAndWriteOption(writer1, parseEther('1'));
+      await optionTestUtil.mintAndWriteOption(writer2, parseEther('1'));
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('1'));
+      await optionTestUtil.transferOptionToUser1(writer2, parseEther('1'));
+      await optionTestUtil.exerciseOption(true, parseEther('1'));
 
-      await premiaOption.connect(writer2).withdrawPreExpiration(1, 1);
+      await premiaOption
+        .connect(writer2)
+        .withdrawPreExpiration(1, parseEther('1'));
 
       await setTimestampPostExpiration();
 
@@ -626,13 +670,15 @@ describe('PremiaOption', () => {
 
     it('should withdraw 10 dai, if 1/2 put exercised and 1 withdrawPreExpiration', async () => {
       await optionTestUtil.addEth();
-      await optionTestUtil.mintAndWriteOption(writer1, 1, false);
-      await optionTestUtil.mintAndWriteOption(writer2, 1, false);
-      await optionTestUtil.transferOptionToUser1(writer1, 1);
-      await optionTestUtil.transferOptionToUser1(writer2, 1);
-      await optionTestUtil.exerciseOption(false, 1);
+      await optionTestUtil.mintAndWriteOption(writer1, parseEther('1'), false);
+      await optionTestUtil.mintAndWriteOption(writer2, parseEther('1'), false);
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('1'));
+      await optionTestUtil.transferOptionToUser1(writer2, parseEther('1'));
+      await optionTestUtil.exerciseOption(false, parseEther('1'));
 
-      await premiaOption.connect(writer2).withdrawPreExpiration(1, 1);
+      await premiaOption
+        .connect(writer2)
+        .withdrawPreExpiration(1, parseEther('1'));
 
       await setTimestampPostExpiration();
 
@@ -650,21 +696,25 @@ describe('PremiaOption', () => {
 
     it('should successfully batchWithdraw', async () => {
       await optionTestUtil.addEth();
-      await optionTestUtil.mintAndWriteOption(writer1, 1);
-      await optionTestUtil.mintAndWriteOption(writer2, 1);
-      await optionTestUtil.transferOptionToUser1(writer1, 1);
-      await optionTestUtil.transferOptionToUser1(writer2, 1);
-      await optionTestUtil.exerciseOption(true, 1);
+      await optionTestUtil.mintAndWriteOption(writer1, parseEther('1'));
+      await optionTestUtil.mintAndWriteOption(writer2, parseEther('1'));
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('1'));
+      await optionTestUtil.transferOptionToUser1(writer2, parseEther('1'));
+      await optionTestUtil.exerciseOption(true, parseEther('1'));
 
-      await premiaOption.connect(writer2).withdrawPreExpiration(1, 1);
+      await premiaOption
+        .connect(writer2)
+        .withdrawPreExpiration(1, parseEther('1'));
 
-      await optionTestUtil.mintAndWriteOption(writer1, 1, false);
-      await optionTestUtil.mintAndWriteOption(writer2, 1, false);
-      await optionTestUtil.transferOptionToUser1(writer1, 1, 2);
-      await optionTestUtil.transferOptionToUser1(writer2, 1, 2);
-      await optionTestUtil.exerciseOption(false, 1, undefined, 2);
+      await optionTestUtil.mintAndWriteOption(writer1, parseEther('1'), false);
+      await optionTestUtil.mintAndWriteOption(writer2, parseEther('1'), false);
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('1'), 2);
+      await optionTestUtil.transferOptionToUser1(writer2, parseEther('1'), 2);
+      await optionTestUtil.exerciseOption(false, parseEther('1'), undefined, 2);
 
-      await premiaOption.connect(writer2).withdrawPreExpiration(2, 1);
+      await premiaOption
+        .connect(writer2)
+        .withdrawPreExpiration(2, parseEther('1'));
 
       await setTimestampPostExpiration();
 
@@ -684,46 +734,52 @@ describe('PremiaOption', () => {
 
   describe('withdrawPreExpiration', () => {
     it('should fail withdrawing if option is expired', async () => {
-      await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 1);
-      await setTimestampPostExpiration();
-      await expect(premiaOption.withdrawPreExpiration(1, 1)).to.revertedWith(
-        'Expired',
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        true,
+        parseEther('2'),
+        parseEther('1'),
       );
+      await setTimestampPostExpiration();
+      await expect(
+        premiaOption.withdrawPreExpiration(1, parseEther('1')),
+      ).to.revertedWith('Expired');
     });
 
     it('should fail withdrawing from non-writer if option is not expired', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
       await optionTestUtil.transferOptionToUser1(writer1);
       await expect(
-        premiaOption.connect(user1).withdrawPreExpiration(1, 1),
+        premiaOption.connect(user1).withdrawPreExpiration(1, parseEther('1')),
       ).to.revertedWith('Not enough claims');
     });
 
     it('should fail withdrawing if no unclaimed exercised options', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2);
-      await optionTestUtil.transferOptionToUser1(writer1, 2);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'));
 
       await expect(
-        premiaOption.connect(writer1).withdrawPreExpiration(1, 2),
+        premiaOption.connect(writer1).withdrawPreExpiration(1, parseEther('2')),
       ).to.revertedWith('Not enough claimable');
     });
 
     it('should fail withdrawing if not enough unclaimed exercised options', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2);
-      await optionTestUtil.transferOptionToUser1(writer1, 2);
-      await optionTestUtil.exerciseOption(true, 1);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'));
+      await optionTestUtil.exerciseOption(true, parseEther('1'));
 
       await expect(
-        premiaOption.connect(writer1).withdrawPreExpiration(1, 2),
+        premiaOption.connect(writer1).withdrawPreExpiration(1, parseEther('2')),
       ).to.revertedWith('Not enough claimable');
     });
 
     it('should successfully withdraw 10 dai for withdrawPreExpiration of call option exercised', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2);
-      await optionTestUtil.transferOptionToUser1(writer1, 2);
-      await optionTestUtil.exerciseOption(true, 1);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'));
+      await optionTestUtil.exerciseOption(true, parseEther('1'));
 
-      await premiaOption.connect(writer1).withdrawPreExpiration(1, 1);
+      await premiaOption
+        .connect(writer1)
+        .withdrawPreExpiration(1, parseEther('1'));
 
       const daiBalance = await dai.balanceOf(writer1.address);
       const ethBalance = await weth.balanceOf(writer1.address);
@@ -732,15 +788,17 @@ describe('PremiaOption', () => {
 
       expect(daiBalance).to.eq(parseEther('10'));
       expect(ethBalance).to.eq(0);
-      expect(nbWritten).to.eq(1);
+      expect(nbWritten).to.eq(parseEther('1'));
     });
 
     it('should successfully withdraw 1 eth for withdrawPreExpiration of put option exercised', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2, false);
-      await optionTestUtil.transferOptionToUser1(writer1, 2);
-      await optionTestUtil.exerciseOption(false, 1);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'), false);
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'));
+      await optionTestUtil.exerciseOption(false, parseEther('1'));
 
-      await premiaOption.connect(writer1).withdrawPreExpiration(1, 1);
+      await premiaOption
+        .connect(writer1)
+        .withdrawPreExpiration(1, parseEther('1'));
 
       const daiBalance = await dai.balanceOf(writer1.address);
       const ethBalance = await weth.balanceOf(writer1.address);
@@ -749,22 +807,22 @@ describe('PremiaOption', () => {
 
       expect(daiBalance).to.eq(0);
       expect(ethBalance).to.eq(parseEther('1'));
-      expect(nbWritten).to.eq(1);
+      expect(nbWritten).to.eq(parseEther('1'));
     });
 
     it('should successfully batchWithdrawPreExpiration', async () => {
       await optionTestUtil.addEth();
-      await optionTestUtil.mintAndWriteOption(writer1, 3, true);
-      await optionTestUtil.mintAndWriteOption(writer1, 3, false);
+      await optionTestUtil.mintAndWriteOption(writer1, parseEther('3'), true);
+      await optionTestUtil.mintAndWriteOption(writer1, parseEther('3'), false);
 
-      await optionTestUtil.transferOptionToUser1(writer1, 3);
-      await optionTestUtil.transferOptionToUser1(writer1, 3, 2);
-      await optionTestUtil.exerciseOption(true, 2);
-      await optionTestUtil.exerciseOption(false, 1, undefined, 2);
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('3'));
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('3'), 2);
+      await optionTestUtil.exerciseOption(true, parseEther('2'));
+      await optionTestUtil.exerciseOption(false, parseEther('1'), undefined, 2);
 
       await premiaOption
         .connect(writer1)
-        .batchWithdrawPreExpiration([1, 2], [2, 1]);
+        .batchWithdrawPreExpiration([1, 2], [parseEther('2'), parseEther('1')]);
 
       const daiBalance = await dai.balanceOf(writer1.address);
       const ethBalance = await weth.balanceOf(writer1.address);
@@ -774,33 +832,49 @@ describe('PremiaOption', () => {
 
       expect(daiBalance).to.eq(parseEther('20'));
       expect(ethBalance).to.eq(parseEther('1'));
-      expect(nbWritten1).to.eq(1);
-      expect(nbWritten2).to.eq(2);
+      expect(nbWritten1).to.eq(parseEther('1'));
+      expect(nbWritten2).to.eq(parseEther('2'));
     });
   });
 
   describe('referral', () => {
     it('should register user1 as referrer', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+      await optionTestUtil.addEthAndWriteOptions(
+        parseEther('2'),
+        true,
+        user1.address,
+      );
       const referrer = await p.premiaReferral.referrals(writer1.address);
       expect(referrer).to.eq(user1.address);
     });
 
     it('should keep user1 as referrer, if try to set another referrer', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
-      await optionTestUtil.addEthAndWriteOptions(2, true, writer2.address);
+      await optionTestUtil.addEthAndWriteOptions(
+        parseEther('2'),
+        true,
+        user1.address,
+      );
+      await optionTestUtil.addEthAndWriteOptions(
+        parseEther('2'),
+        true,
+        writer2.address,
+      );
       const referrer = await p.premiaReferral.referrals(writer1.address);
       expect(referrer).to.eq(user1.address);
     });
 
     it('should give user with referrer, 10% discount on write fee + give referrer 10% of fee', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+      await optionTestUtil.addEthAndWriteOptions(
+        parseEther('2'),
+        true,
+        user1.address,
+      );
 
       const writer1Options = await premiaOption.balanceOf(writer1.address, 1);
       const writer1Eth = await weth.balanceOf(writer1.address);
       const referrerEth = await weth.balanceOf(user1.address);
 
-      expect(writer1Options).to.eq(2);
+      expect(writer1Options).to.eq(parseEther('2'));
       expect(writer1Eth).to.eq(
         parseEther('0.02').div(10), // Expect 10% of tax of 2 options writing
       );
@@ -812,8 +886,8 @@ describe('PremiaOption', () => {
     it('should give user with referrer, 10% discount on exercise fee + give referrer 10% of fee', async () => {
       await optionTestUtil.addEthAndWriteOptionsAndExercise(
         true,
-        2,
-        2,
+        parseEther('2'),
+        parseEther('2'),
         writer2.address,
       );
 
@@ -844,7 +918,11 @@ describe('PremiaOption', () => {
     });
 
     it('should calculate total fee correctly with a referral', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+      await optionTestUtil.addEthAndWriteOptions(
+        parseEther('2'),
+        true,
+        user1.address,
+      );
       const fee = await p.feeCalculator.getFees(
         writer1.address,
         true,
@@ -870,7 +948,11 @@ describe('PremiaOption', () => {
     it('should correctly give a 30% discount from premia staking', async () => {
       await premiaFeeDiscount.setDiscount(3000);
 
-      await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 2);
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        true,
+        parseEther('2'),
+        parseEther('2'),
+      );
 
       const user1Options = await premiaOption.balanceOf(writer1.address, 1);
       const user1Dai = await dai.balanceOf(user1.address);
@@ -886,8 +968,8 @@ describe('PremiaOption', () => {
 
       await optionTestUtil.addEthAndWriteOptionsAndExercise(
         true,
-        2,
-        2,
+        parseEther('2'),
+        parseEther('2'),
         writer2.address,
       );
 
@@ -912,7 +994,11 @@ describe('PremiaOption', () => {
       const flashLoan = await flashLoanFactory.deploy();
       await flashLoan.setMode(2);
 
-      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+      await optionTestUtil.addEthAndWriteOptions(
+        parseEther('2'),
+        true,
+        user1.address,
+      );
 
       let ethBalance = await weth.balanceOf(premiaOption.address);
 
@@ -933,7 +1019,11 @@ describe('PremiaOption', () => {
       const flashLoan = await flashLoanFactory.deploy();
       await flashLoan.setMode(1);
 
-      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+      await optionTestUtil.addEthAndWriteOptions(
+        parseEther('2'),
+        true,
+        user1.address,
+      );
 
       let ethBalance = await weth.balanceOf(premiaOption.address);
 
@@ -955,7 +1045,11 @@ describe('PremiaOption', () => {
       const flashLoan = await flashLoanFactory.deploy();
       await flashLoan.setMode(0);
 
-      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+      await optionTestUtil.addEthAndWriteOptions(
+        parseEther('2'),
+        true,
+        user1.address,
+      );
 
       await weth.connect(admin).deposit({ value: parseEther('0.004') });
       await weth.transfer(flashLoan.address, parseEther('0.004'));
@@ -984,7 +1078,11 @@ describe('PremiaOption', () => {
       await flashLoan.setMode(1);
       await p.feeCalculator.addWhitelisted([writer1.address]);
 
-      await optionTestUtil.addEthAndWriteOptions(2, true, user1.address);
+      await optionTestUtil.addEthAndWriteOptions(
+        parseEther('2'),
+        true,
+        user1.address,
+      );
 
       let ethBalance = await weth.balanceOf(premiaOption.address);
       expect(ethBalance).to.eq(parseEther('2'));
@@ -1003,7 +1101,7 @@ describe('PremiaOption', () => {
 
   describe('premiaUncut', () => {
     it('should not reward any uPremia if price not set for token in priceProvider', async () => {
-      await optionTestUtil.addEthAndWriteOptions(2);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
       expect(await p.uPremia.balanceOf(writer1.address)).to.eq(0);
     });
 
@@ -1013,7 +1111,7 @@ describe('PremiaOption', () => {
         [parseEther('1'), parseEther('10')],
       );
 
-      await optionTestUtil.addEthAndWriteOptions(2);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
       expect(await p.uPremia.balanceOf(writer1.address)).to.eq(
         parseEther('0.2'),
       );
@@ -1025,7 +1123,11 @@ describe('PremiaOption', () => {
         [parseEther('1'), parseEther('10')],
       );
 
-      await optionTestUtil.addEthAndWriteOptionsAndExercise(true, 2, 1);
+      await optionTestUtil.addEthAndWriteOptionsAndExercise(
+        true,
+        parseEther('2'),
+        parseEther('1'),
+      );
       expect(await p.uPremia.balanceOf(writer1.address)).to.eq(
         parseEther('0.2'),
       );
@@ -1046,14 +1148,14 @@ describe('PremiaOption', () => {
       await uniswap.weth.transfer(uniswap.daiWeth.address, parseEther('100'));
       await uniswap.daiWeth.mint(admin.address);
 
-      await optionTestUtil.addEthAndWriteOptions(2, true);
-      await optionTestUtil.transferOptionToUser1(writer1, 2);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'), true);
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'));
 
       await premiaOption
         .connect(user1)
         .flashExerciseOption(
           1,
-          1,
+          parseEther('1'),
           ZERO_ADDRESS,
           uniswap.router.address,
           parseEther('100000'),
@@ -1066,7 +1168,9 @@ describe('PremiaOption', () => {
       expect(await uniswap.dai.balanceOf(premiaOption.address)).to.eq(
         parseEther('10'),
       );
-      expect(await premiaOption.balanceOf(user1.address, 1)).to.eq(1);
+      expect(await premiaOption.balanceOf(user1.address, 1)).to.eq(
+        parseEther('1'),
+      );
     });
 
     it('should fail flash exercise if option not in the money', async () => {
@@ -1076,15 +1180,15 @@ describe('PremiaOption', () => {
       await uniswap.weth.transfer(uniswap.daiWeth.address, parseEther('100'));
       await uniswap.daiWeth.mint(admin.address);
 
-      await optionTestUtil.addEthAndWriteOptions(2, true);
-      await optionTestUtil.transferOptionToUser1(writer1, 2);
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'), true);
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'));
 
       await expect(
         premiaOption
           .connect(user1)
           .flashExerciseOption(
             1,
-            1,
+            parseEther('1'),
             ZERO_ADDRESS,
             uniswap.router.address,
             parseEther('100000'),

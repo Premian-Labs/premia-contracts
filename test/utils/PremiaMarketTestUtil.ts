@@ -27,7 +27,7 @@ interface PremiaMarketTestUtilProps {
 interface OrderOptions {
   taker?: string;
   isBuy?: boolean;
-  amount?: number;
+  amount?: BigNumber;
   paymentToken?: string;
   optionContract?: string;
   optionId?: number;
@@ -65,7 +65,7 @@ export class PremiaMarketTestUtil {
       writer2: this.writer2,
       user1: this.user1,
       feeRecipient: this.feeRecipient,
-      tax: 0.01,
+      tax: 100,
     });
   }
 
@@ -96,7 +96,7 @@ export class PremiaMarketTestUtil {
 
   async createOrder(user: SignerWithAddress, orderOptions?: OrderOptions) {
     const newOrder = this.getDefaultOrder(user, orderOptions);
-    const amount = orderOptions?.amount ?? 1;
+    const amount = orderOptions?.amount ?? parseEther('1');
 
     const tx = await this.premiaMarket.connect(user).createOrder(
       {
@@ -153,12 +153,12 @@ export class PremiaMarketTestUtil {
       seller = maker;
     }
 
-    const amount = orderOptions?.amount ?? 1;
+    const amount = orderOptions?.amount ?? parseEther('1');
     await this.optionTestUtil.mintAndWriteOption(seller, amount);
 
     await this.weth
       .connect(buyer)
-      .deposit({ value: parseEther('1.015').mul(amount) });
+      .deposit({ value: amount.add(amount.mul(150).div(1e4)) });
     await this.weth
       .connect(buyer)
       .approve(this.premiaMarket.address, parseEther('10000000000000'));
