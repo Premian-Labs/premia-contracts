@@ -9,8 +9,6 @@ import '@openzeppelin/contracts/math/SafeMath.sol';
 import "./interface/IPremiaReferral.sol";
 import "./interface/IPremiaFeeDiscount.sol";
 
-// Contract used to provide token prices in USD, in order to calculate PremiaUncut reward to give to users.
-// Prices will be updated manually every few days, as this use case doesnt really require very accurate price data
 contract FeeCalculator is Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeMath for uint256;

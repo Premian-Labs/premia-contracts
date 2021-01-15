@@ -26,12 +26,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     EnumerableSet.AddressSet private _whitelistedOptionContracts;
     EnumerableSet.AddressSet private _whitelistedPaymentTokens;
 
-    /* For split fee orders, minimum required protocol maker fee, in basis points. Paid to owner (who can change it). */
-    uint256 public makerFee = 150; // 1.5%
-
-    /* For split fee orders, minimum required protocol taker fee, in basis points. Paid to owner (who can change it). */
-    uint256 public takerFee = 150; // 1.5%
-
     /* Recipient of protocol fees. */
     address public feeRecipient;
 
@@ -134,26 +128,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     ///////////
     // Admin //
     ///////////
-
-    /**
-     * @dev Set the minimum maker fee paid to the protocol (owner only)
-     * @param _fee New fee to set in basis points
-     */
-    function setMakerFee(uint256 _fee) external onlyOwner {
-        // Hardcoded max fee we can set at 5%
-        require(_fee <= 500, "Over max fee limit");
-        makerFee = _fee;
-    }
-
-    /**
-     * @dev Change the minimum taker fee paid to the protocol (owner only)
-     * @param _fee New fee to set in basis points
-     */
-    function setTakerFee(uint256 _fee) external onlyOwner {
-        // Hardcoded max fee we can set at 5%
-        require(_fee <= 500, "Over max fee limit");
-        takerFee = _fee;
-    }
 
     /**
      * @dev Change the protocol fee recipient (owner only)
@@ -263,7 +237,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
         if (_order.side == SaleSide.Buy) {
             uint256 basePrice = _order.pricePerUnit.mul(amountLeft).div(10 ** decimals);
-            uint256 orderMakerFee = basePrice.mul(makerFee).div(_inverseBasisPoint);
+            uint256 orderMakerFee = basePrice.mul(feeCalculator.makerFee()).div(_inverseBasisPoint);
             uint256 totalPrice = basePrice.add(orderMakerFee);
 
             uint256 userBalance = token.balanceOf(_order.maker);
