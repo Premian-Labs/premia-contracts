@@ -4,7 +4,7 @@ import { BytesLike } from '@ethersproject/bytes';
 interface IOrderCreateProps {
   maker: string;
   taker: string;
-  side: number;
+  side: BigNumberish;
   optionContract: string;
   pricePerUnit: BigNumberish;
   optionId: BigNumberish;
@@ -19,6 +19,7 @@ interface IOrder {
   optionId: BigNumberish;
   paymentToken: string;
   pricePerUnit: BigNumberish;
+  decimals: BigNumberish;
   expirationTime: BigNumberish;
   salt: BigNumberish;
 }
@@ -32,6 +33,7 @@ interface IOrderCreated {
   optionId: BigNumberish;
   paymentToken: string;
   pricePerUnit: BigNumberish;
+  decimals: BigNumberish;
   expirationTime: BigNumberish;
   salt: BigNumberish;
   amount: BigNumberish;

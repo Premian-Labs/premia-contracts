@@ -7,6 +7,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 // Contract used to provide token prices in USD, in order to calculate PremiaUncut reward to give to users.
 // Prices will be updated manually every few days, as this use case doesnt really require very accurate price data
 contract PriceProvider is Ownable {
+    // Price for 1e18 wei of token (Need to be cautious with tokens which dont have 18 decimals when setting price for those)
     mapping (address => uint256) prices;
 
     event PriceUpdated(address indexed token, uint256 price);

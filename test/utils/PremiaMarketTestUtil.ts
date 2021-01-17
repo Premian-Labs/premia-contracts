@@ -6,7 +6,7 @@ import {
 } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber } from 'ethers';
-import { IOrderCreated, IOrderCreateProps } from '../../types';
+import { IOrder, IOrderCreated, IOrderCreateProps } from '../../types';
 import { ethers } from 'hardhat';
 import { PremiaOptionTestUtil } from './PremiaOptionTestUtil';
 import { ZERO_ADDRESS } from './constants';
@@ -81,7 +81,7 @@ export class PremiaMarketTestUtil {
   }
 
   getDefaultOrder(user: SignerWithAddress, orderOptions?: OrderOptions) {
-    const newOrder: IOrderCreateProps = {
+    const newOrder: IOrder = {
       maker: user.address,
       taker: orderOptions?.taker ?? ZERO_ADDRESS,
       side: Number(!orderOptions?.isBuy),
@@ -89,6 +89,9 @@ export class PremiaMarketTestUtil {
       pricePerUnit: parseEther('1'),
       optionId: orderOptions?.optionId ?? 1,
       paymentToken: orderOptions?.paymentToken ?? this.weth.address,
+      decimals: 18,
+      expirationTime: 0,
+      salt: 0,
     };
 
     return newOrder;
@@ -101,15 +104,17 @@ export class PremiaMarketTestUtil {
     const tx = await this.premiaMarket.connect(user).createOrder(
       {
         ...newOrder,
+        decimals: 18,
         expirationTime: 0,
         salt: 0,
       },
       amount,
     );
 
-    // console.log(tx.gasLimit.toString());
+    console.log(tx.gasLimit.toString());
 
     const filter = this.premiaMarket.filters.OrderCreated(
+      null,
       null,
       null,
       null,
@@ -179,6 +184,7 @@ export class PremiaMarketTestUtil {
       optionId: orderCreated.optionId,
       paymentToken: orderCreated.paymentToken,
       pricePerUnit: orderCreated.pricePerUnit,
+      decimals: orderCreated.decimals,
       expirationTime: orderCreated.expirationTime,
       salt: orderCreated.salt,
     };

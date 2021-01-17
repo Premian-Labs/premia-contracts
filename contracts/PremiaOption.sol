@@ -255,7 +255,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         if (_option.isCall) {
             IERC20Extended(_option.token).safeTransferFrom(_from, address(this), _option.amount);
 
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(_from, _referrer != address(0), _option.amount, IFeeCalculator.FeeType.Write);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), _option.amount, IFeeCalculator.FeeType.Write);
             _payFees(_from, IERC20Extended(_option.token), _referrer, fee, feeReferrer);
 
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(_option.amount);
@@ -263,7 +263,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             uint256 amount = _option.amount.mul(_option.strikePrice).div(10 ** tokenSettings[_option.token].decimals);
             denominator.safeTransferFrom(_from, address(this), amount);
 
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(_from, _referrer != address(0), amount, IFeeCalculator.FeeType.Write);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), amount, IFeeCalculator.FeeType.Write);
             _payFees(_from, denominator, _referrer, fee, feeReferrer);
 
             pools[optionId].denominatorAmount = pools[optionId].denominatorAmount.add(amount);
@@ -328,7 +328,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
             denominator.safeTransferFrom(_from, address(this), denominatorAmount);
 
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(_from, _referrer != address(0), denominatorAmount, IFeeCalculator.FeeType.Exercise);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), denominatorAmount, IFeeCalculator.FeeType.Exercise);
             _payFees(_from, denominator, _referrer, fee, feeReferrer);
 
             tokenErc20.safeTransfer(_from, tokenAmount);
@@ -338,7 +338,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
             tokenErc20.safeTransferFrom(_from, address(this), tokenAmount);
 
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(_from, _referrer != address(0), tokenAmount, IFeeCalculator.FeeType.Exercise);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), tokenAmount, IFeeCalculator.FeeType.Exercise);
             _payFees(_from, tokenErc20, _referrer, fee, feeReferrer);
 
             denominator.safeTransfer(_from, denominatorAmount);
@@ -412,7 +412,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 startBalance = _token.balanceOf(address(this));
         _token.safeTransfer(address(_receiver), _amount);
 
-        (uint256 fee,) = feeCalculator.getFees(msg.sender, false, _amount, IFeeCalculator.FeeType.FlashLoan);
+        (uint256 fee,) = feeCalculator.getFeeAmounts(msg.sender, false, _amount, IFeeCalculator.FeeType.FlashLoan);
 
         _receiver.execute(_tokenAddress, _amount, _amount.add(fee));
 
@@ -448,7 +448,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(denominatorAmount);
 
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(msg.sender, _referrer != address(0), denominatorAmount, IFeeCalculator.FeeType.Exercise);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(msg.sender, _referrer != address(0), denominatorAmount, IFeeCalculator.FeeType.Exercise);
 
             if (tokenAmount < _amountInMax) {
                 _amountInMax = tokenAmount;
@@ -471,7 +471,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(denominatorAmount);
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
 
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFees(msg.sender, _referrer != address(0), tokenAmount, IFeeCalculator.FeeType.Exercise);
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(msg.sender, _referrer != address(0), tokenAmount, IFeeCalculator.FeeType.Exercise);
 
             if (denominatorAmount < _amountInMax) {
                 _amountInMax = denominatorAmount;

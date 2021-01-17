@@ -120,30 +120,48 @@ contract FeeCalculator is Ownable {
         return result;
     }
 
-    function getBaseFee(uint256 _amount, FeeType _feeType) public view returns(uint256) {
+    function _getBaseFee(FeeType _feeType) internal view returns(uint256) {
         if (_feeType == FeeType.Write) {
-            return _amount.mul(writeFee).div(_inverseBasisPoint);
+            return writeFee;
         } else if (_feeType == FeeType.Exercise) {
-            return _amount.mul(exerciseFee).div(_inverseBasisPoint);
+            return exerciseFee;
         } else if (_feeType == FeeType.Maker) {
-            return _amount.mul(makerFee).div(_inverseBasisPoint);
+            return makerFee;
         } else if (_feeType == FeeType.Taker) {
-            return _amount.mul(takerFee).div(_inverseBasisPoint);
+            return takerFee;
         } else if (_feeType == FeeType.FlashLoan) {
-            return _amount.mul(flashLoanFee).div(_inverseBasisPoint);
+            return flashLoanFee;
         }
 
         return 0;
     }
 
-    function getFees(address _user, bool _hasReferrer, uint256 _amount, FeeType _feeType) public view returns(uint256 _fee, uint256 _feeReferrer) {
-        if (_whitelisted.contains(_user)) return (0,0);
+    function getFee(address _user, bool _hasReferrer, FeeType _feeType) public view returns(uint256) {
+        if (_whitelisted.contains(_user)) return 0;
 
-        uint256 baseFee = getBaseFee(_amount, _feeType);
-        return getFeesWithDiscount(_user, _hasReferrer, baseFee);
+        uint256 fee = _getBaseFee(_feeType);
+
+        // If premiaFeeDiscount contract is set, we calculate discount
+        if (address(premiaFeeDiscount) != address(0)) {
+            uint256 discount = premiaFeeDiscount.getDiscount(_user);
+            fee = fee.mul(discount).div(_inverseBasisPoint);
+        }
+
+        if (_hasReferrer) {
+            fee = fee.mul(_inverseBasisPoint.sub(referredDiscount)).div(_inverseBasisPoint);
+        }
+
+        return fee;
     }
 
-    function getFeesWithDiscount(address _user, bool _hasReferrer, uint256 _baseFee) public view returns(uint256 _fee, uint256 _feeReferrer) {
+    function getFeeAmounts(address _user, bool _hasReferrer, uint256 _amount, FeeType _feeType) public view returns(uint256 _fee, uint256 _feeReferrer) {
+        if (_whitelisted.contains(_user)) return (0,0);
+
+        uint256 baseFee = _amount.mul(_getBaseFee(_feeType)).div(_inverseBasisPoint);
+        return getFeeAmountsWithDiscount(_user, _hasReferrer, baseFee);
+    }
+
+    function getFeeAmountsWithDiscount(address _user, bool _hasReferrer, uint256 _baseFee) public view returns(uint256 _fee, uint256 _feeReferrer) {
         if (_whitelisted.contains(_user)) return (0,0);
 
         uint256 feeReferrer = 0;

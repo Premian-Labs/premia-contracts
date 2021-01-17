@@ -42,6 +42,14 @@ contract PremiaUncutErc20 is ERC20Permit, Ownable {
 
     //
 
+    function getTokenPrice(address _token) external view returns(uint256) {
+        return priceProvider.getTokenPrice(_token);
+    }
+
+    function mint(address _account, uint256 _amount) external onlyMinter {
+        _mint(_account, _amount);
+    }
+
     function mintReward(address _account, address _token, uint256 _feePaid) external onlyMinter {
         uint256 tokenPrice = priceProvider.getTokenPrice(_token);
         if (tokenPrice == 0 || _feePaid == 0) return;

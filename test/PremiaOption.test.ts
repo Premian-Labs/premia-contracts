@@ -907,7 +907,7 @@ describe('PremiaOption', () => {
 
   describe('fees', () => {
     it('should calculate total fee correctly without discount', async () => {
-      const fee = await p.feeCalculator.getFees(
+      const fee = await p.feeCalculator.getFeeAmounts(
         writer1.address,
         false,
         parseEther('2'),
@@ -923,7 +923,7 @@ describe('PremiaOption', () => {
         true,
         user1.address,
       );
-      const fee = await p.feeCalculator.getFees(
+      const fee = await p.feeCalculator.getFeeAmounts(
         writer1.address,
         true,
         parseEther('2'),
@@ -935,7 +935,7 @@ describe('PremiaOption', () => {
 
     it('should correctly calculate total fee with a referral + staking discount', async () => {
       await premiaFeeDiscount.setDiscount(2000);
-      const fee = await p.feeCalculator.getFees(
+      const fee = await p.feeCalculator.getFeeAmounts(
         writer1.address,
         true,
         parseEther('2'),

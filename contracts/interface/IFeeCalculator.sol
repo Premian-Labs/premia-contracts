@@ -15,7 +15,7 @@ interface IFeeCalculator {
     function makerFee() external view returns(uint256);
     function takerFee() external view returns(uint256);
 
-    function getBaseFee(uint256 _amount, FeeType _feeType) external view returns(uint256);
-    function getFees(address _user, bool _hasReferrer, uint256 _amount, FeeType _feeType) external view returns(uint256 _fee, uint256 _feeReferrer);
-    function getFeesWithDiscount(address _user, bool _hasReferrer, uint256 _baseFee) external view returns(uint256 _fee, uint256 _feeReferrer);
+    function getFee(address _user, bool _hasReferrer, FeeType _feeType) external view returns(uint256);
+    function getFeeAmounts(address _user, bool _hasReferrer, uint256 _amount, FeeType _feeType) external view returns(uint256 _fee, uint256 _feeReferrer);
+    function getFeeAmountsWithDiscount(address _user, bool _hasReferrer, uint256 _baseFee) external view returns(uint256 _fee, uint256 _feeReferrer);
 }
