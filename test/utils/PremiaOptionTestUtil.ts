@@ -60,7 +60,7 @@ export class PremiaOptionTestUtil {
 
   getOptionDefaults() {
     return {
-      address: this.weth.address,
+      token: this.weth.address,
       expiration: this.getNextExpiration(),
       strikePrice: parseEther('10'),
       isCall: true,
@@ -81,7 +81,7 @@ export class PremiaOptionTestUtil {
 
     return this.premiaOption.connect(user).writeOption(
       {
-        token: args?.address ?? defaults.address,
+        token: args?.address ?? defaults.token,
         expiration: args?.expiration ?? defaults.expiration,
         strikePrice: args?.strikePrice ?? defaults.strikePrice,
         isCall: args?.isCall == undefined ? defaults.isCall : args.isCall,

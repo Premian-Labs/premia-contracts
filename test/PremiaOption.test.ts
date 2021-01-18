@@ -248,6 +248,46 @@ describe('PremiaOption', () => {
       expect(balance1).to.eq(contractAmount1);
       expect(balance2).to.eq(contractAmount2);
     });
+
+    it('should fail writeOptionFrom if not approved', async () => {
+      await optionTestUtil.addEth();
+      const amount = parseEther('2');
+      const amountWithFee = amount.add(amount.mul(tax).div(1e4));
+      await weth.connect(writer1).deposit({ value: amountWithFee });
+      await weth.connect(writer1).approve(premiaOption.address, amountWithFee);
+
+      await expect(
+        premiaOption
+          .connect(writer2)
+          .writeOptionFrom(
+            writer1.address,
+            { ...optionTestUtil.getOptionDefaults(), amount },
+            ZERO_ADDRESS,
+          ),
+      ).to.be.revertedWith('Not approved');
+    });
+
+    it('should successfully writeOptionFrom', async () => {
+      await optionTestUtil.addEth();
+      const amount = parseEther('2');
+      const amountWithFee = amount.add(amount.mul(tax).div(1e4));
+      await weth.connect(writer1).deposit({ value: amountWithFee });
+      await weth.connect(writer1).approve(premiaOption.address, amountWithFee);
+
+      await premiaOption
+        .connect(writer1)
+        .setApprovalForAll(writer2.address, true);
+      await premiaOption
+        .connect(writer2)
+        .writeOptionFrom(
+          writer1.address,
+          { ...optionTestUtil.getOptionDefaults(), amount },
+          ZERO_ADDRESS,
+        );
+
+      expect(await premiaOption.balanceOf(writer1.address, 1)).to.eq(amount);
+      expect(await premiaOption.nbWritten(writer1.address, 1)).to.eq(amount);
+    });
   });
 
   describe('cancelOption', () => {
@@ -330,6 +370,29 @@ describe('PremiaOption', () => {
       expect(optionBalance2).to.eq(parseEther('2'));
       expect(ethBalance.toString()).to.eq(parseEther('2'));
       expect(daiBalance.toString()).to.eq(parseEther('10'));
+    });
+
+    it('should fail cancelOptionFrom if not approved', async () => {
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'), false);
+
+      await expect(
+        premiaOption
+          .connect(writer2)
+          .cancelOptionFrom(writer1.address, 1, parseEther('2')),
+      ).to.be.revertedWith('Not approved');
+    });
+
+    it('should successfully cancelOptionFrom', async () => {
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'), false);
+
+      await premiaOption
+        .connect(writer1)
+        .setApprovalForAll(writer2.address, true);
+      await premiaOption
+        .connect(writer2)
+        .cancelOptionFrom(writer1.address, 1, parseEther('2'));
+
+      expect(await premiaOption.balanceOf(writer1.address, 1)).to.eq(0);
     });
   });
 
@@ -464,6 +527,45 @@ describe('PremiaOption', () => {
       expect(optionBalance2).to.eq(parseEther('1'));
       expect(daiBalance).to.eq(parseEther('20'));
       expect(ethBalance).to.eq(parseEther('1'));
+    });
+
+    it('should fail exerciseOptionFrom if not approved', async () => {
+      const amount = parseEther('2');
+      await optionTestUtil.addEthAndWriteOptions(amount, false);
+      await optionTestUtil.transferOptionToUser1(writer1, amount);
+
+      const amountTotal = amount.add(amount.mul(tax).div(1e4));
+
+      await weth.connect(user1).deposit({ value: amountTotal });
+      await weth.connect(user1).approve(premiaOption.address, amountTotal);
+
+      await expect(
+        premiaOption
+          .connect(writer2)
+          .exerciseOptionFrom(user1.address, 1, amount, ZERO_ADDRESS),
+      ).to.be.revertedWith('Not approved');
+    });
+
+    it('should successfully exerciseOptionFrom', async () => {
+      const amount = parseEther('2');
+      await optionTestUtil.addEthAndWriteOptions(amount, false);
+      await optionTestUtil.transferOptionToUser1(writer1, amount);
+
+      const amountTotal = amount.add(amount.mul(tax).div(1e4));
+
+      await weth.connect(user1).deposit({ value: amountTotal });
+      await weth.connect(user1).approve(premiaOption.address, amountTotal);
+
+      await premiaOption
+        .connect(user1)
+        .setApprovalForAll(writer2.address, true);
+      await premiaOption
+        .connect(writer2)
+        .exerciseOptionFrom(user1.address, 1, amount, ZERO_ADDRESS);
+
+      expect(await premiaOption.balanceOf(user1.address, 1)).to.eq(0);
+      expect(await dai.balanceOf(user1.address)).to.eq(parseEther('20'));
+      expect(await weth.balanceOf(premiaOption.address)).to.eq(parseEther('2'));
     });
   });
 
@@ -730,6 +832,43 @@ describe('PremiaOption', () => {
       expect(nbWritten1).to.eq(0);
       expect(nbWritten2).to.eq(0);
     });
+
+    it('should fail withdrawFrom if not approved', async () => {
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'));
+      await setTimestampPostExpiration();
+
+      let ethBalance = await weth.balanceOf(writer1.address);
+      let daiBalance = await dai.balanceOf(writer1.address);
+      expect(ethBalance).to.eq(0);
+      expect(daiBalance).to.eq(0);
+
+      await expect(
+        premiaOption.connect(writer2).withdrawFrom(writer1.address, 1),
+      ).to.be.revertedWith('Not approved');
+    });
+
+    it('should successfully withdrawFrom', async () => {
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'));
+      await setTimestampPostExpiration();
+
+      let ethBalance = await weth.balanceOf(writer1.address);
+      let daiBalance = await dai.balanceOf(writer1.address);
+      expect(ethBalance).to.eq(0);
+      expect(daiBalance).to.eq(0);
+
+      await premiaOption
+        .connect(writer1)
+        .setApprovalForAll(writer2.address, true);
+      await premiaOption.connect(writer2).withdrawFrom(writer1.address, 1);
+
+      ethBalance = await weth.balanceOf(writer1.address);
+      daiBalance = await dai.balanceOf(writer1.address);
+
+      expect(ethBalance).to.eq(parseEther('2'));
+      expect(daiBalance).to.eq(0);
+    });
   });
 
   describe('withdrawPreExpiration', () => {
@@ -834,6 +973,40 @@ describe('PremiaOption', () => {
       expect(ethBalance).to.eq(parseEther('1'));
       expect(nbWritten1).to.eq(parseEther('1'));
       expect(nbWritten2).to.eq(parseEther('2'));
+    });
+
+    it('should fail withdrawPreExpirationFrom if not approved', async () => {
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'));
+      await optionTestUtil.exerciseOption(true, parseEther('1'));
+
+      await expect(
+        premiaOption
+          .connect(writer2)
+          .withdrawPreExpirationFrom(writer1.address, 1, parseEther('1')),
+      ).to.be.revertedWith('Not approved');
+    });
+
+    it('should successfully withdrawPreExpirationFrom', async () => {
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'));
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'));
+      await optionTestUtil.exerciseOption(true, parseEther('1'));
+
+      await premiaOption
+        .connect(writer1)
+        .setApprovalForAll(writer2.address, true);
+      await premiaOption
+        .connect(writer2)
+        .withdrawPreExpirationFrom(writer1.address, 1, parseEther('1'));
+
+      const daiBalance = await dai.balanceOf(writer1.address);
+      const ethBalance = await weth.balanceOf(writer1.address);
+
+      const nbWritten = await premiaOption.nbWritten(writer1.address, 1);
+
+      expect(daiBalance).to.eq(parseEther('10'));
+      expect(ethBalance).to.eq(0);
+      expect(nbWritten).to.eq(parseEther('1'));
     });
   });
 
@@ -1194,6 +1367,66 @@ describe('PremiaOption', () => {
             parseEther('100000'),
           ),
       ).to.be.revertedWith('UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
+    });
+
+    it('should fail flashExerciseFrom if not approved', async () => {
+      // 1 ETH = 12 DAI
+      await uniswap.dai.mint(uniswap.daiWeth.address, parseEther('1200'));
+      await uniswap.weth.deposit({ value: parseEther('100') });
+      await uniswap.weth.transfer(uniswap.daiWeth.address, parseEther('100'));
+      await uniswap.daiWeth.mint(admin.address);
+
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'), true);
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'));
+
+      await expect(
+        premiaOption
+          .connect(writer2)
+          .flashExerciseOptionFrom(
+            user1.address,
+            1,
+            parseEther('1'),
+            ZERO_ADDRESS,
+            uniswap.router.address,
+            parseEther('100000'),
+          ),
+      ).to.be.revertedWith('Not approved');
+    });
+
+    it('should successfully flashExerciseFrom', async () => {
+      // 1 ETH = 12 DAI
+      await uniswap.dai.mint(uniswap.daiWeth.address, parseEther('1200'));
+      await uniswap.weth.deposit({ value: parseEther('100') });
+      await uniswap.weth.transfer(uniswap.daiWeth.address, parseEther('100'));
+      await uniswap.daiWeth.mint(admin.address);
+
+      await optionTestUtil.addEthAndWriteOptions(parseEther('2'), true);
+      await optionTestUtil.transferOptionToUser1(writer1, parseEther('2'));
+
+      await premiaOption
+        .connect(user1)
+        .setApprovalForAll(writer2.address, true);
+      await premiaOption
+        .connect(writer2)
+        .flashExerciseOptionFrom(
+          user1.address,
+          1,
+          parseEther('1'),
+          ZERO_ADDRESS,
+          uniswap.router.address,
+          parseEther('100000'),
+        );
+
+      const user1Weth = await uniswap.weth.balanceOf(user1.address);
+      expect(
+        user1Weth.gt(parseEther('0.148')) && user1Weth.lt(parseEther('0.149')),
+      ).to.be.true;
+      expect(await uniswap.dai.balanceOf(premiaOption.address)).to.eq(
+        parseEther('10'),
+      );
+      expect(await premiaOption.balanceOf(user1.address, 1)).to.eq(
+        parseEther('1'),
+      );
     });
   });
 });

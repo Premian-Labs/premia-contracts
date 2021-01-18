@@ -232,22 +232,24 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return optionId;
     }
 
-    function writeOptionFrom(address _from, OptionWriteArgs memory _option, address _referrer) public nonReentrant {
+    //
+
+    function writeOptionFrom(address _from, OptionWriteArgs memory _option, address _referrer) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
         _writeOption(_from, _option, _referrer);
     }
 
-    function writeOption(OptionWriteArgs memory _option, address _referrer) public nonReentrant {
+    function writeOption(OptionWriteArgs memory _option, address _referrer) public {
         _writeOption(msg.sender, _option, _referrer);
     }
 
-    function _writeOption(address _from, OptionWriteArgs memory _option, address _referrer) internal {
+    function _writeOption(address _from, OptionWriteArgs memory _option, address _referrer) internal nonReentrant {
         require(_option.amount > 0, "Amount <= 0");
 
         uint256 optionId = getOptionIdOrCreate(_option.token, _option.expiration, _option.strikePrice, _option.isCall);
 
         // Set referrer or get current if one already exists
-        _referrer = _trySetReferrer(_referrer);
+        _referrer = _trySetReferrer(_from, _referrer);
 
         if (_option.isCall) {
             IERC20(_option.token).safeTransferFrom(_from, address(this), _option.amount);
@@ -273,37 +275,50 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         emit OptionWritten(_from, optionId, _option.token, _option.amount);
     }
 
+    //
+
+    function cancelOptionFrom(address _from, uint256 _optionId, uint256 _amount) external {
+        require(isApprovedForAll(_from, msg.sender), "Not approved");
+        _cancelOption(_from, _optionId, _amount);
+    }
+
+    function cancelOption(uint256 _optionId, uint256 _amount) public {
+        _cancelOption(msg.sender, _optionId, _amount);
+    }
+
     // Cancel an option before expiration, by burning the NFT for withdrawal of deposit (Can only be called by writer of the option)
     // Must be called before expiration (Expiration check is done in burn function call)
-    function cancelOption(uint256 _optionId, uint256 _amount) public nonReentrant {
+    function _cancelOption(address _from, uint256 _optionId, uint256 _amount) internal nonReentrant {
         require(_amount > 0, "Amount <= 0");
-        require(nbWritten[msg.sender][_optionId] >= _amount, "Not enough written");
+        require(nbWritten[_from][_optionId] >= _amount, "Not enough written");
 
-        burn(msg.sender, _optionId, _amount);
-        nbWritten[msg.sender][_optionId] = nbWritten[msg.sender][_optionId].sub(_amount);
+        burn(_from, _optionId, _amount);
+        nbWritten[_from][_optionId] = nbWritten[_from][_optionId].sub(_amount);
 
         if (optionData[_optionId].isCall) {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(_amount);
-            IERC20(optionData[_optionId].token).safeTransfer(msg.sender, _amount);
+            IERC20(optionData[_optionId].token).safeTransfer(_from, _amount);
         } else {
             uint256 amount = _amount.mul(optionData[_optionId].strikePrice).div(1e18);
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(amount);
-            denominator.safeTransfer(msg.sender, amount);
+            denominator.safeTransfer(_from, amount);
         }
 
-        emit OptionCancelled(msg.sender, _optionId, optionData[_optionId].token, _amount);
+        emit OptionCancelled(_from, _optionId, optionData[_optionId].token, _amount);
     }
 
-    function exerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) public nonReentrant {
+    //
+
+    function exerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
         _exerciseOption(_from, _optionId, _amount, _referrer);
     }
 
-    function exerciseOption(uint256 _optionId, uint256 _amount, address _referrer) public nonReentrant {
+    function exerciseOption(uint256 _optionId, uint256 _amount, address _referrer) public {
         _exerciseOption(msg.sender, _optionId, _amount, _referrer);
     }
 
-    function _exerciseOption(address _from, uint256 _optionId, uint256 _amount, address _referrer) internal {
+    function _exerciseOption(address _from, uint256 _optionId, uint256 _amount, address _referrer) internal nonReentrant {
         require(_amount > 0, "Amount <= 0");
 
         OptionData storage data = optionData[_optionId];
@@ -317,7 +332,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 denominatorAmount = _amount.mul(data.strikePrice).div(1e18);
 
         // Set referrer or get current if one already exists
-        _referrer = _trySetReferrer(_referrer);
+        _referrer = _trySetReferrer(_from, _referrer);
 
         if (data.isCall) {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
@@ -344,18 +359,29 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         emit OptionExercised(_from, _optionId, data.token, _amount);
     }
 
+    //
+
+    function withdrawFrom(address _from, uint256 _optionId) external {
+        require(isApprovedForAll(_from, msg.sender), "Not approved");
+        _withdraw(_from, _optionId);
+    }
+
+    function withdraw(uint256 _optionId) public {
+        _withdraw(msg.sender, _optionId);
+    }
+
     // Withdraw funds from an expired option (Only callable by writers with unclaimed options)
     // Funds are allocated pro-rate to writers.
     // Ex : If there is 10 ETH and 6000 denominator, a user who got 10% of options unclaimed will get 1 ETH and 600 denominator
-    function withdraw(uint256 _optionId) public nonReentrant expired(_optionId) {
-        require(nbWritten[msg.sender][_optionId] > 0, "No option to claim");
+    function _withdraw(address _from, uint256 _optionId) internal nonReentrant expired(_optionId) {
+        require(nbWritten[_from][_optionId] > 0, "No option to claim");
 
         OptionData storage data = optionData[_optionId];
 
         uint256 nbTotal = uint256(data.supply).add(data.exercised).sub(data.claimsPreExp);
 
         // Amount of options user still has to claim funds from
-        uint256 claimsUser = nbWritten[msg.sender][_optionId];
+        uint256 claimsUser = nbWritten[_from][_optionId];
 
         //
 
@@ -367,20 +393,31 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         pools[_optionId].denominatorAmount.sub(denominatorAmount);
         pools[_optionId].tokenAmount.sub(tokenAmount);
         data.claimsPostExp = uint256(data.claimsPostExp).add(claimsUser);
-        delete nbWritten[msg.sender][_optionId];
+        delete nbWritten[_from][_optionId];
 
-        denominator.safeTransfer(msg.sender, denominatorAmount);
-        IERC20(optionData[_optionId].token).safeTransfer(msg.sender, tokenAmount);
+        denominator.safeTransfer(_from, denominatorAmount);
+        IERC20(optionData[_optionId].token).safeTransfer(_from, tokenAmount);
 
-        emit Withdraw(msg.sender, _optionId, data.token, claimsUser);
+        emit Withdraw(_from, _optionId, data.token, claimsUser);
+    }
+
+    //
+
+    function withdrawPreExpirationFrom(address _from, uint256 _optionId, uint256 _amount) external {
+        require(isApprovedForAll(_from, msg.sender), "Not approved");
+        _withdrawPreExpiration(_from, _optionId, _amount);
+    }
+
+    function withdrawPreExpiration(uint256 _optionId, uint256 _amount) public {
+        _withdrawPreExpiration(msg.sender, _optionId, _amount);
     }
 
     // Withdraw funds from exercised unexpired option (Only callable by writers with unclaimed options)
-    function withdrawPreExpiration(uint256 _optionId, uint256 _amount) public nonReentrant notExpired(_optionId) {
+    function _withdrawPreExpiration(address _from, uint256 _optionId, uint256 _amount) internal nonReentrant notExpired(_optionId) {
         require(_amount > 0, "Amount <= 0");
 
         // Amount of options user still has to claim funds from
-        uint256 claimsUser = nbWritten[msg.sender][_optionId];
+        uint256 claimsUser = nbWritten[_from][_optionId];
         require(claimsUser >= _amount, "Not enough claims");
 
         OptionData storage data = optionData[_optionId];
@@ -390,19 +427,101 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
         //
 
-        nbWritten[msg.sender][_optionId] = nbWritten[msg.sender][_optionId].sub(_amount);
+        nbWritten[_from][_optionId] = nbWritten[_from][_optionId].sub(_amount);
         data.claimsPreExp = uint256(data.claimsPreExp).add(_amount);
 
         if (data.isCall) {
             uint256 amount = _amount.mul(data.strikePrice).div(1e18);
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(amount);
-            denominator.safeTransfer(msg.sender, amount);
+            denominator.safeTransfer(_from, amount);
         } else {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(_amount);
-            IERC20(data.token).safeTransfer(msg.sender, _amount);
+            IERC20(data.token).safeTransfer(_from, _amount);
+        }
+    }
+
+    //
+
+    function flashExerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) external {
+        require(isApprovedForAll(_from, msg.sender), "Not approved");
+        _flashExerciseOption(_from, _optionId, _amount, _referrer, _router, _amountInMax);
+    }
+
+    function flashExerciseOption(uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) external {
+        _flashExerciseOption(msg.sender, _optionId, _amount, _referrer, _router, _amountInMax);
+    }
+
+    function _flashExerciseOption(address _from, uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) internal nonReentrant {
+        require(_amount > 0, "Amount <= 0");
+
+        burn(_from, _optionId, _amount);
+        optionData[_optionId].exercised = uint256(optionData[_optionId].exercised).add(_amount);
+
+        IERC20 tokenErc20 = IERC20(optionData[_optionId].token);
+
+        uint256 tokenAmount = _amount;
+        uint256 denominatorAmount = _amount.mul(optionData[_optionId].strikePrice).div(1e18);
+
+        uint256 tokenAmountRequired = tokenErc20.balanceOf(address(this));
+        uint256 denominatorAmountRequired = denominator.balanceOf(address(this));
+
+        // Set referrer or get current if one already exists
+        _referrer = _trySetReferrer(_from, _referrer);
+
+        if (optionData[_optionId].isCall) {
+            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
+            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(denominatorAmount);
+
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), denominatorAmount, IFeeCalculator.FeeType.Exercise);
+
+            if (tokenAmount < _amountInMax) {
+                _amountInMax = tokenAmount;
+            }
+
+            // Swap enough denominator to tokenErc20 to pay fee + strike price
+            uint256 tokenAmountUsed = _swap(_router, address(tokenErc20), address(denominator), denominatorAmount.add(fee).add(feeReferrer), _amountInMax)[0];
+
+            // Pay fees
+            _payFees(address(this), denominator, _referrer, fee, feeReferrer);
+
+            uint256 profit = tokenAmount.sub(tokenAmountUsed);
+
+            // Send profit to sender
+            tokenErc20.safeTransfer(_from, profit);
+
+            denominatorAmountRequired = denominatorAmountRequired.add(denominatorAmount);
+            tokenAmountRequired = tokenAmountRequired.sub(tokenAmount);
+        } else {
+            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(denominatorAmount);
+            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
+
+            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), tokenAmount, IFeeCalculator.FeeType.Exercise);
+
+            if (denominatorAmount < _amountInMax) {
+                _amountInMax = denominatorAmount;
+            }
+
+            // Swap enough denominator to tokenErc20 to pay fee + strike price
+            uint256 denominatorAmountUsed =  _swap(_router, address(denominator), address(tokenErc20), tokenAmount.add(fee).add(feeReferrer), _amountInMax)[0];
+
+            _payFees(address(this), tokenErc20, _referrer, fee, feeReferrer);
+
+            uint256 profit = denominatorAmount.sub(denominatorAmountUsed);
+
+            // Send profit to sender
+            denominator.safeTransfer(_from, profit);
+
+            denominatorAmountRequired = denominatorAmountRequired.sub(denominatorAmount);
+            tokenAmountRequired = tokenAmountRequired.add(tokenAmount);
         }
 
+        require(denominator.balanceOf(address(this)) >= denominatorAmountRequired, "Wrong denom bal");
+        require(tokenErc20.balanceOf(address(this)) >= tokenAmountRequired, "Wrong token bal");
+
+        emit OptionExercised(_from, _optionId, optionData[_optionId].token, _amount);
     }
+
+    //
 
     function flashLoan(address _tokenAddress, uint256 _amount, IFlashLoanReceiver _receiver) public nonReentrant {
         IERC20 _token = IERC20(_tokenAddress);
@@ -422,76 +541,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
         endBalance = _token.balanceOf(address(this));
         require(endBalance >= startBalance, "Failed to pay back");
-    }
-
-    function flashExerciseOption(uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) public nonReentrant {
-        require(_amount > 0, "Amount <= 0");
-
-        burn(msg.sender, _optionId, _amount);
-        optionData[_optionId].exercised = uint256(optionData[_optionId].exercised).add(_amount);
-
-        IERC20 tokenErc20 = IERC20(optionData[_optionId].token);
-
-        uint256 tokenAmount = _amount;
-        uint256 denominatorAmount = _amount.mul(optionData[_optionId].strikePrice).div(1e18);
-
-        uint256 tokenAmountRequired = tokenErc20.balanceOf(address(this));
-        uint256 denominatorAmountRequired = denominator.balanceOf(address(this));
-
-        // Set referrer or get current if one already exists
-        _referrer = _trySetReferrer(_referrer);
-
-        if (optionData[_optionId].isCall) {
-            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
-            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(denominatorAmount);
-
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(msg.sender, _referrer != address(0), denominatorAmount, IFeeCalculator.FeeType.Exercise);
-
-            if (tokenAmount < _amountInMax) {
-                _amountInMax = tokenAmount;
-            }
-
-            // Swap enough denominator to tokenErc20 to pay fee + strike price
-            uint256 tokenAmountUsed = _swap(_router, address(tokenErc20), address(denominator), denominatorAmount.add(fee).add(feeReferrer), _amountInMax)[0];
-
-            // Pay fees
-            _payFees(address(this), denominator, _referrer, fee, feeReferrer);
-
-            uint256 profit = tokenAmount.sub(tokenAmountUsed);
-
-            // Send profit to sender
-            tokenErc20.safeTransfer(msg.sender, profit);
-
-            denominatorAmountRequired = denominatorAmountRequired.add(denominatorAmount);
-            tokenAmountRequired = tokenAmountRequired.sub(tokenAmount);
-        } else {
-            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(denominatorAmount);
-            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
-
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(msg.sender, _referrer != address(0), tokenAmount, IFeeCalculator.FeeType.Exercise);
-
-            if (denominatorAmount < _amountInMax) {
-                _amountInMax = denominatorAmount;
-            }
-
-            // Swap enough denominator to tokenErc20 to pay fee + strike price
-            uint256 denominatorAmountUsed =  _swap(_router, address(denominator), address(tokenErc20), tokenAmount.add(fee).add(feeReferrer), _amountInMax)[0];
-
-            _payFees(address(this), tokenErc20, _referrer, fee, feeReferrer);
-
-            uint256 profit = denominatorAmount.sub(denominatorAmountUsed);
-
-            // Send profit to sender
-            denominator.safeTransfer(msg.sender, profit);
-
-            denominatorAmountRequired = denominatorAmountRequired.sub(denominatorAmount);
-            tokenAmountRequired = tokenAmountRequired.add(tokenAmount);
-        }
-
-        require(denominator.balanceOf(address(this)) >= denominatorAmountRequired, "Wrong denom bal");
-        require(tokenErc20.balanceOf(address(this)) >= tokenAmountRequired, "Wrong token bal");
-
-        emit OptionExercised(msg.sender, _optionId, optionData[_optionId].token, _amount);
     }
 
     /////////////////////
@@ -608,9 +657,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     }
 
     // Try to set given referrer, returns current referrer if one already exists
-    function _trySetReferrer(address _referrer) internal returns(address) {
+    function _trySetReferrer(address _user, address _referrer) internal returns(address) {
         if (address(premiaReferral) != address(0)) {
-            _referrer = premiaReferral.trySetReferrer(msg.sender, _referrer);
+            _referrer = premiaReferral.trySetReferrer(_user, _referrer);
         } else {
             _referrer = address(0);
         }
