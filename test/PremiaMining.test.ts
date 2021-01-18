@@ -44,7 +44,7 @@ describe('PremiaMining', () => {
     [admin, alice, bob, carol, treasury] = await ethers.getSigners();
 
     p = await deployContracts(admin, treasury, true);
-    await p.premia.mint(p.premiaMining.address, parseEther('18000000'));
+    await p.premia.mint(p.premiaMining.address, parseEther('1800'));
     await p.uPremia.addWhitelisted([p.premiaMining.address]);
     await p.premiaMining.add(1e4, p.uPremia.address, true);
     await p.uPremia.addMinter([admin.address]);
@@ -102,7 +102,7 @@ describe('PremiaMining', () => {
     await p.premiaMining.connect(alice).deposit(0, 0); // Block 105
     expect(await p.premia.balanceOf(alice.address)).to.eq(parseEther('50'));
     expect(await p.premia.balanceOf(p.premiaMining.address)).to.eq(
-      parseEther('18000000').sub(parseEther('50')),
+      parseEther('1800').sub(parseEther('50')),
     );
   });
 
@@ -111,18 +111,18 @@ describe('PremiaMining', () => {
 
     await mineBlockUntil(99);
     expect(await p.premia.balanceOf(p.premiaMining.address)).to.eq(
-      parseEther('18000000'),
+      parseEther('1800'),
     );
 
     await mineBlockUntil(104);
     expect(await p.premia.balanceOf(p.premiaMining.address)).to.eq(
-      parseEther('18000000'),
+      parseEther('1800'),
     );
 
     await mineBlockUntil(109);
     await depositWithPermit(alice, p.uPremia.address, 0, parseEther('1'));
     expect(await p.premia.balanceOf(p.premiaMining.address)).to.eq(
-      parseEther('18000000'),
+      parseEther('1800'),
     );
     expect(await p.premia.balanceOf(alice.address)).to.eq(0);
     expect(await p.uPremia.balanceOf(alice.address)).to.eq(parseEther('99'));
@@ -130,7 +130,7 @@ describe('PremiaMining', () => {
     await mineBlockUntil(119);
     await p.premiaMining.connect(alice).withdraw(0, parseEther('1'));
     expect(await p.premia.balanceOf(p.premiaMining.address)).to.eq(
-      parseEther('18000000').sub(parseEther('100')),
+      parseEther('1800').sub(parseEther('100')),
     );
     expect(await p.premia.balanceOf(alice.address)).to.eq(parseEther('100'));
     expect(await p.uPremia.balanceOf(alice.address)).to.eq(parseEther('100'));
@@ -270,7 +270,23 @@ describe('PremiaMining', () => {
     await p.premiaMining.connect(alice).deposit(0, 0);
     expect(await p.premia.balanceOf(alice.address)).to.eq(parseEther('124'));
     expect(await p.premia.balanceOf(p.premiaMining.address)).to.eq(
-      parseEther('18000000').sub(parseEther('124')),
+      parseEther('1800').sub(parseEther('124')),
     );
+  });
+
+  it('should stop rewarding premia after end of mining', async () => {
+    await depositWithPermit(alice, p.uPremia.address, 0, parseEther('10'));
+    await mineBlockUntil(600);
+
+    expect(await p.premiaMining.pendingPremia(0, alice.address)).to.eq(
+      parseEther('1800'),
+    );
+
+    await p.premiaMining.connect(alice).deposit(0, 0);
+    expect(await p.premiaMining.pendingPremia(0, alice.address)).to.eq(
+      parseEther('0'),
+    );
+
+    expect(await p.premia.balanceOf(alice.address)).to.eq(parseEther('1800'));
   });
 });
