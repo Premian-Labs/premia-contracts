@@ -235,7 +235,8 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
         if (_order.side == SaleSide.Buy) {
             uint256 basePrice = _order.pricePerUnit.mul(amountLeft).div(1e18);
-            uint256 orderMakerFee = basePrice.mul(feeCalculator.makerFee()).div(_inverseBasisPoint);
+            uint256 makerFee = feeCalculator.getFee(_order.maker, false, IFeeCalculator.FeeType.Maker);
+            uint256 orderMakerFee = basePrice.mul(makerFee).div(_inverseBasisPoint);
             uint256 totalPrice = basePrice.add(orderMakerFee);
 
             uint256 userBalance = token.balanceOf(_order.maker);
