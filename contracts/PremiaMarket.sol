@@ -8,7 +8,6 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/EnumerableSet.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
-import "./interface/IERC20Extended.sol";
 import "./interface/IPremiaOption.sol";
 import "./interface/IFeeCalculator.sol";
 import "./interface/IPremiaReferral.sol";
@@ -17,7 +16,7 @@ import "./interface/IPremiaUncutErc20.sol";
 
 contract PremiaMarket is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
-    using SafeERC20 for IERC20Extended;
+    using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
     IPremiaUncutErc20 public uPremia;
@@ -51,10 +50,8 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         uint256 optionId;
         /* Address of token used for payment. */
         address paymentToken;
-        /* Price per unit (in paymentToken). */
+        /* Price per unit (in paymentToken) with 18 decimals */
         uint256 pricePerUnit;
-        /* Number of decimals of token for which the option is for. */
-        uint8 decimals;
         /* Expiration timestamp of option (Which is also expiration of order). */
         uint256 expirationTime;
         /* To ensure unique hash */
@@ -90,7 +87,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         uint256 optionId,
         address paymentToken,
         uint256 pricePerUnit,
-        uint8 decimals,
         uint256 expirationTime,
         uint256 salt,
         uint256 amount
@@ -103,8 +99,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         address maker,
         address paymentToken,
         uint256 amount,
-        uint256 pricePerUnit,
-        uint8 decimals
+        uint256 pricePerUnit
     );
 
     event OrderCancelled(
@@ -113,8 +108,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         address indexed optionContract,
         address paymentToken,
         uint256 amount,
-        uint256 pricePerUnit,
-        uint8 decimals
+        uint256 pricePerUnit
     );
 
     //////////////////////////////////////////////////
@@ -237,13 +231,10 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         // Expired
         if (_order.expirationTime == 0 || block.timestamp > _order.expirationTime) return false;
 
-        IERC20Extended token = IERC20Extended(_order.paymentToken);
-
-        IPremiaOption.OptionData memory optionData = IPremiaOption(_order.optionContract).optionData(_order.optionId);
-        uint8 decimals = IERC20Extended(optionData.token).decimals();
+        IERC20 token = IERC20(_order.paymentToken);
 
         if (_order.side == SaleSide.Buy) {
-            uint256 basePrice = _order.pricePerUnit.mul(amountLeft).div(10 ** decimals);
+            uint256 basePrice = _order.pricePerUnit.mul(amountLeft).div(1e18);
             uint256 orderMakerFee = basePrice.mul(feeCalculator.makerFee()).div(_inverseBasisPoint);
             uint256 totalPrice = basePrice.add(orderMakerFee);
 
@@ -279,7 +270,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     function claimUPremia() external {
         uint256 amount = uPremiaBalance[msg.sender];
         uPremiaBalance[msg.sender] = 0;
-        IERC20Extended(address(uPremia)).safeTransfer(msg.sender, amount);
+        IERC20(address(uPremia)).safeTransfer(msg.sender, amount);
     }
 
     // Maker, salt and expirationTime will be overridden by this function
@@ -293,7 +284,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         _order.maker = msg.sender;
         _order.expirationTime = data.expiration;
         _order.salt = salt;
-        _order.decimals = IERC20Extended(data.token).decimals();
 
         salt = salt.add(1);
 
@@ -309,7 +299,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             _order.optionId,
             _order.paymentToken,
             _order.pricePerUnit,
-            _order.decimals,
             _order.expirationTime,
             _order.salt,
             _amount
@@ -403,7 +392,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
         amounts[hash] = amounts[hash].sub(_amount);
 
-        uint256 basePrice = _order.pricePerUnit.mul(_amount).div(10 ** _order.decimals);
+        uint256 basePrice = _order.pricePerUnit.mul(_amount).div(1e18);
 
         (uint256 orderMakerFee,) = feeCalculator.getFeeAmounts(_order.maker, false, basePrice, IFeeCalculator.FeeType.Maker);
         (uint256 orderTakerFee,) = feeCalculator.getFeeAmounts(msg.sender, false, basePrice, IFeeCalculator.FeeType.Taker);
@@ -411,12 +400,12 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         if (_order.side == SaleSide.Buy) {
             IPremiaOption(_order.optionContract).safeTransferFrom(msg.sender, _order.maker, _order.optionId, _amount, "");
 
-            IERC20Extended(_order.paymentToken).safeTransferFrom(_order.maker, feeRecipient, orderMakerFee.add(orderTakerFee));
-            IERC20Extended(_order.paymentToken).safeTransferFrom(_order.maker, msg.sender, basePrice.sub(orderTakerFee));
+            IERC20(_order.paymentToken).safeTransferFrom(_order.maker, feeRecipient, orderMakerFee.add(orderTakerFee));
+            IERC20(_order.paymentToken).safeTransferFrom(_order.maker, msg.sender, basePrice.sub(orderTakerFee));
 
         } else {
-            IERC20Extended(_order.paymentToken).safeTransferFrom(msg.sender, feeRecipient, orderMakerFee.add(orderTakerFee));
-            IERC20Extended(_order.paymentToken).safeTransferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
+            IERC20(_order.paymentToken).safeTransferFrom(msg.sender, feeRecipient, orderMakerFee.add(orderTakerFee));
+            IERC20(_order.paymentToken).safeTransferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
 
             IPremiaOption(_order.optionContract).safeTransferFrom(_order.maker, msg.sender, _order.optionId, _amount, "");
         }
@@ -438,8 +427,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             _order.maker,
             _order.paymentToken,
             _amount,
-            _order.pricePerUnit,
-            _order.decimals
+            _order.pricePerUnit
         );
 
         return _amount;
@@ -492,7 +480,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             amounts[hash] = amounts[hash].sub(amount);
             amountFilled = amountFilled.add(amount);
 
-            uint256 basePrice = _order.pricePerUnit.mul(amount).div(10 ** _order.decimals);
+            uint256 basePrice = _order.pricePerUnit.mul(amount).div(1e18);
 
             (uint256 orderMakerFee,) = feeCalculator.getFeeAmounts(_order.maker, false, basePrice, IFeeCalculator.FeeType.Maker);
             uint256 orderTakerFee = basePrice.mul(takerFee).div(_inverseBasisPoint);
@@ -503,12 +491,12 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
                 IPremiaOption(_order.optionContract).safeTransferFrom(msg.sender, _order.maker, _order.optionId, amount, "");
 
                 // We transfer all to the contract, contract will pays fees, and send remainder to msg.sender
-                IERC20Extended(_order.paymentToken).safeTransferFrom(_order.maker, address(this), basePrice.add(orderMakerFee));
+                IERC20(_order.paymentToken).safeTransferFrom(_order.maker, address(this), basePrice.add(orderMakerFee));
                 totalAmount = totalAmount.add(basePrice.add(orderMakerFee));
 
             } else {
                 // We pay order maker, fees will be all paid at once later
-                IERC20Extended(_order.paymentToken).safeTransferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
+                IERC20(_order.paymentToken).safeTransferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
                 IPremiaOption(_order.optionContract).safeTransferFrom(_order.maker, msg.sender, _order.optionId, amount, "");
             }
 
@@ -525,19 +513,18 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
                 _order.maker,
                 _order.paymentToken,
                 amount,
-                _order.pricePerUnit,
-                _order.decimals
+                _order.pricePerUnit
             );
         }
 
         if (_orders[0].side == SaleSide.Buy) {
             // Batch payment of fees
-            IERC20Extended(_orders[0].paymentToken).safeTransfer(feeRecipient, totalFee);
+            IERC20(_orders[0].paymentToken).safeTransfer(feeRecipient, totalFee);
             // Send remainder of tokens after fee payment, to msg.sender
-            IERC20Extended(_orders[0].paymentToken).safeTransfer(msg.sender, totalAmount.sub(totalFee));
+            IERC20(_orders[0].paymentToken).safeTransfer(msg.sender, totalAmount.sub(totalFee));
         } else {
             // Batch payment of fees
-            IERC20Extended(_orders[0].paymentToken).safeTransferFrom(msg.sender, feeRecipient, totalFee);
+            IERC20(_orders[0].paymentToken).safeTransferFrom(msg.sender, feeRecipient, totalFee);
         }
 
         uPremia.mint(address(this), totalFee.mul(paymentTokenPrice).div(1e18));
@@ -563,8 +550,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             _order.optionContract,
             _order.paymentToken,
             amountLeft,
-            _order.pricePerUnit,
-            _order.decimals
+            _order.pricePerUnit
         );
     }
 

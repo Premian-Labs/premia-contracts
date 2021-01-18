@@ -19,7 +19,6 @@ interface IOrder {
   optionId: BigNumberish;
   paymentToken: string;
   pricePerUnit: BigNumberish;
-  decimals: BigNumberish;
   expirationTime: BigNumberish;
   salt: BigNumberish;
 }
@@ -33,7 +32,6 @@ interface IOrderCreated {
   optionId: BigNumberish;
   paymentToken: string;
   pricePerUnit: BigNumberish;
-  decimals: BigNumberish;
   expirationTime: BigNumberish;
   salt: BigNumberish;
   amount: BigNumberish;

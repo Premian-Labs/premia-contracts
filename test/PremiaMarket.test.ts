@@ -147,7 +147,6 @@ describe('PremiaMarket', () => {
         null,
         null,
         null,
-        null,
       );
       const r = await premiaMarket.queryFilter(filter, tx.blockHash);
 
@@ -175,7 +174,6 @@ describe('PremiaMarket', () => {
         .createOrders([newOrder, newOrder], [2, 3]);
 
       const filter = premiaMarket.filters.OrderCreated(
-        null,
         null,
         null,
         null,
@@ -274,7 +272,6 @@ describe('PremiaMarket', () => {
         null,
         null,
         null,
-        null,
       );
       const r = await premiaMarket.queryFilter(filter, tx.blockHash);
 
@@ -323,7 +320,6 @@ describe('PremiaMarket', () => {
         ]);
 
       const filter = premiaMarket.filters.OrderCreated(
-        null,
         null,
         null,
         null,
@@ -402,7 +398,6 @@ describe('PremiaMarket', () => {
         null,
         null,
         null,
-        null,
       );
       const r = await premiaMarket.queryFilter(filter, tx.blockHash);
 
@@ -458,7 +453,6 @@ describe('PremiaMarket', () => {
         ]);
 
       const filter = premiaMarket.filters.OrderCreated(
-        null,
         null,
         null,
         null,
@@ -800,7 +794,7 @@ describe('PremiaMarket', () => {
       //
       //   const orders: any = [];
       //
-      //   let amount = 5;
+      //   let amount = 20;
       //   for (let i = 0; i < amount; i++) {
       //     const order = await marketTestUtil.setupOrder(maker, taker, {
       //       isBuy: true,

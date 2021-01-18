@@ -89,7 +89,6 @@ export class PremiaMarketTestUtil {
       pricePerUnit: parseEther('1'),
       optionId: orderOptions?.optionId ?? 1,
       paymentToken: orderOptions?.paymentToken ?? this.weth.address,
-      decimals: 18,
       expirationTime: 0,
       salt: 0,
     };
@@ -104,7 +103,6 @@ export class PremiaMarketTestUtil {
     const tx = await this.premiaMarket.connect(user).createOrder(
       {
         ...newOrder,
-        decimals: 18,
         expirationTime: 0,
         salt: 0,
       },
@@ -114,7 +112,6 @@ export class PremiaMarketTestUtil {
     console.log(tx.gasLimit.toString());
 
     const filter = this.premiaMarket.filters.OrderCreated(
-      null,
       null,
       null,
       null,
@@ -184,7 +181,6 @@ export class PremiaMarketTestUtil {
       optionId: orderCreated.optionId,
       paymentToken: orderCreated.paymentToken,
       pricePerUnit: orderCreated.pricePerUnit,
-      decimals: orderCreated.decimals,
       expirationTime: orderCreated.expirationTime,
       salt: orderCreated.salt,
     };

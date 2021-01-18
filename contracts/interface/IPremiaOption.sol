@@ -10,7 +10,6 @@ import "../uniswapV2/interfaces/IUniswapV2Router02.sol";
 interface IPremiaOption is IERC1155 {
     struct TokenSettings {
         uint256 strikePriceIncrement;   // Increment for strike price
-        uint8 decimals;                 // Number of decimals for the token
         bool isDisabled;                // Whether this token is disabled or not
     }
 
