@@ -105,6 +105,7 @@ describe('PremiaMarket', () => {
     await premiaOption.setToken(weth.address, parseEther('10'), false);
 
     await premiaMarket.addWhitelistedPaymentTokens([weth.address]);
+    await p.uPremia.addWhitelisted([premiaMarket.address]);
   });
 
   describe('createOrder', () => {
@@ -1185,7 +1186,7 @@ describe('PremiaMarket', () => {
   });
 
   describe('uPremia', () => {
-    it('should reward uPremia on fillOrder for both maker and taker', async () => {
+    it('should reward uPremia on fillOrder for both maker and taker and they should be able to claim it', async () => {
       await p.priceProvider.setTokenPrices(
         [dai.address, weth.address],
         [parseEther('1'), parseEther('10')],
@@ -1208,6 +1209,19 @@ describe('PremiaMarket', () => {
       expect(await premiaMarket.uPremiaBalance(taker.address)).to.eq(
         parseEther('0.15'),
       ); // 0.015 eth fee at 1 eth = 10 usd
+
+      await premiaMarket.connect(maker).claimUPremia();
+      await premiaMarket.connect(taker).claimUPremia();
+
+      expect(await premiaMarket.uPremiaBalance(maker.address)).to.eq(0);
+      expect(await premiaMarket.uPremiaBalance(taker.address)).to.eq(0);
+
+      expect(await p.uPremia.balanceOf(maker.address)).to.eq(
+        parseEther('0.15'),
+      );
+      expect(await p.uPremia.balanceOf(taker.address)).to.eq(
+        parseEther('0.15'),
+      );
     });
   });
 });

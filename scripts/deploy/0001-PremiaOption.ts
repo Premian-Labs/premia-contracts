@@ -22,7 +22,7 @@ async function main() {
 
   //
 
-  const contracts = await deployContracts(deployer);
+  const contracts = await deployContracts(deployer, deployer, true);
 
   Object.keys(contracts).forEach((k) => {
     console.log(`${k} : ${(contracts as any)[k]}`);
@@ -31,7 +31,7 @@ async function main() {
   const premiaOptionDai = await premiaOptionFactory.deploy(
     uri,
     dai,
-    contracts.premiaUncutErc20.address,
+    contracts.uPremia.address,
     contracts.feeCalculator.address,
     contracts.premiaReferral.address,
     deployer.address,
@@ -44,7 +44,7 @@ async function main() {
   const premiaOptionEth = await premiaOptionFactory.deploy(
     uri,
     weth,
-    contracts.premiaUncutErc20.address,
+    contracts.uPremia.address,
     contracts.feeCalculator.address,
     contracts.premiaReferral.address,
     deployer.address,
@@ -66,25 +66,15 @@ async function main() {
   //   `premiaOption wbtc deployed at ${premiaOptionWbtc.address} from ${deployer.address}`,
   // );
 
-  await premiaOptionDai.setToken(
-    weth,
-    parseEther('1'),
-    parseEther('10'),
-    false,
-  );
+  await premiaOptionDai.setToken(weth, parseEther('10'), false);
 
   console.log('WETH/DAI added');
 
-  await premiaOptionDai.setToken(rope, parseEther('1'), parseEther('1'), false);
+  await premiaOptionDai.setToken(rope, parseEther('1'), false);
 
   console.log('ROPE/DAI added');
 
-  await premiaOptionEth.setToken(
-    rope,
-    parseEther('1'),
-    parseEther('0.1'),
-    false,
-  );
+  await premiaOptionEth.setToken(rope, parseEther('0.1'), false);
 
   console.log('ROPE/WETH added');
 
@@ -104,7 +94,7 @@ async function main() {
   //
 
   const premiaMarket = await premiaMarketFactory.deploy(
-    contracts.premiaUncutErc20.address,
+    contracts.uPremia.address,
     contracts.feeCalculator.address,
     deployer.address,
   );
@@ -119,9 +109,11 @@ async function main() {
     // premiaOptionWbtc.address,
   ]);
 
+  await contracts.uPremia.addWhitelisted([premiaMarket.address]);
+
   await premiaMarket.addWhitelistedPaymentTokens([dai, weth]);
 
-  await contracts.premiaUncutErc20.addMinter([
+  await contracts.uPremia.addMinter([
     premiaOptionEth.address,
     premiaOptionDai.address,
     premiaMarket.address,
