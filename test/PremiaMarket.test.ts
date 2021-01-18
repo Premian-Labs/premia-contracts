@@ -783,6 +783,43 @@ describe('PremiaMarket', () => {
         expect(optionBalanceTaker).to.eq(parseEther('4'));
       });
 
+      it('should respect the max amount on fillOrders', async () => {
+        const maker = user1;
+        const taker = user2;
+
+        const order1 = await marketTestUtil.setupOrder(maker, taker, {
+          isBuy: false,
+          amount: parseEther('2'),
+        });
+        const order2 = await marketTestUtil.setupOrder(maker, taker, {
+          isBuy: false,
+          amount: parseEther('2'),
+        });
+        const order3 = await marketTestUtil.setupOrder(maker, taker, {
+          isBuy: false,
+          amount: parseEther('10'),
+        });
+
+        await premiaMarket
+          .connect(taker)
+          .fillOrders(
+            [order1.order, order2.order, order3.order],
+            parseEther('9'),
+          );
+
+        const optionBalanceMaker = await premiaOption.balanceOf(
+          maker.address,
+          1,
+        );
+        const optionBalanceTaker = await premiaOption.balanceOf(
+          taker.address,
+          1,
+        );
+
+        expect(optionBalanceMaker).to.eq(parseEther('5'));
+        expect(optionBalanceTaker).to.eq(parseEther('9'));
+      });
+
       // it('test gas fillOrder', async () => {
       //   await p.priceProvider.setTokenPrices(
       //     [dai.address, weth.address],
