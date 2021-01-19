@@ -31,6 +31,8 @@ interface OrderOptions {
   paymentToken?: string;
   optionContract?: string;
   optionId?: number;
+  isDelayedWriting?: boolean;
+  pricePerUnit?: BigNumber;
 }
 
 export class PremiaMarketTestUtil {
@@ -85,8 +87,9 @@ export class PremiaMarketTestUtil {
       maker: user.address,
       taker: orderOptions?.taker ?? ZERO_ADDRESS,
       side: Number(!orderOptions?.isBuy),
+      isDelayedWriting: !!orderOptions?.isDelayedWriting,
       optionContract: orderOptions?.optionContract ?? this.premiaOption.address,
-      pricePerUnit: parseEther('1'),
+      pricePerUnit: orderOptions?.pricePerUnit ?? parseEther('1'),
       optionId: orderOptions?.optionId ?? 1,
       paymentToken: orderOptions?.paymentToken ?? this.weth.address,
       expirationTime: 0,
@@ -112,6 +115,7 @@ export class PremiaMarketTestUtil {
     console.log(tx.gasLimit.toString());
 
     const filter = this.premiaMarket.filters.OrderCreated(
+      null,
       null,
       null,
       null,
@@ -177,6 +181,7 @@ export class PremiaMarketTestUtil {
       maker: orderCreated.maker,
       taker: orderCreated.taker,
       side: orderCreated.side,
+      isDelayedWriting: orderCreated.isDelayedWriting,
       optionContract: orderCreated.optionContract,
       optionId: orderCreated.optionId,
       paymentToken: orderCreated.paymentToken,

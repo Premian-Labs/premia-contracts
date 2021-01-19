@@ -5,6 +5,7 @@ interface IOrderCreateProps {
   maker: string;
   taker: string;
   side: BigNumberish;
+  isDelayedWriting: boolean;
   optionContract: string;
   pricePerUnit: BigNumberish;
   optionId: BigNumberish;
@@ -15,6 +16,7 @@ interface IOrder {
   maker: string;
   taker: string;
   side: BigNumberish;
+  isDelayedWriting: boolean;
   optionContract: string;
   optionId: BigNumberish;
   paymentToken: string;
@@ -28,6 +30,7 @@ interface IOrderCreated {
   maker: string;
   taker: string;
   side: BigNumberish;
+  isDelayedWriting: boolean;
   optionContract: string;
   optionId: BigNumberish;
   paymentToken: string;

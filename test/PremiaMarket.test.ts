@@ -102,7 +102,7 @@ describe('PremiaMarket', () => {
       .connect(admin)
       .approve(premiaMarket.address, parseEther('10000'));
 
-    await premiaOption.setToken(weth.address, parseEther('10'), false);
+    await premiaOption.setTokens([weth.address], [parseEther('10')]);
 
     await premiaMarket.addWhitelistedPaymentTokens([weth.address]);
     await p.uPremia.addWhitelisted([premiaMarket.address]);
@@ -147,6 +147,7 @@ describe('PremiaMarket', () => {
         null,
         null,
         null,
+        null,
       );
       const r = await premiaMarket.queryFilter(filter, tx.blockHash);
 
@@ -174,6 +175,7 @@ describe('PremiaMarket', () => {
         .createOrders([newOrder, newOrder], [2, 3]);
 
       const filter = premiaMarket.filters.OrderCreated(
+        null,
         null,
         null,
         null,
@@ -255,12 +257,15 @@ describe('PremiaMarket', () => {
 
       const tx = await premiaMarket
         .connect(taker)
-        .createOrderAndTryToFill(newOrder, parseEther('3'), [
-          order1.order,
-          order2.order,
-        ]);
+        .createOrderAndTryToFill(
+          newOrder,
+          parseEther('3'),
+          [order1.order, order2.order],
+          ZERO_ADDRESS,
+        );
 
       const filter = premiaMarket.filters.OrderCreated(
+        null,
         null,
         null,
         null,
@@ -314,12 +319,15 @@ describe('PremiaMarket', () => {
 
       const tx = await premiaMarket
         .connect(taker)
-        .createOrderAndTryToFill(newOrder, parseEther('7'), [
-          order1.order,
-          order2.order,
-        ]);
+        .createOrderAndTryToFill(
+          newOrder,
+          parseEther('7'),
+          [order1.order, order2.order],
+          ZERO_ADDRESS,
+        );
 
       const filter = premiaMarket.filters.OrderCreated(
+        null,
         null,
         null,
         null,
@@ -381,12 +389,15 @@ describe('PremiaMarket', () => {
 
       const tx = await premiaMarket
         .connect(taker)
-        .createOrderAndTryToFill(newOrder, parseEther('3'), [
-          order1.order,
-          order2.order,
-        ]);
+        .createOrderAndTryToFill(
+          newOrder,
+          parseEther('3'),
+          [order1.order, order2.order],
+          ZERO_ADDRESS,
+        );
 
       const filter = premiaMarket.filters.OrderCreated(
+        null,
         null,
         null,
         null,
@@ -447,12 +458,15 @@ describe('PremiaMarket', () => {
 
       const tx = await premiaMarket
         .connect(taker)
-        .createOrderAndTryToFill(newOrder, parseEther('7'), [
-          order1.order,
-          order2.order,
-        ]);
+        .createOrderAndTryToFill(
+          newOrder,
+          parseEther('7'),
+          [order1.order, order2.order],
+          ZERO_ADDRESS,
+        );
 
       const filter = premiaMarket.filters.OrderCreated(
+        null,
         null,
         null,
         null,
@@ -506,7 +520,7 @@ describe('PremiaMarket', () => {
       await expect(
         premiaMarket
           .connect(taker)
-          .createOrderAndTryToFill(newOrder, 7, [order.order]),
+          .createOrderAndTryToFill(newOrder, 7, [order.order], ZERO_ADDRESS),
       ).to.be.revertedWith('Same order side');
     });
 
@@ -532,7 +546,7 @@ describe('PremiaMarket', () => {
       await expect(
         premiaMarket
           .connect(taker)
-          .createOrderAndTryToFill(newOrder, 7, [order.order]),
+          .createOrderAndTryToFill(newOrder, 7, [order.order], ZERO_ADDRESS),
       ).to.be.revertedWith('Candidate order : Diff option contract');
     });
 
@@ -558,7 +572,7 @@ describe('PremiaMarket', () => {
       await expect(
         premiaMarket
           .connect(taker)
-          .createOrderAndTryToFill(newOrder, 7, [order.order]),
+          .createOrderAndTryToFill(newOrder, 7, [order.order], ZERO_ADDRESS),
       ).to.be.revertedWith('Candidate order : Diff optionId');
     });
   });
@@ -617,7 +631,7 @@ describe('PremiaMarket', () => {
           .approve(premiaMarket.address, parseEther('10000'));
         await premiaMarket
           .connect(user1)
-          .fillOrder(order.order, parseEther('5'));
+          .fillOrder(order.order, parseEther('5'), ZERO_ADDRESS);
 
         const isValid = await premiaMarket.isOrderValid(order.order);
         expect(isValid).to.be.false;
@@ -667,7 +681,7 @@ describe('PremiaMarket', () => {
           .setApprovalForAll(premiaMarket.address, true);
         await premiaMarket
           .connect(user1)
-          .fillOrder(order.order, parseEther('1'));
+          .fillOrder(order.order, parseEther('1'), ZERO_ADDRESS);
 
         const isValid = await premiaMarket.isOrderValid(order.order);
         expect(isValid).to.be.false;
@@ -697,7 +711,9 @@ describe('PremiaMarket', () => {
         await setTimestampPostExpiration();
 
         await expect(
-          premiaMarket.connect(taker).fillOrder(order.order, parseEther('1')),
+          premiaMarket
+            .connect(taker)
+            .fillOrder(order.order, parseEther('1'), ZERO_ADDRESS),
         ).to.be.revertedWith('Order expired');
       });
 
@@ -709,7 +725,7 @@ describe('PremiaMarket', () => {
         });
 
         await expect(
-          premiaMarket.connect(taker).fillOrder(order.order, 0),
+          premiaMarket.connect(taker).fillOrder(order.order, 0, ZERO_ADDRESS),
         ).to.be.revertedWith('Amount must be > 0');
       });
 
@@ -722,7 +738,9 @@ describe('PremiaMarket', () => {
         });
 
         await expect(
-          premiaMarket.connect(taker).fillOrder(order.order, parseEther('1')),
+          premiaMarket
+            .connect(taker)
+            .fillOrder(order.order, parseEther('1'), ZERO_ADDRESS),
         ).to.be.revertedWith('Not specified taker');
       });
 
@@ -736,7 +754,7 @@ describe('PremiaMarket', () => {
 
         const tx = await premiaMarket
           .connect(taker)
-          .fillOrder(order.order, parseEther('1'));
+          .fillOrder(order.order, parseEther('1'), ZERO_ADDRESS);
 
         console.log(tx.gasLimit.toString());
 
@@ -768,7 +786,11 @@ describe('PremiaMarket', () => {
 
         await premiaMarket
           .connect(taker)
-          .fillOrders([order1.order, order2.order], parseEther('4'));
+          .fillOrders(
+            [order1.order, order2.order],
+            parseEther('4'),
+            ZERO_ADDRESS,
+          );
 
         const optionBalanceMaker = await premiaOption.balanceOf(
           maker.address,
@@ -805,6 +827,7 @@ describe('PremiaMarket', () => {
           .fillOrders(
             [order1.order, order2.order, order3.order],
             parseEther('9'),
+            ZERO_ADDRESS,
           );
 
         const optionBalanceMaker = await premiaOption.balanceOf(
@@ -876,7 +899,7 @@ describe('PremiaMarket', () => {
 
         await premiaMarket
           .connect(taker)
-          .fillOrder(order.order, parseEther('2'));
+          .fillOrder(order.order, parseEther('2'), ZERO_ADDRESS);
 
         const optionBalanceMaker = await premiaOption.balanceOf(
           maker.address,
@@ -921,7 +944,9 @@ describe('PremiaMarket', () => {
             '0x00',
           );
         await expect(
-          premiaMarket.connect(taker).fillOrder(order.order, parseEther('1')),
+          premiaMarket
+            .connect(taker)
+            .fillOrder(order.order, parseEther('1'), ZERO_ADDRESS),
         ).to.be.revertedWith('ERC1155: insufficient balance for transfer');
       });
 
@@ -934,7 +959,9 @@ describe('PremiaMarket', () => {
         });
         await weth.connect(taker).transfer(admin.address, parseEther('0.01'));
         await expect(
-          premiaMarket.connect(taker).fillOrder(order.order, parseEther('1')),
+          premiaMarket
+            .connect(taker)
+            .fillOrder(order.order, parseEther('1'), ZERO_ADDRESS),
         ).to.be.revertedWith('SafeERC20: low-level call failed');
       });
 
@@ -949,7 +976,7 @@ describe('PremiaMarket', () => {
         });
         await premiaMarket
           .connect(taker)
-          .fillOrder(order.order, parseEther('2'));
+          .fillOrder(order.order, parseEther('2'), ZERO_ADDRESS);
 
         const optionBalanceMaker = await premiaOption.balanceOf(
           maker.address,
@@ -991,7 +1018,7 @@ describe('PremiaMarket', () => {
 
         await premiaMarket
           .connect(taker)
-          .fillOrder(order.order, parseEther('2'));
+          .fillOrder(order.order, parseEther('2'), ZERO_ADDRESS);
 
         const optionBalanceMaker = await premiaOption.balanceOf(
           maker.address,
@@ -1028,7 +1055,9 @@ describe('PremiaMarket', () => {
         });
         await weth.connect(maker).transfer(admin.address, parseEther('0.01'));
         await expect(
-          premiaMarket.connect(taker).fillOrder(order.order, parseEther('1')),
+          premiaMarket
+            .connect(taker)
+            .fillOrder(order.order, parseEther('1'), ZERO_ADDRESS),
         ).to.be.revertedWith('SafeERC20: low-level call failed');
       });
 
@@ -1049,7 +1078,9 @@ describe('PremiaMarket', () => {
             '0x00',
           );
         await expect(
-          premiaMarket.connect(taker).fillOrder(order.order, parseEther('1')),
+          premiaMarket
+            .connect(taker)
+            .fillOrder(order.order, parseEther('1'), ZERO_ADDRESS),
         ).to.be.revertedWith('ERC1155: insufficient balance for transfer');
       });
 
@@ -1064,7 +1095,7 @@ describe('PremiaMarket', () => {
         });
         await premiaMarket
           .connect(taker)
-          .fillOrder(order.order, parseEther('2'));
+          .fillOrder(order.order, parseEther('2'), ZERO_ADDRESS);
 
         const optionBalanceMaker = await premiaOption.balanceOf(
           maker.address,
@@ -1179,7 +1210,9 @@ describe('PremiaMarket', () => {
         amount: parseEther('1'),
       });
 
-      await premiaMarket.connect(taker).fillOrder(order.order, parseEther('1'));
+      await premiaMarket
+        .connect(taker)
+        .fillOrder(order.order, parseEther('1'), ZERO_ADDRESS);
 
       await expect(
         premiaMarket.connect(taker).cancelOrder(order.order),
@@ -1230,7 +1263,9 @@ describe('PremiaMarket', () => {
         isBuy: true,
       });
 
-      await premiaMarket.connect(taker).fillOrder(order.order, parseEther('1'));
+      await premiaMarket
+        .connect(taker)
+        .fillOrder(order.order, parseEther('1'), ZERO_ADDRESS);
 
       // expect(await p.uPremia.balanceOf(maker.address)).to.eq(parseEther('0.15')); // 0.015 eth fee at 1 eth = 10 usd
       // expect(await p.uPremia.balanceOf(taker.address)).to.eq(parseEther('0.15')); // 0.015 eth fee at 1 eth = 10 usd
@@ -1253,6 +1288,102 @@ describe('PremiaMarket', () => {
       expect(await p.uPremia.balanceOf(taker.address)).to.eq(
         parseEther('0.15'),
       );
+    });
+  });
+
+  describe('delayed writing', () => {
+    it('should create a sell order with delayed writing', async () => {
+      const optionDefaults = optionTestUtil.getOptionDefaults();
+      await premiaOption.getOptionIdOrCreate(
+        optionDefaults.token,
+        optionDefaults.expiration,
+        optionDefaults.strikePrice,
+        optionDefaults.isCall,
+      );
+      const order = await marketTestUtil.createOrder(user1, {
+        isDelayedWriting: true,
+        isBuy: false,
+        amount: parseEther('1'),
+        pricePerUnit: parseEther('0.2'),
+      });
+
+      expect(order.order.isDelayedWriting).to.be.true;
+      expect(await premiaOption.balanceOf(user1.address, 1)).to.eq(0);
+
+      await weth.connect(user1).deposit({ value: parseEther('1.01') }); // 1% tx
+      await weth
+        .connect(user1)
+        .approve(premiaOption.address, parseEther('1.01'));
+      expect(await premiaMarket.isOrderValid(order.order)).to.be.false;
+      await premiaOption
+        .connect(user1)
+        .setApprovalForAll(premiaMarket.address, true);
+
+      expect(await premiaMarket.isOrderValid(order.order)).to.be.true;
+
+      await weth.connect(user2).deposit({ value: parseEther('0.203') }); // 1.5% tax
+      await weth
+        .connect(user2)
+        .approve(premiaMarket.address, parseEther('0.203'));
+
+      // Fill the order, executing the writing of the option
+      await premiaMarket
+        .connect(user2)
+        .fillOrder(order.order, parseEther('0.5'), ZERO_ADDRESS);
+
+      expect(await premiaOption.balanceOf(user1.address, 1)).to.eq(0);
+      expect(await premiaOption.balanceOf(user2.address, 1)).to.eq(
+        parseEther('0.5'),
+      );
+      expect(await weth.balanceOf(premiaOption.address)).to.eq(
+        parseEther('0.5'),
+      );
+      expect(await weth.balanceOf(user2.address)).to.eq(parseEther('0.1015'));
+      expect(await weth.balanceOf(user1.address)).to.eq(
+        parseEther('0.505').add(parseEther('0.0985')),
+      );
+      expect(await premiaOption.nbWritten(user1.address, 1)).to.eq(
+        parseEther('0.5'),
+      );
+    });
+
+    it('should never have delayed writing for a buy order', async () => {
+      const optionDefaults = optionTestUtil.getOptionDefaults();
+      await premiaOption.getOptionIdOrCreate(
+        optionDefaults.token,
+        optionDefaults.expiration,
+        optionDefaults.strikePrice,
+        optionDefaults.isCall,
+      );
+      const order = await marketTestUtil.createOrder(user1, {
+        isDelayedWriting: true,
+        isBuy: true,
+        amount: parseEther('1'),
+      });
+      expect(order.order.isDelayedWriting).to.be.false;
+    });
+
+    it('should not allow creation of order with delayed writing is the feature is disabled', async () => {
+      const optionDefaults = optionTestUtil.getOptionDefaults();
+      await premiaOption.getOptionIdOrCreate(
+        optionDefaults.token,
+        optionDefaults.expiration,
+        optionDefaults.strikePrice,
+        optionDefaults.isCall,
+      );
+      await premiaMarket.setDelayedWritingEnabled(false);
+      await expect(
+        premiaMarket.connect(user1).createOrder(
+          {
+            ...marketTestUtil.getDefaultOrder(user1, {
+              isDelayedWriting: true,
+            }),
+            expirationTime: 0,
+            salt: 0,
+          },
+          parseEther('1'),
+        ),
+      ).to.be.revertedWith('Delayed writing disabled');
     });
   });
 });

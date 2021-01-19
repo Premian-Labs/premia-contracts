@@ -8,11 +8,6 @@ import "../interface/IFlashLoanReceiver.sol";
 import "../uniswapV2/interfaces/IUniswapV2Router02.sol";
 
 interface IPremiaOption is IERC1155 {
-    struct TokenSettings {
-        uint256 strikePriceIncrement;   // Increment for strike price
-        bool isDisabled;                // Whether this token is disabled or not
-    }
-
     struct OptionWriteArgs {
         address token;                  // Token address
         uint256 amount;                 // Amount of tokens to write option for
@@ -32,6 +27,22 @@ interface IPremiaOption is IERC1155 {
         uint256 supply;                 // Total circulating supply
     }
 
+    struct QuoteWrite {
+        address collateralToken;
+        uint256 collateral;
+        uint256 fee;
+        uint256 feeReferrer;
+    }
+
+    struct QuoteExercise {
+        address inputToken;
+        uint256 input;
+        address outputToken;
+        uint256 output;
+        uint256 fee;
+        uint256 feeReferrer;
+    }
+
     struct Pool {
         uint256 tokenAmount;
         uint256 denominatorAmount;
@@ -39,26 +50,33 @@ interface IPremiaOption is IERC1155 {
 
     function maxExpiration() external view returns(uint256);
     function optionData(uint256 _optionId) external view returns (OptionData memory);
+    function tokenStrikeIncrement(address _token) external view returns (uint256);
     function nbWritten(address _writer, uint256 _optionId) external view returns (uint256);
 
     function getOptionId(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) external view returns(uint256);
     function getOptionIdOrCreate(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) external returns(uint256);
-    function getTotalFee(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256);
-    function getFees(address _user, uint256 _price, bool _hasReferrer, bool _isWrite) external view returns(uint256 _fee, uint256 _feeReferrer);
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
+    function getWriteQuote(address _from, OptionWriteArgs memory _option, address _referrer) external view returns(QuoteWrite memory);
+    function getExerciseQuote(address _from, OptionData memory _option, uint256 _amount, address _referrer) external view returns(QuoteExercise memory);
+
+    function writeOptionWithIdFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) external;
     function writeOption(address _token, OptionWriteArgs memory _option, address _referrer) external;
     function writeOptionFrom(address _from, OptionWriteArgs memory _option, address _referrer) external;
     function cancelOption(uint256 _optionId, uint256 _amount) external;
+    function cancelOptionFrom(address _from, uint256 _optionId, uint256 _amount) external;
     function exerciseOption(uint256 _optionId, uint256 _amount) external;
     function exerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount) external;
     function withdraw(uint256 _optionId) external;
+    function withdrawFrom(address _from, uint256 _optionId) external;
     function withdrawPreExpiration(uint256 _optionId, uint256 _amount) external;
-    function flashLoan(address _tokenAddress, uint256 _amount, IFlashLoanReceiver _receiver) external;
+    function withdrawPreExpirationFrom(address _from, uint256 _optionId, uint256 _amount) external;
     function flashExerciseOption(uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) external;
+    function flashExerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) external;
+    function flashLoan(address _tokenAddress, uint256 _amount, IFlashLoanReceiver _receiver) external;
 
     /////////////////////
     // Batch functions //

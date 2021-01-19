@@ -69,11 +69,7 @@ export class PremiaOptionTestUtil {
   }
 
   async addEth() {
-    return this.premiaOption.setToken(
-      this.weth.address,
-      parseEther('10'),
-      false,
-    );
+    return this.premiaOption.setTokens([this.weth.address], [parseEther('10')]);
   }
 
   async writeOption(user: SignerWithAddress, args?: WriteOptionArgs) {

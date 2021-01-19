@@ -79,8 +79,10 @@ describe('PremiaOption', () => {
 
   it('should add eth for trading', async () => {
     await optionTestUtil.addEth();
-    const settings = await premiaOption.tokenSettings(weth.address);
-    expect(settings.strikePriceIncrement.eq(parseEther('10'))).to.true;
+    const strikePriceIncrement = await premiaOption.tokenStrikeIncrement(
+      weth.address,
+    );
+    expect(strikePriceIncrement.eq(parseEther('10'))).to.true;
   });
 
   it('should create a new optionId', async () => {
@@ -109,9 +111,9 @@ describe('PremiaOption', () => {
 
     it('should disable eth for writing', async () => {
       await optionTestUtil.addEth();
-      await premiaOption.setToken(weth.address, 0, true);
+      await premiaOption.setTokens([weth.address], [0]);
       await expect(optionTestUtil.writeOption(writer1)).to.be.revertedWith(
-        'Token disabled',
+        'Token not supported',
       );
     });
 

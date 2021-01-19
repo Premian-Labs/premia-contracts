@@ -66,15 +66,14 @@ async function main() {
   //   `premiaOption wbtc deployed at ${premiaOptionWbtc.address} from ${deployer.address}`,
   // );
 
-  await premiaOptionDai.setToken(weth, parseEther('10'), false);
+  await premiaOptionDai.setTokens(
+    [weth, rope],
+    [parseEther('10'), parseEther('1')],
+  );
 
-  console.log('WETH/DAI added');
+  console.log('Tokens for DAI options added');
 
-  await premiaOptionDai.setToken(rope, parseEther('1'), false);
-
-  console.log('ROPE/DAI added');
-
-  await premiaOptionEth.setToken(rope, parseEther('0.1'), false);
+  await premiaOptionEth.setTokens([rope], [parseEther('0.1')]);
 
   console.log('ROPE/WETH added');
 

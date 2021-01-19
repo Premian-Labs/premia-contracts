@@ -44,6 +44,8 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         address taker;
         /* Side (buy/sell). */
         SaleSide side;
+        /* If true, option has not been written yet */
+        bool isDelayedWriting;
         /* Address of optionContract from which option is from. */
         address optionContract;
         /* OptionId */
@@ -74,6 +76,8 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
     mapping(address => uint256) public uPremiaBalance;
 
+    bool public isDelayedWritingEnabled = true;
+
     ////////////
     // Events //
     ////////////
@@ -83,6 +87,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         address indexed maker,
         address indexed optionContract,
         SaleSide side,
+        bool isDelayedWriting,
         address taker,
         uint256 optionId,
         address paymentToken,
@@ -171,6 +176,10 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         }
     }
 
+    function setDelayedWritingEnabled(bool _state) external onlyOwner {
+        isDelayedWritingEnabled = _state;
+    }
+
     //////////
     // View //
     //////////
@@ -245,10 +254,30 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             return userBalance >= totalPrice && allowance >= totalPrice;
         } else if (_order.side == SaleSide.Sell) {
             IPremiaOption premiaOption = IPremiaOption(_order.optionContract);
-            uint256 optionBalance = premiaOption.balanceOf(_order.maker, _order.optionId);
             bool isApproved = premiaOption.isApprovedForAll(_order.maker, address(this));
 
-            return isApproved && optionBalance >= amountLeft;
+            if (_order.isDelayedWriting) {
+                IPremiaOption.OptionData memory data = premiaOption.optionData(_order.optionId);
+                IPremiaOption.OptionWriteArgs memory writeArgs = IPremiaOption.OptionWriteArgs({
+                    token: data.token,
+                    amount: amountLeft,
+                    strikePrice: data.strikePrice,
+                    expiration: data.expiration,
+                    isCall: data.isCall
+                });
+
+                IPremiaOption.QuoteWrite memory quote = premiaOption.getWriteQuote(_order.maker, writeArgs, address(0));
+
+                uint256 userBalance = IERC20(quote.collateralToken).balanceOf(_order.maker);
+                uint256 allowance = IERC20(quote.collateralToken).allowance(_order.maker, _order.optionContract);
+                uint256 totalPrice = quote.collateral.add(quote.fee).add(quote.feeReferrer);
+
+                return isApproved && userBalance >= totalPrice && allowance >= totalPrice;
+
+            } else {
+                uint256 optionBalance = premiaOption.balanceOf(_order.maker, _order.optionId);
+                return isApproved && optionBalance >= amountLeft;
+            }
         }
 
         return false;
@@ -280,11 +309,21 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         require(_whitelistedPaymentTokens.contains(_order.paymentToken), "Payment token not whitelisted");
 
         IPremiaOption.OptionData memory data = IPremiaOption(_order.optionContract).optionData(_order.optionId);
+        require(data.strikePrice > 0, "Option not found");
         require(block.timestamp < data.expiration, "Option expired");
 
         _order.maker = msg.sender;
         _order.expirationTime = data.expiration;
         _order.salt = salt;
+
+        if (_order.isDelayedWriting) {
+            require(isDelayedWritingEnabled, "Delayed writing disabled");
+        }
+
+        // If this is a buy order, isDelayedWriting is always false
+        if (_order.side == SaleSide.Buy) {
+            _order.isDelayedWriting = false;
+        }
 
         salt = salt.add(1);
 
@@ -296,6 +335,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             _order.maker,
             _order.optionContract,
             _order.side,
+            _order.isDelayedWriting,
             _order.taker,
             _order.optionId,
             _order.paymentToken,
@@ -326,7 +366,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     }
 
     // Will try to fill orderCandidates. If it cannot fill _amount, it will create a new order for the remaining amount to fill
-    function createOrderAndTryToFill(Order memory _order, uint256 _amount, Order[] memory _orderCandidates) external {
+    function createOrderAndTryToFill(Order memory _order, uint256 _amount, Order[] memory _orderCandidates, address _referrer) external {
         require(_amount > 0, "Amount must be > 0");
 
         // Ensure candidate orders are valid
@@ -338,9 +378,9 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
         uint256 totalFilled;
         if (_orderCandidates.length == 1) {
-            totalFilled = fillOrder(_orderCandidates[0], _amount);
+            totalFilled = fillOrder(_orderCandidates[0], _amount, _referrer);
         } else if (_orderCandidates.length > 1) {
-            totalFilled = fillOrders(_orderCandidates, _amount);
+            totalFilled = fillOrders(_orderCandidates, _amount, _referrer);
         }
 
         if (totalFilled < _amount) {
@@ -371,7 +411,12 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         });
 
         optionContract.writeOptionFrom(msg.sender, writeArgs, _referrer);
-        return fillOrder(_order, _maxAmount);
+        return fillOrder(_order, _maxAmount, address(0));
+    }
+
+    function _writeOption(Order memory _order, uint256 _amount, address _referrer) internal {
+        require(_order.isDelayedWriting, "Not delayed writing");
+        IPremiaOption(_order.optionContract).writeOptionWithIdFrom(_order.maker, _order.optionId, _amount, _referrer);
     }
 
     /**
@@ -379,7 +424,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
      * @param _order The order
      * @param _amount Max amount of options to buy/sell
      */
-    function fillOrder(Order memory _order, uint256 _amount) public nonReentrant returns(uint256) {
+    function fillOrder(Order memory _order, uint256 _amount, address _referrer) public nonReentrant returns(uint256) {
         bytes32 hash = getOrderHash(_order);
 
         require(_order.expirationTime != 0 && block.timestamp < _order.expirationTime, "Order expired");
@@ -392,6 +437,11 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         }
 
         amounts[hash] = amounts[hash].sub(_amount);
+
+        // If option has delayed minting on fill, we first need to mint it on behalf of order maker
+        if (_order.side == SaleSide.Sell && _order.isDelayedWriting) {
+            _writeOption(_order, _amount, _referrer);
+        }
 
         uint256 basePrice = _order.pricePerUnit.mul(_amount).div(1e18);
 
@@ -439,7 +489,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
      * @param _orders The orders
      * @param _maxAmount Max amount of options to buy/sell
      */
-    function fillOrders(Order[] memory _orders, uint256 _maxAmount) public returns(uint256) {
+    function fillOrders(Order[] memory _orders, uint256 _maxAmount, address _referrer) public nonReentrant returns(uint256) {
         if (_maxAmount == 0) return 0;
 
         uint256 takerFee = feeCalculator.getFee(msg.sender, false, IFeeCalculator.FeeType.Taker);
@@ -480,6 +530,11 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
             amounts[hash] = amounts[hash].sub(amount);
             amountFilled = amountFilled.add(amount);
+
+            // If option has delayed minting on fill, we first need to mint it on behalf of order maker
+            if (_order.side == SaleSide.Sell && _order.isDelayedWriting) {
+                _writeOption(_order, amount, _referrer);
+            }
 
             uint256 basePrice = _order.pricePerUnit.mul(amount).div(1e18);
 

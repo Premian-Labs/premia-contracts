@@ -21,11 +21,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
-    struct TokenSettings {
-        uint256 strikePriceIncrement;   // Increment for strike price
-        bool isDisabled;                // Whether this token is disabled or not
-    }
-
     struct OptionWriteArgs {
         address token;                  // Token address
         uint256 amount;                 // Amount of tokens to write option for
@@ -43,6 +38,22 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 claimsPostExp;          // Amount of options from which the funds have been withdrawn post expiration
         uint256 exercised;              // Amount of options which have been exercised
         uint256 supply;                 // Total circulating supply
+    }
+
+    struct QuoteWrite {
+        address collateralToken;
+        uint256 collateral;
+        uint256 fee;
+        uint256 feeReferrer;
+    }
+
+    struct QuoteExercise {
+        address inputToken;
+        uint256 input;
+        address outputToken;
+        uint256 output;
+        uint256 fee;
+        uint256 feeReferrer;
     }
 
     struct Pool {
@@ -63,7 +74,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     //////////////////////////////////////////////////
 
     address[] public tokens;
-    mapping (address => TokenSettings) public tokenSettings;
+    mapping (address => uint256) public tokenStrikeIncrement;
 
     //////////////////////////////////////////////////
 
@@ -95,7 +106,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     // Events //
     ////////////
 
-    event SetToken(address indexed token, uint256 indexed strikePriceIncrement, bool indexed isDisabled);
+    event SetToken(address indexed token, uint256 strikePriceIncrement);
     event OptionIdCreated(uint256 indexed optionId, address indexed token);
     event OptionWritten(address indexed owner, uint256 indexed optionId, address indexed token, uint256 amount);
     event OptionCancelled(address indexed owner, uint256 indexed optionId, address indexed token, uint256 amount);
@@ -177,21 +188,20 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         feeCalculator = _feeCalculator;
     }
 
-    // Set settings for a token to support writing of options paired to denominator
-    function setToken(address _token, uint256 _strikePriceIncrement, bool _isDisabled) external onlyOwner {
-        if (!_isInArray(_token, tokens)) {
-            tokens.push(_token);
+    // Set settings for tokens to support writing of options paired to denominator
+    function setTokens(address[] memory _tokens, uint256[] memory _strikePriceIncrement) external onlyOwner {
+        require(_tokens.length == _strikePriceIncrement.length);
+
+        for (uint256 i=0; i < _tokens.length; i++) {
+            if (!_isInArray(_tokens[i], tokens)) {
+                tokens.push(_tokens[i]);
+            }
+
+            require(_tokens[i] != address(denominator), "Cant add denominator");
+            tokenStrikeIncrement[_tokens[i]] = _strikePriceIncrement[i];
+
+            emit SetToken(_tokens[i], _strikePriceIncrement[i]);
         }
-
-        require(_isDisabled || _strikePriceIncrement > 0, "Strike <= 0");
-        require(_token != address(denominator), "Cant add denominator");
-
-        tokenSettings[_token] = TokenSettings({
-            strikePriceIncrement: _strikePriceIncrement,
-            isDisabled: _isDisabled
-        });
-
-        emit SetToken(_token, _strikePriceIncrement, _isDisabled);
     }
 
     function setWhitelistedUniswapRouters(address[] memory _addrList) external onlyOwner {
@@ -203,6 +213,50 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     }
 
     ////////
+
+
+    function getWriteQuote(address _from, OptionWriteArgs memory _option, address _referrer) public view returns(QuoteWrite memory) {
+        QuoteWrite memory quote;
+
+        if (_option.isCall) {
+            quote.collateralToken = _option.token;
+            quote.collateral = _option.amount;
+        } else {
+            quote.collateralToken = address(denominator);
+            quote.collateral = _option.amount.mul(_option.strikePrice).div(1e18);
+        }
+
+        (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), quote.collateral, IFeeCalculator.FeeType.Write);
+        quote.fee = fee;
+        quote.feeReferrer = feeReferrer;
+
+        return quote;
+    }
+
+    function getExerciseQuote(address _from, OptionData memory _option, uint256 _amount, address _referrer) public view returns(QuoteExercise memory) {
+        QuoteExercise memory quote;
+
+        uint256 tokenAmount = _amount;
+        uint256 denominatorAmount = _amount.mul(_option.strikePrice).div(1e18);
+
+        if (_option.isCall) {
+            quote.inputToken = address(denominator);
+            quote.input = denominatorAmount;
+            quote.outputToken = _option.token;
+            quote.output = tokenAmount;
+        } else {
+            quote.inputToken = _option.token;
+            quote.input = tokenAmount;
+            quote.outputToken = address(denominator);
+            quote.output = denominatorAmount;
+        }
+
+        (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), quote.input, IFeeCalculator.FeeType.Exercise);
+        quote.fee = fee;
+        quote.feeReferrer = feeReferrer;
+
+        return quote;
+    }
 
     function getOptionIdOrCreate(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public returns(uint256) {
         _preCheckOptionIdCreate(_token, _strikePrice, _expiration);
@@ -234,6 +288,21 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     //
 
+    function writeOptionWithIdFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) external {
+        require(isApprovedForAll(_from, msg.sender), "Not approved");
+
+        OptionData memory data = optionData[_optionId];
+        OptionWriteArgs memory writeArgs = OptionWriteArgs({
+        token: data.token,
+        amount: _amount,
+        strikePrice: data.strikePrice,
+        expiration: data.expiration,
+        isCall: data.isCall
+        });
+
+        _writeOption(_from, writeArgs, _referrer);
+    }
+
     function writeOptionFrom(address _from, OptionWriteArgs memory _option, address _referrer) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
         _writeOption(_from, _option, _referrer);
@@ -251,21 +320,15 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         // Set referrer or get current if one already exists
         _referrer = _trySetReferrer(_from, _referrer);
 
+        QuoteWrite memory quote = getWriteQuote(_from, _option, _referrer);
+
+        IERC20(quote.collateralToken).safeTransferFrom(_from, address(this), quote.collateral);
+        _payFees(_from, IERC20(quote.collateralToken), _referrer, quote.fee, quote.feeReferrer);
+
         if (_option.isCall) {
-            IERC20(_option.token).safeTransferFrom(_from, address(this), _option.amount);
-
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), _option.amount, IFeeCalculator.FeeType.Write);
-            _payFees(_from, IERC20(_option.token), _referrer, fee, feeReferrer);
-
-            pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(_option.amount);
+            pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(quote.collateral);
         } else {
-            uint256 amount = _option.amount.mul(_option.strikePrice).div(1e18);
-            denominator.safeTransferFrom(_from, address(this), amount);
-
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), amount, IFeeCalculator.FeeType.Write);
-            _payFees(_from, denominator, _referrer, fee, feeReferrer);
-
-            pools[optionId].denominatorAmount = pools[optionId].denominatorAmount.add(amount);
+            pools[optionId].denominatorAmount = pools[optionId].denominatorAmount.add(quote.collateral);
         }
 
         nbWritten[_from][optionId] = nbWritten[_from][optionId].add(_option.amount);
@@ -326,35 +389,22 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         burn(_from, _optionId, _amount);
         data.exercised = uint256(data.exercised).add(_amount);
 
-        IERC20 tokenErc20 = IERC20(data.token);
-
-        uint256 tokenAmount = _amount;
-        uint256 denominatorAmount = _amount.mul(data.strikePrice).div(1e18);
-
         // Set referrer or get current if one already exists
         _referrer = _trySetReferrer(_from, _referrer);
 
+        QuoteExercise memory quote = getExerciseQuote(_from, data, _amount, _referrer);
+        IERC20(quote.inputToken).safeTransferFrom(_from, address(this), quote.input);
+        _payFees(_from, IERC20(quote.inputToken), _referrer, quote.fee, quote.feeReferrer);
+
         if (data.isCall) {
-            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
-            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(denominatorAmount);
-
-            denominator.safeTransferFrom(_from, address(this), denominatorAmount);
-
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), denominatorAmount, IFeeCalculator.FeeType.Exercise);
-            _payFees(_from, denominator, _referrer, fee, feeReferrer);
-
-            tokenErc20.safeTransfer(_from, tokenAmount);
+            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(quote.output);
+            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(quote.input);
         } else {
-            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(denominatorAmount);
-            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
-
-            tokenErc20.safeTransferFrom(_from, address(this), tokenAmount);
-
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), tokenAmount, IFeeCalculator.FeeType.Exercise);
-            _payFees(_from, tokenErc20, _referrer, fee, feeReferrer);
-
-            denominator.safeTransfer(_from, denominatorAmount);
+            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(quote.output);
+            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(quote.input);
         }
+
+        IERC20(quote.outputToken).safeTransfer(_from, quote.output);
 
         emit OptionExercised(_from, _optionId, data.token, _amount);
     }
@@ -457,62 +507,49 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         burn(_from, _optionId, _amount);
         optionData[_optionId].exercised = uint256(optionData[_optionId].exercised).add(_amount);
 
-        IERC20 tokenErc20 = IERC20(optionData[_optionId].token);
+        // Set referrer or get current if one already exists
+        _referrer = _trySetReferrer(_from, _referrer);
 
-        uint256 tokenAmount = _amount;
-        uint256 denominatorAmount = _amount.mul(optionData[_optionId].strikePrice).div(1e18);
+        QuoteExercise memory quote = getExerciseQuote(_from, optionData[_optionId], _amount, _referrer);
+
+        IERC20 tokenErc20 = IERC20(optionData[_optionId].token);
 
         uint256 tokenAmountRequired = tokenErc20.balanceOf(address(this));
         uint256 denominatorAmountRequired = denominator.balanceOf(address(this));
 
-        // Set referrer or get current if one already exists
-        _referrer = _trySetReferrer(_from, _referrer);
+        if (optionData[_optionId].isCall) {
+            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(quote.output);
+            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(quote.input);
+        } else {
+            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(quote.output);
+            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(quote.input);
+        }
+
+        //
+
+        if (quote.output < _amountInMax) {
+            _amountInMax = quote.output;
+        }
+
+        // Swap enough denominator to tokenErc20 to pay fee + strike price
+        uint256 tokenAmountUsed = _swap(_router, quote.outputToken, quote.inputToken, quote.input.add(quote.fee).add(quote.feeReferrer), _amountInMax)[0];
+
+        // Pay fees
+        _payFees(address(this), IERC20(quote.inputToken), _referrer, quote.fee, quote.feeReferrer);
+
+        uint256 profit = quote.output.sub(tokenAmountUsed);
+
+        // Send profit to sender
+        IERC20(quote.outputToken).safeTransfer(_from, profit);
+
+        //
 
         if (optionData[_optionId].isCall) {
-            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(tokenAmount);
-            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(denominatorAmount);
-
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), denominatorAmount, IFeeCalculator.FeeType.Exercise);
-
-            if (tokenAmount < _amountInMax) {
-                _amountInMax = tokenAmount;
-            }
-
-            // Swap enough denominator to tokenErc20 to pay fee + strike price
-            uint256 tokenAmountUsed = _swap(_router, address(tokenErc20), address(denominator), denominatorAmount.add(fee).add(feeReferrer), _amountInMax)[0];
-
-            // Pay fees
-            _payFees(address(this), denominator, _referrer, fee, feeReferrer);
-
-            uint256 profit = tokenAmount.sub(tokenAmountUsed);
-
-            // Send profit to sender
-            tokenErc20.safeTransfer(_from, profit);
-
-            denominatorAmountRequired = denominatorAmountRequired.add(denominatorAmount);
-            tokenAmountRequired = tokenAmountRequired.sub(tokenAmount);
+            denominatorAmountRequired = denominatorAmountRequired.add(quote.input);
+            tokenAmountRequired = tokenAmountRequired.sub(quote.output);
         } else {
-            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(denominatorAmount);
-            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(tokenAmount);
-
-            (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), tokenAmount, IFeeCalculator.FeeType.Exercise);
-
-            if (denominatorAmount < _amountInMax) {
-                _amountInMax = denominatorAmount;
-            }
-
-            // Swap enough denominator to tokenErc20 to pay fee + strike price
-            uint256 denominatorAmountUsed =  _swap(_router, address(denominator), address(tokenErc20), tokenAmount.add(fee).add(feeReferrer), _amountInMax)[0];
-
-            _payFees(address(this), tokenErc20, _referrer, fee, feeReferrer);
-
-            uint256 profit = denominatorAmount.sub(denominatorAmountUsed);
-
-            // Send profit to sender
-            denominator.safeTransfer(_from, profit);
-
-            denominatorAmountRequired = denominatorAmountRequired.sub(denominatorAmount);
-            tokenAmountRequired = tokenAmountRequired.add(tokenAmount);
+            denominatorAmountRequired = denominatorAmountRequired.sub(quote.output);
+            tokenAmountRequired = tokenAmountRequired.add(quote.input);
         }
 
         require(denominator.balanceOf(address(this)) >= denominatorAmountRequired, "Wrong denom bal");
@@ -618,10 +655,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     }
 
     function _preCheckOptionIdCreate(address _token, uint256 _strikePrice, uint256 _expiration) internal view {
-        require(!tokenSettings[_token].isDisabled, "Token disabled");
-        require(tokenSettings[_token].strikePriceIncrement != 0, "Token not supported");
+        require(tokenStrikeIncrement[_token] != 0, "Token not supported");
         require(_strikePrice > 0, "Strike <= 0");
-        require(_strikePrice % tokenSettings[_token].strikePriceIncrement == 0, "Wrong strike incr");
+        require(_strikePrice % tokenStrikeIncrement[_token] == 0, "Wrong strike incr");
         require(_expiration > block.timestamp, "Exp passed");
         require(_expiration.sub(block.timestamp) <= maxExpiration, "Exp > 1 yr");
         require(_expiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");
