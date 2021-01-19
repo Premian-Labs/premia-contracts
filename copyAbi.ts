@@ -16,6 +16,10 @@ fs.copyFileSync(
   './abi/PremiaBondingCurve.json',
 );
 fs.copyFileSync(
+  './artifacts/contracts/PremiaDevFund.sol/PremiaDevFund.json',
+  './abi/PremiaDevFund.json',
+);
+fs.copyFileSync(
   './artifacts/contracts/PremiaErc20.sol/PremiaErc20.json',
   './abi/PremiaErc20.json',
 );

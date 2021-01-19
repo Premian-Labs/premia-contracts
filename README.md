@@ -2,6 +2,8 @@
 
 **PremiaBondingCurve.sol** - Premia <-> Eth bonding curve 
 
+**PremiaDevFund.sol** - 3 days timelocked withdrawal for dev fund (Owned by multisig)
+
 **PremiaErc20.sol** - The Premia token
 
 **PremiaFeeDiscount.sol** - Lock xPremia to get protocol fee discount
