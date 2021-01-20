@@ -14,7 +14,7 @@
     "typechain": "typechain --target ethers-v5 --outDir contractsTyped \"./abi/*.json\"",
     "test": "hardhat test",
     "contract-size": "yarn run hardhat size-contracts",
-    "deploy:rinkeby": "hardhat run scripts/deploy/0001-PremiaOption.ts --network rinkeby"
+    "deploy:rinkeby": "hardhat run scripts/deploy/0001-PremiaV1.ts --network rinkeby"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.0",

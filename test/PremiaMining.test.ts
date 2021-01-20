@@ -43,10 +43,10 @@ describe('PremiaMining', () => {
 
     [admin, alice, bob, carol, treasury] = await ethers.getSigners();
 
-    p = await deployContracts(admin, treasury, true);
+    p = await deployContracts(admin, treasury.address, true);
     await p.premia.mint(p.premiaMining.address, parseEther('1800'));
     await p.uPremia.addWhitelisted([p.premiaMining.address]);
-    await p.premiaMining.add(1e4, p.uPremia.address, true);
+    await p.premiaMining.add(1e4, p.uPremia.address, false);
     await p.uPremia.addMinter([admin.address]);
     await p.priceProvider.setTokenPrices([p.premia.address], [parseEther('1')]);
 

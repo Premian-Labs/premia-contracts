@@ -43,7 +43,7 @@ describe('PremiaOption', () => {
     weth = await new WETH9__factory(admin).deploy();
     dai = await new TestErc20__factory(admin).deploy();
 
-    p = await deployContracts(admin, feeRecipient, true);
+    p = await deployContracts(admin, feeRecipient.address, true);
 
     const premiaOptionFactory = new PremiaOption__factory(admin);
 

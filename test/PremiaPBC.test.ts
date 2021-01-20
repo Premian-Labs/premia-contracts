@@ -21,7 +21,7 @@ describe('PremiaPBC', () => {
 
     [admin, user1, user2, user3, treasury] = await ethers.getSigners();
 
-    p = await deployContracts(admin, treasury, true);
+    p = await deployContracts(admin, treasury.address, true);
 
     await p.premia.mint(admin.address, pbcAmount);
     await p.premia.increaseAllowance(p.premiaPBC.address, pbcAmount);

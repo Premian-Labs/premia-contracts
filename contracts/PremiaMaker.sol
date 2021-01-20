@@ -50,9 +50,8 @@ contract PremiaMaker is Ownable {
     // @param _premiaBondingCurve The premia bonding curve
     // @param _premiaStaking The premia staking contract (xPremia)
     // @param _treasury The treasury address which will receive a portion of the protocol fees
-    constructor(IERC20 _premia, PremiaBondingCurve _premiaBondingCurve, address _premiaStaking, address _treasury) {
+    constructor(IERC20 _premia, address _premiaStaking, address _treasury) {
         premia = _premia;
-        premiaBondingCurve = _premiaBondingCurve;
         premiaStaking = _premiaStaking;
         treasury = _treasury;
     }
@@ -72,6 +71,12 @@ contract PremiaMaker is Ownable {
     function setTreasuryFee(uint256 _fee) external onlyOwner {
         require(_fee <= _inverseBasisPoint);
         treasuryFee = _fee;
+    }
+
+    /// @notice Set premia bonding curve contract
+    /// @param _premiaBondingCurve PremiaBondingCurve contract
+    function setPremiaBondingCurve(PremiaBondingCurve _premiaBondingCurve) external onlyOwner {
+        premiaBondingCurve = _premiaBondingCurve;
     }
 
     /// @notice Add UniswapRouters to the whitelist so that they can be used to swap tokens.
@@ -109,6 +114,7 @@ contract PremiaMaker is Ownable {
     /// @param _router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
     /// @param _token The token to swap to premia
     function convert(IUniswapV2Router02 _router, address _token) public {
+        require(address(premiaBondingCurve) != address(0), "Premia bonding curve not set");
         require(_whitelistedRouters.contains(address(_router)), "Router not whitelisted");
 
         IERC20 token = IERC20(_token);

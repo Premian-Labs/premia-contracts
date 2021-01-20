@@ -28,7 +28,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 export async function deployContracts(
   deployer: SignerWithAddress,
-  treasury: SignerWithAddress,
+  treasury: string,
   isTest: boolean,
 ): Promise<IPremiaContracts> {
   let premia: PremiaErc20 | TestErc20;
@@ -51,38 +51,77 @@ export async function deployContracts(
     premia = await new PremiaErc20__factory(deployer).deploy();
 
     pbcBlockStart = 0;
-    pbcBlockEnd = 100;
-    miningBlockStart = 100;
+    pbcBlockEnd = 0;
+    miningBlockStart = 0;
     miningBonusLength = 360e3;
     miningPostBonusLength = 3600e3;
+
+    if (!pbcBlockStart || !pbcBlockEnd || !miningBlockStart) {
+      throw new Error('Settings not set');
+    }
   }
 
+  console.log(`PremiaErc20 deployed at ${premia.address}`);
+
+  //
+
   const priceProvider = await new PriceProvider__factory(deployer).deploy();
+  console.log(`PriceProvider deployed at ${priceProvider.address}`);
+
+  //
 
   const uPremia = await new PremiaUncutErc20__factory(deployer).deploy(
     priceProvider.address,
   );
+  console.log(
+    `PremiaUncutErc20 deployed at ${uPremia.address} (Args : ${priceProvider.address})`,
+  );
+
+  //
 
   const xPremia = await new PremiaStaking__factory(deployer).deploy(
     premia.address,
   );
+  console.log(
+    `PremiaStaking deployed at ${xPremia.address} (Args : ${premia.address})`,
+  );
 
-  const premiaBondingCurve = await new PremiaBondingCurve__factory(
-    deployer,
-  ).deploy(premia.address, treasury.address, '200000000000000', '1000000000');
+  let premiaBondingCurve: PremiaBondingCurve | undefined;
+  if (isTest) {
+    // We only deploy premiaBondingCurve now on testnet.
+    // For mainnet, we will need to know end price of the PBC, to use it as start price of the bonding curve
+
+    const startPrice = '200000000000000';
+    const k = '1000000000';
+
+    premiaBondingCurve = await new PremiaBondingCurve__factory(deployer).deploy(
+      premia.address,
+      treasury,
+      startPrice,
+      k,
+    );
+    console.log(
+      `PremiaBondingCurve deployed at ${premiaBondingCurve.address} (Args : ${premia.address} / ${treasury} / ${startPrice} / ${k})`,
+    );
+  }
 
   const premiaPBC = await new PremiaPBC__factory(deployer).deploy(
     premia.address,
     pbcBlockStart,
     pbcBlockEnd,
-    treasury.address,
+    treasury,
+  );
+  console.log(
+    `PremiaPBC deployed at ${premiaPBC.address} (Args : ${premia.address} / ${pbcBlockStart} / ${pbcBlockEnd} / ${treasury})`,
   );
 
   const premiaMaker = await new PremiaMaker__factory(deployer).deploy(
     premia.address,
-    premiaBondingCurve.address,
     xPremia.address,
-    treasury.address,
+    treasury,
+  );
+  console.log(
+    `PremiaMaker deployed at ${premiaMaker.address} (Args : ${premia.address} / ${xPremia.address} / ${treasury})`,
   );
 
   const premiaMining = await new PremiaMining__factory(deployer).deploy(
@@ -91,16 +130,26 @@ export async function deployContracts(
     miningBonusLength,
     miningPostBonusLength,
   );
+  console.log(
+    `PremiaMining deployed at ${premiaMining.address} (Args : ${premia.address} / ${miningBlockStart} / ${miningBonusLength} / ${miningPostBonusLength})`,
+  );
 
   const premiaFeeDiscount = await new PremiaFeeDiscount__factory(
     deployer,
   ).deploy(xPremia.address);
+  console.log(
+    `PremiaFeeDiscount deployed at ${premiaFeeDiscount.address} (Args : ${xPremia.address})`,
+  );
 
   const feeCalculator = await new FeeCalculator__factory(deployer).deploy(
     premiaFeeDiscount.address,
   );
+  console.log(
+    `FeeCalculator deployed at ${feeCalculator.address} (Args : ${premiaFeeDiscount.address})`,
+  );
 
   const premiaReferral = await new PremiaReferral__factory(deployer).deploy();
+  console.log(`PremiaReferral deployed at ${premiaReferral.address}`);
 
   return {
     premia,
@@ -124,7 +173,7 @@ export interface IPremiaContracts {
   priceProvider: PriceProvider;
   uPremia: PremiaUncutErc20;
   xPremia: PremiaStaking;
-  premiaBondingCurve: PremiaBondingCurve;
+  premiaBondingCurve?: PremiaBondingCurve;
   premiaFeeDiscount: PremiaFeeDiscount;
   premiaMaker: PremiaMaker;
   feeCalculator: FeeCalculator;

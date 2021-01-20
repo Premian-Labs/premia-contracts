@@ -23,7 +23,7 @@ describe('PremiaFeeDiscount', () => {
     await resetHardhat();
     [admin, user1, treasury] = await ethers.getSigners();
 
-    p = await deployContracts(admin, treasury, true);
+    p = await deployContracts(admin, treasury.address, true);
 
     await p.premiaFeeDiscount.setStakeLevels([
       { amount: parseEther('5000'), discount: 9000 }, // 90% of fee (= -10%)

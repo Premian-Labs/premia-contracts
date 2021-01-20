@@ -5,12 +5,14 @@ import { getEthBalance, resetHardhat } from './utils/evm';
 import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
 import { parseEther } from 'ethers/lib/utils';
 import { createUniswap, IUniswap } from './utils/uniswap';
+import { PremiaBondingCurve } from '../contractsTyped';
 
 let p: IPremiaContracts;
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
 let treasury: SignerWithAddress;
 let uniswap: IUniswap;
+let premiaBondingCurve: PremiaBondingCurve;
 
 describe('PremiaMaker', () => {
   beforeEach(async () => {
@@ -18,12 +20,14 @@ describe('PremiaMaker', () => {
 
     [admin, user1, treasury] = await ethers.getSigners();
 
-    p = await deployContracts(admin, treasury, true);
+    p = await deployContracts(admin, treasury.address, true);
 
     uniswap = await createUniswap(admin);
+    premiaBondingCurve = p.premiaBondingCurve as PremiaBondingCurve;
 
+    await p.premiaMaker.setPremiaBondingCurve(premiaBondingCurve.address);
     await p.premiaMaker.addWhitelistedRouter([uniswap.router.address]);
-    await p.premia.mint(p.premiaBondingCurve.address, parseEther('10000000'));
+    await p.premia.mint(premiaBondingCurve.address, parseEther('10000000'));
   });
 
   it('should make premia successfully', async () => {
@@ -41,9 +45,7 @@ describe('PremiaMaker', () => {
     );
     expect(await uniswap.dai.balanceOf(p.premiaMaker.address)).to.eq(0);
     expect(
-      (await getEthBalance(p.premiaBondingCurve.address)).gt(
-        parseEther('0.07'),
-      ),
+      (await getEthBalance(premiaBondingCurve.address)).gt(parseEther('0.07')),
     ).to.be.true;
     expect((await p.premia.balanceOf(p.xPremia.address)).gt(360)).to.be.true;
   });
@@ -64,9 +66,7 @@ describe('PremiaMaker', () => {
     );
     expect(await uniswap.weth.balanceOf(p.premiaMaker.address)).to.eq(0);
     expect(
-      (await getEthBalance(p.premiaBondingCurve.address)).gt(
-        parseEther('0.07'),
-      ),
+      (await getEthBalance(premiaBondingCurve.address)).gt(parseEther('0.07')),
     ).to.be.true;
     expect((await p.premia.balanceOf(p.xPremia.address)).gt(360)).to.be.true;
   });

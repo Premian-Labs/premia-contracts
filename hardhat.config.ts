@@ -21,7 +21,7 @@ task('accounts', 'Prints the list of accounts', async (args, hre) => {
 
 const ETH_TEST_KEY = process.env.ETH_TEST_PKEY;
 const ALCHEMY_KEY = process.env.ALCHEMY_KEY;
-const INFURA_PROJECT_ID = process.env.INFURA_PROJECT_ID;
+// const INFURA_PROJECT_ID = process.env.INFURA_PROJECT_ID;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
 
 export default {
@@ -78,7 +78,7 @@ export default {
       //gas: 120000000000,
       blockGasLimit: 120000000000,
       //gasPrice: 10,
-      timeout: 100000,
+      timeout: 300000,
     },
     kovan: {
       url: `https://eth-kovan.alchemyapi.io/v2/${ALCHEMY_KEY}`,
@@ -86,7 +86,7 @@ export default {
       //gas: 120000000000,
       blockGasLimit: 120000000000,
       //gasPrice: 10,
-      timeout: 100000,
+      timeout: 300000,
     },
   },
   ...(ETHERSCAN_KEY
