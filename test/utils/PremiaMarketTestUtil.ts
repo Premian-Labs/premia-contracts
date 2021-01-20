@@ -112,7 +112,7 @@ export class PremiaMarketTestUtil {
       amount,
     );
 
-    console.log(tx.gasLimit.toString());
+    // console.log(tx.gasLimit.toString());
 
     const filter = this.premiaMarket.filters.OrderCreated(
       null,

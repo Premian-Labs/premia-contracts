@@ -6,26 +6,49 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import '@openzeppelin/contracts/access/Ownable.sol';
 
+/// @author Premia
+/// @title 3 days timelock contract for dev fund
 contract PremiaDevFund is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
+    // The premia token
     IERC20 public premia;
 
+    // The delay after which a withdrawal can be executed
     uint256 public immutable withdrawalDelay = 3 days;
 
+    // The destination of current pending withdrawal
     address public pendingWithdrawalDestination;
+    // The amount of current pending withdrawal
     uint256 public pendingWithdrawalAmount;
+    // The timestamp after which the withdrawal can be executed
     uint256 public withdrawalETA;
+
+    ////////////
+    // Events //
+    ////////////
 
     event WithdrawalStarted(address to, uint256 amount, uint256 eta);
     event WithdrawalCancelled(address to, uint256 amount, uint256 eta);
     event WithdrawalPerformed(address to, uint256 amount);
 
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+
+    /// @param _premia The premia token
     constructor(IERC20 _premia) {
         premia = _premia;
     }
 
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+
+    /// @notice Initiate a withdrawal (Will have to go through 3 days timelock)
+    /// @param _to Destination address of the withdrawal
+    /// @param _amount The withdrawal amount
     function startWithdrawal(address _to, uint256 _amount) external onlyOwner {
         withdrawalETA = block.timestamp.add(withdrawalDelay);
         pendingWithdrawalDestination = _to;
@@ -34,6 +57,7 @@ contract PremiaDevFund is Ownable {
         emit WithdrawalStarted(_to, _amount, withdrawalETA);
     }
 
+    /// @notice Execute a pending withdrawal, if it went through the 3 days timelock
     function doWithdraw() external onlyOwner {
         require(withdrawalETA > 0, "No pending withdrawal");
         require(block.timestamp >= withdrawalETA, "Still timelocked");
@@ -51,6 +75,7 @@ contract PremiaDevFund is Ownable {
         emit WithdrawalPerformed(to, amount);
     }
 
+    /// @notice Cancel a pending withdrawal
     function cancelWithdrawal() external onlyOwner {
         uint256 amount = pendingWithdrawalAmount;
         address to = pendingWithdrawalDestination;

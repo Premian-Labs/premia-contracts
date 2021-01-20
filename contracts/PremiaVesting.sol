@@ -6,10 +6,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
 import '@openzeppelin/contracts/access/Ownable.sol';
 
+/// @author Premia
+/// @title Vesting contract for Premia founder allocations, releasing the allocations over the course of a year
 contract PremiaVesting is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
+    // The premia token
     IERC20 public premia;
 
     // The timestamp at which release ends
@@ -19,12 +22,22 @@ contract PremiaVesting is Ownable {
     // The timestamp at which last withdrawal has been done
     uint256 public lastWithdrawalTimestamp;
 
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+
+    // @param _premia The premia token
     constructor(IERC20 _premia) {
         premia = _premia;
         endTimestamp = block.timestamp.add(releasePeriod);
         lastWithdrawalTimestamp = block.timestamp;
     }
 
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+
+    /// @notice Withdraw portion of allocation unlocked
     function withdraw() public onlyOwner {
         uint256 timestamp = block.timestamp;
 

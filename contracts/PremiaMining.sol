@@ -12,7 +12,8 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "./interface/IERC2612Permit.sol";
 
 
-// Fork of SushiSwap's MasterChef contract
+/// @author Premia (Forked from SushiSwap's MasterChef contract)
+/// @title Allow staking of uPremia non tradable token (rewarded on protocol fees payment), to mine Premia allocated to "Interaction mining"
 contract PremiaMining is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -62,12 +63,24 @@ contract PremiaMining is Ownable {
     // The block number when PREMIA mining starts.
     uint256 public startBlock;
 
+    ////////////
+    // Events //
+    ////////////
+
     event Deposit(address indexed user, uint256 indexed pid, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed pid, uint256 amount);
     event EmergencyWithdraw(address indexed user, uint256 indexed pid, uint256 amount);
 
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+
     // Accelerated period : 360e3 blocks : 10 PREMIA per bloc for 360k blocks (~7.7 weeks)
     // Regular period :     3600e3 blocks : 4 PREMIA per bloc for 3.6m blocks (~77 weeks)
+    /// @param _premia The premia token
+    /// @param _startBlock Block at which the mining will start
+    /// @param _bonusLength Number of block the accelerated period will last
+    /// @param _postBonusLength Number of block regular period will last, after end of accelerated period
     constructor(IERC20 _premia, uint256 _startBlock, uint256 _bonusLength, uint256 _postBonusLength) {
         premia = _premia;
 
@@ -76,12 +89,21 @@ contract PremiaMining is Ownable {
         endBlock = bonusEndBlock.add(_postBonusLength);
     }
 
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+
+    /// @notice Get the pool length
+    /// @return The amount of pools
     function poolLength() external view returns (uint256) {
         return poolInfo.length;
     }
 
-    // Add a new lp to the pool. Can only be called by the owner.
-    // XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
+    /// @notice Add a new lp to the pool. Can only be called by the owner.
+    ///         XXX DO NOT add the same LP token more than once. Rewards will be messed up if you do.
+    /// @param _allocPoint The alloc points for this new pool
+    /// @param _lpToken The token to stake in this pool
+    /// @param _withUpdate Whether we want to trigger a pool update or not
     function add(uint256 _allocPoint, IERC20 _lpToken, bool _withUpdate) public onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
@@ -96,7 +118,10 @@ contract PremiaMining is Ownable {
         }));
     }
 
-    // Update the given pool's PREMIA allocation point. Can only be called by the owner.
+    /// @notice Update the given pool's PREMIA allocation point. Can only be called by the owner.
+    /// @param _pid The pool id
+    /// @param _allocPoint The new allocPoint
+    /// @param _withUpdate Whether we want to trigger a pool update or not
     function set(uint256 _pid, uint256 _allocPoint, bool _withUpdate) public onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
@@ -105,7 +130,10 @@ contract PremiaMining is Ownable {
         poolInfo[_pid].allocPoint = _allocPoint;
     }
 
-    // Return reward multiplier over the given _from to _to block. (Multiplier must be divided by 1e4)
+    /// @notice Return reward multiplier over the given _from to _to block. (Multiplier must be divided by 1e4)
+    /// @param _from Start block
+    /// @param _to End block
+    /// @return Reward multiplier
     function getMultiplier(uint256 _from, uint256 _to) public view returns (uint256) {
         if (_from > endBlock) {
             return 0;
@@ -124,7 +152,10 @@ contract PremiaMining is Ownable {
         }
     }
 
-    // View function to see pending PREMIAs on frontend.
+    /// @notice View function to see pending PREMIAs on frontend.
+    /// @param _pid The pool id
+    /// @param _user The user address
+    /// @return Pending premia of users for given pool
     function pendingPremia(uint256 _pid, address _user) external view returns (uint256) {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][_user];
@@ -138,7 +169,7 @@ contract PremiaMining is Ownable {
         return user.amount.mul(accPremiaPerShare).div(1e12).sub(user.rewardDebt);
     }
 
-    // Update reward variables for all pools. Be careful of gas spending!
+    /// @notice Update reward variables for all pools. Be careful of gas spending!
     function massUpdatePools() public {
         uint256 length = poolInfo.length;
         for (uint256 pid = 0; pid < length; ++pid) {
@@ -146,7 +177,8 @@ contract PremiaMining is Ownable {
         }
     }
 
-    // Update reward variables of the given pool to be up-to-date.
+    /// @notice Update reward variables of the given pool to be up-to-date.
+    /// @param _pid The pool id
     function updatePool(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
         if (block.number <= pool.lastRewardBlock) {
@@ -163,14 +195,22 @@ contract PremiaMining is Ownable {
         pool.lastRewardBlock = block.number;
     }
 
-    // Deposit using IERC2612 permit
+    /// @notice Deposit using IERC2612 permit
+    /// @param _pid The pool id
+    /// @param _amount The amount to deposit
+    /// @param _deadline Deadline after which permit will fail
+    /// @param _v V
+    /// @param _r R
+    /// @param _s S
     function depositWithPermit(uint256 _pid, uint256 _amount, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) external {
         // Will revert if pool token doesnt implement permit
         IERC2612Permit(address(poolInfo[_pid].lpToken)).permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
         deposit(_pid, _amount);
     }
 
-    // Deposit LP tokens to PremiaMining for PREMIA allocation.
+    /// @notice Deposit LP tokens to PremiaMining for PREMIA allocation.
+    /// @param _pid The pool id
+    /// @param _amount The amount to deposit
     function deposit(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -189,7 +229,9 @@ contract PremiaMining is Ownable {
         emit Deposit(msg.sender, _pid, _amount);
     }
 
-    // Withdraw LP tokens from PremiaMining.
+    /// @notice Withdraw LP tokens from PremiaMining.
+    /// @param _pid The pool id
+    /// @param _amount The amount to withdraw
     function withdraw(uint256 _pid, uint256 _amount) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -207,7 +249,8 @@ contract PremiaMining is Ownable {
         emit Withdraw(msg.sender, _pid, _amount);
     }
 
-    // Withdraw without caring about rewards. EMERGENCY ONLY.
+    /// @notice Withdraw without caring about rewards. EMERGENCY ONLY.
+    /// @param _pid The pool id
     function emergencyWithdraw(uint256 _pid) public {
         PoolInfo storage pool = poolInfo[_pid];
         UserInfo storage user = userInfo[_pid][msg.sender];
@@ -218,7 +261,9 @@ contract PremiaMining is Ownable {
         emit EmergencyWithdraw(msg.sender, _pid, amount);
     }
 
-    // Safe premia transfer function, just in case if rounding error causes pool to not have enough PREMIAs.
+    /// @notice Safe premia transfer function, just in case if rounding error causes contract to not have enough PREMIAs.
+    /// @param _to The address to which send premia
+    /// @param _amount The amount to send
     function safePremiaTransfer(address _to, uint256 _amount) internal {
         uint256 premiaBal = premia.balanceOf(address(this));
         if (_amount > premiaBal) {

@@ -14,68 +14,62 @@ import "./interface/IPremiaReferral.sol";
 import "./interface/IPremiaUncutErc20.sol";
 
 
+/// @author Premia
+/// @title An option market contract
 contract PremiaMarket is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
+    // The uPremia token
     IPremiaUncutErc20 public uPremia;
+    // FeeCalculator contract
     IFeeCalculator public feeCalculator;
 
+    // List of whitelisted option contracts for which users can create orders
     EnumerableSet.AddressSet private _whitelistedOptionContracts;
+    // List of whitelisted payment tokens that users can use to buy / sell options
     EnumerableSet.AddressSet private _whitelistedPaymentTokens;
 
-    /* Recipient of protocol fees. */
+    // Recipient of protocol fees
     address public feeRecipient;
 
     enum SaleSide {Buy, Sell}
 
-    /* Inverse basis point. */
     uint256 private constant _inverseBasisPoint = 1e4;
 
-    /* Salt to prevent duplicate hash. */
+    // Salt to prevent duplicate hash
     uint256 salt = 0;
 
-    /* An order on the exchange. */
+    // An order on the exchange
     struct Order {
-        /* Order maker address. */
-        address maker;
-        /* Order taker address, if specified. */
-        address taker;
-        /* Side (buy/sell). */
-        SaleSide side;
-        /* If true, option has not been written yet */
-        bool isDelayedWriting;
-        /* Address of optionContract from which option is from. */
-        address optionContract;
-        /* OptionId */
-        uint256 optionId;
-        /* Address of token used for payment. */
-        address paymentToken;
-        /* Price per unit (in paymentToken) with 18 decimals */
-        uint256 pricePerUnit;
-        /* Expiration timestamp of option (Which is also expiration of order). */
-        uint256 expirationTime;
-        /* To ensure unique hash */
-        uint256 salt;
+        address maker;              // Order maker address
+        address taker;              // Order taker address, if specified
+        SaleSide side;              // Side (buy/sell)
+        bool isDelayedWriting;      // If true, option has not been written yet
+        address optionContract;     // Address of optionContract from which option is from
+        uint256 optionId;           // OptionId
+        address paymentToken;       // Address of token used for payment
+        uint256 pricePerUnit;       // Price per unit (in paymentToken) with 18 decimals
+        uint256 expirationTime;     // Expiration timestamp of option (Which is also expiration of order)
+        uint256 salt;               // To ensure unique hash
     }
 
     struct Option {
-        /* Token address */
-        address token;
-        /* Expiration timestamp of the option (Must follow expirationIncrement) */
-        uint256 expiration;
-        /* Strike price (Must follow strikePriceIncrement of token) */
-        uint256 strikePrice;
-        /* If true : Call option | If false : Put option */
-        bool isCall;
+        address token;              // Token address
+        uint256 expiration;         // Expiration timestamp of the option (Must follow expirationIncrement)
+        uint256 strikePrice;        // Strike price (Must follow strikePriceIncrement of token)
+        bool isCall;                // If true : Call option | If false : Put option
     }
 
-    /* OrderId -> Amount of options left to purchase/sell */
+    // OrderId -> Amount of options left to purchase/sell
     mapping(bytes32 => uint256) public amounts;
 
+    // Mapping of balances of uPremia to claim for each address
     mapping(address => uint256) public uPremiaBalance;
 
+    // Whether delayed option writing is enabled or not
+    // This allow users to create a sell order for an option, without writing it, and delay the writing at the moment the order is filled
     bool public isDelayedWritingEnabled = true;
 
     ////////////
@@ -120,6 +114,9 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
+    /// @param _uPremia The uPremia token
+    /// @param _feeCalculator FeeCalculator contract
+    /// @param _feeRecipient Address receiving protocol fees (PremiaMaker)
     constructor(IPremiaUncutErc20 _uPremia, IFeeCalculator _feeCalculator, address _feeRecipient) {
         require(_feeRecipient != address(0), "FeeRecipient cannot be 0x0 address");
         feeRecipient = _feeRecipient;
@@ -135,56 +132,72 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     // Admin //
     ///////////
 
-    /**
-     * @dev Change the protocol fee recipient (owner only)
-     * @param _feeRecipient New protocol fee recipient address
-     */
+    /// @notice Change the protocol fee recipient
+    /// @param _feeRecipient New protocol fee recipient address
     function setFeeRecipient(address _feeRecipient) external onlyOwner {
         require(_feeRecipient != address(0), "FeeRecipient cannot be 0x0 address");
         feeRecipient = _feeRecipient;
     }
 
+    /// @notice Set new PremiaUncut token address
+    /// @param _uPremia New uPremia contract
     function setPremiaUncutErc20(IPremiaUncutErc20 _uPremia) external onlyOwner {
         uPremia = _uPremia;
     }
 
+    /// @notice Set new FeeCalculator contract
+    /// @param _feeCalculator New FeeCalculator contract
     function setFeeCalculator(IFeeCalculator _feeCalculator) external onlyOwner {
         feeCalculator = _feeCalculator;
     }
 
+
+    /// @notice Add contract addresses to the list of whitelisted option contracts
+    /// @param _addr The list of addresses to add
     function addWhitelistedOptionContracts(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedOptionContracts.add(_addr[i]);
         }
     }
 
+    /// @notice Remove contract addresses from the list of whitelisted option contracts
+    /// @param _addr The list of addresses to remove
     function removeWhitelistedOptionContracts(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedOptionContracts.remove(_addr[i]);
         }
     }
 
+    /// @notice Add token addresses to the list of whitelisted payment tokens
+    /// @param _addr The list of addresses to add
     function addWhitelistedPaymentTokens(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedPaymentTokens.add(_addr[i]);
         }
     }
-
+    /// @notice Remove contract addresses from the list of whitelisted payment tokens
+    /// @param _addr The list of addresses to remove
     function removeWhitelistedPaymentTokens(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedPaymentTokens.remove(_addr[i]);
         }
     }
 
+    /// @notice Enable or disable delayed option writing which allow users to create option sell order without writing the option before the order is filled
+    /// @param _state New state (true = enabled / false = disabled)
     function setDelayedWritingEnabled(bool _state) external onlyOwner {
         isDelayedWritingEnabled = _state;
     }
+
+    //////////////////////////////////////////////////
 
     //////////
     // View //
     //////////
 
-    // Returns the amounts left to buy/sell for an order
+    /// @notice Get the amounts left to buy/sell for an order
+    /// @param _orderIds A list of order hashes
+    /// @return List of amounts left for each order
     function getAmountsBatch(bytes32[] memory _orderIds) external view returns(uint256[] memory) {
         uint256[] memory result = new uint256[](_orderIds.length);
 
@@ -195,6 +208,9 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return result;
     }
 
+    /// @notice Get order hashes for a list of orders
+    /// @param _orders A list of orders
+    /// @return List of orders hashes
     function getOrderHashBatch(Order[] memory _orders) external pure returns(bytes32[] memory) {
         bytes32[] memory result = new bytes32[](_orders.length);
 
@@ -205,10 +221,15 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return result;
     }
 
+    /// @notice Get the hash of an order
+    /// @param _order The order from which to calculate the hash
+    /// @return The order hash
     function getOrderHash(Order memory _order) public pure returns(bytes32) {
         return keccak256(abi.encode(_order));
     }
 
+    /// @notice Get the list of whitelisted option contracts
+    /// @return The list of whitelisted option contracts
     function getWhitelistedOptionContracts() external view returns(address[] memory) {
         uint256 length = _whitelistedOptionContracts.length();
         address[] memory result = new address[](length);
@@ -220,6 +241,8 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return result;
     }
 
+    /// @notice Get the list of whitelisted payment tokens
+    /// @return The list of whitelisted payment tokens
     function getWhitelistedPaymentTokens() external view returns(address[] memory) {
         uint256 length = _whitelistedPaymentTokens.length();
         address[] memory result = new address[](length);
@@ -231,6 +254,9 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return result;
     }
 
+    /// @notice Check the validity of an order (Make sure order make has sufficient balance + allowance for required tokens)
+    /// @param _order The order from which to check the validity
+    /// @return Whether the order is valid or not
     function isOrderValid(Order memory _order) public view returns(bool) {
         bytes32 hash = getOrderHash(_order);
         uint256 amountLeft = amounts[hash];
@@ -283,6 +309,9 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return false;
     }
 
+    /// @notice Check the validity of a list of orders (Make sure order make has sufficient balance + allowance for required tokens)
+    /// @param _orders The orders from which to check the validity
+    /// @return Whether the orders are valid or not
     function areOrdersValid(Order[] memory _orders) external view returns(bool[] memory) {
         bool[] memory result = new bool[](_orders.length);
 
@@ -293,17 +322,24 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return result;
     }
 
+    //////////////////////////////////////////////////
+
     //////////
     // Main //
     //////////
 
+    /// @notice Claim pending uPremia rewards
     function claimUPremia() external {
         uint256 amount = uPremiaBalance[msg.sender];
         uPremiaBalance[msg.sender] = 0;
         IERC20(address(uPremia)).safeTransfer(msg.sender, amount);
     }
 
-    // Maker, salt and expirationTime will be overridden by this function
+    /// @notice Create a new order
+    /// @dev Maker, salt and expirationTime will be overridden by this function
+    /// @param _order Order to create
+    /// @param _amount Amount of options to buy / sell
+    /// @return The hash of the order
     function createOrder(Order memory _order, uint256 _amount) public returns(bytes32) {
         require(_whitelistedOptionContracts.contains(_order.optionContract), "Option contract not whitelisted");
         require(_whitelistedPaymentTokens.contains(_order.paymentToken), "Payment token not whitelisted");
@@ -348,11 +384,20 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return hash;
     }
 
+    /// @notice Create an order for an option which has never been minted before (Will create a new optionId for this option)
+    /// @param _order Order to create
+    /// @param _amount Amount of options to buy / sell
+    /// @param _option Option to create
+    /// @return The hash of the order
     function createOrderForNewOption(Order memory _order, uint256 _amount, Option memory _option) public returns(bytes32) {
         _order.optionId = IPremiaOption(_order.optionContract).getOptionIdOrCreate(_option.token, _option.expiration, _option.strikePrice, _option.isCall);
         return createOrder(_order, _amount);
     }
 
+    /// @notice Create a list of orders
+    /// @param _orders Orders to create
+    /// @param _amounts Amounts of options to buy / sell for each order
+    /// @return The hashes of the orders
     function createOrders(Order[] memory _orders, uint256[] memory _amounts) external returns(bytes32[] memory) {
         require(_orders.length == _amounts.length, "Arrays must have same length");
 
@@ -365,7 +410,11 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return result;
     }
 
-    // Will try to fill orderCandidates. If it cannot fill _amount, it will create a new order for the remaining amount to fill
+    /// @notice Try to fill orders passed as candidates, and create order for remaining unfilled amount
+    /// @param _order Order to create
+    /// @param _amount Amount of options to buy / sell
+    /// @param _orderCandidates Accepted orders to be filled
+    /// @param _referrer Referrer
     function createOrderAndTryToFill(Order memory _order, uint256 _amount, Order[] memory _orderCandidates, address _referrer) external {
         require(_amount > 0, "Amount must be > 0");
 
@@ -388,7 +437,13 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         }
     }
 
+    /// @notice Write an option and fill a buy order
+    /// @param _order Order to fill
+    /// @param _maxAmount Max amount to fill
+    /// @param _referrer Referrer
+    /// @return The amount of orders filled
     function writeAndFillOrder(Order memory _order, uint256 _maxAmount, address _referrer) public returns(uint256) {
+        require(_order.side == SaleSide.Buy, "Not a buy order");
         bytes32 hash = getOrderHash(_order);
 
         // If nothing left to fill, return
@@ -414,16 +469,11 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return fillOrder(_order, _maxAmount, address(0));
     }
 
-    function _writeOption(Order memory _order, uint256 _amount, address _referrer) internal {
-        require(_order.isDelayedWriting, "Not delayed writing");
-        IPremiaOption(_order.optionContract).writeOptionWithIdFrom(_order.maker, _order.optionId, _amount, _referrer);
-    }
-
-    /**
-     * @dev Fill an existing order
-     * @param _order The order
-     * @param _amount Max amount of options to buy/sell
-     */
+    /// @notice Fill an existing order
+    /// @param _order The order to fill
+    /// @param _amount Max amount of options to buy or sell
+    /// @param _referrer Referrer
+    /// @return Amount of options bought or sold
     function fillOrder(Order memory _order, uint256 _amount, address _referrer) public nonReentrant returns(uint256) {
         bytes32 hash = getOrderHash(_order);
 
@@ -484,11 +534,16 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return _amount;
     }
 
-    /**
-     * @dev Fill a list of existing orders
-     * @param _orders The orders
-     * @param _maxAmount Max amount of options to buy/sell
-     */
+
+    /// @notice Fill a list of existing orders
+    /// @dev All orders passed must :
+    ///         - Use same payment token
+    ///         - Be on the same order side
+    ///         - Be for the same option contract and optionId
+    /// @param _orders The list of orders to fill
+    /// @param _maxAmount Max amount of options to buy or sell
+    /// @param _referrer Referrer
+    /// @return Amount of options bought or sold
     function fillOrders(Order[] memory _orders, uint256 _maxAmount, address _referrer) public nonReentrant returns(uint256) {
         if (_maxAmount == 0) return 0;
 
@@ -588,10 +643,8 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return amountFilled;
     }
 
-    /**
-     * @dev Cancel an existing order
-     * @param _order The order
-     */
+    /// @notice Cancel an existing order
+    /// @param _order The order to cancel
     function cancelOrder(Order memory _order) public {
         bytes32 hash = getOrderHash(_order);
         uint256 amountLeft = amounts[hash];
@@ -610,14 +663,27 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         );
     }
 
-    /**
-     * @dev Cancel a list of existing orders
-     * @param _orders The orders
-     */
+    /// @notice Cancel a list of existing orders
+    /// @param _orders The list of orders to cancel
     function cancelOrders(Order[] memory _orders) external {
         for (uint256 i=0; i < _orders.length; i++) {
             cancelOrder(_orders[i]);
         }
     }
 
+    //////////////////////////////////////////////////
+
+    //////////////
+    // Internal //
+    //////////////
+
+    /// @notice Write an option on behalf of order maker
+    /// @param _order The order for which to write an option
+    /// @param _amount The amount of options to write
+    /// @param _referrer Referrer
+    function _writeOption(Order memory _order, uint256 _amount, address _referrer) internal {
+        require(_order.isDelayedWriting, "Not delayed writing");
+        require(_order.side == SaleSide.Sell);
+        IPremiaOption(_order.optionContract).writeOptionWithIdFrom(_order.maker, _order.optionId, _amount, _referrer);
+    }
 }

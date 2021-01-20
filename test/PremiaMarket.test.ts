@@ -756,7 +756,7 @@ describe('PremiaMarket', () => {
           .connect(taker)
           .fillOrder(order.order, parseEther('1'), ZERO_ADDRESS);
 
-        console.log(tx.gasLimit.toString());
+        // console.log(tx.gasLimit.toString());
 
         const optionBalanceMaker = await premiaOption.balanceOf(
           maker.address,

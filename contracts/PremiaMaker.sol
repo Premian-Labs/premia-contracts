@@ -9,27 +9,47 @@ import "@openzeppelin/contracts/math/SafeMath.sol";
 import '@openzeppelin/contracts/utils/EnumerableSet.sol';
 
 import "./uniswapV2/interfaces/IUniswapV2Router02.sol";
-import "./PremiaBondingCurve.sol";
 import "./uniswapV2/interfaces/IWETH.sol";
+import "./PremiaBondingCurve.sol";
 
+/// @author Premia
+/// @title A contract receiving all protocol fees, swapping them for eth, and using eth to purchase premia on the bonding curve
 contract PremiaMaker is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    // Addresses with minting rights
+    // UniswapRouter contracts which can be used to swap tokens
     EnumerableSet.AddressSet private _whitelistedRouters;
 
+    // The premia token
     IERC20 public premia;
+    // The premia bonding curve
     PremiaBondingCurve public premiaBondingCurve;
+    // The premia staking contract (xPremia)
     address public premiaStaking;
 
+    // The treasury address which will receive a portion of the protocol fees
     address public treasury;
+    // The percentage of protocol fees the treasury will get (in basis points)
     uint256 public treasuryFee = 2e3; // 20%
+
     uint256 private constant _inverseBasisPoint = 1e4;
+
+    ////////////
+    // Events //
+    ////////////
 
     event Converted(address indexed account, address indexed router, address indexed token, uint256 tokenAmount, uint256 premiaAmount);
 
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+
+    // @param _premia The premia token
+    // @param _premiaBondingCurve The premia bonding curve
+    // @param _premiaStaking The premia staking contract (xPremia)
+    // @param _treasury The treasury address which will receive a portion of the protocol fees
     constructor(IERC20 _premia, PremiaBondingCurve _premiaBondingCurve, address _premiaStaking, address _treasury) {
         premia = _premia;
         premiaBondingCurve = _premiaBondingCurve;
@@ -37,23 +57,33 @@ contract PremiaMaker is Ownable {
         treasury = _treasury;
     }
 
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+
     receive() external payable {}
 
     ///////////
     // Admin //
     ///////////
 
+    /// @notice Set a new treasury fee
+    /// @param _fee New fee
     function setTreasuryFee(uint256 _fee) external onlyOwner {
         require(_fee <= _inverseBasisPoint);
         treasuryFee = _fee;
     }
 
+    /// @notice Add UniswapRouters to the whitelist so that they can be used to swap tokens.
+    /// @param _addr The addresses to add to the whitelist
     function addWhitelistedRouter(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedRouters.add(_addr[i]);
         }
     }
 
+    /// @notice Remove UniswapRouters from the whitelist so that they cannot be used to swap tokens.
+    /// @param _addr The addresses to remove the whitelist
     function removeWhitelistedRouter(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
             _whitelistedRouters.remove(_addr[i]);
@@ -62,6 +92,8 @@ contract PremiaMaker is Ownable {
 
     //////////////////////////
 
+    /// @notice Get the list of whitelisted routers
+    /// @return The list of whitelisted routers
     function getWhitelistedRouters() external view returns(address[] memory) {
         uint256 length = _whitelistedRouters.length();
         address[] memory result = new address[](length);
@@ -73,7 +105,9 @@ contract PremiaMaker is Ownable {
         return result;
     }
 
-    // Convert tokens into ETH, use ETH to purchase Premia on the bonding curve, and send Premia to PremiaStaking contract
+    /// @notice Convert tokens into ETH, use ETH to purchase Premia on the bonding curve, and send Premia to PremiaStaking contract
+    /// @param _router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
+    /// @param _token The token to swap to premia
     function convert(IUniswapV2Router02 _router, address _token) public {
         require(_whitelistedRouters.contains(address(_router)), "Router not whitelisted");
 

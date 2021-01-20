@@ -17,6 +17,8 @@ import "./interface/IPremiaUncutErc20.sol";
 import "./uniswapV2/interfaces/IUniswapV2Router02.sol";
 
 
+/// @author Premia
+/// @title An option contract
 contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -40,44 +42,53 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 supply;                 // Total circulating supply
     }
 
+    // Total write cost = collateral + fee + feeReferrer
     struct QuoteWrite {
-        address collateralToken;
-        uint256 collateral;
-        uint256 fee;
-        uint256 feeReferrer;
+        address collateralToken;        // The token to deposit as collateral
+        uint256 collateral;             // The amount of collateral to deposit
+        uint256 fee;                    // The amount of collateralToken needed to be paid as protocol see
+        uint256 feeReferrer;            // The amount of collateralToken which will be paid the referrer
     }
 
+    // Total exercise cost = input + fee + feeReferrer
     struct QuoteExercise {
-        address inputToken;
-        uint256 input;
-        address outputToken;
-        uint256 output;
-        uint256 fee;
-        uint256 feeReferrer;
+        address inputToken;             // Input token for exercise
+        uint256 input;                  // Amount of input token to pay to exercise
+        address outputToken;            // Output token from the exercise
+        uint256 output;                 // Amount of output tokens which will be received on exercise
+        uint256 fee;                    // The amount of inputToken needed to be paid as protocol see
+        uint256 feeReferrer;            // The amount of inputToken which will be paid to the referrer
     }
 
     struct Pool {
-        uint256 tokenAmount;
-        uint256 denominatorAmount;
+        uint256 tokenAmount;            // The amount of tokens in the option pool
+        uint256 denominatorAmount;      // The amounts of denominator in the option pool
     }
 
     IERC20 public denominator;
 
     //////////////////////////////////////////////////
 
-    address public feeRecipient;                     // Address receiving fees
+    // Address receiving protocol fees (PremiaMaker)
+    address public feeRecipient;
 
+    // PremiaReferral contract
     IPremiaReferral public premiaReferral;
+    // The uPremia token
     IPremiaUncutErc20 public uPremia;
+    // FeeCalculator contract
     IFeeCalculator public feeCalculator;
 
     //////////////////////////////////////////////////
 
+    // Whitelisted tokens for which options can be written (Each token must also have a non 0 strike price increment to be enabled)
     address[] public tokens;
+    // Strike price increment mapping of each token
     mapping (address => uint256) public tokenStrikeIncrement;
 
     //////////////////////////////////////////////////
 
+    // The option id of next option type which will be created
     uint256 public nextOptionId = 1;
 
     // Offset to add to Unix timestamp to make it Fri 23:59:59 UTC
@@ -117,6 +128,12 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
+    /// @param _uri URI of ERC1155 metadata
+    /// @param _denominator The token used as denominator
+    /// @param _uPremia The uPremia token
+    /// @param _feeCalculator FeeCalculator contract
+    /// @param _premiaReferral PremiaReferral contract
+    /// @param _feeRecipient Recipient of protocol fees (PremiaMaker)
     constructor(string memory _uri, IERC20 _denominator, IPremiaUncutErc20 _uPremia, IFeeCalculator _feeCalculator,
         IPremiaReferral _premiaReferral, address _feeRecipient) ERC1155(_uri) {
         denominator = _denominator;
@@ -144,18 +161,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         _;
     }
 
-    //////////
-    // View //
-    //////////
-
-    function getOptionId(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public view returns(uint256) {
-        return options[_token][_expiration][_strikePrice][_isCall];
-    }
-
-    function tokensLength() external view returns(uint256) {
-        return tokens.length;
-    }
-
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
@@ -164,31 +169,46 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     // Admin //
     ///////////
 
-    function setURI(string memory newuri) external onlyOwner {
-        _setURI(newuri);
+    /// @notice Set new URI for ERC1155 metadata
+    /// @param _newUri The new URI
+    function setURI(string memory _newUri) external onlyOwner {
+        _setURI(_newUri);
     }
 
+    /// @notice Set new protocol fee recipient
+    /// @param _feeRecipient The new protocol fee recipient
     function setFeeRecipient(address _feeRecipient) external onlyOwner {
         feeRecipient = _feeRecipient;
     }
 
+    /// @notice Set a new max expiration date for options writing (By default, 1 year from current date)
+    /// @param _max The max amount of seconds in the future for which an option expiration can be set
     function setMaxExpiration(uint256 _max) external onlyOwner {
         maxExpiration = _max;
     }
 
+    /// @notice Set a new PremiaReferral contract
+    /// @param _premiaReferral The new PremiaReferral Contract
     function setPremiaReferral(IPremiaReferral _premiaReferral) external onlyOwner {
         premiaReferral = _premiaReferral;
     }
 
+    /// @notice Set a new PremiaUncut contract
+    /// @param _uPremia The new PremiaUncut Contract
     function setPremiaUncutErc20(IPremiaUncutErc20 _uPremia) external onlyOwner {
         uPremia = _uPremia;
     }
 
+    /// @notice Set a new FeeCalculator contract
+    /// @param _feeCalculator The new FeeCalculator Contract
     function setFeeCalculator(IFeeCalculator _feeCalculator) external onlyOwner {
         feeCalculator = _feeCalculator;
     }
 
-    // Set settings for tokens to support writing of options paired to denominator
+    /// @notice Set settings for tokens to support writing of options paired to denominator
+    /// @dev A value of 0 means this token is disabled and options cannot be written for it
+    /// @param _tokens The list of tokens for which to set strike price increment
+    /// @param _strikePriceIncrement The new strike price increment to set for each token
     function setTokens(address[] memory _tokens, uint256[] memory _strikePriceIncrement) external onlyOwner {
         require(_tokens.length == _strikePriceIncrement.length);
 
@@ -204,6 +224,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         }
     }
 
+    /// @notice Set a new list of whitelisted UniswapRouter contracts allowed to be used for flashExercise
+    /// @param _addrList The new list of whitelisted routers
     function setWhitelistedUniswapRouters(address[] memory _addrList) external onlyOwner {
         delete whitelistedUniswapRouters;
 
@@ -212,9 +234,33 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         }
     }
 
-    ////////
+    //////////////////////////////////////////////////
 
+    //////////
+    // View //
+    //////////
 
+    /// @notice Get the id of an option
+    /// @param _token Token for which the option is for
+    /// @param _expiration Expiration timestamp of the option
+    /// @param _strikePrice Strike price of the option
+    /// @param _isCall Whether the option is a call or a put
+    /// @return The option id
+    function getOptionId(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public view returns(uint256) {
+        return options[_token][_expiration][_strikePrice][_isCall];
+    }
+
+    /// @notice Get the amount of whitelisted tokens
+    /// @return The amount of whitelisted tokens
+    function tokensLength() external view returns(uint256) {
+        return tokens.length;
+    }
+
+    /// @notice Get a quote to write an option
+    /// @param _from Address which will write the option
+    /// @param _option The option to write
+    /// @param _referrer Referrer
+    /// @return The quote
     function getWriteQuote(address _from, OptionWriteArgs memory _option, address _referrer) public view returns(QuoteWrite memory) {
         QuoteWrite memory quote;
 
@@ -233,6 +279,11 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return quote;
     }
 
+    /// @notice Get a quote to exercise an option
+    /// @param _from Address which will exercise the option
+    /// @param _option The option to exercise
+    /// @param _referrer Referrer
+    /// @return The quote
     function getExerciseQuote(address _from, OptionData memory _option, uint256 _amount, address _referrer) public view returns(QuoteExercise memory) {
         QuoteExercise memory quote;
 
@@ -258,6 +309,18 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return quote;
     }
 
+    //////////////////////////////////////////////////
+
+    //////////
+    // Main //
+    //////////
+
+    /// @notice Get the id of the option, or create a new id if there is no existing id for it
+    /// @param _token Token for which the option is for
+    /// @param _expiration Expiration timestamp of the option
+    /// @param _strikePrice Strike price of the option
+    /// @param _isCall Whether the option is a call or a put
+    /// @return The option id
     function getOptionIdOrCreate(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public returns(uint256) {
         _preCheckOptionIdCreate(_token, _strikePrice, _expiration);
 
@@ -267,15 +330,15 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             options[_token][_expiration][_strikePrice][_isCall] = optionId;
 
             pools[optionId] = Pool({ tokenAmount: 0, denominatorAmount: 0 });
-            optionData[optionId] = OptionData({
-            token: _token,
-            expiration: _expiration,
-            strikePrice: _strikePrice,
-            isCall: _isCall,
-            claimsPreExp: 0,
-            claimsPostExp: 0,
-            exercised: 0,
-            supply: 0
+                optionData[optionId] = OptionData({
+                token: _token,
+                expiration: _expiration,
+                strikePrice: _strikePrice,
+                isCall: _isCall,
+                claimsPreExp: 0,
+                claimsPostExp: 0,
+                exercised: 0,
+                supply: 0
             });
 
             emit OptionIdCreated(optionId, _token);
@@ -286,8 +349,14 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return optionId;
     }
 
-    //
+    //////////////////////////////////////////////////
 
+    /// @notice Write an option on behalf of an address with an existing option id (Used by market delayed writing)
+    /// @dev Requires approval on option contract + token needed to write the option
+    /// @param _from Address on behalf of which the option is written
+    /// @param _optionId The id of the option to write
+    /// @param _amount Amount of options to write
+    /// @param _referrer Referrer
     function writeOptionWithIdFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
 
@@ -303,15 +372,27 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         _writeOption(_from, writeArgs, _referrer);
     }
 
+    /// @notice Write an option on behalf of an address
+    /// @dev Requires approval on option contract + token needed to write the option
+    /// @param _from Address on behalf of which the option is written
+    /// @param _option The option to write
+    /// @param _referrer Referrer
     function writeOptionFrom(address _from, OptionWriteArgs memory _option, address _referrer) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
         _writeOption(_from, _option, _referrer);
     }
 
+    /// @notice Write an option
+    /// @param _option The option to write
+    /// @param _referrer Referrer
     function writeOption(OptionWriteArgs memory _option, address _referrer) public {
         _writeOption(msg.sender, _option, _referrer);
     }
 
+    /// @notice Write an option on behalf of an address
+    /// @param _from Address on behalf of which the option is written
+    /// @param _option The option to write
+    /// @param _referrer Referrer
     function _writeOption(address _from, OptionWriteArgs memory _option, address _referrer) internal nonReentrant {
         require(_option.amount > 0, "Amount <= 0");
 
@@ -338,19 +419,35 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         emit OptionWritten(_from, optionId, _option.token, _option.amount);
     }
 
-    //
+    //////////////////////////////////////////////////
 
+    /// @notice Cancel an option on behalf of an address. This will burn the option ERC1155 and withdraw collateral.
+    /// @dev Requires approval of the option contract
+    ///      This is only doable by an address which wrote an amount of options >= _amount
+    ///      Must be called before expiration
+    /// @param _from Address on behalf of which the option is cancelled
+    /// @param _optionId The id of the option to cancel
+    /// @param _amount Amount to cancel
     function cancelOptionFrom(address _from, uint256 _optionId, uint256 _amount) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
         _cancelOption(_from, _optionId, _amount);
     }
 
+    /// @notice Cancel an option. This will burn the option ERC1155 and withdraw collateral.
+    /// @dev This is only doable by an address which wrote an amount of options >= _amount
+    ///      Must be called before expiration
+    /// @param _optionId The id of the option to cancel
+    /// @param _amount Amount to cancel
     function cancelOption(uint256 _optionId, uint256 _amount) public {
         _cancelOption(msg.sender, _optionId, _amount);
     }
 
-    // Cancel an option before expiration, by burning the NFT for withdrawal of deposit (Can only be called by writer of the option)
-    // Must be called before expiration (Expiration check is done in burn function call)
+    /// @notice Cancel an option on behalf of an address. This will burn the option ERC1155 and withdraw collateral.
+    /// @dev This is only doable by an address which wrote an amount of options >= _amount
+    ///      Must be called before expiration
+    /// @param _from Address on behalf of which the option is cancelled
+    /// @param _optionId The id of the option to cancel
+    /// @param _amount Amount to cancel
     function _cancelOption(address _from, uint256 _optionId, uint256 _amount) internal nonReentrant {
         require(_amount > 0, "Amount <= 0");
         require(nbWritten[_from][_optionId] >= _amount, "Not enough written");
@@ -370,17 +467,32 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         emit OptionCancelled(_from, _optionId, optionData[_optionId].token, _amount);
     }
 
-    //
+    //////////////////////////////////////////////////
 
+    /// @notice Exercise an option on behalf of an address
+    /// @dev Requires approval of the option contract
+    /// @param _from Address on behalf of which the option will be exercised
+    /// @param _optionId The id of the option to exercise
+    /// @param _amount Amount to exercise
+    /// @param _referrer Referrer
     function exerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
         _exerciseOption(_from, _optionId, _amount, _referrer);
     }
 
+    /// @notice Exercise an option
+    /// @param _optionId The id of the option to exercise
+    /// @param _amount Amount to exercise
+    /// @param _referrer Referrer
     function exerciseOption(uint256 _optionId, uint256 _amount, address _referrer) public {
         _exerciseOption(msg.sender, _optionId, _amount, _referrer);
     }
 
+    /// @notice Exercise an option on behalf of an address
+    /// @param _from Address on behalf of which the option will be exercised
+    /// @param _optionId The id of the option to exercise
+    /// @param _amount Amount to exercise
+    /// @param _referrer Referrer
     function _exerciseOption(address _from, uint256 _optionId, uint256 _amount, address _referrer) internal nonReentrant {
         require(_amount > 0, "Amount <= 0");
 
@@ -409,20 +521,40 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         emit OptionExercised(_from, _optionId, data.token, _amount);
     }
 
-    //
+    //////////////////////////////////////////////////
 
+    /// @notice Withdraw collateral from an option post expiration on behalf of an address.
+    ///         (Funds will be send to the address on behalf of which withdrawal is made)
+    ///         Funds in the option pool will be distributed pro rata of amount of options written by the address
+    ///         Ex : If after expiration date there has been 10 options written and there is 1 eth and 1000 DAI in the pool,
+    ///              Withdraw for each option will be worth 0.1 eth and 100 dai
+    /// @dev Only callable by addresses which have unclaimed funds for options they wrote
+    ///      Requires approval of the option contract
+    /// @param _from Address on behalf of which the withdraw call is made (Which will receive the withdrawn funds)
+    /// @param _optionId The id of the option to withdraw funds from
     function withdrawFrom(address _from, uint256 _optionId) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
         _withdraw(_from, _optionId);
     }
 
+    /// @notice Withdraw collateral from an option post expiration
+    ///         Funds in the option pool will be distributed pro rata of amount of options written by the address
+    ///         Ex : If after expiration date there has been 10 options written and there is 1 eth and 1000 DAI in the pool,
+    ///              Withdraw for each option will be worth 0.1 eth and 100 dai
+    /// @dev Only callable by addresses which have unclaimed funds for options they wrote
+    /// @param _optionId The id of the option to withdraw funds from
     function withdraw(uint256 _optionId) public {
         _withdraw(msg.sender, _optionId);
     }
 
-    // Withdraw funds from an expired option (Only callable by writers with unclaimed options)
-    // Funds are allocated pro-rate to writers.
-    // Ex : If there is 10 ETH and 6000 denominator, a user who got 10% of options unclaimed will get 1 ETH and 600 denominator
+    /// @notice Withdraw collateral from an option post expiration on behalf of an address.
+    ///         (Funds will be send to the address on behalf of which withdrawal is made)
+    ///         Funds in the option pool will be distributed pro rata of amount of options written by the address
+    ///         Ex : If after expiration date there has been 10 options written and there is 1 eth and 1000 DAI in the pool,
+    ///              Withdraw for each option will be worth 0.1 eth and 100 dai
+    /// @dev Only callable by addresses which have unclaimed funds for options they wrote
+    /// @param _from Address on behalf of which the withdraw call is made (Which will receive the withdrawn funds)
+    /// @param _optionId The id of the option to withdraw funds from
     function _withdraw(address _from, uint256 _optionId) internal nonReentrant expired(_optionId) {
         require(nbWritten[_from][_optionId] > 0, "No option to claim");
 
@@ -451,18 +583,71 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         emit Withdraw(_from, _optionId, data.token, claimsUser);
     }
 
-    //
+    //////////////////////////////////////////////////
 
+    /// @notice Withdraw collateral from an option pre expiration on behalf of an address.
+    ///         (Funds will be send to the address on behalf of which withdrawal is made)
+    ///         Only opposite side of the collateral will be allocated when withdrawing pre expiration
+    ///         If writer deposited WETH for a WETH/DAI call, he will only receive the strike amount in DAI from a pre-expiration withdrawal,
+    ///         while doing a withdrawal post expiration would make him receive pro rata of funds left in the option pool at the expiration,
+    ///         (Which might be both WETH and DAI if not all options have been exercised)
+    ///
+    /// @dev Requires approval of the option contract
+    ///      Only callable by addresses which have unclaimed funds for options they wrote
+    ///      This also requires options to have been exercised and not claimed
+    ///      Ex : If a total of 10 options have been written (2 from Alice and 8 from Bob) and 3 options have been exercise :
+    ///           - Alice will be allowed to call withdrawPreExpiration for her 2 options written
+    ///           - Bob will only be allowed to call withdrawPreExpiration for 3 options he wrote
+    ///           - If Alice call first withdrawPreExpiration for her 2 options,
+    ///             there will be only 1 unclaimed exercised options that Bob will be allowed to withdrawPreExpiration
+    ///
+    /// @param _from Address on behalf of which the withdrawPreExpiration call is made (Which will receive the withdrawn funds)
+    /// @param _optionId The id of the option to withdraw funds from
+    /// @param _amount The amount of options for which withdrawPreExpiration
     function withdrawPreExpirationFrom(address _from, uint256 _optionId, uint256 _amount) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
         _withdrawPreExpiration(_from, _optionId, _amount);
     }
 
+    /// @notice Withdraw collateral from an option pre expiration
+    ///         (Funds will be send to the address on behalf of which withdrawal is made)
+    ///         Only opposite side of the collateral will be allocated when withdrawing pre expiration
+    ///         If writer deposited WETH for a WETH/DAI call, he will only receive the strike amount in DAI from a pre-expiration withdrawal,
+    ///         while doing a withdrawal post expiration would make him receive pro rata of funds left in the option pool at the expiration,
+    ///         (Which might be both WETH and DAI if not all options have been exercised)
+    ///
+    /// @dev Only callable by addresses which have unclaimed funds for options they wrote
+    ///      This also requires options to have been exercised and not claimed
+    ///      Ex : If a total of 10 options have been written (2 from Alice and 8 from Bob) and 3 options have been exercise :
+    ///           - Alice will be allowed to call withdrawPreExpiration for her 2 options written
+    ///           - Bob will only be allowed to call withdrawPreExpiration for 3 options he wrote
+    ///           - If Alice call first withdrawPreExpiration for her 2 options,
+    ///             there will be only 1 unclaimed exercised options that Bob will be allowed to withdrawPreExpiration
+    ///
+    /// @param _optionId The id of the option to exercise
+    /// @param _amount The amount of options for which withdrawPreExpiration
     function withdrawPreExpiration(uint256 _optionId, uint256 _amount) public {
         _withdrawPreExpiration(msg.sender, _optionId, _amount);
     }
 
-    // Withdraw funds from exercised unexpired option (Only callable by writers with unclaimed options)
+    /// @notice Withdraw collateral from an option pre expiration on behalf of an address.
+    ///         (Funds will be send to the address on behalf of which withdrawal is made)
+    ///         Only opposite side of the collateral will be allocated when withdrawing pre expiration
+    ///         If writer deposited WETH for a WETH/DAI call, he will only receive the strike amount in DAI from a pre-expiration withdrawal,
+    ///         while doing a withdrawal post expiration would make him receive pro rata of funds left in the option pool at the expiration,
+    ///         (Which might be both WETH and DAI if not all options have been exercised)
+    ///
+    /// @dev Only callable by addresses which have unclaimed funds for options they wrote
+    ///      This also requires options to have been exercised and not claimed
+    ///      Ex : If a total of 10 options have been written (2 from Alice and 8 from Bob) and 3 options have been exercise :
+    ///           - Alice will be allowed to call withdrawPreExpiration for her 2 options written
+    ///           - Bob will only be allowed to call withdrawPreExpiration for 3 options he wrote
+    ///           - If Alice call first withdrawPreExpiration for her 2 options,
+    ///             there will be only 1 unclaimed exercised options that Bob will be allowed to withdrawPreExpiration
+    ///
+    /// @param _from Address on behalf of which the withdrawPreExpiration call is made (Which will receive the withdrawn funds)
+    /// @param _optionId The id of the option to withdraw funds from
+    /// @param _amount The amount of options for which withdrawPreExpiration
     function _withdrawPreExpiration(address _from, uint256 _optionId, uint256 _amount) internal nonReentrant notExpired(_optionId) {
         require(_amount > 0, "Amount <= 0");
 
@@ -490,17 +675,51 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         }
     }
 
-    //
+    //////////////////////////////////////////////////
 
+    /// @notice Flash exercise an option on behalf of an address
+    ///         This is usable on options in the money, in order to use a portion of the option collateral
+    ///         to swap a portion of it to the token required to exercise the option and pay protocol fees,
+    ///         and send the profit to the address exercising.
+    ///         This allows any option in the money to be exercised without the need of owning the token needed to exercise
+    /// @dev Requires approval of the option contract
+    /// @param _from Address on behalf of which the flash exercise is made (Which will receive the profit)
+    /// @param _optionId The id of the option to flash exercise
+    /// @param _amount Amount of option to flash exercise
+    /// @param _referrer Referrer
+    /// @param _router The UniswapRouter used to perform the swap (Needs to be a whitelisted router)
+    /// @param _amountInMax Max amount of collateral token to use for the swap, for the tx to not be reverted
     function flashExerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
         _flashExerciseOption(_from, _optionId, _amount, _referrer, _router, _amountInMax);
     }
 
+    /// @notice Flash exercise an option
+    ///         This is usable on options in the money, in order to use a portion of the option collateral
+    ///         to swap a portion of it to the token required to exercise the option and pay protocol fees,
+    ///         and send the profit to the address exercising.
+    ///         This allows any option in the money to be exercised without the need of owning the token needed to exercise
+    /// @param _optionId The id of the option to flash exercise
+    /// @param _amount Amount of option to flash exercise
+    /// @param _referrer Referrer
+    /// @param _router The UniswapRouter used to perform the swap (Needs to be a whitelisted router)
+    /// @param _amountInMax Max amount of collateral token to use for the swap, for the tx to not be reverted
     function flashExerciseOption(uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) external {
         _flashExerciseOption(msg.sender, _optionId, _amount, _referrer, _router, _amountInMax);
     }
 
+    /// @notice Flash exercise an option on behalf of an address
+    ///         This is usable on options in the money, in order to use a portion of the option collateral
+    ///         to swap a portion of it to the token required to exercise the option and pay protocol fees,
+    ///         and send the profit to the address exercising.
+    ///         This allows any option in the money to be exercised without the need of owning the token needed to exercise
+    /// @dev Requires approval of the option contract
+    /// @param _from Address on behalf of which the flash exercise is made (Which will receive the profit)
+    /// @param _optionId The id of the option to flash exercise
+    /// @param _amount Amount of option to flash exercise
+    /// @param _referrer Referrer
+    /// @param _router The UniswapRouter used to perform the swap (Needs to be a whitelisted router)
+    /// @param _amountInMax Max amount of collateral token to use for the swap, for the tx to not be reverted
     function _flashExerciseOption(address _from, uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) internal nonReentrant {
         require(_amount > 0, "Amount <= 0");
 
@@ -558,8 +777,13 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         emit OptionExercised(_from, _optionId, optionData[_optionId].token, _amount);
     }
 
-    //
+    //////////////////////////////////////////////////
 
+    /// @notice Flash loan collaterals sitting in this contract
+    ///         Loaned amount + fee must be repaid by the end of the transaction for the transaction to not be reverted
+    /// @param _tokenAddress Token to flashLoan
+    /// @param _amount Amount to flashLoan
+    /// @param _receiver Receiver of the flashLoan
     function flashLoan(address _tokenAddress, uint256 _amount, IFlashLoanReceiver _receiver) public nonReentrant {
         IERC20 _token = IERC20(_tokenAddress);
         uint256 startBalance = _token.balanceOf(address(this));
@@ -584,50 +808,67 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     // Batch functions //
     /////////////////////
 
+    /// @notice Write multiple options at once
+    /// @param _options Options to write
+    /// @param _referrer Referrer
     function batchWriteOption(OptionWriteArgs[] memory _options, address _referrer) external {
         for (uint256 i = 0; i < _options.length; ++i) {
-            writeOption(_options[i], _referrer);
+            _writeOption(msg.sender, _options[i], _referrer);
         }
     }
 
+    /// @notice Cancel multiple options at once
+    /// @param _optionId List of ids of options to cancel
+    /// @param _amounts Amount to cancel for each option
     function batchCancelOption(uint256[] memory _optionId, uint256[] memory _amounts) external {
         require(_optionId.length == _amounts.length, "Arrays diff len");
 
         for (uint256 i = 0; i < _optionId.length; ++i) {
-            cancelOption(_optionId[i], _amounts[i]);
+            _cancelOption(msg.sender, _optionId[i], _amounts[i]);
         }
     }
 
+    /// @notice Withdraw funds from multiple options at once
+    /// @param _optionId List of ids of options to withdraw funds from
     function batchWithdraw(uint256[] memory _optionId) external {
         for (uint256 i = 0; i < _optionId.length; ++i) {
-            withdraw(_optionId[i]);
+            _withdraw(msg.sender, _optionId[i]);
         }
     }
 
+    /// @notice Exercise multiple options at once
+    /// @param _optionId List of ids of options to exercise
+    /// @param _amounts Amount to exercise for each option
+    /// @param _referrer Referrer
     function batchExerciseOption(uint256[] memory _optionId, uint256[] memory _amounts, address _referrer) external {
         require(_optionId.length == _amounts.length, "Arrays diff len");
 
         for (uint256 i = 0; i < _optionId.length; ++i) {
-            exerciseOption(_optionId[i], _amounts[i], _referrer);
+            _exerciseOption(msg.sender, _optionId[i], _amounts[i], _referrer);
         }
     }
 
+    /// @notice Withdraw funds pre expiration from multiple options at once
+    /// @param _optionId List of ids of options to withdraw funds from
+    /// @param _amounts Amount to withdraw pre expiration for each option
     function batchWithdrawPreExpiration(uint256[] memory _optionId, uint256[] memory _amounts) external {
         require(_optionId.length == _amounts.length, "Arrays diff len");
 
         for (uint256 i = 0; i < _optionId.length; ++i) {
-            withdrawPreExpiration(_optionId[i], _amounts[i]);
+            _withdrawPreExpiration(msg.sender, _optionId[i], _amounts[i]);
         }
     }
 
-    //////////////////////////////////////////////////
-    //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
     //////////////
     // Internal //
     //////////////
 
+    /// @notice Mint ERC1155 representing the option
+    /// @dev Requires option to not be expired
+    /// @param _account Address for which ERC1155 is minted
+    /// @param _amount Amount minted
     function mint(address _account, uint256 _id, uint256 _amount) internal notExpired(_id) {
         OptionData storage data = optionData[_id];
 
@@ -635,6 +876,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         data.supply = uint256(data.supply).add(_amount);
     }
 
+    /// @notice Burn ERC1155 representing the option
+    /// @param _account Address from which ERC1155 is burnt
+    /// @param _amount Amount burnt
     function burn(address _account, uint256 _id, uint256 _amount) internal notExpired(_id) {
         OptionData storage data = optionData[_id];
 
@@ -642,7 +886,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         _burn(_account, _id, _amount);
     }
 
-    // Utility function to check if a value is inside an array
+    /// @notice Utility function to check if a value is inside an array
+    /// @param _value The value to look for
+    /// @param _array The array to check
+    /// @return Whether the value is in the array or not
     function _isInArray(address _value, address[] memory _array) internal pure returns(bool) {
         uint256 length = _array.length;
         for (uint256 i = 0; i < length; ++i) {
@@ -654,15 +901,12 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return false;
     }
 
-    function _preCheckOptionIdCreate(address _token, uint256 _strikePrice, uint256 _expiration) internal view {
-        require(tokenStrikeIncrement[_token] != 0, "Token not supported");
-        require(_strikePrice > 0, "Strike <= 0");
-        require(_strikePrice % tokenStrikeIncrement[_token] == 0, "Wrong strike incr");
-        require(_expiration > block.timestamp, "Exp passed");
-        require(_expiration.sub(block.timestamp) <= maxExpiration, "Exp > 1 yr");
-        require(_expiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");
-    }
-
+    /// @notice Pay protocol fees
+    /// @param _from Address paying protocol fees
+    /// @param _token The token in which protocol fees are paid
+    /// @param _referrer The referrer of _from
+    /// @param _fee Protocol fee to pay to feeRecipient
+    /// @param _feeReferrer Fee to pay to referrer
     function _payFees(address _from, IERC20 _token, address _referrer, uint256 _fee, uint256 _feeReferrer) internal {
         if (_fee > 0) {
             // For flash exercise
@@ -692,7 +936,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         }
     }
 
-    // Try to set given referrer, returns current referrer if one already exists
+    /// @notice Try to set given referrer, returns current referrer if one already exists
+    /// @param _user Address for which we try to set a referrer
+    /// @param _referrer Potential referrer
+    /// @return Actual referrer (Potential referrer, or actual referrer if one already exists)
     function _trySetReferrer(address _user, address _referrer) internal returns(address) {
         if (address(premiaReferral) != address(0)) {
             _referrer = premiaReferral.trySetReferrer(_user, _referrer);
@@ -703,6 +950,13 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         return _referrer;
     }
 
+    /// @notice Token swap (Used for flashExercise)
+    /// @param _router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
+    /// @param _from Input token for the swap
+    /// @param _to Output token of the swap
+    /// @param _amount Amount of output tokens we want
+    /// @param _amountInMax Max amount of input token to spend for the tx to not revert
+    /// @return Swap amounts
     function _swap(IUniswapV2Router02 _router, address _from, address _to, uint256 _amount, uint256 _amountInMax) internal returns (uint256[] memory) {
         require(_isInArray(address(_router), whitelistedUniswapRouters), "Router not whitelisted");
 
@@ -733,5 +987,18 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         IERC20(_from).approve(address(_router), 0);
 
         return amounts;
+    }
+
+    /// @notice Check if option settings are valid (Reverts if not valid)
+    /// @param _token Token for which option this
+    /// @param _strikePrice Strike price of the option
+    /// @param _expiration timestamp of the option
+    function _preCheckOptionIdCreate(address _token, uint256 _strikePrice, uint256 _expiration) internal view {
+        require(tokenStrikeIncrement[_token] != 0, "Token not supported");
+        require(_strikePrice > 0, "Strike <= 0");
+        require(_strikePrice % tokenStrikeIncrement[_token] == 0, "Wrong strike incr");
+        require(_expiration > block.timestamp, "Exp passed");
+        require(_expiration.sub(block.timestamp) <= maxExpiration, "Exp > 1 yr");
+        require(_expiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");
     }
 }

@@ -10,22 +10,32 @@ import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
 
-// Primary Bootstrap Contribution
+/// @author Premia
+/// @title Primary Bootstrap Contribution
+///        Allow users to contribute ETH to get a share of Premia equal to their percentage of total eth contribution by the end of the PBC
 contract PremiaPBC is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
+    // The premia token
     IERC20 public premia;
 
+    // The block at which PBC will start
     uint256 public startBlock;
+    // The block at which PBC will end
     uint256 public endBlock;
 
+    // The total amount of Premia for the PBC
     uint256 public premiaTotal;
+    // The total amount of eth collected
     uint256 public ethTotal;
 
+    // The treasury address which will receive collected eth
     address payable public treasury;
 
+    // Mapping of eth deposited by addresses
     mapping (address => uint256) public amountDeposited;
+    // Mapping of addresses which already collected their Premia allocation
     mapping (address => bool) public hasCollected;
 
     ////////////
@@ -35,8 +45,14 @@ contract PremiaPBC is Ownable, ReentrancyGuard {
     event Contributed(address indexed user, uint256 amount);
     event Collected(address indexed user, uint256 amount);
 
-    ///////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
 
+    /// @param _premia The premia token
+    /// @param _startBlock The block at which the PBC will start
+    /// @param _endBlock The block at which the PBC will end
+    /// @param _treasury The treasury address which will receive collected eth
     constructor(IERC20 _premia, uint256 _startBlock, uint256 _endBlock, address payable _treasury) {
         require(_startBlock < _endBlock, "EndBlock must be greater than StartBlock");
         premia = _premia;
@@ -45,11 +61,16 @@ contract PremiaPBC is Ownable, ReentrancyGuard {
         treasury = _treasury;
     }
 
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+
     ///////////
     // Admin //
     ///////////
 
-    // Add premia which will be distributed in the PBC
+    /// @notice Add premia which will be distributed in the PBC
+    /// @param _amount The amount of premia to add to the PBC
     function addPremia(uint256 _amount) external onlyOwner {
         require(block.number < endBlock, "PBC ended");
 
@@ -57,19 +78,18 @@ contract PremiaPBC is Ownable, ReentrancyGuard {
         premiaTotal = premiaTotal.add(_amount);
     }
 
-    // Send eth collected during the PBC, to the treasury address
+    /// @notice Send eth collected during the PBC, to the treasury address
     function sendEthToTreasury() external onlyOwner {
         treasury.transfer(address(this).balance);
     }
 
-    //
+    //////////////////////////////////////////////////
 
-    // Return the current premia price in wei per premia
-    function getPremiaPrice() external view returns(uint256) {
-        return ethTotal.mul(1e18).div(premiaTotal);
-    }
+    //////////
+    // Main //
+    //////////
 
-    // Deposit ETH to participate in the PBC
+    /// @notice Deposit ETH to participate in the PBC
     function contribute() external payable nonReentrant {
         require(block.number >= startBlock, "PBC not started");
         require(msg.value > 0, "No eth sent");
@@ -80,7 +100,7 @@ contract PremiaPBC is Ownable, ReentrancyGuard {
         emit Contributed(msg.sender, msg.value);
     }
 
-    // Collect Premia after PBC has ended
+    /// @notice Collect Premia allocation after PBC has ended
     function collect() external nonReentrant {
         require(block.number > endBlock, "PBC not ended");
         require(hasCollected[msg.sender] == false, "Address already collected its reward");
@@ -89,12 +109,32 @@ contract PremiaPBC is Ownable, ReentrancyGuard {
         hasCollected[msg.sender] = true;
         uint256 contribution = amountDeposited[msg.sender].mul(1e12).div(ethTotal);
         uint256 premiaAmount = premiaTotal.mul(contribution).div(1e12);
-        safePremiaTransfer(msg.sender, premiaAmount);
+        _safePremiaTransfer(msg.sender, premiaAmount);
         emit Collected(msg.sender, premiaAmount);
     }
 
-    // Safe premia transfer function, just in case if rounding error causes contract to not have enough PREMIAs.
-    function safePremiaTransfer(address _to, uint256 _amount) internal {
+    //////////////////////////////////////////////////
+
+    //////////
+    // View //
+    //////////
+
+    /// @notice Get the current premia price (in eth)
+    /// @return The current premia price (in eth)
+    function getPremiaPrice() external view returns(uint256) {
+        return ethTotal.mul(1e18).div(premiaTotal);
+    }
+
+    //////////////////////////////////////////////////
+
+    //////////////
+    // Internal //
+    //////////////
+
+    /// @notice Safe premia transfer function, just in case if rounding error causes contract to not have enough PREMIAs.
+    /// @param _to The address to which send premia
+    /// @param _amount The amount to send
+    function _safePremiaTransfer(address _to, uint256 _amount) internal {
         uint256 premiaBal = premia.balanceOf(address(this));
         if (_amount > premiaBal) {
             premia.safeTransfer(_to, premiaBal);

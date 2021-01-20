@@ -13,6 +13,8 @@ import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 import "./interface/INewPremiaFeeDiscount.sol";
 import "./interface/IERC2612Permit.sol";
 
+/// @author Premia
+/// @title A contract allowing you to lock xPremia to get Premia protocol fee discounts
 contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -29,6 +31,7 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         uint256 discount;     // Discount when amount is reached
     }
 
+    // The xPremia token
     IERC20 public xPremia;
 
     uint256 private constant _inverseBasisPoint = 1e4;
@@ -56,22 +59,33 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
     event Unstaked(address indexed user, uint256 amount);
     event StakeMigrated(address indexed user, address newContract, uint256 amount, uint256 stakePeriod, uint256 lockedUntil);
 
-    ///////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
 
+    /// @param _xPremia The xPremia token
     constructor(IERC20 _xPremia) {
         xPremia = _xPremia;
     }
+
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
 
     ///////////
     // Admin //
     ///////////
 
-    // Set a new PremiaFeeDiscount contract, to enable migration
+    /// @notice Set a new PremiaFeeDiscount contract, to enable migration
+    ///         Users will have to call the migration function themselves to migrate their own stake
+    /// @param _newContract The new contract address
     function setNewContract(INewPremiaFeeDiscount _newContract) external onlyOwner {
         newContract = _newContract;
     }
 
-    // Set a stake period multiplier
+    /// @notice Set a stake period multiplier
+    /// @param _secondsLocked The length (in seconds) that the stake will be locked for
+    /// @param _multiplier The multiplier (In basis points) that users will get from choosing this staking period
     function setStakePeriod(uint256 _secondsLocked, uint256 _multiplier) external onlyOwner {
         if (_isInArray(_secondsLocked, existingStakePeriods)) {
             existingStakePeriods.push(_secondsLocked);
@@ -80,7 +94,9 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         stakePeriods[_secondsLocked] = _multiplier;
     }
 
-    // Set new amounts and discounts values for stake levels
+    /// @notice Set new amounts and discounts values for stake levels
+    /// @dev Previous stake levels will be removed and replace by the new ones given
+    /// @param _stakeLevels The new stake levels to set
     function setStakeLevels(StakeLevel[] memory _stakeLevels) external onlyOwner {
         for (uint256 i=0; i < _stakeLevels.length; i++) {
             if (i > 0) {
@@ -95,9 +111,14 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         }
     }
 
-    ///////////
+    //////////////////////////////////////////////////
 
-    // Allow a user to migrate their stake to a new PremiaFeeDiscount contract, while preserving same lockup expiration date
+    //////////
+    // Main //
+    //////////
+
+    /// @notice Allow a user to migrate their stake to a new PremiaFeeDiscount contract (If a new contract has been set),
+    ///         while preserving same lockup expiration date
     function migrateStake() external nonReentrant {
         require(address(newContract) != address(0), "Migration disabled");
 
@@ -111,14 +132,22 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         emit StakeMigrated(msg.sender, address(newContract), user.balance, user.stakePeriod, user.lockedUntil);
     }
 
-    // Stake using IERC2612 permit
+    /// @notice Stake using IERC2612 permit
+    /// @param _amount The amount of xPremia to stake
+    /// @param _period The lockup period (in seconds)
+    /// @param _deadline Deadline after which permit will fail
+    /// @param _v V
+    /// @param _r R
+    /// @param _s S
     function stakeWithPermit(uint256 _amount, uint256 _period, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) external {
         IERC2612Permit(address(xPremia)).permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
         stake(_amount, _period);
     }
 
-    // Stake specified amount. The amount will be locked for the given period.
-    // Longer period of locking will apply a multiplier on the amount staked, in the fee discount calculation
+    /// @notice Lockup xPremia for protocol fee discounts
+    ///         Longer period of locking will apply a multiplier on the amount staked, in the fee discount calculation
+    /// @param _amount The amount of xPremia to stake
+    /// @param _period The lockup period (in seconds)
     function stake(uint256 _amount, uint256 _period) public nonReentrant {
         require(stakePeriods[_period] > 0, "Stake period does not exists");
         UserInfo storage user = userInfo[msg.sender];
@@ -134,7 +163,8 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         emit Staked(msg.sender, _amount, _period, lockedUntil);
     }
 
-    // Unstake specified amount
+    /// @notice Unstake xPremia (If lockup period has ended)
+    /// @param _amount The amount of xPremia to unstake
     function unstake(uint256 _amount) external nonReentrant {
         UserInfo storage user = userInfo[msg.sender];
 
@@ -147,17 +177,30 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         emit Unstaked(msg.sender, _amount);
     }
 
-    // Return number of stake levels
+    //////////////////////////////////////////////////
+
+    //////////
+    // View //
+    //////////
+
+    /// @notice Get number of stake levels
+    /// @return The amount of stake levels
     function stakeLevelsLength() external view returns(uint256) {
         return stakeLevels.length;
     }
 
+    /// Calculate the stake amount of a user, after applying the bonus from the lockup period chosen
+    /// @param _user The user from which to query the stake amount
+    /// @return The user stake amount after applying the bonus
     function getStakeAmountWithBonus(address _user) public view returns(uint256) {
         UserInfo memory user = userInfo[_user];
         return user.balance.mul(stakePeriods[user.stakePeriod]).div(_inverseBasisPoint);
     }
 
-    // Return the % of the fee that user must pay, based on his stake
+    /// @notice Calculate the % of the fee that user must pay, based on his stake
+    /// @param _user The _user for which the discount is for
+    /// @return Percentage of protocol fees the user must pay (in basis point)
+    ///         Ex : 9000 = 90% of fee to pay = -10% discount
     function getDiscount(address _user) external view returns(uint256) {
         uint256 userBalance = getStakeAmountWithBonus(_user);
 
@@ -192,11 +235,16 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         return stakeLevels[stakeLevels.length - 1].discount;
     }
 
+    //////////////////////////////////////////////////
+
     //////////////
     // Internal //
     //////////////
 
-    // Utility function to check if a value is inside an array
+    /// @notice Utility function to check if a value is inside an array
+    /// @param _value The value to look for
+    /// @param _array The array to check
+    /// @return Whether the value is in the array or not
     function _isInArray(uint256 _value, uint256[] memory _array) internal pure returns(bool) {
         uint256 length = _array.length;
         for (uint256 i = 0; i < length; ++i) {
