@@ -173,16 +173,18 @@ async function main() {
   );
 
   // Founder vesting contracts
-  for (const founder of [founder1, founder2, founder3, founder4]) {
-    const vestingContract = await new PremiaVesting__factory(deployer).deploy(
-      contracts.premia.address,
-    );
+  if (!isTestnet) {
+    for (const founder of [founder1, founder2, founder3, founder4]) {
+      const vestingContract = await new PremiaVesting__factory(deployer).deploy(
+        contracts.premia.address,
+      );
 
-    console.log(
-      `Vesting contract for founder ${founder} deployed at ${vestingContract.address} (Args : ${contracts.premia.address})`,
-    );
-    await vestingContract.transferOwnership(founder);
-    console.log(`Ownership transferred to ${founder}`);
+      console.log(
+        `Vesting contract for founder ${founder} deployed at ${vestingContract.address} (Args : ${contracts.premia.address})`,
+      );
+      await vestingContract.transferOwnership(founder);
+      console.log(`Ownership transferred to ${founder}`);
+    }
   }
 
   await contracts.feeCalculator.transferOwnership(treasury);
@@ -211,9 +213,6 @@ async function main() {
 
   await contracts.premiaReferral.transferOwnership(treasury);
   console.log(`PremiaReferral ownership transferred to ${treasury}`);
-
-  await contracts.xPremia.transferOwnership(treasury);
-  console.log(`PremiaStaking ownership transferred to ${treasury}`);
 
   await contracts.uPremia.transferOwnership(treasury);
   console.log(`PremiaUncutErc20 ownership transferred to ${treasury}`);
