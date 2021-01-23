@@ -63,7 +63,7 @@ async function main() {
 
   //
 
-  const contracts = await deployContracts(deployer, treasury, isTestnet);
+  const contracts = await deployContracts(deployer, treasury, isTestnet, true);
 
   //
 
@@ -98,10 +98,10 @@ async function main() {
   //
 
   await contracts.premiaFeeDiscount.setStakeLevels([
-    { amount: parseEther('5000'), discount: 7500 }, // 75% of fee (= -25%)
-    { amount: parseEther('50000'), discount: 5000 }, // 50% of fee (= -50%)
-    { amount: parseEther('250000'), discount: 2500 }, // 25% of fee (= -75%)
-    { amount: parseEther('500000'), discount: 500 }, // 05% of fee (= -95%)
+    { amount: parseEther('5000'), discount: 2500 }, // -25%
+    { amount: parseEther('50000'), discount: 5000 }, // -50%
+    { amount: parseEther('250000'), discount: 7500 }, // -75%
+    { amount: parseEther('500000'), discount: 9500 }, // -95%
   ]);
   console.log('Added PremiaFeeDiscount stake levels');
 
@@ -140,7 +140,7 @@ async function main() {
   console.log('Whitelisted dai premiaOption contract on PremiaMarket');
 
   await premiaOptionDai.setWhitelistedUniswapRouters(uniswapRouters);
-  console.log('Whitelisted uniswap routers on PremiaOption Dai')
+  console.log('Whitelisted uniswap routers on PremiaOption Dai');
 
   await contracts.premiaMaker.addWhitelistedRouter(uniswapRouters);
   console.log('Whitelisted uniswap routers on PremiaMaker');

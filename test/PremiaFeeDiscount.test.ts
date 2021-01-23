@@ -26,10 +26,10 @@ describe('PremiaFeeDiscount', () => {
     p = await deployContracts(admin, treasury.address, true);
 
     await p.premiaFeeDiscount.setStakeLevels([
-      { amount: parseEther('5000'), discount: 9000 }, // 90% of fee (= -10%)
-      { amount: parseEther('50000'), discount: 7500 }, // 75% of fee (= -25%)
-      { amount: parseEther('250000'), discount: 2500 }, // 25% of fee (= -75%)
-      { amount: parseEther('500000'), discount: 1000 }, // 10% of fee (= -90%)
+      { amount: parseEther('5000'), discount: 2500 }, // -25%
+      { amount: parseEther('50000'), discount: 5000 }, // -50%
+      { amount: parseEther('250000'), discount: 7500 }, // -75%
+      { amount: parseEther('500000'), discount: 9500 }, // -95%
     ]);
 
     await p.premiaFeeDiscount.setStakePeriod(oneMonth, 10000);
@@ -49,9 +49,9 @@ describe('PremiaFeeDiscount', () => {
 
   it('should correctly overwrite existing stake levels', async () => {
     await p.premiaFeeDiscount.setStakeLevels([
-      { amount: parseEther('5000'), discount: 8000 },
+      { amount: parseEther('5000'), discount: 2000 },
       { amount: parseEther('25000'), discount: 4000 },
-      { amount: parseEther('50000'), discount: 2000 },
+      { amount: parseEther('50000'), discount: 8000 },
     ]);
 
     const length = await p.premiaFeeDiscount.stakeLevelsLength();
@@ -65,9 +65,9 @@ describe('PremiaFeeDiscount', () => {
     expect(level1.amount).to.eq(parseEther('25000'));
     expect(level2.amount).to.eq(parseEther('50000'));
 
-    expect(level0.discount).to.eq(8000);
+    expect(level0.discount).to.eq(2000);
     expect(level1.discount).to.eq(4000);
-    expect(level2.discount).to.eq(2000);
+    expect(level2.discount).to.eq(8000);
   });
 
   it('should fail staking if stake period does not exists', async () => {
@@ -82,7 +82,7 @@ describe('PremiaFeeDiscount', () => {
       user1.address,
     );
     expect(amountWithBonus).to.eq(parseEther('150000'));
-    expect(await p.premiaFeeDiscount.getDiscount(user1.address)).to.eq(5000);
+    expect(await p.premiaFeeDiscount.getDiscount(user1.address)).to.eq(6250);
 
     const newTimestamp = new Date().getTime() / 1000 + 91 * 24 * 3600;
     await setTimestamp(newTimestamp);
@@ -93,7 +93,7 @@ describe('PremiaFeeDiscount', () => {
     );
 
     expect(amountWithBonus).to.eq(parseEther('137500'));
-    expect(await p.premiaFeeDiscount.getDiscount(user1.address)).to.eq(5313);
+    expect(await p.premiaFeeDiscount.getDiscount(user1.address)).to.eq(6093);
   });
 
   it('should stake successfully with permit', async () => {

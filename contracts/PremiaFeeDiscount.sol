@@ -100,7 +100,7 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
     function setStakeLevels(StakeLevel[] memory _stakeLevels) external onlyOwner {
         for (uint256 i=0; i < _stakeLevels.length; i++) {
             if (i > 0) {
-                require(_stakeLevels[i].amount > _stakeLevels[i-1].amount && _stakeLevels[i].discount < _stakeLevels[i-1].discount, "Wrong stake level");
+                require(_stakeLevels[i].amount > _stakeLevels[i-1].amount && _stakeLevels[i].discount > _stakeLevels[i-1].discount, "Wrong stake level");
             }
         }
 
@@ -197,10 +197,10 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         return user.balance.mul(stakePeriods[user.stakePeriod]).div(_inverseBasisPoint);
     }
 
-    /// @notice Calculate the % of the fee that user must pay, based on his stake
+    /// @notice Calculate the % of fee discount for user, based on his stake
     /// @param _user The _user for which the discount is for
-    /// @return Percentage of protocol fees the user must pay (in basis point)
-    ///         Ex : 9000 = 90% of fee to pay = -10% discount
+    /// @return Percentage of protocol fee discount (in basis point)
+    ///         Ex : 1000 = 10% fee discount
     function getDiscount(address _user) external view returns(uint256) {
         uint256 userBalance = getStakeAmountWithBonus(_user);
 
@@ -216,18 +216,18 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
                     amountPrevLevel = stakeLevels[i - 1].amount;
                     discountPrevLevel = stakeLevels[i - 1].discount;
                 } else {
-                    // If this is the first level, prev level is 0 / 1e4
+                    // If this is the first level, prev level is 0 / 0
                     amountPrevLevel = 0;
-                    discountPrevLevel = _inverseBasisPoint;
+                    discountPrevLevel = 0;
                 }
 
-                uint256 remappedDiscount = discountPrevLevel.sub(level.discount);
+                uint256 remappedDiscount = level.discount.sub(discountPrevLevel);
 
                 uint256 remappedAmount = level.amount.sub(amountPrevLevel);
                 uint256 remappedBalance = userBalance.sub(amountPrevLevel);
                 uint256 levelProgress = remappedBalance.mul(_inverseBasisPoint).div(remappedAmount);
 
-                return discountPrevLevel.sub(remappedDiscount.mul(levelProgress).div(_inverseBasisPoint));
+                return discountPrevLevel.add(remappedDiscount.mul(levelProgress).div(_inverseBasisPoint));
             }
         }
 
