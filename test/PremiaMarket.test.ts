@@ -226,6 +226,35 @@ describe('PremiaMarket', () => {
         'Option expired',
       );
     });
+
+    it('should successfully writeAndCreateOrder', async () => {
+      const amount = parseEther('2');
+      const amountWithFee = amount.add(amount.mul(tax).div(1e4));
+      await weth.connect(user1).deposit({ value: amountWithFee });
+      await weth.connect(user1).approve(premiaOption.address, amountWithFee);
+      await premiaOption
+        .connect(user1)
+        .setApprovalForAll(premiaMarket.address, true);
+
+      const {
+        strikePrice,
+        expiration,
+        token,
+      } = optionTestUtil.getOptionDefaults();
+      await premiaMarket
+        .connect(user1)
+        .writeAndCreateOrder(
+          { token, strikePrice, expiration, amount, isCall: true },
+          { ...marketTestUtil.getDefaultOrder(user1, { isBuy: false }) },
+          ZERO_ADDRESS,
+        );
+
+      expect(await premiaOption.balanceOf(user1.address, 1)).to.eq(amount);
+      expect(await weth.balanceOf(premiaOption.address)).to.eq(amount);
+      expect(await weth.balanceOf(feeRecipient.address)).to.eq(
+        amountWithFee.sub(amount),
+      );
+    });
   });
 
   describe('createOrderAndTryToFill', () => {

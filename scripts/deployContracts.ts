@@ -30,6 +30,7 @@ export async function deployContracts(
   deployer: SignerWithAddress,
   treasury: string,
   isTest: boolean,
+  log = false,
 ): Promise<IPremiaContracts> {
   let premia: PremiaErc20 | TestErc20;
   let miningBlockStart: number;
@@ -61,30 +62,38 @@ export async function deployContracts(
     }
   }
 
-  console.log(`PremiaErc20 deployed at ${premia.address}`);
+  if (log) {
+    console.log(`PremiaErc20 deployed at ${premia.address}`);
+  }
 
   //
 
   const priceProvider = await new PriceProvider__factory(deployer).deploy();
-  console.log(`PriceProvider deployed at ${priceProvider.address}`);
+  if (log) {
+    console.log(`PriceProvider deployed at ${priceProvider.address}`);
+  }
 
   //
 
   const uPremia = await new PremiaUncutErc20__factory(deployer).deploy(
     priceProvider.address,
   );
-  console.log(
-    `PremiaUncutErc20 deployed at ${uPremia.address} (Args : ${priceProvider.address})`,
-  );
+  if (log) {
+    console.log(
+      `PremiaUncutErc20 deployed at ${uPremia.address} (Args : ${priceProvider.address})`,
+    );
+  }
 
   //
 
   const xPremia = await new PremiaStaking__factory(deployer).deploy(
     premia.address,
   );
-  console.log(
-    `PremiaStaking deployed at ${xPremia.address} (Args : ${premia.address})`,
-  );
+  if (log) {
+    console.log(
+      `PremiaStaking deployed at ${xPremia.address} (Args : ${premia.address})`,
+    );
+  }
 
   let premiaBondingCurve: PremiaBondingCurve | undefined;
   if (isTest) {
@@ -100,9 +109,11 @@ export async function deployContracts(
       startPrice,
       k,
     );
-    console.log(
-      `PremiaBondingCurve deployed at ${premiaBondingCurve.address} (Args : ${premia.address} / ${treasury} / ${startPrice} / ${k})`,
-    );
+    if (log) {
+      console.log(
+        `PremiaBondingCurve deployed at ${premiaBondingCurve.address} (Args : ${premia.address} / ${treasury} / ${startPrice} / ${k})`,
+      );
+    }
   }
 
   const premiaPBC = await new PremiaPBC__factory(deployer).deploy(
@@ -111,18 +122,22 @@ export async function deployContracts(
     pbcBlockEnd,
     treasury,
   );
-  console.log(
-    `PremiaPBC deployed at ${premiaPBC.address} (Args : ${premia.address} / ${pbcBlockStart} / ${pbcBlockEnd} / ${treasury})`,
-  );
+  if (log) {
+    console.log(
+      `PremiaPBC deployed at ${premiaPBC.address} (Args : ${premia.address} / ${pbcBlockStart} / ${pbcBlockEnd} / ${treasury})`,
+    );
+  }
 
   const premiaMaker = await new PremiaMaker__factory(deployer).deploy(
     premia.address,
     xPremia.address,
     treasury,
   );
-  console.log(
-    `PremiaMaker deployed at ${premiaMaker.address} (Args : ${premia.address} / ${xPremia.address} / ${treasury})`,
-  );
+  if (log) {
+    console.log(
+      `PremiaMaker deployed at ${premiaMaker.address} (Args : ${premia.address} / ${xPremia.address} / ${treasury})`,
+    );
+  }
 
   const premiaMining = await new PremiaMining__factory(deployer).deploy(
     premia.address,
@@ -130,26 +145,34 @@ export async function deployContracts(
     miningBonusLength,
     miningPostBonusLength,
   );
-  console.log(
-    `PremiaMining deployed at ${premiaMining.address} (Args : ${premia.address} / ${miningBlockStart} / ${miningBonusLength} / ${miningPostBonusLength})`,
-  );
+  if (log) {
+    console.log(
+      `PremiaMining deployed at ${premiaMining.address} (Args : ${premia.address} / ${miningBlockStart} / ${miningBonusLength} / ${miningPostBonusLength})`,
+    );
+  }
 
   const premiaFeeDiscount = await new PremiaFeeDiscount__factory(
     deployer,
   ).deploy(xPremia.address);
-  console.log(
-    `PremiaFeeDiscount deployed at ${premiaFeeDiscount.address} (Args : ${xPremia.address})`,
-  );
+  if (log) {
+    console.log(
+      `PremiaFeeDiscount deployed at ${premiaFeeDiscount.address} (Args : ${xPremia.address})`,
+    );
+  }
 
   const feeCalculator = await new FeeCalculator__factory(deployer).deploy(
     premiaFeeDiscount.address,
   );
-  console.log(
-    `FeeCalculator deployed at ${feeCalculator.address} (Args : ${premiaFeeDiscount.address})`,
-  );
+  if (log) {
+    console.log(
+      `FeeCalculator deployed at ${feeCalculator.address} (Args : ${premiaFeeDiscount.address})`,
+    );
+  }
 
   const premiaReferral = await new PremiaReferral__factory(deployer).deploy();
-  console.log(`PremiaReferral deployed at ${premiaReferral.address}`);
+  if (log) {
+    console.log(`PremiaReferral deployed at ${premiaReferral.address}`);
+  }
 
   return {
     premia,

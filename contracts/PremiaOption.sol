@@ -357,7 +357,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _optionId The id of the option to write
     /// @param _amount Amount of options to write
     /// @param _referrer Referrer
-    function writeOptionWithIdFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) external {
+    /// @return The option id
+    function writeOptionWithIdFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) external returns(uint256) {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
 
         OptionData memory data = optionData[_optionId];
@@ -369,7 +370,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         isCall: data.isCall
         });
 
-        _writeOption(_from, writeArgs, _referrer);
+        return _writeOption(_from, writeArgs, _referrer);
     }
 
     /// @notice Write an option on behalf of an address
@@ -377,23 +378,26 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _from Address on behalf of which the option is written
     /// @param _option The option to write
     /// @param _referrer Referrer
-    function writeOptionFrom(address _from, OptionWriteArgs memory _option, address _referrer) external {
+    /// @return The option id
+    function writeOptionFrom(address _from, OptionWriteArgs memory _option, address _referrer) external returns(uint256) {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
-        _writeOption(_from, _option, _referrer);
+        return _writeOption(_from, _option, _referrer);
     }
 
     /// @notice Write an option
     /// @param _option The option to write
     /// @param _referrer Referrer
-    function writeOption(OptionWriteArgs memory _option, address _referrer) public {
-        _writeOption(msg.sender, _option, _referrer);
+    /// @return The option id
+    function writeOption(OptionWriteArgs memory _option, address _referrer) public returns(uint256) {
+        return _writeOption(msg.sender, _option, _referrer);
     }
 
     /// @notice Write an option on behalf of an address
     /// @param _from Address on behalf of which the option is written
     /// @param _option The option to write
     /// @param _referrer Referrer
-    function _writeOption(address _from, OptionWriteArgs memory _option, address _referrer) internal nonReentrant {
+    /// @return The option id
+    function _writeOption(address _from, OptionWriteArgs memory _option, address _referrer) internal nonReentrant returns(uint256) {
         require(_option.amount > 0, "Amount <= 0");
 
         uint256 optionId = getOptionIdOrCreate(_option.token, _option.expiration, _option.strikePrice, _option.isCall);
@@ -417,6 +421,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         mint(_from, optionId, _option.amount);
 
         emit OptionWritten(_from, optionId, _option.token, _option.amount);
+
+        return optionId;
     }
 
     //////////////////////////////////////////////////

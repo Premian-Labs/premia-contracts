@@ -469,6 +469,24 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         return fillOrder(_order, _maxAmount, address(0));
     }
 
+    /// @notice Write an option and create a sell order
+    /// @dev OptionId will be filled automatically on the order object. Amount is defined in the option object.
+    ///      Approval on option contract is required
+    /// @param _order Order to create
+    /// @param _referrer Referrer
+    /// @return The hash of the order
+    function writeAndCreateOrder(IPremiaOption.OptionWriteArgs memory _option, Order memory _order, address _referrer) public returns(bytes32) {
+        require(_order.side == SaleSide.Sell, "Not a sell order");
+
+        // This cannot be a delayed writing as we are writing the option now
+        _order.isDelayedWriting = false;
+
+        IPremiaOption optionContract = IPremiaOption(_order.optionContract);
+        _order.optionId = optionContract.writeOptionFrom(msg.sender, _option, _referrer);
+
+        return createOrder(_order, _option.amount);
+    }
+
     /// @notice Fill an existing order
     /// @param _order The order to fill
     /// @param _amount Max amount of options to buy or sell
