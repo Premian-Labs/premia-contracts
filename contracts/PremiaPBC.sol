@@ -89,8 +89,17 @@ contract PremiaPBC is Ownable, ReentrancyGuard {
     // Main //
     //////////
 
+    fallback() external payable {
+        _contribute();
+    }
+
     /// @notice Deposit ETH to participate in the PBC
-    function contribute() external payable nonReentrant {
+    function contribute() external payable {
+        _contribute();
+    }
+
+    /// @notice Deposit ETH to participate in the PBC
+    function _contribute() internal nonReentrant {
         require(block.number >= startBlock, "PBC not started");
         require(msg.value > 0, "No eth sent");
         require(block.number < endBlock, "PBC ended");

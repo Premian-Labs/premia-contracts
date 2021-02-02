@@ -123,4 +123,16 @@ describe('PremiaPBC', () => {
       BigNumber.from(parseEther('40')).mul(parseEther('1')).div(pbcAmount),
     );
   });
+
+  it('should successfully contribute through fallback function', async () => {
+    await user1.sendTransaction({
+      to: p.premiaPBC.address,
+      value: parseEther('1'),
+    });
+    expect(await p.premiaPBC.ethTotal()).to.eq(parseEther('1'));
+    expect(await p.premiaPBC.amountDeposited(user1.address)).to.eq(
+      parseEther('1'),
+    );
+    expect(await getEthBalance(p.premiaPBC.address)).to.eq(parseEther('1'));
+  });
 });

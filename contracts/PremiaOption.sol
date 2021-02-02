@@ -46,7 +46,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     struct QuoteWrite {
         address collateralToken;        // The token to deposit as collateral
         uint256 collateral;             // The amount of collateral to deposit
-        uint256 fee;                    // The amount of collateralToken needed to be paid as protocol see
+        uint256 fee;                    // The amount of collateralToken needed to be paid as protocol fee
         uint256 feeReferrer;            // The amount of collateralToken which will be paid the referrer
     }
 
@@ -56,7 +56,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 input;                  // Amount of input token to pay to exercise
         address outputToken;            // Output token from the exercise
         uint256 output;                 // Amount of output tokens which will be received on exercise
-        uint256 fee;                    // The amount of inputToken needed to be paid as protocol see
+        uint256 fee;                    // The amount of inputToken needed to be paid as protocol fee
         uint256 feeReferrer;            // The amount of inputToken which will be paid to the referrer
     }
 
