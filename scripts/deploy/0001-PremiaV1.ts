@@ -17,6 +17,7 @@ async function main() {
   let dai: string;
   let weth: string;
   let wbtc: string;
+  let premia: string | undefined;
   let treasury: string;
   let tokens: { [addr: string]: BigNumberish } = {};
   let uniswapRouters = [
@@ -38,6 +39,7 @@ async function main() {
     tokens[weth] = parseEther('10');
     tokens[wbtc] = parseEther('1000');
   } else {
+    premia = '0x0';
     dai = '0x6b175474e89094c44da98b954eedeac495271d0f';
     weth = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
     wbtc = '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599';
@@ -63,7 +65,13 @@ async function main() {
 
   //
 
-  const contracts = await deployContracts(deployer, treasury, isTestnet, true);
+  const contracts = await deployContracts(
+    deployer,
+    treasury,
+    isTestnet,
+    true,
+    premia,
+  );
 
   //
 

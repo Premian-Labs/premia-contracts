@@ -31,6 +31,7 @@ export async function deployContracts(
   treasury: string,
   isTest: boolean,
   log = false,
+  premiaAddress?: string,
 ): Promise<IPremiaContracts> {
   let premia: PremiaErc20 | TestErc20;
   let miningBlockStart: number;
@@ -49,7 +50,11 @@ export async function deployContracts(
     miningBonusLength = 100;
     miningPostBonusLength = 200;
   } else {
-    premia = await new PremiaErc20__factory(deployer).deploy();
+    if (!premiaAddress) {
+      throw new Error('Premia address not set');
+    }
+    // premia = await new PremiaErc20__factory(deployer).deploy();
+    premia = PremiaErc20__factory.connect(premiaAddress, deployer);
 
     pbcBlockStart = 0;
     pbcBlockEnd = 0;
