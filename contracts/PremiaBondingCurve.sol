@@ -56,7 +56,7 @@ contract PremiaBondingCurve is Ownable {
     /// @param _premia The premia token
     /// @param _treasury The treasury address (which will receive commission on Premia sales)
     /// @param _startPrice Starting price of the bonding curve
-    /// @param _k Price increase for each token sold
+    /// @param _k Steepness of the curve (Lower value is steeper)
     constructor(IERC20 _premia, address payable _treasury, uint256 _startPrice, uint256 _k) {
         premia = _premia;
         treasury = _treasury;

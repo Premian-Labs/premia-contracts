@@ -123,6 +123,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     event OptionCancelled(address indexed owner, uint256 indexed optionId, address indexed token, uint256 amount);
     event OptionExercised(address indexed user, uint256 indexed optionId, address indexed token, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed optionId, address indexed token, uint256 amount);
+    event FeePaid(address indexed user, address indexed token, address indexed referrer, uint256 feeProtocol, uint256 feeReferrer);
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
@@ -940,6 +941,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
                 uPremia.mintReward(_from, address(_token), totalFee);
             }
         }
+
+        emit FeePaid(_from, address(_token), _referrer, _fee, _feeReferrer);
     }
 
     /// @notice Try to set given referrer, returns current referrer if one already exists
