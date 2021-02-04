@@ -39,13 +39,47 @@ async function main() {
     tokens[weth] = parseEther('10');
     tokens[wbtc] = parseEther('1000');
   } else {
-    premia = '0x0';
+    premia = '0x6399C842dD2bE3dE30BF99Bc7D1bBF6Fa3650E70';
     dai = '0x6b175474e89094c44da98b954eedeac495271d0f';
-    weth = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
-    wbtc = '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599';
+    // weth = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
+    // wbtc = '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599';
     treasury = '0xc22FAe86443aEed038A4ED887bbA8F5035FD12F0 ';
 
-    // ToDo : Add final list of token list
+    // WETH
+    tokens['0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'] = parseEther('50');
+
+    // WBTC
+    tokens['0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599'] = parseEther('1000');
+
+    // LINK
+    tokens['0x514910771AF9Ca656af840dff83E8264EcF986CA'] = parseEther('1');
+
+    // AAVE
+    tokens['0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9'] = parseEther('10');
+
+    // SNX
+    tokens['0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F'] = parseEther('1');
+
+    // COMP
+    tokens['0xc00e94Cb662C3520282E6f5717214004A7f26888'] = parseEther('10');
+
+    // MKR
+    tokens['0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2'] = parseEther('50');
+
+    // REN
+    tokens['0x408e41876cCCDC0F92210600ef50372656052a38'] = parseEther('0.05');
+
+    // CRV
+    tokens['0xD533a949740bb3306d119CC777fa900bA034cd52'] = parseEther('0.1');
+
+    // UNI
+    tokens['0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984'] = parseEther('1');
+
+    // SUSHI
+    tokens['0x6B3595068778DD592e39A122f4f5a5cF09C90fE2'] = parseEther('1');
+
+    // YFI
+    tokens['0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e'] = parseEther('1000');
 
     if (!Object.keys(tokens).length) {
       throw new Error('Token list not set');
@@ -120,24 +154,26 @@ async function main() {
   await contracts.premiaFeeDiscount.setStakePeriod(12 * oneMonth, 20000);
   console.log('Added premiaFeeDiscount stake periods');
 
-  await contracts.premiaReferral.addWhitelisted([
-    premiaOptionDai.address,
-    // premiaOptionEth.address,
-    // premiaOptionWbtc.address,
-  ]);
-  console.log('Whitelisted PremiaOption on PremiaReferral');
-
   //
 
   const premiaMarket = await new PremiaMarket__factory(deployer).deploy(
     contracts.uPremia.address,
     contracts.feeCalculator.address,
     treasury,
+    contracts.premiaReferral.address,
   );
 
   console.log(
     `premiaMarket deployed at ${premiaMarket.address} (Args : ${contracts.uPremia.address} / ${contracts.feeCalculator.address} / ${treasury})`,
   );
+
+  await contracts.premiaReferral.addWhitelisted([
+    premiaOptionDai.address,
+    premiaMarket.address,
+    // premiaOptionEth.address,
+    // premiaOptionWbtc.address,
+  ]);
+  console.log('Whitelisted PremiaOption on PremiaReferral');
 
   await premiaMarket.addWhitelistedOptionContracts([
     // premiaOptionEth.address,
