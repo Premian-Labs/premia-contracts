@@ -115,11 +115,13 @@ contract PremiaUncutErc20 is ERC20Permit, Ownable {
     /// @param _account The address for which to mint
     /// @param _token The token in which the protocol fee has been paid
     /// @param _feePaid The fee paid (in _token)
-    function mintReward(address _account, address _token, uint256 _feePaid) external onlyMinter {
+    /// @param _decimals The token decimals
+    function mintReward(address _account, address _token, uint256 _feePaid, uint8 _decimals) external onlyMinter {
+        require(_decimals <= 18, "Too many decimals");
         uint256 tokenPrice = priceProvider.getTokenPrice(_token);
         if (tokenPrice == 0 || _feePaid == 0) return;
 
-        uint256 rewardAmount = _feePaid.mul(tokenPrice).div(1e18);
+        uint256 rewardAmount = _feePaid.mul(tokenPrice).div(10**_decimals);
         _mint(_account, rewardAmount);
 
         emit Rewarded(_account, _token, _feePaid, rewardAmount);

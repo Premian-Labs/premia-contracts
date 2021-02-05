@@ -74,7 +74,6 @@ export class PremiaMarketTestUtil {
   isOrderSame(order: IOrderCreateProps, orderCreated: IOrderCreated) {
     return (
       order.maker === orderCreated.maker &&
-      order.taker === orderCreated.taker &&
       order.side === orderCreated.side &&
       order.optionContract === orderCreated.optionContract &&
       BigNumber.from(order.pricePerUnit).eq(orderCreated.pricePerUnit) &&
@@ -85,7 +84,6 @@ export class PremiaMarketTestUtil {
   getDefaultOrder(user: SignerWithAddress, orderOptions?: OrderOptions) {
     const newOrder: IOrder = {
       maker: user.address,
-      taker: orderOptions?.taker ?? ZERO_ADDRESS,
       side: Number(!orderOptions?.isBuy),
       isDelayedWriting: !!orderOptions?.isDelayedWriting,
       optionContract: orderOptions?.optionContract ?? this.premiaOption.address,
@@ -94,6 +92,7 @@ export class PremiaMarketTestUtil {
       paymentToken: orderOptions?.paymentToken ?? this.weth.address,
       expirationTime: 0,
       salt: 0,
+      decimals: 0,
     };
 
     return newOrder;
@@ -108,6 +107,7 @@ export class PremiaMarketTestUtil {
         ...newOrder,
         expirationTime: 0,
         salt: 0,
+        decimals: 0,
       },
       amount,
     );
@@ -179,7 +179,6 @@ export class PremiaMarketTestUtil {
   convertOrderCreatedToOrder(orderCreated: IOrderCreated) {
     return {
       maker: orderCreated.maker,
-      taker: orderCreated.taker,
       side: orderCreated.side,
       isDelayedWriting: orderCreated.isDelayedWriting,
       optionContract: orderCreated.optionContract,
@@ -188,6 +187,7 @@ export class PremiaMarketTestUtil {
       pricePerUnit: orderCreated.pricePerUnit,
       expirationTime: orderCreated.expirationTime,
       salt: orderCreated.salt,
+      decimals: orderCreated.decimals,
     };
   }
 }

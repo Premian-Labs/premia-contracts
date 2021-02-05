@@ -25,28 +25,36 @@ interface IPremiaOption is IERC1155 {
         uint256 claimsPostExp;          // Amount of options from which the funds have been withdrawn post expiration
         uint256 exercised;              // Amount of options which have been exercised
         uint256 supply;                 // Total circulating supply
+        uint8 decimals;                 // Token decimals
     }
 
+    // Total write cost = collateral + fee + feeReferrer
     struct QuoteWrite {
-        address collateralToken;
-        uint256 collateral;
-        uint256 fee;
-        uint256 feeReferrer;
+        address collateralToken;        // The token to deposit as collateral
+        uint256 collateral;             // The amount of collateral to deposit
+        uint8 collateralDecimals;       // Decimals of collateral token
+        uint256 fee;                    // The amount of collateralToken needed to be paid as protocol fee
+        uint256 feeReferrer;            // The amount of collateralToken which will be paid the referrer
     }
 
+    // Total exercise cost = input + fee + feeReferrer
     struct QuoteExercise {
-        address inputToken;
-        uint256 input;
-        address outputToken;
-        uint256 output;
-        uint256 fee;
-        uint256 feeReferrer;
+        address inputToken;             // Input token for exercise
+        uint256 input;                  // Amount of input token to pay to exercise
+        uint8 inputDecimals;            // Decimals of input token
+        address outputToken;            // Output token from the exercise
+        uint256 output;                 // Amount of output tokens which will be received on exercise
+        uint8 outputDecimals;           // Decimals of output token
+        uint256 fee;                    // The amount of inputToken needed to be paid as protocol fee
+        uint256 feeReferrer;            // The amount of inputToken which will be paid to the referrer
     }
 
     struct Pool {
         uint256 tokenAmount;
         uint256 denominatorAmount;
     }
+
+    function denominatorDecimals() external view returns(uint8);
 
     function maxExpiration() external view returns(uint256);
     function optionData(uint256 _optionId) external view returns (OptionData memory);
@@ -60,8 +68,8 @@ interface IPremiaOption is IERC1155 {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    function getWriteQuote(address _from, OptionWriteArgs memory _option, address _referrer) external view returns(QuoteWrite memory);
-    function getExerciseQuote(address _from, OptionData memory _option, uint256 _amount, address _referrer) external view returns(QuoteExercise memory);
+    function getWriteQuote(address _from, OptionWriteArgs memory _option, address _referrer, uint8 _decimals) external view returns(QuoteWrite memory);
+    function getExerciseQuote(address _from, OptionData memory _option, uint256 _amount, address _referrer, uint8 _decimals) external view returns(QuoteExercise memory);
 
     function writeOptionWithIdFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) external returns(uint256);
     function writeOption(address _token, OptionWriteArgs memory _option, address _referrer) external returns(uint256);

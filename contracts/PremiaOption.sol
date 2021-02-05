@@ -9,6 +9,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 import '@openzeppelin/contracts/utils/SafeCast.sol';
 
+import "./interface/IERC20Extended.sol";
 import "./interface/IFeeCalculator.sol";
 import "./interface/IFlashLoanReceiver.sol";
 import "./interface/IPremiaReferral.sol";
@@ -40,12 +41,14 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 claimsPostExp;          // Amount of options from which the funds have been withdrawn post expiration
         uint256 exercised;              // Amount of options which have been exercised
         uint256 supply;                 // Total circulating supply
+        uint8 decimals;                 // Token decimals
     }
 
     // Total write cost = collateral + fee + feeReferrer
     struct QuoteWrite {
         address collateralToken;        // The token to deposit as collateral
         uint256 collateral;             // The amount of collateral to deposit
+        uint8 collateralDecimals;       // Decimals of collateral token
         uint256 fee;                    // The amount of collateralToken needed to be paid as protocol fee
         uint256 feeReferrer;            // The amount of collateralToken which will be paid the referrer
     }
@@ -54,8 +57,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     struct QuoteExercise {
         address inputToken;             // Input token for exercise
         uint256 input;                  // Amount of input token to pay to exercise
+        uint8 inputDecimals;            // Decimals of input token
         address outputToken;            // Output token from the exercise
         uint256 output;                 // Amount of output tokens which will be received on exercise
+        uint8 outputDecimals;           // Decimals of output token
         uint256 fee;                    // The amount of inputToken needed to be paid as protocol fee
         uint256 feeReferrer;            // The amount of inputToken which will be paid to the referrer
     }
@@ -66,6 +71,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     }
 
     IERC20 public denominator;
+    uint8 public denominatorDecimals;
 
     //////////////////////////////////////////////////
 
@@ -142,6 +148,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         feeCalculator = _feeCalculator;
         feeRecipient = _feeRecipient;
         premiaReferral = _premiaReferral;
+        denominatorDecimals = IERC20Extended(address(_denominator)).decimals();
     }
 
     //////////////////////////////////////////////////
@@ -261,16 +268,19 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _from Address which will write the option
     /// @param _option The option to write
     /// @param _referrer Referrer
+    /// @param _decimals The option token decimals
     /// @return The quote
-    function getWriteQuote(address _from, OptionWriteArgs memory _option, address _referrer) public view returns(QuoteWrite memory) {
+    function getWriteQuote(address _from, OptionWriteArgs memory _option, address _referrer, uint8 _decimals) public view returns(QuoteWrite memory) {
         QuoteWrite memory quote;
 
         if (_option.isCall) {
             quote.collateralToken = _option.token;
             quote.collateral = _option.amount;
+            quote.collateralDecimals = _decimals;
         } else {
             quote.collateralToken = address(denominator);
-            quote.collateral = _option.amount.mul(_option.strikePrice).div(1e18);
+            quote.collateral = _option.amount.mul(_option.strikePrice).div(10**_decimals);
+            quote.collateralDecimals = denominatorDecimals;
         }
 
         (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), quote.collateral, IFeeCalculator.FeeType.Write);
@@ -284,23 +294,28 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _from Address which will exercise the option
     /// @param _option The option to exercise
     /// @param _referrer Referrer
+    /// @param _decimals The option token decimals
     /// @return The quote
-    function getExerciseQuote(address _from, OptionData memory _option, uint256 _amount, address _referrer) public view returns(QuoteExercise memory) {
+    function getExerciseQuote(address _from, OptionData memory _option, uint256 _amount, address _referrer, uint8 _decimals) public view returns(QuoteExercise memory) {
         QuoteExercise memory quote;
 
         uint256 tokenAmount = _amount;
-        uint256 denominatorAmount = _amount.mul(_option.strikePrice).div(1e18);
+        uint256 denominatorAmount = _amount.mul(_option.strikePrice).div(10**_decimals);
 
         if (_option.isCall) {
             quote.inputToken = address(denominator);
             quote.input = denominatorAmount;
+            quote.inputDecimals = denominatorDecimals;
             quote.outputToken = _option.token;
             quote.output = tokenAmount;
+            quote.outputDecimals = _option.decimals;
         } else {
             quote.inputToken = _option.token;
             quote.input = tokenAmount;
+            quote.inputDecimals = _option.decimals;
             quote.outputToken = address(denominator);
             quote.output = denominatorAmount;
+            quote.outputDecimals = denominatorDecimals;
         }
 
         (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), quote.input, IFeeCalculator.FeeType.Exercise);
@@ -329,6 +344,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         if (optionId == 0) {
             optionId = nextOptionId;
             options[_token][_expiration][_strikePrice][_isCall] = optionId;
+            uint8 decimals = IERC20Extended(_token).decimals();
+            require(decimals <= 18, "Too many decimals");
 
             pools[optionId] = Pool({ tokenAmount: 0, denominatorAmount: 0 });
                 optionData[optionId] = OptionData({
@@ -339,7 +356,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
                 claimsPreExp: 0,
                 claimsPostExp: 0,
                 exercised: 0,
-                supply: 0
+                supply: 0,
+                decimals: decimals
             });
 
             emit OptionIdCreated(optionId, _token);
@@ -406,10 +424,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         // Set referrer or get current if one already exists
         _referrer = _trySetReferrer(_from, _referrer);
 
-        QuoteWrite memory quote = getWriteQuote(_from, _option, _referrer);
+        QuoteWrite memory quote = getWriteQuote(_from, _option, _referrer, optionData[optionId].decimals);
 
         IERC20(quote.collateralToken).safeTransferFrom(_from, address(this), quote.collateral);
-        _payFees(_from, IERC20(quote.collateralToken), _referrer, quote.fee, quote.feeReferrer);
+        _payFees(_from, IERC20(quote.collateralToken), _referrer, quote.fee, quote.feeReferrer, quote.collateralDecimals);
 
         if (_option.isCall) {
             pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(quote.collateral);
@@ -466,7 +484,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(_amount);
             IERC20(optionData[_optionId].token).safeTransfer(_from, _amount);
         } else {
-            uint256 amount = _amount.mul(optionData[_optionId].strikePrice).div(1e18);
+            uint256 amount = _amount.mul(optionData[_optionId].strikePrice).div(10**optionData[_optionId].decimals);
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(amount);
             denominator.safeTransfer(_from, amount);
         }
@@ -511,9 +529,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         // Set referrer or get current if one already exists
         _referrer = _trySetReferrer(_from, _referrer);
 
-        QuoteExercise memory quote = getExerciseQuote(_from, data, _amount, _referrer);
+        QuoteExercise memory quote = getExerciseQuote(_from, data, _amount, _referrer, data.decimals);
         IERC20(quote.inputToken).safeTransferFrom(_from, address(this), quote.input);
-        _payFees(_from, IERC20(quote.inputToken), _referrer, quote.fee, quote.feeReferrer);
+        _payFees(_from, IERC20(quote.inputToken), _referrer, quote.fee, quote.feeReferrer, quote.inputDecimals);
 
         if (data.isCall) {
             pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(quote.output);
@@ -673,7 +691,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         data.claimsPreExp = uint256(data.claimsPreExp).add(_amount);
 
         if (data.isCall) {
-            uint256 amount = _amount.mul(data.strikePrice).div(1e18);
+            uint256 amount = _amount.mul(data.strikePrice).div(10**data.decimals);
             pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(amount);
             denominator.safeTransfer(_from, amount);
         } else {
@@ -736,7 +754,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         // Set referrer or get current if one already exists
         _referrer = _trySetReferrer(_from, _referrer);
 
-        QuoteExercise memory quote = getExerciseQuote(_from, optionData[_optionId], _amount, _referrer);
+        QuoteExercise memory quote = getExerciseQuote(_from, optionData[_optionId], _amount, _referrer, optionData[_optionId].decimals);
 
         IERC20 tokenErc20 = IERC20(optionData[_optionId].token);
 
@@ -761,7 +779,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 tokenAmountUsed = _swap(_router, quote.outputToken, quote.inputToken, quote.input.add(quote.fee).add(quote.feeReferrer), _amountInMax)[0];
 
         // Pay fees
-        _payFees(address(this), IERC20(quote.inputToken), _referrer, quote.fee, quote.feeReferrer);
+        _payFees(address(this), IERC20(quote.inputToken), _referrer, quote.fee, quote.feeReferrer, quote.inputDecimals);
 
         uint256 profit = quote.output.sub(tokenAmountUsed);
 
@@ -815,56 +833,56 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     // Batch functions //
     /////////////////////
 
-    /// @notice Write multiple options at once
-    /// @param _options Options to write
-    /// @param _referrer Referrer
-    function batchWriteOption(OptionWriteArgs[] memory _options, address _referrer) external {
-        for (uint256 i = 0; i < _options.length; ++i) {
-            _writeOption(msg.sender, _options[i], _referrer);
-        }
-    }
-
-    /// @notice Cancel multiple options at once
-    /// @param _optionId List of ids of options to cancel
-    /// @param _amounts Amount to cancel for each option
-    function batchCancelOption(uint256[] memory _optionId, uint256[] memory _amounts) external {
-        require(_optionId.length == _amounts.length, "Arrays diff len");
-
-        for (uint256 i = 0; i < _optionId.length; ++i) {
-            _cancelOption(msg.sender, _optionId[i], _amounts[i]);
-        }
-    }
-
-    /// @notice Withdraw funds from multiple options at once
-    /// @param _optionId List of ids of options to withdraw funds from
-    function batchWithdraw(uint256[] memory _optionId) external {
-        for (uint256 i = 0; i < _optionId.length; ++i) {
-            _withdraw(msg.sender, _optionId[i]);
-        }
-    }
-
-    /// @notice Exercise multiple options at once
-    /// @param _optionId List of ids of options to exercise
-    /// @param _amounts Amount to exercise for each option
-    /// @param _referrer Referrer
-    function batchExerciseOption(uint256[] memory _optionId, uint256[] memory _amounts, address _referrer) external {
-        require(_optionId.length == _amounts.length, "Arrays diff len");
-
-        for (uint256 i = 0; i < _optionId.length; ++i) {
-            _exerciseOption(msg.sender, _optionId[i], _amounts[i], _referrer);
-        }
-    }
-
-    /// @notice Withdraw funds pre expiration from multiple options at once
-    /// @param _optionId List of ids of options to withdraw funds from
-    /// @param _amounts Amount to withdraw pre expiration for each option
-    function batchWithdrawPreExpiration(uint256[] memory _optionId, uint256[] memory _amounts) external {
-        require(_optionId.length == _amounts.length, "Arrays diff len");
-
-        for (uint256 i = 0; i < _optionId.length; ++i) {
-            _withdrawPreExpiration(msg.sender, _optionId[i], _amounts[i]);
-        }
-    }
+//    /// @notice Write multiple options at once
+//    /// @param _options Options to write
+//    /// @param _referrer Referrer
+//    function batchWriteOption(OptionWriteArgs[] memory _options, address _referrer) external {
+//        for (uint256 i = 0; i < _options.length; ++i) {
+//            _writeOption(msg.sender, _options[i], _referrer);
+//        }
+//    }
+//
+//    /// @notice Cancel multiple options at once
+//    /// @param _optionId List of ids of options to cancel
+//    /// @param _amounts Amount to cancel for each option
+//    function batchCancelOption(uint256[] memory _optionId, uint256[] memory _amounts) external {
+//        require(_optionId.length == _amounts.length, "Arrays diff len");
+//
+//        for (uint256 i = 0; i < _optionId.length; ++i) {
+//            _cancelOption(msg.sender, _optionId[i], _amounts[i]);
+//        }
+//    }
+//
+//    /// @notice Withdraw funds from multiple options at once
+//    /// @param _optionId List of ids of options to withdraw funds from
+//    function batchWithdraw(uint256[] memory _optionId) external {
+//        for (uint256 i = 0; i < _optionId.length; ++i) {
+//            _withdraw(msg.sender, _optionId[i]);
+//        }
+//    }
+//
+//    /// @notice Exercise multiple options at once
+//    /// @param _optionId List of ids of options to exercise
+//    /// @param _amounts Amount to exercise for each option
+//    /// @param _referrer Referrer
+//    function batchExerciseOption(uint256[] memory _optionId, uint256[] memory _amounts, address _referrer) external {
+//        require(_optionId.length == _amounts.length, "Arrays diff len");
+//
+//        for (uint256 i = 0; i < _optionId.length; ++i) {
+//            _exerciseOption(msg.sender, _optionId[i], _amounts[i], _referrer);
+//        }
+//    }
+//
+//    /// @notice Withdraw funds pre expiration from multiple options at once
+//    /// @param _optionId List of ids of options to withdraw funds from
+//    /// @param _amounts Amount to withdraw pre expiration for each option
+//    function batchWithdrawPreExpiration(uint256[] memory _optionId, uint256[] memory _amounts) external {
+//        require(_optionId.length == _amounts.length, "Arrays diff len");
+//
+//        for (uint256 i = 0; i < _optionId.length; ++i) {
+//            _withdrawPreExpiration(msg.sender, _optionId[i], _amounts[i]);
+//        }
+//    }
 
     //////////////////////////////////////////////////
 
@@ -914,7 +932,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _referrer The referrer of _from
     /// @param _fee Protocol fee to pay to feeRecipient
     /// @param _feeReferrer Fee to pay to referrer
-    function _payFees(address _from, IERC20 _token, address _referrer, uint256 _fee, uint256 _feeReferrer) internal {
+    /// @param _decimals Token decimals
+    function _payFees(address _from, IERC20 _token, address _referrer, uint256 _fee, uint256 _feeReferrer, uint8 _decimals) internal {
         if (_fee > 0) {
             // For flash exercise
             if (_from == address(this)) {
@@ -938,7 +957,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         if (address(uPremia) != address(0)) {
             uint256 totalFee = _fee.add(_feeReferrer);
             if (totalFee > 0) {
-                uPremia.mintReward(_from, address(_token), totalFee);
+                uPremia.mintReward(_from, address(_token), totalFee, _decimals);
             }
         }
 

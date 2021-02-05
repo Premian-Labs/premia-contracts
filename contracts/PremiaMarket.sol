@@ -8,11 +8,12 @@ import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/EnumerableSet.sol';
 import '@openzeppelin/contracts/utils/ReentrancyGuard.sol';
 
+import "./interface/IERC20Extended.sol";
 import "./interface/IPremiaOption.sol";
 import "./interface/IFeeCalculator.sol";
 import "./interface/IPremiaReferral.sol";
 import "./interface/IPremiaUncutErc20.sol";
-
+import "hardhat/console.sol";
 
 /// @author Premia
 /// @title An option market contract
@@ -33,6 +34,8 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     // List of whitelisted payment tokens that users can use to buy / sell options
     EnumerableSet.AddressSet private _whitelistedPaymentTokens;
 
+    mapping(address => uint8) public paymentTokenDecimals;
+
     // Recipient of protocol fees
     address public feeRecipient;
 
@@ -46,7 +49,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     // An order on the exchange
     struct Order {
         address maker;              // Order maker address
-        address taker;              // Order taker address, if specified
         SaleSide side;              // Side (buy/sell)
         bool isDelayedWriting;      // If true, option has not been written yet
         address optionContract;     // Address of optionContract from which option is from
@@ -55,6 +57,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         uint256 pricePerUnit;       // Price per unit (in paymentToken) with 18 decimals
         uint256 expirationTime;     // Expiration timestamp of option (Which is also expiration of order)
         uint256 salt;               // To ensure unique hash
+        uint8 decimals;             // Option token decimals
     }
 
     struct Option {
@@ -84,13 +87,13 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         address indexed optionContract,
         SaleSide side,
         bool isDelayedWriting,
-        address taker,
         uint256 optionId,
         address paymentToken,
         uint256 pricePerUnit,
         uint256 expirationTime,
         uint256 salt,
-        uint256 amount
+        uint256 amount,
+        uint8 decimals
     );
 
     event OrderFilled(
@@ -175,7 +178,10 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     /// @param _addr The list of addresses to add
     function addWhitelistedPaymentTokens(address[] memory _addr) external onlyOwner {
         for (uint256 i=0; i < _addr.length; i++) {
+            uint8 decimals = IERC20Extended(_addr[i]).decimals();
+            require(decimals <= 18, "Too many decimals");
             _whitelistedPaymentTokens.add(_addr[i]);
+            paymentTokenDecimals[_addr[i]] = decimals;
         }
     }
     /// @notice Remove contract addresses from the list of whitelisted payment tokens
@@ -272,7 +278,8 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         IERC20 token = IERC20(_order.paymentToken);
 
         if (_order.side == SaleSide.Buy) {
-            uint256 basePrice = _order.pricePerUnit.mul(amountLeft).div(1e18);
+            uint8 decimals = _order.decimals;
+            uint256 basePrice = _order.pricePerUnit.mul(amountLeft).div(10**decimals);
             uint256 makerFee = feeCalculator.getFee(_order.maker, false, IFeeCalculator.FeeType.Maker);
             uint256 orderMakerFee = basePrice.mul(makerFee).div(_inverseBasisPoint);
             uint256 totalPrice = basePrice.add(orderMakerFee);
@@ -282,6 +289,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
             return userBalance >= totalPrice && allowance >= totalPrice;
         } else if (_order.side == SaleSide.Sell) {
+            console.log("1");
             IPremiaOption premiaOption = IPremiaOption(_order.optionContract);
             bool isApproved = premiaOption.isApprovedForAll(_order.maker, address(this));
 
@@ -295,11 +303,13 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
                     isCall: data.isCall
                 });
 
-                IPremiaOption.QuoteWrite memory quote = premiaOption.getWriteQuote(_order.maker, writeArgs, address(0));
+                IPremiaOption.QuoteWrite memory quote = premiaOption.getWriteQuote(_order.maker, writeArgs, address(0), _order.decimals);
 
                 uint256 userBalance = IERC20(quote.collateralToken).balanceOf(_order.maker);
                 uint256 allowance = IERC20(quote.collateralToken).allowance(_order.maker, _order.optionContract);
                 uint256 totalPrice = quote.collateral.add(quote.fee).add(quote.feeReferrer);
+
+                console.log(isApproved, userBalance, totalPrice, allowance);
 
                 return isApproved && userBalance >= totalPrice && allowance >= totalPrice;
 
@@ -353,7 +363,10 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
         _order.maker = msg.sender;
         _order.expirationTime = data.expiration;
+        _order.decimals = data.decimals;
         _order.salt = salt;
+
+        require(_order.decimals <= 18, "Too many decimals");
 
         if (_order.isDelayedWriting) {
             require(isDelayedWritingEnabled, "Delayed writing disabled");
@@ -368,6 +381,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
         bytes32 hash = getOrderHash(_order);
         amounts[hash] = _amount;
+        uint8 decimals = _order.decimals;
 
         emit OrderCreated(
             hash,
@@ -375,13 +389,13 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             _order.optionContract,
             _order.side,
             _order.isDelayedWriting,
-            _order.taker,
             _order.optionId,
             _order.paymentToken,
             _order.pricePerUnit,
             _order.expirationTime,
             _order.salt,
-            _amount
+            _amount,
+            decimals
         );
 
         return hash;
@@ -504,7 +518,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         require(_order.expirationTime != 0 && block.timestamp < _order.expirationTime, "Order expired");
         require(amounts[hash] > 0, "Order not found");
         require(_amount > 0, "Amount must be > 0");
-        require(_order.taker == address(0) || _order.taker == msg.sender, "Not specified taker");
 
         if (amounts[hash] < _amount) {
             _amount = amounts[hash];
@@ -517,7 +530,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             _writeOption(_order, _amount);
         }
 
-        uint256 basePrice = _order.pricePerUnit.mul(_amount).div(1e18);
+        uint256 basePrice = _order.pricePerUnit.mul(_amount).div(10**_order.decimals);
 
         (uint256 orderMakerFee,) = feeCalculator.getFeeAmounts(_order.maker, false, basePrice, IFeeCalculator.FeeType.Maker);
         (uint256 orderTakerFee,) = feeCalculator.getFeeAmounts(msg.sender, false, basePrice, IFeeCalculator.FeeType.Taker);
@@ -539,11 +552,11 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
         // Mint uPremia
         if (address(uPremia) != address(0)) {
-            uPremiaBalance[_order.maker] = uPremiaBalance[_order.maker].add(orderMakerFee.mul(paymentTokenPrice).div(1e18));
-            uPremiaBalance[msg.sender] = uPremiaBalance[msg.sender].add(orderTakerFee.mul(paymentTokenPrice).div(1e18));
+            uPremiaBalance[_order.maker] = uPremiaBalance[_order.maker].add(orderMakerFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
+            uPremiaBalance[msg.sender] = uPremiaBalance[msg.sender].add(orderTakerFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
         }
 
-        uPremia.mint(address(this), orderMakerFee.add(orderTakerFee).mul(paymentTokenPrice).div(1e18));
+        uPremia.mint(address(this), orderMakerFee.add(orderTakerFee).mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
 
         emit OrderFilled(
             hash,
@@ -598,8 +611,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             if (amounts[hash] == 0) continue;
             // If expired, continue
             if (block.timestamp >= _order.expirationTime) continue;
-            // If order reserved for someone, continue
-            if (_order.taker != address(0) && _order.taker != msg.sender) continue;
 
             uint256 amount = amounts[hash];
             if (amountFilled.add(amount) > _maxAmount) {
@@ -614,7 +625,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
                 _writeOption(_order, amount);
             }
 
-            uint256 basePrice = _order.pricePerUnit.mul(amount).div(1e18);
+            uint256 basePrice = _order.pricePerUnit.mul(amount).div(10**_order.decimals);
 
             (uint256 orderMakerFee,) = feeCalculator.getFeeAmounts(_order.maker, false, basePrice, IFeeCalculator.FeeType.Maker);
             uint256 orderTakerFee = basePrice.mul(takerFee).div(_inverseBasisPoint);
@@ -636,8 +647,8 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
             // Mint uPremia
             if (address(uPremia) != address(0)) {
-                uPremiaBalance[_order.maker] = uPremiaBalance[_order.maker].add(orderMakerFee.mul(paymentTokenPrice).div(1e18));
-                uPremiaBalance[msg.sender] = uPremiaBalance[msg.sender].add(orderTakerFee.mul(paymentTokenPrice).div(1e18));
+                uPremiaBalance[_order.maker] = uPremiaBalance[_order.maker].add(orderMakerFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
+                uPremiaBalance[msg.sender] = uPremiaBalance[msg.sender].add(orderTakerFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
             }
 
             emit OrderFilled(
@@ -661,7 +672,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             IERC20(_orders[0].paymentToken).safeTransferFrom(msg.sender, feeRecipient, totalFee);
         }
 
-        uPremia.mint(address(this), totalFee.mul(paymentTokenPrice).div(1e18));
+        uPremia.mint(address(this), totalFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_orders[0].paymentToken]));
 
         return amountFilled;
     }

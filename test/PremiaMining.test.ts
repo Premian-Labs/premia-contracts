@@ -55,6 +55,7 @@ describe('PremiaMining', () => {
         u.address,
         p.premia.address,
         parseEther('100'),
+        18,
       );
     }
   });
