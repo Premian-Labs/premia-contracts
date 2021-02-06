@@ -829,61 +829,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         require(endBalance >= startBalance, "Failed to pay back");
     }
 
-    /////////////////////
-    // Batch functions //
-    /////////////////////
-
-//    /// @notice Write multiple options at once
-//    /// @param _options Options to write
-//    /// @param _referrer Referrer
-//    function batchWriteOption(OptionWriteArgs[] memory _options, address _referrer) external {
-//        for (uint256 i = 0; i < _options.length; ++i) {
-//            _writeOption(msg.sender, _options[i], _referrer);
-//        }
-//    }
-//
-//    /// @notice Cancel multiple options at once
-//    /// @param _optionId List of ids of options to cancel
-//    /// @param _amounts Amount to cancel for each option
-//    function batchCancelOption(uint256[] memory _optionId, uint256[] memory _amounts) external {
-//        require(_optionId.length == _amounts.length, "Arrays diff len");
-//
-//        for (uint256 i = 0; i < _optionId.length; ++i) {
-//            _cancelOption(msg.sender, _optionId[i], _amounts[i]);
-//        }
-//    }
-//
-//    /// @notice Withdraw funds from multiple options at once
-//    /// @param _optionId List of ids of options to withdraw funds from
-//    function batchWithdraw(uint256[] memory _optionId) external {
-//        for (uint256 i = 0; i < _optionId.length; ++i) {
-//            _withdraw(msg.sender, _optionId[i]);
-//        }
-//    }
-//
-//    /// @notice Exercise multiple options at once
-//    /// @param _optionId List of ids of options to exercise
-//    /// @param _amounts Amount to exercise for each option
-//    /// @param _referrer Referrer
-//    function batchExerciseOption(uint256[] memory _optionId, uint256[] memory _amounts, address _referrer) external {
-//        require(_optionId.length == _amounts.length, "Arrays diff len");
-//
-//        for (uint256 i = 0; i < _optionId.length; ++i) {
-//            _exerciseOption(msg.sender, _optionId[i], _amounts[i], _referrer);
-//        }
-//    }
-//
-//    /// @notice Withdraw funds pre expiration from multiple options at once
-//    /// @param _optionId List of ids of options to withdraw funds from
-//    /// @param _amounts Amount to withdraw pre expiration for each option
-//    function batchWithdrawPreExpiration(uint256[] memory _optionId, uint256[] memory _amounts) external {
-//        require(_optionId.length == _amounts.length, "Arrays diff len");
-//
-//        for (uint256 i = 0; i < _optionId.length; ++i) {
-//            _withdrawPreExpiration(msg.sender, _optionId[i], _amounts[i]);
-//        }
-//    }
-
     //////////////////////////////////////////////////
 
     //////////////

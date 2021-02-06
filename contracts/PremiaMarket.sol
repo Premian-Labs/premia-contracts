@@ -13,7 +13,6 @@ import "./interface/IPremiaOption.sol";
 import "./interface/IFeeCalculator.sol";
 import "./interface/IPremiaReferral.sol";
 import "./interface/IPremiaUncutErc20.sol";
-import "hardhat/console.sol";
 
 /// @author Premia
 /// @title An option market contract
@@ -289,7 +288,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
             return userBalance >= totalPrice && allowance >= totalPrice;
         } else if (_order.side == SaleSide.Sell) {
-            console.log("1");
             IPremiaOption premiaOption = IPremiaOption(_order.optionContract);
             bool isApproved = premiaOption.isApprovedForAll(_order.maker, address(this));
 
@@ -308,8 +306,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
                 uint256 userBalance = IERC20(quote.collateralToken).balanceOf(_order.maker);
                 uint256 allowance = IERC20(quote.collateralToken).allowance(_order.maker, _order.optionContract);
                 uint256 totalPrice = quote.collateral.add(quote.fee).add(quote.feeReferrer);
-
-                console.log(isApproved, userBalance, totalPrice, allowance);
 
                 return isApproved && userBalance >= totalPrice && allowance >= totalPrice;
 

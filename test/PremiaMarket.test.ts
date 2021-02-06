@@ -1326,7 +1326,6 @@ describe('PremiaMarket', () => {
         .connect(user1)
         .setApprovalForAll(premiaMarket.address, true);
 
-      console.log(order.order);
       expect(await premiaMarket.isOrderValid(order.order)).to.be.true;
 
       await weth.connect(user2).deposit({ value: parseEther('0.203') }); // 1.5% tax

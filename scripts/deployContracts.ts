@@ -11,6 +11,8 @@ import {
   PremiaMaker__factory,
   PremiaMining,
   PremiaMining__factory,
+  PremiaOptionBatch,
+  PremiaOptionBatch__factory,
   PremiaPBC,
   PremiaPBC__factory,
   PremiaReferral,
@@ -179,6 +181,13 @@ export async function deployContracts(
     console.log(`PremiaReferral deployed at ${premiaReferral.address}`);
   }
 
+  const premiaOptionBatch = await new PremiaOptionBatch__factory(
+    deployer,
+  ).deploy();
+  if (log) {
+    console.log(`PremiaOptionBatch deployed at ${premiaOptionBatch.address}`);
+  }
+
   return {
     premia,
     premiaBondingCurve,
@@ -191,6 +200,7 @@ export async function deployContracts(
     premiaFeeDiscount,
     feeCalculator,
     premiaReferral,
+    premiaOptionBatch,
   };
 }
 
@@ -206,4 +216,5 @@ export interface IPremiaContracts {
   premiaMaker: PremiaMaker;
   feeCalculator: FeeCalculator;
   premiaReferral: PremiaReferral;
+  premiaOptionBatch: PremiaOptionBatch;
 }

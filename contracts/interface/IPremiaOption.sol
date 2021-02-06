@@ -77,7 +77,7 @@ interface IPremiaOption is IERC1155 {
     function cancelOption(uint256 _optionId, uint256 _amount) external;
     function cancelOptionFrom(address _from, uint256 _optionId, uint256 _amount) external;
     function exerciseOption(uint256 _optionId, uint256 _amount) external;
-    function exerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount) external;
+    function exerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) external;
     function withdraw(uint256 _optionId) external;
     function withdrawFrom(address _from, uint256 _optionId) external;
     function withdrawPreExpiration(uint256 _optionId, uint256 _amount) external;
@@ -85,14 +85,4 @@ interface IPremiaOption is IERC1155 {
     function flashExerciseOption(uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) external;
     function flashExerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) external;
     function flashLoan(address _tokenAddress, uint256 _amount, IFlashLoanReceiver _receiver) external;
-
-    /////////////////////
-    // Batch functions //
-    /////////////////////
-
-    function batchWriteOption(OptionWriteArgs[] memory _options, address _referrer) external;
-    function batchCancelOption(uint256[] memory _optionId, uint256[] memory _amounts) external;
-    function batchWithdraw(uint256[] memory _optionId) external;
-    function batchExerciseOption(uint256[] memory _optionId, uint256[] memory _amounts, address _referrer) external;
-    function batchWithdrawPreExpiration(uint256[] memory _optionId, uint256[] memory _amounts) external;
 }

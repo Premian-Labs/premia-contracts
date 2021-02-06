@@ -227,7 +227,11 @@ describe('PremiaOption', () => {
         .connect(writer1)
         .increaseAllowance(premiaOption.address, parseEther(amount.toString()));
 
-      await premiaOption.connect(writer1).batchWriteOption(
+      await premiaOption
+        .connect(writer1)
+        .setApprovalForAll(p.premiaOptionBatch.address, true);
+      await p.premiaOptionBatch.connect(writer1).batchWriteOption(
+        premiaOption.address,
         [
           {
             ...defaultOption,
@@ -360,7 +364,14 @@ describe('PremiaOption', () => {
 
       await premiaOption
         .connect(writer1)
-        .batchCancelOption([1, 2], [parseEther('2'), parseEther('1')]);
+        .setApprovalForAll(p.premiaOptionBatch.address, true);
+      await p.premiaOptionBatch
+        .connect(writer1)
+        .batchCancelOption(
+          premiaOption.address,
+          [1, 2],
+          [parseEther('2'), parseEther('1')],
+        );
 
       optionBalance1 = await premiaOption.balanceOf(writer1.address, 1);
       optionBalance2 = await premiaOption.balanceOf(writer1.address, 2);
@@ -514,7 +525,11 @@ describe('PremiaOption', () => {
 
       await premiaOption
         .connect(user1)
+        .setApprovalForAll(p.premiaOptionBatch.address, true);
+      await p.premiaOptionBatch
+        .connect(user1)
         .batchExerciseOption(
+          premiaOption.address,
           [1, 2],
           [parseEther('1'), parseEther('2')],
           ZERO_ADDRESS,
@@ -822,7 +837,12 @@ describe('PremiaOption', () => {
 
       await setTimestampPostExpiration();
 
-      await premiaOption.connect(writer1).batchWithdraw([1, 2]);
+      await premiaOption
+        .connect(writer1)
+        .setApprovalForAll(p.premiaOptionBatch.address, true);
+      await p.premiaOptionBatch
+        .connect(writer1)
+        .batchWithdraw(premiaOption.address, [1, 2]);
 
       const daiBalance = await dai.balanceOf(writer1.address);
       const ethBalance = await weth.balanceOf(writer1.address);
@@ -963,7 +983,14 @@ describe('PremiaOption', () => {
 
       await premiaOption
         .connect(writer1)
-        .batchWithdrawPreExpiration([1, 2], [parseEther('2'), parseEther('1')]);
+        .setApprovalForAll(p.premiaOptionBatch.address, true);
+      await p.premiaOptionBatch
+        .connect(writer1)
+        .batchWithdrawPreExpiration(
+          premiaOption.address,
+          [1, 2],
+          [parseEther('2'), parseEther('1')],
+        );
 
       const daiBalance = await dai.balanceOf(writer1.address);
       const ethBalance = await weth.balanceOf(writer1.address);
