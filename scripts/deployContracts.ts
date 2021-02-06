@@ -43,7 +43,7 @@ export async function deployContracts(
   let miningPostBonusLength: number;
 
   if (isTest) {
-    premia = await new TestErc20__factory(deployer).deploy();
+    premia = await new TestErc20__factory(deployer).deploy(18);
 
     pbcBlockStart = 0;
     pbcBlockEnd = 100;

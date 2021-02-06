@@ -24,7 +24,7 @@ describe('PremiaVesting', () => {
     const premiaFactory = new TestErc20__factory(admin);
     const premiaVestingFactory = new PremiaVesting__factory(admin);
 
-    premia = await premiaFactory.deploy();
+    premia = await premiaFactory.deploy(18);
     premiaVesting = await premiaVestingFactory.deploy(premia.address);
 
     const amount = parseEther('730');

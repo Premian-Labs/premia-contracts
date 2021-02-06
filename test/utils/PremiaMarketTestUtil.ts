@@ -1,19 +1,19 @@
 import {
   PremiaMarket,
-  TestErc20,
   PremiaOption,
+  TestErc20,
   WETH9,
 } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber } from 'ethers';
 import { IOrder, IOrderCreated, IOrderCreateProps } from '../../types';
-import { ethers } from 'hardhat';
 import { PremiaOptionTestUtil } from './PremiaOptionTestUtil';
-import { ZERO_ADDRESS } from './constants';
-import { parseEther } from 'ethers/lib/utils';
+import { formatUnits, parseEther } from 'ethers/lib/utils';
+import { mintTestToken, parseTestToken } from './token';
+import { TEST_TOKEN_DECIMALS } from './constants';
 
 interface PremiaMarketTestUtilProps {
-  weth: WETH9;
+  testToken: WETH9 | TestErc20;
   dai: TestErc20;
   premiaOption: PremiaOption;
   premiaMarket: PremiaMarket;
@@ -36,7 +36,7 @@ interface OrderOptions {
 }
 
 export class PremiaMarketTestUtil {
-  weth: WETH9;
+  testToken: WETH9 | TestErc20;
   dai: TestErc20;
   premiaOption: PremiaOption;
   premiaMarket: PremiaMarket;
@@ -48,7 +48,7 @@ export class PremiaMarketTestUtil {
   optionTestUtil: PremiaOptionTestUtil;
 
   constructor(props: PremiaMarketTestUtilProps) {
-    this.weth = props.weth;
+    this.testToken = props.testToken;
     this.dai = props.dai;
     this.premiaOption = props.premiaOption;
     this.premiaMarket = props.premiaMarket;
@@ -59,7 +59,7 @@ export class PremiaMarketTestUtil {
     this.feeRecipient = props.feeRecipient;
 
     this.optionTestUtil = new PremiaOptionTestUtil({
-      weth: this.weth,
+      testToken: this.testToken,
       dai: this.dai,
       premiaOption: this.premiaOption,
       admin: this.admin,
@@ -89,7 +89,7 @@ export class PremiaMarketTestUtil {
       optionContract: orderOptions?.optionContract ?? this.premiaOption.address,
       pricePerUnit: orderOptions?.pricePerUnit ?? parseEther('1'),
       optionId: orderOptions?.optionId ?? 1,
-      paymentToken: orderOptions?.paymentToken ?? this.weth.address,
+      paymentToken: orderOptions?.paymentToken ?? this.dai.address,
       expirationTime: 0,
       salt: 0,
       decimals: 0,
@@ -100,7 +100,7 @@ export class PremiaMarketTestUtil {
 
   async createOrder(user: SignerWithAddress, orderOptions?: OrderOptions) {
     const newOrder = this.getDefaultOrder(user, orderOptions);
-    const amount = orderOptions?.amount ?? parseEther('1');
+    const amount = orderOptions?.amount ?? parseTestToken('1');
 
     const tx = await this.premiaMarket.connect(user).createOrder(
       {
@@ -159,13 +159,14 @@ export class PremiaMarketTestUtil {
       seller = maker;
     }
 
-    const amount = orderOptions?.amount ?? parseEther('1');
+    const amount = orderOptions?.amount ?? parseTestToken('1');
     await this.optionTestUtil.mintAndWriteOption(seller, amount);
 
-    await this.weth
+    const baseDaiAmount = parseEther(formatUnits(amount, TEST_TOKEN_DECIMALS));
+    await this.dai
       .connect(buyer)
-      .deposit({ value: amount.add(amount.mul(150).div(1e4)) });
-    await this.weth
+      .mint(buyer.address, baseDaiAmount.add(baseDaiAmount.mul(150).div(1e4)));
+    await this.dai
       .connect(buyer)
       .approve(this.premiaMarket.address, parseEther('10000000000000'));
 

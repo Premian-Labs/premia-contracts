@@ -21,7 +21,7 @@ describe('PremiaDevFund', () => {
 
     [admin] = await ethers.getSigners();
 
-    premia = await new TestErc20__factory(admin).deploy();
+    premia = await new TestErc20__factory(admin).deploy(18);
     premiaDevFund = await new PremiaDevFund__factory(admin).deploy(
       premia.address,
     );

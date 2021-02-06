@@ -216,7 +216,7 @@ describe('PremiaMining', () => {
   });
 
   it('should give proper premia allocation to each pool', async () => {
-    const dai = await new TestErc20__factory(admin).deploy();
+    const dai = await new TestErc20__factory(admin).deploy(18);
     await dai.mint(bob.address, parseEther('100'));
 
     // Add first LP to the pool with allocation 1

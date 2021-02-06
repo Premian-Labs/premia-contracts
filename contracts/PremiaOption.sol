@@ -338,10 +338,11 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _isCall Whether the option is a call or a put
     /// @return The option id
     function getOptionIdOrCreate(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public returns(uint256) {
-        _preCheckOptionIdCreate(_token, _strikePrice, _expiration);
-
         uint256 optionId = getOptionId(_token, _expiration, _strikePrice, _isCall);
+
         if (optionId == 0) {
+            _preCheckOptionIdCreate(_token, _strikePrice, _expiration);
+
             optionId = nextOptionId;
             options[_token][_expiration][_strikePrice][_isCall] = optionId;
             uint8 decimals = IERC20Extended(_token).decimals();

@@ -1,8 +1,9 @@
 import { PremiaOption, TestErc20, WETH9 } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { BigNumberish, BigNumber } from 'ethers';
-import { ONE_WEEK, ZERO_ADDRESS } from './constants';
-import { parseEther } from 'ethers/lib/utils';
+import { BigNumber, BigNumberish } from 'ethers';
+import { ONE_WEEK, TEST_TOKEN_DECIMALS, ZERO_ADDRESS } from './constants';
+import { formatUnits, parseEther } from 'ethers/lib/utils';
+import { mintTestToken, parseTestToken } from './token';
 
 interface WriteOptionArgs {
   address?: string;
@@ -14,7 +15,7 @@ interface WriteOptionArgs {
 }
 
 interface PremiaOptionTestUtilProps {
-  weth: WETH9;
+  testToken: WETH9 | TestErc20;
   dai: TestErc20;
   premiaOption: PremiaOption;
   admin: SignerWithAddress;
@@ -26,7 +27,7 @@ interface PremiaOptionTestUtilProps {
 }
 
 export class PremiaOptionTestUtil {
-  weth: WETH9;
+  testToken: WETH9 | TestErc20;
   dai: TestErc20;
   premiaOption: PremiaOption;
   admin: SignerWithAddress;
@@ -37,7 +38,7 @@ export class PremiaOptionTestUtil {
   tax: number;
 
   constructor(props: PremiaOptionTestUtilProps) {
-    this.weth = props.weth;
+    this.testToken = props.testToken;
     this.dai = props.dai;
     this.premiaOption = props.premiaOption;
     this.admin = props.admin;
@@ -60,16 +61,19 @@ export class PremiaOptionTestUtil {
 
   getOptionDefaults() {
     return {
-      token: this.weth.address,
+      token: this.testToken.address,
       expiration: this.getNextExpiration(),
       strikePrice: parseEther('10'),
       isCall: true,
-      amount: parseEther('1'),
+      amount: parseTestToken('1'),
     };
   }
 
-  async addEth() {
-    return this.premiaOption.setTokens([this.weth.address], [parseEther('10')]);
+  async addTestToken() {
+    return this.premiaOption.setTokens(
+      [this.testToken.address],
+      [parseEther('10')],
+    );
   }
 
   async writeOption(user: SignerWithAddress, args?: WriteOptionArgs) {
@@ -95,12 +99,14 @@ export class PremiaOptionTestUtil {
   ) {
     if (isCall) {
       const amountWithFee = amount.add(amount.mul(this.tax).div(1e4));
-      await this.weth.connect(user).deposit({ value: amountWithFee });
-      await this.weth
+      await mintTestToken(user, this.testToken, amountWithFee);
+      await this.testToken
         .connect(user)
         .approve(this.premiaOption.address, amountWithFee);
     } else {
-      const baseAmount = amount.mul(10);
+      const baseAmount = parseEther(
+        (Number(formatUnits(amount, TEST_TOKEN_DECIMALS)) * 10).toString(),
+      );
       const amountWithFee = baseAmount.add(baseAmount.mul(this.tax).div(1e4));
       await this.dai.mint(user.address, amountWithFee);
       await this.dai
@@ -113,12 +119,12 @@ export class PremiaOptionTestUtil {
     // console.log(tx.gasLimit.toString());
   }
 
-  async addEthAndWriteOptions(
+  async addTestTokenAndWriteOptions(
     amount: BigNumber,
     isCall = true,
     referrer?: string,
   ) {
-    await this.addEth();
+    await this.addTestToken();
     await this.mintAndWriteOption(this.writer1, amount, isCall, referrer);
   }
 
@@ -133,7 +139,7 @@ export class PremiaOptionTestUtil {
         from.address,
         this.user1.address,
         optionId ?? 1,
-        amount ?? parseEther('1'),
+        amount ?? parseTestToken('1'),
         '0x00',
       );
   }
@@ -145,7 +151,9 @@ export class PremiaOptionTestUtil {
     optionId?: number,
   ) {
     if (isCall) {
-      const baseAmount = amountToExercise.mul(10);
+      const baseAmount = parseEther(
+        formatUnits(amountToExercise.mul(10), TEST_TOKEN_DECIMALS),
+      );
       const amount = baseAmount.add(baseAmount.mul(this.tax).div(1e4));
       await this.dai.mint(this.user1.address, amount);
       await this.dai
@@ -156,8 +164,8 @@ export class PremiaOptionTestUtil {
         amountToExercise.mul(this.tax).div(1e4),
       );
 
-      await this.weth.connect(this.user1).deposit({ value: amount });
-      await this.weth
+      await mintTestToken(this.user1, this.testToken, amount);
+      await this.testToken
         .connect(this.user1)
         .approve(this.premiaOption.address, amount);
     }
@@ -171,13 +179,13 @@ export class PremiaOptionTestUtil {
       );
   }
 
-  async addEthAndWriteOptionsAndExercise(
+  async addTestTokenAndWriteOptionsAndExercise(
     isCall: boolean,
     amountToWrite: BigNumber,
     amountToExercise: BigNumber,
     referrer?: string,
   ) {
-    await this.addEthAndWriteOptions(amountToWrite, isCall);
+    await this.addTestTokenAndWriteOptions(amountToWrite, isCall);
     await this.transferOptionToUser1(this.writer1, amountToWrite);
     await this.exerciseOption(isCall, amountToExercise, referrer);
   }

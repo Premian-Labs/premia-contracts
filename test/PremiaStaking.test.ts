@@ -23,7 +23,7 @@ describe('PremiaStaking', () => {
     const premiaFactory = new TestErc20__factory(admin);
     const premiStakingFactory = new PremiaStaking__factory(admin);
 
-    premia = await premiaFactory.deploy();
+    premia = await premiaFactory.deploy(18);
     premiaStaking = await premiStakingFactory.deploy(premia.address);
 
     await premia.mint(alice.address, '100');

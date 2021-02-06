@@ -26,7 +26,7 @@ export async function createUniswap(
   weth?: WETH9,
 ) {
   if (!dai) {
-    dai = await new TestErc20__factory(admin).deploy();
+    dai = await new TestErc20__factory(admin).deploy(18);
   }
 
   if (!weth) {

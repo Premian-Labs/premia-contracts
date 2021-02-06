@@ -124,6 +124,9 @@ contract PremiaMaker is Ownable {
         uint256 amountMinusFee = amount.sub(fee);
 
         token.safeTransfer(treasury, fee);
+
+        if (amountMinusFee == 0) return;
+
         token.safeIncreaseAllowance(address(_router), amountMinusFee);
 
         address weth = _router.WETH();
