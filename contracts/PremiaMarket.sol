@@ -433,7 +433,9 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     /// @param _order Order to create
     /// @param _amount Amount of options to buy / sell
     /// @param _orderCandidates Accepted orders to be filled
-    function createOrderAndTryToFill(Order memory _order, uint256 _amount, Order[] memory _orderCandidates) external {
+    /// @param _writeOnBuyFill Write option prior to filling order when a buy order is passed
+    /// @param _referrer Referrer
+    function createOrderAndTryToFill(Order memory _order, uint256 _amount, Order[] memory _orderCandidates, bool _writeOnBuyFill, address _referrer) external {
         require(_amount > 0, "Amount must be > 0");
 
         // Ensure candidate orders are valid
@@ -445,45 +447,14 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
         uint256 totalFilled;
         if (_orderCandidates.length == 1) {
-            totalFilled = fillOrder(_orderCandidates[0], _amount);
+            totalFilled = fillOrder(_orderCandidates[0], _amount, _writeOnBuyFill, _referrer);
         } else if (_orderCandidates.length > 1) {
-            totalFilled = fillOrders(_orderCandidates, _amount);
+            totalFilled = fillOrders(_orderCandidates, _amount, _writeOnBuyFill, _referrer);
         }
 
         if (totalFilled < _amount) {
             createOrder(_order, _amount.sub(totalFilled));
         }
-    }
-
-    /// @notice Write an option and fill a buy order
-    /// @param _order Order to fill
-    /// @param _maxAmount Max amount to fill
-    /// @return The amount of orders filled
-    function writeAndFillOrder(Order memory _order, uint256 _maxAmount, address _referrer) public returns(uint256) {
-        require(_order.side == SaleSide.Buy, "Not a buy order");
-        bytes32 hash = getOrderHash(_order);
-
-        // If nothing left to fill, return
-        if (amounts[hash] == 0) return 0;
-
-        uint256 amount = _maxAmount;
-        if (amounts[hash] < amount) {
-            amount = amounts[hash];
-        }
-
-        IPremiaOption optionContract = IPremiaOption(_order.optionContract);
-        IPremiaOption.OptionData memory data = optionContract.optionData(_order.optionId);
-
-        IPremiaOption.OptionWriteArgs memory writeArgs = IPremiaOption.OptionWriteArgs({
-            token: data.token,
-            amount: amount,
-            strikePrice: data.strikePrice,
-            expiration: data.expiration,
-            isCall: data.isCall
-        });
-
-        optionContract.writeOptionFrom(msg.sender, writeArgs, _referrer);
-        return fillOrder(_order, _maxAmount);
     }
 
     /// @notice Write an option and create a sell order
@@ -507,8 +478,10 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     /// @notice Fill an existing order
     /// @param _order The order to fill
     /// @param _amount Max amount of options to buy or sell
+    /// @param _writeOnBuyFill Write option prior to filling order when a buy order is passed
+    /// @param _referrer Referrer
     /// @return Amount of options bought or sold
-    function fillOrder(Order memory _order, uint256 _amount) public nonReentrant returns(uint256) {
+    function fillOrder(Order memory _order, uint256 _amount, bool _writeOnBuyFill, address _referrer) public nonReentrant returns(uint256) {
         bytes32 hash = getOrderHash(_order);
 
         require(_order.expirationTime != 0 && block.timestamp < _order.expirationTime, "Order expired");
@@ -523,7 +496,10 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
         // If option has delayed minting on fill, we first need to mint it on behalf of order maker
         if (_order.side == SaleSide.Sell && _order.isDelayedWriting) {
-            _writeOption(_order, _amount);
+            // We do not pass a referrer, cause referrer used is the one of the order maker
+            IPremiaOption(_order.optionContract).writeOptionWithIdFrom(_order.maker, _order.optionId, _amount, address(0));
+        } else if (_order.side == SaleSide.Buy && _writeOnBuyFill) {
+            IPremiaOption(_order.optionContract).writeOptionWithIdFrom(msg.sender, _order.optionId, _amount, _referrer);
         }
 
         uint256 basePrice = _order.pricePerUnit.mul(_amount).div(10**_order.decimals);
@@ -544,15 +520,15 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             IPremiaOption(_order.optionContract).safeTransferFrom(_order.maker, msg.sender, _order.optionId, _amount, "");
         }
 
-        uint256 paymentTokenPrice = uPremia.getTokenPrice(_order.paymentToken);
-
         // Mint uPremia
         if (address(uPremia) != address(0)) {
+            uint256 paymentTokenPrice = uPremia.getTokenPrice(_order.paymentToken);
+
             uPremiaBalance[_order.maker] = uPremiaBalance[_order.maker].add(orderMakerFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
             uPremiaBalance[msg.sender] = uPremiaBalance[msg.sender].add(orderTakerFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
-        }
 
-        uPremia.mint(address(this), orderMakerFee.add(orderTakerFee).mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
+            uPremia.mint(address(this), orderMakerFee.add(orderTakerFee).mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
+        }
 
         emit OrderFilled(
             hash,
@@ -575,8 +551,10 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     ///         - Be for the same option contract and optionId
     /// @param _orders The list of orders to fill
     /// @param _maxAmount Max amount of options to buy or sell
+    /// @param _writeOnBuyFill Write option prior to filling order when a buy order is passed
+    /// @param _referrer Referrer
     /// @return Amount of options bought or sold
-    function fillOrders(Order[] memory _orders, uint256 _maxAmount) public nonReentrant returns(uint256) {
+    function fillOrders(Order[] memory _orders, uint256 _maxAmount, bool _writeOnBuyFill, address _referrer) public nonReentrant returns(uint256) {
         if (_maxAmount == 0) return 0;
 
         uint256 takerFee = feeCalculator.getFee(msg.sender, false, IFeeCalculator.FeeType.Taker);
@@ -591,7 +569,10 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             }
         }
 
-        uint256 paymentTokenPrice = uPremia.getTokenPrice(_orders[0].paymentToken);
+        uint256 paymentTokenPrice;
+        if (address(uPremia) != address(0)) {
+            uPremia.getTokenPrice(_orders[0].paymentToken);
+        }
 
         uint256 totalFee;
         uint256 totalAmount;
@@ -618,7 +599,10 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
             // If option has delayed minting on fill, we first need to mint it on behalf of order maker
             if (_order.side == SaleSide.Sell && _order.isDelayedWriting) {
-                _writeOption(_order, amount);
+                // We do not pass a referrer, cause referrer used is the one of the order maker
+                IPremiaOption(_order.optionContract).writeOptionWithIdFrom(_order.maker, _order.optionId, amount, address(0));
+            } else if (_order.side == SaleSide.Buy && _writeOnBuyFill) {
+                IPremiaOption(_order.optionContract).writeOptionWithIdFrom(msg.sender, _order.optionId, amount, _referrer);
             }
 
             uint256 basePrice = _order.pricePerUnit.mul(amount).div(10**_order.decimals);
@@ -641,7 +625,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
                 IPremiaOption(_order.optionContract).safeTransferFrom(_order.maker, msg.sender, _order.optionId, amount, "");
             }
 
-            // Mint uPremia
+            // Add uPremia reward to users balance
             if (address(uPremia) != address(0)) {
                 uPremiaBalance[_order.maker] = uPremiaBalance[_order.maker].add(orderMakerFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
                 uPremiaBalance[msg.sender] = uPremiaBalance[msg.sender].add(orderTakerFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
@@ -668,7 +652,10 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             IERC20(_orders[0].paymentToken).safeTransferFrom(msg.sender, feeRecipient, totalFee);
         }
 
-        uPremia.mint(address(this), totalFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_orders[0].paymentToken]));
+        // Mint uPremia
+        if (address(uPremia) != address(0)) {
+            uPremia.mint(address(this), totalFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_orders[0].paymentToken]));
+        }
 
         return amountFilled;
     }
@@ -699,20 +686,5 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         for (uint256 i=0; i < _orders.length; i++) {
             cancelOrder(_orders[i]);
         }
-    }
-
-    //////////////////////////////////////////////////
-
-    //////////////
-    // Internal //
-    //////////////
-
-    /// @notice Write an option on behalf of order maker
-    /// @param _order The order for which to write an option
-    /// @param _amount The amount of options to write
-    function _writeOption(Order memory _order, uint256 _amount) internal {
-        require(_order.isDelayedWriting, "Not delayed writing");
-        require(_order.side == SaleSide.Sell);
-        IPremiaOption(_order.optionContract).writeOptionWithIdFrom(_order.maker, _order.optionId, _amount, address(0));
     }
 }
