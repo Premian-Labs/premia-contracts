@@ -43,7 +43,7 @@ async function main() {
     dai = '0x6b175474e89094c44da98b954eedeac495271d0f';
     // weth = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
     // wbtc = '0x2260fac5e5542a773aa44fbcfedf7c193bc2c599';
-    treasury = '0xc22FAe86443aEed038A4ED887bbA8F5035FD12F0 ';
+    treasury = '0xc22FAe86443aEed038A4ED887bbA8F5035FD12F0';
 
     // WETH
     tokens['0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'] = parseEther('200');
