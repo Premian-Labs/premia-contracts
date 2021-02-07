@@ -1478,6 +1478,9 @@ describe('PremiaOption', () => {
           ZERO_ADDRESS,
           uniswap.router.address,
           parseEther('100000'),
+          testToken.address === weth.address
+            ? [weth.address, dai.address]
+            : [testToken.address, weth.address, dai.address],
         );
 
       const user1Weth = await uniswap.weth.balanceOf(user1.address);
@@ -1514,6 +1517,9 @@ describe('PremiaOption', () => {
             ZERO_ADDRESS,
             uniswap.router.address,
             parseEther('100000'),
+            testToken.address === weth.address
+              ? [weth.address, dai.address]
+              : [testToken.address, weth.address, dai.address],
           ),
       ).to.be.revertedWith('UniswapV2Router: EXCESSIVE_INPUT_AMOUNT');
     });
@@ -1541,6 +1547,9 @@ describe('PremiaOption', () => {
             ZERO_ADDRESS,
             uniswap.router.address,
             parseEther('100000'),
+            testToken.address === weth.address
+              ? [weth.address, dai.address]
+              : [testToken.address, weth.address, dai.address],
           ),
       ).to.be.revertedWith('Not approved');
     });
@@ -1570,6 +1579,9 @@ describe('PremiaOption', () => {
           ZERO_ADDRESS,
           uniswap.router.address,
           parseEther('100000'),
+          testToken.address === weth.address
+            ? [weth.address, dai.address]
+            : [testToken.address, weth.address, dai.address],
         );
 
       const user1Weth = await uniswap.weth.balanceOf(user1.address);

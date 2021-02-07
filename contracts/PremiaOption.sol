@@ -715,9 +715,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _referrer Referrer
     /// @param _router The UniswapRouter used to perform the swap (Needs to be a whitelisted router)
     /// @param _amountInMax Max amount of collateral token to use for the swap, for the tx to not be reverted
-    function flashExerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) external {
+    /// @param _path Path used for the routing of the swap
+    function flashExerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax, address[] memory _path) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
-        _flashExerciseOption(_from, _optionId, _amount, _referrer, _router, _amountInMax);
+        _flashExerciseOption(_from, _optionId, _amount, _referrer, _router, _amountInMax, _path);
     }
 
     /// @notice Flash exercise an option
@@ -730,8 +731,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _referrer Referrer
     /// @param _router The UniswapRouter used to perform the swap (Needs to be a whitelisted router)
     /// @param _amountInMax Max amount of collateral token to use for the swap, for the tx to not be reverted
-    function flashExerciseOption(uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) external {
-        _flashExerciseOption(msg.sender, _optionId, _amount, _referrer, _router, _amountInMax);
+    /// @param _path Path used for the routing of the swap
+    function flashExerciseOption(uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax, address[] memory _path) external {
+        _flashExerciseOption(msg.sender, _optionId, _amount, _referrer, _router, _amountInMax, _path);
     }
 
     /// @notice Flash exercise an option on behalf of an address
@@ -746,7 +748,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _referrer Referrer
     /// @param _router The UniswapRouter used to perform the swap (Needs to be a whitelisted router)
     /// @param _amountInMax Max amount of collateral token to use for the swap, for the tx to not be reverted
-    function _flashExerciseOption(address _from, uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) internal nonReentrant {
+    /// @param _path Path used for the routing of the swap
+    function _flashExerciseOption(address _from, uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax, address[] memory _path) internal nonReentrant {
         require(_amount > 0, "Amount <= 0");
 
         burn(_from, _optionId, _amount);
@@ -777,7 +780,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         }
 
         // Swap enough denominator to tokenErc20 to pay fee + strike price
-        uint256 tokenAmountUsed = _swap(_router, quote.outputToken, quote.inputToken, quote.input.add(quote.fee).add(quote.feeReferrer), _amountInMax)[0];
+        uint256 tokenAmountUsed = _swap(_router, quote.outputToken, quote.inputToken, quote.input.add(quote.fee).add(quote.feeReferrer), _amountInMax, _path)[0];
 
         // Pay fees
         _payFees(address(this), IERC20(quote.inputToken), _referrer, quote.fee, quote.feeReferrer, quote.inputDecimals);
@@ -930,30 +933,17 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _to Output token of the swap
     /// @param _amount Amount of output tokens we want
     /// @param _amountInMax Max amount of input token to spend for the tx to not revert
+    /// @param _path Path used for the routing of the swap
     /// @return Swap amounts
-    function _swap(IUniswapV2Router02 _router, address _from, address _to, uint256 _amount, uint256 _amountInMax) internal returns (uint256[] memory) {
+    function _swap(IUniswapV2Router02 _router, address _from, address _to, uint256 _amount, uint256 _amountInMax, address[] memory _path) internal returns (uint256[] memory) {
         require(_isInArray(address(_router), whitelistedUniswapRouters), "Router not whitelisted");
 
         IERC20(_from).approve(address(_router), _amountInMax);
 
-        address[] memory path;
-        address weth = _router.WETH();
-
-        if (_from == weth || _to == weth) {
-            path = new address[](2);
-            path[0] = _from;
-            path[1] = _to;
-        } else {
-            path = new address[](3);
-            path[0] = _from;
-            path[1] = weth;
-            path[2] = _to;
-        }
-
         uint256[] memory amounts = _router.swapTokensForExactTokens(
             _amount,
             _amountInMax,
-            path,
+            _path,
             address(this),
             block.timestamp.add(60)
         );

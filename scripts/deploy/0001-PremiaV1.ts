@@ -22,7 +22,7 @@ async function main() {
   let tokens: { [addr: string]: BigNumberish } = {};
   let uniswapRouters = [
     '0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F', // SushiSwap router
-    '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', // Uniswap router
+    // '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', // Uniswap router
   ];
 
   let founder1 = '0xC340B7A2A70d7e08F25435CB97F3B25A45002e6C';
@@ -240,6 +240,23 @@ async function main() {
       await vestingContract.transferOwnership(founder);
       console.log(`Ownership transferred to ${founder}`);
     }
+  }
+
+  // Fee sharing disabled by default - Enabling protocol fee sharing will have to be voted on by the community
+  await contracts.premiaMaker.setTreasuryFee(1e4);
+  console.log('Protocol fee sharing disabled');
+
+  if (!isTestnet) {
+    // Badger routing : Badger -> Wbtc -> Weth
+    await contracts.premiaMaker.setCustomPath(
+      '0x3472A5A71965499acd81997a54BBA8D852C6E53d',
+      [
+        '0x3472A5A71965499acd81997a54BBA8D852C6E53d',
+        '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599',
+        '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+      ],
+    );
+    console.log('Added badger custom routing');
   }
 
   await contracts.feeCalculator.transferOwnership(treasury);

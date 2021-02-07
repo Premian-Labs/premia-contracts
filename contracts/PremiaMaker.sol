@@ -36,6 +36,9 @@ contract PremiaMaker is Ownable {
 
     uint256 private constant _inverseBasisPoint = 1e4;
 
+    // Set a custom swap path for a token
+    mapping(address=>address[]) public customPath;
+
     ////////////
     // Events //
     ////////////
@@ -65,6 +68,13 @@ contract PremiaMaker is Ownable {
     ///////////
     // Admin //
     ///////////
+
+    /// @notice Set a custom swap path for a token
+    /// @param _token The token
+    /// @param _path The swap path
+    function setCustomPath(address _token, address[] memory _path) external onlyOwner {
+        customPath[_token] = _path;
+    }
 
     /// @notice Set a new treasury fee
     /// @param _fee New fee
@@ -134,9 +144,13 @@ contract PremiaMaker is Ownable {
 
         if (_token != address(premia)) {
             if (_token != weth) {
-                address[] memory path = new address[](2);
-                path[0] = _token;
-                path[1] = weth;
+                address[] memory path = customPath[_token];
+
+                if (path.length == 0) {
+                    path = new address[](2);
+                    path[0] = _token;
+                    path[1] = weth;
+                }
 
                 _router.swapExactTokensForETH(
                     amountMinusFee,
