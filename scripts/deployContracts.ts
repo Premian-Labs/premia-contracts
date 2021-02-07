@@ -58,9 +58,9 @@ export async function deployContracts(
     // premia = await new PremiaErc20__factory(deployer).deploy();
     premia = PremiaErc20__factory.connect(premiaAddress, deployer);
 
-    pbcBlockStart = 0;
-    pbcBlockEnd = 0;
-    miningBlockStart = 0;
+    pbcBlockStart = 11806500;
+    pbcBlockEnd = 11858500;
+    miningBlockStart = 11865000;
     miningBonusLength = 360e3;
     miningPostBonusLength = 3600e3;
 

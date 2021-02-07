@@ -25,10 +25,10 @@ async function main() {
     '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', // Uniswap router
   ];
 
-  let founder1 = ZERO_ADDRESS;
-  let founder2 = ZERO_ADDRESS;
-  let founder3 = ZERO_ADDRESS;
-  let founder4 = ZERO_ADDRESS;
+  let founder1 = '0xC340B7A2A70d7e08F25435CB97F3B25A45002e6C';
+  let founder2 = '0xfCF7c21910A878b5A31D31bA29789C3ff235fC17';
+  let founder3 = '0x50CC6BE786aeF59EaD19fa4438dFe139D6837822';
+  let founder4 = '0xDEAD5D3c486AcE753c839e2EB27BacdabBA06dD6';
 
   if (isTestnet) {
     dai = '0x5592EC0cfb4dbc12D3aB100b257153436a1f0FEa';
@@ -46,40 +46,43 @@ async function main() {
     treasury = '0xc22FAe86443aEed038A4ED887bbA8F5035FD12F0 ';
 
     // WETH
-    tokens['0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'] = parseEther('50');
+    tokens['0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2'] = parseEther('200');
 
     // WBTC
-    tokens['0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599'] = parseEther('1000');
+    tokens['0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599'] = parseEther('500');
 
     // LINK
-    tokens['0x514910771AF9Ca656af840dff83E8264EcF986CA'] = parseEther('1');
+    tokens['0x514910771AF9Ca656af840dff83E8264EcF986CA'] = parseEther('2.5');
 
     // AAVE
-    tokens['0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9'] = parseEther('10');
+    tokens['0x7Fc66500c84A76Ad7e9c93437bFc5Ac33E2DDaE9'] = parseEther('50');
 
     // SNX
-    tokens['0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F'] = parseEther('1');
+    tokens['0xC011a73ee8576Fb46F5E1c5751cA3B9Fe0af2a6F'] = parseEther('2.5');
 
     // COMP
-    tokens['0xc00e94Cb662C3520282E6f5717214004A7f26888'] = parseEther('10');
+    tokens['0xc00e94Cb662C3520282E6f5717214004A7f26888'] = parseEther('50');
 
     // MKR
-    tokens['0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2'] = parseEther('50');
+    tokens['0x9f8F72aA9304c8B593d555F12eF6589cC3A579A2'] = parseEther('250');
 
     // REN
-    tokens['0x408e41876cCCDC0F92210600ef50372656052a38'] = parseEther('0.05');
+    tokens['0x408e41876cCCDC0F92210600ef50372656052a38'] = parseEther('0.1');
 
     // CRV
-    tokens['0xD533a949740bb3306d119CC777fa900bA034cd52'] = parseEther('0.1');
+    tokens['0xD533a949740bb3306d119CC777fa900bA034cd52'] = parseEther('0.5');
 
     // UNI
-    tokens['0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984'] = parseEther('1');
+    tokens['0x1f9840a85d5aF5bf1D1762F925BDADdC4201F984'] = parseEther('2.5');
 
     // SUSHI
-    tokens['0x6B3595068778DD592e39A122f4f5a5cF09C90fE2'] = parseEther('1');
+    tokens['0x6B3595068778DD592e39A122f4f5a5cF09C90fE2'] = parseEther('2.5');
 
     // YFI
-    tokens['0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e'] = parseEther('1000');
+    tokens['0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e'] = parseEther('5000');
+
+    // BADGER
+    tokens['0x3472A5A71965499acd81997a54BBA8D852C6E53d'] = parseEther('10');
 
     if (!Object.keys(tokens).length) {
       throw new Error('Token list not set');
@@ -216,6 +219,14 @@ async function main() {
     `PremiaDevFund deployed at ${devFund.address} (Args : ${contracts.premia.address})`,
   );
 
+  // Mining fund contract
+  const miningFund = await new PremiaDevFund__factory(deployer).deploy(
+    contracts.premia.address,
+  );
+  console.log(
+    `MiningFund deployed at ${miningFund.address} (Args : ${contracts.premia.address})`,
+  );
+
   // Founder vesting contracts
   if (!isTestnet) {
     for (const founder of [founder1, founder2, founder3, founder4]) {
@@ -236,6 +247,9 @@ async function main() {
 
   await devFund.transferOwnership(treasury);
   console.log(`PremiaDevFund ownership transferred to ${treasury}`);
+
+  await miningFund.transferOwnership(treasury);
+  console.log(`MiningFund ownership transferred to ${treasury}`);
 
   await contracts.premiaFeeDiscount.transferOwnership(treasury);
   console.log(`PremiaFeeDiscount ownership transferred to ${treasury}`);
