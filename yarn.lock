@@ -511,6 +511,11 @@
     "@types/sinon-chai" "^3.2.3"
     "@types/web3" "1.0.19"
 
+"@openzeppelin/contracts@3.2.0-solc-0.7":
+  version "3.2.0-solc-0.7"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-3.2.0-solc-0.7.tgz#507d3a04ab65d19449b3b9659b3b8b75014afbbf"
+  integrity sha512-E9cb+9o1TOecuIix9hzGz+NVIfLCUiQXkDH4lmgUdGOTQLV2o9c8M13U1naahtmjkffTBAjLNDSCy46b2jeDpA==
+
 "@resolver-engine/core@^0.3.3":
   version "0.3.3"
   resolved "https://registry.yarnpkg.com/@resolver-engine/core/-/core-0.3.3.tgz#590f77d85d45bc7ecc4e06c654f41345db6ca967"
@@ -630,6 +635,12 @@
   version "0.8.2"
   resolved "https://registry.yarnpkg.com/@solidity-parser/parser/-/parser-0.8.2.tgz#a6a5e93ac8dca6884a99a532f133beba59b87b69"
   integrity sha512-8LySx3qrNXPgB5JiULfG10O3V7QTxI/TLzSw5hFQhXWSkVxZBAv4rZQ0sYgLEbc8g3L2lmnujj1hKul38Eu5NQ==
+
+"@solidstate/contracts@https://github.com/solidstate-network/solidstate-contracts":
+  version "0.0.0"
+  resolved "https://github.com/solidstate-network/solidstate-contracts#097ca919cec3ebf7bfd9212f76c1de3f3fb4b222"
+  dependencies:
+    "@openzeppelin/contracts" "3.2.0-solc-0.7"
 
 "@szmarczak/http-timer@^1.1.2":
   version "1.1.2"
