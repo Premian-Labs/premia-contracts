@@ -1,0 +1,37 @@
+{
+  "name": "TODO",
+  "version": "0.0.0",
+  "description": "TODO",
+  "keywords": [
+    "hardhat",
+    "waffle",
+    "solidity",
+    "smart-contracts",
+    "ethereum",
+    "ether",
+    "eth",
+    "buidler",
+    "wow"
+  ],
+  "author": "TODO",
+  "license": "TODO",
+  "private": true,
+  "repository": {
+    "type": "git",
+    "url": "TODO"
+  },
+  "devDependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.1",
+    "@nomiclabs/hardhat-waffle": "^2.0.1",
+    "chai": "^4.2.0",
+    "eslint": "^7.18.0",
+    "eslint-plugin-mocha": "^8.0.0",
+    "ethereum-waffle": "^3.2.1",
+    "ethers": "^5.0.26",
+    "hardhat": "^2.0.8",
+    "hardhat-docgen": "^1.0.0",
+    "hardhat-gas-reporter": "^1.0.4",
+    "hardhat-spdx-license-identifier": "^2.0.3",
+    "solidity-coverage": "^0.7.14"
+  }
+}
