@@ -6,10 +6,10 @@ import { BigNumberish } from 'ethers';
 async function main() {
   const [deployer] = await ethers.getSigners();
 
-  const premia = '0x0';
+  const premia = '0x6399C842dD2bE3dE30BF99Bc7D1bBF6Fa3650E70';
   const treasury = '0xc22FAe86443aEed038A4ED887bbA8F5035FD12F0';
-  const startPrice = ''; // ToDo : Set start price
-  const k = '1000000000';
+  const startPrice = '1919488000000000';
+  const k = '1800000000';
 
   const premiaBondingCurve = await new PremiaBondingCurve__factory(
     deployer,

@@ -79,8 +79,8 @@ export default {
       accounts: [ETH_MAIN_KEY],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
-      gasPrice: 150000000000,
-      timeout: 100000,
+      gasPrice: 600000000000,
+      timeout: 1000000,
     },
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${ALCHEMY_KEY}`,
