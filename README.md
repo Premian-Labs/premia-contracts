@@ -1,6 +1,6 @@
-# TODO
+# OpenHedge Contracts
 
-This repository was generated from a template or is the template itself.  For more information, see [docs/TEMPLATE.md](./docs/TEMPLATE.md).
+OpenHedge options markets.
 
 ## Development
 
