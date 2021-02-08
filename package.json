@@ -15,7 +15,7 @@
   ],
   "license": "UNLICENSED",
   "private": true,
-  "repository": "https://github.com/openhedge-network/openhedge-contracts",
+  "repository": "https://github.com/Median-Finance/openhedge-contracts",
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.1",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
