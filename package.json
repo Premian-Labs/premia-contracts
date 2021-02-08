@@ -1,7 +1,7 @@
 {
   "name": "openhedge-contracts",
   "version": "0.0.0",
-  "description": "OpenHedge options markets",
+  "description": "Openhedge options markets",
   "keywords": [
     "hardhat",
     "waffle",

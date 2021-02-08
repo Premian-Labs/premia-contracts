@@ -1,6 +1,6 @@
-# OpenHedge Contracts
+# Openhedge Contracts
 
-OpenHedge options markets.
+Openhedge options markets.
 
 ## Development
 
