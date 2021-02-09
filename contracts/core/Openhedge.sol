@@ -6,6 +6,8 @@ pragma abicoder v2;
 import '@solidstate/contracts/contracts/access/OwnableStorage.sol';
 import '@solidstate/contracts/contracts/architecture/diamond/DiamondBase.sol';
 
+import './PairManagerStorage.sol';
+
 /**
  * @title Openhedge core contract
  * @dev based on the EIP2535 Diamond standard
@@ -24,5 +26,6 @@ contract Openhedge is DiamondBase {
   ) {
     OwnableStorage.layout().owner = msg.sender;
     DiamondBaseStorage.layout().diamondCut(cuts);
+    PairManagerStorage.layout().implementation = pairImplementation;
   }
 }
