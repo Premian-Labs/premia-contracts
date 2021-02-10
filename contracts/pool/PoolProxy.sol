@@ -4,19 +4,21 @@ pragma solidity ^0.7.0;
 
 import '@solidstate/contracts/contracts/access/OwnableStorage.sol';
 
-import '../pair/PoolManager.sol';
+import '../core/PairManager.sol';
 
 /**
  * @title Upgradeable proxy with centrally controlled Pool implementation
  * @dev uses Ownable storage location
  */
 contract PoolProxy {
-  constructor () {
-    OwnableStorage.layout().owner = msg.sender;
+  constructor (
+    address owner
+  ) {
+    OwnableStorage.layout().owner = owner;
   }
 
   fallback () virtual external payable {
-    address implementation = PoolManager(
+    address implementation = PairManager(
       OwnableStorage.layout().owner
     ).getPoolImplementation();
 

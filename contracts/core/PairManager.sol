@@ -33,11 +33,20 @@ contract PairManager is OwnableInternal {
   }
 
   /**
-   * @notice get address of Pair implementation contract
+   * @notice get address of Pair implementation contract for forwarding via PairProxy
    * @dev TODO: override from interface
    * @return implementation address
    */
   function getPairImplementation () external view returns (address) {
-    return PairManagerStorage.layout().implementation;
+    return PairManagerStorage.layout().pairImplementation;
+  }
+
+  /**
+   * @notice get address of Pool implementation contract for forwarding via PoolProxy
+   * @dev TODO: override from interface
+   * @return implementation address
+   */
+  function getPoolImplementation () external view returns (address) {
+    return PairManagerStorage.layout().poolImplementation;
   }
 }

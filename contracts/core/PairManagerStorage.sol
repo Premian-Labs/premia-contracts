@@ -8,7 +8,8 @@ library PairManagerStorage {
   );
 
   struct Layout {
-    address implementation;
+    address pairImplementation;
+    address poolImplementation;
   }
 
   function layout () internal pure returns (Layout storage l) {

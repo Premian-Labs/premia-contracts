@@ -19,13 +19,20 @@ contract Openhedge is DiamondBase {
    * @notice deploy contract and connect given diamond facets
    * @param cuts diamond cuts to add at deployment
    * @param pairImplementation implementaion Pair contract
+   * @param poolImplementation implementaion Pool contract
    */
   constructor (
     DiamondBaseStorage.FacetCut[] memory cuts,
-    address pairImplementation
+    address pairImplementation,
+    address poolImplementation
   ) {
     OwnableStorage.layout().owner = msg.sender;
     DiamondBaseStorage.layout().diamondCut(cuts);
-    PairManagerStorage.layout().implementation = pairImplementation;
+
+    {
+      PairManagerStorage.Layout storage l = PairManagerStorage.layout();
+      l.pairImplementation = pairImplementation;
+      l.poolImplementation = poolImplementation;
+    }
   }
 }

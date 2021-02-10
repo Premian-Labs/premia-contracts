@@ -6,13 +6,12 @@ import '@solidstate/contracts/contracts/access/OwnableInternal.sol';
 
 import '../pool/Pool.sol';
 import '../pool/PoolProxy.sol';
-import './PoolManager.sol';
 
 /**
  * @title Openhedge options pair
  * @dev deployed standalone and referenced by PairProxy
  */
-contract Pair is OwnableInternal, PoolManager {
+contract Pair is OwnableInternal {
   /**
    * @notice initialize proxy storage
    * @param asset0 asset in pair
@@ -26,11 +25,9 @@ contract Pair is OwnableInternal, PoolManager {
       (asset0, asset1) = (asset1, asset0);
     }
 
-    PoolProxy pool0 = new PoolProxy();
+    PoolProxy pool0 = new PoolProxy(msg.sender);
     Pool(address(pool0)).initialize(asset0, asset1);
-    PoolProxy pool1 = new PoolProxy();
+    PoolProxy pool1 = new PoolProxy(msg.sender);
     Pool(address(pool1)).initialize(asset1, asset0);
-
-    // TODO: set pool implementation
   }
 }
