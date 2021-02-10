@@ -4,7 +4,7 @@ pragma solidity ^0.7.0;
 
 import '@solidstate/contracts/contracts/access/OwnableStorage.sol';
 
-import '../core/PairManager.sol';
+import '../core/ProxyManager.sol';
 
 /**
  * @title Upgradeable proxy with centrally controlled Pair implementation
@@ -16,7 +16,7 @@ contract PairProxy {
   }
 
   fallback () virtual external payable {
-    address implementation = PairManager(
+    address implementation = ProxyManager(
       OwnableStorage.layout().owner
     ).getPairImplementation();
 

@@ -6,7 +6,7 @@ pragma abicoder v2;
 import '@solidstate/contracts/contracts/access/OwnableStorage.sol';
 import '@solidstate/contracts/contracts/architecture/diamond/DiamondBase.sol';
 
-import './PairManagerStorage.sol';
+import './ProxyManagerStorage.sol';
 
 /**
  * @title Openhedge core contract
@@ -30,7 +30,7 @@ contract Openhedge is DiamondBase {
     DiamondBaseStorage.layout().diamondCut(cuts);
 
     {
-      PairManagerStorage.Layout storage l = PairManagerStorage.layout();
+      ProxyManagerStorage.Layout storage l = ProxyManagerStorage.layout();
       l.pairImplementation = pairImplementation;
       l.poolImplementation = poolImplementation;
     }
