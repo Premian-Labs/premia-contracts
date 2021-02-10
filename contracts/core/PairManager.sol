@@ -4,6 +4,7 @@ pragma solidity ^0.7.0;
 
 import '@solidstate/contracts/contracts/access/OwnableInternal.sol';
 
+import '../pair/Pair.sol';
 import '../pair/PairProxy.sol';
 import './PairManagerStorage.sol';
 
@@ -16,14 +17,17 @@ contract PairManager is OwnableInternal {
 
   /**
    * @notice deploy PairProxy contract
-   * TODO: assets
+   * @param asset0 asset in pair
+   * @param asset1 asset in pair
+   * TODO: unrestrict
    * @return deployment address
    */
   function deployPair (
-    address,
-    address
+    address asset0,
+    address asset1
   ) external onlyOwner returns (address) {
     PairProxy pair = new PairProxy();
+    Pair(address(pair)).initialize(asset0, asset1);
     emit PairDeployment(address(pair));
     return address(pair);
   }
