@@ -6,6 +6,7 @@ import '@solidstate/contracts/contracts/access/OwnableInternal.sol';
 import '@solidstate/contracts/contracts/token/ERC20/ERC20.sol';
 import '@solidstate/contracts/contracts/token/ERC20/ERC20MetadataStorage.sol';
 import '@solidstate/contracts/contracts/token/ERC20/IERC20.sol';
+import '@solidstate/contracts/contracts/token/ERC1155/ERC1155Base.sol';
 
 import './PoolStorage.sol';
 
@@ -13,7 +14,7 @@ import './PoolStorage.sol';
  * @title Openhedge option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract Pool is OwnableInternal, ERC20 {
+contract Pool is OwnableInternal, ERC20, ERC1155Base {
   /**
    * @notice get price of option contract
    * @param amount size of option contract
@@ -119,12 +120,29 @@ contract Pool is OwnableInternal, ERC20 {
     uint strikePrice,
     uint maturity
   ) external {
-    uint price = quote(amount, strikePrice, maturity);
+    // TODO: convert ETH to WETH if applicable
 
     IERC20(
       PoolStorage.layout().underlying
-    ).transfer(msg.sender, price);
+    ).transferFrom(
+      msg.sender,
+      address(this),
+      quote(amount, strikePrice, maturity)
+    );
 
-    // TODO: mint option token
+    _mint(msg.sender, _tokenIdFor(strikePrice, maturity), amount, '');
+  }
+
+  /**
+   * @notice calculate ERC1155 token id for given option parameters
+   * @param strikePrice option strike price
+   * @param maturity timestamp of option maturity
+   * @return token id
+   */
+  function _tokenIdFor (
+    uint strikePrice,
+    uint maturity
+  ) private pure returns (uint) {
+    // TODO: calculate token id
   }
 }
