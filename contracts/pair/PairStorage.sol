@@ -2,15 +2,13 @@
 
 pragma solidity ^0.7.0;
 
-library PoolStorage {
+library PairStorage {
   bytes32 internal constant STORAGE_SLOT = keccak256(
-    'openhedge.contracts.storage.Pool'
+    'openhedge.contracts.storage.Pair'
   );
 
   struct Layout {
-    address pair;
-    address base;
-    address underlying;
+    mapping (uint => uint) volatilityByDay;
   }
 
   function layout () internal pure returns (Layout storage l) {

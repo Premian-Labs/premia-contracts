@@ -8,6 +8,7 @@ import '@solidstate/contracts/contracts/token/ERC20/ERC20MetadataStorage.sol';
 import '@solidstate/contracts/contracts/token/ERC20/IERC20.sol';
 import '@solidstate/contracts/contracts/token/ERC1155/ERC1155Base.sol';
 
+import '../pair/Pair.sol';
 import './PoolStorage.sol';
 
 /**
@@ -28,6 +29,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint maturity
   ) public view returns (uint) {
     // TODO: calculate
+
+    uint volatility = Pair(PoolStorage.layout().pair).getVolatility();
   }
 
   /**
@@ -41,6 +44,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   ) external onlyOwner {
     {
       PoolStorage.Layout storage l = PoolStorage.layout();
+      l.pair = msg.sender;
       l.base = base;
       l.underlying = underlying;
     }

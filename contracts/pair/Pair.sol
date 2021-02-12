@@ -6,6 +6,7 @@ import '@solidstate/contracts/contracts/access/OwnableInternal.sol';
 
 import '../pool/Pool.sol';
 import '../pool/PoolProxy.sol';
+import './PairStorage.sol';
 
 /**
  * @title Openhedge options pair
@@ -29,5 +30,21 @@ contract Pair is OwnableInternal {
     Pool(address(pool0)).initialize(asset0, asset1);
     PoolProxy pool1 = new PoolProxy(msg.sender);
     Pool(address(pool1)).initialize(asset1, asset0);
+  }
+
+  /**
+   * @notice calculate or get cached volatility for current day
+   * @return volatility
+   */
+  function getVolatility () external view returns (uint) {
+    uint day = block.timestamp / (1 days);
+
+    PairStorage.Layout storage l = PairStorage.layout();
+
+    if (l.volatilityByDay[day] == 0) {
+      // TODO: calculate volatility for today
+    }
+
+    return l.volatilityByDay[day];
   }
 }
