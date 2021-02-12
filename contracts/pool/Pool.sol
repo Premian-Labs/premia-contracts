@@ -134,6 +134,34 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   }
 
   /**
+   * @notice exercise call option
+   * @param amount quantity of option contract tokens to exercise
+   * @param strikePrice option strike price
+   * @param maturity timestamp of option maturity
+   */
+  function exercise (
+    uint amount,
+    uint strikePrice,
+    uint maturity
+  ) external {
+    exercise(_tokenIdFor(strikePrice, maturity), amount);
+  }
+
+  /**
+   * @notice exercise call option
+   * @param id ERC1155 token id
+   * @param amount quantity of option contract tokens to exercise
+   */
+  function exercise (
+    uint id,
+    uint amount
+  ) public {
+    _burn(msg.sender, id, amount);
+
+    // TODO: send payment
+  }
+
+  /**
    * @notice calculate ERC1155 token id for given option parameters
    * @param strikePrice option strike price
    * @param maturity timestamp of option maturity
