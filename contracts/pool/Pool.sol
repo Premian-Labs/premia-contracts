@@ -4,6 +4,7 @@ pragma solidity ^0.7.0;
 
 import '@solidstate/contracts/contracts/access/OwnableInternal.sol';
 import '@solidstate/contracts/contracts/token/ERC20/ERC20.sol';
+import '@solidstate/contracts/contracts/token/ERC20/ERC20MetadataStorage.sol';
 import '@solidstate/contracts/contracts/token/ERC20/IERC20.sol';
 
 import './PoolStorage.sol';
@@ -37,7 +38,33 @@ contract Pool is OwnableInternal, ERC20 {
     address base,
     address underlying
   ) external onlyOwner {
-    // TODO: initialize
+    {
+      PoolStorage.Layout storage l = PoolStorage.layout();
+      l.base = base;
+      l.underlying = underlying;
+    }
+
+    {
+      ERC20MetadataStorage.Layout storage l = ERC20MetadataStorage.layout();
+
+      string memory symbolUnderlying = ERC20(underlying).symbol();
+      string memory symbolBase = ERC20(base).symbol();
+
+      l.name = string(abi.encodePacked(
+        'Median Liquidity: ',
+        symbolUnderlying,
+        '/',
+        symbolBase
+      ));
+
+      l.symbol = string(abi.encodePacked(
+        'MED-',
+        symbolUnderlying,
+        symbolBase
+      ));
+
+      l.decimals = 18;
+    }
   }
 
   /**
