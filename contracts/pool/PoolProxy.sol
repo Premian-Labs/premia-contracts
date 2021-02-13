@@ -5,13 +5,13 @@ pragma solidity ^0.7.0;
 import '@solidstate/contracts/contracts/access/OwnableStorage.sol';
 
 import '../core/ProxyManager.sol';
-import '../ManagedProxy.sol';
+import '../Proxy.sol';
 
 /**
  * @title Upgradeable proxy with centrally controlled Pool implementation
  * @dev uses Ownable storage location
  */
-contract PoolProxy is ManagedProxy {
+contract PoolProxy is Proxy {
   constructor (
     address owner
   ) {
@@ -19,6 +19,6 @@ contract PoolProxy is ManagedProxy {
   }
 
   function _implementation () override internal returns (address) {
-    return OwnableStorage.layout().owner;
+    return ProxyManager(OwnableStorage.layout().owner).getPoolImplementation();
   }
 }
