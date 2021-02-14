@@ -4,7 +4,7 @@ pragma solidity ^0.7.0;
 
 import '@solidstate/contracts/contracts/access/OwnableStorage.sol';
 
-import '../core/ProxyManager.sol';
+import '../core/interfaces/IProxyManager.sol';
 import '../Proxy.sol';
 
 /**
@@ -19,6 +19,6 @@ contract PoolProxy is Proxy {
   }
 
   function _implementation () override internal returns (address) {
-    return ProxyManager(OwnableStorage.layout().owner).getPoolImplementation();
+    return IProxyManager(OwnableStorage.layout().owner).getPoolImplementation();
   }
 }

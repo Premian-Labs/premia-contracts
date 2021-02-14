@@ -6,13 +6,14 @@ import '@solidstate/contracts/contracts/access/OwnableInternal.sol';
 
 import '../pair/Pair.sol';
 import '../pair/PairProxy.sol';
+import './interfaces/IProxyManager.sol';
 import './ProxyManagerStorage.sol';
 
 /**
  * @title Options pair management contract
  * @dev deployed standalone and connected to Openhedge as diamond facet
  */
-contract ProxyManager is OwnableInternal {
+contract ProxyManager is IProxyManager, OwnableInternal {
   event PairDeployment (address pair);
 
   /**
@@ -37,7 +38,7 @@ contract ProxyManager is OwnableInternal {
    * @dev TODO: override from interface
    * @return implementation address
    */
-  function getPairImplementation () external view returns (address) {
+  function getPairImplementation () override external view returns (address) {
     return ProxyManagerStorage.layout().pairImplementation;
   }
 
@@ -46,7 +47,7 @@ contract ProxyManager is OwnableInternal {
    * @dev TODO: override from interface
    * @return implementation address
    */
-  function getPoolImplementation () external view returns (address) {
+  function getPoolImplementation () override external view returns (address) {
     return ProxyManagerStorage.layout().poolImplementation;
   }
 }
