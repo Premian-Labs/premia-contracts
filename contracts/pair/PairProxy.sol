@@ -3,20 +3,15 @@
 pragma solidity ^0.7.0;
 
 import '@solidstate/contracts/contracts/access/OwnableStorage.sol';
+import '@solidstate/contracts/contracts/proxy/managed/ManagedProxyOwnable.sol';
 
 import '../core/interfaces/IProxyManager.sol';
-import '../Proxy.sol';
 
 /**
  * @title Upgradeable proxy with centrally controlled Pair implementation
- * @dev uses Ownable storage location
  */
-contract PairProxy is Proxy {
-  constructor () {
+contract PairProxy is ManagedProxyOwnable {
+  constructor () ManagedProxy(IProxyManager.getPairImplementation.selector) {
     OwnableStorage.layout().owner = msg.sender;
-  }
-
-  function _implementation () override internal returns (address) {
-    return IProxyManager(OwnableStorage.layout().owner).getPairImplementation();
   }
 }

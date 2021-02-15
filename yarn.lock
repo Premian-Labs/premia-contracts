@@ -638,7 +638,7 @@
 
 "@solidstate/contracts@https://github.com/solidstate-network/solidstate-contracts":
   version "0.0.0"
-  resolved "https://github.com/solidstate-network/solidstate-contracts#097ca919cec3ebf7bfd9212f76c1de3f3fb4b222"
+  resolved "https://github.com/solidstate-network/solidstate-contracts#4a83582cd4ea5318f28d37a32a5e125fda0b6aa6"
   dependencies:
     "@openzeppelin/contracts" "3.2.0-solc-0.7"
 
