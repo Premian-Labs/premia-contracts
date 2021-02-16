@@ -7,7 +7,7 @@ https://premia.finance
 - **FeeCalculator** : Calculate protocol fee, and apply referral + staking discount on it  
   https://etherscan.io/address/0x602B50091B0B351CA179E87aD6e006AeCEB2a6Ad
 - **PremiaBondingCurve** : Premia <-> Eth bonding curve  
-  _Will be deployed after PBC ends_
+  https://etherscan.io/address/0xF49e0FDBf4839afAeb825EB448AA24B1C43E946b
 - **PremiaDevFund** : 3 days timelocked withdrawal for dev fund (Owned by multisig)  
   https://etherscan.io/address/0xE43147dAa592C3f88402C6E2b932DB9d97bc1C7f
 - **PremiaErc20** : The Premia token  
