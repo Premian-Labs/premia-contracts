@@ -71,6 +71,10 @@ fs.copyFileSync(
   './artifacts/contracts/PriceProvider.sol/PriceProvider.json',
   './abi/PriceProvider.json',
 );
+fs.copyFileSync(
+  './artifacts/contracts/PremiaVoteProxy.sol/PremiaVoteProxy.json',
+  './abi/PremiaVoteProxy.json',
+);
 
 fs.copyFileSync(
   './artifacts/contracts/PremiaUncutErc20Wrapper.sol/PremiaUncutErc20Wrapper.json',
