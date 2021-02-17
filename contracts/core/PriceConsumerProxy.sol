@@ -1,5 +1,6 @@
+// SPDX-License-Identifier: UNLICENSED
+
 pragma solidity ^0.7.0;
-//"SPDX-License-Identifier: UNLICENSED"
 
 import "@chainlink/contracts/src/v0.7/interfaces/AggregatorV3Interface.sol";
 
@@ -8,7 +9,7 @@ contract PriceConsumerProxy {
 
   function getLatestPrice(address _feed) public view returns (int) {
         (
-            uint80 roundID, 
+            uint80 roundID,
             int price,
             uint startedAt,
             uint timeStamp,
