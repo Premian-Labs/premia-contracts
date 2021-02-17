@@ -4,7 +4,7 @@ pragma solidity ^0.7.0;
 pragma abicoder v2;
 
 import '@solidstate/contracts/contracts/access/OwnableStorage.sol';
-import '@solidstate/contracts/contracts/architecture/diamond/DiamondBase.sol';
+import '@solidstate/contracts/contracts/proxy/diamond/DiamondBase.sol';
 
 import './ProxyManagerStorage.sol';
 
