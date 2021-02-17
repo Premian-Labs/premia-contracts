@@ -17,6 +17,7 @@
   "private": true,
   "repository": "https://github.com/Median-Finance/openhedge-contracts",
   "devDependencies": {
+    "@chainlink/contracts": "^0.1.6",
     "@nomiclabs/hardhat-ethers": "^2.0.1",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@solidstate/contracts": "https://github.com/solidstate-network/solidstate-contracts",
@@ -30,8 +31,5 @@
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-spdx-license-identifier": "^2.0.3",
     "solidity-coverage": "^0.7.14"
-  },
-  "dependencies": {
-    "@chainlink/contracts": "^0.1.6"
   }
 }
