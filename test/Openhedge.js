@@ -1,0 +1,85 @@
+const factory = require('../lib/factory.js');
+
+const describeBehaviorOfDiamondBase = require('@solidstate/contracts/test/proxy/diamond/DiamondBase.behavior.js');
+const describeBehaviorOfDiamondCuttable = require('@solidstate/contracts/test/proxy/diamond/DiamondCuttable.behavior.js');
+const describeBehaviorOfDiamondLoupe = require('@solidstate/contracts/test/proxy/diamond/DiamondLoupe.behavior.js');
+const describeBehaviorOfSafeOwnable = require('@solidstate/contracts/test/access/SafeOwnable.behavior.js');
+
+describe('Openhedge', function () {
+  let nobody, owner, nomineeOwner;
+
+  let pair;
+  let pool;
+
+  let facetMock;
+
+  let facets;
+  let facetCuts = [];
+
+  let instance;
+
+  before(async function () {
+    [nobody, owner, nomineeOwner] = await ethers.getSigners();
+
+    pair = await factory.Pair({ deployer: owner });
+    pool = await factory.Pool({ deployer: owner });
+
+    const facetMockFactory = await ethers.getContractFactory('FacetMock', nobody);
+    facetMock = await facetMockFactory.deploy();
+    await facetMock.deployed();
+
+    facets = [
+      await factory.DiamondCuttable({ deployer: owner }),
+      await factory.DiamondLoupe({ deployer: owner }),
+      await factory.SafeOwnable({ deployer: owner }),
+    ];
+
+    facets.forEach(function (f) {
+      Object.keys(f.interface.functions).forEach(function (fn) {
+        facetCuts.push([
+          f.address,
+          f.interface.getSighash(fn),
+        ]);
+      });
+    });
+  });
+
+  beforeEach(async function () {
+    instance = await factory.Openhedge({
+      deployer: owner,
+      facetCuts,
+      pairImplementation: pair.address,
+      poolImplementation: pool.address,
+    });
+  });
+
+  // eslint-disable-next-line mocha/no-setup-in-describe
+  describeBehaviorOfDiamondBase({
+    deploy: () => instance,
+    facetFunction: 'owner()',
+    facetFunctionArgs: [],
+  });
+
+  // eslint-disable-next-line mocha/no-setup-in-describe
+  describeBehaviorOfDiamondCuttable({
+    deploy: () => instance,
+    deployFacet: () => facetMock,
+    getOwner: () => owner,
+    getNonOwner: () => nobody,
+    facetFunction: 'test()',
+    facetFunctionArgs: '',
+  });
+
+  // eslint-disable-next-line mocha/no-setup-in-describe
+  describeBehaviorOfDiamondLoupe({
+    deploy: () => instance,
+    facetCuts,
+  });
+
+  // eslint-disable-next-line mocha/no-setup-in-describe
+  describeBehaviorOfSafeOwnable({
+    deploy: () => instance,
+    getOwner: () => owner,
+    getNomineeOwner: () => nomineeOwner,
+  });
+});
