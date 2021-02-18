@@ -733,7 +733,7 @@
 
 "@solidstate/contracts@https://github.com/solidstate-network/solidstate-contracts":
   version "0.0.0"
-  resolved "https://github.com/solidstate-network/solidstate-contracts#adfb87b3b05050a03ac6976dadcdf00f233c76bc"
+  resolved "https://github.com/solidstate-network/solidstate-contracts#f90a22deb0dcb2d909d385179cedce12af4387e1"
 
 "@szmarczak/http-timer@^1.1.2":
   version "1.1.2"

@@ -1,19 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 import '@solidstate/contracts/contracts/utils/Math.sol';
-import '@solidstate/contracts/contracts/utils/SafeMath.sol';
 
 contract OracleMath {
-    using SafeMath for uint256;
-
     function rollingAvg(uint256 old, uint256 current, uint256 window) internal pure returns (uint256 updated) {
-        return old.add(current.sub(old).div(window));
+        return (current - old) / window + old;
     }
 
     function rollingVar(uint256 old, uint256 last, uint256 oldaverage, uint256 newaverage, uint256 lastvariance, uint256 window) internal pure returns (uint256 updated) {
-        return lastvariance.add(last.sub(old).mul(last.sub(newaverage).add(old).sub(oldaverage).div(window.sub(1))));
+        return lastvariance + (last - old) * (last + old - newaverage - oldaverage) / (window - 1);
     }
 
     function rollingStd(uint256 old, uint256 last, uint256 oldaverage, uint256 newaverage, uint256 lastvariance, uint256 window) internal pure returns (uint256 updated) {
