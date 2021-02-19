@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import '@solidstate/contracts/contracts/access/OwnableInternal.sol';
+import '@solidstate/contracts/contracts/introspection/ERC165Storage.sol';
 import '@solidstate/contracts/contracts/token/ERC20/ERC20.sol';
 import '@solidstate/contracts/contracts/token/ERC20/ERC20MetadataStorage.sol';
 import '@solidstate/contracts/contracts/token/ERC20/IERC20.sol';
@@ -16,21 +17,10 @@ import './PoolStorage.sol';
  * @dev deployed standalone and referenced by PoolProxy
  */
 contract Pool is OwnableInternal, ERC20, ERC1155Base {
-  /**
-   * @notice get price of option contract
-   * @param amount size of option contract
-   * @param strikePrice option strike price
-   * @param maturity timestamp of option maturity
-   * @return price of option contract
-   */
-  function quote (
-    uint amount,
-    uint strikePrice,
-    uint maturity
-  ) public view returns (uint) {
-    // TODO: calculate
+  using ERC165Storage for ERC165Storage.Layout;
 
-    uint volatility = Pair(PoolStorage.layout().pair).getVolatility();
+  constructor () {
+    OwnableStorage.layout().owner = msg.sender;
   }
 
   /**
@@ -70,10 +60,33 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
       l.decimals = 18;
     }
+
+    {
+      ERC165Storage.Layout storage l = ERC165Storage.layout();
+      l.setSupportedInterface(type(IERC165).interfaceId, true);
+      l.setSupportedInterface(type(IERC1155).interfaceId, true);
+    }
   }
 
   /**
-   * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
+   * @notice get price of option contract
+   * @param amount size of option contract
+   * @param strikePrice option strike price
+   * @param maturity timestamp of option maturity
+   * @return price of option contract
+   */
+  function quote (
+    uint amount,
+    uint192 strikePrice,
+    uint64 maturity
+  ) public view returns (uint) {
+    // TODO: calculate
+
+    uint volatility = Pair(PoolStorage.layout().pair).getVolatility();
+  }
+
+  /**
+   * @notice deposit underlying currency, underwriting puts of that currency with respect to base currency
    * @param amount quantity of underlying currency to deposit
    */
   function deposit (
@@ -114,15 +127,15 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   }
 
   /**
-   * @notice purchase call option
+   * @notice purchase put option
    * @param amount size of option contract
    * @param strikePrice option strike price
    * @param maturity timestamp of option maturity
    */
   function purchase (
     uint amount,
-    uint strikePrice,
-    uint maturity
+    uint192 strikePrice,
+    uint64 maturity
   ) external {
     // TODO: convert ETH to WETH if applicable
 
@@ -138,21 +151,21 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   }
 
   /**
-   * @notice exercise call option
+   * @notice exercise put option
    * @param amount quantity of option contract tokens to exercise
    * @param strikePrice option strike price
    * @param maturity timestamp of option maturity
    */
   function exercise (
     uint amount,
-    uint strikePrice,
-    uint maturity
+    uint192 strikePrice,
+    uint64 maturity
   ) external {
     exercise(_tokenIdFor(strikePrice, maturity), amount);
   }
 
   /**
-   * @notice exercise call option
+   * @notice exercise put option
    * @param id ERC1155 token id
    * @param amount quantity of option contract tokens to exercise
    */
@@ -172,9 +185,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
    * @return token id
    */
   function _tokenIdFor (
-    uint strikePrice,
-    uint maturity
-  ) private pure returns (uint) {
-    // TODO: calculate token id
+    uint192 strikePrice,
+    uint64 maturity
+  ) internal pure returns (uint) {
+    return uint256(maturity) * (uint256(type(uint192).max) + 1) + strikePrice;
   }
 }
