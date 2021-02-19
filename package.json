@@ -21,16 +21,16 @@
     "@nomiclabs/hardhat-ethers": "^2.0.1",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@solidstate/contracts": "https://github.com/solidstate-network/solidstate-contracts",
-    "chai": "^4.2.0",
-    "eslint": "^7.18.0",
+    "chai": "^4.3.0",
+    "eslint": "^7.20.0",
     "eslint-plugin-mocha": "^8.0.0",
-    "ethereum-waffle": "^3.2.1",
-    "ethers": "^5.0.26",
-    "hardhat": "^2.0.8",
+    "ethereum-waffle": "^3.2.2",
+    "ethers": "^5.0.31",
+    "hardhat": "^2.0.10",
     "hardhat-dependency-compiler": "^1.0.2",
-    "hardhat-docgen": "^1.0.0",
+    "hardhat-docgen": "^1.0.3",
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-spdx-license-identifier": "^2.0.3",
-    "solidity-coverage": "^0.7.14"
+    "solidity-coverage": "^0.7.15"
   }
 }

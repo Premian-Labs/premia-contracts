@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 import '@solidstate/contracts/contracts/access/OwnableInternal.sol';
 import '@solidstate/contracts/contracts/token/ERC20/ERC20.sol';

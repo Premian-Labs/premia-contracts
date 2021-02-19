@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 library PoolStorage {
   bytes32 internal constant STORAGE_SLOT = keccak256(
