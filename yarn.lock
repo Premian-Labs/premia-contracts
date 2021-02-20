@@ -651,7 +651,7 @@
 
 "@solidstate/contracts@https://github.com/solidstate-network/solidstate-contracts":
   version "0.0.0"
-  resolved "https://github.com/solidstate-network/solidstate-contracts#39e2c0a1ee7f6b0f80a5d98a9c6ccaa22e368e7f"
+  resolved "https://github.com/solidstate-network/solidstate-contracts#7da650e72a14c13a9a0ed125cd4899062c91e10f"
 
 "@szmarczak/http-timer@^1.1.2":
   version "1.1.2"
@@ -3360,9 +3360,9 @@ ee-first@1.1.1:
   integrity sha1-WQxhFWsK4vTwJVcyoViyZrxWsh0=
 
 electron-to-chromium@^1.3.47:
-  version "1.3.670"
-  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.3.670.tgz#b1560b9ab212ff77fc8197002e735b72882c31be"
-  integrity sha512-iiHQa72+3wbkPR0O8InsNbRwKcV6gBEKiUqPaJ4+TOwQkJQY4ku1sBNC+0ZSfANQ0nqr0SyRO3/Qr6S7Lct/IA==
+  version "1.3.671"
+  resolved "https://registry.yarnpkg.com/electron-to-chromium/-/electron-to-chromium-1.3.671.tgz#8feaed6eae42d279fa4611f58c42a5a1eb81b2a0"
+  integrity sha512-RTD97QkdrJKaKwRv9h/wGAaoR2lGxNXEcBXS31vjitgTPwTWAbLdS7cEsBK68eEQy7p6YyT8D5BxBEYHu2SuwQ==
 
 elliptic@6.5.3:
   version "6.5.3"
