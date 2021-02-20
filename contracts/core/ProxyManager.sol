@@ -27,15 +27,17 @@ contract ProxyManager is IProxyManager, OwnableInternal {
     address asset0,
     address asset1
   ) external onlyOwner returns (address) {
-    PairProxy pair = new PairProxy();
-    Pair(address(pair)).initialize(asset0, asset1);
+    if (asset0 > asset1) {
+      (asset0, asset1) = (asset1, asset0);
+    }
+
+    PairProxy pair = new PairProxy(asset0, asset1);
     emit PairDeployment(address(pair));
     return address(pair);
   }
 
   /**
    * @notice get address of Pair implementation contract for forwarding via PairProxy
-   * @dev TODO: override from interface
    * @return implementation address
    */
   function getPairImplementation () override external view returns (address) {
@@ -44,7 +46,6 @@ contract ProxyManager is IProxyManager, OwnableInternal {
 
   /**
    * @notice get address of Pool implementation contract for forwarding via PoolProxy
-   * @dev TODO: override from interface
    * @return implementation address
    */
   function getPoolImplementation () override external view returns (address) {

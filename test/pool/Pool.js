@@ -10,37 +10,33 @@ const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 describe('Pool', function () {
   let owner;
 
-  let base;
-  let underlying;
-
   let instance;
 
   before(async function () {
     [owner] = await ethers.getSigners();
+  });
 
-    base = await deployMockContract(
+  beforeEach(async function () {
+    const base = await deployMockContract(
       owner,
       ['function symbol () public view returns (string memory)']
     );
 
-    underlying = await deployMockContract(
+    const underlying = await deployMockContract(
       owner,
       ['function symbol () public view returns (string memory)']
     );
 
     await base.mock.symbol.returns(SYMBOL_BASE);
     await underlying.mock.symbol.returns(SYMBOL_UNDERLYING);
-  });
 
-  beforeEach(async function () {
     const factory = await ethers.getContractFactory('PoolMock', owner);
-    instance = await factory.deploy();
-    await instance.deployed();
-
-    await instance.connect(owner).initialize(
+    instance = await factory.deploy(
+      owner.address,
       base.address,
       underlying.address
     );
+    await instance.deployed();
   });
 
   // eslint-disable-next-line mocha/no-setup-in-describe

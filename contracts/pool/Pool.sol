@@ -3,9 +3,7 @@
 pragma solidity ^0.8.0;
 
 import '@solidstate/contracts/contracts/access/OwnableInternal.sol';
-import '@solidstate/contracts/contracts/introspection/ERC165Storage.sol';
 import '@solidstate/contracts/contracts/token/ERC20/ERC20.sol';
-import '@solidstate/contracts/contracts/token/ERC20/ERC20MetadataStorage.sol';
 import '@solidstate/contracts/contracts/token/ERC20/IERC20.sol';
 import '@solidstate/contracts/contracts/token/ERC1155/ERC1155Base.sol';
 
@@ -17,57 +15,6 @@ import './PoolStorage.sol';
  * @dev deployed standalone and referenced by PoolProxy
  */
 contract Pool is OwnableInternal, ERC20, ERC1155Base {
-  using ERC165Storage for ERC165Storage.Layout;
-
-  constructor () {
-    OwnableStorage.layout().owner = msg.sender;
-  }
-
-  /**
-   * @notice initialize proxy storage
-   * @param base asset used as unit of account
-   * @param underlying asset optioned
-   */
-  function initialize (
-    address base,
-    address underlying
-  ) external onlyOwner {
-    {
-      PoolStorage.Layout storage l = PoolStorage.layout();
-      l.pair = msg.sender;
-      l.base = base;
-      l.underlying = underlying;
-    }
-
-    {
-      ERC20MetadataStorage.Layout storage l = ERC20MetadataStorage.layout();
-
-      string memory symbolUnderlying = ERC20(underlying).symbol();
-      string memory symbolBase = ERC20(base).symbol();
-
-      l.name = string(abi.encodePacked(
-        'Median Liquidity: ',
-        symbolUnderlying,
-        '/',
-        symbolBase
-      ));
-
-      l.symbol = string(abi.encodePacked(
-        'MED-',
-        symbolUnderlying,
-        symbolBase
-      ));
-
-      l.decimals = 18;
-    }
-
-    {
-      ERC165Storage.Layout storage l = ERC165Storage.layout();
-      l.setSupportedInterface(type(IERC165).interfaceId, true);
-      l.setSupportedInterface(type(IERC1155).interfaceId, true);
-    }
-  }
-
   /**
    * @notice get price of option contract
    * @param amount size of option contract
