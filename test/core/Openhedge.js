@@ -1,4 +1,4 @@
-const factory = require('../lib/factory.js');
+const factory = require('../../lib/factory.js');
 
 const describeBehaviorOfDiamondBase = require('@solidstate/contracts/test/proxy/diamond/DiamondBase.behavior.js');
 const describeBehaviorOfDiamondCuttable = require('@solidstate/contracts/test/proxy/diamond/DiamondCuttable.behavior.js');
@@ -81,5 +81,6 @@ describe('Openhedge', function () {
     deploy: () => instance,
     getOwner: () => owner,
     getNomineeOwner: () => nomineeOwner,
+    getNonOwner: () => nobody,
   });
 });
