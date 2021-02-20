@@ -5,6 +5,8 @@ const describeBehaviorOfDiamondCuttable = require('@solidstate/contracts/test/pr
 const describeBehaviorOfDiamondLoupe = require('@solidstate/contracts/test/proxy/diamond/DiamondLoupe.behavior.js');
 const describeBehaviorOfSafeOwnable = require('@solidstate/contracts/test/access/SafeOwnable.behavior.js');
 
+const describeBehaviorOfProxyManager = require('./ProxyManager.behavior.js');
+
 describe('Openhedge', function () {
   let nobody, owner, nomineeOwner;
 
@@ -18,6 +20,7 @@ describe('Openhedge', function () {
 
   let instance;
 
+  // eslint-disable-next-line mocha/no-hooks-for-single-case
   before(async function () {
     [nobody, owner, nomineeOwner] = await ethers.getSigners();
 
@@ -31,6 +34,7 @@ describe('Openhedge', function () {
     facets = [
       await factory.DiamondCuttable({ deployer: owner }),
       await factory.DiamondLoupe({ deployer: owner }),
+      await factory.ProxyManager({ deployer: owner }),
       await factory.SafeOwnable({ deployer: owner }),
     ];
 
@@ -44,6 +48,7 @@ describe('Openhedge', function () {
     });
   });
 
+  // eslint-disable-next-line mocha/no-hooks-for-single-case
   beforeEach(async function () {
     instance = await factory.Openhedge({
       deployer: owner,
@@ -74,6 +79,13 @@ describe('Openhedge', function () {
   describeBehaviorOfDiamondLoupe({
     deploy: () => instance,
     facetCuts,
+  });
+
+  // eslint-disable-next-line mocha/no-setup-in-describe
+  describeBehaviorOfProxyManager({
+    deploy: () => instance,
+    getPairImplementationAddress: () => pair.address,
+    getPoolImplementationAddress: () => pool.address,
   });
 
   // eslint-disable-next-line mocha/no-setup-in-describe
