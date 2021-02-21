@@ -11,7 +11,7 @@ const describeBehaviorOfProxyManager = function ({ deploy, getPairImplementation
     describe('#deployPair', function () {
       it('todo');
 
-      describe('revets if', function () {
+      describe('reverts if', function () {
         it('todo');
       });
     });
