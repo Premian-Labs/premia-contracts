@@ -50,4 +50,53 @@ contract OpenhedgeMultisigWallet is ECDSAMultisigWallet {
   ) external {
     ECDSAMultisigWalletStorage.layout().setInvalidNonce(msg.sender, nonce);
   }
+
+  /**
+   * @notice set account as signer
+   * @param parameters struct of parameters, address of target, bytes data, uint value to send with, bool delegate
+   * @param signatures array of signatures
+   */
+  function addSigner (
+    Parameters memory parameters,
+    Signature[] memory signatures
+  ) external {
+    require(_verifySignatures(parameters, signatures), 'OpenhedgeMultisigWallet: one or more signature(s) could not be verified');
+    assembly {
+      account := mload(add(parameters.data, 20))
+    }
+    ECDSAMultisigWalletStorage.layout().addSigner(account);
+  }
+
+  /**
+   * @notice remove account as signer
+   * @param parameters struct of parameters, address of target, bytes data, uint value to send with, bool delegate
+   * @param signatures array of signatures
+   */
+  function removeSigner (
+    Parameters memory parameters,
+    Signature[] memory signatures
+  ) external {
+    require(_verifySignatures(parameters, signatures), 'OpenhedgeMultisigWallet: one or more signature(s) could not be verified');
+    assembly {
+      account := mload(add(parameters.data, 20))
+    }
+    ECDSAMultisigWalletStorage.layout().removeSigner(account);
+  }
+
+  /**
+   * @notice set quorum needed to sign
+   * @param parameters struct of parameters, address of target, bytes data, uint value to send with, bool delegate
+   * @param signatures array of signatures
+   */
+  function setQuorum (
+    Parameters memory parameters,
+    Signature[] memory signatures
+  ) external {
+    require(_verifySignatures(parameters, signatures), 'OpenhedgeMultisigWallet: one or more signature(s) could not be verified');
+    // Below code doesn't function as expected
+    // assembly {
+    //   size := mload(add(parameters.data, 32))
+    // }
+    // ECDSAMultisigWalletStorage.layout().setQuorum(size);
+  }
 }
