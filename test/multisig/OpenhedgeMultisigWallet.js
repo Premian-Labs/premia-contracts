@@ -4,24 +4,22 @@ const describeBehaviorOfECDSAMultisigWallet = require('@solidstate/contracts/tes
 
 const quorum = ethers.constants.One;
 
-const getSigners = async function () {
-  return (await ethers.getSigners()).slice(0, 3);
-};
-
-const getNonSigner = async function () {
-  return (await ethers.getSigners())[3];
-};
-
 describe('OpenhedgeMultisigWallet', function () {
   let owner;
+  let nonSigner;
+  let signers;
 
   let factory;
   let instance;
 
+  before(async function () {
+    [nonSigner, ...signers] = (await ethers.getSigners()).slice(0, 4);
+  });
+
   beforeEach(async function () {
     factory = await ethers.getContractFactory('OpenhedgeMultisigWallet', owner);
     instance = await factory.deploy(
-      (await getSigners()).map(s => s.address),
+      signers.map(s => s.address),
       quorum
     );
     await instance.deployed();
@@ -30,9 +28,60 @@ describe('OpenhedgeMultisigWallet', function () {
   // eslint-disable-next-line mocha/no-setup-in-describe
   describeBehaviorOfECDSAMultisigWallet({
     deploy: () => instance,
-    getSigners,
-    getNonSigner,
+    getSigners: () => signers,
+    getNonSigner: () => nonSigner,
     quorum,
+  });
+
+  describe('#isValidNonce', function () {
+    it('retuns whether given nonce is valid for given signer', async function () {
+      expect(
+        await instance.callStatic.isValidNonce(
+          signers[0].address,
+          ethers.constants.One
+        )
+      ).to.be.true;
+    });
+  });
+
+  describe('#invalidateNonce', function () {
+    it('invalidates nonce for sender', async function () {
+      const [signer] = signers;
+      const nonce = ethers.constants.One;
+
+      await instance.connect(signer).invalidateNonce(nonce);
+
+      expect(
+        await instance.callStatic.isValidNonce(
+          signer.address,
+          nonce
+        )
+      ).to.be.false;
+    });
+  });
+
+  describe('#addSigner', function () {
+    it('todo');
+
+    describe('reverts if', function () {
+      it('todo');
+    });
+  });
+
+  describe('#removeSigner', function () {
+    it('todo');
+
+    describe('reverts if', function () {
+      it('todo');
+    });
+  });
+
+  describe('#setQuorum', function () {
+    it('todo');
+
+    describe('reverts if', function () {
+      it('todo');
+    });
   });
 
   describe('constructor', function () {
