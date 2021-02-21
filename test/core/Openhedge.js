@@ -27,10 +27,6 @@ describe('Openhedge', function () {
     pair = await factory.Pair({ deployer: owner });
     pool = await factory.Pool({ deployer: owner });
 
-    const facetMockFactory = await ethers.getContractFactory('FacetMock', nobody);
-    facetMock = await facetMockFactory.deploy();
-    await facetMock.deployed();
-
     facets = [
       await factory.DiamondCuttable({ deployer: owner }),
       await factory.DiamondLoupe({ deployer: owner }),
@@ -46,6 +42,10 @@ describe('Openhedge', function () {
         ]);
       });
     });
+
+    const facetMockFactory = await ethers.getContractFactory('FacetMock', nobody);
+    facetMock = await facetMockFactory.deploy();
+    await facetMock.deployed();
   });
 
   // eslint-disable-next-line mocha/no-hooks-for-single-case

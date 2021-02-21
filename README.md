@@ -46,6 +46,14 @@ Generate a code coverage report using `solidity-coverage`:
 yarn run hardhat coverage
 ```
 
+### Deployment
+
+The contract can be deployed using the `deploy` task:
+
+```bash
+yarn run hardhat deploy --help
+```
+
 ### Documentation
 
 A documentation site is output on contract compilation to the `docgen` directory.  It can also be generated manually:
