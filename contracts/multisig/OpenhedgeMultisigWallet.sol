@@ -60,9 +60,11 @@ contract OpenhedgeMultisigWallet is ECDSAMultisigWallet {
     Parameters memory parameters,
     Signature[] memory signatures
   ) external {
-    require(_verifySignatures(parameters, signatures), 'OpenhedgeMultisigWallet: one or more signature(s) could not be verified');
+    _verifySignatures(parameters, signatures);
+    address account;
+    bytes memory data = parameters.data;
     assembly {
-      account := mload(add(parameters.data, 20))
+      account := mload(add(data, 20))
     }
     ECDSAMultisigWalletStorage.layout().addSigner(account);
   }
@@ -76,9 +78,11 @@ contract OpenhedgeMultisigWallet is ECDSAMultisigWallet {
     Parameters memory parameters,
     Signature[] memory signatures
   ) external {
-    require(_verifySignatures(parameters, signatures), 'OpenhedgeMultisigWallet: one or more signature(s) could not be verified');
+    _verifySignatures(parameters, signatures);
+    address account;
+    bytes memory data = parameters.data;
     assembly {
-      account := mload(add(parameters.data, 20))
+      account := mload(add(data, 20))
     }
     ECDSAMultisigWalletStorage.layout().removeSigner(account);
   }
@@ -92,7 +96,7 @@ contract OpenhedgeMultisigWallet is ECDSAMultisigWallet {
     Parameters memory parameters,
     Signature[] memory signatures
   ) external {
-    require(_verifySignatures(parameters, signatures), 'OpenhedgeMultisigWallet: one or more signature(s) could not be verified');
+    _verifySignatures(parameters, signatures);
     // Below code doesn't function as expected
     // assembly {
     //   size := mload(add(parameters.data, 32))
