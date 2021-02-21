@@ -97,10 +97,12 @@ contract OpenhedgeMultisigWallet is ECDSAMultisigWallet {
     Signature[] memory signatures
   ) external {
     _verifySignatures(parameters, signatures);
-    // Below code doesn't function as expected
-    // assembly {
-    //   size := mload(add(parameters.data, 32))
-    // }
-    // ECDSAMultisigWalletStorage.layout().setQuorum(size);
+    uint size;
+    bytes memory data = parameters.data;
+    uint bits = data.length * 8;
+    assembly {
+      size := mload(add(parameters.data, 32))
+    }
+    ECDSAMultisigWalletStorage.layout().setQuorum(size >> (256 - bits));
   }
 }
