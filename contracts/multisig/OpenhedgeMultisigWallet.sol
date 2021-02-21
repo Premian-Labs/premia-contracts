@@ -53,8 +53,8 @@ contract OpenhedgeMultisigWallet is ECDSAMultisigWallet {
 
   /**
    * @notice set account as signer
-   * @param parameters struct of parameters, address of target, bytes data, uint value to send with, bool delegate
-   * @param signatures array of signatures
+   * @param parameters structured call parameters (target, data, value, delegate)
+   * @param signatures array of structured signature data (signature, nonce)
    */
   function addSigner (
     Parameters memory parameters,
@@ -71,8 +71,8 @@ contract OpenhedgeMultisigWallet is ECDSAMultisigWallet {
 
   /**
    * @notice remove account as signer
-   * @param parameters struct of parameters, address of target, bytes data, uint value to send with, bool delegate
-   * @param signatures array of signatures
+   * @param parameters structured call parameters (target, data, value, delegate)
+   * @param signatures array of structured signature data (signature, nonce)
    */
   function removeSigner (
     Parameters memory parameters,
@@ -89,8 +89,8 @@ contract OpenhedgeMultisigWallet is ECDSAMultisigWallet {
 
   /**
    * @notice set quorum needed to sign
-   * @param parameters struct of parameters, address of target, bytes data, uint value to send with, bool delegate
-   * @param signatures array of signatures
+   * @param parameters structured call parameters (target, data, value, delegate)
+   * @param signatures array of structured signature data (signature, nonce)
    */
   function setQuorum (
     Parameters memory parameters,
