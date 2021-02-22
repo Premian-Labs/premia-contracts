@@ -111,7 +111,41 @@ describe('OpenhedgeMultisigWallet', function () {
   });
 
   describe('#setQuorum', function () {
-    it('todo');
+    it('sets quorum for authorization', async function () {
+      const newQuorum = quorum.add(ethers.constants.One);
+
+      const target = ethers.constants.AddressZero;
+      const data = ethers.utils.zeroPad(newQuorum, 32);
+      const value = ethers.constants.Zero;
+      const delegate = false;
+      const address = instance.address;
+      const nonce = ethers.constants.Zero;
+
+      const authorization = await signAuthorization(
+        signers[0],
+        {
+          target,
+          data,
+          value,
+          delegate,
+          nonce,
+          address,
+        }
+      );
+
+      await instance.setQuorum(
+        [target, data, value, delegate],
+        [
+          [authorization, nonce],
+        ]
+      );
+
+      expect(
+        await instance.callStatic.getQuorum()
+      ).to.equal(
+        newQuorum
+      );
+    });
 
     describe('reverts if', function () {
       it('todo');
