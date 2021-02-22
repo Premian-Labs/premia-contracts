@@ -138,8 +138,8 @@ describe('OpenhedgeMultisigWallet', function () {
     describe('reverts if', function () {
       it('signatures are invalid', async function() {
 
-        expect(
-          await instance.addSigner(
+        await expect(
+          instance.addSigner(
             nonSigner.address,
             []
             )
@@ -178,9 +178,19 @@ describe('OpenhedgeMultisigWallet', function () {
     })
 
     describe('reverts if', function () {
-      it('todo');
+      it('signatures are invalid', async function() {
+
+        await expect(
+          instance.addSigner(
+            nonSigner.address,
+            []
+            )
+          ).to.be.revertedWith(
+            'ECDSAMultisigWallet: quorum not reached'
+          );
+        });
+      });
     });
-  });
 
   describe('#setQuorum', function () {
     it('sets quorum for authorization', async function () {
