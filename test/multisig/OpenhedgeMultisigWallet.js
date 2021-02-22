@@ -119,7 +119,7 @@ describe('OpenhedgeMultisigWallet', function () {
         signers[0],
         {
           input: newQuorum,
-          type: 'uint192',
+          type: 'uint256',
           nonce,
           address: instance.address,
         }
