@@ -126,7 +126,7 @@ describe('OpenhedgeMultisigWallet', function () {
       );
 
       await instance.setQuorum(
-        newQuorum.toString(),
+        newQuorum,
         [
           [authorization, nonce],
         ]
