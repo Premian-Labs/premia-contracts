@@ -1,17 +1,20 @@
 const { expect } = require('chai');
+const signData = require('@solidstate/contracts/lib/sign_data.js');
 
 const describeBehaviorOfECDSAMultisigWallet = require('@solidstate/contracts/test/multisig/ECDSAMultisigWallet.behavior.js');
 
 const quorum = ethers.constants.One;
 
 const signAuthorization = async function (signer, { input, type, nonce, address }) {
-  const types = [type, 'uint256', 'address'];
-  const values = [input, nonce, address];
-
-  const hash = ethers.utils.solidityKeccak256(types, values);
-
-  const signature = await signer.signMessage(ethers.utils.arrayify(hash));
-  return ethers.utils.arrayify(signature);
+  return signData(
+    signer,
+    {
+      values: [input],
+      types: [type],
+      nonce,
+      address,
+    }
+  );
 };
 
 describe('OpenhedgeMultisigWallet', function () {
