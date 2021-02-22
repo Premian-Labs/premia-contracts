@@ -63,7 +63,7 @@ describe('Openhedge', function () {
     deploy: () => instance,
     facetFunction: 'owner()',
     facetFunctionArgs: [],
-  });
+  }, []);
 
   // eslint-disable-next-line mocha/no-setup-in-describe
   describeBehaviorOfDiamondCuttable({
@@ -73,20 +73,20 @@ describe('Openhedge', function () {
     getNonOwner: () => nobody,
     facetFunction: 'test()',
     facetFunctionArgs: '',
-  });
+  }, []);
 
   // eslint-disable-next-line mocha/no-setup-in-describe
   describeBehaviorOfDiamondLoupe({
     deploy: () => instance,
     facetCuts,
-  });
+  }, []);
 
   // eslint-disable-next-line mocha/no-setup-in-describe
   describeBehaviorOfProxyManager({
     deploy: () => instance,
     getPairImplementationAddress: () => pair.address,
     getPoolImplementationAddress: () => pool.address,
-  });
+  }, []);
 
   // eslint-disable-next-line mocha/no-setup-in-describe
   describeBehaviorOfSafeOwnable({
@@ -94,5 +94,5 @@ describe('Openhedge', function () {
     getOwner: () => owner,
     getNomineeOwner: () => nomineeOwner,
     getNonOwner: () => nobody,
-  });
+  }, []);
 });
