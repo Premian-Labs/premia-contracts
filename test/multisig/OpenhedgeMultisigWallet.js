@@ -59,7 +59,7 @@ describe('OpenhedgeMultisigWallet', function () {
   });
 
   describe('#isValidNonce', function () {
-    it('retuns whether given nonce is valid for given signer', async function () {
+    it('returns whether given nonce is valid for given signer', async function () {
       expect(
         await instance.callStatic.isValidNonce(
           signers[0].address,
@@ -110,15 +110,72 @@ describe('OpenhedgeMultisigWallet', function () {
   });
 
   describe('#addSigner', function () {
-    it('todo');
+    it('adds signer to multisig', async function() {
+      const nonce = ethers.constants.Zero;
+
+      const authorization = await signAuthorization(
+        signers[0],
+        {
+          input: nonSigner.address,
+          type: 'address',
+          nonce,
+          address: instance.address,
+        }
+      );
+
+      await instance.addSigner(
+        nonSigner.address,
+        [
+          [authorization, nonce],
+        ]
+      );
+
+      expect(
+        await instance.callStatic.isSigner(nonSigner.address)
+      ).to.be.true;
+    })
 
     describe('reverts if', function () {
-      it('todo');
+      it('signatures are invalid', async function() {
+
+        expect(
+          await instance.addSigner(
+            nonSigner.address,
+            []
+            )
+          ).to.be.revertedWith(
+            'ECDSAMultisigWallet: quorum not reached'
+          );
+        });
+      });
     });
-  });
 
   describe('#removeSigner', function () {
-    it('todo');
+    it('removes signer from multisig', async function() {
+      const nonce = ethers.constants.Zero;
+      const accountToBeRemoved = signers[0].address;
+
+      const authorization = await signAuthorization(
+        signers[0],
+        {
+          input: accountToBeRemoved,
+          type: 'address',
+          nonce,
+          address: instance.address,
+        }
+      );
+
+      await instance.removeSigner(
+        accountToBeRemoved,
+        [
+          [authorization, nonce],
+        ]
+      );
+
+      expect(
+        await instance.callStatic.isSigner(accountToBeRemoved)
+      ).to.be.false;
+    })
 
     describe('reverts if', function () {
       it('todo');
