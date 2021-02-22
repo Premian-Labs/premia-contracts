@@ -4,6 +4,16 @@ const describeBehaviorOfECDSAMultisigWallet = require('@solidstate/contracts/tes
 
 const quorum = ethers.constants.One;
 
+const signAuthorization = async function (signer, { target, data, value, delegate, nonce, address }) {
+  const types = ['address', 'bytes', 'uint256', 'bool', 'uint256', 'address'];
+  const values = [target, data, value, delegate, nonce, address];
+
+  const hash = ethers.utils.solidityKeccak256(types, values);
+
+  const signature = await signer.signMessage(ethers.utils.arrayify(hash));
+  return ethers.utils.arrayify(signature);
+};
+
 describe('OpenhedgeMultisigWallet', function () {
   let owner;
   let nonSigner;
