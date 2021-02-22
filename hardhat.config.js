@@ -5,6 +5,8 @@ require('hardhat-gas-reporter');
 require('hardhat-spdx-license-identifier');
 require('solidity-coverage');
 
+require('./tasks/deploy.js');
+
 module.exports = {
   solidity: {
     version: '0.8.1',

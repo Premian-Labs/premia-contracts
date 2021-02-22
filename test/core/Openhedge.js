@@ -27,10 +27,6 @@ describe('Openhedge', function () {
     pair = await factory.Pair({ deployer: owner });
     pool = await factory.Pool({ deployer: owner });
 
-    const facetMockFactory = await ethers.getContractFactory('FacetMock', nobody);
-    facetMock = await facetMockFactory.deploy();
-    await facetMock.deployed();
-
     facets = [
       await factory.DiamondCuttable({ deployer: owner }),
       await factory.DiamondLoupe({ deployer: owner }),
@@ -46,6 +42,10 @@ describe('Openhedge', function () {
         ]);
       });
     });
+
+    const facetMockFactory = await ethers.getContractFactory('FacetMock', nobody);
+    facetMock = await facetMockFactory.deploy();
+    await facetMock.deployed();
   });
 
   // eslint-disable-next-line mocha/no-hooks-for-single-case
@@ -63,7 +63,7 @@ describe('Openhedge', function () {
     deploy: () => instance,
     facetFunction: 'owner()',
     facetFunctionArgs: [],
-  });
+  }, []);
 
   // eslint-disable-next-line mocha/no-setup-in-describe
   describeBehaviorOfDiamondCuttable({
@@ -73,20 +73,20 @@ describe('Openhedge', function () {
     getNonOwner: () => nobody,
     facetFunction: 'test()',
     facetFunctionArgs: '',
-  });
+  }, []);
 
   // eslint-disable-next-line mocha/no-setup-in-describe
   describeBehaviorOfDiamondLoupe({
     deploy: () => instance,
     facetCuts,
-  });
+  }, []);
 
   // eslint-disable-next-line mocha/no-setup-in-describe
   describeBehaviorOfProxyManager({
     deploy: () => instance,
     getPairImplementationAddress: () => pair.address,
     getPoolImplementationAddress: () => pool.address,
-  });
+  }, []);
 
   // eslint-disable-next-line mocha/no-setup-in-describe
   describeBehaviorOfSafeOwnable({
@@ -94,5 +94,5 @@ describe('Openhedge', function () {
     getOwner: () => owner,
     getNomineeOwner: () => nomineeOwner,
     getNonOwner: () => nobody,
-  });
+  }, []);
 });

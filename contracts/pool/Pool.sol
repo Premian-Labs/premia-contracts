@@ -16,6 +16,14 @@ import './PoolStorage.sol';
  */
 contract Pool is OwnableInternal, ERC20, ERC1155Base {
   /**
+   * @notice get address of PairProxy contract
+   * @return pair address
+   */
+  function getPair () external view returns (address) {
+    return PoolStorage.layout().pair;
+  }
+
+  /**
    * @notice get price of option contract
    * @param amount size of option contract
    * @param strikePrice option strike price
@@ -35,10 +43,11 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   /**
    * @notice deposit underlying currency, underwriting puts of that currency with respect to base currency
    * @param amount quantity of underlying currency to deposit
+   * @return share of pool granted
    */
   function deposit (
     uint amount
-  ) external {
+  ) external returns (uint share) {
     // TODO: convert ETH to WETH if applicable
     // TODO: set lockup period
     // TODO: calculate C value
@@ -48,29 +57,30 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     ).transferFrom(msg.sender, address(this), amount);
 
     // TODO: calculate amount minted
-    uint minted;
+    share = 1;
 
-    _mint(msg.sender, minted);
+    _mint(msg.sender, share);
   }
 
   /**
    * @notice redeem pool share tokens for underlying asset
-   * @param amount quantity of share tokens to redeem
+   * @param share quantity of share tokens to redeem
+   * @return amount of underlying asset withdrawn
    */
   function withdraw (
-    uint amount
-  ) external {
+    uint share
+  ) external returns (uint amount) {
     // TODO: check lockup period
     // TODO: ensure available liquidity, queue if necessary
 
-    _burn(msg.sender, amount);
+    _burn(msg.sender, share);
 
     // TODO: calculate share of pool
-    uint share;
+    uint amount;
 
     IERC20(
       PoolStorage.layout().underlying
-    ).transfer(msg.sender, share);
+    ).transfer(msg.sender, amount);
   }
 
   /**
@@ -83,15 +93,17 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint amount,
     uint192 strikePrice,
     uint64 maturity
-  ) external {
+  ) external returns (uint price) {
     // TODO: convert ETH to WETH if applicable
+
+    price = quote(amount, strikePrice, maturity);
 
     IERC20(
       PoolStorage.layout().underlying
     ).transferFrom(
       msg.sender,
       address(this),
-      quote(amount, strikePrice, maturity)
+      price
     );
 
     _mint(msg.sender, _tokenIdFor(strikePrice, maturity), amount, '');

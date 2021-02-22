@@ -8,6 +8,10 @@ const describeBehaviorOfProxyManager = function ({ deploy, getPairImplementation
       instance = await ethers.getContractAt('ProxyManager', (await deploy()).address);
     });
 
+    describe('#getPair', function () {
+      it('todo');
+    });
+
     describe('#deployPair', function () {
       it('todo');
 

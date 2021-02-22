@@ -1,11 +1,6 @@
 const { expect } = require('chai');
-const { deployMockContract } = require('@ethereum-waffle/mock-contract');
 
-const describeBehaviorOfERC20 = require('@solidstate/contracts/test/token/ERC20/ERC20.behavior.js');
-const describeBehaviorOfERC1155Base = require('@solidstate/contracts/test/token/ERC1155/ERC1155Base.behavior.js');
-
-const SYMBOL_BASE = 'SYMBOL_BASE';
-const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
+const describeBehaviorOfPool = require('./Pool.behavior.js');
 
 describe('Pool', function () {
   let owner;
@@ -17,41 +12,19 @@ describe('Pool', function () {
   });
 
   beforeEach(async function () {
-    const base = await deployMockContract(
-      owner,
-      ['function symbol () public view returns (string memory)']
-    );
-
-    const underlying = await deployMockContract(
-      owner,
-      ['function symbol () public view returns (string memory)']
-    );
-
-    await base.mock.symbol.returns(SYMBOL_BASE);
-    await underlying.mock.symbol.returns(SYMBOL_UNDERLYING);
-
     const factory = await ethers.getContractFactory('PoolMock', owner);
-    instance = await factory.deploy(
-      owner.address,
-      base.address,
-      underlying.address
-    );
+    instance = await factory.deploy();
     await instance.deployed();
   });
 
   // eslint-disable-next-line mocha/no-setup-in-describe
-  describeBehaviorOfERC20({
+  describeBehaviorOfPool({
     deploy: () => instance,
     supply: 0,
-    name: `Median Liquidity: ${ SYMBOL_UNDERLYING }/${ SYMBOL_BASE }`,
-    symbol: `MED-${ SYMBOL_UNDERLYING }${ SYMBOL_BASE }`,
-    decimals: 18,
-  });
-
-  // eslint-disable-next-line mocha/no-setup-in-describe
-  describeBehaviorOfERC1155Base({
-    deploy: () => instance,
-  });
+    name: '',
+    symbol: '',
+    decimals: 0,
+  }, ['#supportsInterface']);
 
   describe('__internal', function () {
     describe('#_tokenIdFor', function () {
