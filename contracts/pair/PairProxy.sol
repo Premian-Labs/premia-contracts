@@ -7,17 +7,21 @@ import '@solidstate/contracts/contracts/proxy/managed/ManagedProxyOwnable.sol';
 
 import '../core/interfaces/IProxyManager.sol';
 import '../pool/PoolProxy.sol';
+import './PairStorage.sol';
 
 /**
  * @title Upgradeable proxy with centrally controlled Pair implementation
  */
 contract PairProxy is ManagedProxyOwnable {
+  using PairStorage for PairStorage.Layout;
+
   constructor (
     address asset0,
     address asset1
   ) ManagedProxy(IProxyManager.getPairImplementation.selector) {
     OwnableStorage.layout().owner = msg.sender;
-    new PoolProxy(msg.sender, asset0, asset1);
-    new PoolProxy(msg.sender, asset1, asset0);
+    PoolProxy pool0 = new PoolProxy(msg.sender, asset0, asset1);
+    PoolProxy pool1 = new PoolProxy(msg.sender, asset1, asset0);
+    PairStorage.layout().setPools(address(pool0), address(pool1));
   }
 }

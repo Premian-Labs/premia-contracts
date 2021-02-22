@@ -16,6 +16,14 @@ import './PoolStorage.sol';
  */
 contract Pool is OwnableInternal, ERC20, ERC1155Base {
   /**
+   * @notice get address of PairProxy contract
+   * @return pair address
+   */
+  function getPair () external view returns (address) {
+    return PoolStorage.layout().pair;
+  }
+
+  /**
    * @notice get price of option contract
    * @param amount size of option contract
    * @param strikePrice option strike price

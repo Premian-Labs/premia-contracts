@@ -11,6 +11,16 @@ import './PairStorage.sol';
  * @dev deployed standalone and referenced by PairProxy
  */
 contract Pair is OwnableInternal {
+  using PairStorage for PairStorage.Layout;
+
+  /**
+   * @notice get addresses of PoolProxy contracts
+   * @return pool addresses
+   */
+  function getPools () external view returns (address, address) {
+    return PairStorage.layout().getPools();
+  }
+
   /**
    * @notice calculate or get cached volatility for current day
    * @return volatility
