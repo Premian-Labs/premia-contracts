@@ -54,6 +54,30 @@ describe('OpenhedgeMultisigWallet', function () {
     });
   });
 
+  describe('#isSigner', function () {
+    it('returns whether given address is authorized signer', async function () {
+      for (let signer of signers) {
+        expect(
+          await instance.callStatic.isSigner(signer.address)
+        ).to.be.true;
+      }
+
+      expect(
+        await instance.callStatic.isSigner(nonSigner.address)
+      ).to.be.false;
+    });
+  });
+
+  describe('#getQuorum', function () {
+    it('returns quorum for authorization', async function () {
+      expect(
+        await instance.callStatic.getQuorum()
+      ).to.equal(
+        quorum
+      );
+    });
+  });
+
   describe('#invalidateNonce', function () {
     it('invalidates nonce for sender', async function () {
       const [signer] = signers;

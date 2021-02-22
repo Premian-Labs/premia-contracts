@@ -42,6 +42,25 @@ contract OpenhedgeMultisigWallet is ECDSAMultisigWallet {
   }
 
   /**
+   * @notice return whether given address is authorized signer
+   * @param account address to query
+   * @return whether address is signer
+   */
+  function isSigner (
+    address account
+  ) external view returns (bool) {
+    return ECDSAMultisigWalletStorage.layout().isSigner(account);
+  }
+
+  /**
+   * @notice get quorum for authorization
+   * @return quorum
+   */
+  function getQuorum () external view returns (uint) {
+    return ECDSAMultisigWalletStorage.layout().quorum;
+  }
+
+  /**
    * @notice set nonce as invalid for sender
    * @param nonce nonce to invalidate
    */
@@ -61,11 +80,14 @@ contract OpenhedgeMultisigWallet is ECDSAMultisigWallet {
     Signature[] memory signatures
   ) external {
     _verifySignatures(parameters, signatures);
-    address account;
+
     bytes memory data = parameters.data;
+    address account;
+
     assembly {
       account := mload(add(data, 20))
     }
+
     ECDSAMultisigWalletStorage.layout().addSigner(account);
   }
 
@@ -79,11 +101,14 @@ contract OpenhedgeMultisigWallet is ECDSAMultisigWallet {
     Signature[] memory signatures
   ) external {
     _verifySignatures(parameters, signatures);
-    address account;
+
     bytes memory data = parameters.data;
+    address account;
+
     assembly {
       account := mload(add(data, 20))
     }
+
     ECDSAMultisigWalletStorage.layout().removeSigner(account);
   }
 
@@ -95,14 +120,16 @@ contract OpenhedgeMultisigWallet is ECDSAMultisigWallet {
   function setQuorum (
     Parameters memory parameters,
     Signature[] memory signatures
-  ) external {
+    ) external {
     _verifySignatures(parameters, signatures);
-    uint size;
+
     bytes memory data = parameters.data;
-    uint bits = data.length * 8;
+    uint size;
+
     assembly {
-      size := mload(add(parameters.data, 32))
+      size := mload(add(data, 32))
     }
-    ECDSAMultisigWalletStorage.layout().setQuorum(size >> (256 - bits));
+
+    ECDSAMultisigWalletStorage.layout().setQuorum(size >> (256 - data.length * 8));
   }
 }
