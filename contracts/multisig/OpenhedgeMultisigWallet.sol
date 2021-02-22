@@ -14,11 +14,6 @@ contract OpenhedgeMultisigWallet is ECDSAMultisigWallet {
     address[] memory signers,
     uint quorum
   ) {
-    require(
-      quorum < signers.length,
-      'OpenhedgeMultisigWallet: not enough signers to meet quorum'
-    );
-
     ECDSAMultisigWalletStorage.Layout storage l = ECDSAMultisigWalletStorage.layout();
 
     for (uint i; i < signers.length; i++) {

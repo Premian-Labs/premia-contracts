@@ -46,6 +46,18 @@ describe('OpenhedgeMultisigWallet', function () {
     quorum,
   });
 
+  describe('constructor', function () {
+    describe('reverts if', function () {
+      it('quorum exceeds signer count', async function () {
+        await expect(
+          factory.deploy([], ethers.constants.One)
+        ).to.be.revertedWith(
+          'ECDSAMultisigWallet: insufficient signers to meet quorum'
+        );
+      });
+    });
+  });
+
   describe('#isValidNonce', function () {
     it('retuns whether given nonce is valid for given signer', async function () {
       expect(
@@ -144,18 +156,6 @@ describe('OpenhedgeMultisigWallet', function () {
 
     describe('reverts if', function () {
       it('todo');
-    });
-  });
-
-  describe('constructor', function () {
-    describe('reverts if', function () {
-      it('quorum exceeds signer count', async function () {
-        await expect(
-          factory.deploy([], ethers.constants.One)
-        ).to.be.revertedWith(
-          'OpenhedgeMultisigWallet: not enough signers to meet quorum'
-        );
-      });
     });
   });
 });
