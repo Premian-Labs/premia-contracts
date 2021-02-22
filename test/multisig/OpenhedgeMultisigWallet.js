@@ -4,9 +4,9 @@ const describeBehaviorOfECDSAMultisigWallet = require('@solidstate/contracts/tes
 
 const quorum = ethers.constants.One;
 
-const signAuthorization = async function (signer, { target, data, value, delegate, nonce, address }) {
-  const types = ['address', 'bytes', 'uint256', 'bool', 'uint256', 'address'];
-  const values = [target, data, value, delegate, nonce, address];
+const signAuthorization = async function (signer, { input, type, nonce, address }) {
+  const types = [type, 'uint256', 'address'];
+  const values = [input, nonce, address];
 
   const hash = ethers.utils.solidityKeccak256(types, values);
 
@@ -113,28 +113,20 @@ describe('OpenhedgeMultisigWallet', function () {
   describe('#setQuorum', function () {
     it('sets quorum for authorization', async function () {
       const newQuorum = quorum.add(ethers.constants.One);
-
-      const target = ethers.constants.AddressZero;
-      const data = ethers.utils.zeroPad(newQuorum, 32);
-      const value = ethers.constants.Zero;
-      const delegate = false;
-      const address = instance.address;
       const nonce = ethers.constants.Zero;
 
       const authorization = await signAuthorization(
         signers[0],
         {
-          target,
-          data,
-          value,
-          delegate,
+          input: newQuorum,
+          type: 'uint192',
           nonce,
-          address,
+          address: instance.address,
         }
       );
 
       await instance.setQuorum(
-        [target, data, value, delegate],
+        newQuorum.toString(),
         [
           [authorization, nonce],
         ]

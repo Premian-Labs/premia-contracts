@@ -72,64 +72,40 @@ contract OpenhedgeMultisigWallet is ECDSAMultisigWallet {
 
   /**
    * @notice set account as signer
-   * @param parameters structured call parameters (target, data, value, delegate)
+   * @param account address to add as signer
    * @param signatures array of structured signature data (signature, nonce)
    */
   function addSigner (
-    Parameters memory parameters,
+    address account,
     Signature[] memory signatures
   ) external {
-    _verifySignatures(parameters, signatures);
-
-    bytes memory data = parameters.data;
-    address account;
-
-    assembly {
-      account := mload(add(data, 20))
-    }
-
+    _verifySignatures(abi.encodePacked(account), signatures);
     ECDSAMultisigWalletStorage.layout().addSigner(account);
   }
 
   /**
    * @notice remove account as signer
-   * @param parameters structured call parameters (target, data, value, delegate)
+   * @param account address to remove as signer
    * @param signatures array of structured signature data (signature, nonce)
    */
   function removeSigner (
-    Parameters memory parameters,
+    address account,
     Signature[] memory signatures
   ) external {
-    _verifySignatures(parameters, signatures);
-
-    bytes memory data = parameters.data;
-    address account;
-
-    assembly {
-      account := mload(add(data, 20))
-    }
-
+    _verifySignatures(abi.encodePacked(account), signatures);
     ECDSAMultisigWalletStorage.layout().removeSigner(account);
   }
 
   /**
    * @notice set quorum needed to sign
-   * @param parameters structured call parameters (target, data, value, delegate)
+   * @param quorum structured call parameters (target, data, value, delegate)
    * @param signatures array of structured signature data (signature, nonce)
    */
   function setQuorum (
-    Parameters memory parameters,
+    uint quorum,
     Signature[] memory signatures
     ) external {
-    _verifySignatures(parameters, signatures);
-
-    bytes memory data = parameters.data;
-    uint size;
-
-    assembly {
-      size := mload(add(data, 32))
-    }
-
-    ECDSAMultisigWalletStorage.layout().setQuorum(size >> (256 - data.length * 8));
+    _verifySignatures(abi.encodePacked(quorum), signatures);
+    ECDSAMultisigWalletStorage.layout().setQuorum(quorum);
   }
 }
