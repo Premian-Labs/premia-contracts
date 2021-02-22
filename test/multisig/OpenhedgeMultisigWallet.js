@@ -133,22 +133,21 @@ describe('OpenhedgeMultisigWallet', function () {
       expect(
         await instance.callStatic.isSigner(nonSigner.address)
       ).to.be.true;
-    })
+    });
 
     describe('reverts if', function () {
       it('signatures are invalid', async function() {
-
         await expect(
           instance.addSigner(
             nonSigner.address,
             []
-            )
-          ).to.be.revertedWith(
-            'ECDSAMultisigWallet: quorum not reached'
-          );
-        });
+          )
+        ).to.be.revertedWith(
+          'ECDSAMultisigWallet: quorum not reached'
+        );
       });
     });
+  });
 
   describe('#removeSigner', function () {
     it('removes signer from multisig', async function() {
@@ -175,22 +174,21 @@ describe('OpenhedgeMultisigWallet', function () {
       expect(
         await instance.callStatic.isSigner(accountToBeRemoved)
       ).to.be.false;
-    })
+    });
 
     describe('reverts if', function () {
       it('signatures are invalid', async function() {
-
         await expect(
           instance.addSigner(
             nonSigner.address,
             []
-            )
-          ).to.be.revertedWith(
-            'ECDSAMultisigWallet: quorum not reached'
-          );
-        });
+          )
+        ).to.be.revertedWith(
+          'ECDSAMultisigWallet: quorum not reached'
+        );
       });
     });
+  });
 
   describe('#setQuorum', function () {
     it('sets quorum for authorization', async function () {
@@ -222,7 +220,16 @@ describe('OpenhedgeMultisigWallet', function () {
     });
 
     describe('reverts if', function () {
-      it('todo');
+      it('signatures are invalid', async function () {
+        await expect(
+          instance.setQuorum(
+            nonSigner.address,
+            []
+          )
+        ).to.be.revertedWith(
+          'ECDSAMultisigWallet: quorum not reached'
+        );
+      });
     });
   });
 });
