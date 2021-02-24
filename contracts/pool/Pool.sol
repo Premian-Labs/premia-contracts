@@ -2,10 +2,10 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/contracts/access/OwnableInternal.sol';
-import '@solidstate/contracts/contracts/token/ERC20/ERC20.sol';
-import '@solidstate/contracts/contracts/token/ERC20/IERC20.sol';
-import '@solidstate/contracts/contracts/token/ERC1155/ERC1155Base.sol';
+import '@solidstate/contracts/access/OwnableInternal.sol';
+import '@solidstate/contracts/token/ERC20/ERC20.sol';
+import '@solidstate/contracts/token/ERC20/IERC20.sol';
+import '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
 
 import '../pair/Pair.sol';
 import './PoolStorage.sol';

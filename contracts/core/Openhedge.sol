@@ -3,8 +3,8 @@
 pragma solidity ^0.8.0;
 pragma abicoder v2;
 
-import '@solidstate/contracts/contracts/access/OwnableStorage.sol';
-import '@solidstate/contracts/contracts/proxy/diamond/DiamondBase.sol';
+import '@solidstate/contracts/access/OwnableStorage.sol';
+import '@solidstate/contracts/proxy/diamond/DiamondBase.sol';
 
 import './ProxyManagerStorage.sol';
 

@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/contracts/access/OwnableStorage.sol';
-import '@solidstate/contracts/contracts/proxy/managed/ManagedProxyOwnable.sol';
+import '@solidstate/contracts/access/OwnableStorage.sol';
+import '@solidstate/contracts/proxy/managed/ManagedProxyOwnable.sol';
 
 import '../core/interfaces/IProxyManager.sol';
 import '../pool/PoolProxy.sol';

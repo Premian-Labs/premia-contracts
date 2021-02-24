@@ -649,9 +649,22 @@
   resolved "https://registry.yarnpkg.com/@solidity-parser/parser/-/parser-0.11.1.tgz#fa840af64840c930f24a9c82c08d4a092a068add"
   integrity sha512-H8BSBoKE8EubJa0ONqecA2TviT3TnHeC4NpgnAHSUiuhZoQBfPB4L2P9bs8R6AoTW10Endvh3vc+fomVMIDIYQ==
 
-"@solidstate/contracts@https://github.com/solidstate-network/solidstate-contracts":
-  version "0.0.0"
-  resolved "https://github.com/solidstate-network/solidstate-contracts#98f9adf737c52d48c681b1fb55a3593e00cb182b"
+"@solidstate/contracts@^0.0.3":
+  version "0.0.3"
+  resolved "https://registry.yarnpkg.com/@solidstate/contracts/-/contracts-0.0.3.tgz#5074c18dd15a2b63c38959a6a4cf498c425613ee"
+  integrity sha512-b1Q1d9W7I9ZYpd5Ali2Htsddrr2VwWZcYdlD82UR7vi5e612Mw+k4k7hnvwTzLMhckJqqO+sYVXFdZG/4Uo/Rg==
+
+"@solidstate/library@^0.0.3":
+  version "0.0.3"
+  resolved "https://registry.yarnpkg.com/@solidstate/library/-/library-0.0.3.tgz#613907cb2dcc999e31f8bd2d16705bdbe6e2afb9"
+  integrity sha512-yq8TQO7JU0WGEbazf3ieUXU2AavtmnHcJNbaox8TCWWRsM99/KMC8En78w4lIKpg1lZ77XQnU9LqXKvzlMEMng==
+
+"@solidstate/spec@^0.0.3":
+  version "0.0.3"
+  resolved "https://registry.yarnpkg.com/@solidstate/spec/-/spec-0.0.3.tgz#b66ad5e1b6ea2deb2b3213458627c2a26198617d"
+  integrity sha512-rSACRlgB0yryMDCbPNclHxahaYRH5ydZRZEfhvwiGgu8KKEVHgI8iDJ2tF8GhaxG/Q8anbrvHcI3Hzqp9GAl0w==
+  dependencies:
+    "@solidstate/library" "^0.0.3"
 
 "@szmarczak/http-timer@^1.1.2":
   version "1.1.2"

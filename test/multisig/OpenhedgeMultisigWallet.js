@@ -1,7 +1,7 @@
 const { expect } = require('chai');
-const signData = require('@solidstate/contracts/lib/sign_data.js');
+const signData = require('@solidstate/library/sign_data.js');
 
-const describeBehaviorOfECDSAMultisigWallet = require('@solidstate/contracts/test/multisig/ECDSAMultisigWallet.behavior.js');
+const describeBehaviorOfECDSAMultisigWallet = require('@solidstate/spec/multisig/ECDSAMultisigWallet.behavior.js');
 
 const quorum = ethers.constants.One;
 

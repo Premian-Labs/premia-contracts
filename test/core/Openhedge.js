@@ -1,9 +1,9 @@
 const factory = require('../../lib/factory.js');
 
-const describeBehaviorOfDiamondBase = require('@solidstate/contracts/test/proxy/diamond/DiamondBase.behavior.js');
-const describeBehaviorOfDiamondCuttable = require('@solidstate/contracts/test/proxy/diamond/DiamondCuttable.behavior.js');
-const describeBehaviorOfDiamondLoupe = require('@solidstate/contracts/test/proxy/diamond/DiamondLoupe.behavior.js');
-const describeBehaviorOfSafeOwnable = require('@solidstate/contracts/test/access/SafeOwnable.behavior.js');
+const describeBehaviorOfDiamondBase = require('@solidstate/spec/proxy/diamond/DiamondBase.behavior.js');
+const describeBehaviorOfDiamondCuttable = require('@solidstate/spec/proxy/diamond/DiamondCuttable.behavior.js');
+const describeBehaviorOfDiamondLoupe = require('@solidstate/spec/proxy/diamond/DiamondLoupe.behavior.js');
+const describeBehaviorOfSafeOwnable = require('@solidstate/spec/access/SafeOwnable.behavior.js');
 
 const describeBehaviorOfProxyManager = require('./ProxyManager.behavior.js');
 

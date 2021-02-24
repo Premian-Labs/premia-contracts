@@ -30,9 +30,9 @@ module.exports = {
 
   dependencyCompiler: {
     paths: [
-      '@solidstate/contracts/contracts/access/SafeOwnable.sol',
-      '@solidstate/contracts/contracts/proxy/diamond/DiamondCuttable.sol',
-      '@solidstate/contracts/contracts/proxy/diamond/DiamondLoupe.sol',
+      '@solidstate/contracts/access/SafeOwnable.sol',
+      '@solidstate/contracts/proxy/diamond/DiamondCuttable.sol',
+      '@solidstate/contracts/proxy/diamond/DiamondLoupe.sol',
     ],
   },
 

@@ -1,7 +1,7 @@
 const { expect } = require('chai');
 
-const describeBehaviorOfERC20 = require('@solidstate/contracts/test/token/ERC20/ERC20.behavior.js');
-const describeBehaviorOfERC1155Base = require('@solidstate/contracts/test/token/ERC1155/ERC1155Base.behavior.js');
+const describeBehaviorOfERC20 = require('@solidstate/spec/token/ERC20/ERC20.behavior.js');
+const describeBehaviorOfERC1155Base = require('@solidstate/spec/token/ERC1155/ERC1155Base.behavior.js');
 
 const describeBehaviorOfPool = function ({ deploy, supply, name, symbol, decimals }, skips) {
   describe('::Pool', function () {

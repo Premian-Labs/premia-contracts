@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/contracts/access/OwnableInternal.sol';
+import '@solidstate/contracts/access/OwnableInternal.sol';
 
 import '../pair/Pair.sol';
 import '../pair/PairProxy.sol';

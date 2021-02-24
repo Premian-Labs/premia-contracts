@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/contracts/multisig/ECDSAMultisigWallet.sol';
+import '@solidstate/contracts/multisig/ECDSAMultisigWallet.sol';
 
 /**
  * @title Openhedge team wallet
