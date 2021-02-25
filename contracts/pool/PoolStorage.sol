@@ -11,6 +11,7 @@ library PoolStorage {
     address pair;
     address base;
     address underlying;
+    uint c;
   }
 
   function layout () internal pure returns (Layout storage l) {

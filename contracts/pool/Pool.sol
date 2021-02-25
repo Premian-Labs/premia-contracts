@@ -28,13 +28,14 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
    * @param amount size of option contract
    * @param strikePrice option strike price
    * @param maturity timestamp of option maturity
-   * @return price of option contract
+   * @return price price of option contract
+   * @return c global "c" value after purchase
    */
   function quote (
     uint amount,
     uint192 strikePrice,
     uint64 maturity
-  ) public view returns (uint) {
+  ) public view returns (uint price, uint c) {
     // TODO: calculate
 
     uint volatility = Pair(PoolStorage.layout().pair).getVolatility();
@@ -60,6 +61,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     share = 1;
 
     _mint(msg.sender, share);
+
+    // TODO: set new c value
+    uint c;
+    PoolStorage.layout().c = c;
   }
 
   /**
@@ -81,6 +86,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     IERC20(
       PoolStorage.layout().underlying
     ).transfer(msg.sender, amount);
+
+    // TODO: set new c value
+    uint c;
+    PoolStorage.layout().c = c;
   }
 
   /**
@@ -96,7 +105,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   ) external returns (uint price) {
     // TODO: convert ETH to WETH if applicable
 
-    price = quote(amount, strikePrice, maturity);
+    // TODO: reserve liquidity
+
+    uint c;
+    (price, c) = quote(amount, strikePrice, maturity);
 
     IERC20(
       PoolStorage.layout().underlying
@@ -107,6 +119,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     );
 
     _mint(msg.sender, _tokenIdFor(strikePrice, maturity), amount, '');
+
+    PoolStorage.layout().c = c;
   }
 
   /**
