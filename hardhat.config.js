@@ -4,10 +4,14 @@ require('hardhat-docgen');
 require('hardhat-gas-reporter');
 require('hardhat-spdx-license-identifier');
 require('solidity-coverage');
+require('dotenv').config();
 
 require('./tasks/deploy.js');
+require('./tasks/accounts.js');
+const defaultNetwork = "generic";
 
 module.exports = {
+  defaultNetwork,
   solidity: {
     version: '0.8.1',
     settings: {
@@ -21,9 +25,9 @@ module.exports = {
   networks: {
     generic: {
       // set URL for external network
-      url: `${ process.env.URL }`,
+      url: process.env.URL,
       accounts: {
-        mnemonic: `${ process.env.MNEMONIC }`,
+        mnemonic: process.env.MNEMONIC,
       },
     },
   },
