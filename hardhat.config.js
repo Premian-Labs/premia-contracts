@@ -8,7 +8,8 @@ require('dotenv').config();
 
 require('./tasks/deploy.js');
 require('./tasks/accounts.js');
-const defaultNetwork = "generic";
+
+const defaultNetwork = process.env.NETWORK;
 
 module.exports = {
   defaultNetwork,
@@ -23,9 +24,11 @@ module.exports = {
   },
 
   networks: {
-    generic: {
-      // set URL for external network
-      url: process.env.URL,
+    local: {
+      url: "http://127.0.0.1:8545/",
+    },
+    kovan: {
+      url: 'https://kovan.infura.io/v3/'+process.env.KEY,
       accounts: {
         mnemonic: process.env.MNEMONIC,
       },
