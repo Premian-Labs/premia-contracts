@@ -13,17 +13,17 @@ yarn install
 Compile contracts via Hardhat:
 
 ```bash
-yarn run hardhat compile
+yarn compile
 ```
 
 ### Networks
 
 By default, Hardhat uses the Hardhat Network in-process.
 
-To use an external network via URL, set the `URL` environment variable and append commands with `--network generic`:
+To use an default network network:
 
 ```bash
-URL="[NODE_URL]" yarn run hardhat test --network generic
+yarn test
 ```
 
 ### Testing
@@ -31,7 +31,7 @@ URL="[NODE_URL]" yarn run hardhat test --network generic
 Test contracts via Hardhat:
 
 ```bash
-yarn run hardhat test
+yarn test --network local
 ```
 
 Activate gas usage reporting by setting the `REPORT_GAS` environment variable to `"true"`:
@@ -51,7 +51,7 @@ yarn run hardhat coverage
 The contract can be deployed using the `deploy` task:
 
 ```bash
-yarn run hardhat deploy --help
+yarn deploy
 ```
 
 ### Documentation

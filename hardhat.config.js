@@ -4,12 +4,17 @@ require('hardhat-docgen');
 require('hardhat-gas-reporter');
 require('hardhat-spdx-license-identifier');
 require('solidity-coverage');
+require('dotenv').config();
 
 require('./tasks/deploy.js');
+require('./tasks/accounts.js');
+
+const defaultNetwork = process.env.NETWORK;
 
 module.exports = {
+  defaultNetwork,
   solidity: {
-    version: '0.8.1',
+    version: '0.8.0',
     settings: {
       optimizer: {
         enabled: true,
@@ -19,11 +24,13 @@ module.exports = {
   },
 
   networks: {
-    generic: {
-      // set URL for external network
-      url: `${ process.env.URL }`,
+    local: {
+      url: "http://127.0.0.1:8545/",
+    },
+    kovan: {
+      url: 'https://kovan.infura.io/v3/'+process.env.INFURA_KEY,
       accounts: {
-        mnemonic: `${ process.env.MNEMONIC }`,
+        mnemonic: process.env.MNEMONIC,
       },
     },
   },
