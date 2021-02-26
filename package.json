@@ -34,5 +34,8 @@
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-spdx-license-identifier": "^2.0.3",
     "solidity-coverage": "^0.7.15"
+  },
+  "dependencies": {
+    "dotenv": "^8.2.0"
   }
 }
