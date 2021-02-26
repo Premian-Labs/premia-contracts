@@ -28,7 +28,7 @@ module.exports = {
       url: "http://127.0.0.1:8545/",
     },
     kovan: {
-      url: 'https://kovan.infura.io/v3/'+process.env.KEY,
+      url: 'https://kovan.infura.io/v3/'+process.env.INFURA_KEY,
       accounts: {
         mnemonic: process.env.MNEMONIC,
       },
