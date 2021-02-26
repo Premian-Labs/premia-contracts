@@ -51,7 +51,7 @@ yarn run hardhat coverage
 The contract can be deployed using the `deploy` task:
 
 ```bash
-yarn run hardhat deploy --help
+yarn run hardhat deploy --network generic
 ```
 
 ### Documentation
