@@ -42,6 +42,7 @@
     "chain": "hardhat node --hostname 0.0.0.0",
     "compile": "hardhat compile",
     "deploy": "hardhat deploy",
-    "accounts": "hardhat accounts"
+    "accounts": "hardhat accounts",
+    "test": "hardhat test"
   }
 }
