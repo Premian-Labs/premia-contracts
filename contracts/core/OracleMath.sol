@@ -3,6 +3,9 @@
 pragma solidity ^0.8.0;
 
 import '@solidstate/contracts/utils/Math.sol';
+import { ExponentLib } from "./ExponentLib.sol";
+import { FixidityLib } from "./FixidityLib.sol";
+import { LogarithmLib } from "./LogarithmLib.sol";
 
 contract OracleMath {
     function rollingAvg(uint256 old, uint256 current, uint256 window) internal pure returns (uint256 updated) {
