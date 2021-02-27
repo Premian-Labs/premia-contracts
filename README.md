@@ -29,11 +29,9 @@ Create a .env file in the root directory for storing environement variables
 - INFURA_KEY - Your infura api key
 - REPORT_GAS - bool for if you want to report gas
 
-### Networks
+### Testing
 
-By default, Hardhat uses the Hardhat Network in-process.
-
-To use an default network network:
+To use a default network network:
 
 ```bash
 
@@ -41,9 +39,7 @@ yarn test
 
 ```
 
-### Testing
-
-Test contracts via Hardhat:
+Test contracts on specific network:
 
 ```bash
 
@@ -66,6 +62,14 @@ The contract can be deployed using the `deploy` task:
 ```bash
 
 yarn deploy
+
+```
+
+Deploy contracts on network :
+
+```bash
+
+yarn deploy --network local
 
 ```
 
