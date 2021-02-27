@@ -36,11 +36,6 @@ contract PremiaNeutralPool is Ownable {
     uint256 lockExpiration;
   }
 
-  struct OptionCredit {
-    uint256 optionId;
-    uint256 amountOutstanding;
-  }
-
   // Offset to add to Unix timestamp to make it Fri 23:59:59 UTC
   uint256 public constant _baseExpiration = 172799;
   // Expiration increment
@@ -49,7 +44,7 @@ contract PremiaNeutralPool is Ownable {
   uint256 public _maxExpiration = 365 days;
 
   // Required collateralization level
-  uint256 public _requiredCollaterizationPercent = 200;  // 200 = 200% collateralized
+  uint256 public _requiredCollaterizationPercent = 100;  // 100 = 100% collateralized
   // Max percent of collateral liquidated in a single liquidation event
   uint256 public _maxPercentLiquidated = 500;  // 500 = 50% of collateral
 
@@ -73,13 +68,15 @@ contract PremiaNeutralPool is Ownable {
   // Set a custom swap path for a token
   mapping(address => mapping(address => address[])) public customSwapPaths;
 
+  // user address => UserDeposit
   mapping(address => UserDeposit[]) public depositsByUser;
+  // token => expiration => amount
   mapping(address => mapping(uint256 => uint256)) public amountsLockedByExpirationPerToken;
-
+  
+  // hash => loan
   mapping(bytes32 => Loan) public loansOutstanding;
-  mapping(address => mapping(uint256 => uint256)) public amountsLoanedByExpirationPerToken;
-
-  mapping(address => mapping(uint256 => OptionCredit)) public optionsOutstanding;
+  // optionContract => optionId => amountOutstanding
+  mapping(address => mapping(uint256 => uint256)) public optionsOutstanding;
 
   event Deposit(address indexed user, address indexed token, address indexed denominator, uint256 indexed lockExpiration, uint256 amountToken, uint256 amountDenominator);
   event Withdraw(address indexed user, address indexed token, address indexed denominator, uint256 amountToken, uint256 amountDenominator);
@@ -313,6 +310,8 @@ contract PremiaNeutralPool is Ownable {
     uint256 loanableAmount = getLoanableAmount(token, lockExpiration);
     uint256 collateralRequired = getEquivalentCollateral(token, amountToken, collateralToken);
 
+    // We need to set which tokens will be allowed as collateral
+
     require(loanableAmount >= amount, "Amount too high.");
     require(_whitelistedBorrowContracts.contains(msg.sender), "Borrow not whitelisted.");
     require(collateralRequired <= amountCollateral, "Not enough collateral.");
@@ -325,6 +324,8 @@ contract PremiaNeutralPool is Ownable {
     IERC20(collateralToken).safeTransferFrom(msg.sender, this, amountCollateral);
 
     bytes32 hash = getLoanHash(loan);
+
+    loansOutstanding[hash] = loan;
 
     emit Borrow(hash, msg.sender, token, lockExpiration, amount);
   }
@@ -377,6 +378,8 @@ contract PremiaNeutralPool is Ownable {
 
     // require(collateralHeld.mul(inverseBasisPoint).div(collateralAmount) >= _maxPercentLiquidated, "Too much liquidated.");
 
+    // TODO: Allow loan to be liquidated if it's past the lockExpiration date
+
     require(!checkCollateralizationLevel(loan), "Loan is not under-collateralized.");
     require(_whitelistedRouterContracts.contains(router), "Router not whitelisted.");
 
@@ -385,6 +388,10 @@ contract PremiaNeutralPool is Ownable {
     uint256 rewardFee = collateralAmount.mul(inverseBasisPoint).div(_liquidatorReward);
 
     IERC20(loan.collateralToken).safeTransferFrom(this, msg.sender, rewardFee);
+
+    if (loan.collateralHeld == 0) {
+      delete loansOutstanding[hash];
+    }
 
     emit LiquidateLoan(hash, msg.sender, loan.token, collateralAmount, rewardFee);
   }
@@ -421,6 +428,10 @@ contract PremiaNeutralPool is Ownable {
   function unwindOption(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium) external {
     require(_whitelistedWriterContracts.contains(msg.sender), "Writer not whitelisted.");
 
+    // I think we want to update this function to support exercising of ITM options.
+    // I.e. "unwind" the option by exercising ITM for whatever it's worth
+    // Or if it's not ITM, sell it to the pool for some premium, and the pool will cancel it
+
     IPremiaOption.OptionData memory data = IPremiaOption(optionContract).optionData(optionId);
 
     if (data.expiration > block.timestamp) {
@@ -447,19 +458,19 @@ contract PremiaNeutralPool is Ownable {
   function unlockCollateralFromOption(address optionContract, uint256 optionId, uint256 amount) external {
     IPremiaOption.OptionData memory data = IPremiaOption(optionContract).optionData(optionId);
 
-    if (data.expiration > block.timestamp) {
-      IPremiaOption(optionContract).withdraw(optionId);
+    require(data.expiration > block.timestamp, "Option is not expired yet.");
 
-      // In this case, we might withdraw both the collateral token and the underlying token.
-      // If we withdraw both, do we want to sell the collateral token at this time?
-      // Or should we just keep both and save on trading fees + slippage?
-    } else {
-      IPremiaOption(optionContract).cancelOptionFrom(msg.sender, optionId, amount);
-    }
+    IPremiaOption(optionContract).withdraw(optionId);
+
+    // In this case, we might withdraw both the collateral token and the underlying token.
+    // If we withdraw both, do we want to sell the collateral token at this time?
+    // Or should we just keep both and save on trading fees + slippage?
 
     uint256 outstanding = optionsOutstanding[optionContract][optionId];
 
     outstanding = oustanding.sub(amount);
+
+    // Reward unlocker for unlocking the collateral in the option
 
     emit UnlockCollateral(msg.sender, optionContract, optionId, amount);
   }
