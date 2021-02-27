@@ -57,7 +57,7 @@ yarn coverage
 
 ### Deployment
 
-The contract can be deployed using the `deploy` task:
+The contract can be deployed on the default network using the `deploy` task:
 
 ```bash
 
@@ -65,7 +65,7 @@ yarn deploy
 
 ```
 
-Deploy contracts on network :
+Deploy contracts on a specific network :
 
 ```bash
 
