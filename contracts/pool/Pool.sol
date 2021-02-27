@@ -10,6 +10,8 @@ import '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
 import '../pair/Pair.sol';
 import './PoolStorage.sol';
 
+import {ABDKMath64x64} from '../util/ABDKMath64x64.sol'; 
+
 /**
  * @title Openhedge option pool
  * @dev deployed standalone and referenced by PoolProxy
@@ -162,5 +164,21 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint64 maturity
   ) internal pure returns (uint) {
     return uint256(maturity) * (uint256(type(uint192).max) + 1) + strikePrice;
+  }
+
+  function _calculateC (
+    uint128 oldC,
+    uint poolSizeBefore,
+    uint poolSizeAfter
+  ) internal pure returns (uint128) {
+    int128 poolSizeBefore64x64 = ABDKMath64x64.fromUInt(poolSizeBefore);
+    int128 poolSizeAfter64x64 = ABDKMath64x64.fromUint(poolSizeAfter);
+    int128 exponent = ABDKMath64x64.neg(
+      ABDKMath64x64.div(
+        ABDKMath64x64.sub(poolSizeBefore64x64, poolSizeAfter64x64),
+        poolSizeBefore64x64 > poolSizeAfter64x64 ? poolSizeBefore64x64 : poolSizeAfter64x64
+      )
+    );
+    return ABDKMath64x64.mul(ABDKMath64x64.exp(exponent), oldC);
   }
 }
