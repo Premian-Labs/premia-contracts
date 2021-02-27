@@ -29,7 +29,7 @@ Create a .env file in the root directory for storing environement variables
 - INFURA_KEY - Your infura api key
 - REPORT_GAS - bool for if you want to report gas
 
-### Testing
+## Testing
 
 To use a default network network:
 
