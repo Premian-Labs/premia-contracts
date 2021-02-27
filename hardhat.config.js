@@ -49,7 +49,7 @@ module.exports = {
   },
 
   gasReporter: {
-    enabled: process.env.REPORT_GAS === 'true',
+    enabled: process.env.REPORT_GAS,
   },
 
   spdxLicenseIdentifier: {
