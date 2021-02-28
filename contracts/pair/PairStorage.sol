@@ -21,13 +21,13 @@ library PairStorage {
     uint256 oldprice;
     uint256 lastprice;
     //Rolling stats
-    uint256 currentLogRtns;
-    uint256 oldLogRtns;
     uint256 oldaverage;
     uint256 lastaverage;
+    uint256 lastvar;
+    uint256 currentLogRtns;
+    uint256 oldLogRtns;
     uint256 lastEMALogRtns;
     uint256 oldEMALogRtns;
-    uint256 lastStdLogRtns;
     mapping (uint => uint) volatilityByDay;
   }
 
