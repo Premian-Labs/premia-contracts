@@ -17,15 +17,15 @@ contract OptionMath {
         return alpha * (_current - _old) + _old;
     }
 
-    function rollingAvg(uint256 _old, uint256 _current, uint256 _window) internal pure returns (uint256 updated) {
+    function rollingAvg(uint256 _old, uint256 _current, uint256 _window) internal pure returns (uint256) {
         return _old + (_current - _old)/_window;
     }
 
-    function rollingVar(uint256 _old, uint256 _last, uint256 _oldaverage, uint256 _newaverage, uint256 _lastvariance, uint256 _window) internal pure returns (uint256 updated) {
+    function rollingVar(uint256 _old, uint256 _last, uint256 _oldaverage, uint256 _newaverage, uint256 _lastvariance, uint256 _window) internal pure returns (uint256) {
         return _lastvariance + (_last - _old) * (_last - _newaverage + _old - _oldaverage)/(_window - 1);
     }
 
-    function rollingStd(uint256 _old, uint256 _last, uint256 _oldaverage, uint256 _newaverage, uint256 _lastvariance, uint256 _window) internal pure returns (uint256 updated) {
+    function rollingStd(uint256 _old, uint256 _last, uint256 _oldaverage, uint256 _newaverage, uint256 _lastvariance, uint256 _window) internal pure returns (uint256) {
         return sqrt(rollingVar(_old, _last, _oldaverage, _newaverage, _lastvariance, _window));
     }
 
