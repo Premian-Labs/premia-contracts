@@ -33,20 +33,20 @@ contract OracleMath {
         return (uint256(LogarithmLib.ln(int256(_strike/_price))) + (_std**2)/2 * _days)/sqrt(_std**2*_days);
     }
 
-    function bsPrice(uint256 _std, uint256 _strike, uint256 _price, uint256 _timestamp) internal pure returns (uint256) {
-        require(timestamp > block.timestamp, 'Option in the past');
+    function bsPrice(uint256 _std, uint256 _strike, uint256 _price, uint256 _timestamp) internal view returns (uint256) {
+        require(_timestamp > block.timestamp, 'Option in the past');
         uint256 maturity = (_timestamp - block.timestamp) / (1 days);
         uint256 prob = p(_std, _strike, _price, maturity);
-        return _price * prob - _strike * ExponentLib.powerE(int256(maturity)) * prob;
+        return _price * prob - _strike * uint256(ExponentLib.powerE(int256(maturity))) * prob;
     }
 
-    function slippageFn(uint256 Ct, uint256 St, uint256 St1) internal pure returns (uint256){
-        int256 exp = (int256(St1) - int256(St)) / int256(max(St, St1));
-        return Ct * FixidityLib.reciprocal(ExponentLib.powerE());
+    function slippageFn(uint256 _Ct, uint256 _St, uint256 _St1) internal pure returns (uint256){
+        int256 exp = (int256(_St1) - int256(_St)) / int256(max(_St, _St1));
+        return _Ct * uint256(FixidityLib.reciprocal(ExponentLib.powerE(exp)));
     }
 
-    function pT(uint256 _std, uint256 _strike, uint256 _price, uint256 _timestamp){
-        return cT() * bsPrice(_std, _strike, _price, _timestamp);
+    function pT(uint256 _std, uint256 _strike, uint256 _price, uint256 _timestamp, uint256 _Ct, uint256 _St, uint256 _St1) internal view returns (uint256) {
+        return slippageFn(_Ct, _St, _St1) * bsPrice(_std, _strike, _price, _timestamp);
     }
 
     function sqrt(uint256 x) internal pure returns (uint256 y) {
@@ -57,7 +57,7 @@ contract OracleMath {
             z = (x / z + z) / 2;
         }
     }
-    
+
     function max(uint256 a, uint256 b) private pure returns (uint256) {
         return a > b ? a : b;
     }
