@@ -15,12 +15,32 @@ contract PremiaAMM is Ownable {
   // The oracle used to get black scholes prices on chain.
   IBlackScholesPriceGetter public blackScholesOracle;
 
-  IPremiaLiquidityPool public callPool;
-  IPremiaLiquidityPool public putPool;
+  IPremiaLiquidityPool[] public callPools;
+  IPremiaLiquidityPool[] public putPools;
 
   uint256 k = 1;
 
-  function priceOption(IPremiaOption optionContract, uint256 optionId, uint256 amount, address premiumToken) public returns (uint256 optionPrice) {
+  function getCallReserves(IPremiaOption.OptionData data, uint256 optionId) public view returns (uint256 reserveAmount) {
+    uint256 reserveAmount;
+
+    for (uint256 i = 0; i < callPools.length; i++) {
+      IPremiaLiquidityPool pool = callPools[i];
+      reserveAmount = reserveAmount.add(pool.getLoanableAmount(data.token, data.expiration));
+    }
+  }
+
+  function getPutReserves(IPremiaOption.OptionData data, IPremiaOption optionContract, uint256 optionId) public view returns (uint256 reserveAmount) {
+    uint256 reserveAmount;
+
+    for (uint256 i = 0; i < callPools.length; i++) {
+      IPremiaLiquidityPool pool = callPools[i];
+      reserveAmount = reserveAmount.add(pool.getLoanableAmount(optionContract.denominator(), data.expiration));
+    }
+  }
+
+  function priceOption(IPremiaOption.OptionData, IPremiaOption optionContract, uint256 optionId, uint256 amount, address premiumToken)
+    public view returns (uint256 optionPrice) {
+    // Source: https://arxiv.org/pdf/2101.02778.pdf (page 5)
     // sum all call reserves + put reserves and plug into the following formula:
     // k = w(t) · (x(t) − a(t)) · y(t)
     // a(t) < x(t), w(t) > 0, x(t) > 0, y(t) > 0
@@ -33,58 +53,86 @@ contract PremiaAMM is Ownable {
     // optionPrice = (k / w(t)) *  (1 / (x(t) - a(t))^2 
     // where a(t) = x(t) − (y(t) / p_market(t))
     // and w(t) = (k * p_market(t)) / y(t)^2
-    //
-    // Source: https://arxiv.org/pdf/2101.02778.pdf (page 5)
-
-    IPremiaOption.OptionData data = optionContract.optionData(optionId);
 
     uint256 x_t_0;
     uint256 x_t_1;
     uint256 y_t_0;
     uint256 y_t_1;
+    uint256 k_0 = k;
 
     if (data.isCall) {
-      x_t_0 = callPool.getLoanableAmount(data.token, data.expiration);
+      x_t_0 = getCallReserves(data, optionId);
       x_t_1 = x_t_0.sub(amount);
-      y_t_0 = putPool.getLoanableAmount(optionContract.denominator(), data.expiration);
+      y_t_0 = getPutReserves(data, optionContract, optionId);
       y_t_1 = y_t_0;
     } else {
-      x_t_0 = callPool.getLoanableAmount(data.token, data.expiration);
+      x_t_0 = getCallReserves(data, optionId);
       x_t_1 = x_t_0;
-      y_t_0 = putPool.getLoanableAmount(optionContract.denominator(), data.expiration);
+      y_t_0 = getPutReserves(data, optionContract, optionId);
       y_t_1 = y_t_0.sub(amount.mul(data.strikePrice));
     }
-    uint256 a_t_0 = x_t_0.sub(y_t_0.div(p_market_t));
-    uint256 w_t_0 = k.mul(p_market_t).div(y_t_0.pow(2));
 
-    k = w_t_0.mul(x_t_0.sub(a_t_0)).mul(y_t_0);
+    uint256 a_t_0 = x_t_0.sub(y_t_0.div(p_market_t));
+    uint256 w_t_0 = k_0.mul(p_market_t).div(y_t_0.pow(2));
+    uint256 k_1 = w_t_0.mul(x_t_0.sub(a_t_0)).mul(y_t_0);
 
     uint256 p_market_t = blackScholesOracle.getBlackScholesEstimate(address(optionContract), optionId);
     uint256 a_t_1 = x_t_1.sub(y_t_1.div(p_market_t));
-    uint256 w_t_1 = k.mul(p_market_t).div(y_t_1.pow(2));
+    uint256 w_t_1 = k_1.mul(p_market_t).div(y_t_1.pow(2));
 
-    uint256 optionPrice = k.div(w_t_1).mul(1.div((x_t_1.sub(a_t_1)).pow(2)));
+    uint256 optionPrice = k_1.div(w_t_1).mul(1.div((x_t_1.sub(a_t_1)).pow(2)));
+  }
+
+  function _priceOptionWithUpdate(IPremiaOption.OptionData data, IPremiaOption optionContract, uint256 optionId, uint256 amount, address premiumToken)
+    internal returns (uint256 optionPrice) {
+    uint256 x_t;
+    uint256 y_t;
+
+    if (data.isCall) {
+      x_t = getCallReserves(data, optionId).sub(amount);
+      y_t = getPutReserves(data, optionContract, optionId);
+    } else {
+      x_t = getCallReserves(data, optionId);
+      y_t = getPutReserves(data, optionContract, optionId).sub(amount.mul(data.strikePrice));
+    }
+
+    _updateKFromReserves(data, optionContract, optionId, amount, premiumToken);
+
+    uint256 p_market_t = blackScholesOracle.getBlackScholesEstimate(address(optionContract), optionId);
+    uint256 a_t = x_t.sub(y_t.div(p_market_t));
+    uint256 w_t = k.mul(p_market_t).div(y_t.pow(2));
+
+    uint256 optionPrice = k.div(w_t).mul(1.div((x_t.sub(a_t)).pow(2)));
+  }
+
+  function _updateKFromReserves(IPremiaOption.OptionData, IPremiaOption optionContract, uint256 optionId, uint256 amount, address premiumToken) internal {
+    uint256 x_t = getCallReserves(data, optionId);
+    uint256 y_t = getPutReserves(data, optionContract, optionId);
+    uint256 a_t = x_t.sub(y_t.div(p_market_t));
+    uint256 w_t = k.mul(p_market_t).div(y_t.pow(2));
+
+    k = w_t.mul(x_t.sub(a_t)).mul(y_t);
   }
 
   function buy(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 maxPremiumAmount, address referrer) external {
-    uint256 optionPrice = priceOption(optionContract, optionId, amount, premiumToken);
+    IPremiaOption.OptionData data = IPremiaOption(optionContract).optionData(optionId);
+    IPremiaLiquidityPool liquidityPool = isCall ? callPool : putPool;
+
+    uint256 optionPrice = _priceOptionWithUpdate(data, optionContract, optionId, amount, premiumToken);
 
     require(optionPrice >= maxPremiumAmount, "Price too high.");
-
-    IPremiaOption.OptionData data = optionContract.optionData(optionId);
-    IPremiaLiquidityPool liquidityPool = isCall ? callPool : putPool;
 
     IERC20(premiumToken).safeTransferFrom(msg.sender, liquidityPool, optionPrice);
     liquidityPool.writeOptionFor(msg.sender, optionContract, optionId, amount, premiumToken, optionPrice, referrer);
   }
 
   function sell(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 minPremiumAmount, address referrer) external {
-    uint256 optionPrice = priceOption(optionContract, optionId, amount, premiumToken);
+    IPremiaOption.OptionData data = IPremiaOption(optionContract).optionData(optionId);
+    IPremiaLiquidityPool liquidityPool = isCall ? callPool : putPool;
+
+    uint256 optionPrice = _priceOptionWithUpdate(data, optionContract, optionId, amount, premiumToken);
 
     require(optionPrice <= minPremiumAmount, "Price too low.");
-
-    IPremiaOption.OptionData data = optionContract.optionData(optionId);
-    IPremiaLiquidityPool liquidityPool = isCall ? callPool : putPool;
 
     liquidityPool.unwindOptionFor(msg.sender, optionContract, optionId, amount, premiumToken, optionPrice, referrer);
     IERC20(premiumToken).safeTransferFrom(liquidityPool, msg.sender, optionPrice);
