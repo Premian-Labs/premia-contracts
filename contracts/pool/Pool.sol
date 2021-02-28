@@ -10,13 +10,15 @@ import '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
 import '../pair/Pair.sol';
 import './PoolStorage.sol';
 
-import {ABDKMath64x64} from '../util/ABDKMath64x64.sol'; 
+import { ABDKMath64x64 } from '../util/ABDKMath64x64.sol';
 
 /**
  * @title Openhedge option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
 contract Pool is OwnableInternal, ERC20, ERC1155Base {
+  using ABDKMath64x64 for int128;
+
   /**
    * @notice get address of PairProxy contract
    * @return pair address
@@ -170,15 +172,12 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint128 oldC,
     uint poolSizeBefore,
     uint poolSizeAfter
-  ) internal pure returns (uint128) {
+  ) internal pure returns (int128) {
     int128 poolSizeBefore64x64 = ABDKMath64x64.fromUInt(poolSizeBefore);
-    int128 poolSizeAfter64x64 = ABDKMath64x64.fromUint(poolSizeAfter);
-    int128 exponent = ABDKMath64x64.neg(
-      ABDKMath64x64.div(
-        ABDKMath64x64.sub(poolSizeBefore64x64, poolSizeAfter64x64),
-        poolSizeBefore64x64 > poolSizeAfter64x64 ? poolSizeBefore64x64 : poolSizeAfter64x64
-      )
-    );
-    return ABDKMath64x64.mul(ABDKMath64x64.exp(exponent), oldC);
+    int128 poolSizeAfter64x64 = ABDKMath64x64.fromUInt(poolSizeAfter);
+
+    return poolSizeBefore64x64.sub(poolSizeAfter64x64).div(
+      poolSizeBefore64x64 > poolSizeAfter64x64 ? poolSizeBefore64x64 : poolSizeAfter64x64
+    ).neg().exp().mul(int128(oldC));
   }
 }
