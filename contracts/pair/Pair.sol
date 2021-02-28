@@ -12,6 +12,7 @@ import './PairStorage.sol';
  */
 contract Pair is OwnableInternal {
   using PairStorage for PairStorage.Layout;
+  uint256 period = 24 hours;
 
   /**
    * @notice get addresses of PoolProxy contracts
