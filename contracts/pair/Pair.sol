@@ -5,13 +5,20 @@ pragma solidity ^0.8.0;
 import '@solidstate/contracts/access/OwnableInternal.sol';
 
 import './PairStorage.sol';
+import '../core/OptionMath.sol';
+
+interface IPriceProxy {
+    function getLatestPrice(address _feed) external view returns (int);
+}
 
 /**
  * @title Openhedge options pair
  * @dev deployed standalone and referenced by PairProxy
  */
-contract Pair is OwnableInternal {
+contract Pair is OwnableInternal, OptionMath {
   using PairStorage for PairStorage.Layout;
+  uint256 period = 24 hours;
+  IPriceProxy IPrice;
 
   /**
    * @notice get addresses of PoolProxy contracts
@@ -35,5 +42,17 @@ contract Pair is OwnableInternal {
     }
 
     return l.volatilityByDay[day];
+  }
+
+  /**
+   * @notice updates state variables
+   */
+  function update() internal {
+    PairStorage.Layout storage l = PairStorage.layout();
+    require(l.lasttimestamp + period < block.timestamp, "Wait to update");
+    // TODO: use option math to update storage variables
+    l.lasttimestamp = block.timestamp;
+    l.oldprice = l.lastprice;
+
   }
 }
