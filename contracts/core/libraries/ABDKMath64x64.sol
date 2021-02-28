@@ -342,10 +342,10 @@ library ABDKMath64x64 {
 
     if (negativeResult) {
       require (absoluteResult <= 0x80000000000000000000000000000000);
-      return -int128(int256(absoluteResult)); // We rely on overflow behavior here
+      unchecked { return -int128(int256(absoluteResult));} // We rely on overflow behavior here
     } else {
       require (absoluteResult <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
-      return int128(int256(absoluteResult)); // We rely on overflow behavior here
+      unchecked {return int128(int256(absoluteResult));} // We rely on overflow behavior here
     }
   }
 
