@@ -154,7 +154,7 @@ library ABDKMath64x64 {
         negativeResult = true;
       }
       if (y < 0) {
-        y = -y; // We rely on overflow behavior here
+        unchecked {y = -y;} // We rely on overflow behavior here
         negativeResult = !negativeResult;
       }
       uint256 absoluteResult = mulu (x, uint256 (y));
@@ -222,11 +222,11 @@ library ABDKMath64x64 {
 
     bool negativeResult = false;
     if (x < 0) {
-      x = -x; // We rely on overflow behavior here
+      unchecked {x = -x;} // We rely on overflow behavior here
       negativeResult = true;
     }
     if (y < 0) {
-      y = -y; // We rely on overflow behavior here
+      unchecked {y = -y;} // We rely on overflow behavior here
       negativeResult = !negativeResult;
     }
     uint128 absoluteResult = divuu (uint256 (x), uint256 (y));
@@ -332,18 +332,20 @@ library ABDKMath64x64 {
       absoluteResult = powu (uint256(int256(x)) << 63, y);
     } else {
       // We rely on overflow behavior here
-      absoluteResult = powu (uint256 (uint128 (-x)) << 63, y);
-      negativeResult = y & 1 > 0;
+      unchecked {
+        absoluteResult = powu (uint256 (uint128 (-x)) << 63, y);
+        negativeResult = y & 1 > 0;
+      }
     }
 
     absoluteResult >>= 63;
 
     if (negativeResult) {
       require (absoluteResult <= 0x80000000000000000000000000000000);
-      return -int128(int256(absoluteResult)); // We rely on overflow behavior here
+      return unchecked {-int128(int256(absoluteResult));} // We rely on overflow behavior here
     } else {
       require (absoluteResult <= 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF);
-      return int128(int256(absoluteResult)); // We rely on overflow behavior here
+      return unchecked {int128(int256(absoluteResult));} // We rely on overflow behavior here
     }
   }
 
@@ -600,10 +602,10 @@ library ABDKMath64x64 {
       uint256 xl = x << 64;
 
       if (xl < lo) xh -= 1;
-      xl -= lo; // We rely on overflow behavior here
+      unchecked {xl -= lo;} // We rely on overflow behavior here
       lo = hi << 128;
       if (xl < lo) xh -= 1;
-      xl -= lo; // We rely on overflow behavior here
+      unchecked {xl -= lo;} // We rely on overflow behavior here
 
       assert (xh == hi >> 128);
 

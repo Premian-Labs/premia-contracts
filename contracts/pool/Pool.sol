@@ -10,7 +10,7 @@ import '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
 import '../pair/Pair.sol';
 import './PoolStorage.sol';
 
-import { ABDKMath64x64 } from '../util/ABDKMath64x64.sol';
+import { ABDKMath64x64 } from '../core/libraries/ABDKMath64x64.sol';
 
 /**
  * @title Openhedge option pool
