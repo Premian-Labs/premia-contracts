@@ -5,12 +5,13 @@ pragma solidity ^0.8.0;
 import '@solidstate/contracts/access/OwnableInternal.sol';
 
 import './PairStorage.sol';
+import '../core/OptionMath.sol';
 
 /**
  * @title Openhedge options pair
  * @dev deployed standalone and referenced by PairProxy
  */
-contract Pair is OwnableInternal {
+contract Pair is OwnableInternal, OptionMath {
   using PairStorage for PairStorage.Layout;
   uint256 period = 24 hours;
 
