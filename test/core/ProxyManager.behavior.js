@@ -1,6 +1,6 @@
 const { expect } = require('chai');
 
-const describeBehaviorOfProxyManager = function ({ deploy, getPairImplementationAddress, getPoolImplementationAddress }) {
+const describeBehaviorOfProxyManager = function ({ deploy, getPairImplementationAddress, getPoolImplementationAddress }, skips) {
   describe('::ProxyManager', function () {
     let instance;
 

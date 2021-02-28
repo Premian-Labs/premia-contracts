@@ -5,6 +5,7 @@ const describeBehaviorOfDiamondCuttable = require('@solidstate/spec/proxy/diamon
 const describeBehaviorOfDiamondLoupe = require('@solidstate/spec/proxy/diamond/DiamondLoupe.behavior.js');
 const describeBehaviorOfSafeOwnable = require('@solidstate/spec/access/SafeOwnable.behavior.js');
 
+const describeBehaviorOfPriceConsumer = require('./PriceConsumer.behavior.js');
 const describeBehaviorOfProxyManager = require('./ProxyManager.behavior.js');
 
 describe('Openhedge', function () {
@@ -80,6 +81,11 @@ describe('Openhedge', function () {
   describeBehaviorOfDiamondLoupe({
     deploy: () => instance,
     facetCuts,
+  }, []);
+
+  // eslint-disable-next-line mocha/no-setup-in-describe
+  describeBehaviorOfPriceConsumer({
+    deploy: () => instance,
   }, []);
 
   // eslint-disable-next-line mocha/no-setup-in-describe
