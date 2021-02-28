@@ -1,6 +1,3 @@
-import '@nomiclabs/hardhat-waffle';
-require('dotenv').config();
-
 task('accounts', 'Prints the list of accounts', async () => {
   const accounts = await ethers.getSigners();
 
