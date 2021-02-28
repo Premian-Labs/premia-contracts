@@ -7,7 +7,7 @@ import { ExponentLib } from "./libraries/ExponentLib.sol";
 import { FixidityLib } from "./libraries/FixidityLib.sol";
 import { LogarithmLib } from "./libraries/LogarithmLib.sol";
 
-contract OracleMath {
+contract OptionMath {
 
     function logreturns(uint256 close, uint256 close_1back) internal pure returns (uint256){
         return uint256(LogarithmLib.log_b(10, int256(close/close_1back)));
