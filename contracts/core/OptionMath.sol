@@ -11,8 +11,8 @@ contract OptionMath {
         return uint256(ABDKMath64x64.ln(int256(close/close_1back)));
     }
 
-    function rollingEma(uint256 _old, uint256 _current, uint256 alpha) internal pure returns (uint256){
-        return alpha * (_current - _old) + _old;
+    function rollingEma(uint256 _old, uint256 _current, uint256 _alpha) internal pure returns (uint256){
+        return _alpha * (_current - _old) + _old;
     }
 
     function rollingAvg(uint256 _old, uint256 _current, uint256 _window) internal pure returns (uint256) {
