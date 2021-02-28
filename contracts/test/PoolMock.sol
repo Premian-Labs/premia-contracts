@@ -7,7 +7,7 @@ import '@solidstate/contracts/introspection/ERC165Storage.sol';
 import '@solidstate/contracts/token/ERC20/ERC20.sol';
 import '@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol';
 
-import './Pool.sol';
+import '../pool/Pool.sol';
 
 contract PoolMock is Pool {
   using ERC165Storage for ERC165Storage.Layout;
