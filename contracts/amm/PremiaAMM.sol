@@ -33,6 +33,8 @@ contract PremiaAMM is Ownable {
     // optionPrice = (k / w(t)) *  (1 / (x(t) - a(t))^2 
     // where a(t) = x(t) − (y(t) / p_market(t))
     // and w(t) = (k * p_market(t)) / y(t)^2
+    //
+    // Source: https://arxiv.org/pdf/2101.02778.pdf (page 5)
 
     IPremiaOption.OptionData data = optionContract.optionData(optionId);
 
