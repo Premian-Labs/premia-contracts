@@ -1,10 +1,11 @@
+require('dotenv').config();
+
 require('@nomiclabs/hardhat-waffle');
 require('hardhat-dependency-compiler');
 require('hardhat-docgen');
 require('hardhat-gas-reporter');
 require('hardhat-spdx-license-identifier');
 require('solidity-coverage');
-require('dotenv').config();
 
 require('./tasks/deploy.js');
 require('./tasks/accounts.js');
