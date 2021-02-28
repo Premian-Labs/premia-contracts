@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import '@solidstate/contracts/access/OwnableInternal.sol';
 
 import './PairStorage.sol';
-import '../core/OptionMath.sol';
+import './OptionMath.sol';
 
 interface IPriceProxy {
     function getLatestPrice(address _feed) external view returns (int);
