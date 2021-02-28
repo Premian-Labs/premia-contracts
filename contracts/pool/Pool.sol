@@ -10,11 +10,15 @@ import '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
 import '../pair/Pair.sol';
 import './PoolStorage.sol';
 
+import { ABDKMath64x64 } from '../util/ABDKMath64x64.sol';
+
 /**
  * @title Openhedge option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
 contract Pool is OwnableInternal, ERC20, ERC1155Base {
+  using ABDKMath64x64 for int128;
+
   /**
    * @notice get address of PairProxy contract
    * @return pair address
@@ -35,10 +39,16 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint amount,
     uint192 strikePrice,
     uint64 maturity
-  ) public view returns (uint price, uint c) {
+  ) public view returns (uint price, int128 c) {
     // TODO: calculate
 
-    uint volatility = Pair(PoolStorage.layout().pair).getVolatility();
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    uint volatility = Pair(l.pair).getVolatility();
+
+    // TODO: get pool size
+    uint poolSizeBefore;
+    c = _calculateC(l.c, poolSizeBefore, poolSizeBefore - amount);
   }
 
   /**
@@ -51,20 +61,19 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   ) external returns (uint share) {
     // TODO: convert ETH to WETH if applicable
     // TODO: set lockup period
-    // TODO: calculate C value
 
-    IERC20(
-      PoolStorage.layout().underlying
-    ).transferFrom(msg.sender, address(this), amount);
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    IERC20(l.underlying).transferFrom(msg.sender, address(this), amount);
 
     // TODO: calculate amount minted
     share = 1;
 
     _mint(msg.sender, share);
 
-    // TODO: set new c value
-    uint c;
-    PoolStorage.layout().c = c;
+    // TODO: get pool size
+    uint poolSizeBefore;
+    l.c = _calculateC(l.c, poolSizeBefore, poolSizeBefore + amount);
   }
 
   /**
@@ -78,18 +87,18 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     // TODO: check lockup period
     // TODO: ensure available liquidity, queue if necessary
 
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
     _burn(msg.sender, share);
 
     // TODO: calculate share of pool
     uint amount;
 
-    IERC20(
-      PoolStorage.layout().underlying
-    ).transfer(msg.sender, amount);
+    IERC20(l.underlying).transfer(msg.sender, amount);
 
-    // TODO: set new c value
-    uint c;
-    PoolStorage.layout().c = c;
+    // TODO: get pool size
+    uint poolSizeBefore;
+    l.c = _calculateC(l.c, poolSizeBefore, poolSizeBefore - amount);
   }
 
   /**
@@ -107,20 +116,16 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     // TODO: reserve liquidity
 
-    uint c;
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    int128 c;
     (price, c) = quote(amount, strikePrice, maturity);
 
-    IERC20(
-      PoolStorage.layout().underlying
-    ).transferFrom(
-      msg.sender,
-      address(this),
-      price
-    );
+    IERC20(l.underlying).transferFrom(msg.sender, address(this), price);
 
     _mint(msg.sender, _tokenIdFor(strikePrice, maturity), amount, '');
 
-    PoolStorage.layout().c = c;
+    l.c = c;
   }
 
   /**
@@ -162,5 +167,18 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint64 maturity
   ) internal pure returns (uint) {
     return uint256(maturity) * (uint256(type(uint192).max) + 1) + strikePrice;
+  }
+
+  function _calculateC (
+    int128 oldC,
+    uint poolSizeBefore,
+    uint poolSizeAfter
+  ) internal pure returns (int128) {
+    int128 poolSizeBefore64x64 = ABDKMath64x64.fromUInt(poolSizeBefore);
+    int128 poolSizeAfter64x64 = ABDKMath64x64.fromUInt(poolSizeAfter);
+
+    return poolSizeBefore64x64.sub(poolSizeAfter64x64).div(
+      poolSizeBefore64x64 > poolSizeAfter64x64 ? poolSizeBefore64x64 : poolSizeAfter64x64
+    ).neg().exp().mul(int128(oldC));
   }
 }
