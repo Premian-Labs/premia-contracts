@@ -8,8 +8,26 @@ library PairStorage {
   );
 
   struct Layout {
+    //addresses
+    address oracle;
     address pool0;
     address pool1;
+    //constants
+    uint256 window;
+    uint256 alpha;
+    //time
+    uint256 lasttimestamp;
+    //prices
+    uint256 oldprice;
+    uint256 lastprice;
+    //Rolling stats
+    uint256 currentLogRtns;
+    uint256 oldLogRtns;
+    uint256 oldaverage;
+    uint256 lastaverage;
+    uint256 lastEMALogRtns;
+    uint256 oldEMALogRtns;
+    uint256 lastStdLogRtns;
     mapping (uint => uint) volatilityByDay;
   }
 
