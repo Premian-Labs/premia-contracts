@@ -38,8 +38,16 @@ contract PremiaAMM is Ownable {
 
     IPremiaOption.OptionData data = optionContract.optionData(optionId);
 
-    uint256 x_t = callPool.getLoanableAmount(data.token, data.expiration);
-    uint256 y_t = putPool.getLoanableAmount(optionContract.denominator(), data.expiration); 
+    uint256 x_t;
+    uint256 y_t;
+
+    if (data.isCall) {
+      x_t = callPool.getLoanableAmount(data.token, data.expiration).sub(amount);
+      y_t = putPool.getLoanableAmount(optionContract.denominator(), data.expiration);
+    } else {
+      x_t = putPool.getLoanableAmount(optionContract.denominator(), data.expiration).sub(amount.mul(data.strikePrice));
+      y_t = callPool.getLoanableAmount(data.token, data.expiration);
+    }
 
     uint256 p_market_t = blackScholesOracle.getBlackScholesEstimate(address(optionContract), optionId);
     uint256 a_t = x_t.sub(y_t.div(p_market_t));
