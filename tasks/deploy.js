@@ -11,6 +11,7 @@ task(
   const facets = [
     await factory.DiamondCuttable({ deployer }),
     await factory.DiamondLoupe({ deployer }),
+    await factory.PriceConsumer({ deployer }),
     await factory.ProxyManager({ deployer }),
     await factory.SafeOwnable({ deployer }),
   ];

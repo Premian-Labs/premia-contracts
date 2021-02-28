@@ -20,6 +20,7 @@ describe('PairProxy', function () {
     const facets = [
       await factory.DiamondCuttable({ deployer: owner }),
       await factory.DiamondLoupe({ deployer: owner }),
+      await factory.PriceConsumer({ deployer: owner }),
       await factory.ProxyManager({ deployer: owner }),
       await factory.SafeOwnable({ deployer: owner }),
     ];
