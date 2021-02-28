@@ -10,7 +10,7 @@ import { LogarithmLib } from "./libraries/LogarithmLib.sol";
 contract OptionMath {
 
     function logreturns(uint256 close, uint256 close_1back) internal pure returns (uint256){
-        return uint256(LogarithmLib.log_b(10, int256(close/close_1back)));
+        return uint256(LogarithmLib.ln(int256(close/close_1back)));
     }
 
     function rollingEma(uint256 _old, uint256 _current, uint256 alpha) internal pure returns (uint256){
