@@ -39,10 +39,16 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint amount,
     uint192 strikePrice,
     uint64 maturity
-  ) public view returns (uint price, uint c) {
+  ) public view returns (uint price, int128 c) {
     // TODO: calculate
 
-    uint volatility = Pair(PoolStorage.layout().pair).getVolatility();
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    uint volatility = Pair(l.pair).getVolatility();
+
+    // TODO: get pool size
+    uint poolSizeBefore;
+    c = _calculateC(l.c, poolSizeBefore, poolSizeBefore - amount);
   }
 
   /**
@@ -55,20 +61,19 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   ) external returns (uint share) {
     // TODO: convert ETH to WETH if applicable
     // TODO: set lockup period
-    // TODO: calculate C value
 
-    IERC20(
-      PoolStorage.layout().underlying
-    ).transferFrom(msg.sender, address(this), amount);
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    IERC20(l.underlying).transferFrom(msg.sender, address(this), amount);
 
     // TODO: calculate amount minted
     share = 1;
 
     _mint(msg.sender, share);
 
-    // TODO: set new c value
-    uint c;
-    PoolStorage.layout().c = c;
+    // TODO: get pool size
+    uint poolSizeBefore;
+    l.c = _calculateC(l.c, poolSizeBefore, poolSizeBefore + amount);
   }
 
   /**
@@ -82,18 +87,18 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     // TODO: check lockup period
     // TODO: ensure available liquidity, queue if necessary
 
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
     _burn(msg.sender, share);
 
     // TODO: calculate share of pool
     uint amount;
 
-    IERC20(
-      PoolStorage.layout().underlying
-    ).transfer(msg.sender, amount);
+    IERC20(l.underlying).transfer(msg.sender, amount);
 
-    // TODO: set new c value
-    uint c;
-    PoolStorage.layout().c = c;
+    // TODO: get pool size
+    uint poolSizeBefore;
+    l.c = _calculateC(l.c, poolSizeBefore, poolSizeBefore - amount);
   }
 
   /**
@@ -111,20 +116,16 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     // TODO: reserve liquidity
 
-    uint c;
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    int128 c;
     (price, c) = quote(amount, strikePrice, maturity);
 
-    IERC20(
-      PoolStorage.layout().underlying
-    ).transferFrom(
-      msg.sender,
-      address(this),
-      price
-    );
+    IERC20(l.underlying).transferFrom(msg.sender, address(this), price);
 
     _mint(msg.sender, _tokenIdFor(strikePrice, maturity), amount, '');
 
-    PoolStorage.layout().c = c;
+    l.c = c;
   }
 
   /**
@@ -169,7 +170,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   }
 
   function _calculateC (
-    uint128 oldC,
+    int128 oldC,
     uint poolSizeBefore,
     uint poolSizeAfter
   ) internal pure returns (int128) {
