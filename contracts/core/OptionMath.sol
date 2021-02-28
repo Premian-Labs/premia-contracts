@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 import '@solidstate/contracts/utils/Math.sol';
-import { ABDKMath64x64 } from "./libraries/ABDKMath64x64.sol";
+import { ABDKMath64x64 } from "../libraries/ABDKMath64x64.sol";
 
 contract OptionMath {
 
