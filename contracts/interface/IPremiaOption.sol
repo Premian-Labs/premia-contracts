@@ -54,6 +54,7 @@ interface IPremiaOption is IERC1155 {
         uint256 denominatorAmount;
     }
 
+    function denominator() external view returns(address);
     function denominatorDecimals() external view returns(uint8);
 
     function maxExpiration() external view returns(uint256);

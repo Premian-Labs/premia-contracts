@@ -83,8 +83,8 @@ contract PremiaNeutralPool is Ownable {
   event Borrow(bytes32 indexed hash, address indexed borrower, address indexed token, uint256 indexed lockExpiration, uint256 amount);
   event RepayLoan(bytes32 indexed hash, address indexed borrower, address indexed token, uint256 indexed amount);
   event LiquidateLoan(bytes32 indexed hash, address indexed borrower, address indexed token, uint256 indexed amount, uint256 rewardFee);
-  event WriteOption(address indexed writer, address indexed optionContract, uint256 indexed optionId, uint256 indexed amount, address premiumToken, uint256 amountPremium);
-  event UnwindOption(address indexed writer, address indexed optionContract, uint256 indexed optionId, uint256 indexed amount);
+  event WriteOption(address indexed receiver, address indexed writer, address indexed optionContract, uint256 indexed optionId, uint256 amount, address premiumToken, uint256 amountPremium);
+  event UnwindOption(address indexed sender, address indexed writer, address indexed optionContract, uint256 indexed optionId, uint256 amount, address premiumToken, uint256 amountPremium);
   event UnlockCollateral(address indexed unlocker, address indexed optionContract, uint256 indexed optionId, uint256 indexed amount);
 
 
@@ -368,6 +368,35 @@ contract PremiaNeutralPool is Ownable {
     bool isCollateralized = percentCollateralized >= _requiredCollaterizationPercent;
   }
 
+  /// @notice Convert collateral back into original tokens
+  /// @param router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
+  /// @param token The token to swap collateral to
+  /// @param collateralToken The token to swap from
+  function _liquidateCollateral(IUniswapV2Router02 router, address collateralToken, address token, uint256 amountCollateral) internal {
+    require(_whitelistedRouterContracts.contains(address(router)), "Router not whitelisted.");
+
+    IERC20(collateralToken).safeIncreaseAllowance(address(router), amountCollateral);
+
+    address weth = router.WETH();
+    address[] memory path = customPath[collateralToken][token];
+
+    if (path.length == 0) {
+      path = new address[](2);
+      path[0] = collateralToken;
+      path[1] = weth;
+    }
+
+    path[path.length] = token;
+
+    router.swapExactTokensForTokens(
+      amountCollateral,
+      0,
+      path,
+      this,
+      block.timestamp.add(60)
+    );
+  }
+
   function liquidate(bytes32 hash, uint256 collateralAmount, address router) public {
     Loan storage loan = loansOutstanding[hash];
 
@@ -396,7 +425,11 @@ contract PremiaNeutralPool is Ownable {
     emit LiquidateLoan(hash, msg.sender, loan.token, collateralAmount, rewardFee);
   }
 
-  function writeOption(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium, address referrer) external {
+  function writeOption(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium, address referrer) {
+    writeOptionFor(msg.sender, optionContract, optionId, amount, premiumToken, amountPremium, referrer);
+  }
+
+  function writeOptionFor(address receiver, address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium, address referrer) external {
     require(_whitelistedWriterContracts.contains(msg.sender), "Writer not whitelisted.");
 
     // Should there be a limit to the amount we allow each contract to have outstanding?
@@ -416,16 +449,17 @@ contract PremiaNeutralPool is Ownable {
         isCall: data.isCall
     });
 
-    // Should there be an oracle here used to determine the premium, or do we trust all whitelisted contracts premium quotes?
-
-    IERC20(premiumToken).safeTransferFrom(msg.sender, this, amountPremium);
     IPremiaOption(optionContract).writeOption(option.token, writeArgs, referrer);
-    IPremiaOption(optionContract).safeTransferFrom(this, msg.sender, optionId, amount, 0x0);
+    IPremiaOption(optionContract).safeTransferFrom(this, receiver, optionId, amount, 0x0);
 
-    emit WriteOption(msg.sender, optionContract, optionId, amount, premiumToken, amountPremium);
+    emit WriteOption(receiver, msg.sender, optionContract, optionId, amount, premiumToken, amountPremium);
   }
 
   function unwindOption(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium) external {
+
+  }
+
+  function unwindOptionFor(address sender, address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium) external {
     require(_whitelistedWriterContracts.contains(msg.sender), "Writer not whitelisted.");
 
     // I think we want to update this function to support exercising of ITM options.
@@ -441,18 +475,14 @@ contract PremiaNeutralPool is Ownable {
       // If we withdraw both, do we want to sell the collateral token at this time?
       // Or should we just keep both and save on trading fees + slippage?
     } else {
-      IPremiaOption(optionContract).cancelOptionFrom(msg.sender, optionId, amount);
+      IPremiaOption(optionContract).cancelOptionFrom(sender, optionId, amount);
     }
 
     uint256 outstanding = optionsOutstanding[optionContract][optionId];
 
     outstanding = oustanding.sub(amount);
 
-    // Should there be an oracle here used to determine the premium, or do we trust all whitelisted contracts premium quotes?
-
-    IERC20(premiumToken).safeTransferFrom(this, msg.sender, amountPremium);
-
-    emit UnwindOption(msg.sender, optionContract, optionId, amount);
+    emit UnwindOption(sender, msg.sender, optionContract, optionId, amount, premiumToken, amountPremium);
   }
 
   function unlockCollateralFromOption(address optionContract, uint256 optionId, uint256 amount) external {
@@ -473,34 +503,5 @@ contract PremiaNeutralPool is Ownable {
     // Reward unlocker for unlocking the collateral in the option
 
     emit UnlockCollateral(msg.sender, optionContract, optionId, amount);
-  }
-
-  /// @notice Convert collateral back into original tokens
-  /// @param router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
-  /// @param token The token to swap collateral to
-  /// @param collateralToken The token to swap from
-  function _liquidateCollateral(IUniswapV2Router02 router, address collateralToken, address token, uint256 amountCollateral) internal {
-    require(_whitelistedRouterContracts.contains(address(router)), "Router not whitelisted.");
-
-    IERC20(collateralToken).safeIncreaseAllowance(address(router), amountCollateral);
-
-    address weth = router.WETH();
-    address[] memory path = customPath[collateralToken][token];
-
-    if (path.length == 0) {
-      path = new address[](2);
-      path[0] = collateralToken;
-      path[1] = weth;
-    }
-
-    path[path.length] = token;
-
-    router.swapExactTokensForTokens(
-      amountCollateral,
-      0,
-      path,
-      this,
-      block.timestamp.add(60)
-    );
   }
 }
