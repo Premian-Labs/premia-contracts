@@ -25,18 +25,14 @@ contract OptionMath {
         return _lastvariance + (_last - _old) * (_last - _newaverage + _old - _oldaverage)/(_window - 1);
     }
 
-    function rollingStd(uint256 _old, uint256 _last, uint256 _oldaverage, uint256 _newaverage, uint256 _lastvariance, uint256 _window) internal pure returns (uint256) {
-        return sqrt(rollingVar(_old, _last, _oldaverage, _newaverage, _lastvariance, _window));
+    function p(uint256 _var, uint256 _strike, uint256 _price, uint256 _days) internal pure returns (uint256) {
+        return (uint256(LogarithmLib.ln(int256(_strike/_price))) + _var/2 * _days)/sqrt(_var*_days);
     }
 
-    function p(uint256 _std, uint256 _strike, uint256 _price, uint256 _days) internal pure returns (uint256) {
-        return (uint256(LogarithmLib.ln(int256(_strike/_price))) + (_std**2)/2 * _days)/sqrt(_std**2*_days);
-    }
-
-    function bsPrice(uint256 _std, uint256 _strike, uint256 _price, uint256 _timestamp) internal view returns (uint256) {
+    function bsPrice(uint256 _var, uint256 _strike, uint256 _price, uint256 _timestamp) internal view returns (uint256) {
         require(_timestamp > block.timestamp, 'Option in the past');
         uint256 maturity = (_timestamp - block.timestamp) / (1 days);
-        uint256 prob = p(_std, _strike, _price, maturity);
+        uint256 prob = p(_var, _strike, _price, maturity);
         return _price * prob - _strike * uint256(ExponentLib.powerE(int256(maturity))) * prob;
     }
 
@@ -45,8 +41,8 @@ contract OptionMath {
         return _Ct * uint256(FixidityLib.reciprocal(ExponentLib.powerE(exp)));
     }
 
-    function pT(uint256 _std, uint256 _strike, uint256 _price, uint256 _timestamp, uint256 _Ct, uint256 _St, uint256 _St1) internal view returns (uint256) {
-        return slippageFn(_Ct, _St, _St1) * bsPrice(_std, _strike, _price, _timestamp);
+    function pT(uint256 _var, uint256 _strike, uint256 _price, uint256 _timestamp, uint256 _Ct, uint256 _St, uint256 _St1) internal view returns (uint256) {
+        return slippageFn(_Ct, _St, _St1) * bsPrice(_var, _strike, _price, _timestamp);
     }
 
     function sqrt(uint256 x) internal pure returns (uint256 y) {
@@ -58,7 +54,7 @@ contract OptionMath {
         }
     }
 
-    function max(uint256 a, uint256 b) private pure returns (uint256) {
+    function max(uint256 a, uint256 b) internal pure returns (uint256) {
         return a > b ? a : b;
     }
 }
