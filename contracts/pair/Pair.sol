@@ -4,12 +4,9 @@ pragma solidity ^0.8.0;
 
 import '@solidstate/contracts/access/OwnableInternal.sol';
 
+import '../core/IPriceConsumer.sol';
 import './PairStorage.sol';
 import './OptionMath.sol';
-
-interface IPriceProxy {
-    function getLatestPrice(address _feed) external view returns (int);
-}
 
 /**
  * @title Openhedge options pair
@@ -17,8 +14,9 @@ interface IPriceProxy {
  */
 contract Pair is OwnableInternal, OptionMath {
   using PairStorage for PairStorage.Layout;
+  // TODO: no storage variables outside of diamond storage layout
   uint256 period = 24 hours;
-  IPriceProxy IPrice;
+  IPriceConsumer IPrice;
 
   /**
    * @notice get addresses of PoolProxy contracts
