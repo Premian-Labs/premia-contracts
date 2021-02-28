@@ -6,7 +6,7 @@ import '@solidstate/contracts/access/OwnableInternal.sol';
 
 import '../pair/Pair.sol';
 import '../pair/PairProxy.sol';
-import './interfaces/IProxyManager.sol';
+import './IProxyManager.sol';
 import './ProxyManagerStorage.sol';
 
 /**

@@ -9,7 +9,7 @@ import '@solidstate/contracts/token/ERC20/ERC20.sol';
 import '@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol';
 import '@solidstate/contracts/token/ERC1155/IERC1155.sol';
 
-import '../core/interfaces/IProxyManager.sol';
+import '../core/IProxyManager.sol';
 import './PoolStorage.sol';
 
 /**
