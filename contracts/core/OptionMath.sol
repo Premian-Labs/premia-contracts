@@ -35,9 +35,9 @@ contract OptionMath {
 
     function bsPrice(uint256 _std, uint256 _strike, uint256 _price, uint256 _timestamp) internal view returns (uint256) {
         require(_timestamp > block.timestamp, 'Option in the past');
-        int256 maturity = int256((_timestamp - block.timestamp) / (1 days));
+        uint256 maturity = (_timestamp - block.timestamp) / (1 days);
         uint256 prob = p(_std, _strike, _price, maturity);
-        return _price * prob - _strike * uint256(ExponentLib.powerE(maturity)) * prob;
+        return _price * prob - _strike * uint256(ExponentLib.powerE(int256(maturity))) * prob;
     }
 
     function slippageFn(uint256 _Ct, uint256 _St, uint256 _St1) internal pure returns (uint256){
