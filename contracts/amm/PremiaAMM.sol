@@ -20,7 +20,12 @@ contract PremiaAMM is Ownable {
 
   uint256 k = 1;
 
-  function getCallReserves(IPremiaOption.OptionData data, uint256 optionId) public view returns (uint256 reserveAmount) {
+  function getCallReserves(address optionContract, uint256 optionId) public view returns (uint256 reserveAmount) {
+    IPremiaOption.OptionData data = IPremiaOption(optionContract).optionData(optionId);
+    return _getCallReserves(optionId);
+  }
+
+  function _getCallReserves(uint256 optionId) internal returns (uint256 reserveAmount) {
     uint256 reserveAmount;
 
     for (uint256 i = 0; i < callPools.length; i++) {
@@ -29,7 +34,12 @@ contract PremiaAMM is Ownable {
     }
   }
 
-  function getPutReserves(IPremiaOption.OptionData data, IPremiaOption optionContract, uint256 optionId) public view returns (uint256 reserveAmount) {
+  function getPutReserves(address optionContract, uint256 optionId) public view returns (uint256 reserveAmount) {
+    IPremiaOption.OptionData data = IPremiaOption(optionContract).optionData(optionId);
+    return _getPutReserves(data, optionContract, optionId);
+  }
+
+  function _getPutReserves(IPremiaOption.OptionData data, IPremiaOption optionContract, uint256 optionId) internal returns (uint256 reserveAmount) {
     uint256 reserveAmount;
 
     for (uint256 i = 0; i < callPools.length; i++) {
@@ -38,7 +48,65 @@ contract PremiaAMM is Ownable {
     }
   }
 
-  function priceOption(IPremiaOption.OptionData, IPremiaOption optionContract, uint256 optionId, uint256 amount, address premiumToken)
+  function getCallMaxBuy(address optionContract, uint256 optionId) public view returns (uint256 maxBuy) {
+    IPremiaOption.OptionData data = IPremiaOption(optionContract).optionData(optionId);
+    return _getCallMaxBuy(optionId);
+  }
+
+  function _getCallMaxBuy(uint256 optionId) internal returns (uint256 maxBuy) {
+    uint256 maxBuy;
+
+    for (uint256 i = 0; i < callPools.length; i++) {
+      IPremiaLiquidityPool pool = callPools[i];
+      uint256 reserves = pool.getLoanableAmount(data.token, data.expiration);
+
+      if (reserves > maxBuy) {
+        maxBuy = reserves; 
+      }
+    }
+  }
+
+  function getCallMaxSell(address optionContract, uint256 optionId) public view returns (uint256 maxSell) {
+    IPremiaOption.OptionData data = IPremiaOption(optionContract).optionData(optionId);
+    return _getCallMaxSell(optionId);
+  }
+
+  function _getCallMaxSell(uint256 optionId) internal returns (uint256 maxSell) {
+    uint256 maxSell;
+
+    // TODO: calculate max sell
+  }
+
+  function getPutMaxBuy(address optionContract, uint256 optionId) public view returns (uint256 maxBuy) {
+    IPremiaOption.OptionData data = IPremiaOption(optionContract).optionData(optionId);
+    return _getPutMaxBuy(data, optionContract, optionId);
+  }
+
+  function _getPutMaxBuy(IPremiaOption.OptionData data, IPremiaOption optionContract, uint256 optionId) internal returns (uint256 maxBuy) {
+    uint256 maxBuy;
+
+    for (uint256 i = 0; i < putPools.length; i++) {
+      IPremiaLiquidityPool pool = putPools[i];
+      uint256 reserves = pool.getLoanableAmount(optionContract.denominator(), data.expiration);
+
+      if (reserves > maxBuy) {
+        maxBuy = reserves; 
+      }
+    }
+  }
+
+  function getPutMaxSell(address optionContract, uint256 optionId) public view returns (uint256 maxSell) {
+    IPremiaOption.OptionData data = IPremiaOption(optionContract).optionData(optionId);
+    return _getPutMaxSell(data, optionContract, optionId);
+  }
+
+  function _getPutMaxSell(IPremiaOption.OptionData data, IPremiaOption optionContract, uint256 optionId) internal returns (uint256 maxSell) {
+    uint256 maxSell;
+
+    // TODO: calculate max sell
+  }
+
+  function priceOption(IPremiaOption.OptionData data, IPremiaOption optionContract, uint256 optionId, uint256 amount, address premiumToken)
     public view returns (uint256 optionPrice) {
     // Source: https://arxiv.org/pdf/2101.02778.pdf (page 5)
     // sum all call reserves + put reserves and plug into the following formula:
@@ -61,14 +129,14 @@ contract PremiaAMM is Ownable {
     uint256 k_0 = k;
 
     if (data.isCall) {
-      x_t_0 = getCallReserves(data, optionId);
+      x_t_0 = _getCallReserves(data, optionId);
       x_t_1 = x_t_0.sub(amount);
-      y_t_0 = getPutReserves(data, optionContract, optionId);
+      y_t_0 = _getPutReserves(data, optionContract, optionId);
       y_t_1 = y_t_0;
     } else {
-      x_t_0 = getCallReserves(data, optionId);
+      x_t_0 = _getCallReserves(data, optionId);
       x_t_1 = x_t_0;
-      y_t_0 = getPutReserves(data, optionContract, optionId);
+      y_t_0 = _getPutReserves(data, optionContract, optionId);
       y_t_1 = y_t_0.sub(amount.mul(data.strikePrice));
     }
 
@@ -89,11 +157,11 @@ contract PremiaAMM is Ownable {
     uint256 y_t;
 
     if (data.isCall) {
-      x_t = getCallReserves(data, optionId).sub(amount);
-      y_t = getPutReserves(data, optionContract, optionId);
+      x_t = _getCallReserves(data, optionId).sub(amount);
+      y_t = _getPutReserves(data, optionContract, optionId);
     } else {
-      x_t = getCallReserves(data, optionId);
-      y_t = getPutReserves(data, optionContract, optionId).sub(amount.mul(data.strikePrice));
+      x_t = _getCallReserves(data, optionId);
+      y_t = _getPutReserves(data, optionContract, optionId).sub(amount.mul(data.strikePrice));
     }
 
     _updateKFromReserves(data, optionContract, optionId, amount, premiumToken);
@@ -105,18 +173,31 @@ contract PremiaAMM is Ownable {
     uint256 optionPrice = k.div(w_t).mul(1.div((x_t.sub(a_t)).pow(2)));
   }
 
-  function _updateKFromReserves(IPremiaOption.OptionData, IPremiaOption optionContract, uint256 optionId, uint256 amount, address premiumToken) internal {
-    uint256 x_t = getCallReserves(data, optionId);
-    uint256 y_t = getPutReserves(data, optionContract, optionId);
+  function _updateKFromReserves(IPremiaOption.OptionData data, IPremiaOption optionContract, uint256 optionId, uint256 amount, address premiumToken) internal {
+    uint256 x_t = _getCallReserves(data, optionId);
+    uint256 y_t = _getPutReserves(data, optionContract, optionId);
     uint256 a_t = x_t.sub(y_t.div(p_market_t));
     uint256 w_t = k.mul(p_market_t).div(y_t.pow(2));
 
     k = w_t.mul(x_t.sub(a_t)).mul(y_t);
   }
 
+  function _getLiquidityPool(IPremiaOption.OptionData data, IPremiaOption optionContract, uint256 optionId, uint256 amount)
+    internal returns (IPremiaLiquidityPool) {
+    IPremiaLiquidityPool[] liquidityPools = isCall ? callPools : putPools;
+
+    for (uint256 i = 0; i < liquidityPools.length; i++) {
+      IPremiaLiquidityPool pool = liquidityPools[i];
+      uint256 amountAvailable = pool.getLoanableAmount(isCall ? data.token : optionContract.denominator(), lockExpiration);
+    }
+
+    // TODO: Should we be using getLoanableAmount everywhere?
+    // It should probably be replaced with a new, getWritableAmount function in most places.
+  }
+
   function buy(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 maxPremiumAmount, address referrer) external {
     IPremiaOption.OptionData data = IPremiaOption(optionContract).optionData(optionId);
-    IPremiaLiquidityPool liquidityPool = isCall ? callPool : putPool;
+    IPremiaLiquidityPool liquidityPool = _getLiquidityPool(optionContract, optionId, amount);
 
     uint256 optionPrice = _priceOptionWithUpdate(data, optionContract, optionId, amount, premiumToken);
 
@@ -128,7 +209,7 @@ contract PremiaAMM is Ownable {
 
   function sell(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 minPremiumAmount, address referrer) external {
     IPremiaOption.OptionData data = IPremiaOption(optionContract).optionData(optionId);
-    IPremiaLiquidityPool liquidityPool = isCall ? callPool : putPool;
+    IPremiaLiquidityPool liquidityPool = _getLiquidityPool(optionContract, optionId, amount);
 
     uint256 optionPrice = _priceOptionWithUpdate(data, optionContract, optionId, amount, premiumToken);
 
