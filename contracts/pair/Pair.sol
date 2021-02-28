@@ -38,4 +38,14 @@ contract Pair is OwnableInternal, OptionMath {
 
     return l.volatilityByDay[day];
   }
+
+  /**
+   * @notice updates state variables
+   */
+  function update() internal {
+    PairStorage.Layout storage l = PairStorage.layout();
+    require(l.lasttimestamp + period < block.timestamp, "Wait to update");
+    // TODO: use option math to update storage variables
+    l.lasttimestamp = block.timestamp;
+  }
 }
