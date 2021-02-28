@@ -19,45 +19,34 @@ contract OracleMath {
 
     function rollingAvg(uint256 _old, uint256 _current, uint256 _window) internal pure returns (uint256 updated) {
         return _old + (_current - _old)/_window;
-        // return old.add(current.sub(old).div(window));
     }
 
     function rollingVar(uint256 _old, uint256 _last, uint256 _oldaverage, uint256 _newaverage, uint256 _lastvariance, uint256 _window) internal pure returns (uint256 updated) {
         return _lastvariance + (_last - _old) * (_last - _newaverage + _old - _oldaverage)/(_window - 1);
-        // return lastvariance.add(last.sub(old).mul(last.sub(newaverage).add(old).sub(oldaverage).div(window.sub(1))));
     }
 
     function rollingStd(uint256 _old, uint256 _last, uint256 _oldaverage, uint256 _newaverage, uint256 _lastvariance, uint256 _window) internal pure returns (uint256 updated) {
         return sqrt(rollingVar(_old, _last, _oldaverage, _newaverage, _lastvariance, _window));
     }
 
-    function d1(uint256 _std, uint256 _strike, uint256 _price, uint256 _time) internal pure returns (uint256) {
-        // return (uint256(LogarithmLib.ln(int256(_strike/_price))) + (_std**2)/2 * _time)/sqrt(_std**2*_time);
-        return 1;
+    function p(uint256 _std, uint256 _strike, uint256 _price, uint256 _days) internal pure returns (uint256) {
+        return (uint256(LogarithmLib.ln(int256(_strike/_price))) + (_std**2)/2 * _days)/sqrt(_std**2*_days);
     }
 
-    function d2(uint256 _std, uint256 _strike, uint256 _price, uint256 _time) internal pure returns (uint256) {
-        return 1;
+    function bsPrice(uint256 _std, uint256 _strike, uint256 _price, uint256 _timestamp) internal pure returns (uint256) {
+        require(timestamp > block.timestamp, 'Option in the past');
+        uint256 maturity = (_timestamp - block.timestamp) / (1 days);
+        uint256 prob = p(_std, _strike, _price, maturity);
+        return _price * prob - _strike * ExponentLib.powerE(int256(maturity)) * prob;
     }
 
-    function leftSide(uint256 _std, uint256 _strike, uint256 _price, uint256 _time) internal pure returns (uint256) {
-        return (_price * d1(_std, _strike, _price, _time));
-        // return price.mul(d1(std, strike, price, time));
+    function slippageFn(uint256 Ct, uint256 St, uint256 St1) internal pure returns (uint256){
+        int256 exp = (int256(St1) - int256(St)) / int256(max(St, St1));
+        return Ct * FixidityLib.reciprocal(ExponentLib.powerE());
     }
 
-    function e(uint256 _time) internal pure returns (uint256){
-        return uint256(ExponentLib.powerE(int256(_time)));
-    }
-
-    function rightSide(uint256 _std, uint256 _strike, uint256 _price, uint256 _time) internal pure returns (uint256) {
-        return (_strike * e(_time) * d1(_std, _strike, _price, _time));
-        // return strike.mul(e(time).mul(d2(std, strike, price, time)));
-    }
-
-    function bsPrice(uint256 _std, uint256 _strike, uint256 _price, uint256 _time) internal pure returns (uint256) {
-        // return leftSide(_std, _strike, _price, _time) - rightSide(_std, _strike, _price, _time);
-        // return leftSide(std, strike, price, time).sub(rightSide(std, strike, price, time));
-        return 1;
+    function pT(uint256 _std, uint256 _strike, uint256 _price, uint256 _timestamp){
+        return cT() * bsPrice(_std, _strike, _price, _timestamp);
     }
 
     function sqrt(uint256 x) internal pure returns (uint256 y) {
@@ -67,5 +56,9 @@ contract OracleMath {
             y = z;
             z = (x / z + z) / 2;
         }
+    }
+    
+    function max(uint256 a, uint256 b) private pure returns (uint256) {
+        return a > b ? a : b;
     }
 }
