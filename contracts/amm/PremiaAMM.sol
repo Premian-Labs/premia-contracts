@@ -18,11 +18,11 @@ contract PremiaAMM is Ownable {
   IPremiaLiquidityPool public callPool;
   IPremiaLiquidityPool public putPool;
 
-  uint256 k;
+  uint256 k = 1;
 
   function priceOption(IPremiaOption optionContract, uint256 optionId, uint256 amount, address premiumToken) public returns (uint256 optionPrice) {
     // sum all call reserves + put reserves and plug into the following formula:
-    // w(t) · (x(t) − a(t)) · y(t) = k
+    // k = w(t) · (x(t) − a(t)) · y(t)
     // a(t) < x(t), w(t) > 0, x(t) > 0, y(t) > 0
     // where w(t) and a(t) are both functions of the current price,
     // x(t) is the amount of reserves in the call pool
@@ -38,22 +38,32 @@ contract PremiaAMM is Ownable {
 
     IPremiaOption.OptionData data = optionContract.optionData(optionId);
 
-    uint256 x_t;
-    uint256 y_t;
+    uint256 x_t_0;
+    uint256 x_t_1;
+    uint256 y_t_0;
+    uint256 y_t_1;
 
     if (data.isCall) {
-      x_t = callPool.getLoanableAmount(data.token, data.expiration).sub(amount);
-      y_t = putPool.getLoanableAmount(optionContract.denominator(), data.expiration);
+      x_t_0 = callPool.getLoanableAmount(data.token, data.expiration);
+      x_t_1 = x_t_0.sub(amount);
+      y_t_0 = putPool.getLoanableAmount(optionContract.denominator(), data.expiration);
+      y_t_1 = y_t_0;
     } else {
-      x_t = putPool.getLoanableAmount(optionContract.denominator(), data.expiration).sub(amount.mul(data.strikePrice));
-      y_t = callPool.getLoanableAmount(data.token, data.expiration);
+      x_t_0 = callPool.getLoanableAmount(data.token, data.expiration);
+      x_t_1 = x_t_0;
+      y_t_0 = putPool.getLoanableAmount(optionContract.denominator(), data.expiration);
+      y_t_1 = y_t_0.sub(amount.mul(data.strikePrice));
     }
+    uint256 a_t_0 = x_t_0.sub(y_t_0.div(p_market_t));
+    uint256 w_t_0 = k.mul(p_market_t).div(y_t_0.pow(2));
+
+    k = w_t_0.mul(x_t_0.sub(a_t_0)).mul(y_t_0);
 
     uint256 p_market_t = blackScholesOracle.getBlackScholesEstimate(address(optionContract), optionId);
-    uint256 a_t = x_t.sub(y_t.div(p_market_t));
-    uint256 w_t = k.mul(p_market_t).div(y_t.pow(2));
+    uint256 a_t_1 = x_t_1.sub(y_t_1.div(p_market_t));
+    uint256 w_t_1 = k.mul(p_market_t).div(y_t_1.pow(2));
 
-    uint256 optionPrice = k.div(w_t).mul(1.div((x_t.sub(a_t)).pow(2)));
+    uint256 optionPrice = k.div(w_t_1).mul(1.div((x_t_1.sub(a_t_1)).pow(2)));
   }
 
   function buy(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 maxPremiumAmount, address referrer) external {
