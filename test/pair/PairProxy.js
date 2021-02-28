@@ -5,7 +5,7 @@ const factory = require('../../lib/factory.js');
 const SYMBOL_BASE = 'SYMBOL_BASE';
 const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 
-describe('Pair', function () {
+describe('PairProxy', function () {
   let owner;
 
   let openhedge;
