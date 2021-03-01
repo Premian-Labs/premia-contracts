@@ -30,7 +30,7 @@ contract PremiaAMM is Ownable {
 
     for (uint256 i = 0; i < callPools.length; i++) {
       IPremiaLiquidityPool pool = callPools[i];
-      reserveAmount = reserveAmount.add(pool.getLoanableAmount(data.token, data.expiration));
+      reserveAmount = reserveAmount.add(pool.getWritableAmount(data.token, data.expiration));
     }
   }
 
@@ -44,7 +44,7 @@ contract PremiaAMM is Ownable {
 
     for (uint256 i = 0; i < callPools.length; i++) {
       IPremiaLiquidityPool pool = callPools[i];
-      reserveAmount = reserveAmount.add(pool.getLoanableAmount(optionContract.denominator(), data.expiration));
+      reserveAmount = reserveAmount.add(pool.getWritableAmount(optionContract.denominator(), data.expiration));
     }
   }
 
@@ -58,7 +58,7 @@ contract PremiaAMM is Ownable {
 
     for (uint256 i = 0; i < callPools.length; i++) {
       IPremiaLiquidityPool pool = callPools[i];
-      uint256 reserves = pool.getLoanableAmount(data.token, data.expiration);
+      uint256 reserves = pool.getWritableAmount(data.token, data.expiration);
 
       if (reserves > maxBuy) {
         maxBuy = reserves; 
@@ -87,7 +87,7 @@ contract PremiaAMM is Ownable {
 
     for (uint256 i = 0; i < putPools.length; i++) {
       IPremiaLiquidityPool pool = putPools[i];
-      uint256 reserves = pool.getLoanableAmount(optionContract.denominator(), data.expiration);
+      uint256 reserves = pool.getWritableAmount(optionContract.denominator(), data.expiration);
 
       if (reserves > maxBuy) {
         maxBuy = reserves; 
@@ -188,11 +188,12 @@ contract PremiaAMM is Ownable {
 
     for (uint256 i = 0; i < liquidityPools.length; i++) {
       IPremiaLiquidityPool pool = liquidityPools[i];
-      uint256 amountAvailable = pool.getLoanableAmount(isCall ? data.token : optionContract.denominator(), lockExpiration);
-    }
+      uint256 amountAvailable = pool.getWritableAmount(isCall ? data.token : optionContract.denominator(), lockExpiration);
 
-    // TODO: Should we be using getLoanableAmount everywhere?
-    // It should probably be replaced with a new, getWritableAmount function in most places.
+      if (amountAvailable >= amount) {
+        return pool;
+      }
+    }
   }
 
   function buy(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 maxPremiumAmount, address referrer) external {

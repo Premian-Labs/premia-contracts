@@ -32,19 +32,18 @@ interface IPremiaLiquidityPool {
   // Expiration increment
   uint256 public constant _expirationIncrement = 1 weeks;
   // Max expiration time from now
-  uint256 public _maxExpiration = 365 days;
+  uint256 public _maxExpiration;
 
   // Required collateralization level
-  uint256 public _requiredCollaterizationPercent = 100;  // 100 = 100% collateralized
+  uint256 public _requiredCollaterizationPercent;  // 100 = 100% collateralized
   // Max percent of collateral liquidated in a single liquidation event
-  uint256 public _maxPercentLiquidated = 500;  // 500 = 50% of collateral
+  uint256 public _maxPercentLiquidated;  // 500 = 50% of collateral
 
   // Fee rewarded to successful callers of the liquidate function
-  uint256 public _liquidatorReward = 10;  // 10 = 0.1% fee
+  uint256 public _liquidatorReward; // 10 = 0.1% fee
   // Max fee rewarded to successful callers of the liquidate function
   uint256 public constant _maxLiquidatorReward = 250;  // 250 = 25% fee
-
-  uint256 private constant _inverseBasisPoint = 1000;
+  uint256 public constant _inverseBasisPoint = 1000;
 
   // The oracle used to get prices on chain.
   IPriceOracleGetter public priceOracle;
@@ -88,6 +87,7 @@ interface IPremiaLiquidityPool {
   function removeWhitelistedRouterContracts(address[] memory _addr) external;
   function getWhitelistedRouterContracts() external view returns(address[] memory);
   
+  function setMaxExpiration(uint256 _max) external;
   function setLiquidatorReward(uint256 _reward) external;
   function setMaxPercentLiquidated(uint256 _maxPercent) external;
   function setCustomSwapPath(address collateralToken, address token, address[] memory path) external;
@@ -97,6 +97,7 @@ interface IPremiaLiquidityPool {
   function getUnlockableAmounts(address token, address denominator, uint256 amountToken, uint256 amountDenominator) external returns (uint256 unlockableToken, uint256 unlockableDenominator);
   function getCurrentWeekTimestamp() public returns (uint256 currentWeek);
   function getLoanableAmount(address token, uint256 lockExpiration) public returns (uint256 loanableAmount);
+  function getWritableAmount(address token, uint256 lockExpiration) public returns (uint256 writableAmount);
   function getEquivalentCollateral(address token, uint256 amount, address collateralToken) public returns (uint256 collateralRequired);
 
   function _unlockAmounts(address token, address denominator, uint256 amountToken, uint256 amountDenominator) internal;
