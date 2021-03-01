@@ -75,7 +75,7 @@ library ABDKMath64x64 {
    * Convert signed 128.128 fixed point number into signed 64.64-bit fixed point
    * number rounding down.  Revert on overflow.
    *
-   * @param x signed 128.128-bin fixed point number
+   * @param x signed 128.128-bit fixed point number
    * @return signed 64.64-bit fixed point number
    */
   function from128x128 (int256 x) internal pure returns (int128) {
