@@ -14,6 +14,7 @@ import '../interface/IPriceOracleGetter.sol';
 import '../uniswapV2/interfaces/IUniswapV2Router02.sol';
 
 contract PremiaLiquidityPool is Ownable {
+  using EnumerableSet for EnumerableSet.AddressSet;
   using SafeMath for uint256;
   using SafeERC20 for IERC20;
 
@@ -44,7 +45,7 @@ contract PremiaLiquidityPool is Ownable {
   uint256 public _maxExpiration = 365 days;
 
   // Required collateralization level
-  uint256 public _requiredCollaterizationPercent = 100;  // 100 = 100% collateralized
+  uint256 public _requiredCollateralizationPercent = 100;  // 100 = 100% collateralized
   // Max percent of collateral liquidated in a single liquidation event
   uint256 public _maxPercentLiquidated = 500;  // 500 = 50% of collateral
 
@@ -77,22 +78,22 @@ contract PremiaLiquidityPool is Ownable {
   // optionContract => optionId => amountOutstanding
   mapping(address => mapping(uint256 => uint256)) public optionsOutstanding;
 
-  event Deposit(address indexed user, address indexed token, address indexed denominator, uint256 indexed lockExpiration, uint256 amountToken, uint256 amountDenominator);
+  event Deposit(address indexed user, address indexed token, address indexed denominator, uint256 lockExpiration, uint256 amountToken, uint256 amountDenominator);
   event Withdraw(address indexed user, address indexed token, address indexed denominator, uint256 amountToken, uint256 amountDenominator);
-  event Borrow(bytes32 indexed hash, address indexed borrower, address indexed token, uint256 indexed lockExpiration, uint256 amount);
-  event RepayLoan(bytes32 indexed hash, address indexed borrower, address indexed token, uint256 indexed amount);
-  event LiquidateLoan(bytes32 indexed hash, address indexed borrower, address indexed token, uint256 indexed amount, uint256 rewardFee);
-  event WriteOption(address indexed receiver, address indexed writer, address indexed optionContract, uint256 indexed optionId, uint256 amount, address premiumToken, uint256 amountPremium);
-  event UnwindOption(address indexed sender, address indexed writer, address indexed optionContract, uint256 indexed optionId, uint256 amount, address premiumToken, uint256 amountPremium);
-  event UnlockCollateral(address indexed unlocker, address indexed optionContract, uint256 indexed optionId, uint256 indexed amount);
+  event Borrow(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed lockExpiration, uint256 amount);
+  event RepayLoan(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed amount);
+  event LiquidateLoan(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed amount, uint256 rewardFee);
+  event WriteOption(address indexed receiver, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
+  event UnwindOption(address indexed sender, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
+  event UnlockCollateral(address indexed unlocker, address indexed optionContract, uint256 indexed optionId, uint256 amount);
 
 
   /// @notice Add contract addresses to the list of whitelisted borrower contracts
   /// @param _addr The list of addresses to add
   function addWhitelistedBorrowContracts(address[] memory _addr) external onlyOwner {
-      for (uint256 i=0; i < _addr.length; i++) {
-          _whitelistedBorrowContracts.add(_addr[i]);
-      }
+    for (uint256 i=0; i < _addr.length; i++) {
+      _whitelistedBorrowContracts.add(_addr[i]);
+    }
   }
 
   /// @notice Remove contract addresses from the list of whitelisted borrower contracts
@@ -179,7 +180,7 @@ contract PremiaLiquidityPool is Ownable {
   /// @notice Set a new max expiration date for options writing (By default, 1 year from current date)
   /// @param _max The max amount of seconds in the future for which an option expiration can be set
   function setMaxExpiration(uint256 _max) external onlyOwner {
-      maxExpiration = _max;
+      _maxExpiration = _max;
   }
 
   /// @notice Set a new liquidator reward
@@ -190,15 +191,16 @@ contract PremiaLiquidityPool is Ownable {
   }
 
   /// @notice Set a new max percent liquidated
-  /// @param _reward New max percent
+  /// @param _maxPercent New max percent
   function setMaxPercentLiquidated(uint256 _maxPercent) external onlyOwner {
-      require(_reward <= _inverseBasisPoint);
+      require(_maxPercent <= _inverseBasisPoint);
       _maxPercentLiquidated = _maxPercent;
   }
 
   /// @notice Set a custom swap path for a token
-  /// @param _token The token
-  /// @param _path The swap path
+  /// @param collateralToken The collateral token
+  /// @param token The token
+  /// @param path The swap path
   function setCustomSwapPath(address collateralToken, address token, address[] memory path) external onlyOwner {
       customSwapPaths[collateralToken][token] = path;
   }
@@ -210,7 +212,7 @@ contract PremiaLiquidityPool is Ownable {
   }
   
   /// @notice Get the hash of an loan
-  /// @param _loan The loan from which to calculate the hash
+  /// @param loan The loan from which to calculate the hash
   /// @return The loan hash
   function getLoanHash(Loan memory loan) public pure returns(bytes32) {
       return keccak256(abi.encode(loan));
@@ -218,49 +220,50 @@ contract PremiaLiquidityPool is Ownable {
 
   function getUnlockableAmounts(address token, address denominator, uint256 amountToken, uint256 amountDenominator) external returns (uint256 unlockableToken, uint256 unlockableDenominator) {
     UserDeposit[] memory depositsForUser = depositsByUser[msg.sender];
-    uint256 unlockableToken;
-    uint256 unlockableDenominator;
 
     for (uint256 i = 0; i < depositsForUser.length; i++) {
-      UserDeposit memory deposit = depositsForUser[i];
+      UserDeposit memory userDeposit = depositsForUser[i];
 
-      if (deposit.lockExpiration <= block.timestamp) {
-        unlockableToken = unlockableToken.add(deposit.amountToken);
-        unlockableDenominator = unlockableDenominator.add(deposit.amountDenominator);
+      if (userDeposit.lockExpiration <= block.timestamp) {
+        unlockableToken = unlockableToken.add(userDeposit.amountToken);
+        unlockableDenominator = unlockableDenominator.add(userDeposit.amountDenominator);
       }
     }
+
+    return (unlockableToken, unlockableDenominator);
   }
 
-  function getCurrentWeekTimestamp() public returns (uint256 currentWeek) {
-    uint256 currentWeek = _baseExpiration;
-
+  function getCurrentWeekTimestamp() public view returns (uint256 currentWeek) {
     while (currentWeek < block.timestamp) {
       currentWeek = currentWeek.add(_expirationIncrement);
     }
+
+    return currentWeek;
   }
 
-  function getLoanableAmount(address token, uint256 lockExpiration) public returns (uint256 loanableAmount) {
+  function getLoanableAmount(address token, uint256 lockExpiration) public virtual returns (uint256 loanableAmount) {
     // TODO: This likely needs to be adjusted based on the amounts currently loaned
     // and the amount of collateral stored in this contract
 
-    return getWriteableAmount(token, lockExpiration);
+    return getWritableAmount(token, lockExpiration);
   }
 
-  function getWritableAmount(address token, uint256 lockExpiration) public returns (uint256 writableAmount) {
+  function getWritableAmount(address token, uint256 lockExpiration) public view returns (uint256 writableAmount) {
     uint256 currentWeek = getCurrentWeekTimestamp();
     uint256 maxExpirationDate = _baseExpiration.add(_maxExpiration);
-    uint256 loanableAmount;
 
-    while (currentWeek <= lastExpiration && currentWeek <= lockExpiration) {
-      loanableAmount = amountsLockedByExpirationPerToken[token][currentWeek];
+    while (currentWeek <= maxExpirationDate && currentWeek <= lockExpiration) {
+      writableAmount = writableAmount.add(amountsLockedByExpirationPerToken[token][currentWeek]);
       currentWeek = currentWeek.add(_expirationIncrement);
     }
+
+    return writableAmount;
   }
 
   function getEquivalentCollateral(address token, uint256 amount, address collateralToken) public returns (uint256 collateralRequired) {
     uint256 tokenPrice = priceOracle.getAssetPrice(token);
     uint256 collateralPrice = priceOracle.getAssetPrice(collateralToken);
-    uint256 collateralRequired = amount.mul(tokenPrice).div(collateralPrice);
+    return amount.mul(tokenPrice).div(collateralPrice);
   }
 
   function _unlockAmounts(address token, address denominator, uint256 amountToken, uint256 amountDenominator) internal {
@@ -269,21 +272,21 @@ contract PremiaLiquidityPool is Ownable {
     uint256 unlockedDenominator;
 
     for (uint256 i = 0; i < depositsForUser.length; i++) {
-      UserDeposit memory deposit = depositsForUser[i];
+      UserDeposit memory userDeposit = depositsForUser[i];
 
       if (unlockedToken >= amountToken && unlockedDenominator >= amountDenominator) continue;
 
-      if (deposit.lockExpiration <= block.timestamp) {
+      if (userDeposit.lockExpiration <= block.timestamp) {
         uint256 tokenDiff = amountToken.sub(unlockedToken);
-        uint256 tokenUnlocked = deposit.amountToken > tokenDiff ? tokenDiff : deposit.amountToken;
+        uint256 tokenUnlocked = userDeposit.amountToken > tokenDiff ? tokenDiff : userDeposit.amountToken;
         unlockedToken = unlockedToken.add(tokenUnlocked);
 
         uint256 denomDiff = amountToken.sub(unlockedDenominator);
-        uint256 denomUnlocked = deposit.amountDenominator > denomDiff ? denomDiff : deposit.amountDenominator;
+        uint256 denomUnlocked = userDeposit.amountDenominator > denomDiff ? denomDiff : userDeposit.amountDenominator;
         unlockedDenominator = unlockedDenominator.add(denomUnlocked);
 
-        uint256 tokenLocked = amountsLockedByExpirationPerToken[token][deposit.lockExpiration];
-        uint256 denomLocked = amountsLockedByExpirationPerToken[denominator][deposit.lockExpiration];
+        uint256 tokenLocked = amountsLockedByExpirationPerToken[token][userDeposit.lockExpiration];
+        uint256 denomLocked = amountsLockedByExpirationPerToken[denominator][userDeposit.lockExpiration];
 
         tokenLocked = tokenLocked.sub(tokenUnlocked);
         denomLocked = denomLocked.sub(denomUnlocked);
@@ -296,15 +299,24 @@ contract PremiaLiquidityPool is Ownable {
   }
 
   function deposit(address token, address denominator, uint256 amountToken, uint256 amountDenominator, uint256 lockExpiration) external {
-    IERC20(token).safeTransferFrom(msg.sender, this, amountToken);
-    IERC20(denominator).safeTransferFrom(msg.sender, this, amountDenominator);
+    IERC20(token).safeTransferFrom(msg.sender, address(this), amountToken);
+    IERC20(denominator).safeTransferFrom(msg.sender, address(this), amountDenominator);
 
     amountsLockedByExpirationPerToken[token][lockExpiration] = amountsLockedByExpirationPerToken[token][lockExpiration].add(amountToken);
     amountsLockedByExpirationPerToken[denominator][lockExpiration] = amountsLockedByExpirationPerToken[denominator][lockExpiration].add(amountDenominator);
     
     UserDeposit[] storage depositsForUser = depositsByUser[msg.sender];
 
-    depositsForUser.push({ user: msg.sender, token: token, denominator: denominator, amountToken: amountToken, amountDenominator: amountDenominator, lockExpiration: lockExpiration });
+    UserDeposit memory newDeposit = UserDeposit({
+    user: msg.sender,
+    token: token,
+    denominator: denominator,
+    amountToken: amountToken,
+    amountDenominator: amountDenominator,
+    lockExpiration: lockExpiration
+    });
+
+    depositsForUser.push(newDeposit);
 
     emit Deposit(msg.sender, token, denominator, lockExpiration, amountToken, amountDenominator);
   }
@@ -312,47 +324,47 @@ contract PremiaLiquidityPool is Ownable {
   function withdraw(address token, address denominator, uint256 amountToken, uint256 amountDenominator) external {
     _unlockAmounts(token, denominator, amountToken, amountDenominator);
 
-    IERC20(token).safeTransferFrom(this, msg.sender, amountToken);
-    IERC20(denominator).safeTransferFrom(this, msg.sender, amountDenominator);
+    IERC20(token).safeTransferFrom(address(this), msg.sender, amountToken);
+    IERC20(denominator).safeTransferFrom(address(this), msg.sender, amountDenominator);
 
     emit Withdraw(msg.sender, token, denominator, amountToken, amountDenominator);
   }
 
-  function borrow(address token, uint256 amountToken, address collateralToken, uint256 amountCollateral, uint256 lockExpiration) external {
+  function borrow(address token, uint256 amountToken, address collateralToken, uint256 amountCollateral, uint256 lockExpiration) external virtual {
     uint256 loanableAmount = getLoanableAmount(token, lockExpiration);
     uint256 collateralRequired = getEquivalentCollateral(token, amountToken, collateralToken);
 
     // TODO: We need to set which tokens will be allowed as collateral
 
-    require(loanableAmount >= amount, "Amount too high.");
+    require(loanableAmount >= amountToken, "Amount too high.");
     require(_whitelistedBorrowContracts.contains(msg.sender), "Borrow not whitelisted.");
     require(collateralRequired <= amountCollateral, "Not enough collateral.");
 
     uint256 tokenPrice = priceOracle.getAssetPrice(token);
 
-    Loan loan = new Loan(msg.sender, token, amountToken, collateralToken, amountCollateral, tokenPrice, lockExpiration);
+    Loan memory loan = Loan(msg.sender, token, amountToken, collateralToken, amountCollateral, tokenPrice, lockExpiration);
 
-    IERC20(token).safeTransferFrom(this, msg.sender, amountToken);
-    IERC20(collateralToken).safeTransferFrom(msg.sender, this, amountCollateral);
+    IERC20(token).safeTransferFrom(address(this), msg.sender, amountToken);
+    IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), amountCollateral);
 
     bytes32 hash = getLoanHash(loan);
 
     loansOutstanding[hash] = loan;
 
-    emit Borrow(hash, msg.sender, token, lockExpiration, amount);
+    emit Borrow(hash, msg.sender, token, lockExpiration, amountToken);
   }
 
-  function repayLoan(Loan memory loan, uint256 amount) external {
+  function repayLoan(Loan memory loan, uint256 amount) external virtual {
     bytes32 hash = getLoanHash(loan);
     repay(hash, amount);
   }
 
-  function repay(bytes32 hash, uint256 amount) public {
+  function repay(bytes32 hash, uint256 amount) public virtual {
     Loan storage loan = loansOutstanding[hash];
 
-    uint256 collateralOut = getEquivalentCollateral(token, amountToken, collateralToken);
+    uint256 collateralOut = getEquivalentCollateral(loan.token, amount, loan.collateralToken);
 
-    IERC20(loan.token).safeTransferFrom(msg.sender, this, amount);
+    IERC20(loan.token).safeTransferFrom(msg.sender, address(this), amount);
 
     loan.amountOutstanding = loan.amountOutstanding.sub(amount);
 
@@ -362,7 +374,7 @@ contract PremiaLiquidityPool is Ownable {
       delete loansOutstanding[hash];
     }
 
-    IERC20(loan.collateralToken).safeTransferFrom(this, msg.sender, collateralOut);
+    IERC20(loan.collateralToken).safeTransferFrom(address(this), msg.sender, collateralOut);
 
     loan.collateralHeld = loan.collateralHeld.sub(collateralOut);
 
@@ -371,8 +383,8 @@ contract PremiaLiquidityPool is Ownable {
 
   function checkCollateralizationLevel(Loan memory loan) public returns (bool isCollateralized) {
     uint256 collateralPrice = priceOracle.getAssetPrice(loan.collateralToken);
-    uint256 percentCollateralized = loan.collateralHeld.mul(inverseBasisPoint).mul(collateralPrice).div(loan.amountOutstanding).mul(loan.tokenPrice);
-    bool isCollateralized = percentCollateralized >= _requiredCollaterizationPercent;
+    uint256 percentCollateralized = loan.collateralHeld.mul(_inverseBasisPoint).mul(collateralPrice).div(loan.amountOutstanding).mul(loan.tokenPrice);
+    return percentCollateralized >= _requiredCollateralizationPercent;
   }
 
   /// @notice Convert collateral back into original tokens
@@ -385,7 +397,7 @@ contract PremiaLiquidityPool is Ownable {
     IERC20(collateralToken).safeIncreaseAllowance(address(router), amountCollateral);
 
     address weth = router.WETH();
-    address[] memory path = customPath[collateralToken][token];
+    address[] memory path = customSwapPaths[collateralToken][token];
 
     if (path.length == 0) {
       path = new address[](2);
@@ -399,17 +411,17 @@ contract PremiaLiquidityPool is Ownable {
       amountCollateral,
       0,
       path,
-      this,
+      address(this),
       block.timestamp.add(60)
     );
   }
 
-  function liquidateLoan(bytes32 hash, uint256 amount) external {
+  function liquidateLoan(Loan memory loan, uint256 amount, IUniswapV2Router02 router) external {
     bytes32 hash = getLoanHash(loan);
-    liquidate(hash, amount);
+    liquidate(hash, amount, router);
   }
 
-  function liquidate(bytes32 hash, uint256 collateralAmount, address router) public {
+  function liquidate(bytes32 hash, uint256 collateralAmount, IUniswapV2Router02 router) public virtual {
     Loan storage loan = loansOutstanding[hash];
 
     // TODO: Do we want to enable the following maximum liquidation percentage?
@@ -422,13 +434,13 @@ contract PremiaLiquidityPool is Ownable {
     // TODO: Allow loan to be liquidated if it's past the lockExpiration date
 
     require(!checkCollateralizationLevel(loan), "Loan is not under-collateralized.");
-    require(_whitelistedRouterContracts.contains(router), "Router not whitelisted.");
+    require(_whitelistedRouterContracts.contains(address(router)), "Router not whitelisted.");
 
     _liquidateCollateral(router, loan.collateralToken, loan.token, collateralAmount);
 
-    uint256 rewardFee = collateralAmount.mul(inverseBasisPoint).div(_liquidatorReward);
+    uint256 rewardFee = collateralAmount.mul(_inverseBasisPoint).div(_liquidatorReward);
 
-    IERC20(loan.collateralToken).safeTransferFrom(this, msg.sender, rewardFee);
+    IERC20(loan.collateralToken).safeTransferFrom(address(this), msg.sender, rewardFee);
 
     if (loan.collateralHeld == 0) {
       delete loansOutstanding[hash];
@@ -437,11 +449,11 @@ contract PremiaLiquidityPool is Ownable {
     emit LiquidateLoan(hash, msg.sender, loan.token, collateralAmount, rewardFee);
   }
 
-  function writeOption(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium, address referrer) {
+  function writeOption(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium, address referrer) external {
     writeOptionFor(msg.sender, optionContract, optionId, amount, premiumToken, amountPremium, referrer);
   }
 
-  function writeOptionFor(address receiver, address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium, address referrer) external {
+  function writeOptionFor(address receiver, address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium, address referrer) public virtual {
     require(_whitelistedWriterContracts.contains(msg.sender), "Writer not whitelisted.");
 
     // TODO: Should there be a limit to the amount we allow each contract to have outstanding?
@@ -450,7 +462,7 @@ contract PremiaLiquidityPool is Ownable {
 
     uint256 outstanding = optionsOutstanding[optionContract][optionId];
 
-    outstanding = oustanding.add(amount);
+    outstanding = outstanding.add(amount);
 
     IPremiaOption.OptionData memory data = IPremiaOption(optionContract).optionData(optionId);
     IPremiaOption.OptionWriteArgs memory writeArgs = IPremiaOption.OptionWriteArgs({
@@ -461,17 +473,17 @@ contract PremiaLiquidityPool is Ownable {
         isCall: data.isCall
     });
 
-    IPremiaOption(optionContract).writeOption(option.token, writeArgs, referrer);
-    IPremiaOption(optionContract).safeTransferFrom(this, receiver, optionId, amount, 0x0);
+    IPremiaOption(optionContract).writeOption(data.token, writeArgs, referrer);
+    IPremiaOption(optionContract).safeTransferFrom(address(this), receiver, optionId, amount, "");
 
     emit WriteOption(receiver, msg.sender, optionContract, optionId, amount, premiumToken, amountPremium);
   }
 
   function unwindOption(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium) external {
-    unwindOptionFor(msg.sender, optionContract, optionid, amount, premiumToken, amountPremium);
+    unwindOptionFor(msg.sender, optionContract, optionId, amount, premiumToken, amountPremium);
   }
 
-  function unwindOptionFor(address sender, address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium) external {
+  function unwindOptionFor(address sender, address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium) public virtual {
     require(_whitelistedWriterContracts.contains(msg.sender), "Writer not whitelisted.");
 
     // TODO: I think we want to update this function to support exercising of ITM options.
@@ -492,12 +504,12 @@ contract PremiaLiquidityPool is Ownable {
 
     uint256 outstanding = optionsOutstanding[optionContract][optionId];
 
-    outstanding = oustanding.sub(amount);
+    outstanding = outstanding.sub(amount);
 
     emit UnwindOption(sender, msg.sender, optionContract, optionId, amount, premiumToken, amountPremium);
   }
 
-  function unlockCollateralFromOption(address optionContract, uint256 optionId, uint256 amount) external {
+  function unlockCollateralFromOption(address optionContract, uint256 optionId, uint256 amount) public virtual {
     IPremiaOption.OptionData memory data = IPremiaOption(optionContract).optionData(optionId);
 
     require(data.expiration > block.timestamp, "Option is not expired yet.");
@@ -510,7 +522,7 @@ contract PremiaLiquidityPool is Ownable {
 
     uint256 outstanding = optionsOutstanding[optionContract][optionId];
 
-    outstanding = oustanding.sub(amount);
+    outstanding = outstanding.sub(amount);
 
     // TODO: Reward unlocker for unlocking the collateral in the option
 
