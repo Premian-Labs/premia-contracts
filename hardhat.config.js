@@ -10,10 +10,9 @@ require('solidity-coverage');
 require('./tasks/deploy.js');
 require('./tasks/accounts.js');
 
-const defaultNetwork = process.env.NETWORK;
-
 module.exports = {
-  defaultNetwork,
+  defaultNetwork: process.env.NETWORK,
+
   solidity: {
     version: '0.8.0',
     settings: {
@@ -25,9 +24,6 @@ module.exports = {
   },
 
   networks: {
-    local: {
-      url: "http://127.0.0.1:8545/",
-    },
     kovan: {
       url: 'https://kovan.infura.io/v3/'+process.env.INFURA_KEY,
       accounts: {
