@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import { ABDKMath64x64 } from "../libraries/ABDKMath64x64.sol";
 
-contract OptionMath {
+library OptionMath {
 
     function logreturns(uint256 close, uint256 close_1back) internal pure returns (uint256){
         return uint256(ABDKMath64x64.to128x128(ABDKMath64x64.ln(ABDKMath64x64.fromUInt(close/close_1back))));
