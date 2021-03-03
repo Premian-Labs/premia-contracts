@@ -6,13 +6,12 @@ import '@solidstate/contracts/access/OwnableInternal.sol';
 
 import '../core/IPriceConsumer.sol';
 import './PairStorage.sol';
-import './OptionMath.sol';
 
 /**
  * @title Openhedge options pair
  * @dev deployed standalone and referenced by PairProxy
  */
-contract Pair is OwnableInternal, OptionMath {
+contract Pair is OwnableInternal {
   using PairStorage for PairStorage.Layout;
   // TODO: no storage variables outside of diamond storage layout
   uint256 period = 24 hours;
