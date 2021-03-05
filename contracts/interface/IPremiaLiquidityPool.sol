@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 pragma experimental ABIEncoderV2;
 
-import '@openzeppelin/contracts/utils/EnumerableSet.sol';
+import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
 import '../interface/IPriceOracleGetter.sol';
 import "../uniswapV2/interfaces/IUniswapV2Router02.sol";

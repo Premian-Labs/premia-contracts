@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
@@ -145,7 +145,7 @@ abstract contract ERC20Permit is ERC20, IERC2612Permit {
         return _updateDomainSeparator();
     }
 
-    function _chainID() private pure returns (uint256) {
+    function _chainID() private returns (uint256) {
         uint256 chainID;
         assembly {
             chainID := chainid()

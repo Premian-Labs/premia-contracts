@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/token/ERC20/SafeERC20.sol';
+import '@openzeppelin/contracts/utils/math/SafeMath.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
@@ -131,7 +132,7 @@ contract PremiaBondingCurve is Ownable {
         require(msg.value >= ethAmount, "Value is too small");
         premia.safeTransfer(msg.sender, _tokenAmount);
         if (msg.value > ethAmount)
-            msg.sender.transfer(msg.value.sub(ethAmount));
+            payable(msg.sender).transfer(msg.value.sub(ethAmount));
         emit Bought(msg.sender, msg.sender, _tokenAmount, ethAmount);
     }
 
@@ -176,7 +177,7 @@ contract PremiaBondingCurve is Ownable {
         soldAmount = nextSold;
         premia.safeTransferFrom(msg.sender, address(this), _tokenAmount);
         treasury.transfer(commission);
-        msg.sender.transfer(refund);
+        payable(msg.sender).transfer(refund);
         emit Sold(msg.sender, _tokenAmount, refund, commission);
     }
 

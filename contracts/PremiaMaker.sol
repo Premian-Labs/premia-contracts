@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.7.0;
+pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/access/Ownable.sol';
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/SafeERC20.sol";
-import "@openzeppelin/contracts/math/SafeMath.sol";
-import '@openzeppelin/contracts/utils/EnumerableSet.sol';
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
 import "./uniswapV2/interfaces/IUniswapV2Router02.sol";
 import "./uniswapV2/interfaces/IWETH.sol";
@@ -168,7 +168,7 @@ contract PremiaMaker is Ownable {
             premiaAmount = amountMinusFee;
             premia.safeTransfer(premiaStaking, premiaAmount);
             // Just for the event
-            _router = IUniswapV2Router02(0);
+            _router = IUniswapV2Router02(address(0));
         }
 
         emit Converted(msg.sender, address(_router), _token, amountMinusFee, premiaAmount);
