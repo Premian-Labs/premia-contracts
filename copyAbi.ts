@@ -81,6 +81,13 @@ fs.copyFileSync(
   './abi/PremiaUncutErc20Wrapper.json',
 );
 
+// AMM
+
+fs.copyFileSync(
+  './artifacts/contracts/amm/PremiaLiquidityPool.sol/PremiaLiquidityPool.json',
+  './abi/PremiaLiquidityPool.json',
+);
+
 // Test contracts
 fs.copyFileSync(
   './artifacts/contracts/test/TestErc20.sol/TestErc20.json',

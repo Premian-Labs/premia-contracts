@@ -11,14 +11,13 @@ import '../interface/IPremiaOption.sol';
 import '../interface/IBlackScholesPriceGetter.sol';
 
 interface IPremiaAMM {
-  function getCallReserves(address optionContract, uint256 optionId) external view returns (uint256 reserveAmount);
-  function getPutReserves(address optionContract, uint256 optionId) external view returns (uint256 reserveAmount);
-  function getCallMaxBuy(address optionContract, uint256 optionId) external view returns (uint256 maxBuy);
-  function getCallMaxSell(address optionContract, uint256 optionId) external view returns (uint256 maxSell);
-  function getPutMaxBuy(address optionContract, uint256 optionId) external view returns (uint256 maxBuy);
-  function getPutMaxSell(address optionContract, uint256 optionId) external view returns (uint256 maxSell);
-  function priceOption(IPremiaOption.OptionData memory data, IPremiaOption optionContract, uint256 optionId, uint256 amount, address premiumToken)
-  external view returns (uint256 optionPrice);
-  function buy(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 maxPremiumAmount, address referrer) external;
-  function sell(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 minPremiumAmount, address referrer) external;
+  function getCallReserves(address _optionContract, uint256 _optionId) external view returns (uint256);
+  function getPutReserves(address _optionContract, uint256 _optionId) external view returns (uint256);
+  function getCallMaxBuy(address _optionContract, uint256 _optionId) external view returns (uint256);
+  function getCallMaxSell(address _optionContract, uint256 _optionId) external view returns (uint256);
+  function getPutMaxBuy(address _optionContract, uint256 _optionId) external view returns (uint256);
+  function getPutMaxSell(address _optionContract, uint256 _optionId) external view returns (uint256);
+  function priceOption(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken) external view returns (uint256);
+  function buy(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _maxPremiumAmount, address _referrer) external;
+  function sell(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _minPremiumAmount, address _referrer) external;
 }

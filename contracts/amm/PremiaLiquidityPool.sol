@@ -78,6 +78,10 @@ contract PremiaLiquidityPool is Ownable {
   // optionContract => optionId => amountOutstanding
   mapping(address => mapping(uint256 => uint256)) public optionsOutstanding;
 
+  ////////////
+  // Events //
+  ////////////
+
   event Deposit(address indexed user, address indexed token, address indexed denominator, uint256 lockExpiration, uint256 amountToken, uint256 amountDenominator);
   event Withdraw(address indexed user, address indexed token, address indexed denominator, uint256 amountToken, uint256 amountDenominator);
   event Borrow(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed lockExpiration, uint256 amount);
@@ -87,6 +91,13 @@ contract PremiaLiquidityPool is Ownable {
   event UnwindOption(address indexed sender, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
   event UnlockCollateral(address indexed unlocker, address indexed optionContract, uint256 indexed optionId, uint256 amount);
 
+  //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+
+  ///////////
+  // Admin //
+  ///////////
 
   /// @notice Add contract addresses to the list of whitelisted borrower contracts
   /// @param _addr The list of addresses to add
@@ -104,6 +115,78 @@ contract PremiaLiquidityPool is Ownable {
       }
   }
 
+  /// @notice Add contract addresses to the list of whitelisted writer contracts
+  /// @param _addr The list of addresses to add
+  function addWhitelistedWriterContracts(address[] memory _addr) external onlyOwner {
+    for (uint256 i=0; i < _addr.length; i++) {
+      _whitelistedWriterContracts.add(_addr[i]);
+    }
+  }
+
+  /// @notice Remove contract addresses from the list of whitelisted writer contracts
+  /// @param _addr The list of addresses to remove
+  function removeWhitelistedWriterContracts(address[] memory _addr) external onlyOwner {
+    for (uint256 i=0; i < _addr.length; i++) {
+      _whitelistedWriterContracts.remove(_addr[i]);
+    }
+  }
+
+  /// @notice Add UniswapRouters to the whitelist so that they can be used to swap tokens.
+  /// @param _addr The addresses to add to the whitelist
+  function addWhitelistedRouterContracts(address[] memory _addr) external onlyOwner {
+    for (uint256 i=0; i < _addr.length; i++) {
+      _whitelistedRouterContracts.add(_addr[i]);
+    }
+  }
+
+  /// @notice Remove UniswapRouters from the whitelist so that they cannot be used to swap tokens.
+  /// @param _addr The addresses to remove the whitelist
+  function removeWhitelistedRouterContracts(address[] memory _addr) external onlyOwner {
+    for (uint256 i=0; i < _addr.length; i++) {
+      _whitelistedRouterContracts.remove(_addr[i]);
+    }
+  }
+
+  /// @notice Set a new max expiration date for options writing (By default, 1 year from current date)
+  /// @param _max The max amount of seconds in the future for which an option expiration can be set
+  function setMaxExpiration(uint256 _max) external onlyOwner {
+    _maxExpiration = _max;
+  }
+
+  /// @notice Set a new liquidator reward
+  /// @param _reward New reward
+  function setLiquidatorReward(uint256 _reward) external onlyOwner {
+    require(_reward <= _maxLiquidatorReward);
+    _liquidatorReward = _reward;
+  }
+
+  /// @notice Set a new max percent liquidated
+  /// @param _maxPercent New max percent
+  function setMaxPercentLiquidated(uint256 _maxPercent) external onlyOwner {
+    require(_maxPercent <= _inverseBasisPoint);
+    _maxPercentLiquidated = _maxPercent;
+  }
+
+  /// @notice Set a custom swap path for a token
+  /// @param _collateralToken The collateral token
+  /// @param _token The token
+  /// @param _path The swap path
+  function setCustomSwapPath(address _collateralToken, address _token, address[] memory _path) external onlyOwner {
+    customSwapPaths[_collateralToken][_token] = _path;
+  }
+
+  /// @notice Set the address of the oracle used for getting on-chain prices
+  /// @param _priceOracleAddress The address of the oracle
+  function setPriceOracle(address _priceOracleAddress) external onlyOwner {
+    priceOracle = IPriceOracleGetter(_priceOracleAddress);
+  }
+
+  //////////////////////////////////////////////////
+
+  //////////
+  // View //
+  //////////
+
   /// @notice Get the list of whitelisted borrower contracts
   /// @return The list of whitelisted borrower contracts
   function getWhitelistedBorrowContracts() external view returns(address[] memory) {
@@ -115,22 +198,6 @@ contract PremiaLiquidityPool is Ownable {
       }
 
       return result;
-  }
-
-  /// @notice Add contract addresses to the list of whitelisted writer contracts
-  /// @param _addr The list of addresses to add
-  function addWhitelistedWriterContracts(address[] memory _addr) external onlyOwner {
-      for (uint256 i=0; i < _addr.length; i++) {
-          _whitelistedWriterContracts.add(_addr[i]);
-      }
-  }
-
-  /// @notice Remove contract addresses from the list of whitelisted writer contracts
-  /// @param _addr The list of addresses to remove
-  function removeWhitelistedWriterContracts(address[] memory _addr) external onlyOwner {
-      for (uint256 i=0; i < _addr.length; i++) {
-          _whitelistedWriterContracts.remove(_addr[i]);
-      }
   }
 
   /// @notice Get the list of whitelisted writer contracts
@@ -146,24 +213,6 @@ contract PremiaLiquidityPool is Ownable {
       return result;
   }
 
-  /// @notice Add UniswapRouters to the whitelist so that they can be used to swap tokens.
-  /// @param _addr The addresses to add to the whitelist
-  function addWhitelistedRouterContracts(address[] memory _addr) external onlyOwner {
-      for (uint256 i=0; i < _addr.length; i++) {
-          _whitelistedRouterContracts.add(_addr[i]);
-      }
-  }
-
-  /// @notice Remove UniswapRouters from the whitelist so that they cannot be used to swap tokens.
-  /// @param _addr The addresses to remove the whitelist
-  function removeWhitelistedRouterContracts(address[] memory _addr) external onlyOwner {
-      for (uint256 i=0; i < _addr.length; i++) {
-          _whitelistedRouterContracts.remove(_addr[i]);
-      }
-  }
-
-  //////////////////////////
-
   /// @notice Get the list of whitelisted router contracts
   /// @return The list of whitelisted router contracts
   function getWhitelistedRouterContracts() external view returns(address[] memory) {
@@ -177,63 +226,21 @@ contract PremiaLiquidityPool is Ownable {
       return result;
   }
 
-  /// @notice Set a new max expiration date for options writing (By default, 1 year from current date)
-  /// @param _max The max amount of seconds in the future for which an option expiration can be set
-  function setMaxExpiration(uint256 _max) external onlyOwner {
-      _maxExpiration = _max;
-  }
+  function getWritableAmount(address _token, uint256 _lockExpiration) public view returns (uint256) {
+    uint256 writableAmount;
+    uint256 currentWeek = getCurrentWeekTimestamp();
+    uint256 maxExpirationDate = _baseExpiration.add(_maxExpiration);
 
-  /// @notice Set a new liquidator reward
-  /// @param _reward New reward
-  function setLiquidatorReward(uint256 _reward) external onlyOwner {
-      require(_reward <= _maxLiquidatorReward);
-      _liquidatorReward = _reward;
-  }
-
-  /// @notice Set a new max percent liquidated
-  /// @param _maxPercent New max percent
-  function setMaxPercentLiquidated(uint256 _maxPercent) external onlyOwner {
-      require(_maxPercent <= _inverseBasisPoint);
-      _maxPercentLiquidated = _maxPercent;
-  }
-
-  /// @notice Set a custom swap path for a token
-  /// @param collateralToken The collateral token
-  /// @param token The token
-  /// @param path The swap path
-  function setCustomSwapPath(address collateralToken, address token, address[] memory path) external onlyOwner {
-      customSwapPaths[collateralToken][token] = path;
-  }
-
-  /// @notice Set the address of the oracle used for getting on-chain prices
-  /// @param priceOracleAddress The address of the oracle
-  function setPriceOracle(address priceOracleAddress) external onlyOwner {
-    priceOracle = IPriceOracleGetter(priceOracleAddress);
-  }
-  
-  /// @notice Get the hash of an loan
-  /// @param loan The loan from which to calculate the hash
-  /// @return The loan hash
-  function getLoanHash(Loan memory loan) public pure returns(bytes32) {
-      return keccak256(abi.encode(loan));
-  }
-
-  function getUnlockableAmounts(address token, address denominator, uint256 amountToken, uint256 amountDenominator) external returns (uint256 unlockableToken, uint256 unlockableDenominator) {
-    UserDeposit[] memory depositsForUser = depositsByUser[msg.sender];
-
-    for (uint256 i = 0; i < depositsForUser.length; i++) {
-      UserDeposit memory userDeposit = depositsForUser[i];
-
-      if (userDeposit.lockExpiration <= block.timestamp) {
-        unlockableToken = unlockableToken.add(userDeposit.amountToken);
-        unlockableDenominator = unlockableDenominator.add(userDeposit.amountDenominator);
-      }
+    while (currentWeek <= maxExpirationDate && currentWeek <= _lockExpiration) {
+      writableAmount = writableAmount.add(amountsLockedByExpirationPerToken[_token][currentWeek]);
+      currentWeek = currentWeek.add(_expirationIncrement);
     }
 
-    return (unlockableToken, unlockableDenominator);
+    return writableAmount;
   }
 
-  function getCurrentWeekTimestamp() public view returns (uint256 currentWeek) {
+  function getCurrentWeekTimestamp() public view returns (uint256) {
+    uint256 currentWeek;
     while (currentWeek < block.timestamp) {
       currentWeek = currentWeek.add(_expirationIncrement);
     }
@@ -241,32 +248,44 @@ contract PremiaLiquidityPool is Ownable {
     return currentWeek;
   }
 
-  function getLoanableAmount(address token, uint256 lockExpiration) public virtual returns (uint256 loanableAmount) {
+  //////////////////////////////////////////////////
+
+  /// @notice Get the hash of an loan
+  /// @param _loan The loan from which to calculate the hash
+  /// @return The loan hash
+  function getLoanHash(Loan memory _loan) public pure returns(bytes32) {
+      return keccak256(abi.encode(_loan));
+  }
+
+  function getUnlockableAmounts(address _token, address _denominator, uint256 _amountToken, uint256 _amountDenominator) external returns (uint256 _unlockableToken, uint256 _unlockableDenominator) {
+    UserDeposit[] memory depositsForUser = depositsByUser[msg.sender];
+
+    for (uint256 i = 0; i < depositsForUser.length; i++) {
+      UserDeposit memory userDeposit = depositsForUser[i];
+
+      if (userDeposit.lockExpiration <= block.timestamp) {
+        _unlockableToken = _unlockableToken.add(userDeposit.amountToken);
+        _unlockableDenominator = _unlockableDenominator.add(userDeposit.amountDenominator);
+      }
+    }
+
+    return (_unlockableToken, _unlockableDenominator);
+  }
+
+  function getLoanableAmount(address _token, uint256 _lockExpiration) public virtual returns (uint256) {
     // TODO: This likely needs to be adjusted based on the amounts currently loaned
     // and the amount of collateral stored in this contract
 
-    return getWritableAmount(token, lockExpiration);
+    return getWritableAmount(_token, _lockExpiration);
   }
 
-  function getWritableAmount(address token, uint256 lockExpiration) public view returns (uint256 writableAmount) {
-    uint256 currentWeek = getCurrentWeekTimestamp();
-    uint256 maxExpirationDate = _baseExpiration.add(_maxExpiration);
-
-    while (currentWeek <= maxExpirationDate && currentWeek <= lockExpiration) {
-      writableAmount = writableAmount.add(amountsLockedByExpirationPerToken[token][currentWeek]);
-      currentWeek = currentWeek.add(_expirationIncrement);
-    }
-
-    return writableAmount;
+  function getEquivalentCollateral(address _token, uint256 _amount, address _collateralToken) public returns (uint256) {
+    uint256 tokenPrice = priceOracle.getAssetPrice(_token);
+    uint256 collateralPrice = priceOracle.getAssetPrice(_collateralToken);
+    return _amount.mul(tokenPrice).div(collateralPrice);
   }
 
-  function getEquivalentCollateral(address token, uint256 amount, address collateralToken) public returns (uint256 collateralRequired) {
-    uint256 tokenPrice = priceOracle.getAssetPrice(token);
-    uint256 collateralPrice = priceOracle.getAssetPrice(collateralToken);
-    return amount.mul(tokenPrice).div(collateralPrice);
-  }
-
-  function _unlockAmounts(address token, address denominator, uint256 amountToken, uint256 amountDenominator) internal {
+  function _unlockAmounts(address _token, address _denominator, uint256 _amountToken, uint256 amountDenominator) internal {
     UserDeposit[] storage depositsForUser = depositsByUser[msg.sender];
     uint256 unlockedToken;
     uint256 unlockedDenominator;
@@ -274,19 +293,19 @@ contract PremiaLiquidityPool is Ownable {
     for (uint256 i = 0; i < depositsForUser.length; i++) {
       UserDeposit memory userDeposit = depositsForUser[i];
 
-      if (unlockedToken >= amountToken && unlockedDenominator >= amountDenominator) continue;
+      if (unlockedToken >= _amountToken && unlockedDenominator >= amountDenominator) continue;
 
       if (userDeposit.lockExpiration <= block.timestamp) {
-        uint256 tokenDiff = amountToken.sub(unlockedToken);
+        uint256 tokenDiff = _amountToken.sub(unlockedToken);
         uint256 tokenUnlocked = userDeposit.amountToken > tokenDiff ? tokenDiff : userDeposit.amountToken;
         unlockedToken = unlockedToken.add(tokenUnlocked);
 
-        uint256 denomDiff = amountToken.sub(unlockedDenominator);
+        uint256 denomDiff = _amountToken.sub(unlockedDenominator);
         uint256 denomUnlocked = userDeposit.amountDenominator > denomDiff ? denomDiff : userDeposit.amountDenominator;
         unlockedDenominator = unlockedDenominator.add(denomUnlocked);
 
-        uint256 tokenLocked = amountsLockedByExpirationPerToken[token][userDeposit.lockExpiration];
-        uint256 denomLocked = amountsLockedByExpirationPerToken[denominator][userDeposit.lockExpiration];
+        uint256 tokenLocked = amountsLockedByExpirationPerToken[_token][userDeposit.lockExpiration];
+        uint256 denomLocked = amountsLockedByExpirationPerToken[_denominator][userDeposit.lockExpiration];
 
         tokenLocked = tokenLocked.sub(tokenUnlocked);
         denomLocked = denomLocked.sub(denomUnlocked);
@@ -298,117 +317,118 @@ contract PremiaLiquidityPool is Ownable {
     }
   }
 
-  function deposit(address token, address denominator, uint256 amountToken, uint256 amountDenominator, uint256 lockExpiration) external {
-    IERC20(token).safeTransferFrom(msg.sender, address(this), amountToken);
-    IERC20(denominator).safeTransferFrom(msg.sender, address(this), amountDenominator);
+  function deposit(address _token, address _denominator, uint256 _amountToken, uint256 _amountDenominator, uint256 _lockExpiration) external {
+    IERC20(_token).safeTransferFrom(msg.sender, address(this), _amountToken);
+    IERC20(_denominator).safeTransferFrom(msg.sender, address(this), _amountDenominator);
 
-    amountsLockedByExpirationPerToken[token][lockExpiration] = amountsLockedByExpirationPerToken[token][lockExpiration].add(amountToken);
-    amountsLockedByExpirationPerToken[denominator][lockExpiration] = amountsLockedByExpirationPerToken[denominator][lockExpiration].add(amountDenominator);
+    amountsLockedByExpirationPerToken[_token][_lockExpiration] = amountsLockedByExpirationPerToken[_token][_lockExpiration].add(_amountToken);
+    amountsLockedByExpirationPerToken[_denominator][_lockExpiration] = amountsLockedByExpirationPerToken[_denominator][_lockExpiration].add(_amountDenominator);
     
     UserDeposit[] storage depositsForUser = depositsByUser[msg.sender];
 
     UserDeposit memory newDeposit = UserDeposit({
     user: msg.sender,
-    token: token,
-    denominator: denominator,
-    amountToken: amountToken,
-    amountDenominator: amountDenominator,
-    lockExpiration: lockExpiration
+    token: _token,
+    denominator: _denominator,
+    amountToken: _amountToken,
+    amountDenominator: _amountDenominator,
+    lockExpiration: _lockExpiration
     });
 
     depositsForUser.push(newDeposit);
 
-    emit Deposit(msg.sender, token, denominator, lockExpiration, amountToken, amountDenominator);
+    emit Deposit(msg.sender, _token, _denominator, _lockExpiration, _amountToken, _amountDenominator);
   }
 
-  function withdraw(address token, address denominator, uint256 amountToken, uint256 amountDenominator) external {
-    _unlockAmounts(token, denominator, amountToken, amountDenominator);
+  function withdraw(address _token, address _denominator, uint256 _amountToken, uint256 _amountDenominator) external {
+    _unlockAmounts(_token, _denominator, _amountToken, _amountDenominator);
 
-    IERC20(token).safeTransferFrom(address(this), msg.sender, amountToken);
-    IERC20(denominator).safeTransferFrom(address(this), msg.sender, amountDenominator);
+    IERC20(_token).safeTransferFrom(address(this), msg.sender, _amountToken);
+    IERC20(_denominator).safeTransferFrom(address(this), msg.sender, _amountDenominator);
 
-    emit Withdraw(msg.sender, token, denominator, amountToken, amountDenominator);
+    emit Withdraw(msg.sender, _token, _denominator, _amountToken, _amountDenominator);
   }
 
-  function borrow(address token, uint256 amountToken, address collateralToken, uint256 amountCollateral, uint256 lockExpiration) external virtual {
-    uint256 loanableAmount = getLoanableAmount(token, lockExpiration);
-    uint256 collateralRequired = getEquivalentCollateral(token, amountToken, collateralToken);
+  function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration) external virtual {
+    uint256 loanableAmount = getLoanableAmount(_token, _lockExpiration);
+    uint256 collateralRequired = getEquivalentCollateral(_token, _amountToken, _collateralToken);
 
     // TODO: We need to set which tokens will be allowed as collateral
 
-    require(loanableAmount >= amountToken, "Amount too high.");
+    require(loanableAmount >= _amountToken, "Amount too high.");
     require(_whitelistedBorrowContracts.contains(msg.sender), "Borrow not whitelisted.");
-    require(collateralRequired <= amountCollateral, "Not enough collateral.");
+    require(collateralRequired <= _amountCollateral, "Not enough collateral.");
 
-    uint256 tokenPrice = priceOracle.getAssetPrice(token);
+    uint256 tokenPrice = priceOracle.getAssetPrice(_token);
 
-    Loan memory loan = Loan(msg.sender, token, amountToken, collateralToken, amountCollateral, tokenPrice, lockExpiration);
+    Loan memory loan = Loan(msg.sender, _token, _amountToken, _collateralToken, _amountCollateral, tokenPrice, _lockExpiration);
 
-    IERC20(token).safeTransferFrom(address(this), msg.sender, amountToken);
-    IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), amountCollateral);
+    IERC20(_token).safeTransferFrom(address(this), msg.sender, _amountToken);
+    IERC20(_collateralToken).safeTransferFrom(msg.sender, address(this), _amountCollateral);
 
     bytes32 hash = getLoanHash(loan);
 
     loansOutstanding[hash] = loan;
 
-    emit Borrow(hash, msg.sender, token, lockExpiration, amountToken);
+    emit Borrow(hash, msg.sender, _token, _lockExpiration, _amountToken);
   }
 
-  function repayLoan(Loan memory loan, uint256 amount) external virtual {
-    bytes32 hash = getLoanHash(loan);
-    repay(hash, amount);
+  function repayLoan(Loan memory _loan, uint256 _amount) external virtual {
+    bytes32 hash = getLoanHash(_loan);
+    repay(hash, _amount);
   }
 
-  function repay(bytes32 hash, uint256 amount) public virtual {
-    Loan storage loan = loansOutstanding[hash];
+  function repay(bytes32 _hash, uint256 _amount) public virtual {
+    Loan storage loan = loansOutstanding[_hash];
 
-    uint256 collateralOut = getEquivalentCollateral(loan.token, amount, loan.collateralToken);
+    uint256 collateralOut = getEquivalentCollateral(loan.token, _amount, loan.collateralToken);
 
-    IERC20(loan.token).safeTransferFrom(msg.sender, address(this), amount);
+    IERC20(loan.token).safeTransferFrom(msg.sender, address(this), _amount);
 
-    loan.amountOutstanding = loan.amountOutstanding.sub(amount);
+    loan.amountOutstanding = loan.amountOutstanding.sub(_amount);
 
     if (loan.amountOutstanding <= 0) {
       collateralOut = loan.collateralHeld;
 
-      delete loansOutstanding[hash];
+      delete loansOutstanding[_hash];
     }
 
     IERC20(loan.collateralToken).safeTransferFrom(address(this), msg.sender, collateralOut);
 
     loan.collateralHeld = loan.collateralHeld.sub(collateralOut);
 
-    emit RepayLoan(hash, msg.sender, loan.token, amount);
+    emit RepayLoan(_hash, msg.sender, loan.token, _amount);
   }
 
-  function checkCollateralizationLevel(Loan memory loan) public returns (bool isCollateralized) {
-    uint256 collateralPrice = priceOracle.getAssetPrice(loan.collateralToken);
-    uint256 percentCollateralized = loan.collateralHeld.mul(_inverseBasisPoint).mul(collateralPrice).div(loan.amountOutstanding).mul(loan.tokenPrice);
+  function checkCollateralizationLevel(Loan memory _loan) public returns (bool) {
+    uint256 collateralPrice = priceOracle.getAssetPrice(_loan.collateralToken);
+    uint256 percentCollateralized = _loan.collateralHeld.mul(_inverseBasisPoint).mul(collateralPrice).div(_loan.amountOutstanding).mul(_loan.tokenPrice);
     return percentCollateralized >= _requiredCollateralizationPercent;
   }
 
   /// @notice Convert collateral back into original tokens
-  /// @param router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
-  /// @param token The token to swap collateral to
-  /// @param collateralToken The token to swap from
-  function _liquidateCollateral(IUniswapV2Router02 router, address collateralToken, address token, uint256 amountCollateral) internal {
-    require(_whitelistedRouterContracts.contains(address(router)), "Router not whitelisted.");
+  /// @param _router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
+  /// @param _collateralToken The token to swap from
+  /// @param _token The token to swap collateral to
+  /// @param _amountCollateral The amount of collateral
+  function _liquidateCollateral(IUniswapV2Router02 _router, address _collateralToken, address _token, uint256 _amountCollateral) internal {
+    require(_whitelistedRouterContracts.contains(address(_router)), "Router not whitelisted.");
 
-    IERC20(collateralToken).safeIncreaseAllowance(address(router), amountCollateral);
+    IERC20(_collateralToken).safeIncreaseAllowance(address(_router), _amountCollateral);
 
-    address weth = router.WETH();
-    address[] memory path = customSwapPaths[collateralToken][token];
+    address weth = _router.WETH();
+    address[] memory path = customSwapPaths[_collateralToken][_token];
 
     if (path.length == 0) {
       path = new address[](2);
-      path[0] = collateralToken;
+      path[0] = _collateralToken;
       path[1] = weth;
     }
 
-    path[path.length] = token;
+    path[path.length] = _token;
 
-    router.swapExactTokensForTokens(
-      amountCollateral,
+    _router.swapExactTokensForTokens(
+      _amountCollateral,
       0,
       path,
       address(this),
@@ -416,13 +436,13 @@ contract PremiaLiquidityPool is Ownable {
     );
   }
 
-  function liquidateLoan(Loan memory loan, uint256 amount, IUniswapV2Router02 router) external {
-    bytes32 hash = getLoanHash(loan);
-    liquidate(hash, amount, router);
+  function liquidateLoan(Loan memory _loan, uint256 _amount, IUniswapV2Router02 _router) external {
+    bytes32 hash = getLoanHash(_loan);
+    liquidate(hash, _amount, _router);
   }
 
-  function liquidate(bytes32 hash, uint256 collateralAmount, IUniswapV2Router02 router) public virtual {
-    Loan storage loan = loansOutstanding[hash];
+  function liquidate(bytes32 _hash, uint256 _collateralAmount, IUniswapV2Router02 _router) public virtual {
+    Loan storage loan = loansOutstanding[_hash];
 
     // TODO: Do we want to enable the following maximum liquidation percentage?
     // It limits the amount of collateral that can be liquidated at a single time.
@@ -434,98 +454,98 @@ contract PremiaLiquidityPool is Ownable {
     // TODO: Allow loan to be liquidated if it's past the lockExpiration date
 
     require(!checkCollateralizationLevel(loan), "Loan is not under-collateralized.");
-    require(_whitelistedRouterContracts.contains(address(router)), "Router not whitelisted.");
+    require(_whitelistedRouterContracts.contains(address(_router)), "Router not whitelisted.");
 
-    _liquidateCollateral(router, loan.collateralToken, loan.token, collateralAmount);
+    _liquidateCollateral(_router, loan.collateralToken, loan.token, _collateralAmount);
 
-    uint256 rewardFee = collateralAmount.mul(_inverseBasisPoint).div(_liquidatorReward);
+    uint256 rewardFee = _collateralAmount.mul(_inverseBasisPoint).div(_liquidatorReward);
 
     IERC20(loan.collateralToken).safeTransferFrom(address(this), msg.sender, rewardFee);
 
     if (loan.collateralHeld == 0) {
-      delete loansOutstanding[hash];
+      delete loansOutstanding[_hash];
     }
 
-    emit LiquidateLoan(hash, msg.sender, loan.token, collateralAmount, rewardFee);
+    emit LiquidateLoan(_hash, msg.sender, loan.token, _collateralAmount, rewardFee);
   }
 
-  function writeOption(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium, address referrer) external {
-    writeOptionFor(msg.sender, optionContract, optionId, amount, premiumToken, amountPremium, referrer);
+  function writeOption(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) external {
+    writeOptionFor(msg.sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium, _referrer);
   }
 
-  function writeOptionFor(address receiver, address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium, address referrer) public virtual {
+  function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public virtual {
     require(_whitelistedWriterContracts.contains(msg.sender), "Writer not whitelisted.");
 
     // TODO: Should there be a limit to the amount we allow each contract to have outstanding?
     // We currently don't track who the contracts are outstanding to, so would need to update.
     // Would also need to set some standard rules for how much each contract can write.
 
-    uint256 outstanding = optionsOutstanding[optionContract][optionId];
+    uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
-    outstanding = outstanding.add(amount);
+    outstanding = outstanding.add(_amount);
 
-    IPremiaOption.OptionData memory data = IPremiaOption(optionContract).optionData(optionId);
+    IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     IPremiaOption.OptionWriteArgs memory writeArgs = IPremiaOption.OptionWriteArgs({
-        amount: amount,
+        amount: _amount,
         token: data.token,
         strikePrice: data.strikePrice,
         expiration: data.expiration,
         isCall: data.isCall
     });
 
-    IPremiaOption(optionContract).writeOption(data.token, writeArgs, referrer);
-    IPremiaOption(optionContract).safeTransferFrom(address(this), receiver, optionId, amount, "");
+    IPremiaOption(_optionContract).writeOption(data.token, writeArgs, _referrer);
+    IPremiaOption(_optionContract).safeTransferFrom(address(this), _receiver, _optionId, _amount, "");
 
-    emit WriteOption(receiver, msg.sender, optionContract, optionId, amount, premiumToken, amountPremium);
+    emit WriteOption(_receiver, msg.sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium);
   }
 
-  function unwindOption(address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium) external {
-    unwindOptionFor(msg.sender, optionContract, optionId, amount, premiumToken, amountPremium);
+  function unwindOption(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium) external {
+    unwindOptionFor(msg.sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium);
   }
 
-  function unwindOptionFor(address sender, address optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium) public virtual {
+  function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium) public virtual {
     require(_whitelistedWriterContracts.contains(msg.sender), "Writer not whitelisted.");
 
     // TODO: I think we want to update this function to support exercising of ITM options.
     // I.e. "unwind" the option by exercising ITM for whatever it's worth
     // Or if it's not ITM, sell it to the pool for some premium, and the pool will cancel it
 
-    IPremiaOption.OptionData memory data = IPremiaOption(optionContract).optionData(optionId);
+    IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
 
     if (data.expiration > block.timestamp) {
-      IPremiaOption(optionContract).withdraw(optionId);
+      IPremiaOption(_optionContract).withdraw(_optionId);
 
       // TODO: In this case, we might withdraw both the collateral token and the underlying token.
       // If we withdraw both, do we want to sell the collateral token at this time?
       // Or should we just keep both and save on trading fees + slippage?
     } else {
-      IPremiaOption(optionContract).cancelOptionFrom(sender, optionId, amount);
+      IPremiaOption(_optionContract).cancelOptionFrom(_sender, _optionId, _amount);
     }
 
-    uint256 outstanding = optionsOutstanding[optionContract][optionId];
+    uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
-    outstanding = outstanding.sub(amount);
+    outstanding = outstanding.sub(_amount);
 
-    emit UnwindOption(sender, msg.sender, optionContract, optionId, amount, premiumToken, amountPremium);
+    emit UnwindOption(_sender, msg.sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium);
   }
 
-  function unlockCollateralFromOption(address optionContract, uint256 optionId, uint256 amount) public virtual {
-    IPremiaOption.OptionData memory data = IPremiaOption(optionContract).optionData(optionId);
+  function unlockCollateralFromOption(address _optionContract, uint256 _optionId, uint256 _amount) public virtual {
+    IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
 
     require(data.expiration > block.timestamp, "Option is not expired yet.");
 
-    IPremiaOption(optionContract).withdraw(optionId);
+    IPremiaOption(_optionContract).withdraw(_optionId);
 
     // TODO: In this case, we might withdraw both the collateral token and the underlying token.
     // If we withdraw both, do we want to sell the collateral token at this time?
     // Or should we just keep both and save on trading fees + slippage?
 
-    uint256 outstanding = optionsOutstanding[optionContract][optionId];
+    uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
-    outstanding = outstanding.sub(amount);
+    outstanding = outstanding.sub(_amount);
 
     // TODO: Reward unlocker for unlocking the collateral in the option
 
-    emit UnlockCollateral(msg.sender, optionContract, optionId, amount);
+    emit UnlockCollateral(msg.sender, _optionContract, _optionId, _amount);
   }
 }
