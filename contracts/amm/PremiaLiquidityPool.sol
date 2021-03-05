@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import '@openzeppelin/contracts/access/Ownable.sol';
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
 import '../interface/IPremiaOption.sol';
@@ -14,7 +13,6 @@ import '../uniswapV2/interfaces/IUniswapV2Router02.sol';
 
 contract PremiaLiquidityPool is Ownable {
   using EnumerableSet for EnumerableSet.AddressSet;
-  using SafeMath for uint256;
   using SafeERC20 for IERC20;
 
   struct UserDeposit {
@@ -228,11 +226,11 @@ contract PremiaLiquidityPool is Ownable {
   function getWritableAmount(address _token, uint256 _lockExpiration) public view returns (uint256) {
     uint256 writableAmount;
     uint256 currentWeek = getCurrentWeekTimestamp();
-    uint256 maxExpirationDate = _baseExpiration.add(_maxExpiration);
+    uint256 maxExpirationDate = _baseExpiration + _maxExpiration;
 
     while (currentWeek <= maxExpirationDate && currentWeek <= _lockExpiration) {
-      writableAmount = writableAmount.add(amountsLockedByExpirationPerToken[_token][currentWeek]);
-      currentWeek = currentWeek.add(_expirationIncrement);
+      writableAmount = writableAmount + amountsLockedByExpirationPerToken[_token][currentWeek];
+      currentWeek = currentWeek + _expirationIncrement;
     }
 
     return writableAmount;
@@ -241,7 +239,7 @@ contract PremiaLiquidityPool is Ownable {
   function getCurrentWeekTimestamp() public view returns (uint256) {
     uint256 currentWeek;
     while (currentWeek < block.timestamp) {
-      currentWeek = currentWeek.add(_expirationIncrement);
+      currentWeek = currentWeek + _expirationIncrement;
     }
 
     return currentWeek;
@@ -263,8 +261,8 @@ contract PremiaLiquidityPool is Ownable {
       UserDeposit memory userDeposit = depositsForUser[i];
 
       if (userDeposit.lockExpiration <= block.timestamp) {
-        _unlockableToken = _unlockableToken.add(userDeposit.amountToken);
-        _unlockableDenominator = _unlockableDenominator.add(userDeposit.amountDenominator);
+        _unlockableToken = _unlockableToken + userDeposit.amountToken;
+        _unlockableDenominator = _unlockableDenominator + userDeposit.amountDenominator;
       }
     }
 
@@ -281,7 +279,7 @@ contract PremiaLiquidityPool is Ownable {
   function getEquivalentCollateral(address _token, uint256 _amount, address _collateralToken) public returns (uint256) {
     uint256 tokenPrice = priceOracle.getAssetPrice(_token);
     uint256 collateralPrice = priceOracle.getAssetPrice(_collateralToken);
-    return _amount.mul(tokenPrice).div(collateralPrice);
+    return (_amount * tokenPrice) / collateralPrice;
   }
 
   function _unlockAmounts(address _token, address _denominator, uint256 _amountToken, uint256 amountDenominator) internal {
@@ -295,19 +293,19 @@ contract PremiaLiquidityPool is Ownable {
       if (unlockedToken >= _amountToken && unlockedDenominator >= amountDenominator) continue;
 
       if (userDeposit.lockExpiration <= block.timestamp) {
-        uint256 tokenDiff = _amountToken.sub(unlockedToken);
+        uint256 tokenDiff = _amountToken - unlockedToken;
         uint256 tokenUnlocked = userDeposit.amountToken > tokenDiff ? tokenDiff : userDeposit.amountToken;
-        unlockedToken = unlockedToken.add(tokenUnlocked);
+        unlockedToken = unlockedToken + tokenUnlocked;
 
-        uint256 denomDiff = _amountToken.sub(unlockedDenominator);
+        uint256 denomDiff = _amountToken - unlockedDenominator;
         uint256 denomUnlocked = userDeposit.amountDenominator > denomDiff ? denomDiff : userDeposit.amountDenominator;
-        unlockedDenominator = unlockedDenominator.add(denomUnlocked);
+        unlockedDenominator = unlockedDenominator + denomUnlocked;
 
         uint256 tokenLocked = amountsLockedByExpirationPerToken[_token][userDeposit.lockExpiration];
         uint256 denomLocked = amountsLockedByExpirationPerToken[_denominator][userDeposit.lockExpiration];
 
-        tokenLocked = tokenLocked.sub(tokenUnlocked);
-        denomLocked = denomLocked.sub(denomUnlocked);
+        tokenLocked = tokenLocked - tokenUnlocked;
+        denomLocked = denomLocked - denomUnlocked;
 
         if (tokenLocked == 0 && denomLocked == 0) {
           delete depositsForUser[i];
@@ -320,8 +318,8 @@ contract PremiaLiquidityPool is Ownable {
     IERC20(_token).safeTransferFrom(msg.sender, address(this), _amountToken);
     IERC20(_denominator).safeTransferFrom(msg.sender, address(this), _amountDenominator);
 
-    amountsLockedByExpirationPerToken[_token][_lockExpiration] = amountsLockedByExpirationPerToken[_token][_lockExpiration].add(_amountToken);
-    amountsLockedByExpirationPerToken[_denominator][_lockExpiration] = amountsLockedByExpirationPerToken[_denominator][_lockExpiration].add(_amountDenominator);
+    amountsLockedByExpirationPerToken[_token][_lockExpiration] = amountsLockedByExpirationPerToken[_token][_lockExpiration] + _amountToken;
+    amountsLockedByExpirationPerToken[_denominator][_lockExpiration] = amountsLockedByExpirationPerToken[_denominator][_lockExpiration] + _amountDenominator;
     
     UserDeposit[] storage depositsForUser = depositsByUser[msg.sender];
 
@@ -384,7 +382,7 @@ contract PremiaLiquidityPool is Ownable {
 
     IERC20(loan.token).safeTransferFrom(msg.sender, address(this), _amount);
 
-    loan.amountOutstanding = loan.amountOutstanding.sub(_amount);
+    loan.amountOutstanding = loan.amountOutstanding - _amount;
 
     if (loan.amountOutstanding <= 0) {
       collateralOut = loan.collateralHeld;
@@ -394,14 +392,14 @@ contract PremiaLiquidityPool is Ownable {
 
     IERC20(loan.collateralToken).safeTransferFrom(address(this), msg.sender, collateralOut);
 
-    loan.collateralHeld = loan.collateralHeld.sub(collateralOut);
+    loan.collateralHeld = loan.collateralHeld - collateralOut;
 
     emit RepayLoan(_hash, msg.sender, loan.token, _amount);
   }
 
   function checkCollateralizationLevel(Loan memory _loan) public returns (bool) {
     uint256 collateralPrice = priceOracle.getAssetPrice(_loan.collateralToken);
-    uint256 percentCollateralized = _loan.collateralHeld.mul(_inverseBasisPoint).mul(collateralPrice).div(_loan.amountOutstanding).mul(_loan.tokenPrice);
+    uint256 percentCollateralized = ((_loan.collateralHeld * _inverseBasisPoint * collateralPrice) / _loan.amountOutstanding) * _loan.tokenPrice;
     return percentCollateralized >= _requiredCollateralizationPercent;
   }
 
@@ -431,7 +429,7 @@ contract PremiaLiquidityPool is Ownable {
       0,
       path,
       address(this),
-      block.timestamp.add(60)
+      block.timestamp + 60
     );
   }
 
@@ -457,7 +455,7 @@ contract PremiaLiquidityPool is Ownable {
 
     _liquidateCollateral(_router, loan.collateralToken, loan.token, _collateralAmount);
 
-    uint256 rewardFee = _collateralAmount.mul(_inverseBasisPoint).div(_liquidatorReward);
+    uint256 rewardFee = (_collateralAmount * _inverseBasisPoint) / _liquidatorReward;
 
     IERC20(loan.collateralToken).safeTransferFrom(address(this), msg.sender, rewardFee);
 
@@ -481,7 +479,7 @@ contract PremiaLiquidityPool is Ownable {
 
     uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
-    outstanding = outstanding.add(_amount);
+    outstanding = outstanding + _amount;
 
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     IPremiaOption.OptionWriteArgs memory writeArgs = IPremiaOption.OptionWriteArgs({
@@ -523,7 +521,7 @@ contract PremiaLiquidityPool is Ownable {
 
     uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
-    outstanding = outstanding.sub(_amount);
+    outstanding = outstanding - _amount;
 
     emit UnwindOption(_sender, msg.sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium);
   }
@@ -541,7 +539,7 @@ contract PremiaLiquidityPool is Ownable {
 
     uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
-    outstanding = outstanding.sub(_amount);
+    outstanding = outstanding - _amount;
 
     // TODO: Reward unlocker for unlocking the collateral in the option
 

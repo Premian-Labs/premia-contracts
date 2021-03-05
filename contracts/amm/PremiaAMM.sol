@@ -3,7 +3,6 @@
 pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/access/Ownable.sol';
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
@@ -12,7 +11,6 @@ import '../interface/IPremiaOption.sol';
 import '../interface/IBlackScholesPriceGetter.sol';
 
 contract PremiaAMM is Ownable {
-  using SafeMath for uint256;
   using SafeERC20 for IERC20;
 
   // The oracle used to get black scholes prices on chain.
@@ -32,7 +30,7 @@ contract PremiaAMM is Ownable {
     uint256 reserveAmount;
     for (uint256 i = 0; i < callPools.length; i++) {
       IPremiaLiquidityPool pool = callPools[i];
-      reserveAmount = reserveAmount.add(pool.getWritableAmount(_data.token, _data.expiration));
+      reserveAmount = reserveAmount + pool.getWritableAmount(_data.token, _data.expiration);
     }
 
     return reserveAmount;
@@ -47,7 +45,7 @@ contract PremiaAMM is Ownable {
     uint256 reserveAmount;
     for (uint256 i = 0; i < callPools.length; i++) {
       IPremiaLiquidityPool pool = callPools[i];
-      reserveAmount = reserveAmount.add(pool.getWritableAmount(_optionContract.denominator(), _data.expiration));
+      reserveAmount = reserveAmount + pool.getWritableAmount(_optionContract.denominator(), _data.expiration);
     }
 
     return reserveAmount;
@@ -137,28 +135,28 @@ contract PremiaAMM is Ownable {
 
     if (_data.isCall) {
       x_t_0 = _getCallReserves(_data);
-      x_t_1 = x_t_0.sub(_amount);
+      x_t_1 = x_t_0 - _amount;
       y_t_0 = _getPutReserves(_data, _optionContract);
       y_t_1 = y_t_0;
     } else {
       x_t_0 = _getCallReserves(_data);
       x_t_1 = x_t_0;
       y_t_0 = _getPutReserves(_data, _optionContract);
-      y_t_1 = y_t_0.sub(_amount.mul(_data.strikePrice));
+      y_t_1 = y_t_0 - (_amount * _data.strikePrice);
     }
 
     uint256 p_market_t = blackScholesOracle.getBlackScholesEstimate(address(_optionContract), _optionId);
 
-    uint256 a_t_0 = x_t_0.sub(y_t_0.div(p_market_t));
-    uint256 w_t_0 = k_0.mul(p_market_t).div(y_t_0.mul(y_t_0));
-    uint256 k_1 = w_t_0.mul(x_t_0.sub(a_t_0)).mul(y_t_0);
+    uint256 a_t_0 = x_t_0 - (y_t_0 / p_market_t);
+    uint256 w_t_0 = (k_0 * p_market_t) / (y_t_0 * y_t_0);
+    uint256 k_1 = w_t_0 * (x_t_0 - a_t_0) * y_t_0;
 
-    uint256 a_t_1 = x_t_1.sub(y_t_1.div(p_market_t));
-    uint256 w_t_1 = k_1.mul(p_market_t).div(y_t_1.mul(y_t_1));
+    uint256 a_t_1 = x_t_1 - (y_t_1 / p_market_t);
+    uint256 w_t_1 = k_1 * (p_market_t / (y_t_1 * y_t_1));
 
-    uint256 x_t_1_diff = x_t_1.sub(a_t_1);
+    uint256 x_t_1_diff = x_t_1 - a_t_1;
 
-    return k_1.div(w_t_1).mul(uint256(1e12).div(x_t_1_diff.mul(x_t_1_diff))).div(1e12);
+    return k_1 / w_t_1 * (uint256(1e12) / (x_t_1_diff * x_t_1_diff)) / (1e12);
   }
 
   function _priceOptionWithUpdate(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken) internal returns (uint256) {
@@ -166,32 +164,32 @@ contract PremiaAMM is Ownable {
     uint256 y_t;
 
     if (_data.isCall) {
-      x_t = _getCallReserves(_data).sub(_amount);
+      x_t = _getCallReserves(_data) - _amount;
       y_t = _getPutReserves(_data, _optionContract);
     } else {
       x_t = _getCallReserves(_data);
-      y_t = _getPutReserves(_data, _optionContract).sub(_amount.mul(_data.strikePrice));
+      y_t = _getPutReserves(_data, _optionContract) - (_amount * _data.strikePrice);
     }
 
     _updateKFromReserves(_data, _optionContract, _optionId, _amount, _premiumToken);
 
     uint256 p_market_t = blackScholesOracle.getBlackScholesEstimate(address(_optionContract), _optionId);
-    uint256 a_t = x_t.sub(y_t.div(p_market_t));
-    uint256 w_t = k.mul(p_market_t).div(y_t.mul(y_t));
+    uint256 a_t = x_t - (y_t / p_market_t);
+    uint256 w_t = k * p_market_t / (y_t * y_t);
 
-    uint256 x_t_diff = x_t.sub(a_t);
+    uint256 x_t_diff = x_t - a_t;
 
-    return k.div(w_t).mul(uint256(1e12).div(x_t_diff.mul(x_t_diff))).div(1e12);
+    return k / w_t * (uint256(1e12) / (x_t_diff * x_t_diff)) / 1e12;
   }
 
   function _updateKFromReserves(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken) internal {
     uint256 p_market_t = blackScholesOracle.getBlackScholesEstimate(address(_optionContract), _optionId);
     uint256 x_t = _getCallReserves(_data);
     uint256 y_t = _getPutReserves(_data, _optionContract);
-    uint256 a_t = x_t.sub(y_t.div(p_market_t));
-    uint256 w_t = k.mul(p_market_t).div(y_t.mul(y_t));
+    uint256 a_t = x_t - (y_t / p_market_t);
+    uint256 w_t = k * (p_market_t / (y_t * y_t));
 
-    k = w_t.mul(x_t.sub(a_t)).mul(y_t);
+    k = w_t * (x_t - a_t) * y_t;
   }
 
   function _getLiquidityPool(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _amount) internal returns (IPremiaLiquidityPool) {
