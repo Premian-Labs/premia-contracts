@@ -6,23 +6,15 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
+import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
 import '../interface/IPremiaOption.sol';
 import '../interface/IPriceOracleGetter.sol';
 import '../uniswapV2/interfaces/IUniswapV2Router02.sol';
 
-contract PremiaLiquidityPool is Ownable {
+contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
   using EnumerableSet for EnumerableSet.AddressSet;
   using SafeERC20 for IERC20;
-
-  struct UserDeposit {
-    address user;
-    address token;
-    address denominator;
-    uint256 amountToken;
-    uint256 amountDenominator;
-    uint256 lockExpiration;
-  }
 
   struct Loan {
     address borrower;
@@ -42,7 +34,7 @@ contract PremiaLiquidityPool is Ownable {
   uint256 public _maxExpiration = 365 days;
 
   // Required collateralization level
-  uint256 public _requiredCollateralizationPercent = 100;  // 100 = 100% collateralized
+  uint256 public _requiredCollateralizationPercent = 1000;  // 1000 = 100% collateralized
   // Max percent of collateral liquidated in a single liquidation event
   uint256 public _maxPercentLiquidated = 500;  // 500 = 50% of collateral
 
@@ -65,8 +57,12 @@ contract PremiaLiquidityPool is Ownable {
   // Set a custom swap path for a token
   mapping(address => mapping(address => address[])) public customSwapPaths;
 
-  // user address => UserDeposit
-  mapping(address => UserDeposit[]) public depositsByUser;
+  // User -> Token -> Expiration -> Amount
+  mapping(address => mapping(address => mapping (uint256 => uint256))) public depositsByUser;
+
+  // User -> Token -> Timestamp
+  mapping(address => mapping(address => uint256)) public userDepositsUnlockedUntil;
+
   // token => expiration => amount
   mapping(address => mapping(uint256 => uint256)) public amountsLockedByExpirationPerToken;
   
@@ -79,8 +75,8 @@ contract PremiaLiquidityPool is Ownable {
   // Events //
   ////////////
 
-  event Deposit(address indexed user, address indexed token, address indexed denominator, uint256 lockExpiration, uint256 amountToken, uint256 amountDenominator);
-  event Withdraw(address indexed user, address indexed token, address indexed denominator, uint256 amountToken, uint256 amountDenominator);
+  event Deposit(address indexed user, address indexed token,uint256 lockExpiration, uint256 amountToken);
+  event Withdraw(address indexed user, address indexed token, uint256 amountToken);
   event Borrow(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed lockExpiration, uint256 amount);
   event RepayLoan(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed amount);
   event LiquidateLoan(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed amount, uint256 rewardFee);
@@ -223,26 +219,53 @@ contract PremiaLiquidityPool is Ownable {
       return result;
   }
 
-  function getWritableAmount(address _token, uint256 _lockExpiration) public view returns (uint256) {
-    uint256 writableAmount;
-    uint256 currentWeek = getCurrentWeekTimestamp();
-    uint256 maxExpirationDate = _baseExpiration + _maxExpiration;
+  function _getNextExpiration() internal view returns (uint256) {
+    uint256 nextExpiration = ((block.timestamp / _expirationIncrement) * _expirationIncrement) + _baseExpiration;
+    while (nextExpiration < block.timestamp) {
+      nextExpiration += _expirationIncrement;
+    }
 
-    while (currentWeek <= maxExpirationDate && currentWeek <= _lockExpiration) {
-      writableAmount = writableAmount + amountsLockedByExpirationPerToken[_token][currentWeek];
-      currentWeek = currentWeek + _expirationIncrement;
+    return nextExpiration;
+  }
+
+  function _getMaxExpiration() internal view returns (uint256) {
+    uint256 currentWeek = _getNextExpiration();
+    uint256 maxExpiration = currentWeek + ((_maxExpiration / _expirationIncrement) * _maxExpiration);
+    while (maxExpiration > block.timestamp + _maxExpiration) {
+      maxExpiration -= _expirationIncrement;
+    }
+
+    return maxExpiration;
+  }
+
+  function getWritableAmount(address _token, uint256 _lockExpiration) public view returns (uint256) {
+    uint256 expiration = _getNextExpiration();
+    uint256 maxExpiration = _getMaxExpiration();
+
+    uint256 writableAmount;
+    while (expiration <= maxExpiration && expiration <= _lockExpiration) {
+      writableAmount += amountsLockedByExpirationPerToken[_token][expiration];
+      expiration += _expirationIncrement;
     }
 
     return writableAmount;
   }
 
-  function getCurrentWeekTimestamp() public view returns (uint256) {
-    uint256 currentWeek;
-    while (currentWeek < block.timestamp) {
-      currentWeek = currentWeek + _expirationIncrement;
+  function getUnlockableAmount(address _user, address _token) external view returns (uint256) {
+    uint256 unlockedUntil = userDepositsUnlockedUntil[msg.sender][_token];
+
+    // If 0, no deposits has ever been made
+    if (unlockedUntil == 0) return 0;
+
+    uint256 expiration = ((unlockedUntil / _expirationIncrement) * _expirationIncrement) + _baseExpiration;
+
+    uint256 unlockableAmount;
+    while (expiration < block.timestamp) {
+      unlockableAmount += depositsByUser[msg.sender][_token][expiration];
+      expiration += _expirationIncrement;
     }
 
-    return currentWeek;
+    return unlockableAmount;
   }
 
   //////////////////////////////////////////////////
@@ -252,21 +275,6 @@ contract PremiaLiquidityPool is Ownable {
   /// @return The loan hash
   function getLoanHash(Loan memory _loan) public pure returns(bytes32) {
       return keccak256(abi.encode(_loan));
-  }
-
-  function getUnlockableAmounts(address _token, address _denominator, uint256 _amountToken, uint256 _amountDenominator) external returns (uint256 _unlockableToken, uint256 _unlockableDenominator) {
-    UserDeposit[] memory depositsForUser = depositsByUser[msg.sender];
-
-    for (uint256 i = 0; i < depositsForUser.length; i++) {
-      UserDeposit memory userDeposit = depositsForUser[i];
-
-      if (userDeposit.lockExpiration <= block.timestamp) {
-        _unlockableToken = _unlockableToken + userDeposit.amountToken;
-        _unlockableDenominator = _unlockableDenominator + userDeposit.amountDenominator;
-      }
-    }
-
-    return (_unlockableToken, _unlockableDenominator);
   }
 
   function getLoanableAmount(address _token, uint256 _lockExpiration) public virtual returns (uint256) {
@@ -282,71 +290,66 @@ contract PremiaLiquidityPool is Ownable {
     return (_amount * tokenPrice) / collateralPrice;
   }
 
-  function _unlockAmounts(address _token, address _denominator, uint256 _amountToken, uint256 amountDenominator) internal {
-    UserDeposit[] storage depositsForUser = depositsByUser[msg.sender];
+  function _unlockExpired(address _token) internal returns(uint256) {
+    uint256 unlockedUntil = userDepositsUnlockedUntil[msg.sender][_token];
+
+    // If 0, no deposits has ever been made
+    if (unlockedUntil == 0) return 0;
+
+    uint256 expiration = ((unlockedUntil / _expirationIncrement) * _expirationIncrement) + _baseExpiration;
+
     uint256 unlockedToken;
-    uint256 unlockedDenominator;
 
-    for (uint256 i = 0; i < depositsForUser.length; i++) {
-      UserDeposit memory userDeposit = depositsForUser[i];
+    while (expiration < block.timestamp) {
+      uint256 amount = depositsByUser[msg.sender][_token][expiration];
+      delete depositsByUser[msg.sender][_token][expiration];
+      amountsLockedByExpirationPerToken[_token][expiration] -= amount;
+      unlockedToken += amount;
 
-      if (unlockedToken >= _amountToken && unlockedDenominator >= amountDenominator) continue;
+      expiration += _expirationIncrement;
+    }
 
-      if (userDeposit.lockExpiration <= block.timestamp) {
-        uint256 tokenDiff = _amountToken - unlockedToken;
-        uint256 tokenUnlocked = userDeposit.amountToken > tokenDiff ? tokenDiff : userDeposit.amountToken;
-        unlockedToken = unlockedToken + tokenUnlocked;
+    userDepositsUnlockedUntil[msg.sender][_token] = block.timestamp;
+    return unlockedToken;
+  }
 
-        uint256 denomDiff = _amountToken - unlockedDenominator;
-        uint256 denomUnlocked = userDeposit.amountDenominator > denomDiff ? denomDiff : userDeposit.amountDenominator;
-        unlockedDenominator = unlockedDenominator + denomUnlocked;
+  function deposit(address[] memory _tokens, uint256[] memory _amounts, uint256 _lockExpiration) external nonReentrant {
+    require(_tokens.length == _amounts.length, "Arrays diff length");
+    require(_lockExpiration > block.timestamp, "Exp passed");
+    require(_lockExpiration - block.timestamp <= _maxExpiration, "Exp > max exp");
+    require(_lockExpiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");
 
-        uint256 tokenLocked = amountsLockedByExpirationPerToken[_token][userDeposit.lockExpiration];
-        uint256 denomLocked = amountsLockedByExpirationPerToken[_denominator][userDeposit.lockExpiration];
+    for (uint256 i = 0; i < _tokens.length; i++) {
+      if (_amounts[i] == 0) continue;
 
-        tokenLocked = tokenLocked - tokenUnlocked;
-        denomLocked = denomLocked - denomUnlocked;
+      // ToDo : Check if token is whitelisted
 
-        if (tokenLocked == 0 && denomLocked == 0) {
-          delete depositsForUser[i];
-        }
+      IERC20(_tokens[i]).safeTransferFrom(msg.sender, address(this), _amounts[i]);
+      amountsLockedByExpirationPerToken[_tokens[i]][_lockExpiration] += _amounts[i];
+      depositsByUser[msg.sender][_tokens[i]][_lockExpiration] += _amounts[i];
+
+      // If this is the first deposit ever made by this user, for this token
+      if (userDepositsUnlockedUntil[msg.sender][_tokens[i]] == 0) {
+        userDepositsUnlockedUntil[msg.sender][_tokens[i]] = block.timestamp;
       }
+
+      emit Deposit(msg.sender, _tokens[i], _lockExpiration, _amounts[i]);
     }
   }
 
-  function deposit(address _token, address _denominator, uint256 _amountToken, uint256 _amountDenominator, uint256 _lockExpiration) external {
-    IERC20(_token).safeTransferFrom(msg.sender, address(this), _amountToken);
-    IERC20(_denominator).safeTransferFrom(msg.sender, address(this), _amountDenominator);
+  function withdrawExpired(address[] memory _tokens) external nonReentrant {
+    for (uint256 i = 0; i < _tokens.length; i++) {
+      uint256 unlockedAmount = _unlockExpired(_tokens[i]);
 
-    amountsLockedByExpirationPerToken[_token][_lockExpiration] = amountsLockedByExpirationPerToken[_token][_lockExpiration] + _amountToken;
-    amountsLockedByExpirationPerToken[_denominator][_lockExpiration] = amountsLockedByExpirationPerToken[_denominator][_lockExpiration] + _amountDenominator;
-    
-    UserDeposit[] storage depositsForUser = depositsByUser[msg.sender];
+      if (unlockedAmount == 0) return;
 
-    UserDeposit memory newDeposit = UserDeposit({
-    user: msg.sender,
-    token: _token,
-    denominator: _denominator,
-    amountToken: _amountToken,
-    amountDenominator: _amountDenominator,
-    lockExpiration: _lockExpiration
-    });
+      IERC20(_tokens[i]).safeTransferFrom(address(this), msg.sender, unlockedAmount);
 
-    depositsForUser.push(newDeposit);
-
-    emit Deposit(msg.sender, _token, _denominator, _lockExpiration, _amountToken, _amountDenominator);
+      emit Withdraw(msg.sender, _tokens[i], unlockedAmount);
+    }
   }
 
-  function withdraw(address _token, address _denominator, uint256 _amountToken, uint256 _amountDenominator) external {
-    _unlockAmounts(_token, _denominator, _amountToken, _amountDenominator);
-
-    IERC20(_token).safeTransferFrom(address(this), msg.sender, _amountToken);
-    IERC20(_denominator).safeTransferFrom(address(this), msg.sender, _amountDenominator);
-
-    emit Withdraw(msg.sender, _token, _denominator, _amountToken, _amountDenominator);
-  }
-
-  function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration) external virtual {
+  function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration) external virtual nonReentrant {
     uint256 loanableAmount = getLoanableAmount(_token, _lockExpiration);
     uint256 collateralRequired = getEquivalentCollateral(_token, _amountToken, _collateralToken);
 
@@ -375,7 +378,7 @@ contract PremiaLiquidityPool is Ownable {
     repay(hash, _amount);
   }
 
-  function repay(bytes32 _hash, uint256 _amount) public virtual {
+  function repay(bytes32 _hash, uint256 _amount) public virtual nonReentrant {
     Loan storage loan = loansOutstanding[_hash];
 
     uint256 collateralOut = getEquivalentCollateral(loan.token, _amount, loan.collateralToken);
@@ -399,7 +402,7 @@ contract PremiaLiquidityPool is Ownable {
 
   function checkCollateralizationLevel(Loan memory _loan) public returns (bool) {
     uint256 collateralPrice = priceOracle.getAssetPrice(_loan.collateralToken);
-    uint256 percentCollateralized = ((_loan.collateralHeld * _inverseBasisPoint * collateralPrice) / _loan.amountOutstanding) * _loan.tokenPrice;
+    uint256 percentCollateralized = (_loan.collateralHeld * collateralPrice * _inverseBasisPoint) / (_loan.amountOutstanding * _loan.tokenPrice);
     return percentCollateralized >= _requiredCollateralizationPercent;
   }
 
@@ -438,7 +441,7 @@ contract PremiaLiquidityPool is Ownable {
     liquidate(hash, _amount, _router);
   }
 
-  function liquidate(bytes32 _hash, uint256 _collateralAmount, IUniswapV2Router02 _router) public virtual {
+  function liquidate(bytes32 _hash, uint256 _collateralAmount, IUniswapV2Router02 _router) public virtual nonReentrant {
     Loan storage loan = loansOutstanding[_hash];
 
     // TODO: Do we want to enable the following maximum liquidation percentage?
@@ -470,7 +473,7 @@ contract PremiaLiquidityPool is Ownable {
     writeOptionFor(msg.sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium, _referrer);
   }
 
-  function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public virtual {
+  function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public virtual nonReentrant {
     require(_whitelistedWriterContracts.contains(msg.sender), "Writer not whitelisted.");
 
     // TODO: Should there be a limit to the amount we allow each contract to have outstanding?
@@ -500,7 +503,7 @@ contract PremiaLiquidityPool is Ownable {
     unwindOptionFor(msg.sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium);
   }
 
-  function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium) public virtual {
+  function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium) public virtual nonReentrant {
     require(_whitelistedWriterContracts.contains(msg.sender), "Writer not whitelisted.");
 
     // TODO: I think we want to update this function to support exercising of ITM options.
@@ -526,7 +529,7 @@ contract PremiaLiquidityPool is Ownable {
     emit UnwindOption(_sender, msg.sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium);
   }
 
-  function unlockCollateralFromOption(address _optionContract, uint256 _optionId, uint256 _amount) public virtual {
+  function unlockCollateralFromOption(address _optionContract, uint256 _optionId, uint256 _amount) public virtual nonReentrant {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
 
     require(data.expiration > block.timestamp, "Option is not expired yet.");
