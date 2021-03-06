@@ -26,15 +26,8 @@ contract Pair is OwnableInternal {
    * @return volatility
    */
   function getVolatility () external view returns (uint) {
-    uint day = block.timestamp / (1 days);
-
     PairStorage.Layout storage l = PairStorage.layout();
-
-    if (l.volatilityByDay[day] == 0) {
-      // TODO: calculate volatility for today
-    }
-
-    return l.volatilityByDay[day];
+    return l.lastvariance;
   }
 
   /**
