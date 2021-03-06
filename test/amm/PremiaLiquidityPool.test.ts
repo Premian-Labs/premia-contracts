@@ -36,18 +36,17 @@ describe('PremiaLiquidityPool', () => {
 
   describe('deposits', () => {
     it('should successfully deposit tokens', async () => {
-      await liqPool.connect(user1).deposit(token.address, dai.address, parseEther('50'), parseEther('100'), nextExpiration);
-      const deposit = await liqPool.depositsByUser(user1.address, 0);
-      expect(deposit.token).to.eq(token.address);
-      expect(deposit.denominator).to.eq(dai.address);
-      expect(deposit.amountToken).to.eq(parseEther('50'));
-      expect(deposit.amountDenominator).to.eq(parseEther('100'));
+      await liqPool.connect(user1).deposit([token.address, dai.address], [parseEther('50'), parseEther('100')], nextExpiration);
+      const tokenAmount = await liqPool.depositsByUser(user1.address, token.address, nextExpiration);
+      const daiAmount = await liqPool.depositsByUser(user1.address, dai.address, nextExpiration);
+      expect(tokenAmount).to.eq(parseEther('50'));
+      expect(daiAmount).to.eq(parseEther('100'));
     });
 
     it('should fail deposit if invalid expiration selected', async () => {
-      await expect(liqPool.connect(user1).deposit(token.address, dai.address, parseEther('50'), parseEther('100'), 1200)).revertedWith('Exp passed');
-      await expect(liqPool.connect(user1).deposit(token.address, dai.address, parseEther('50'), parseEther('100'), nextExpiration + 55*oneWeek)).revertedWith('Exp > max exp');
-      await expect(liqPool.connect(user1).deposit(token.address, dai.address, parseEther('50'), parseEther('100'), nextExpiration + 1)).revertedWith('Wrong exp incr');
+      await expect(liqPool.connect(user1).deposit([token.address, dai.address], [parseEther('50'), parseEther('100')], 1200)).revertedWith('Exp passed');
+      await expect(liqPool.connect(user1).deposit([token.address, dai.address], [parseEther('50'), parseEther('100')], nextExpiration + 55*oneWeek)).revertedWith('Exp > max exp');
+      await expect(liqPool.connect(user1).deposit([token.address, dai.address], [parseEther('50'), parseEther('100')], nextExpiration + 1)).revertedWith('Wrong exp incr');
     })
   })
 });
