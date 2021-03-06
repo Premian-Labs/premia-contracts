@@ -45,6 +45,7 @@
     "accounts": "hardhat accounts",
     "test": "hardhat test",
     "docgen": "hardhat docgen",
-    "coverage": "hardhat coverage"
+    "coverage": "hardhat coverage",
+    "clean": "hardhat clean"
   }
 }
