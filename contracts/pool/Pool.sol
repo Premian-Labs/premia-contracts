@@ -46,9 +46,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     uint volatility = Pair(l.pair).getVolatility();
 
-    // TODO: get pool size
-    uint poolSizeBefore;
-    c = _calculateC(l.c, poolSizeBefore, poolSizeBefore - amount);
+    uint liquidity = l.liquidity;
+    c = _calculateC(l.c, liquidity, liquidity - amount);
   }
 
   /**
@@ -71,9 +70,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     _mint(msg.sender, share);
 
-    // TODO: get pool size
-    uint poolSizeBefore;
-    l.c = _calculateC(l.c, poolSizeBefore, poolSizeBefore + amount);
+    uint oldLiquidity = l.liquidity;
+    uint newLiquidity = oldLiquidity + amount;
+    l.c = _calculateC(l.c, oldLiquidity, newLiquidity);
+    l.liquidity = newLiquidity;
   }
 
   /**
@@ -96,9 +96,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     IERC20(l.underlying).transfer(msg.sender, amount);
 
-    // TODO: get pool size
-    uint poolSizeBefore;
-    l.c = _calculateC(l.c, poolSizeBefore, poolSizeBefore - amount);
+    uint oldLiquidity = l.liquidity;
+    uint newLiquidity = oldLiquidity - amount;
+    l.c = _calculateC(l.c, oldLiquidity, newLiquidity);
+    l.liquidity = newLiquidity;
   }
 
   /**
@@ -120,12 +121,11 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     int128 c;
     (price, c) = quote(amount, strikePrice, maturity);
+    l.c = c;
 
     IERC20(l.underlying).transferFrom(msg.sender, address(this), price);
 
     _mint(msg.sender, _tokenIdFor(strikePrice, maturity), amount, '');
-
-    l.c = c;
   }
 
   /**
@@ -171,14 +171,14 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
   function _calculateC (
     int128 oldC,
-    uint poolSizeBefore,
-    uint poolSizeAfter
+    uint oldLiquidity,
+    uint newLiquidity
   ) internal pure returns (int128) {
-    int128 poolSizeBefore64x64 = ABDKMath64x64.fromUInt(poolSizeBefore);
-    int128 poolSizeAfter64x64 = ABDKMath64x64.fromUInt(poolSizeAfter);
+    int128 oldLiquidity64x64 = ABDKMath64x64.fromUInt(oldLiquidity);
+    int128 newLiquidity64x64 = ABDKMath64x64.fromUInt(newLiquidity);
 
-    return poolSizeBefore64x64.sub(poolSizeAfter64x64).div(
-      poolSizeBefore64x64 > poolSizeAfter64x64 ? poolSizeBefore64x64 : poolSizeAfter64x64
+    return oldLiquidity64x64.sub(newLiquidity64x64).div(
+      oldLiquidity64x64 > newLiquidity64x64 ? oldLiquidity64x64 : newLiquidity64x64
     ).neg().exp().mul(int128(oldC));
   }
 }
