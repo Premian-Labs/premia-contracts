@@ -32,7 +32,6 @@ library PairStorage {
     uint256 oldLogRtns;
     uint256 lastEMALogRtns;
     uint256 oldEMALogRtns;
-    mapping (uint => uint) volatilityByDay;
   }
 
   function layout () internal pure returns (Layout storage l) {
