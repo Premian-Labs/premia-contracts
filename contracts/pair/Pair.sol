@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 
 import '@solidstate/contracts/access/OwnableInternal.sol';
 
-import '../core/IPriceConsumer.sol';
 import './PairStorage.sol';
 
 /**
@@ -13,9 +12,6 @@ import './PairStorage.sol';
  */
 contract Pair is OwnableInternal {
   using PairStorage for PairStorage.Layout;
-  // TODO: no storage variables outside of diamond storage layout
-  uint256 period = 24 hours;
-  IPriceConsumer IPrice;
 
   /**
    * @notice get addresses of PoolProxy contracts
@@ -46,7 +42,7 @@ contract Pair is OwnableInternal {
    */
   function update() internal {
     PairStorage.Layout storage l = PairStorage.layout();
-    require(l.lasttimestamp + period < block.timestamp, "Wait to update");
+    require(l.lasttimestamp + l.period < block.timestamp, "Wait to update");
     // TODO: use option math to update storage variables
     l.lasttimestamp = block.timestamp;
     l.oldprice = l.lastprice;
