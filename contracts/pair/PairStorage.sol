@@ -27,7 +27,7 @@ library PairStorage {
     //Rolling stats
     uint256 oldaverage;
     uint256 lastaverage;
-    uint256 lastvar;
+    uint256 lastvariance;
     uint256 currentLogRtns;
     uint256 oldLogRtns;
     uint256 lastEMALogRtns;
