@@ -35,7 +35,6 @@ library OptionMath {
     ) internal pure returns (int256) {
         int128 alpha = ABDKMath64x64.divi(2, (1 + _window));
         return alpha.muli(_current - _old) + _old;
-        // return ABDKMath64x64.muli(alpha, (_current - _old)) + _old;
     }
 
     /**
@@ -71,15 +70,15 @@ library OptionMath {
         int256 _yesterdayvariance,
         int256 _window
     ) internal pure returns (int256) {
+        // TODO: intentional addition of int256 and 128x128 fixed point?
+        // TODO: possible overflow?
         return
             _yesterdayvariance +
-            ABDKMath64x64
-                .divi(
+            ABDKMath64x64.divi(
                 (_today - _yesterday) *
                     (_today - _todayaverage + _yesterday - _yesterdayaverage),
                 (_window - 1)
-            )
-                .to128x128();
+            ).to128x128();
     }
 
     /**
@@ -96,23 +95,16 @@ library OptionMath {
         uint256 _price,
         int128 _maturity
     ) internal pure returns (uint256) {
-        return
-            uint256(
-                ABDKMath64x64.toUInt(
-                    ABDKMath64x64.ln(ABDKMath64x64.divu(_strike, _price)) +
-                        ABDKMath64x64.div(
-                            ABDKMath64x64.mul(
-                                _maturity,
-                                ABDKMath64x64.divu(_variance, 2)
-                            ),
-                            ABDKMath64x64.sqrt(
-                                ABDKMath64x64.fromUInt(
-                                    ABDKMath64x64.mulu(_maturity, _variance)
-                                )
-                            )
-                        )
+        return uint256(ABDKMath64x64.toUInt(
+            ABDKMath64x64.divu(_strike, _price).ln().add(
+                _maturity.mul(
+                  // TODO: more efficient? => ABDKMath64x64.fromUInt(_variance / 2)
+                    ABDKMath64x64.divu(_variance, 2)
+                ).div(
+                    ABDKMath64x64.fromUInt(_maturity.mulu(_variance)).sqrt()
                 )
-            );
+            )
+        ));
     }
 
     /**
@@ -131,12 +123,7 @@ library OptionMath {
     ) internal view returns (uint256) {
         int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
         uint256 prob = p(_variance, _strike, _price, maturity);
-        return
-            _price *
-            prob -
-            _strike *
-            ABDKMath64x64.toUInt((ABDKMath64x64.exp(maturity))) *
-            prob;
+        return (_price - _strike * maturity.exp().toUInt()) * prob;
     }
 
     /**
@@ -151,8 +138,10 @@ library OptionMath {
         uint256 _St,
         uint256 _St1
     ) internal pure returns (uint256) {
-        uint256 exp = (_St1 - _St) / max(_St, _St1);
-        return ABDKMath64x64.fromUInt(exp).exp().inv().mulu(_Ct);
+        // TODO: mark unchecked?
+        return ABDKMath64x64.fromUInt(
+            (_St1 - _St) / max(_St, _St1)
+        ).exp().inv().mulu(_Ct);
     }
 
     /**
@@ -199,6 +188,7 @@ library OptionMath {
         uint256 _St1
     ) internal view returns (uint256) {
         int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
+        // TODO: precalculate ABDKMath64x64.divu(4, 10)?
         return
             maturity.sqrt().mulu(cFn(_Ct, _St, _St1)) *
             ABDKMath64x64.divu(4, 10).mulu(_price) *
@@ -218,6 +208,8 @@ library OptionMath {
         uint256 _duration
     ) internal view returns (int256) {
         int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
+        // TODO: precalculate ABDKMath64x64.divi(4, 10)?
+        // TODO: intentional multiplication of uint256 and 64x64 fixed point?
         return
             maturity.sqrt() *
             ABDKMath64x64.divi(4, 10).muli(_price) *
