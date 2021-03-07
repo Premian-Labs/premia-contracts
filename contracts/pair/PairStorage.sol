@@ -16,22 +16,20 @@ library PairStorage {
     address pool1;
     IPriceConsumer IPrice;
     //constants
-    uint256 window;
-    uint256 alpha;
+    int256 window;
+    int256 alpha;
     uint256 period;
     //time
     uint256 lasttimestamp;
     //prices
-    uint256 oldprice;
-    uint256 lastprice;
+    int256 priceyesterday;
+    int256 pricetoday;
     //Rolling stats
-    uint256 oldaverage;
-    uint256 lastaverage;
-    uint256 lastvariance;
-    uint256 currentLogRtns;
-    uint256 oldLogRtns;
-    uint256 lastEMALogRtns;
-    uint256 oldEMALogRtns;
+    int256 averageyesterday;
+    int256 averagetoday;
+    int256 logreturns;
+    int256 emalogreturns;
+    int256 variance;
   }
 
   function layout () internal pure returns (Layout storage l) {
