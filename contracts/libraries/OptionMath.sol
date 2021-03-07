@@ -30,12 +30,12 @@ library OptionMath {
      * @return the new EMA value for today
      */
     function rollingEma(
-        uint256 _old,
-        uint256 _current,
-        uint256 _window
-    ) internal pure returns (uint256) {
-        int128 alpha = ABDKMath64x64.divu(2, (1 + _window));
-        return ABDKMath64x64.mulu(alpha, (_current - _old)) + _old;
+        int256 _old,
+        int256 _current,
+        int256 _window
+    ) internal pure returns (int256) {
+        int128 alpha = ABDKMath64x64.divi(2, (1 + _window));
+        return ABDKMath64x64.muli(alpha, (_current - _old)) + _old;
     }
 
     /**
@@ -46,16 +46,14 @@ library OptionMath {
      * @return the new average value for today
      */
     function rollingAvg(
-        uint256 _old,
-        uint256 _current,
-        uint256 _window
-    ) internal pure returns (uint256) {
+        int256 _old,
+        int256 _current,
+        int256 _window
+    ) internal pure returns (int256) {
         return
             _old +
-            uint256(
-                ABDKMath64x64.to128x128(
-                    ABDKMath64x64.divu(_current - _old, _window)
-                )
+            ABDKMath64x64.to128x128(
+                ABDKMath64x64.divi(_current - _old, _window)
             );
     }
 
@@ -70,27 +68,26 @@ library OptionMath {
      * @return the new variance value for today
      */
     function rollingVar(
-        uint256 _yesterday,
-        uint256 _today,
-        uint256 _yesterdayaverage,
-        uint256 _todayaverage,
-        uint256 _yesterdayvariance,
-        uint256 _window
+        int256 _yesterday,
+        int256 _today,
+        int256 _yesterdayaverage,
+        int256 _todayaverage,
+        int256 _yesterdayvariance,
+        int256 _window
     ) internal pure returns (uint256) {
         return
+        uint256(
             _yesterdayvariance +
-            uint256(
-                ABDKMath64x64.to128x128(
-                    ABDKMath64x64.divu(
-                        (_today - _yesterday) *
-                            (_today -
-                                _todayaverage +
-                                _yesterday -
-                                _yesterdayaverage),
-                        (_window - 1)
-                    )
+            ABDKMath64x64.to128x128(
+                ABDKMath64x64.divi(
+                    (_today - _yesterday) *
+                        (_today -
+                            _todayaverage +
+                            _yesterday -
+                            _yesterdayaverage),
+                    (_window - 1)
                 )
-            );
+            ));
     }
 
     /**
