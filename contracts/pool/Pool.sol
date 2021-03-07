@@ -167,7 +167,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint192 strikePrice,
     uint64 maturity
   ) internal pure returns (uint) {
-    return uint256(maturity) * (uint256(type(uint192).max) + 1) + strikePrice;
+    return (uint256(maturity) << 192) + strikePrice;
   }
 
   function _calculateC (
