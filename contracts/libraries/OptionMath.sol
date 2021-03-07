@@ -208,6 +208,26 @@ library OptionMath {
             _variance;
     }
 
+        /**
+     * @notice calculates the approximated blackscholes model
+     * @param _price the price today
+     * @param _variance the variance from today
+     * @param _timestamp the timestamp for the option end
+     * @return an approximation for the price of a BS option
+     */
+    function approx_Bsch(
+        int256 _price,
+        int256 _variance,
+        uint256 _timestamp
+    ) internal view returns (int256) {
+        int128 maturity =
+            ABDKMath64x64.divu((_timestamp - block.timestamp), (365 days));
+        return
+            maturity.sqrt() *
+            ABDKMath64x64.divi(4, 10).muli(_price) *
+            _variance;
+    }
+
     /**
      * @notice takes two unsigned integers and returns the max
      * @param a the first number to check
