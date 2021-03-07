@@ -207,7 +207,7 @@ library OptionMath {
      * @param _Ct previous C value
      * @param _St current state of the pool
      * @param _St1 state of the pool after trade
-     * @return the price of the option
+     * @return an approximation for the price of a BS option
      */
     function approx_pT(
         uint256 _price,
