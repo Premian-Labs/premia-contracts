@@ -11,6 +11,7 @@ import '../pair/Pair.sol';
 import './PoolStorage.sol';
 
 import { ABDKMath64x64 } from '../libraries/ABDKMath64x64.sol';
+import { OptionMath } from "../libraries/OptionMath.sol";
 
 /**
  * @title Openhedge option pool
@@ -38,7 +39,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   function quote (
     uint amount,
     uint192 strikePrice,
-    uint64 maturity
+    uint maturity
   ) public view returns (uint price, int128 c) {
     // TODO: calculate
 
@@ -179,6 +180,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     return oldLiquidity64x64.sub(newLiquidity64x64).div(
       oldLiquidity64x64 > newLiquidity64x64 ? oldLiquidity64x64 : newLiquidity64x64
-    ).neg().exp().mul(int128(oldC));
+    ).neg().exp().mul(oldC);
   }
 }
