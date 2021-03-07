@@ -6,6 +6,8 @@ import '@solidstate/contracts/access/OwnableInternal.sol';
 
 import './PairStorage.sol';
 
+import { OptionMath } from '../libraries/OptionMath.sol';
+
 /**
  * @title Openhedge options pair
  * @dev deployed standalone and referenced by PairProxy
@@ -27,7 +29,7 @@ contract Pair is OwnableInternal {
    */
   function getVolatility () external view returns (uint) {
     PairStorage.Layout storage l = PairStorage.layout();
-    return l.lastvariance;
+    return uint(l.variance);
   }
 
   /**
@@ -36,9 +38,11 @@ contract Pair is OwnableInternal {
   function update() internal {
     PairStorage.Layout storage l = PairStorage.layout();
     require(l.lasttimestamp + l.period < block.timestamp, "Wait to update");
-    // TODO: use option math to update storage variables
     l.lasttimestamp = block.timestamp;
-    l.oldprice = l.lastprice;
-
+    (l.priceyesterday, l.pricetoday) = (l.pricetoday, l.IPrice.getLatestPrice(l.oracle));
+    l.logreturns = OptionMath.logreturns(l.pricetoday, l.priceyesterday);
+    (l.averageyesterday, l.averagetoday) = (l.averagetoday, OptionMath.rollingAvg(l.averageyesterday, l.logreturns, l.window));
+    l.emalogreturns = OptionMath.rollingEma(l.emalogreturns, l.logreturns, l.window);
+    l.variance = OptionMath.rollingVar(l.priceyesterday, l.pricetoday, l.averageyesterday, l.averagetoday, l.variance, l.window);
   }
 }

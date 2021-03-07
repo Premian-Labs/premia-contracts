@@ -11,14 +11,14 @@ library OptionMath {
      * @param yesterday yesterdays close
      * @return log of returns
      */
-    function logreturns(uint256 today, uint256 yesterday)
+    function logreturns(int256 today, int256 yesterday)
         internal
         pure
         returns (int256)
     {
         return
             ABDKMath64x64.to128x128(
-                ABDKMath64x64.ln(ABDKMath64x64.divu(today, yesterday))
+                ABDKMath64x64.ln(ABDKMath64x64.divi(today, yesterday))
             );
     }
 
@@ -40,7 +40,7 @@ library OptionMath {
 
     /**
      * @notice calculates the log return for a given day
-     * @param _old the price from yesterday
+     * @param _old the average price from yesterday
      * @param _current today's price
      * @param _window the period for the average
      * @return the new average value for today
@@ -74,20 +74,18 @@ library OptionMath {
         int256 _todayaverage,
         int256 _yesterdayvariance,
         int256 _window
-    ) internal pure returns (uint256) {
+    ) internal pure returns (int256) {
         return
-            uint256(
-                _yesterdayvariance +
-                    ABDKMath64x64.to128x128(
-                        ABDKMath64x64.divi(
-                            (_today - _yesterday) *
-                                (_today -
-                                    _todayaverage +
-                                    _yesterday -
-                                    _yesterdayaverage),
-                            (_window - 1)
-                        )
-                    )
+            _yesterdayvariance +
+            ABDKMath64x64.to128x128(
+                ABDKMath64x64.divi(
+                    (_today - _yesterday) *
+                        (_today -
+                            _todayaverage +
+                            _yesterday -
+                            _yesterdayaverage),
+                    (_window - 1)
+                )
             );
     }
 
