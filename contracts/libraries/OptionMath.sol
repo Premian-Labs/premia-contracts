@@ -5,6 +5,8 @@ pragma solidity ^0.8.0;
 import {ABDKMath64x64} from "../libraries/ABDKMath64x64.sol";
 
 library OptionMath {
+    using ABDKMath64x64 for int128;
+
     /**
      * @notice calculates the log return for a given day
      * @param today todays close
@@ -16,10 +18,7 @@ library OptionMath {
         pure
         returns (int256)
     {
-        return
-            ABDKMath64x64.to128x128(
-                ABDKMath64x64.ln(ABDKMath64x64.divi(today, yesterday))
-            );
+        return ABDKMath64x64.divi(today, yesterday).ln().to128x128();
     }
 
     /**
@@ -35,7 +34,8 @@ library OptionMath {
         int256 _window
     ) internal pure returns (int256) {
         int128 alpha = ABDKMath64x64.divi(2, (1 + _window));
-        return ABDKMath64x64.muli(alpha, (_current - _old)) + _old;
+        return alpha.muli(_current - _old) + _old;
+        // return ABDKMath64x64.muli(alpha, (_current - _old)) + _old;
     }
 
     /**
@@ -50,11 +50,7 @@ library OptionMath {
         int256 _current,
         int256 _window
     ) internal pure returns (int256) {
-        return
-            _old +
-            ABDKMath64x64.to128x128(
-                ABDKMath64x64.divi(_current - _old, _window)
-            );
+        return _old + ABDKMath64x64.divi(_current - _old, _window).to128x128();
     }
 
     /**
@@ -77,16 +73,13 @@ library OptionMath {
     ) internal pure returns (int256) {
         return
             _yesterdayvariance +
-            ABDKMath64x64.to128x128(
-                ABDKMath64x64.divi(
-                    (_today - _yesterday) *
-                        (_today -
-                            _todayaverage +
-                            _yesterday -
-                            _yesterdayaverage),
-                    (_window - 1)
-                )
-            );
+            ABDKMath64x64
+                .divi(
+                (_today - _yesterday) *
+                    (_today - _todayaverage + _yesterday - _yesterdayaverage),
+                (_window - 1)
+            )
+                .to128x128();
     }
 
     /**
@@ -161,13 +154,7 @@ library OptionMath {
         uint256 _St1
     ) internal pure returns (uint256) {
         uint256 exp = (_St1 - _St) / max(_St, _St1);
-        return
-            ABDKMath64x64.mulu(
-                ABDKMath64x64.inv(
-                    ABDKMath64x64.exp(ABDKMath64x64.fromUInt(exp))
-                ),
-                _Ct
-            );
+        return ABDKMath64x64.fromUInt(exp).exp().inv().mulu(_Ct);
     }
 
     /**
@@ -216,12 +203,9 @@ library OptionMath {
         int128 maturity =
             ABDKMath64x64.divu((_timestamp - block.timestamp), (365 days));
         return
-            ABDKMath64x64.mulu(
-                ABDKMath64x64.sqrt(maturity),
-                cFn(_Ct, _St, _St1) *
-                    ABDKMath64x64.mulu(ABDKMath64x64.divu(4, 10), _price) *
-                    _variance
-            );
+            maturity.sqrt().mulu(cFn(_Ct, _St, _St1)) *
+            ABDKMath64x64.divu(4, 10).mulu(_price) *
+            _variance;
     }
 
     /**
