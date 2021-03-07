@@ -76,18 +76,19 @@ library OptionMath {
         int256 _window
     ) internal pure returns (uint256) {
         return
-        uint256(
-            _yesterdayvariance +
-            ABDKMath64x64.to128x128(
-                ABDKMath64x64.divi(
-                    (_today - _yesterday) *
-                        (_today -
-                            _todayaverage +
-                            _yesterday -
-                            _yesterdayaverage),
-                    (_window - 1)
-                )
-            ));
+            uint256(
+                _yesterdayvariance +
+                    ABDKMath64x64.to128x128(
+                        ABDKMath64x64.divi(
+                            (_today - _yesterday) *
+                                (_today -
+                                    _todayaverage +
+                                    _yesterday -
+                                    _yesterdayaverage),
+                            (_window - 1)
+                        )
+                    )
+            );
     }
 
     /**
