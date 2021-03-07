@@ -120,18 +120,16 @@ library OptionMath {
      * @param _variance the price from yesterday
      * @param _strike the price from today
      * @param _price the average from yesterday
-     * @param _timestamp the average from today
+     * @param _duration temporal length of option contract
      * @return the price of the option
      */
     function bsPrice(
         uint256 _variance,
         uint256 _strike,
         uint256 _price,
-        uint256 _timestamp
+        uint256 _duration
     ) internal view returns (uint256) {
-        require(_timestamp > block.timestamp, "Option in the past");
-        int128 maturity =
-            ABDKMath64x64.divu((_timestamp - block.timestamp), (365 days));
+        int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
         uint256 prob = p(_variance, _strike, _price, maturity);
         return
             _price *
@@ -162,7 +160,7 @@ library OptionMath {
      * @param _variance the price from yesterday
      * @param _strike the price from today
      * @param _price the average from yesterday
-     * @param _timestamp the average from today
+     * @param _duration temporal length of option contract
      * @param _Ct previous C value
      * @param _St current state of the pool
      * @param _St1 state of the pool after trade
@@ -172,21 +170,21 @@ library OptionMath {
         uint256 _variance,
         uint256 _strike,
         uint256 _price,
-        uint256 _timestamp,
+        uint256 _duration,
         uint256 _Ct,
         uint256 _St,
         uint256 _St1
     ) internal view returns (uint256) {
         return
             cFn(_Ct, _St, _St1) *
-            bsPrice(_variance, _strike, _price, _timestamp);
+            bsPrice(_variance, _strike, _price, _duration);
     }
 
     /**
      * @notice calculates the approximated blackscholes model
      * @param _price the price today
      * @param _variance the variance from today
-     * @param _timestamp the timestamp for the option end
+     * @param _duration temporal length of option contract
      * @param _Ct previous C value
      * @param _St current state of the pool
      * @param _St1 state of the pool after trade
@@ -195,33 +193,31 @@ library OptionMath {
     function approx_pT(
         uint256 _price,
         uint256 _variance,
-        uint256 _timestamp,
+        uint256 _duration,
         uint256 _Ct,
         uint256 _St,
         uint256 _St1
     ) internal view returns (uint256) {
-        int128 maturity =
-            ABDKMath64x64.divu((_timestamp - block.timestamp), (365 days));
+        int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
         return
             maturity.sqrt().mulu(cFn(_Ct, _St, _St1)) *
             ABDKMath64x64.divu(4, 10).mulu(_price) *
             _variance;
     }
 
-        /**
+    /**
      * @notice calculates the approximated blackscholes model
      * @param _price the price today
      * @param _variance the variance from today
-     * @param _timestamp the timestamp for the option end
+     * @param _duration temporal length of option contract
      * @return an approximation for the price of a BS option
      */
     function approx_Bsch(
         int256 _price,
         int256 _variance,
-        uint256 _timestamp
+        uint256 _duration
     ) internal view returns (int256) {
-        int128 maturity =
-            ABDKMath64x64.divu((_timestamp - block.timestamp), (365 days));
+        int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
         return
             maturity.sqrt() *
             ABDKMath64x64.divi(4, 10).muli(_price) *
