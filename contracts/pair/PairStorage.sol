@@ -28,7 +28,8 @@ library PairStorage {
     int256 averageyesterday;
     int256 averagetoday;
     int256 logreturns;
-    int256 emalogreturns;
+    int256 emalogreturns_yesterday;
+    int256 emalogreturns_today;
     int256 variance;
   }
 
