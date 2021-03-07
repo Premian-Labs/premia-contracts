@@ -39,8 +39,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   function quote (
     uint amount,
     uint192 strikePrice,
-    uint maturity
+    uint64 maturity
   ) public view returns (uint price, int128 c) {
+    require(maturity > block.timestamp, 'Pool: expiration must be in the future');
     // TODO: calculate
 
     PoolStorage.Layout storage l = PoolStorage.layout();
@@ -167,7 +168,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint192 strikePrice,
     uint64 maturity
   ) internal pure returns (uint) {
-    return uint256(maturity) * (uint256(type(uint192).max) + 1) + strikePrice;
+    return (uint256(maturity) << 192) + strikePrice;
   }
 
   function _calculateC (
