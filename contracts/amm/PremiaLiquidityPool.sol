@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import '@openzeppelin/contracts/access/Ownable.sol';
-import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
 import '../interface/IPremiaOption.sol';
@@ -13,7 +12,6 @@ import '../interface/IPriceOracleGetter.sol';
 import '../uniswapV2/interfaces/IUniswapV2Router02.sol';
 
 contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
-  using EnumerableSet for EnumerableSet.AddressSet;
   using SafeERC20 for IERC20;
 
   struct Loan {
@@ -24,6 +22,13 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
     uint256 collateralHeld;
     uint256 tokenPrice;
     uint256 lockExpiration;
+  }
+
+  struct Permissions {
+    bool canBorrow;
+    bool canWrite;
+    bool isWhitelistedRouter;
+    bool isWhitelistedToken;
   }
 
   // Offset to add to Unix timestamp to make it Fri 23:59:59 UTC
@@ -47,12 +52,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
   // The oracle used to get prices on chain.
   IPriceOracleGetter public priceOracle;
   
-  // List of whitelisted contracts that can borrow capital from this pool
-  EnumerableSet.AddressSet private _whitelistedBorrowContracts;
-  // List of whitelisted contracts that can write options from this pool
-  EnumerableSet.AddressSet private _whitelistedWriterContracts;    
-  // List of UniswapRouter contracts that can be used to swap tokens
-  EnumerableSet.AddressSet private _whitelistedRouterContracts;
+  // Mapping of addresses with special permissions (Contracts who can borrow / write or whitelisted routers / tokens)
+  mapping(address => Permissions) public permissions;
 
   // Set a custom swap path for a token
   mapping(address => mapping(address => address[])) public customSwapPaths;
@@ -75,6 +76,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
   // Events //
   ////////////
 
+  event PermissionsUpdated(address indexed addr, bool canBorrow, bool canWrite, bool isWhitelistedRouter, bool isWhitelistedToken);
   event Deposit(address indexed user, address indexed token,uint256 lockExpiration, uint256 amountToken);
   event Withdraw(address indexed user, address indexed token, uint256 amountToken);
   event Borrow(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed lockExpiration, uint256 amount);
@@ -92,51 +94,12 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
   // Admin //
   ///////////
 
-  /// @notice Add contract addresses to the list of whitelisted borrower contracts
-  /// @param _addr The list of addresses to add
-  function addWhitelistedBorrowContracts(address[] memory _addr) external onlyOwner {
-    for (uint256 i=0; i < _addr.length; i++) {
-      _whitelistedBorrowContracts.add(_addr[i]);
-    }
-  }
+  function setPermissions(address[] memory _addr, Permissions[] memory _permissions) external onlyOwner {
+    require(_addr.length == _permissions.length, "Arrays diff length");
 
-  /// @notice Remove contract addresses from the list of whitelisted borrower contracts
-  /// @param _addr The list of addresses to remove
-  function removeWhitelistedBorrowContracts(address[] memory _addr) external onlyOwner {
-      for (uint256 i=0; i < _addr.length; i++) {
-          _whitelistedBorrowContracts.remove(_addr[i]);
-      }
-  }
-
-  /// @notice Add contract addresses to the list of whitelisted writer contracts
-  /// @param _addr The list of addresses to add
-  function addWhitelistedWriterContracts(address[] memory _addr) external onlyOwner {
     for (uint256 i=0; i < _addr.length; i++) {
-      _whitelistedWriterContracts.add(_addr[i]);
-    }
-  }
-
-  /// @notice Remove contract addresses from the list of whitelisted writer contracts
-  /// @param _addr The list of addresses to remove
-  function removeWhitelistedWriterContracts(address[] memory _addr) external onlyOwner {
-    for (uint256 i=0; i < _addr.length; i++) {
-      _whitelistedWriterContracts.remove(_addr[i]);
-    }
-  }
-
-  /// @notice Add UniswapRouters to the whitelist so that they can be used to swap tokens.
-  /// @param _addr The addresses to add to the whitelist
-  function addWhitelistedRouterContracts(address[] memory _addr) external onlyOwner {
-    for (uint256 i=0; i < _addr.length; i++) {
-      _whitelistedRouterContracts.add(_addr[i]);
-    }
-  }
-
-  /// @notice Remove UniswapRouters from the whitelist so that they cannot be used to swap tokens.
-  /// @param _addr The addresses to remove the whitelist
-  function removeWhitelistedRouterContracts(address[] memory _addr) external onlyOwner {
-    for (uint256 i=0; i < _addr.length; i++) {
-      _whitelistedRouterContracts.remove(_addr[i]);
+      permissions[_addr[i]] = _permissions[i];
+      emit PermissionsUpdated(_addr[i], _permissions[i].canBorrow, _permissions[i].canWrite, _permissions[i].isWhitelistedRouter, _permissions[i].isWhitelistedToken);
     }
   }
 
@@ -180,48 +143,9 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
   // View //
   //////////
 
-  /// @notice Get the list of whitelisted borrower contracts
-  /// @return The list of whitelisted borrower contracts
-  function getWhitelistedBorrowContracts() external view returns(address[] memory) {
-      uint256 length = _whitelistedBorrowContracts.length();
-      address[] memory result = new address[](length);
-
-      for (uint256 i=0; i < length; i++) {
-          result[i] = _whitelistedBorrowContracts.at(i);
-      }
-
-      return result;
-  }
-
-  /// @notice Get the list of whitelisted writer contracts
-  /// @return The list of whitelisted writer contracts
-  function getWhitelistedWriterContracts() external view returns(address[] memory) {
-      uint256 length = _whitelistedWriterContracts.length();
-      address[] memory result = new address[](length);
-
-      for (uint256 i=0; i < length; i++) {
-          result[i] = _whitelistedWriterContracts.at(i);
-      }
-
-      return result;
-  }
-
-  /// @notice Get the list of whitelisted router contracts
-  /// @return The list of whitelisted router contracts
-  function getWhitelistedRouterContracts() external view returns(address[] memory) {
-      uint256 length = _whitelistedRouterContracts.length();
-      address[] memory result = new address[](length);
-
-      for (uint256 i=0; i < length; i++) {
-          result[i] = _whitelistedRouterContracts.at(i);
-      }
-
-      return result;
-  }
-
   function _getNextExpiration() internal view returns (uint256) {
     uint256 nextExpiration = ((block.timestamp / _expirationIncrement) * _expirationIncrement) + _baseExpiration;
-    while (nextExpiration < block.timestamp) {
+    if (nextExpiration < block.timestamp) {
       nextExpiration += _expirationIncrement;
     }
 
@@ -332,9 +256,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
     require(_lockExpiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");
 
     for (uint256 i = 0; i < _tokens.length; i++) {
+      require(permissions[_tokens[i]].isWhitelistedToken, "Token not whitelisted");
       if (_amounts[i] == 0) continue;
-
-      // ToDo : Check if token is whitelisted
 
       IERC20(_tokens[i]).safeTransferFrom(msg.sender, address(this), _amounts[i]);
       amountsLockedByExpirationPerToken[_tokens[i]][_lockExpiration] += _amounts[i];
@@ -368,7 +291,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
     // TODO: We need to set which tokens will be allowed as collateral
 
     require(loanableAmount >= _amountToken, "Amount too high.");
-    require(_whitelistedBorrowContracts.contains(msg.sender), "Borrow not whitelisted.");
+    require(permissions[msg.sender].canBorrow, "Borrow not whitelisted.");
     require(collateralRequired <= _amountCollateral, "Not enough collateral.");
 
     uint256 tokenPrice = priceOracle.getAssetPrice(_token);
@@ -399,7 +322,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
 
     loan.amountOutstanding = loan.amountOutstanding - _amount;
 
-    if (loan.amountOutstanding <= 0) {
+    if (loan.amountOutstanding == 0) {
       collateralOut = loan.collateralHeld;
 
       delete loansOutstanding[_hash];
@@ -424,7 +347,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
   /// @param _token The token to swap collateral to
   /// @param _amountCollateral The amount of collateral
   function _liquidateCollateral(IUniswapV2Router02 _router, address _collateralToken, address _token, uint256 _amountCollateral) internal {
-    require(_whitelistedRouterContracts.contains(address(_router)), "Router not whitelisted.");
+    require(permissions[address(_router)].isWhitelistedRouter, "Router not whitelisted.");
 
     IERC20(_collateralToken).safeIncreaseAllowance(address(_router), _amountCollateral);
 
@@ -466,7 +389,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
     // TODO: Allow loan to be liquidated if it's past the lockExpiration date
 
     require(!checkCollateralizationLevel(loan), "Loan is not under-collateralized.");
-    require(_whitelistedRouterContracts.contains(address(_router)), "Router not whitelisted.");
+    require(permissions[address(_router)].isWhitelistedRouter, "Router not whitelisted.");
 
     _liquidateCollateral(_router, loan.collateralToken, loan.token, _collateralAmount);
 
@@ -486,7 +409,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
   }
 
   function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public virtual nonReentrant {
-    require(_whitelistedWriterContracts.contains(msg.sender), "Writer not whitelisted.");
+    require(permissions[msg.sender].canWrite, "Writer not whitelisted.");
 
     // TODO: Should there be a limit to the amount we allow each contract to have outstanding?
     // We currently don't track who the contracts are outstanding to, so would need to update.
@@ -516,7 +439,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
   }
 
   function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium) public virtual nonReentrant {
-    require(_whitelistedWriterContracts.contains(msg.sender), "Writer not whitelisted.");
+    require(permissions[msg.sender].canWrite, "Writer not whitelisted.");
 
     // TODO: I think we want to update this function to support exercising of ITM options.
     // I.e. "unwind" the option by exercising ITM for whatever it's worth
