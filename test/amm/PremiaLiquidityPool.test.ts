@@ -48,6 +48,24 @@ describe('PremiaLiquidityPool', () => {
       await expect(liqPool.connect(user1).deposit([token.address, dai.address], [parseEther('50'), parseEther('100')], nextExpiration + 55*oneWeek)).revertedWith('Exp > max exp');
       await expect(liqPool.connect(user1).deposit([token.address, dai.address], [parseEther('50'), parseEther('100')], nextExpiration + 1)).revertedWith('Wrong exp incr');
     })
+
+    it('should correctly calculate writable amount', async () => {
+      await liqPool.connect(user1).deposit([token.address, dai.address], [parseEther('50'), parseEther('100')], nextExpiration);
+      await liqPool.connect(user1).deposit([token.address, dai.address], [parseEther('20'), parseEther('200')], nextExpiration + (oneWeek*2));
+
+      const writableAmount1 = await liqPool.getWritableAmount(token.address, nextExpiration);
+      const writableAmount2 = await liqPool.getWritableAmount(token.address, nextExpiration + oneWeek);
+      const writableAmount3 = await liqPool.getWritableAmount(token.address, nextExpiration + (oneWeek * 2));
+      const writableAmount4 = await liqPool.getWritableAmount(token.address, nextExpiration + (oneWeek * 3));
+
+      // console.log(writableAmount1)
+      // console.log(await liqPool.hasWritableAmount(token.address, nextExpiration, parseEther('60')));
+
+      expect(writableAmount1).to.eq(parseEther('70'));
+      expect(writableAmount2).to.eq(parseEther('20'));
+      expect(writableAmount3).to.eq(parseEther('20'));
+      expect(writableAmount4).to.eq(0);
+    })
   })
 });
 

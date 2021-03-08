@@ -228,27 +228,39 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
     return nextExpiration;
   }
 
-  function _getMaxExpiration() internal view returns (uint256) {
-    uint256 currentWeek = _getNextExpiration();
-    uint256 maxExpiration = currentWeek + ((_maxExpiration / _expirationIncrement) * _maxExpiration);
-    while (maxExpiration > block.timestamp + _maxExpiration) {
-      maxExpiration -= _expirationIncrement;
-    }
-
-    return maxExpiration;
-  }
-
   function getWritableAmount(address _token, uint256 _lockExpiration) public view returns (uint256) {
     uint256 expiration = _getNextExpiration();
-    uint256 maxExpiration = _getMaxExpiration();
+
+    if (expiration < _lockExpiration) {
+      expiration = _lockExpiration;
+    }
 
     uint256 writableAmount;
-    while (expiration <= maxExpiration && expiration <= _lockExpiration) {
+    while (expiration <= block.timestamp + _maxExpiration) {
       writableAmount += amountsLockedByExpirationPerToken[_token][expiration];
       expiration += _expirationIncrement;
     }
 
     return writableAmount;
+  }
+
+  /// @notice More gas efficient than getWritableAmount, as it stops iteration if amount required is reached
+  function hasWritableAmount(address _token, uint256 _lockExpiration, uint256 _amount) public view returns(bool) {
+    uint256 expiration = _getNextExpiration();
+
+    if (expiration < _lockExpiration) {
+      expiration = _lockExpiration;
+    }
+
+    uint256 writableAmount;
+    while (expiration <= block.timestamp + _maxExpiration) {
+      writableAmount += amountsLockedByExpirationPerToken[_token][expiration];
+      expiration += _expirationIncrement;
+
+      if (writableAmount >= _amount) return true;
+    }
+
+    return false;
   }
 
   function getUnlockableAmount(address _user, address _token) external view returns (uint256) {
