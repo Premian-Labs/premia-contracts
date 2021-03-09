@@ -15,9 +15,6 @@ contract PremiaBlackScholesV1Oracle {
         priceOracle = _priceOracle;
     }
 
-    /**
-     * @dev returns the black scholes price in ETH
-     */
     function getBlackScholesEstimate(IPremiaOption optionContract, uint256 optionId, uint256 amountIn) external view returns (uint256) {
         uint256 vol = blackScholesOracle.realizedVolatilityWeekly(optionContract.token, amountIn, optionContract.denominator);
         uint256 price = priceOracle.getAssetPrice(optionContract.token);

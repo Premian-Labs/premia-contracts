@@ -13,13 +13,27 @@ import '../interface/IBlackScholesPriceGetter.sol';
 contract PremiaAMM is Ownable {
   using SafeERC20 for IERC20;
 
+  enum SaleSide {Buy, Sell}
+
   // The oracle used to get black scholes prices on chain.
   IBlackScholesPriceGetter public blackScholesOracle;
 
   IPremiaLiquidityPool[] public callPools;
   IPremiaLiquidityPool[] public putPools;
 
-  uint256 k = 1;
+  uint256 public blackScholesWeight = 500; // 500 = 50%
+  uint256 public constantProductWeight = 500; // 500 = 50%
+
+  uint256 public constant inverseBasisPoint = 1000;
+
+  /// @notice Set new weights for pricing function, total must be 1,000
+  /// @param _blackScholesWeight Black scholes weighting
+  /// @param _constantProductWeight Weighting based on reserves
+  function setPriceWeights(uint256 _blackScholesWeight, uint256 _constantProductWeight) external onlyOwner {
+    require(_blackScholesWeight + _constantProductWeight == inverseBasisPoint);
+    blackScholesWeight = _blackScholesWeight;
+    constantProductWeight = _constantProductWeight;
+  }
 
   function getCallReserves(address _optionContract, uint256 _optionId) public view returns (uint256) {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
@@ -111,85 +125,51 @@ contract PremiaAMM is Ownable {
     return maxSell;
   }
 
-  function priceOption(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken)
+  function priceOption(IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount)
     public view returns (uint256 optionPrice) {
-    // Source: https://arxiv.org/pdf/2101.02778.pdf (page 5)
-    // sum all call reserves + put reserves and plug into the following formula:
-    // k = w(t) · (x(t) − a(t)) · y(t)
-    // a(t) < x(t), w(t) > 0, x(t) > 0, y(t) > 0
-    // where w(t) and a(t) are both functions of the current price,
-    // x(t) is the amount of reserves in the call pool
-    // y(t) is the amount of reserves in the put pool
-    // and k is a constant set at initialization of the pool
-
-    // instantaneous price at any moment can be found through the following:
-    // optionPrice = (k / w(t)) *  (1 / (x(t) - a(t))^2 
-    // where a(t) = x(t) − (y(t) / p_market(t))
-    // and w(t) = (k * p_market(t)) / y(t)^2
-
-    uint256 x_t_0;
-    uint256 x_t_1;
-    uint256 y_t_0;
-    uint256 y_t_1;
-    uint256 k_0 = k;
-
-    if (_data.isCall) {
-      x_t_0 = _getCallReserves(_data);
-      x_t_1 = x_t_0 - _amount;
-      y_t_0 = _getPutReserves(_data, _optionContract);
-      y_t_1 = y_t_0;
-    } else {
-      x_t_0 = _getCallReserves(_data);
-      x_t_1 = x_t_0;
-      y_t_0 = _getPutReserves(_data, _optionContract);
-      y_t_1 = y_t_0 - (_amount * _data.strikePrice);
-    }
-
-    uint256 p_market_t = blackScholesOracle.getBlackScholesEstimate(address(_optionContract), _optionId);
-
-    uint256 a_t_0 = x_t_0 - (y_t_0 / p_market_t);
-    uint256 w_t_0 = (k_0 * p_market_t) / (y_t_0 * y_t_0);
-    uint256 k_1 = w_t_0 * (x_t_0 - a_t_0) * y_t_0;
-
-    uint256 a_t_1 = x_t_1 - (y_t_1 / p_market_t);
-    uint256 w_t_1 = k_1 * (p_market_t / (y_t_1 * y_t_1));
-
-    uint256 x_t_1_diff = x_t_1 - a_t_1;
-
-    return k_1 / w_t_1 * (uint256(1e12) / (x_t_1_diff * x_t_1_diff)) / (1e12);
+    IPremiaOption.OptionData memory _data = _optionContract.optionData(_optionId);
+    return _priceOption(_data, _optionContract, _optionId, _side, _amount);
   }
 
-  function _priceOptionWithUpdate(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken) internal returns (uint256) {
-    uint256 x_t;
-    uint256 y_t;
+  function _priceOption(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount) internal returns (uint256) {
+    // TODO: This function currently does not take into account the premiumToken
+   
+    uint256 xt0 = _getCallReserves(_data);
+    uint256 yt0 = _getPutReserves(_data, _optionContract);
+    uint256 k = xt0 * yt0;
 
-    if (_data.isCall) {
-      x_t = _getCallReserves(_data) - _amount;
-      y_t = _getPutReserves(_data, _optionContract);
+    uint256 amountIn = _data.isCall ? _amount : _amount * _data.strikePrice;
+    uint256 blackScholesPrice = blackScholesOracle.getBlackScholesEstimate(_optionContract, _optionId, amountIn);
+    uint256 bsPortion = blackScholesPrice * _amount * inverseBasisPoint / blackScholesWeighting;
+   
+    uint256 xt1;
+    uint256 yt1;
+
+    if (_side == SaleSide.Buy) {
+      if (_data.isCall) {
+        // User is Buying Call
+        xt1 = xt0 - amountIn;
+
+        return bsPortion + (k / xt1 * inverseBasisPoint / constantProductWeight);
+      } else {
+        // User is Buying Put
+        yt1 = yt0 - amountIn;
+
+        return bsPortion + (k / yt1 * inverseBasisPoint / constantProductWeight);
+      }
     } else {
-      x_t = _getCallReserves(_data);
-      y_t = _getPutReserves(_data, _optionContract) - (_amount * _data.strikePrice);
+      if (_data.isCall) {
+        // User is Selling Call
+        yt1 = yt0 - amountIn;
+
+        return bsPortion + (k / xt1 * inverseBasisPoint / constantProductWeight);
+      } else {
+        // User is Selling Put
+        xt1 = xt0 - amountIn;
+
+        return bsPortion + (k / yt1 * inverseBasisPoint / constantProductWeight);
+      }
     }
-
-    _updateKFromReserves(_data, _optionContract, _optionId, _amount, _premiumToken);
-
-    uint256 p_market_t = blackScholesOracle.getBlackScholesEstimate(address(_optionContract), _optionId);
-    uint256 a_t = x_t - (y_t / p_market_t);
-    uint256 w_t = k * p_market_t / (y_t * y_t);
-
-    uint256 x_t_diff = x_t - a_t;
-
-    return k / w_t * (uint256(1e12) / (x_t_diff * x_t_diff)) / 1e12;
-  }
-
-  function _updateKFromReserves(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken) internal {
-    uint256 p_market_t = blackScholesOracle.getBlackScholesEstimate(address(_optionContract), _optionId);
-    uint256 x_t = _getCallReserves(_data);
-    uint256 y_t = _getPutReserves(_data, _optionContract);
-    uint256 a_t = x_t - (y_t / p_market_t);
-    uint256 w_t = k * (p_market_t / (y_t * y_t));
-
-    k = w_t * (x_t - a_t) * y_t;
   }
 
   function _getLiquidityPool(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _amount) internal returns (IPremiaLiquidityPool) {
@@ -211,7 +191,7 @@ contract PremiaAMM is Ownable {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data, IPremiaOption(_optionContract), _amount);
 
-    uint256 optionPrice = _priceOptionWithUpdate(data, IPremiaOption(_optionContract), _optionId, _amount, _premiumToken);
+    uint256 optionPrice = _priceOption(data, IPremiaOption(_optionContract), _optionId, SaleSide.Buy, _amount);
 
     require(optionPrice >= _maxPremiumAmount, "Price too high.");
 
@@ -223,7 +203,7 @@ contract PremiaAMM is Ownable {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data, IPremiaOption(_optionContract), _amount);
 
-    uint256 optionPrice = _priceOptionWithUpdate(data, IPremiaOption(_optionContract), _optionId, _amount, _premiumToken);
+    uint256 optionPrice = _priceOption(data, IPremiaOption(_optionContract), _optionId, SaleSide.Sell, _amount);
 
     require(optionPrice <= _minPremiumAmount, "Price too low.");
 
