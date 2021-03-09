@@ -21,6 +21,8 @@ contract PremiaAMM is Ownable {
   IPremiaLiquidityPool[] public callPools;
   IPremiaLiquidityPool[] public putPools;
 
+  IERC20 public constant WETH = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
+
   uint256 public blackScholesWeight = 500; // 500 = 50%
   uint256 public constantProductWeight = 500; // 500 = 50%
 
@@ -125,21 +127,23 @@ contract PremiaAMM is Ownable {
     return maxSell;
   }
 
-  function priceOption(IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount)
+  function priceOption(IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount, address _premiumToken)
     public view returns (uint256 optionPrice) {
     IPremiaOption.OptionData memory _data = _optionContract.optionData(_optionId);
-    return _priceOption(_data, _optionContract, _optionId, _side, _amount);
+    return _priceOption(_data, _optionContract, _optionId, _side, _amount, _premiumToken);
   }
 
-  function _priceOption(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount) internal returns (uint256) {
-    // TODO: This function currently does not take into account the premiumToken
-   
+  function _priceOption(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount, address _premiumToken)
+    internal returns (uint256) {
     uint256 xt0 = _getCallReserves(_data);
     uint256 yt0 = _getPutReserves(_data, _optionContract);
     uint256 k = xt0 * yt0;
 
     uint256 amountIn = _data.isCall ? _amount : _amount * _data.strikePrice;
-    uint256 blackScholesPrice = blackScholesOracle.getBlackScholesEstimate(_optionContract, _optionId, amountIn);
+    uint256 blackScholesPriceInEth = blackScholesOracle.getBlackScholesEstimate(_optionContract, _optionId, amountIn);
+    uint256 ethPrice = blackScholesOracle.getAssetPrice(address(WETH));
+    uint256 premiumTokenPrice = blackScholesOracle.getAssetPrice(_premiumToken);
+    uint256 blackScholesPrice = (premiumTokenPrice / ethPrice) * blackScholesPriceInEth;
     uint256 bsPortion = blackScholesPrice * _amount * inverseBasisPoint / blackScholesWeighting;
    
     uint256 xt1;
@@ -191,7 +195,7 @@ contract PremiaAMM is Ownable {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data, IPremiaOption(_optionContract), _amount);
 
-    uint256 optionPrice = _priceOption(data, IPremiaOption(_optionContract), _optionId, SaleSide.Buy, _amount);
+    uint256 optionPrice = _priceOption(data, IPremiaOption(_optionContract), _optionId, SaleSide.Buy, _amount, _premiumToken);
 
     require(optionPrice >= _maxPremiumAmount, "Price too high.");
 
@@ -207,7 +211,7 @@ contract PremiaAMM is Ownable {
 
     require(optionPrice <= _minPremiumAmount, "Price too low.");
 
-    liquidityPool.unwindOptionFor(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice);
+    liquidityPool.unwindOptionFor(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice, _premiumToken);
     IERC20(_premiumToken).safeTransferFrom(address(liquidityPool), msg.sender, optionPrice);
   }
 }
