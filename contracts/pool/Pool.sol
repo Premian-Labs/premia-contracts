@@ -171,6 +171,13 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     return (uint256(maturity) << 192) + strikePrice;
   }
 
+  /**
+   * @notice calculate "c" constant
+   * @param oldC current value of "c"
+   * @param oldLiquidity liquidity before "c" calulation
+   * @param newLiquidity liquidity after "c" calculation
+   * @return new "c" constant
+   */
   function _calculateC (
     int128 oldC,
     uint oldLiquidity,
