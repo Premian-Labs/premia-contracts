@@ -143,37 +143,39 @@ contract PremiaAMM is Ownable {
     uint256 blackScholesPriceInEth = blackScholesOracle.getBlackScholesEstimate(_optionContract, _optionId, amountIn);
     uint256 ethPrice = blackScholesOracle.getAssetPrice(address(WETH));
     uint256 premiumTokenPrice = blackScholesOracle.getAssetPrice(_premiumToken);
-    uint256 blackScholesPrice = (premiumTokenPrice / ethPrice) * blackScholesPriceInEth;
+    uint256 blackScholesPrice = ethPrice * uint256(1e12) / premiumTokenPrice * blackScholesPriceInEth / uint256(1e12);
     uint256 bsPortion = blackScholesPrice * _amount * inverseBasisPoint / blackScholesWeighting;
    
     uint256 xt1;
     uint256 yt1;
+    uint256 price;
 
     if (_side == SaleSide.Buy) {
       if (_data.isCall) {
         // User is Buying Call
         xt1 = xt0 - amountIn;
-
-        return bsPortion + (k / xt1 * inverseBasisPoint / constantProductWeight);
+        price = bsPortion + (k / xt1 * inverseBasisPoint / constantProductWeight);
+        yt1 = yt0 + price;
       } else {
         // User is Buying Put
         yt1 = yt0 - amountIn;
-
-        return bsPortion + (k / yt1 * inverseBasisPoint / constantProductWeight);
+        price = bsPortion + (k / yt1 * inverseBasisPoint / constantProductWeight);
       }
     } else {
       if (_data.isCall) {
         // User is Selling Call
         yt1 = yt0 - amountIn;
-
-        return bsPortion + (k / xt1 * inverseBasisPoint / constantProductWeight);
+        price = bsPortion + (k / yt1 * inverseBasisPoint / constantProductWeight);
       } else {
         // User is Selling Put
         xt1 = xt0 - amountIn;
-
-        return bsPortion + (k / yt1 * inverseBasisPoint / constantProductWeight);
+        price = bsPortion + (k / xt1 * inverseBasisPoint / constantProductWeight);
       }
     }
+
+    require(xt1 > 0 && yt1 > 0 && xt1 < k && yt1 < k, "Trade too large.");
+    
+    return price;
   }
 
   function _getLiquidityPool(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _amount) internal returns (IPremiaLiquidityPool) {
