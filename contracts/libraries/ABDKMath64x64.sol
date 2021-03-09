@@ -3,7 +3,7 @@
  * ABDK Math 64.64 Smart Contract Library.  Copyright © 2019 by ABDK Consulting.
  * Author: Mikhail Vladimirov <mikhail.vladimirov@gmail.com>
  */
-pragma solidity 0.8.0;
+pragma solidity ^0.8.0;
 
 /**
  * Smart contract library of mathematical functions operating with signed
@@ -15,12 +15,12 @@ pragma solidity 0.8.0;
  */
 library ABDKMath64x64 {
   /*
-   * Minimum value signed 64.64-bit fixed point number may have. 
+   * Minimum value signed 64.64-bit fixed point number may have.
    */
   int128 private constant MIN_64x64 = -0x80000000000000000000000000000000;
 
   /*
-   * Maximum value signed 64.64-bit fixed point number may have. 
+   * Maximum value signed 64.64-bit fixed point number may have.
    */
   int128 private constant MAX_64x64 = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
