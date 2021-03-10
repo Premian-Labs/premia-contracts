@@ -120,7 +120,7 @@ library OptionMath {
         uint256 _strike,
         uint256 _price,
         uint256 _duration
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
         uint256 prob = p(_variance, _strike, _price, maturity);
         return (_price - _strike * maturity.exp().toUInt()) * prob;
@@ -165,7 +165,7 @@ library OptionMath {
         int128 _Ct,
         uint256 _St,
         uint256 _St1
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         return calculateC(_Ct, _St, _St1).mulu(
             bsPrice(_variance, _strike, _price, _duration)
         );
@@ -188,7 +188,7 @@ library OptionMath {
         int128 _Ct,
         uint256 _St,
         uint256 _St1
-    ) internal view returns (uint256) {
+    ) internal pure returns (uint256) {
         int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
         // TODO: precalculate ABDKMath64x64.divu(4, 10)?
         return ABDKMath64x64.divu(4, 10).mul(
@@ -208,7 +208,7 @@ library OptionMath {
         int256 _price,
         int256 _variance,
         uint256 _duration
-    ) internal view returns (int256) {
+    ) internal pure returns (int256) {
         int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
         // TODO: precalculate ABDKMath64x64.divi(4, 10)?
         // TODO: intentional multiplication of uint256 and 64x64 fixed point?
