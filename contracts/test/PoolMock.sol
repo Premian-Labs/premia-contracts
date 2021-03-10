@@ -15,7 +15,7 @@ contract PoolMock is Pool {
   function tokenIdFor (
     uint192 strikePrice,
     uint64 maturity
-  ) external view returns (uint) {
+  ) external pure returns (uint) {
     return _tokenIdFor(strikePrice, maturity);
   }
 }
