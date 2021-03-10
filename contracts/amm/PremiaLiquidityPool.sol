@@ -10,8 +10,9 @@ import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import '../interface/IPremiaOption.sol';
 import '../interface/IPriceOracleGetter.sol';
 import '../uniswapV2/interfaces/IUniswapV2Router02.sol';
+import "../interface/IPoolControllerChild.sol";
 
-contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
+contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   using SafeERC20 for IERC20;
 
   struct Loan {
@@ -49,6 +50,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
   uint256 public constant _maxLiquidatorReward = 250;  // 250 = 25% fee
   uint256 public constant _inverseBasisPoint = 1000;
 
+  address public controller;
+
   // The oracle used to get prices on chain.
   IPriceOracleGetter public priceOracle;
   
@@ -85,6 +88,28 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
   event WriteOption(address indexed receiver, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
   event UnwindOption(address indexed sender, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
   event UnlockCollateral(address indexed unlocker, address indexed optionContract, uint256 indexed optionId, uint256 amount);
+  event ControllerUpdated(address indexed newController);
+
+  //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+
+  constructor(address _controller) {
+    controller = _controller;
+  }
+
+  //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+
+  ///////////////
+  // Modifiers //
+  ///////////////
+
+  modifier onlyController() {
+    require(msg.sender == controller, "Caller is not the controller");
+    _;
+  }
 
   //////////////////////////////////////////////////
   //////////////////////////////////////////////////
@@ -93,6 +118,12 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
   ///////////
   // Admin //
   ///////////
+
+  function upgradeController(address _newController) external override {
+    require(msg.sender == owner() || msg.sender == controller, "Not owner or controller");
+    controller = _newController;
+    emit ControllerUpdated(_newController);
+  }
 
   function setPermissions(address[] memory _addr, Permissions[] memory _permissions) external onlyOwner {
     require(_addr.length == _permissions.length, "Arrays diff length");
@@ -249,7 +280,11 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
     return unlockedToken;
   }
 
-  function deposit(address[] memory _tokens, uint256[] memory _amounts, uint256 _lockExpiration) external nonReentrant {
+  function depositFrom(address _from, address[] memory _tokens, uint256[] memory _amounts, uint256 _lockExpiration) external onlyController {
+    _deposit(_from, _tokens, _amounts, _lockExpiration);
+  }
+
+  function _deposit(address _from, address[] memory _tokens, uint256[] memory _amounts, uint256 _lockExpiration) internal nonReentrant {
     require(_tokens.length == _amounts.length, "Arrays diff length");
     require(_lockExpiration > block.timestamp, "Exp passed");
     require(_lockExpiration - block.timestamp <= _maxExpiration, "Exp > max exp");
@@ -259,28 +294,32 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard {
       require(permissions[_tokens[i]].isWhitelistedToken, "Token not whitelisted");
       if (_amounts[i] == 0) continue;
 
-      IERC20(_tokens[i]).safeTransferFrom(msg.sender, address(this), _amounts[i]);
+      IERC20(_tokens[i]).safeTransferFrom(_from, address(this), _amounts[i]);
       amountsLockedByExpirationPerToken[_tokens[i]][_lockExpiration] += _amounts[i];
-      depositsByUser[msg.sender][_tokens[i]][_lockExpiration] += _amounts[i];
+      depositsByUser[_from][_tokens[i]][_lockExpiration] += _amounts[i];
 
       // If this is the first deposit ever made by this user, for this token
-      if (userDepositsUnlockedUntil[msg.sender][_tokens[i]] == 0) {
-        userDepositsUnlockedUntil[msg.sender][_tokens[i]] = block.timestamp;
+      if (userDepositsUnlockedUntil[_from][_tokens[i]] == 0) {
+        userDepositsUnlockedUntil[_from][_tokens[i]] = block.timestamp;
       }
 
-      emit Deposit(msg.sender, _tokens[i], _lockExpiration, _amounts[i]);
+      emit Deposit(_from, _tokens[i], _lockExpiration, _amounts[i]);
     }
   }
 
-  function withdrawExpired(address[] memory _tokens) external nonReentrant {
+  function withdrawExpiredFrom(address _from, address[] memory _tokens) external onlyController {
+    _withdrawExpired(_from, _tokens);
+  }
+
+  function _withdrawExpired(address _from, address[] memory _tokens) internal nonReentrant {
     for (uint256 i = 0; i < _tokens.length; i++) {
       uint256 unlockedAmount = _unlockExpired(_tokens[i]);
 
       if (unlockedAmount == 0) return;
 
-      IERC20(_tokens[i]).safeTransferFrom(address(this), msg.sender, unlockedAmount);
+      IERC20(_tokens[i]).safeTransferFrom(address(this), _from, unlockedAmount);
 
-      emit Withdraw(msg.sender, _tokens[i], unlockedAmount);
+      emit Withdraw(_from, _tokens[i], unlockedAmount);
     }
   }
 
