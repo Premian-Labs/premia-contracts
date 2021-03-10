@@ -33,7 +33,7 @@ describe('ABDKMath64x64', function() {
     it('todo');
   });
 
-  describe('#cFn', function () {
+  describe('#calculateC', function () {
     it('todo');
   });
 
@@ -46,10 +46,6 @@ describe('ABDKMath64x64', function() {
   });
 
   describe('#approx_Bsch', function () {
-    it('todo');
-  });
-
-  describe('#max', function () {
     it('todo');
   });
 });
