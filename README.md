@@ -43,7 +43,7 @@ Test contracts on specific network:
 
 ```bash
 
-yarn test --network local
+yarn test --network localhost
 
 ```
 
@@ -69,7 +69,7 @@ Deploy contracts on a specific network :
 
 ```bash
 
-yarn deploy --network local
+yarn deploy --network localhost
 
 ```
 

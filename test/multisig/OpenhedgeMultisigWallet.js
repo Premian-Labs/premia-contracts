@@ -44,6 +44,7 @@ describe('OpenhedgeMultisigWallet', function () {
     getSigners: () => signers,
     getNonSigner: () => nonSigner,
     quorum,
+    getVerificationAddress: () => instance.address,
   });
 
   describe('constructor', function () {

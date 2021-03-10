@@ -20,20 +20,20 @@
     "@chainlink/contracts": "^0.1.6",
     "@nomiclabs/hardhat-ethers": "^2.0.1",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
-    "@solidstate/contracts": "^0.0.3",
-    "@solidstate/library": "^0.0.3",
-    "@solidstate/spec": "^0.0.3",
-    "chai": "^4.3.0",
-    "eslint": "^7.20.0",
-    "eslint-plugin-mocha": "^8.0.0",
-    "ethereum-waffle": "^3.2.2",
+    "@solidstate/contracts": "^0.0.4",
+    "@solidstate/library": "^0.0.4",
+    "@solidstate/spec": "^0.0.4",
+    "chai": "^4.3.3",
+    "eslint": "^7.21.0",
+    "eslint-plugin-mocha": "^8.1.0",
+    "ethereum-waffle": "^3.3.0",
     "ethers": "^5.0.31",
-    "hardhat": "^2.0.10",
-    "hardhat-dependency-compiler": "^1.0.2",
+    "hardhat": "^2.1.1",
+    "hardhat-dependency-compiler": "^1.1.0",
     "hardhat-docgen": "^1.0.3",
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-spdx-license-identifier": "^2.0.3",
-    "solidity-coverage": "^0.7.15"
+    "solidity-coverage": "^0.7.16"
   },
   "dependencies": {
     "dotenv": "^8.2.0"
@@ -45,6 +45,7 @@
     "accounts": "hardhat accounts",
     "test": "hardhat test",
     "docgen": "hardhat docgen",
-    "coverage": "hardhat coverage"
+    "coverage": "hardhat coverage",
+    "clean": "hardhat clean"
   }
 }

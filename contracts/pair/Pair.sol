@@ -4,19 +4,16 @@ pragma solidity ^0.8.0;
 
 import '@solidstate/contracts/access/OwnableInternal.sol';
 
-import '../core/IPriceConsumer.sol';
 import './PairStorage.sol';
-import './OptionMath.sol';
+
+import { OptionMath } from '../libraries/OptionMath.sol';
 
 /**
  * @title Openhedge options pair
  * @dev deployed standalone and referenced by PairProxy
  */
-contract Pair is OwnableInternal, OptionMath {
+contract Pair is OwnableInternal {
   using PairStorage for PairStorage.Layout;
-  // TODO: no storage variables outside of diamond storage layout
-  uint256 period = 24 hours;
-  IPriceConsumer IPrice;
 
   /**
    * @notice get addresses of PoolProxy contracts
@@ -31,15 +28,8 @@ contract Pair is OwnableInternal, OptionMath {
    * @return volatility
    */
   function getVolatility () external view returns (uint) {
-    uint day = block.timestamp / (1 days);
-
     PairStorage.Layout storage l = PairStorage.layout();
-
-    if (l.volatilityByDay[day] == 0) {
-      // TODO: calculate volatility for today
-    }
-
-    return l.volatilityByDay[day];
+    return uint(l.variance);
   }
 
   /**
@@ -47,10 +37,12 @@ contract Pair is OwnableInternal, OptionMath {
    */
   function update() internal {
     PairStorage.Layout storage l = PairStorage.layout();
-    require(l.lasttimestamp + period < block.timestamp, "Wait to update");
-    // TODO: use option math to update storage variables
+    require(l.lasttimestamp + l.period < block.timestamp, "Wait to update");
     l.lasttimestamp = block.timestamp;
-    l.oldprice = l.lastprice;
-
+    (l.priceyesterday, l.pricetoday) = (l.pricetoday, l.IPrice.getLatestPrice(l.oracle));
+    l.logreturns = OptionMath.logreturns(l.pricetoday, l.priceyesterday);
+    (l.emalogreturns_yesterday, l.emalogreturns_today) = (l.emalogreturns_today, OptionMath.rollingEma(l.emalogreturns_yesterday, l.logreturns, l.window));
+    (l.averageyesterday, l.averagetoday) = (l.averagetoday, OptionMath.rollingAvg(l.averageyesterday, l.emalogreturns_today, l.window));
+    l.variance = OptionMath.rollingVar(l.emalogreturns_yesterday, l.emalogreturns_today, l.averageyesterday, l.averagetoday, l.variance, l.window);
   }
 }

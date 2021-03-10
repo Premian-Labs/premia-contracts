@@ -11,6 +11,7 @@ import '../pair/Pair.sol';
 import './PoolStorage.sol';
 
 import { ABDKMath64x64 } from '../libraries/ABDKMath64x64.sol';
+import { OptionMath } from "../libraries/OptionMath.sol";
 
 /**
  * @title Openhedge option pool
@@ -40,15 +41,15 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint192 strikePrice,
     uint64 maturity
   ) public view returns (uint price, int128 c) {
+    require(maturity > block.timestamp, 'Pool: expiration must be in the future');
     // TODO: calculate
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     uint volatility = Pair(l.pair).getVolatility();
 
-    // TODO: get pool size
-    uint poolSizeBefore;
-    c = _calculateC(l.c, poolSizeBefore, poolSizeBefore - amount);
+    uint liquidity = l.liquidity;
+    c = OptionMath.calculateC(l.c, liquidity, liquidity - amount);
   }
 
   /**
@@ -71,9 +72,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     _mint(msg.sender, share);
 
-    // TODO: get pool size
-    uint poolSizeBefore;
-    l.c = _calculateC(l.c, poolSizeBefore, poolSizeBefore + amount);
+    uint oldLiquidity = l.liquidity;
+    uint newLiquidity = oldLiquidity + amount;
+    l.c = OptionMath.calculateC(l.c, oldLiquidity, newLiquidity);
+    l.liquidity = newLiquidity;
   }
 
   /**
@@ -96,9 +98,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     IERC20(l.underlying).transfer(msg.sender, amount);
 
-    // TODO: get pool size
-    uint poolSizeBefore;
-    l.c = _calculateC(l.c, poolSizeBefore, poolSizeBefore - amount);
+    uint oldLiquidity = l.liquidity;
+    uint newLiquidity = oldLiquidity - amount;
+    l.c = OptionMath.calculateC(l.c, oldLiquidity, newLiquidity);
+    l.liquidity = newLiquidity;
   }
 
   /**
@@ -120,12 +123,11 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     int128 c;
     (price, c) = quote(amount, strikePrice, maturity);
+    l.c = c;
 
     IERC20(l.underlying).transferFrom(msg.sender, address(this), price);
 
     _mint(msg.sender, _tokenIdFor(strikePrice, maturity), amount, '');
-
-    l.c = c;
   }
 
   /**
@@ -166,19 +168,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint192 strikePrice,
     uint64 maturity
   ) internal pure returns (uint) {
-    return uint256(maturity) * (uint256(type(uint192).max) + 1) + strikePrice;
-  }
-
-  function _calculateC (
-    int128 oldC,
-    uint poolSizeBefore,
-    uint poolSizeAfter
-  ) internal pure returns (int128) {
-    int128 poolSizeBefore64x64 = ABDKMath64x64.fromUInt(poolSizeBefore);
-    int128 poolSizeAfter64x64 = ABDKMath64x64.fromUInt(poolSizeAfter);
-
-    return poolSizeBefore64x64.sub(poolSizeAfter64x64).div(
-      poolSizeBefore64x64 > poolSizeAfter64x64 ? poolSizeBefore64x64 : poolSizeAfter64x64
-    ).neg().exp().mul(int128(oldC));
+    return (uint256(maturity) << 192) + strikePrice;
   }
 }
