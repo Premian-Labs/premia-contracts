@@ -49,7 +49,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint volatility = Pair(l.pair).getVolatility();
 
     uint liquidity = l.liquidity;
-    c = _calculateC(l.c, liquidity, liquidity - amount);
+    c = OptionMath.calculateC(l.c, liquidity, liquidity - amount);
   }
 
   /**
@@ -74,7 +74,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     uint oldLiquidity = l.liquidity;
     uint newLiquidity = oldLiquidity + amount;
-    l.c = _calculateC(l.c, oldLiquidity, newLiquidity);
+    l.c = OptionMath.calculateC(l.c, oldLiquidity, newLiquidity);
     l.liquidity = newLiquidity;
   }
 
@@ -100,7 +100,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     uint oldLiquidity = l.liquidity;
     uint newLiquidity = oldLiquidity - amount;
-    l.c = _calculateC(l.c, oldLiquidity, newLiquidity);
+    l.c = OptionMath.calculateC(l.c, oldLiquidity, newLiquidity);
     l.liquidity = newLiquidity;
   }
 
@@ -169,18 +169,5 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint64 maturity
   ) internal pure returns (uint) {
     return (uint256(maturity) << 192) + strikePrice;
-  }
-
-  function _calculateC (
-    int128 oldC,
-    uint oldLiquidity,
-    uint newLiquidity
-  ) internal pure returns (int128) {
-    int128 oldLiquidity64x64 = ABDKMath64x64.fromUInt(oldLiquidity);
-    int128 newLiquidity64x64 = ABDKMath64x64.fromUInt(newLiquidity);
-
-    return oldLiquidity64x64.sub(newLiquidity64x64).div(
-      oldLiquidity64x64 > newLiquidity64x64 ? oldLiquidity64x64 : newLiquidity64x64
-    ).neg().exp().mul(oldC);
   }
 }

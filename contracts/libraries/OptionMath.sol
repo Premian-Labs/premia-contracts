@@ -128,20 +128,22 @@ library OptionMath {
 
     /**
      * @notice slippage function
-     * @param _Ct previous C value
-     * @param _St current state of the pool
-     * @param _St1 state of the pool after trade
-     * @return new C value
+     * @param oldC previous "c" constant
+     * @param oldLiquidity liquidity in pool before udpate
+     * @param newLiquidity liquidity in pool after update
+     * @return new "c" constant
      */
-    function cFn(
-        uint256 _Ct,
-        uint256 _St,
-        uint256 _St1
-    ) internal pure returns (uint256) {
-        // TODO: mark unchecked?
-        return ABDKMath64x64.fromUInt(
-            (_St1 - _St) / max(_St, _St1)
-        ).exp().inv().mulu(_Ct);
+    function calculateC(
+        int128 oldC,
+        uint256 oldLiquidity,
+        uint256 newLiquidity
+    ) internal pure returns (int128) {
+        int128 oldLiquidity64x64 = ABDKMath64x64.fromUInt(oldLiquidity);
+        int128 newLiquidity64x64 = ABDKMath64x64.fromUInt(newLiquidity);
+
+        return oldLiquidity64x64.sub(newLiquidity64x64).div(
+            oldLiquidity64x64 > newLiquidity64x64 ? oldLiquidity64x64 : newLiquidity64x64
+        ).exp().mul(oldC);
     }
 
     /**
@@ -160,13 +162,13 @@ library OptionMath {
         uint256 _strike,
         uint256 _price,
         uint256 _duration,
-        uint256 _Ct,
+        int128 _Ct,
         uint256 _St,
         uint256 _St1
     ) internal view returns (uint256) {
-        return
-            cFn(_Ct, _St, _St1) *
-            bsPrice(_variance, _strike, _price, _duration);
+        return calculateC(_Ct, _St, _St1).mulu(
+            bsPrice(_variance, _strike, _price, _duration)
+        );
     }
 
     /**
@@ -183,16 +185,16 @@ library OptionMath {
         uint256 _price,
         uint256 _variance,
         uint256 _duration,
-        uint256 _Ct,
+        int128 _Ct,
         uint256 _St,
         uint256 _St1
     ) internal view returns (uint256) {
         int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
         // TODO: precalculate ABDKMath64x64.divu(4, 10)?
-        return
-            maturity.sqrt().mulu(cFn(_Ct, _St, _St1)) *
-            ABDKMath64x64.divu(4, 10).mulu(_price) *
-            _variance;
+        return ABDKMath64x64.divu(4, 10).mul(
+            maturity.sqrt().mul(calculateC(_Ct, _St, _St1))
+        ).mulu(_price) *
+        _variance;
     }
 
     /**
@@ -214,15 +216,5 @@ library OptionMath {
             maturity.sqrt() *
             ABDKMath64x64.divi(4, 10).muli(_price) *
             _variance;
-    }
-
-    /**
-     * @notice takes two unsigned integers and returns the max
-     * @param a the first number to check
-     * @param b the second number to check
-     * @return return the max of a, b
-     */
-    function max(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a > b ? a : b;
     }
 }
