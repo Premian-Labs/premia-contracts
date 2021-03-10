@@ -217,14 +217,4 @@ library OptionMath {
             ABDKMath64x64.divi(4, 10).muli(_price) *
             _variance;
     }
-
-    /**
-     * @notice takes two unsigned integers and returns the max
-     * @param a the first number to check
-     * @param b the second number to check
-     * @return return the max of a, b
-     */
-    function max(uint256 a, uint256 b) internal pure returns (uint256) {
-        return a > b ? a : b;
-    }
 }
