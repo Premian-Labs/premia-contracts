@@ -17,16 +17,16 @@ contract PremiaLongStablecoinPool is PremiaLiquidityPool {
 
   function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public override {
     super.writeOptionFor(_receiver, _optionContract, _optionId, _amount, _premiumToken, _amountPremium, _referrer);
-    amm.buy(_optionContract, _optionId, _amount, _premiumToken, _amountPremium, _referrer);
+//    amm.buy(_optionContract, _optionId, _amount, _premiumToken, _amountPremium, _referrer);
   }
 
-  function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium) public override {
-    super.unwindOptionFor(_sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium);
-    amm.sell(_optionContract, _optionId, _amount, _premiumToken, _amountPremium, _sender);
+  function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount) public override {
+    super.unwindOptionFor(_sender, _optionContract, _optionId, _amount);
+//    amm.sell(_optionContract, _optionId, _amount, _premiumToken, _amountPremium, _sender);
   }
 
   function unlockCollateralFromOption(address _optionContract, uint256 _optionId, uint256 _amount) public override {
     super.unlockCollateralFromOption(_optionContract, _optionId, _amount);
-    amm.sell(_optionContract, _optionId, _amount, IPremiaOption(_optionContract).denominator(), 0, msg.sender);
+//    amm.sell(_optionContract, _optionId, _amount, IPremiaOption(_optionContract).denominator(), 0, msg.sender);
   }
 }

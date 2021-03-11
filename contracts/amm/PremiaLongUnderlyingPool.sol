@@ -15,8 +15,8 @@ contract PremiaLongUnderlyingPool is PremiaLiquidityPool {
     // 2. Buy underlying token with loan token on dex to long it
   }
 
-  function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium) public override {
-    super.unwindOptionFor(_sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium);
+  function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount) public override {
+    super.unwindOptionFor(_sender, _optionContract, _optionId, _amount);
 
     // TODO: 
     // 1. Sell underlying token bought earlier

@@ -21,7 +21,7 @@ contract PremiaAMM is Ownable {
   IPremiaLiquidityPool[] public callPools;
   IPremiaLiquidityPool[] public putPools;
 
-  IERC20 public constant WETH = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
+  IERC20 public constant WETH = IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
   uint256 public blackScholesWeight = 500; // 500 = 50%
   uint256 public constantProductWeight = 500; // 500 = 50%
@@ -133,49 +133,49 @@ contract PremiaAMM is Ownable {
     return _priceOption(_data, _optionContract, _optionId, _side, _amount, _premiumToken);
   }
 
-  function _priceOption(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount, address _premiumToken)
-    internal returns (uint256) {
-    uint256 xt0 = _getCallReserves(_data);
-    uint256 yt0 = _getPutReserves(_data, _optionContract);
-    uint256 k = xt0 * yt0;
-
-    uint256 amountIn = _data.isCall ? _amount : _amount * _data.strikePrice;
-    uint256 blackScholesPriceInEth = blackScholesOracle.getBlackScholesEstimate(_optionContract, _optionId, amountIn);
-    uint256 ethPrice = blackScholesOracle.getAssetPrice(address(WETH));
-    uint256 premiumTokenPrice = blackScholesOracle.getAssetPrice(_premiumToken);
-    uint256 blackScholesPrice = ethPrice * uint256(1e12) / premiumTokenPrice * blackScholesPriceInEth / uint256(1e12);
-    uint256 bsPortion = blackScholesPrice * _amount * inverseBasisPoint / blackScholesWeighting;
-   
-    uint256 xt1;
-    uint256 yt1;
-    uint256 price;
-
-    if (_side == SaleSide.Buy) {
-      if (_data.isCall) {
-        // User is Buying Call
-        xt1 = xt0 - amountIn;
-        price = bsPortion + (k / xt1 * inverseBasisPoint / constantProductWeight);
-        yt1 = yt0 + price;
-      } else {
-        // User is Buying Put
-        yt1 = yt0 - amountIn;
-        price = bsPortion + (k / yt1 * inverseBasisPoint / constantProductWeight);
-      }
-    } else {
-      if (_data.isCall) {
-        // User is Selling Call
-        yt1 = yt0 - amountIn;
-        price = bsPortion + (k / yt1 * inverseBasisPoint / constantProductWeight);
-      } else {
-        // User is Selling Put
-        xt1 = xt0 - amountIn;
-        price = bsPortion + (k / xt1 * inverseBasisPoint / constantProductWeight);
-      }
-    }
-
-    require(xt1 > 0 && yt1 > 0 && xt1 < k && yt1 < k, "Trade too large.");
-    
-    return price;
+  function _priceOption(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount, address _premiumToken) internal view returns (uint256) {
+//    uint256 xt0 = _getCallReserves(_data);
+//    uint256 yt0 = _getPutReserves(_data, _optionContract);
+//    uint256 k = xt0 * yt0;
+//
+//    uint256 amountIn = _data.isCall ? _amount : _amount * _data.strikePrice;
+//    uint256 blackScholesPriceInEth = blackScholesOracle.getBlackScholesEstimate(_optionContract, _optionId, amountIn);
+//    uint256 ethPrice = blackScholesOracle.getAssetPrice(address(WETH));
+//    uint256 premiumTokenPrice = blackScholesOracle.getAssetPrice(_premiumToken);
+//    uint256 blackScholesPrice = ethPrice * uint256(1e12) / premiumTokenPrice * blackScholesPriceInEth / uint256(1e12);
+//    uint256 bsPortion = blackScholesPrice * _amount * inverseBasisPoint / blackScholesWeight;
+//
+//    uint256 xt1;
+//    uint256 yt1;
+//    uint256 price;
+//
+//    if (_side == SaleSide.Buy) {
+//      if (_data.isCall) {
+//        // User is Buying Call
+//        xt1 = xt0 - amountIn;
+//        price = bsPortion + (k / xt1 * inverseBasisPoint / constantProductWeight);
+//        yt1 = yt0 + price;
+//      } else {
+//        // User is Buying Put
+//        yt1 = yt0 - amountIn;
+//        price = bsPortion + (k / yt1 * inverseBasisPoint / constantProductWeight);
+//      }
+//    } else {
+//      if (_data.isCall) {
+//        // User is Selling Call
+//        yt1 = yt0 - amountIn;
+//        price = bsPortion + (k / yt1 * inverseBasisPoint / constantProductWeight);
+//      } else {
+//        // User is Selling Put
+//        xt1 = xt0 - amountIn;
+//        price = bsPortion + (k / xt1 * inverseBasisPoint / constantProductWeight);
+//      }
+//    }
+//
+//    require(xt1 > 0 && yt1 > 0 && xt1 < k && yt1 < k, "Trade too large.");
+//
+//    return price;
+    return 0;
   }
 
   function _getLiquidityPool(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _amount) internal returns (IPremiaLiquidityPool) {
@@ -209,11 +209,11 @@ contract PremiaAMM is Ownable {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data, IPremiaOption(_optionContract), _amount);
 
-    uint256 optionPrice = _priceOption(data, IPremiaOption(_optionContract), _optionId, SaleSide.Sell, _amount);
+    uint256 optionPrice = _priceOption(data, IPremiaOption(_optionContract), _optionId, SaleSide.Sell, _amount, _premiumToken);
 
     require(optionPrice <= _minPremiumAmount, "Price too low.");
 
-    liquidityPool.unwindOptionFor(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice, _premiumToken);
+    liquidityPool.unwindOptionFor(msg.sender, _optionContract, _optionId, _amount);
     IERC20(_premiumToken).safeTransferFrom(address(liquidityPool), msg.sender, optionPrice);
   }
 }
