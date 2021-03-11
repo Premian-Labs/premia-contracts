@@ -21,7 +21,7 @@ contract PremiaAMM is Ownable {
   IPremiaLiquidityPool[] public callPools;
   IPremiaLiquidityPool[] public putPools;
 
-  IERC20 public constant WETH = '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2';
+  IERC20 public constant WETH = IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
   uint256 public blackScholesWeight = 500; // 500 = 50%
   uint256 public constantProductWeight = 500; // 500 = 50%
@@ -128,7 +128,8 @@ contract PremiaAMM is Ownable {
   }
 
   function priceOption(IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount, address _premiumToken)
-    public view returns (uint256 optionPrice) {
+    public returns (uint256 optionPrice) {
+      // TODO: Make this a view
     IPremiaOption.OptionData memory _data = _optionContract.optionData(_optionId);
     return _priceOption(_data, _optionContract, _optionId, _side, _amount, _premiumToken);
   }
@@ -144,7 +145,7 @@ contract PremiaAMM is Ownable {
     uint256 ethPrice = blackScholesOracle.getAssetPrice(address(WETH));
     uint256 premiumTokenPrice = blackScholesOracle.getAssetPrice(_premiumToken);
     uint256 blackScholesPrice = ethPrice * uint256(1e12) / premiumTokenPrice * blackScholesPriceInEth / uint256(1e12);
-    uint256 bsPortion = blackScholesPrice * _amount * inverseBasisPoint / blackScholesWeighting;
+    uint256 bsPortion = blackScholesPrice * _amount * inverseBasisPoint / blackScholesWeight;
    
     uint256 xt1;
     uint256 yt1;
@@ -209,11 +210,11 @@ contract PremiaAMM is Ownable {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data, IPremiaOption(_optionContract), _amount);
 
-    uint256 optionPrice = _priceOption(data, IPremiaOption(_optionContract), _optionId, SaleSide.Sell, _amount);
+    uint256 optionPrice = _priceOption(data, IPremiaOption(_optionContract), _optionId, SaleSide.Sell, _amount, _premiumToken);
 
     require(optionPrice <= _minPremiumAmount, "Price too low.");
 
-    liquidityPool.unwindOptionFor(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice, _premiumToken);
+    liquidityPool.unwindOptionFor(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice);
     IERC20(_premiumToken).safeTransferFrom(address(liquidityPool), msg.sender, optionPrice);
   }
 }
