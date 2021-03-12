@@ -131,18 +131,18 @@ library OptionMath {
     }
 
     /**
-     * @notice slippage function
+     * @notice calculate new C-Level based on change in liquidity
      * @param oldC previous C-Level
-     * @param oldLiquidity liquidity in pool before udpate
+     * @param oldLiquidity liquidity in pool before update
      * @param newLiquidity liquidity in pool after update
-     * @param alpha steepness coefficient
+     * @param steepness steepness coefficient
      * @return new C-Level
      */
     function calculateCLevel(
         int128 oldC,
         uint256 oldLiquidity,
         uint256 newLiquidity,
-        int128 alpha
+        int128 steepness
     ) internal pure returns (int128) {
         int128 oldLiquidity64x64 = ABDKMath64x64.fromUInt(oldLiquidity);
         int128 newLiquidity64x64 = ABDKMath64x64.fromUInt(newLiquidity);
@@ -152,7 +152,7 @@ library OptionMath {
                     ? oldLiquidity64x64
                     : newLiquidity64x64
             )
-            .mul(alpha).exp().mul(oldC);
+            .mul(steepness).exp().mul(oldC);
     }
 
     /**
