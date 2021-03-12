@@ -136,26 +136,24 @@ library OptionMath {
      * @param oldC previous "c" constant
      * @param oldLiquidity liquidity in pool before udpate
      * @param newLiquidity liquidity in pool after update
+     * @param alpha steepness coefficient
      * @return new "c" constant
      */
     function calculateC(
         int128 oldC,
         uint256 oldLiquidity,
-        uint256 newLiquidity
+        uint256 newLiquidity,
+        int128 alpha
     ) internal pure returns (int128) {
         int128 oldLiquidity64x64 = ABDKMath64x64.fromUInt(oldLiquidity);
         int128 newLiquidity64x64 = ABDKMath64x64.fromUInt(newLiquidity);
-
-        return
-            oldLiquidity64x64
-                .sub(newLiquidity64x64)
-                .div(
+        int128 xt64x64 =
+            oldLiquidity64x64.sub(newLiquidity64x64).div(
                 oldLiquidity64x64 > newLiquidity64x64
                     ? oldLiquidity64x64
                     : newLiquidity64x64
-            )
-                .exp()
-                .mul(oldC);
+            );
+        return xt64x64.mul(alpha).neg().exp().mul(oldC);
     }
 
     /**
@@ -179,7 +177,7 @@ library OptionMath {
         uint256 _St1
     ) internal pure returns (uint256) {
         return
-            calculateC(_Ct, _St, _St1).mulu(
+            calculateC(_Ct, _St, _St1,1).mulu(
                 bsPrice(_variance, _strike, _price, _duration, true)
             );
     }
@@ -205,7 +203,8 @@ library OptionMath {
     ) internal pure returns (uint256) {
         int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
         int128 bsch = approx_Bsch(_price, _variance, _duration);
-        return ABDKMath64x64.toUInt(bsch.mul(calculateC(_Ct, _St, _St1)));
+        int128 c = calculateC(_Ct, _St, _St1,1);
+        return ABDKMath64x64.toUInt(bsch.mul(c));
     }
 
     /**

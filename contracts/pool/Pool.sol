@@ -49,7 +49,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint volatility = Pair(l.pair).getVolatility();
 
     uint liquidity = l.liquidity;
-    c = OptionMath.calculateC(l.c, liquidity, liquidity - amount);
+    c = OptionMath.calculateC(l.c, liquidity, liquidity - amount,1);
   }
 
   /**
@@ -74,7 +74,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     uint oldLiquidity = l.liquidity;
     uint newLiquidity = oldLiquidity + amount;
-    l.c = OptionMath.calculateC(l.c, oldLiquidity, newLiquidity);
+    l.c = OptionMath.calculateC(l.c, oldLiquidity, newLiquidity,1);
     l.liquidity = newLiquidity;
   }
 
@@ -100,7 +100,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     uint oldLiquidity = l.liquidity;
     uint newLiquidity = oldLiquidity - amount;
-    l.c = OptionMath.calculateC(l.c, oldLiquidity, newLiquidity);
+    l.c = OptionMath.calculateC(l.c, oldLiquidity, newLiquidity,1);
     l.liquidity = newLiquidity;
   }
 
