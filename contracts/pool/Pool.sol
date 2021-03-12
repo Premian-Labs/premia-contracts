@@ -34,13 +34,13 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
    * @param strikePrice option strike price
    * @param maturity timestamp of option maturity
    * @return price price of option contract
-   * @return c global "c" value after purchase
+   * @return cLevel C-Level after purchase
    */
   function quote (
     uint amount,
     uint192 strikePrice,
     uint64 maturity
-  ) public view returns (uint price, int128 c) {
+  ) public view returns (uint price, int128 cLevel) {
     require(maturity > block.timestamp, 'Pool: expiration must be in the future');
     // TODO: calculate
 
@@ -49,7 +49,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint volatility = Pair(l.pair).getVolatility();
 
     uint liquidity = l.liquidity;
-    c = OptionMath.calculateC(l.c, liquidity, liquidity - amount, ABDKMath64x64.ONE_64x64);
+    cLevel = OptionMath.calculateCLevel(l.cLevel, liquidity, liquidity - amount, ABDKMath64x64.ONE_64x64);
   }
 
   /**
@@ -74,7 +74,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     uint oldLiquidity = l.liquidity;
     uint newLiquidity = oldLiquidity + amount;
-    l.c = OptionMath.calculateC(l.c, oldLiquidity, newLiquidity, ABDKMath64x64.ONE_64x64);
+    l.cLevel = OptionMath.calculateCLevel(l.cLevel, oldLiquidity, newLiquidity, ABDKMath64x64.ONE_64x64);
     l.liquidity = newLiquidity;
   }
 
@@ -100,7 +100,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     uint oldLiquidity = l.liquidity;
     uint newLiquidity = oldLiquidity - amount;
-    l.c = OptionMath.calculateC(l.c, oldLiquidity, newLiquidity, ABDKMath64x64.ONE_64x64);
+    l.cLevel = OptionMath.calculateCLevel(l.cLevel, oldLiquidity, newLiquidity, ABDKMath64x64.ONE_64x64);
     l.liquidity = newLiquidity;
   }
 
@@ -121,9 +121,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    int128 c;
-    (price, c) = quote(amount, strikePrice, maturity);
-    l.c = c;
+    int128 cLevel;
+    (price, cLevel) = quote(amount, strikePrice, maturity);
+    l.cLevel = cLevel;
 
     IERC20(l.underlying).transferFrom(msg.sender, address(this), price);
 

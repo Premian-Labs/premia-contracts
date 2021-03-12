@@ -132,13 +132,13 @@ library OptionMath {
 
     /**
      * @notice slippage function
-     * @param oldC previous "c" constant
+     * @param oldC previous C-Level
      * @param oldLiquidity liquidity in pool before udpate
      * @param newLiquidity liquidity in pool after update
      * @param alpha steepness coefficient
-     * @return new "c" constant
+     * @return new C-Level
      */
-    function calculateC(
+    function calculateCLevel(
         int128 oldC,
         uint256 oldLiquidity,
         uint256 newLiquidity,
@@ -161,7 +161,7 @@ library OptionMath {
      * @param _strike the price from today
      * @param _price the average from yesterday
      * @param _duration temporal length of option contract
-     * @param _Ct previous C value
+     * @param _Ct previous C-Level
      * @param _St current state of the pool
      * @param _St1 state of the pool after trade
      * @return the price of the option
@@ -176,7 +176,7 @@ library OptionMath {
         uint256 _St1
     ) internal pure returns (uint256) {
         return
-            calculateC(_Ct, _St, _St1, ABDKMath64x64.ONE_64x64).mulu(
+            calculateCLevel(_Ct, _St, _St1, ABDKMath64x64.ONE_64x64).mulu(
                 bsPrice(_variance, _strike, _price, _duration, true)
             );
     }
@@ -186,11 +186,11 @@ library OptionMath {
      * @param _price the price today
      * @param _variance the variance from today
      * @param _duration temporal length of option contract
-     * @param _Ct previous C value
+     * @param _Ct previous C-Level
      * @param _St current state of the pool
      * @param _St1 state of the pool after trade
      * @return an approximation for the price of a BS option
-     * approximated bsch price * C
+     * approximated bsch price * C-Level
      */
     function approx_pT(
         int256 _price,
@@ -202,8 +202,8 @@ library OptionMath {
     ) internal pure returns (uint256) {
         int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
         int128 bsch = approx_Bsch(_price, _variance, _duration);
-        int128 c = calculateC(_Ct, _St, _St1, ABDKMath64x64.ONE_64x64);
-        return ABDKMath64x64.toUInt(bsch.mul(c));
+        int128 cLevel = calculateCLevel(_Ct, _St, _St1, ABDKMath64x64.ONE_64x64);
+        return ABDKMath64x64.toUInt(bsch.mul(cLevel));
     }
 
     /**
