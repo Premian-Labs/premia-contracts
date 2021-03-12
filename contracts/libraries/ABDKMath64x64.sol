@@ -14,6 +14,8 @@ pragma solidity ^0.8.0;
  * represented by int128 type holding only the numerator.
  */
 library ABDKMath64x64 {
+  int128 internal constant ONE_64x64 = 0x10000000000000000;
+
   /*
    * Minimum value signed 64.64-bit fixed point number may have.
    */

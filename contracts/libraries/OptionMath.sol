@@ -68,9 +68,8 @@ library OptionMath {
             ABDKMath64x64.fromInt(_yesterdayemavariance);
         int128 yesterdayema = ABDKMath64x64.fromInt(_yesterdayema);
         int128 today64x64 = ABDKMath64x64.fromInt(_today);
-        int128 _1 = ABDKMath64x64.fromInt(1);
         return
-            _1.sub(alpha64x64).mul(
+            ABDKMath64x64.ONE_64x64.sub(alpha64x64).mul(
                 yesterdayemavariance64x64.add(
                     alpha64x64.mul(today64x64.sub(yesterdayema)).pow(2)
                 )
@@ -177,7 +176,7 @@ library OptionMath {
         uint256 _St1
     ) internal pure returns (uint256) {
         return
-            calculateC(_Ct, _St, _St1,1).mulu(
+            calculateC(_Ct, _St, _St1, ABDKMath64x64.ONE_64x64).mulu(
                 bsPrice(_variance, _strike, _price, _duration, true)
             );
     }
@@ -203,7 +202,7 @@ library OptionMath {
     ) internal pure returns (uint256) {
         int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
         int128 bsch = approx_Bsch(_price, _variance, _duration);
-        int128 c = calculateC(_Ct, _St, _St1,1);
+        int128 c = calculateC(_Ct, _St, _St1, ABDKMath64x64.ONE_64x64);
         return ABDKMath64x64.toUInt(bsch.mul(c));
     }
 
