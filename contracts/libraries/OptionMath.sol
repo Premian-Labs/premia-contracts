@@ -147,13 +147,13 @@ library OptionMath {
     ) internal pure returns (int128) {
         int128 oldLiquidity64x64 = ABDKMath64x64.fromUInt(oldLiquidity);
         int128 newLiquidity64x64 = ABDKMath64x64.fromUInt(newLiquidity);
-        int128 xt64x64 =
+        return
             oldLiquidity64x64.sub(newLiquidity64x64).div(
                 oldLiquidity64x64 > newLiquidity64x64
                     ? oldLiquidity64x64
                     : newLiquidity64x64
-            );
-        return xt64x64.mul(alpha).exp().mul(oldC);
+            )
+            .mul(alpha).exp().mul(oldC);
     }
 
     /**
