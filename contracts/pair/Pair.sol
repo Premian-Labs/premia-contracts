@@ -29,7 +29,7 @@ contract Pair is OwnableInternal {
    */
   function getVolatility () external view returns (uint) {
     PairStorage.Layout storage l = PairStorage.layout();
-    return uint(l.variance);
+    return uint(l.emavariance);
   }
 
   /**
@@ -42,7 +42,6 @@ contract Pair is OwnableInternal {
     (l.priceyesterday, l.pricetoday) = (l.pricetoday, l.IPrice.getLatestPrice(l.oracle));
     l.logreturns = OptionMath.logreturns(l.pricetoday, l.priceyesterday);
     (l.emalogreturns_yesterday, l.emalogreturns_today) = (l.emalogreturns_today, OptionMath.rollingEma(l.emalogreturns_yesterday, l.logreturns, l.window));
-    (l.averageyesterday, l.averagetoday) = (l.averagetoday, OptionMath.rollingAvg(l.averageyesterday, l.emalogreturns_today, l.window));
-    l.variance = OptionMath.rollingVar(l.emalogreturns_yesterday, l.emalogreturns_today, l.averageyesterday, l.averagetoday, l.variance, l.window);
+    l.emavariance = OptionMath.rollingEmaVar(l.logreturns, l.emalogreturns_yesterday, l.emavariance, l.window);
   }
 }

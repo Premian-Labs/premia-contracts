@@ -82,6 +82,28 @@ library OptionMath {
     }
 
     /**
+     * @notice calculates the log return for a given day
+     * @param _today the price from today
+     * @param _yesterdayema the average from yesterday
+     * @param _yesterdayemavariance the variation from yesterday
+     * @param _window the period for the average
+     * @return the new variance value for today
+     */
+    function rollingEmaVar(
+        int256 _today,
+        int256 _yesterdayema,
+        int256 _yesterdayemavariance,
+        int256 _window
+    ) internal pure returns (int256) {
+        int128 alpha64x64 = ABDKMath64x64.divi(ABDKMath64x64.fromInt(2), 1 + _window);
+        int128 yesterdayemavariance64x64 = ABDKMath64x64.fromInt(_yesterdayemavariance);
+        int128 yesterdayema = ABDKMath64x64.fromInt(_yesterdayema);
+        int128 today64x64 = ABDKMath64x64.fromInt(_today);
+        int128 _1 = ABDKMath64x64.fromInt(1);
+        return _1.sub(alpha64x64).mul(yesterdayemavariance64x64.add(alpha64x64.mul(today64x64.sub(yesterdayema)).pow(2)));
+    }
+
+    /**
      * @notice calculates an internal probability for bscholes model
      * @param _variance the price from yesterday
      * @param _strike the price from today
@@ -210,11 +232,10 @@ library OptionMath {
         uint256 _duration
     ) internal pure returns (int256) {
         int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
-        // TODO: precalculate ABDKMath64x64.divi(4, 10)?
-        // TODO: intentional multiplication of uint256 and 64x64 fixed point?
+        int128 factor = ABDKMath64x64.divi(4, 10);
+        int128 variance = ABDKMath64x64.fromInt(_variance);
+        int128 price = ABDKMath64x64.fromInt(_price);
         return
-            maturity.sqrt() *
-            ABDKMath64x64.divi(4, 10).muli(_price) *
-            _variance;
+            ABDKMath64x64.toInt(maturity.sqrt().mul(factor).mul(price).mul(variance));
     }
 }
