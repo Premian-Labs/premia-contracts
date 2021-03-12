@@ -153,7 +153,7 @@ library OptionMath {
                     ? oldLiquidity64x64
                     : newLiquidity64x64
             );
-        return xt64x64.mul(alpha).neg().exp().mul(oldC);
+        return xt64x64.mul(alpha).exp().mul(oldC);
     }
 
     /**
