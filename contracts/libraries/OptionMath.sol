@@ -12,6 +12,7 @@ library OptionMath {
      * @param _today todays close
      * @param _yesterday yesterdays close
      * @return log of returns
+     * ln( today / yesterday)
      */
     function logreturns(int256 _today, int256 _yesterday)
         internal
@@ -29,6 +30,7 @@ library OptionMath {
      * @param _current today's price
      * @param _window the period for the EMA average
      * @return the new EMA value for today
+     * alpha * (current - old ) + old
      */
     function rollingEma(
         int256 _old,
@@ -52,6 +54,7 @@ library OptionMath {
      * @param _yesterdayemavariance the variation from yesterday
      * @param _window the period for the average
      * @return the new variance value for today
+     * (1 - a)(EMAVar t-1  +  a( x t - EMA t-1)^2)
      */
     function rollingEmaVar(
         int256 _today,
@@ -212,19 +215,21 @@ library OptionMath {
      * @param _variance the variance from today
      * @param _duration temporal length of option contract
      * @return an approximation for the price of a BS option
+     * sqrt(maturity) * 0.4 * price * variance (in our case EMA variance)
      */
     function approx_Bsch(
         int256 _price,
         int256 _variance,
         uint256 _duration
     ) internal pure returns (int256) {
-        int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
-        int128 factor = ABDKMath64x64.divi(4, 10);
+        int128 duration64x64 = ABDKMath64x64.fromUInt(_duration);
+        int128 maturity64x64 = duration64x64.divi(365 days);
+        int128 factor = ABDKMath64x64.fromInt(4).divi(10);
         int128 variance = ABDKMath64x64.fromInt(_variance);
         int128 price = ABDKMath64x64.fromInt(_price);
         return
             ABDKMath64x64.toInt(
-                maturity.sqrt().mul(factor).mul(price).mul(variance)
+                maturity64x64.sqrt().mul(factor).mul(price).mul(variance)
             );
     }
 }
