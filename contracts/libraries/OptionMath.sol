@@ -116,13 +116,15 @@ library OptionMath {
      * @param _strike the price from today
      * @param _price the average from yesterday
      * @param _duration temporal length of option contract
+     * @param _isCall is this a call option
      * @return the price of the option
      */
     function bsPrice(
         uint256 _variance,
         uint256 _strike,
         uint256 _price,
-        uint256 _duration
+        uint256 _duration,
+        bool _isCall
     ) internal pure returns (uint256) {
         int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
         uint256 prob = p(_variance, _strike, _price, maturity);
@@ -178,7 +180,7 @@ library OptionMath {
     ) internal pure returns (uint256) {
         return
             calculateC(_Ct, _St, _St1).mulu(
-                bsPrice(_variance, _strike, _price, _duration)
+                bsPrice(_variance, _strike, _price, _duration, true)
             );
     }
 
@@ -191,22 +193,19 @@ library OptionMath {
      * @param _St current state of the pool
      * @param _St1 state of the pool after trade
      * @return an approximation for the price of a BS option
+     * approximated bsch price * C
      */
     function approx_pT(
-        uint256 _price,
-        uint256 _variance,
+        int256 _price,
+        int256 _variance,
         uint256 _duration,
         int128 _Ct,
         uint256 _St,
         uint256 _St1
     ) internal pure returns (uint256) {
         int128 maturity = ABDKMath64x64.divu(_duration, (365 days));
-        // TODO: precalculate ABDKMath64x64.divu(4, 10)?
-        return
-            ABDKMath64x64
-                .divu(4, 10)
-                .mul(maturity.sqrt().mul(calculateC(_Ct, _St, _St1)))
-                .mulu(_price) * _variance;
+        int128 bsch = approx_Bsch(_price, _variance, _duration);
+        return ABDKMath64x64.toUInt(bsch.mul(calculateC(_Ct, _St, _St1)));
     }
 
     /**
@@ -221,15 +220,12 @@ library OptionMath {
         int256 _price,
         int256 _variance,
         uint256 _duration
-    ) internal pure returns (int256) {
+    ) internal pure returns (int128) {
         int128 duration64x64 = ABDKMath64x64.fromUInt(_duration);
         int128 maturity64x64 = duration64x64.divi(365 days);
         int128 factor = ABDKMath64x64.fromInt(4).divi(10);
         int128 variance = ABDKMath64x64.fromInt(_variance);
         int128 price = ABDKMath64x64.fromInt(_price);
-        return
-            ABDKMath64x64.toInt(
-                maturity64x64.sqrt().mul(factor).mul(price).mul(variance)
-            );
+        return maturity64x64.sqrt().mul(factor).mul(price).mul(variance);
     }
 }
