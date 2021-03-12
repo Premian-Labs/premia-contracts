@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import "./IPremiaOption.sol";
 import "./IPriceOracleGetter.sol";
+import '../interface/IPremiaOption.sol';
 
 /**
  * @title IBlackScholesPriceGetter interface

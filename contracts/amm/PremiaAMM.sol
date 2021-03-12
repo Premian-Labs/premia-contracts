@@ -214,7 +214,7 @@ contract PremiaAMM is Ownable {
 
     require(optionPrice <= _minPremiumAmount, "Price too low.");
 
-    liquidityPool.unwindOptionFor(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice);
+    liquidityPool.unwindOptionFor(msg.sender, _optionContract, _optionId, _amount);
     IERC20(_premiumToken).safeTransferFrom(address(liquidityPool), msg.sender, optionPrice);
   }
 }

@@ -15,19 +15,19 @@ contract PremiaBlackScholesV1Oracle {
         priceOracle = _priceOracle;
     }
 
-    function getBlackScholesEstimate(IPremiaOption optionContract, uint256 optionId, uint256 amountIn) external view returns (uint256) {
-        IPremiaOption.OptionData memory data = optionContract.optionData(optionId);
+    function getBlackScholesEstimate(IPremiaOption _optionContract, uint256 _optionId, uint256 _amountIn) external view returns (uint256) {
+        IPremiaOption.OptionData memory data = _optionContract.optionData(_optionId);
 
-        uint256 vol = blackScholesOracle.realizedVolatilityWeekly(data.token, amountIn, optionContract.denominator());
+        uint256 vol = blackScholesOracle.realizedVolatilityWeekly(data.token, _amountIn, _optionContract.denominator());
         uint256 price = priceOracle.getAssetPrice(data.token);
 
         uint256 time = data.expiration - block.timestamp;
         uint256 basePrice = blackScholesOracle.blackScholesEstimate(vol, price, time);
 
         if (price > data.strikePrice) {
-          return basePrice + amountIn * (price - data.strikePrice);
+          return basePrice + _amountIn * (price - data.strikePrice);
         }
 
-        return basePrice - amountIn * (data.strikePrice - price);
+        return basePrice - _amountIn * (data.strikePrice - price);
     }
 }
