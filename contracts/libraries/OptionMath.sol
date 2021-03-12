@@ -9,16 +9,18 @@ library OptionMath {
 
     /**
      * @notice calculates the log return for a given day
-     * @param today todays close
-     * @param yesterday yesterdays close
+     * @param _today todays close
+     * @param _yesterday yesterdays close
      * @return log of returns
      */
-    function logreturns(int256 today, int256 yesterday)
+    function logreturns(int256 _today, int256 _yesterday)
         internal
         pure
         returns (int256)
     {
-        return ABDKMath64x64.divi(today, yesterday).ln().to128x128();
+        int128 today64x64 = ABDKMath64x64.fromInt(_today);
+        int128 yesterday64x64 = ABDKMath64x64.fromInt(_yesterday);
+        return ABDKMath64x64.toInt(today64x64.div(yesterday64x64).ln());
     }
 
     /**
@@ -33,52 +35,11 @@ library OptionMath {
         int256 _current,
         int256 _window
     ) internal pure returns (int256) {
-        int128 alpha = ABDKMath64x64.divi(2, (1 + _window));
-        return alpha.muli(_current - _old) + _old;
-    }
-
-    /**
-     * @notice calculates the log return for a given day
-     * @param _old the average price from yesterday
-     * @param _current today's price
-     * @param _window the period for the average
-     * @return the new average value for today
-     */
-    function rollingAvg(
-        int256 _old,
-        int256 _current,
-        int256 _window
-    ) internal pure returns (int256) {
-        return _old + ABDKMath64x64.divi(_current - _old, _window).to128x128();
-    }
-
-    /**
-     * @notice calculates the log return for a given day
-     * @param _yesterday the price from yesterday
-     * @param _today the price from today
-     * @param _yesterdayaverage the average from yesterday
-     * @param _todayaverage the average from today
-     * @param _yesterdayvariance the variation from yesterday
-     * @param _window the period for the average
-     * @return the new variance value for today
-     */
-    function rollingVar(
-        int256 _yesterday,
-        int256 _today,
-        int256 _yesterdayaverage,
-        int256 _todayaverage,
-        int256 _yesterdayvariance,
-        int256 _window
-    ) internal pure returns (int256) {
-        // TODO: intentional addition of int256 and 128x128 fixed point?
-        // TODO: possible overflow?
-        return
-            _yesterdayvariance +
-            ABDKMath64x64.divi(
-                (_today - _yesterday) *
-                    (_today - _todayaverage + _yesterday - _yesterdayaverage),
-                (_window - 1)
-            ).to128x128();
+        int128 alpha64x64 = ABDKMath64x64.divi(ABDKMath64x64.fromInt(2), 1 + _window);
+        int128 current64x64 = ABDKMath64x64.fromInt(_current);
+        int128 old64x64 = ABDKMath64x64.fromInt(_old);
+        
+        return ABDKMath64x64.toInt(alpha64x64.mul(current64x64.sub(old64x64)).add(old64x64));
     }
 
     /**
