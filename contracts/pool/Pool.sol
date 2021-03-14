@@ -113,7 +113,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     _burn(msg.sender, share);
 
     // TODO: calculate share of pool
-    uint amount;
 
     IERC20(l.underlying).transfer(msg.sender, amount);
 
@@ -135,7 +134,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint64 maturity
   ) external returns (uint price) {
     // TODO: convert ETH to WETH if applicable
-
+    // TODO: maturity must be integer number of calendar days
+    // TODO: accept minimum price to prevent slippage
     // TODO: reserve liquidity
 
     PoolStorage.Layout storage l = PoolStorage.layout();
@@ -178,5 +178,18 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint64 maturity
   ) internal pure returns (uint) {
     return (uint256(maturity) << 192) + strikePrice;
+  }
+
+  /**
+   * @notice derive option strike price and maturity from ERC1155 token id
+   * @param tokenId token id
+   * @return strikePrice option strike price
+   * @return maturity timestamp of option maturity
+   */
+  function _parametersFor (
+    uint tokenId
+  ) internal pure returns (uint192 strikePrice, uint64 maturity) {
+    strikePrice = uint192(tokenId);
+    maturity = uint64(tokenId >> 192);
   }
 }
