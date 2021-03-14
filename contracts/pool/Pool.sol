@@ -86,8 +86,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     IERC20(l.underlying).transferFrom(msg.sender, address(this), amount);
 
-    // TODO: calculate amount minted
-    share = 1;
+    share = l.liquidity * amount / totalSupply();
 
     _mint(msg.sender, share);
 
