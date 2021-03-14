@@ -55,7 +55,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   /**
    * @notice TODO
    */
-  function valueOf (
+  function valueOfOption (
     uint tokenId,
     uint amount
   ) public view returns (uint) {
@@ -157,7 +157,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint tokenId,
     uint amount
   ) public {
-    uint value = valueOf(tokenId, amount);
+    uint value = valueOfOption(tokenId, amount);
 
     require(value > 0, 'Pool: option must be in-the-money');
 
