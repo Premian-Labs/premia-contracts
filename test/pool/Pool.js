@@ -45,5 +45,9 @@ describe('Pool', function () {
         );
       });
     });
+
+    describe('#_parametersFor', function () {
+      it('todo');
+    });
   });
 });

@@ -18,6 +18,9 @@ import './PoolStorage.sol';
 contract PoolProxy is ManagedProxyOwnable {
   using ERC165Storage for ERC165Storage.Layout;
 
+  // 64x64 fixed point representeation of 5
+  int128 private constant INITIAL_C_LEVEL = 0x50000000000000000;
+
   constructor (
     address owner,
     address base,
@@ -30,6 +33,7 @@ contract PoolProxy is ManagedProxyOwnable {
       l.pair = msg.sender;
       l.base = base;
       l.underlying = underlying;
+      l.cLevel = INITIAL_C_LEVEL;
     }
 
     {

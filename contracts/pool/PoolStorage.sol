@@ -13,7 +13,7 @@ library PoolStorage {
     address underlying;
     uint liquidity;
     // fixed point representation
-    int128 c;
+    int128 cLevel;
   }
 
   function layout () internal pure returns (Layout storage l) {

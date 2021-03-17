@@ -27,7 +27,7 @@ contract OracleMock is AggregatorV2V3Interface {
   constructor(
     uint8 _decimals,
     int256 _initialAnswer
-  ) public {
+  ) {
     decimals = _decimals;
     updateAnswer(_initialAnswer);
   }
@@ -101,7 +101,7 @@ contract OracleMock is AggregatorV2V3Interface {
 
   function description()
     external
-    view
+    pure
     override
     returns (string memory)
   {

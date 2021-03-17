@@ -34,13 +34,13 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
    * @param strikePrice option strike price
    * @param maturity timestamp of option maturity
    * @return price price of option contract
-   * @return c global "c" value after purchase
+   * @return cLevel C-Level after purchase
    */
   function quote (
     uint amount,
     uint192 strikePrice,
     uint64 maturity
-  ) public view returns (uint price, int128 c) {
+  ) public view returns (uint price, int128 cLevel) {
     require(maturity > block.timestamp, 'Pool: expiration must be in the future');
     // TODO: calculate
 
@@ -49,7 +49,26 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint volatility = Pair(l.pair).getVolatility();
 
     uint liquidity = l.liquidity;
-    c = OptionMath.calculateC(l.c, liquidity, liquidity - amount);
+    cLevel = OptionMath.calculateCLevel(l.cLevel, liquidity, liquidity - amount, ABDKMath64x64.ONE_64x64);
+  }
+
+  /**
+   * @notice TODO
+   */
+  function valueOfOption (
+    uint tokenId,
+    uint amount
+  ) public view returns (uint) {
+    (uint192 strikePrice, uint64 maturity) = _parametersFor(tokenId);
+
+    // TODO: get spot price now or at maturity
+    uint spotPrice;
+
+    if (strikePrice > spotPrice) {
+      return (strikePrice - spotPrice) * amount;
+    } else {
+      return 0;
+    }
   }
 
   /**
@@ -67,14 +86,13 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     IERC20(l.underlying).transferFrom(msg.sender, address(this), amount);
 
-    // TODO: calculate amount minted
-    share = 1;
+    share = l.liquidity * amount / totalSupply();
 
     _mint(msg.sender, share);
 
     uint oldLiquidity = l.liquidity;
     uint newLiquidity = oldLiquidity + amount;
-    l.c = OptionMath.calculateC(l.c, oldLiquidity, newLiquidity);
+    l.cLevel = OptionMath.calculateCLevel(l.cLevel, oldLiquidity, newLiquidity, ABDKMath64x64.ONE_64x64);
     l.liquidity = newLiquidity;
   }
 
@@ -94,13 +112,12 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     _burn(msg.sender, share);
 
     // TODO: calculate share of pool
-    uint amount;
 
     IERC20(l.underlying).transfer(msg.sender, amount);
 
     uint oldLiquidity = l.liquidity;
     uint newLiquidity = oldLiquidity - amount;
-    l.c = OptionMath.calculateC(l.c, oldLiquidity, newLiquidity);
+    l.cLevel = OptionMath.calculateCLevel(l.cLevel, oldLiquidity, newLiquidity, ABDKMath64x64.ONE_64x64);
     l.liquidity = newLiquidity;
   }
 
@@ -116,46 +133,37 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint64 maturity
   ) external returns (uint price) {
     // TODO: convert ETH to WETH if applicable
-
+    // TODO: maturity must be integer number of calendar days
+    // TODO: accept minimum price to prevent slippage
     // TODO: reserve liquidity
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    int128 c;
-    (price, c) = quote(amount, strikePrice, maturity);
-    l.c = c;
+    int128 cLevel;
+    (price, cLevel) = quote(amount, strikePrice, maturity);
+    l.cLevel = cLevel;
 
-    IERC20(l.underlying).transferFrom(msg.sender, address(this), price);
+    IERC20(l.base).transferFrom(msg.sender, address(this), price);
 
     _mint(msg.sender, _tokenIdFor(strikePrice, maturity), amount, '');
   }
 
   /**
    * @notice exercise put option
-   * @param amount quantity of option contract tokens to exercise
-   * @param strikePrice option strike price
-   * @param maturity timestamp of option maturity
-   */
-  function exercise (
-    uint amount,
-    uint192 strikePrice,
-    uint64 maturity
-  ) external {
-    exercise(_tokenIdFor(strikePrice, maturity), amount);
-  }
-
-  /**
-   * @notice exercise put option
-   * @param id ERC1155 token id
+   * @param tokenId ERC1155 token id
    * @param amount quantity of option contract tokens to exercise
    */
   function exercise (
-    uint id,
+    uint tokenId,
     uint amount
   ) public {
-    _burn(msg.sender, id, amount);
+    uint value = valueOfOption(tokenId, amount);
 
-    // TODO: send payment
+    require(value > 0, 'Pool: option must be in-the-money');
+
+    _burn(msg.sender, tokenId, amount);
+
+    IERC20(PoolStorage.layout().underlying).transfer(msg.sender, value);
   }
 
   /**
@@ -169,5 +177,18 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint64 maturity
   ) internal pure returns (uint) {
     return (uint256(maturity) << 192) + strikePrice;
+  }
+
+  /**
+   * @notice derive option strike price and maturity from ERC1155 token id
+   * @param tokenId token id
+   * @return strikePrice option strike price
+   * @return maturity timestamp of option maturity
+   */
+  function _parametersFor (
+    uint tokenId
+  ) internal pure returns (uint192 strikePrice, uint64 maturity) {
+    strikePrice = uint192(tokenId);
+    maturity = uint64(tokenId >> 192);
   }
 }
