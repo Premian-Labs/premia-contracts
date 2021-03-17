@@ -25,12 +25,10 @@ library PairStorage {
     int256 priceyesterday;
     int256 pricetoday;
     //Rolling stats
-    int256 averageyesterday;
-    int256 averagetoday;
     int256 logreturns;
     int256 emalogreturns_yesterday;
     int256 emalogreturns_today;
-    int256 variance;
+    int256 emavariance;
   }
 
   function layout () internal pure returns (Layout storage l) {
