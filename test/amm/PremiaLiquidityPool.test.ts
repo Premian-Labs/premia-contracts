@@ -225,21 +225,32 @@ describe("PremiaLiquidityPool", () => {
       const now = new Date().getTime() / 1000;
       await setTimestamp(now + 3.5 * 3600 * 24);
 
-      // await controller.connect(user2).deposit([
-      //   {
-      //     pool: liqPool.address,
-      //     tokens: [token.address, dai.address],
-      //     amounts: [parseEther("100"), parseEther("200")],
-      //     lockExpiration: nextExpiration + oneWeek * 2,
-      //   },
-      // ]);
+      await controller.connect(user2).deposit([
+        {
+          pool: liqPool.address,
+          tokens: [token.address, dai.address],
+          amounts: [parseEther("100"), parseEther("200")],
+          lockExpiration: nextExpiration + oneWeek * 2,
+        },
+      ]);
 
-      await mining.updatePool();
-      await mining.updatePool();
+      // await mining.updatePool();
+      // await mining.updatePool();
 
       await setTimestamp(now + 7 * 3600 * 24);
 
       console.log("#########################");
+
+      // await mining.updatePool();
+
+      console.log(
+        "Debt user 1 : ",
+        (await mining.usersInfo(user1.address)).rewardDebt.toString()
+      );
+      console.log(
+        "Debt user 2 : ",
+        (await mining.usersInfo(user2.address)).rewardDebt.toString()
+      );
 
       console.log(
         "--------- RESULT",
