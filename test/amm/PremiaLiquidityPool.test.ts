@@ -1,21 +1,26 @@
-import { expect } from 'chai';
+import { expect } from "chai";
 import {
   PremiaLiquidityPool,
   PremiaLiquidityPool__factory,
+  PremiaMiningV2,
+  PremiaMiningV2__factory,
   PremiaPoolController,
   PremiaPoolController__factory,
   TestErc20,
   TestErc20__factory,
-} from '../../contractsTyped';
-import { ethers } from 'hardhat';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { resetHardhat } from '../utils/evm';
-import { parseEther } from 'ethers/lib/utils';
+} from "../../contractsTyped";
+import { ethers } from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { resetHardhat, setTimestamp } from "../utils/evm";
+import { parseEther } from "ethers/lib/utils";
 
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
+let user2: SignerWithAddress;
+let premia: TestErc20;
 let controller: PremiaPoolController;
 let liqPool: PremiaLiquidityPool;
+let mining: PremiaMiningV2;
 let token: TestErc20;
 let dai: TestErc20;
 
@@ -27,24 +32,36 @@ if (now > nextExpiration) {
   nextExpiration += oneWeek;
 }
 
-describe('PremiaLiquidityPool', () => {
+describe("PremiaLiquidityPool", () => {
   beforeEach(async () => {
     await resetHardhat();
 
-    [admin, user1] = await ethers.getSigners();
+    [admin, user1, user2] = await ethers.getSigners();
+    premia = await new TestErc20__factory(admin).deploy(18);
     controller = await new PremiaPoolController__factory(admin).deploy();
     liqPool = await new PremiaLiquidityPool__factory(admin).deploy(
-      controller.address,
+      controller.address
     );
+    mining = await new PremiaMiningV2__factory(admin).deploy(
+      controller.address,
+      premia.address
+    );
+
     token = await new TestErc20__factory(admin).deploy(18);
     dai = await new TestErc20__factory(admin).deploy(18);
 
+    await controller.setPremiaMining(mining.address);
+    await mining.setTokenWeights([dai.address, token.address], [1000, 1000]);
+
     await controller.addWhitelistedPools([liqPool.address]);
 
-    await token.mint(user1.address, parseEther('1000'));
-    await dai.mint(user1.address, parseEther('1000'));
-    await token.connect(user1).approve(liqPool.address, parseEther('1000000'));
-    await dai.connect(user1).approve(liqPool.address, parseEther('1000000'));
+    for (const u of [user1, user2]) {
+      await token.mint(u.address, parseEther("1000"));
+      await dai.mint(u.address, parseEther("1000"));
+      await token.connect(u).approve(liqPool.address, parseEther("1000000"));
+      await dai.connect(u).approve(liqPool.address, parseEther("1000000"));
+    }
+
     await liqPool.setPermissions(
       [token.address, dai.address],
       [
@@ -60,12 +77,12 @@ describe('PremiaLiquidityPool', () => {
           isWhitelistedRouter: false,
           isWhitelistedToken: true,
         },
-      ],
+      ]
     );
   });
 
-  describe('deposits', () => {
-    it('should fail depositing token if token is not whitelisted', async () => {
+  describe("deposits", () => {
+    it("should fail depositing token if token is not whitelisted", async () => {
       await liqPool.setPermissions(
         [token.address],
         [
@@ -75,82 +92,82 @@ describe('PremiaLiquidityPool', () => {
             isWhitelistedRouter: false,
             isWhitelistedToken: false,
           },
-        ],
+        ]
       );
       await expect(
         controller.connect(user1).deposit([
           {
             pool: liqPool.address,
             tokens: [token.address],
-            amounts: [parseEther('50')],
+            amounts: [parseEther("50")],
             lockExpiration: nextExpiration,
           },
-        ]),
-      ).to.be.revertedWith('Token not whitelisted');
+        ])
+      ).to.be.revertedWith("Token not whitelisted");
     });
 
-    it('should successfully deposit tokens', async () => {
+    it("should successfully deposit tokens", async () => {
       await controller.connect(user1).deposit([
         {
           pool: liqPool.address,
           tokens: [token.address, dai.address],
-          amounts: [parseEther('50'), parseEther('100')],
+          amounts: [parseEther("50"), parseEther("100")],
           lockExpiration: nextExpiration,
         },
       ]);
       const tokenAmount = await liqPool.depositsByUser(
         user1.address,
         token.address,
-        nextExpiration,
+        nextExpiration
       );
       const daiAmount = await liqPool.depositsByUser(
         user1.address,
         dai.address,
-        nextExpiration,
+        nextExpiration
       );
-      expect(tokenAmount).to.eq(parseEther('50'));
-      expect(daiAmount).to.eq(parseEther('100'));
+      expect(tokenAmount).to.eq(parseEther("50"));
+      expect(daiAmount).to.eq(parseEther("100"));
     });
 
-    it('should fail deposit if invalid expiration selected', async () => {
+    it("should fail deposit if invalid expiration selected", async () => {
       await expect(
         controller.connect(user1).deposit([
           {
             pool: liqPool.address,
             tokens: [token.address],
-            amounts: [parseEther('50')],
+            amounts: [parseEther("50")],
             lockExpiration: 1200,
           },
-        ]),
-      ).revertedWith('Exp passed');
+        ])
+      ).revertedWith("Exp passed");
       await expect(
         controller.connect(user1).deposit([
           {
             pool: liqPool.address,
             tokens: [token.address],
-            amounts: [parseEther('50')],
+            amounts: [parseEther("50")],
             lockExpiration: nextExpiration + 55 * oneWeek,
           },
-        ]),
-      ).revertedWith('Exp > max exp');
+        ])
+      ).revertedWith("Exp > max exp");
       await expect(
         controller.connect(user1).deposit([
           {
             pool: liqPool.address,
             tokens: [token.address],
-            amounts: [parseEther('50')],
+            amounts: [parseEther("50")],
             lockExpiration: nextExpiration + 1,
           },
-        ]),
-      ).revertedWith('Wrong exp incr');
+        ])
+      ).revertedWith("Wrong exp incr");
     });
 
-    it('should correctly calculate writable amount', async () => {
+    it("should correctly calculate writable amount", async () => {
       await controller.connect(user1).deposit([
         {
           pool: liqPool.address,
           tokens: [token.address, dai.address],
-          amounts: [parseEther('50'), parseEther('100')],
+          amounts: [parseEther("50"), parseEther("100")],
           lockExpiration: nextExpiration,
         },
       ]);
@@ -158,35 +175,91 @@ describe('PremiaLiquidityPool', () => {
         {
           pool: liqPool.address,
           tokens: [token.address, dai.address],
-          amounts: [parseEther('20'), parseEther('200')],
+          amounts: [parseEther("20"), parseEther("200")],
           lockExpiration: nextExpiration + oneWeek * 2,
         },
       ]);
 
       const writableAmount1 = await liqPool.getWritableAmount(
         token.address,
-        nextExpiration,
+        nextExpiration
       );
       const writableAmount2 = await liqPool.getWritableAmount(
         token.address,
-        nextExpiration + oneWeek,
+        nextExpiration + oneWeek
       );
       const writableAmount3 = await liqPool.getWritableAmount(
         token.address,
-        nextExpiration + oneWeek * 2,
+        nextExpiration + oneWeek * 2
       );
       const writableAmount4 = await liqPool.getWritableAmount(
         token.address,
-        nextExpiration + oneWeek * 3,
+        nextExpiration + oneWeek * 3
       );
 
       // console.log(writableAmount1)
       // console.log(await liqPool.hasWritableAmount(token.address, nextExpiration, parseEther('60')));
 
-      expect(writableAmount1).to.eq(parseEther('70'));
-      expect(writableAmount2).to.eq(parseEther('20'));
-      expect(writableAmount3).to.eq(parseEther('20'));
+      expect(writableAmount1).to.eq(parseEther("70"));
+      expect(writableAmount2).to.eq(parseEther("20"));
+      expect(writableAmount3).to.eq(parseEther("20"));
       expect(writableAmount4).to.eq(0);
+    });
+  });
+
+  describe("mining", () => {
+    it("test", async () => {
+      await controller.connect(user1).deposit([
+        {
+          pool: liqPool.address,
+          tokens: [token.address, dai.address],
+          amounts: [parseEther("50"), parseEther("100")],
+          lockExpiration: nextExpiration + oneWeek * 2,
+        },
+      ]);
+
+      console.log(await mining.userTotalScore(user1.address));
+
+      console.log(await mining.pendingReward(user1.address));
+
+      const now = new Date().getTime() / 1000;
+      await setTimestamp(now + 3.5 * 3600 * 24);
+
+      await controller.connect(user2).deposit([
+        {
+          pool: liqPool.address,
+          tokens: [token.address, dai.address],
+          amounts: [parseEther("100"), parseEther("200")],
+          lockExpiration: nextExpiration + oneWeek * 2,
+        },
+      ]);
+
+      // await mining.updatePool();
+      // await mining.updatePool();
+
+      await setTimestamp(now + 7 * 3600 * 24);
+
+      console.log("#########################");
+
+      // await mining.updatePool();
+
+      console.log(
+        "Debt user 1 : ",
+        (await mining.usersInfo(user1.address)).rewardDebt.toString()
+      );
+      console.log(
+        "Debt user 2 : ",
+        (await mining.usersInfo(user2.address)).rewardDebt.toString()
+      );
+
+      console.log(
+        "--------- RESULT",
+        (await mining.pendingReward(user1.address)).toString()
+      );
+      console.log(
+        "--------- RESULT",
+        (await mining.pendingReward(user2.address)).toString()
+      );
     });
   });
 });
