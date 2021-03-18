@@ -18,11 +18,12 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   struct Loan {
     address borrower;
     address token;
-    uint256 amountOutstanding;
     address collateralToken;
-    uint256 collateralHeld;
-    uint256 tokenPrice;
+    uint256 amountTokenOutstanding;
+    uint256 amountCollateralTokenHeld;
     uint256 lockExpiration;
+    uint256 tokenPrice;
+    uint256 collateralPrice;
   }
 
   struct Permissions {
@@ -58,6 +59,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
   address public controller;
 
+  // TODO: Should some of these variables be set on the controller, to avoid having to update multiple contracts?
+
   // The oracle used to get prices on chain.
   IPriceOracleGetter public priceOracle;
   
@@ -66,6 +69,9 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
   // Set a custom swap path for a token
   mapping(address => mapping(address => address[])) public customSwapPaths;
+
+  // The LTV ratio for each token usable as collateral
+  mapping(address => uint256) loanToValueRatios;
 
   // User -> Token -> Expiration -> Amount
   mapping(address => mapping(address => mapping (uint256 => uint256))) public depositsByUser;
@@ -78,7 +84,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   
   // hash => loan
   mapping(bytes32 => Loan) public loansOutstanding;
-  // optionContract => optionId => amountOutstanding
+  // optionContract => optionId => amountTokenOutstanding
   mapping(address => mapping(uint256 => uint256)) public optionsOutstanding;
 
   ////////////
@@ -175,6 +181,15 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     customSwapPaths[_collateralToken][_token] = _path;
   }
 
+  /// @notice Set a custom swap path for a token
+  /// @param _collateralToken The collateral token
+  /// @param _token The token
+  /// @param _path The swap path
+  function setLoanToValueRatio(address _collateralToken, uint256 loanToValueRatio) external onlyOwner {
+    require(loanToValueRatio <= _inverseBasisPoint);
+    loanToValueRatios[_collateralToken] = loanToValueRatio;
+  }
+
   /// @notice Set the address of the oracle used for getting on-chain prices
   /// @param _priceOracleAddress The address of the oracle
   function setPriceOracle(address _priceOracleAddress) external onlyOwner {
@@ -264,10 +279,22 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     return getWritableAmount(_token, _lockExpiration);
   }
 
-  function getEquivalentCollateral(address _token, uint256 _amount, address _collateralToken) public returns (uint256) {
-    uint256 tokenPrice = priceOracle.getAssetPrice(_token);
-    uint256 collateralPrice = priceOracle.getAssetPrice(_collateralToken);
-    return (_amount * tokenPrice) / collateralPrice;
+  function getEquivalentCollateral(uint256 tokenPrice, uint256 collateralPrice, uint256 amount) public view returns (uint256) {
+    return (_amount * _tokenPrice) / _collateralPrice;
+  }
+
+  function getEquivalentCollateralForLoan(Loan memory _loan, uint256 _amount) public view returns (uint256) {
+    return getEquivalentCollateral(_loan.tokenPrice, _loan.collateralPrice, _amount);
+  }
+
+  function getRequiredCollateral(address _collateralToken, uint256 _tokenPrice, uint256 _collateralPrice, uint256 _amount) public view returns (uint256) {
+    uint256 equivalentCollateral = getEquivalentCollateral(_tokenPrice, _collateralPrice, _amount);
+    return equivalentCollateral * _inverseBasisPoint / loanToValueRatios[_collateralToken];
+  }
+
+  function getRequiredCollateralForLoan(Loan memory _loan, uint256 _amount) public view returns (uint256) {
+    uint256 equivalentCollateral = getEquivalentCollateralForLoan(_loan, _amount);
+    return equivalentCollateral * _inverseBasisPoint / loanToValueRatios[_loan.collateralToken];
   }
 
   function _unlockExpired(address _token) internal returns(uint256) {
@@ -339,21 +366,18 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration) external virtual nonReentrant {
-    uint256 loanableAmount = getLoanableAmount(_token, _lockExpiration);
-    uint256 collateralRequired = getEquivalentCollateral(_token, _amountToken, _collateralToken);
-
-    // TODO: We need to set which tokens will be allowed as collateral, the ltv ratio, reserve factor, etc.
-    // The tokens allowed will only ever be the denominators and the tokens supported by all pools.
-    // The LTV should be probably determined per asset, similar to Aave
-    // Should the Reserve Factor be determined per asset, per pool, or platform-wide?
-
-    require(loanableAmount >= _amountToken, "Amount too high.");
+    require(loanToValueRatios[_collateralToken] > 0, "Collateral token not allowed.");
     require(permissions[msg.sender].canBorrow, "Borrow not whitelisted.");
-    require(collateralRequired <= _amountCollateral, "Not enough collateral.");
 
     uint256 tokenPrice = priceOracle.getAssetPrice(_token);
+    uint256 collateralPrice = priceOracle.getAssetPrice(_collateralToken);
 
-    Loan memory loan = Loan(msg.sender, _token, _amountToken, _collateralToken, _amountCollateral, tokenPrice, _lockExpiration);
+    Loan memory loan = Loan(msg.sender, _token, _amountToken, _collateralToken, _amountCollateral, _lockExpiration, tokenPrice, collateralPrice);
+    uint256 loanableAmount = getLoanableAmount(_token, _lockExpiration);
+    uint256 collateralRequired = getRequiredCollateralForLoan(loan, _amountToken);
+
+    require(loanableAmount >= _amountToken, "Amount too high.");
+    require(collateralRequired <= _amountCollateral, "Not enough collateral.");
 
     IERC20(_token).safeTransferFrom(address(this), msg.sender, _amountToken);
     IERC20(_collateralToken).safeTransferFrom(msg.sender, address(this), _amountCollateral);
@@ -373,28 +397,28 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   function repay(bytes32 _hash, uint256 _amount) public virtual nonReentrant {
     Loan storage loan = loansOutstanding[_hash];
 
-    uint256 collateralOut = getEquivalentCollateral(loan.token, _amount, loan.collateralToken);
+    uint256 collateralOut = getRequiredCollateralForLoan(loan, _amount);
 
     IERC20(loan.token).safeTransferFrom(msg.sender, address(this), _amount);
 
-    loan.amountOutstanding = loan.amountOutstanding - _amount;
+    loan.amountTokenOutstanding = loan.amountTokenOutstanding - _amount;
 
-    if (loan.amountOutstanding == 0) {
-      collateralOut = loan.collateralHeld;
+    if (loan.amountTokenOutstanding == 0) {
+      collateralOut = loan.amountCollateralTokenHeld;
 
       delete loansOutstanding[_hash];
     }
 
     IERC20(loan.collateralToken).safeTransferFrom(address(this), msg.sender, collateralOut);
 
-    loan.collateralHeld = loan.collateralHeld - collateralOut;
+    loan.amountCollateralTokenHeld = loan.amountCollateralTokenHeld - collateralOut;
 
     emit RepayLoan(_hash, msg.sender, loan.token, _amount);
   }
 
   function isLoanUnderCollateralized(Loan memory _loan) public returns (bool) {
     uint256 collateralPrice = priceOracle.getAssetPrice(_loan.collateralToken);
-    uint256 percentCollateralized = (_loan.collateralHeld * collateralPrice * _inverseBasisPoint) / (_loan.amountOutstanding * _loan.tokenPrice);
+    uint256 percentCollateralized = (_loan.amountCollateralTokenHeld * collateralPrice * _inverseBasisPoint) / (_loan.amountTokenOutstanding * _loan.tokenPrice);
     return percentCollateralized < _requiredCollateralizationPercent;
   }
 
@@ -448,7 +472,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     // We should leave it up to the strategy.
     // TODO: Implement _postLiquidate in each of the strategies to handle this situation.
 
-    require(loan.collateralHeld * _inverseBasisPoint / _collateralAmount >= _maxPercentLiquidated, "Too much liquidated.");
+    require(loan.amountCollateralTokenHeld * _inverseBasisPoint / _collateralAmount >= _maxPercentLiquidated, "Too much liquidated.");
 
     require(isLoanUnderCollateralized(loan) || isExpirationPast(loan), "Loan cannot be liquidated.");
     require(permissions[address(_router)].isWhitelistedRouter, "Router not whitelisted.");
@@ -460,7 +484,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     IERC20(loan.collateralToken).safeTransferFrom(address(this), msg.sender, rewardFee);
 
-    if (loan.collateralHeld == 0) {
+    if (loan.amountCollateralTokenHeld == 0) {
       delete loansOutstanding[_hash];
     }
 
