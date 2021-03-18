@@ -8,7 +8,7 @@ const describeBehaviorOfSafeOwnable = require('@solidstate/spec/access/SafeOwnab
 const describeBehaviorOfPriceConsumer = require('./PriceConsumer.behavior.js');
 const describeBehaviorOfProxyManager = require('./ProxyManager.behavior.js');
 
-describe('Openhedge', function () {
+describe('Median', function () {
   let nobody, owner, nomineeOwner;
 
   let pair;
@@ -52,7 +52,7 @@ describe('Openhedge', function () {
 
   // eslint-disable-next-line mocha/no-hooks-for-single-case
   beforeEach(async function () {
-    instance = await factory.Openhedge({
+    instance = await factory.Median({
       deployer: owner,
       facetCuts,
       pairImplementation: pair.address,

@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 library PoolStorage {
   bytes32 internal constant STORAGE_SLOT = keccak256(
-    'openhedge.contracts.storage.Pool'
+    'median.contracts.storage.Pool'
   );
 
   struct Layout {

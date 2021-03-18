@@ -1,6 +1,6 @@
-# Openhedge Contracts
+# Median Contracts
 
-Openhedge options markets.
+Median options markets.
 
 ## Development
 

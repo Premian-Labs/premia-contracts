@@ -8,7 +8,7 @@ const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 describe('PoolProxy', function () {
   let owner;
 
-  let openhedge;
+  let median;
   let instance;
 
   before(async function () {
@@ -36,7 +36,7 @@ describe('PoolProxy', function () {
       });
     });
 
-    openhedge = await factory.Openhedge({
+    median = await factory.Median({
       deployer: owner,
       facetCuts,
       pairImplementation: pair.address,
@@ -45,7 +45,7 @@ describe('PoolProxy', function () {
   });
 
   beforeEach(async function () {
-    const manager = await ethers.getContractAt('ProxyManager', openhedge.address);
+    const manager = await ethers.getContractAt('ProxyManager', median.address);
 
     const erc20Factory = await ethers.getContractFactory('ERC20Mock', owner);
 

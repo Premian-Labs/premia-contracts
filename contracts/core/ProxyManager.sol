@@ -11,7 +11,7 @@ import './ProxyManagerStorage.sol';
 
 /**
  * @title Options pair management contract
- * @dev deployed standalone and connected to Openhedge as diamond facet
+ * @dev deployed standalone and connected to Median as diamond facet
  */
 contract ProxyManager is IProxyManager, OwnableInternal {
   using ProxyManagerStorage for ProxyManagerStorage.Layout;

@@ -8,7 +8,7 @@ import './IPriceConsumer.sol';
 
 /**
  * @title Chainlink price feed contract
- * @dev deployed standalone and connected to Openhedge as diamond facet
+ * @dev deployed standalone and connected to Median as diamond facet
  */
 contract PriceConsumer is IPriceConsumer {
   // TODO: no storage variables outside of diamond storage layout

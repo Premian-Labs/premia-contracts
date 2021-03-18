@@ -27,7 +27,7 @@ task(
     });
   });
 
-  const instance = await factory.Openhedge({
+  const instance = await factory.Median({
     deployer,
     facetCuts,
     pairImplementation: pair.address,
