@@ -9,7 +9,7 @@ import './PairStorage.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
 
 /**
- * @title Openhedge options pair
+ * @title Median options pair
  * @dev deployed standalone and referenced by PairProxy
  */
 contract Pair is OwnableInternal {

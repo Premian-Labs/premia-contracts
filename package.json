@@ -1,7 +1,7 @@
 {
-  "name": "openhedge-contracts",
+  "name": "median-contracts",
   "version": "0.0.0",
-  "description": "Openhedge options markets",
+  "description": "Median options markets",
   "keywords": [
     "hardhat",
     "waffle",
@@ -15,7 +15,7 @@
   ],
   "license": "UNLICENSED",
   "private": true,
-  "repository": "https://github.com/Median-Finance/openhedge-contracts",
+  "repository": "https://github.com/Median-Finance/median-contracts",
   "devDependencies": {
     "@chainlink/contracts": "^0.1.6",
     "@nomiclabs/hardhat-ethers": "^2.0.2",

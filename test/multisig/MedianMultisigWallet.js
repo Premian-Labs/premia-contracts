@@ -17,7 +17,7 @@ const signAuthorization = async function (signer, { input, type, nonce, address 
   );
 };
 
-describe('OpenhedgeMultisigWallet', function () {
+describe('MedianMultisigWallet', function () {
   let owner;
   let nonSigner;
   let signers;
@@ -30,7 +30,7 @@ describe('OpenhedgeMultisigWallet', function () {
   });
 
   beforeEach(async function () {
-    factory = await ethers.getContractFactory('OpenhedgeMultisigWallet', owner);
+    factory = await ethers.getContractFactory('MedianMultisigWallet', owner);
     instance = await factory.deploy(
       signers.map(s => s.address),
       quorum
