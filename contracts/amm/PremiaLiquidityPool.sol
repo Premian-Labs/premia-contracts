@@ -48,6 +48,12 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   uint256 public _liquidatorReward = 10;  // 10 = 0.1% fee
   // Max fee rewarded to successful callers of the liquidate function
   uint256 public constant _maxLiquidatorReward = 250;  // 250 = 25% fee
+
+  // Fee rewarded to successful callers of the unlockCollateral function
+  uint256 public _unlockReward = 10;  // 10 = 0.1% fee
+  // Max fee rewarded to successful callers of the unlockCollateral function
+  uint256 public constant _maxUnlockReward = 250;  // 250 = 25% fee
+
   uint256 public constant _inverseBasisPoint = 1000;
 
   address public controller;
@@ -87,7 +93,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   event LiquidateLoan(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed amount, uint256 rewardFee);
   event WriteOption(address indexed receiver, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
   event UnwindOption(address indexed sender, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount);
-  event UnlockCollateral(address indexed unlocker, address indexed optionContract, uint256 indexed optionId, uint256 amount);
+  event UnlockCollateral(address indexed unlocker, address indexed optionContract, uint256 indexed optionId, uint256 amount, uint256 rewardFee);
   event ControllerUpdated(address indexed newController);
 
   //////////////////////////////////////////////////
@@ -145,6 +151,13 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   function setLiquidatorReward(uint256 _reward) external onlyOwner {
     require(_reward <= _maxLiquidatorReward);
     _liquidatorReward = _reward;
+  }
+
+  /// @notice Set a new unlock reward
+  /// @param _reward New reward
+  function setUnlockReward(uint256 _reward) external onlyOwner {
+    require(_reward <= _maxUnlockReward);
+    _unlockReward = _reward;
   }
 
   /// @notice Set a new max percent liquidated
@@ -266,17 +279,18 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     uint256 expiration = ((unlockedUntil / _expirationIncrement) * _expirationIncrement) + _baseExpiration;
 
     uint256 unlockedToken;
-
     while (expiration < block.timestamp) {
       uint256 amount = depositsByUser[msg.sender][_token][expiration];
+
       delete depositsByUser[msg.sender][_token][expiration];
+
       amountsLockedByExpirationPerToken[_token][expiration] -= amount;
       unlockedToken += amount;
-
       expiration += _expirationIncrement;
     }
 
     userDepositsUnlockedUntil[msg.sender][_token] = block.timestamp;
+
     return unlockedToken;
   }
 
@@ -292,6 +306,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     for (uint256 i = 0; i < _tokens.length; i++) {
       require(permissions[_tokens[i]].isWhitelistedToken, "Token not whitelisted");
+
       if (_amounts[i] == 0) continue;
 
       IERC20(_tokens[i]).safeTransferFrom(_from, address(this), _amounts[i]);
@@ -315,7 +330,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     for (uint256 i = 0; i < _tokens.length; i++) {
       uint256 unlockedAmount = _unlockExpired(_tokens[i]);
 
-      if (unlockedAmount == 0) return;
+      if (unlockedAmount == 0) continue;
 
       IERC20(_tokens[i]).safeTransferFrom(address(this), _from, unlockedAmount);
 
@@ -327,7 +342,10 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     uint256 loanableAmount = getLoanableAmount(_token, _lockExpiration);
     uint256 collateralRequired = getEquivalentCollateral(_token, _amountToken, _collateralToken);
 
-    // TODO: We need to set which tokens will be allowed as collateral
+    // TODO: We need to set which tokens will be allowed as collateral, the ltv ratio, reserve factor, etc.
+    // The tokens allowed will only ever be the denominators and the tokens supported by all pools.
+    // The LTV should be probably determined per asset, similar to Aave
+    // Should the Reserve Factor be determined per asset, per pool, or platform-wide?
 
     require(loanableAmount >= _amountToken, "Amount too high.");
     require(permissions[msg.sender].canBorrow, "Borrow not whitelisted.");
@@ -374,10 +392,14 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     emit RepayLoan(_hash, msg.sender, loan.token, _amount);
   }
 
-  function checkCollateralizationLevel(Loan memory _loan) public returns (bool) {
+  function isLoanUnderCollateralized(Loan memory _loan) public returns (bool) {
     uint256 collateralPrice = priceOracle.getAssetPrice(_loan.collateralToken);
     uint256 percentCollateralized = (_loan.collateralHeld * collateralPrice * _inverseBasisPoint) / (_loan.amountOutstanding * _loan.tokenPrice);
-    return percentCollateralized >= _requiredCollateralizationPercent;
+    return percentCollateralized < _requiredCollateralizationPercent;
+  }
+
+  function isExpirationPast(Loan memory loan) public returns (bool) {
+    return loan.lockExpiration < block.timestamp;
   }
 
   /// @notice Convert collateral back into original tokens
@@ -410,6 +432,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     );
   }
 
+  function _postLiquidate(Loan memory loan, uint256 _collateralAmount) internal {}
+
   function liquidateLoan(Loan memory _loan, uint256 _amount, IUniswapV2Router02 _router) external {
     bytes32 hash = getLoanHash(_loan);
     liquidate(hash, _amount, _router);
@@ -418,19 +442,19 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   function liquidate(bytes32 _hash, uint256 _collateralAmount, IUniswapV2Router02 _router) public virtual nonReentrant {
     Loan storage loan = loansOutstanding[_hash];
 
-    // TODO: Do we want to enable the following maximum liquidation percentage?
-    // It limits the amount of collateral that can be liquidated at a single time.
-    // The intent is to prevent liquidating collateral as much as possible.
-    // However, it could have unintended consequences w/ our platform.
+    // TODO: What happens if 50% of a loan is liquidated, and the other 50% is re-paid? Does the strategy know what to do?
+    // This feels similar to withdrawing 50% of one asset and 50% of another (due to assignment)
+    //
+    // We should leave it up to the strategy.
+    // TODO: Implement _postLiquidate in each of the strategies to handle this situation.
 
-    // require(collateralHeld.mul(inverseBasisPoint).div(collateralAmount) >= _maxPercentLiquidated, "Too much liquidated.");
+    require(loan.collateralHeld * _inverseBasisPoint / _collateralAmount >= _maxPercentLiquidated, "Too much liquidated.");
 
-    // TODO: Allow loan to be liquidated if it's past the lockExpiration date
-
-    require(!checkCollateralizationLevel(loan), "Loan is not under-collateralized.");
+    require(isLoanUnderCollateralized(loan) || isExpirationPast(loan), "Loan cannot be liquidated.");
     require(permissions[address(_router)].isWhitelistedRouter, "Router not whitelisted.");
 
     _liquidateCollateral(_router, loan.collateralToken, loan.token, _collateralAmount);
+    _postLiquidate(loan, _collateralAmount);
 
     uint256 rewardFee = (_collateralAmount * _inverseBasisPoint) / _liquidatorReward;
 
@@ -449,10 +473,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
   function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public virtual nonReentrant {
     require(permissions[msg.sender].canWrite, "Writer not whitelisted.");
-
-    // TODO: Should there be a limit to the amount we allow each contract to have outstanding?
-    // We currently don't track who the contracts are outstanding to, so would need to update.
-    // Would also need to set some standard rules for how much each contract can write.
 
     uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
@@ -473,6 +493,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     emit WriteOption(_receiver, msg.sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium);
   }
 
+  function _postWithdrawal(address _sender, address _optionContract, uint256 _optionId, uint256 _amount, uint256 _tokenWithdrawn, uint256 _denominatorWithdrawn) internal {}
+
   function unwindOption(address _optionContract, uint256 _optionId, uint256 _amount) external {
     unwindOptionFor(msg.sender, _optionContract, _optionId, _amount);
   }
@@ -480,21 +502,28 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount) public virtual nonReentrant {
     require(permissions[msg.sender].canWrite, "Writer not whitelisted.");
 
-    // TODO: I think we want to update this function to support exercising of ITM options.
-    // I.e. "unwind" the option by exercising ITM for whatever it's worth
-    // Or if it's not ITM, sell it to the pool for some premium, and the pool will cancel it
+    IPremiaOption memory optionContract = IPremiaOption(_optionContract);
+    IPremiaOption.OptionData memory data = optionContract.optionData(_optionId);
 
-    IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
+    uint256 preTokenBalance = IERC20(data.token).balanceOf(this);
+    uint256 preDenominatorBalance = optionContract.denominator().balanceOf(this);
 
     if (data.expiration > block.timestamp) {
       IPremiaOption(_optionContract).withdraw(_optionId);
-
-      // TODO: In this case, we might withdraw both the collateral token and the underlying token.
-      // If we withdraw both, do we want to sell the collateral token at this time?
-      // Or should we just keep both and save on trading fees + slippage?
     } else {
       IPremiaOption(_optionContract).cancelOptionFrom(_sender, _optionId, _amount);
     }
+
+    uint256 tokenWithdrawn = IERC20(data.token).balanceOf(this) - preTokenBalance;
+    uint256 denominatorWithdrawn = optionContract.denominator().balanceOf(this) - preDenominatorBalance;
+
+    // TODO: We might withdraw both the collateral token and the underlying token.
+    // If we withdraw both, do we want to sell the collateral token at this time?
+    // Or should we just keep both and save on trading fees + slippage?
+    //
+    // We should let the strategy decide.
+    // TODO: Implement _postWithdrawal in each of the strategies to handle this.
+    _postWithdrawal(_sender, _optionContract, _optionId, _amount, tokenWithdrawn, denominatorWithdrawn);
 
     uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
@@ -504,22 +533,37 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   function unlockCollateralFromOption(address _optionContract, uint256 _optionId, uint256 _amount) public virtual nonReentrant {
+    IPremiaOption memory optionContract = IPremiaOption(_optionContract);
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
 
     require(data.expiration > block.timestamp, "Option is not expired yet.");
 
+    uint256 preTokenBalance = IERC20(data.token).balanceOf(this);
+    uint256 preDenominatorBalance = optionContract.denominator().balanceOf(this);
+
     IPremiaOption(_optionContract).withdraw(_optionId);
 
-    // TODO: In this case, we might withdraw both the collateral token and the underlying token.
-    // If we withdraw both, do we want to sell the collateral token at this time?
-    // Or should we just keep both and save on trading fees + slippage?
+    uint256 tokenWithdrawn = IERC20(data.token).balanceOf(this) - preTokenBalance;
+    uint256 denominatorWithdrawn = optionContract.denominator().balanceOf(this) - preDenominatorBalance;
+
+    _postWithdrawal(_sender, _optionContract, _optionId, _amount, tokenWithdrawn, denominatorWithdrawn);
 
     uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
-    outstanding = outstanding - _amount;
+    optionsOutstanding[_optionContract][_optionId] = outstanding - _amount;
 
-    // TODO: Reward unlocker for unlocking the collateral in the option
+    uint256 tokenRewardFee = (tokenWithdrawn * _inverseBasisPoint) / _unlockReward;
+    uint256 denominatorRewardFee = (denominatorWithdrawn * _inverseBasisPoint) / _unlockReward;
+    
+    if (tokenWithdrawn > 0 && denominatorWithdrawn > 0) {
+      IERC20(data.token).safeTransferFrom(address(this), msg.sender, tokenRewardFee);
+      IERC20(optionContract.denominator()).safeTransferFrom(address(this), msg.sender, denominatorRewardFee);
+    } else if (tokenWithdrawn > 0) {
+      IERC20(data.token).safeTransferFrom(address(this), msg.sender, tokenRewardFee);
+    } else {
+      IERC20(optionContract.denominator()).safeTransferFrom(address(this), msg.sender, denominatorRewardFee);
+    }
 
-    emit UnlockCollateral(msg.sender, _optionContract, _optionId, _amount);
+    emit UnlockCollateral(msg.sender, _optionContract, _optionId, _amount, rewardFee);
   }
 }
