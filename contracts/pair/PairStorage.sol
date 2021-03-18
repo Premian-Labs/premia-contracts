@@ -6,7 +6,7 @@ import '../core/IPriceConsumer.sol';
 
 library PairStorage {
   bytes32 internal constant STORAGE_SLOT = keccak256(
-    'openhedge.contracts.storage.Pair'
+    'median.contracts.storage.Pair'
   );
 
   struct Layout {

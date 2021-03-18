@@ -14,7 +14,7 @@ import { ABDKMath64x64 } from '../libraries/ABDKMath64x64.sol';
 import { OptionMath } from "../libraries/OptionMath.sol";
 
 /**
- * @title Openhedge option pool
+ * @title Median option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
 contract Pool is OwnableInternal, ERC20, ERC1155Base {

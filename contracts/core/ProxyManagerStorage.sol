@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 library ProxyManagerStorage {
   bytes32 internal constant STORAGE_SLOT = keccak256(
-    'openhedge.contracts.storage.ProxyManager'
+    'median.contracts.storage.ProxyManager'
   );
 
   struct Layout {

@@ -9,10 +9,10 @@ import '@solidstate/contracts/proxy/diamond/DiamondBase.sol';
 import './ProxyManagerStorage.sol';
 
 /**
- * @title Openhedge core contract
+ * @title Median core contract
  * @dev based on the EIP2535 Diamond standard
  */
-contract Openhedge is DiamondBase {
+contract Median is DiamondBase {
   using DiamondBaseStorage for DiamondBaseStorage.Layout;
 
   /**
