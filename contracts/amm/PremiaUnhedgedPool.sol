@@ -11,7 +11,7 @@ contract PremiaUnhedgedPool is PremiaLiquidityPool {
     return 0;
   }
 
-  function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration) external override {
+  function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration) external override returns (Loan memory) {
     revert();
   }
 
@@ -19,7 +19,7 @@ contract PremiaUnhedgedPool is PremiaLiquidityPool {
     revert();
   }
 
-  function liquidate(bytes32 _hash, uint256 _collateralAmount, IUniswapV2Router02 _router) public override {
+  function liquidate(bytes32 _hash, uint256 _collateralAmount) public override {
     revert();
   }
 }

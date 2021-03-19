@@ -16,6 +16,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   using SafeERC20 for IERC20;
 
   struct Loan {
+    address lender;
     address borrower;
     address token;
     address collateralToken;
@@ -29,7 +30,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   struct Permissions {
     bool canBorrow;
     bool canWrite;
-    bool isWhitelistedRouter;
     bool isWhitelistedToken;
   }
 
@@ -70,8 +70,14 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   // Set a custom swap path for a token
   mapping(address => mapping(address => address[])) public customSwapPaths;
 
+  // Each token swap path requires a designated router to ensure liquid swapping
+  mapping(address => mapping(address => IUniswapV2Router02)) public designatedSwapRouter;
+
   // The LTV ratio for each token usable as collateral
   mapping(address => uint256) loanToValueRatios;
+
+  PremiaLiquidityPool[] public callPools;
+  PremiaLiquidityPool[] public putPools;
 
   // User -> Token -> Expiration -> Amount
   mapping(address => mapping(address => mapping (uint256 => uint256))) public depositsByUser;
@@ -91,7 +97,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   // Events //
   ////////////
 
-  event PermissionsUpdated(address indexed addr, bool canBorrow, bool canWrite, bool isWhitelistedRouter, bool isWhitelistedToken);
+  event PermissionsUpdated(address indexed addr, bool canBorrow, bool canWrite, bool isWhitelistedToken);
   event Deposit(address indexed user, address indexed token,uint256 lockExpiration, uint256 amountToken);
   event Withdraw(address indexed user, address indexed token, uint256 amountToken);
   event Borrow(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed lockExpiration, uint256 amount);
@@ -99,7 +105,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   event LiquidateLoan(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed amount, uint256 rewardFee);
   event WriteOption(address indexed receiver, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
   event UnwindOption(address indexed sender, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount);
-  event UnlockCollateral(address indexed unlocker, address indexed optionContract, uint256 indexed optionId, uint256 amount, uint256 rewardFee);
+  event UnlockCollateral(address indexed unlocker, address indexed optionContract, uint256 indexed optionId, uint256 amount, uint256 tokenRewardFee, uint256 denominatorRewardFee);
   event ControllerUpdated(address indexed newController);
 
   //////////////////////////////////////////////////
@@ -142,7 +148,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     for (uint256 i=0; i < _addr.length; i++) {
       permissions[_addr[i]] = _permissions[i];
-      emit PermissionsUpdated(_addr[i], _permissions[i].canBorrow, _permissions[i].canWrite, _permissions[i].isWhitelistedRouter, _permissions[i].isWhitelistedToken);
+      emit PermissionsUpdated(_addr[i], _permissions[i].canBorrow, _permissions[i].canWrite, _permissions[i].isWhitelistedToken);
     }
   }
 
@@ -181,13 +187,21 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     customSwapPaths[_collateralToken][_token] = _path;
   }
 
-  /// @notice Set a custom swap path for a token
+  /// @notice Set a designated router for a pair of tokens
+  /// @param _tokenA The first token
+  /// @param _tokenB The second token
+  /// @param _router The router to swap with
+  function setDesignatedSwapRouter(address _tokenA, address _tokenB, IUniswapV2Router02 _router) external onlyOwner {
+    designatedSwapRouter[_tokenA][_tokenB] = _router;
+    designatedSwapRouter[_tokenB][_tokenA] = _router;
+  }
+
+  /// @notice Set a custom loan to calue ratio for a collateral token
   /// @param _collateralToken The collateral token
-  /// @param _token The token
-  /// @param _path The swap path
-  function setLoanToValueRatio(address _collateralToken, uint256 loanToValueRatio) external onlyOwner {
-    require(loanToValueRatio <= _inverseBasisPoint);
-    loanToValueRatios[_collateralToken] = loanToValueRatio;
+  /// @param _loanToValueRatio The LTV ratio to use
+  function setLoanToValueRatio(address _collateralToken, uint256 _loanToValueRatio) external onlyOwner {
+    require(_loanToValueRatio <= _inverseBasisPoint);
+    loanToValueRatios[_collateralToken] = _loanToValueRatio;
   }
 
   /// @notice Set the address of the oracle used for getting on-chain prices
@@ -272,6 +286,27 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
       return keccak256(abi.encode(_loan));
   }
 
+  function _getLoanPool(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _amount) internal returns (PremiaLiquidityPool) {
+    PremiaLiquidityPool[] memory liquidityPools = _data.isCall ? callPools : putPools;
+
+    for (uint256 i = 0; i < liquidityPools.length; i++) {
+      PremiaLiquidityPool pool = liquidityPools[i];
+      uint256 amountAvailable = pool.getLoanableAmount(_data.isCall ? _data.token : _optionContract.denominator(), _data.expiration);
+
+      if (amountAvailable >= _amount) {
+        return pool;
+      }
+    }
+
+    revert("Not enough liquidity");
+  }
+
+  function _getAmountToBorrow(uint256 _amount, address collateralToken, address tokenToBorrow) internal returns (uint256) {
+    uint256 priceOfCollateral = priceOracle.getAssetPrice(collateralToken);
+    uint256 priceOfBorrowed = priceOracle.getAssetPrice(tokenToBorrow);
+    return (_amount * _inverseBasisPoint / 997) * priceOfCollateral / priceOfBorrowed;
+  }
+
   function getLoanableAmount(address _token, uint256 _lockExpiration) public virtual returns (uint256) {
     // TODO: This likely needs to be adjusted based on the amounts currently loaned
     // and the amount of collateral stored in this contract
@@ -279,7 +314,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     return getWritableAmount(_token, _lockExpiration);
   }
 
-  function getEquivalentCollateral(uint256 tokenPrice, uint256 collateralPrice, uint256 amount) public view returns (uint256) {
+  function getEquivalentCollateral(uint256 _tokenPrice, uint256 _collateralPrice, uint256 _amount) public view returns (uint256) {
     return (_amount * _tokenPrice) / _collateralPrice;
   }
 
@@ -365,14 +400,24 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     }
   }
 
-  function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration) external virtual nonReentrant {
+  function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration)
+    external virtual nonReentrant returns (Loan memory) {
     require(loanToValueRatios[_collateralToken] > 0, "Collateral token not allowed.");
     require(permissions[msg.sender].canBorrow, "Borrow not whitelisted.");
 
     uint256 tokenPrice = priceOracle.getAssetPrice(_token);
     uint256 collateralPrice = priceOracle.getAssetPrice(_collateralToken);
 
-    Loan memory loan = Loan(msg.sender, _token, _amountToken, _collateralToken, _amountCollateral, _lockExpiration, tokenPrice, collateralPrice);
+    Loan memory loan = Loan(address(this),
+                            msg.sender,
+                            _token,
+                            _collateralToken,
+                            _amountToken,
+                            _amountCollateral,
+                            _lockExpiration,
+                            tokenPrice,
+                            collateralPrice);
+                            
     uint256 loanableAmount = getLoanableAmount(_token, _lockExpiration);
     uint256 collateralRequired = getRequiredCollateralForLoan(loan, _amountToken);
 
@@ -387,6 +432,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     loansOutstanding[hash] = loan;
 
     emit Borrow(hash, msg.sender, _token, _lockExpiration, _amountToken);
+
+    return loan;
   }
 
   function repayLoan(Loan memory _loan, uint256 _amount) external virtual {
@@ -427,62 +474,67 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   /// @notice Convert collateral back into original tokens
-  /// @param _router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
-  /// @param _collateralToken The token to swap from
-  /// @param _token The token to swap collateral to
-  /// @param _amountCollateral The amount of collateral
-  function _liquidateCollateral(IUniswapV2Router02 _router, address _collateralToken, address _token, uint256 _amountCollateral) internal {
-    require(permissions[address(_router)].isWhitelistedRouter, "Router not whitelisted.");
+  /// @param _inputToken The token to swap from
+  /// @param _outputToken The token to swap to
+  /// @param _amountIn The amount of _inputToken to swap
+  function _swapTokensIn(address _inputToken, address _outputToken, uint256 _amountIn) internal returns (uint256) {
+    IUniswapV2Router02 router = designatedSwapRouter[_inputToken][_outputToken];
 
-    IERC20(_collateralToken).safeIncreaseAllowance(address(_router), _amountCollateral);
+    IERC20(_inputToken).safeIncreaseAllowance(address(router), _amountIn);
 
-    address weth = _router.WETH();
-    address[] memory path = customSwapPaths[_collateralToken][_token];
+    address weth = router.WETH();
+    address[] memory path = customSwapPaths[_inputToken][_outputToken];
 
     if (path.length == 0) {
       path = new address[](2);
-      path[0] = _collateralToken;
+      path[0] = _inputToken;
       path[1] = weth;
     }
 
-    path[path.length] = _token;
+    path[path.length] = _outputToken;
 
-    _router.swapExactTokensForTokens(
-      _amountCollateral,
+    uint256[] memory amounts = router.swapExactTokensForTokens(
+      _amountIn,
       0,
       path,
       address(this),
       block.timestamp + 60
     );
+
+    return amounts[1];
   }
 
-  function _postLiquidate(Loan memory loan, uint256 _collateralAmount) internal {}
+  /// @notice Convert collateral back into original tokens
+  /// @param _collateralToken The token to swap from
+  /// @param _token The token to swap collateral to
+  /// @param _amountCollateral The amount of collateral
+  function _liquidateCollateral(address _collateralToken, address _token, uint256 _amountCollateral) internal returns (uint256) {
+    return _swapTokensIn(_collateralToken, _token, _amountCollateral);
+  }
 
-  function liquidateLoan(Loan memory _loan, uint256 _amount, IUniswapV2Router02 _router) external {
+  function _postLiquidate(Loan memory loan, uint256 _collateralAmount) virtual internal {}
+
+  function liquidateLoan(Loan memory _loan, uint256 _amount) external {
     bytes32 hash = getLoanHash(_loan);
-    liquidate(hash, _amount, _router);
+    liquidate(hash, _amount);
   }
 
-  function liquidate(bytes32 _hash, uint256 _collateralAmount, IUniswapV2Router02 _router) public virtual nonReentrant {
+  function liquidate(bytes32 _hash, uint256 _collateralAmount) public virtual nonReentrant {
     Loan storage loan = loansOutstanding[_hash];
 
-    // TODO: What happens if 50% of a loan is liquidated, and the other 50% is re-paid? Does the strategy know what to do?
-    // This feels similar to withdrawing 50% of one asset and 50% of another (due to assignment)
-    //
-    // We should leave it up to the strategy.
-    // TODO: Implement _postLiquidate in each of the strategies to handle this situation.
-
     require(loan.amountCollateralTokenHeld * _inverseBasisPoint / _collateralAmount >= _maxPercentLiquidated, "Too much liquidated.");
-
     require(isLoanUnderCollateralized(loan) || isExpirationPast(loan), "Loan cannot be liquidated.");
-    require(permissions[address(_router)].isWhitelistedRouter, "Router not whitelisted.");
 
-    _liquidateCollateral(_router, loan.collateralToken, loan.token, _collateralAmount);
+    uint256 amountToken = _liquidateCollateral(loan.collateralToken, loan.token, _collateralAmount);
+
+    loan.amountTokenOutstanding -= amountToken;
+    loan.amountCollateralTokenHeld -= _collateralAmount;
+
     _postLiquidate(loan, _collateralAmount);
 
-    uint256 rewardFee = (_collateralAmount * _inverseBasisPoint) / _liquidatorReward;
+    uint256 rewardFee = (amountToken * _inverseBasisPoint) / _liquidatorReward;
 
-    IERC20(loan.collateralToken).safeTransferFrom(address(this), msg.sender, rewardFee);
+    IERC20(loan.token).safeTransferFrom(address(this), msg.sender, rewardFee);
 
     if (loan.amountCollateralTokenHeld == 0) {
       delete loansOutstanding[_hash];
@@ -517,7 +569,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     emit WriteOption(_receiver, msg.sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium);
   }
 
-  function _postWithdrawal(address _sender, address _optionContract, uint256 _optionId, uint256 _amount, uint256 _tokenWithdrawn, uint256 _denominatorWithdrawn) internal {}
+  function _postWithdrawal(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _tokenWithdrawn, uint256 _denominatorWithdrawn) virtual internal {}
 
   function unwindOption(address _optionContract, uint256 _optionId, uint256 _amount) external {
     unwindOptionFor(msg.sender, _optionContract, _optionId, _amount);
@@ -526,11 +578,11 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount) public virtual nonReentrant {
     require(permissions[msg.sender].canWrite, "Writer not whitelisted.");
 
-    IPremiaOption memory optionContract = IPremiaOption(_optionContract);
+    IPremiaOption optionContract = IPremiaOption(_optionContract);
     IPremiaOption.OptionData memory data = optionContract.optionData(_optionId);
 
-    uint256 preTokenBalance = IERC20(data.token).balanceOf(this);
-    uint256 preDenominatorBalance = optionContract.denominator().balanceOf(this);
+    uint256 preTokenBalance = IERC20(data.token).balanceOf(address(this));
+    uint256 preDenominatorBalance = IERC20(optionContract.denominator()).balanceOf(address(this));
 
     if (data.expiration > block.timestamp) {
       IPremiaOption(_optionContract).withdraw(_optionId);
@@ -538,16 +590,10 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
       IPremiaOption(_optionContract).cancelOptionFrom(_sender, _optionId, _amount);
     }
 
-    uint256 tokenWithdrawn = IERC20(data.token).balanceOf(this) - preTokenBalance;
-    uint256 denominatorWithdrawn = optionContract.denominator().balanceOf(this) - preDenominatorBalance;
+    uint256 tokenWithdrawn = IERC20(data.token).balanceOf(address(this)) - preTokenBalance;
+    uint256 denominatorWithdrawn = IERC20(optionContract.denominator()).balanceOf(address(this)) - preDenominatorBalance;
 
-    // TODO: We might withdraw both the collateral token and the underlying token.
-    // If we withdraw both, do we want to sell the collateral token at this time?
-    // Or should we just keep both and save on trading fees + slippage?
-    //
-    // We should let the strategy decide.
-    // TODO: Implement _postWithdrawal in each of the strategies to handle this.
-    _postWithdrawal(_sender, _optionContract, _optionId, _amount, tokenWithdrawn, denominatorWithdrawn);
+    _postWithdrawal(_optionContract, _optionId, _amount, tokenWithdrawn, denominatorWithdrawn);
 
     uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
@@ -557,20 +603,20 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   function unlockCollateralFromOption(address _optionContract, uint256 _optionId, uint256 _amount) public virtual nonReentrant {
-    IPremiaOption memory optionContract = IPremiaOption(_optionContract);
+    IPremiaOption optionContract = IPremiaOption(_optionContract);
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
 
     require(data.expiration > block.timestamp, "Option is not expired yet.");
 
-    uint256 preTokenBalance = IERC20(data.token).balanceOf(this);
-    uint256 preDenominatorBalance = optionContract.denominator().balanceOf(this);
+    uint256 preTokenBalance = IERC20(data.token).balanceOf(address(this));
+    uint256 preDenominatorBalance = IERC20(optionContract.denominator()).balanceOf(address(this));
 
     IPremiaOption(_optionContract).withdraw(_optionId);
 
-    uint256 tokenWithdrawn = IERC20(data.token).balanceOf(this) - preTokenBalance;
-    uint256 denominatorWithdrawn = optionContract.denominator().balanceOf(this) - preDenominatorBalance;
+    uint256 tokenWithdrawn = IERC20(data.token).balanceOf(address(this)) - preTokenBalance;
+    uint256 denominatorWithdrawn = IERC20(optionContract.denominator()).balanceOf(address(this)) - preDenominatorBalance;
 
-    _postWithdrawal(_sender, _optionContract, _optionId, _amount, tokenWithdrawn, denominatorWithdrawn);
+    _postWithdrawal(_optionContract, _optionId, _amount, tokenWithdrawn, denominatorWithdrawn);
 
     uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
@@ -588,6 +634,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
       IERC20(optionContract.denominator()).safeTransferFrom(address(this), msg.sender, denominatorRewardFee);
     }
 
-    emit UnlockCollateral(msg.sender, _optionContract, _optionId, _amount, rewardFee);
+    emit UnlockCollateral(msg.sender, _optionContract, _optionId, _amount, tokenRewardFee, denominatorRewardFee);
   }
 }
