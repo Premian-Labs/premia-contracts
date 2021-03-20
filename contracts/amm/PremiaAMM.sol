@@ -190,7 +190,7 @@ contract PremiaAMM is Ownable {
       IPremiaLiquidityPool pool = liquidityPools[i];
       uint256 amountAvailable = pool.getWritableAmount(_data.isCall ? _data.token : _optionContract.denominator(), _data.expiration);
 
-      if (amountAvailable >= _amount) {
+      if (amountAvailable >= _amount && address(pool) != address(msg.sender)) {
         return pool;
       }
     }

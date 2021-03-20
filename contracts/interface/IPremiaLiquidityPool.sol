@@ -34,8 +34,8 @@ interface IPremiaLiquidityPool {
   function depositFrom(address _from, address[] memory _tokens, uint256[] memory _amounts, uint256 _lockExpiration) external;
   function withdrawExpiredFrom(address _from, address[] memory _tokens) external;
   function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration) external returns (Loan memory);
-  function repayLoan(Loan memory _loan, uint256 _amount) external;
-  function repay(bytes32 _hash, uint256 _amount) external;
+  function repayLoan(Loan memory _loan, uint256 _amount) external returns (uint256);
+  function repay(bytes32 _hash, uint256 _amount) external returns (uint256);
   function checkCollateralizationLevel(Loan memory _loan) external returns (bool);
   function liquidateLoan(Loan memory _loan, uint256 _amount) external;
   function liquidate(bytes32 _hash, uint256 _collateralAmount) external;

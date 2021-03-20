@@ -436,12 +436,12 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     return loan;
   }
 
-  function repayLoan(Loan memory _loan, uint256 _amount) external virtual {
+  function repayLoan(Loan memory _loan, uint256 _amount) external virtual returns (uint256) {
     bytes32 hash = getLoanHash(_loan);
-    repay(hash, _amount);
+    return repay(hash, _amount);
   }
 
-  function repay(bytes32 _hash, uint256 _amount) public virtual nonReentrant {
+  function repay(bytes32 _hash, uint256 _amount) public virtual nonReentrant returns (uint256) {
     Loan storage loan = loansOutstanding[_hash];
 
     uint256 collateralOut = getRequiredCollateralForLoan(loan, _amount);
@@ -461,6 +461,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     loan.amountCollateralTokenHeld = loan.amountCollateralTokenHeld - collateralOut;
 
     emit RepayLoan(_hash, msg.sender, loan.token, _amount);
+
+    return collateralOut;
   }
 
   function isLoanUnderCollateralized(Loan memory _loan) public returns (bool) {

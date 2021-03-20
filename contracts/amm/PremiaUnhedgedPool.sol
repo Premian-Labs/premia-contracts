@@ -15,7 +15,7 @@ contract PremiaUnhedgedPool is PremiaLiquidityPool {
     revert();
   }
 
-  function repay(bytes32 _hash, uint256 _amount) public override {
+  function repay(bytes32 _hash, uint256 _amount) public override returns (uint256) {
     revert();
   }
 

@@ -7,7 +7,37 @@ import '../interface/IPremiaOption.sol';
 import '../uniswapV2/interfaces/IUniswapV2Router02.sol';
 
 contract PremiaLongUnderlyingPool is PremiaLiquidityPool {
+  // token address => queue index => loan hash
+  mapping(address => mapping(uint256 => bytes32)) loansTaken;
+  // token address => index
+  mapping(address => uint256) loanQueuesFirst;
+  // token address => index
+  mapping(address => uint256) loanQueuesLast;
+
   constructor(address _controller) PremiaLiquidityPool(_controller) {}
+
+  function _enqueueLoan(Loan memory _loan) internal returns (bytes32) {
+      bytes32 hash = getLoanHash(_loan);
+      
+      loanQueuesLast[_loan.token] += 1;
+      loansTaken[_loan.token][loanQueuesLast[_loan.token]] = hash;
+      
+      return hash;
+  }
+
+  function _dequeueLoanHash(address _token) internal returns (bytes32) {
+      uint256 first = loanQueuesFirst[_token];
+      uint256 last = loanQueuesLast[_token];
+
+      require(last >= first);  // non-empty queue
+
+      bytes32 hash = loansTaken[_token][first];
+      delete loansTaken[_token][first];
+
+      loanQueuesFirst[_token] += 1;
+      
+      return hash;
+  }
 
   function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public override {
     super.writeOptionFor(_receiver, _optionContract, _optionId, _amount, _premiumToken, _amountPremium, _referrer);
@@ -21,8 +51,9 @@ contract PremiaLongUnderlyingPool is PremiaLiquidityPool {
 
     Loan memory loan = loanPool.borrow(tokenToBorrow, amountToBorrow, data.token, _amount, data.expiration);
     _swapTokensIn(tokenToBorrow, data.token, amountToBorrow);
-
-    // TODO: We need to store the loan, so we can re-use the details later for unwinding
+    
+    bytes32 hash = _enqueueLoan(loan);
+    loansOutstanding[hash] = loan;
   }
 
   function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount) public override {
@@ -37,15 +68,21 @@ contract PremiaLongUnderlyingPool is PremiaLiquidityPool {
 
   function _postWithdrawal(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _tokenWithdrawn, uint256 _denominatorWithdrawn)
     internal override {
-    Loan memory loan; // TODO <--- We need to figure out how to get the same loan used to write this option
-
     IPremiaOption optionContract = IPremiaOption(_optionContract);
     IPremiaOption.OptionData memory data = optionContract.optionData(_optionId);
-    PremiaLiquidityPool loanPool = PremiaLiquidityPool(loan.lender);
 
     address tokenBorrowed = optionContract.denominator();
     uint256 amountOut = _swapTokensIn(data.token, tokenBorrowed, _tokenWithdrawn);
 
-    loanPool.repayLoan(loan, amountOut + _denominatorWithdrawn);
+    uint256 amountLeft = amountOut + _denominatorWithdrawn;
+    while (amountLeft > 0) {
+      bytes32 hash = _dequeueLoanHash(tokenBorrowed);
+      Loan memory loan = loansOutstanding[hash];
+      PremiaLiquidityPool loanPool = PremiaLiquidityPool(loan.lender);
+
+      uint256 amountRepaid = loanPool.repay(hash, amountLeft);
+
+      amountLeft -= amountRepaid;
+    }
   }
 }

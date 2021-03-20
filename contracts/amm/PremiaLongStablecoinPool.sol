@@ -17,16 +17,22 @@ contract PremiaLongStablecoinPool is PremiaLiquidityPool {
 
   function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public override {
     super.writeOptionFor(_receiver, _optionContract, _optionId, _amount, _premiumToken, _amountPremium, _referrer);
-//    amm.buy(_optionContract, _optionId, _amount, _premiumToken, _amountPremium, _referrer);
+    amm.buy(_optionContract, _optionId, _amount, _premiumToken, _amountPremium, _referrer);
   }
 
   function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount) public override {
     super.unwindOptionFor(_sender, _optionContract, _optionId, _amount);
-//    amm.sell(_optionContract, _optionId, _amount, _premiumToken, _amountPremium, _sender);
   }
 
   function unlockCollateralFromOption(address _optionContract, uint256 _optionId, uint256 _amount) public override {
     super.unlockCollateralFromOption(_optionContract, _optionId, _amount);
-//    amm.sell(_optionContract, _optionId, _amount, IPremiaOption(_optionContract).denominator(), 0, msg.sender);
+  }
+
+  function _postWithdrawal(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _tokenWithdrawn, uint256 _denominatorWithdrawn)
+    internal override {
+    IPremiaOption optionContract = IPremiaOption(_optionContract);
+    IPremiaOption.OptionData memory data = optionContract.optionData(_optionId);
+
+    _swapTokensIn(data.token, optionContract.denominator(), _tokenWithdrawn);
   }
 }
