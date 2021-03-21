@@ -51,7 +51,8 @@ describe("PremiaLiquidityPool", () => {
     dai = await new TestErc20__factory(admin).deploy(18);
 
     await controller.setPremiaMining(mining.address);
-    await mining.setTokenWeights([dai.address, token.address], [1000, 1000]);
+    await mining.setPool(dai.address, 1000, false);
+    await mining.setPool(token.address, 1000, false);
     await premia.mint(admin.address, parseEther("1000000"));
     await premia.connect(admin).approve(mining.address, parseEther("1000000"));
     await mining.connect(admin).addRewards(parseEther("1000000"));
@@ -220,7 +221,7 @@ describe("PremiaLiquidityPool", () => {
         {
           pool: liqPool.address,
           tokens: [token.address, dai.address],
-          amounts: [parseEther("50"), parseEther("100")],
+          amounts: [parseEther("50"), parseEther("150")],
           lockExpiration: nextExpiration + oneWeek * 2,
         },
       ]);
@@ -228,40 +229,71 @@ describe("PremiaLiquidityPool", () => {
       const now = new Date().getTime() / 1000;
       await setTimestamp(now + 4 * 3600 * 24);
 
-      await mining.connect(user1).harvest();
+      await mining.connect(user1).harvest(token.address);
+      await mining.connect(user1).harvest(dai.address);
 
-      let user1Bal = await premia.balanceOf(user1.address);
-      let user2Bal = await premia.balanceOf(user2.address);
+      let user1PremiaBal = await premia.balanceOf(user1.address);
+      let user2PremiaBal = await premia.balanceOf(user2.address);
 
       expect(
-        user1Bal.gt(parseEther("39995")) && user1Bal.lt(parseEther("40000"))
+        user1PremiaBal.gt(parseEther("39995")) &&
+          user1PremiaBal.lt(parseEther("40000"))
       ).to.be.true;
 
       await controller.connect(user2).deposit([
         {
           pool: liqPool.address,
           tokens: [token.address, dai.address],
-          amounts: [parseEther("150"), parseEther("300")],
+          amounts: [parseEther("150"), parseEther("150")],
           lockExpiration: nextExpiration + oneWeek * 2,
         },
       ]);
 
+      const tokenTotalScore = (await mining.poolInfo(token.address)).totalScore;
+      const user1TokenScore = (
+        await mining.userInfo(token.address, user1.address)
+      ).totalScore;
+
+      const daiTotalScore = (await mining.poolInfo(dai.address)).totalScore;
+      const user1DaiScore = (await mining.userInfo(dai.address, user1.address))
+        .totalScore;
+
       await setTimestamp(now + 8 * 3600 * 24);
 
-      await mining.connect(user1).harvest();
-      await mining.connect(user2).harvest();
+      const multToken =
+        Number(formatEther(user1TokenScore)) /
+        Number(formatEther(tokenTotalScore));
+      const multDai =
+        Number(formatEther(user1DaiScore)) / Number(formatEther(daiTotalScore));
 
-      user1Bal = await premia.balanceOf(user1.address);
-      user2Bal = await premia.balanceOf(user2.address);
+      let user1TokenTargetBal = 20000 * multToken;
+      let user2TokenTargetBal = 20000 * (1 - multToken);
 
-      // The inaccuracy is because of the bonus for longer staking from the first deposit made
-      expect(
-        user1Bal.gt(parseEther("50000")) && user1Bal.lt(parseEther("50100"))
-      ).to.be.true;
+      let user1DaiTargetBal = 20000 * multDai;
+      let user2DaiTargetBal = 20000 * (1 - multDai);
 
-      expect(
-        user2Bal.gt(parseEther("29900")) && user2Bal.lt(parseEther("30000"))
-      ).to.be.true;
+      await mining.connect(user1).harvest(token.address);
+      await mining.connect(user1).harvest(dai.address);
+      await mining.connect(user2).harvest(token.address);
+      await mining.connect(user2).harvest(dai.address);
+
+      const user1PremiaBalBak = user1PremiaBal;
+
+      user1PremiaBal = await premia.balanceOf(user1.address);
+      user2PremiaBal = await premia.balanceOf(user2.address);
+
+      expect(Math.floor(Number(formatEther(user1PremiaBal)))).to.eq(
+        Math.floor(
+          user1TokenTargetBal +
+            user1DaiTargetBal +
+            Number(formatEther(user1PremiaBalBak)) +
+            1
+        )
+      );
+
+      expect(Math.floor(Number(formatEther(user2PremiaBal)))).to.eq(
+        Math.floor(user2DaiTargetBal + user2TokenTargetBal)
+      );
     });
 
     it("should properly calculate pending reward", async () => {
@@ -269,7 +301,7 @@ describe("PremiaLiquidityPool", () => {
         {
           pool: liqPool.address,
           tokens: [token.address, dai.address],
-          amounts: [parseEther("50"), parseEther("100")],
+          amounts: [parseEther("50"), parseEther("150")],
           lockExpiration: nextExpiration + oneWeek * 2,
         },
       ]);
@@ -277,58 +309,104 @@ describe("PremiaLiquidityPool", () => {
       const now = new Date().getTime() / 1000;
       await setTimestamp(now + 4 * 3600 * 24);
 
-      let user1Bal = await mining.pendingReward(user1.address);
-      let user2Bal = await mining.pendingReward(user2.address);
+      let user1TokenBal = await mining.pendingReward(
+        user1.address,
+        token.address
+      );
+      let user2TokenBal = await mining.pendingReward(
+        user2.address,
+        token.address
+      );
+      let user1DaiBal = await mining.pendingReward(user1.address, dai.address);
+      let user2DaiBal = await mining.pendingReward(user2.address, dai.address);
 
       expect(
-        user1Bal.gt(parseEther("39995")) && user1Bal.lt(parseEther("40000"))
+        user1TokenBal.gt(parseEther("19995")) &&
+          user1TokenBal.lt(parseEther("20000"))
+      ).to.be.true;
+      expect(
+        user1DaiBal.gt(parseEther("19995")) &&
+          user1DaiBal.lt(parseEther("20000"))
       ).to.be.true;
 
       await controller.connect(user2).deposit([
         {
           pool: liqPool.address,
           tokens: [token.address, dai.address],
-          amounts: [parseEther("150"), parseEther("300")],
+          amounts: [parseEther("150"), parseEther("150")],
           lockExpiration: nextExpiration + oneWeek * 2,
         },
       ]);
 
+      const tokenTotalScore = (await mining.poolInfo(token.address)).totalScore;
+      const user1TokenScore = (
+        await mining.userInfo(token.address, user1.address)
+      ).totalScore;
+
+      const daiTotalScore = (await mining.poolInfo(dai.address)).totalScore;
+      const user1DaiScore = (await mining.userInfo(dai.address, user1.address))
+        .totalScore;
+
       await setTimestamp(now + 8 * 3600 * 24);
 
-      user1Bal = await mining.pendingReward(user1.address);
-      user2Bal = await mining.pendingReward(user2.address);
+      const multToken =
+        Number(formatEther(user1TokenScore)) /
+        Number(formatEther(tokenTotalScore));
+      const multDai =
+        Number(formatEther(user1DaiScore)) / Number(formatEther(daiTotalScore));
 
-      // The inaccuracy is because of the bonus for longer staking from the first deposit made
-      expect(
-        user1Bal.gt(parseEther("50000")) && user1Bal.lt(parseEther("50100"))
-      ).to.be.true;
+      let user1TokenTargetBal =
+        Number(formatEther(user1TokenBal)) + 20000 * multToken;
+      let user2TokenTargetBal = 20000 * (1 - multToken);
 
-      expect(
-        user2Bal.gt(parseEther("29900")) && user2Bal.lt(parseEther("30000"))
-      ).to.be.true;
+      let user1DaiTargetBal =
+        Number(formatEther(user1DaiBal)) + 20000 * multDai;
+      let user2DaiTargetBal = 20000 * (1 - multDai);
+
+      user1TokenBal = await mining.pendingReward(user1.address, token.address);
+      user2TokenBal = await mining.pendingReward(user2.address, token.address);
+      user1DaiBal = await mining.pendingReward(user1.address, dai.address);
+      user2DaiBal = await mining.pendingReward(user2.address, dai.address);
+
+      expect(Math.floor(Number(formatEther(user1TokenBal)))).to.eq(
+        Math.floor(user1TokenTargetBal)
+      );
+
+      expect(Math.floor(Number(formatEther(user2TokenBal)))).to.eq(
+        Math.floor(user2TokenTargetBal)
+      );
+
+      expect(Math.floor(Number(formatEther(user1DaiBal)))).to.eq(
+        Math.floor(user1DaiTargetBal)
+      );
+
+      expect(Math.floor(Number(formatEther(user2DaiBal)))).to.eq(
+        Math.floor(user2DaiTargetBal)
+      );
     });
 
     it("should stop distributing premia when allocated amount is reached", async () => {
       await controller.connect(user1).deposit([
         {
           pool: liqPool.address,
-          tokens: [token.address, dai.address],
-          amounts: [parseEther("50"), parseEther("100")],
+          tokens: [token.address],
+          amounts: [parseEther("50")],
           lockExpiration: nextExpiration + oneWeek * 50,
         },
       ]);
+      await mining.connect(admin).setPool(dai.address, 0, false);
 
       const now = new Date().getTime() / 1000;
 
       await setTimestamp(now + 110 * 3600 * 24);
 
-      let amount = await mining.pendingReward(user1.address);
+      let amount = await mining.pendingReward(user1.address, token.address);
 
       expect(
         amount.gt(parseEther("999999.99")) && amount.lte(parseEther("1000000"))
       ).to.be.true;
 
-      await mining.connect(user1).harvest();
+      await mining.connect(user1).harvest(token.address);
 
       amount = await premia.balanceOf(user1.address);
 
@@ -342,12 +420,12 @@ describe("PremiaLiquidityPool", () => {
 
       await setTimestamp(now + 131 * 3600 * 24);
 
-      amount = await mining.pendingReward(user1.address);
+      amount = await mining.pendingReward(user1.address, token.address);
       expect(
         amount.gt(parseEther("199999.99")) && amount.lte(parseEther("200000"))
       ).to.be.true;
 
-      await mining.connect(user1).harvest();
+      await mining.connect(user1).harvest(token.address);
       amount = await premia.balanceOf(user1.address);
 
       expect(
