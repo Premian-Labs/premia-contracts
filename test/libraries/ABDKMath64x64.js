@@ -1,3 +1,4 @@
+const { BigNumber } = require('@ethersproject/bignumber')
 const { expect } = require('chai')
 
 const toFixed = function(bn) {
@@ -18,7 +19,7 @@ const range = function(bits, signed) {
 	}
 }
 
-describe('ABDKMath64x64', function() {
+describe.only('ABDKMath64x64', function() {
 	let instance
 
 	before(async function() {
@@ -28,7 +29,7 @@ describe('ABDKMath64x64', function() {
 	})
 
 	describe('#fromInt', function() {
-		it('returns 64.64 bit represetation of given int', async function() {
+		it('returns 64.64 bit representation of given int', async function() {
 			const inputs = [0, 1, 2, Math.floor(Math.random() * 1e6)].map(
 				ethers.BigNumber.from,
 			)
@@ -223,18 +224,44 @@ describe('ABDKMath64x64', function() {
 	})
 
 	describe('#muli', function() {
-		it('todo')
+		it('multiplies a 64x64 with an int', async function() {
+			const inputs = [Math.floor(Math.random() * 1e6), -Math.floor(Math.random() * 1e6)].map(ethers.BigNumber.from)
+
+			for (let i; i < inputs.length; i++) {
+				const bn = await instance.callStatic.fromInt(inputs[i])
+				const answer = bn * BigNumber(7)
+				expect(await instance.callStatic.muli(bn, BigNumber(7)).to.equal(answer))
+			}
+		})
 
 		describe('reverts if', function() {
-			it('todo')
+			it('input is too small', async function() {
+				await expect(instance.callStatic.muli(-0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFn - 1n, 1)).to.be.reverted
+			})
+
+			it('input is too large', async function() {
+				await expect(instance.callStatic.muli(0x1000000000000000000000000000000000000000000000000n + 1n, 1)).to.be.reverted
+			})
+
+			it('todo: revert if result would overflow')
 		})
 	})
 
 	describe('#mulu', function() {
-		it('todo')
+		it('multiplies a 64x64 with an unsigned int', async function() {
+			const inputs = [Math.floor(Math.random() * 1e6), -Math.floor(Math.random() * 1e6)].map(ethers.BigNumber.from)
+
+			for (let i; i < inputs.length; i++) {
+				const bn = await instance.callStatic.fromInt(inputs[i])
+				const answer = bn * BigNumber(7)
+				expect(await instance.callStatic.mulu(bn, BigNumber(7)).to.equal(answer))
+			}
+		})
 
 		describe('reverts if', function() {
-			it('todo')
+			it('overflows', async function() {
+				await expect(instance.callStatic.mulu(0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFn, 2)).to.be.reverted
+			})
 		})
 	})
 
@@ -242,7 +269,8 @@ describe('ABDKMath64x64', function() {
 		it('todo')
 
 		describe('reverts if', function() {
-			it('todo')
+			it('y is 0')
+			it('overflows')
 		})
 	})
 
@@ -250,7 +278,8 @@ describe('ABDKMath64x64', function() {
 		it('todo')
 
 		describe('reverts if', function() {
-			it('todo')
+			it('y is 0')
+			it('overflows')
 		})
 	})
 
@@ -258,52 +287,91 @@ describe('ABDKMath64x64', function() {
 		it('todo')
 
 		describe('reverts if', function() {
-			it('todo')
+			it('y is 0')
+			it('overflows')
 		})
 	})
 
 	describe('#neg', function() {
-		it('todo')
+		it('returns the negative', async function(){
+			const randomInt = Math.floor(Math.random() * 1e3)
+			const input = await instance.callStatic.fromInt(randomInt)
+			const answer = BigInt(-input)
+			expect(await instance.callStatic.neg(input)).to.equal(answer)
+		})
 
 		describe('reverts if', function() {
-			it('todo')
+			it('overflows', async function() {
+				await expect(instance.callStatic.neg(-0x80000000000000000000000000000000)).to.be.reverted
+			})
 		})
 	})
 
 	describe('#abs', function() {
-		it('todo')
+		it('returns the absolute |x|', async function() {
+			const randomInt = Math.floor(Math.random() * 1e3)
+			const input = await instance.callStatic.fromInt(randomInt)
+			expect(await instance.callStatic.abs(input)).to.equal(input)
+			const randomIntNeg = Math.floor(-Math.random() * 1e3)
+			const inputNeg = await instance.callStatic.fromInt(randomIntNeg)
+			expect(await instance.callStatic.abs(inputNeg)).to.equal(BigInt(-inputNeg))
+		})
 
 		describe('reverts if', function() {
-			it('todo')
+			it('overflows', async function() {
+				await expect(instance.callStatic.abs(-0x80000000000000000000000000000000)).to.be.reverted
+			})
 		})
 	})
 
 	describe('#inv', function() {
-		it('todo')
+		it('returns the inverse', async function(){
+			const input = await instance.callStatic.fromInt(20)
+			const answer = 922337203685477580n
+			expect(await instance.callStatic.inv(input)).to.equal(answer)
+		})
 
 		describe('reverts if', function() {
-			it('todo')
+			it('x is zero', async function() {
+				await (expect(instance.callStatic.inv(0))).to.be.reverted			
+			})
+			it('overflows', async function() {
+				await (expect(instance.callStatic.inv(-1))).to.be.reverted			
+			})
 		})
 	})
 
 	describe('#avg', function() {
-		it('todo')
-
-		describe('reverts if', function() {
-			it('todo')
+		it('calculates average', async function(){
+			const inputs = [await instance.callStatic.fromInt(5),
+			await instance.callStatic.fromInt(9)]
+			const answer = await instance.callStatic.fromInt(7)
+			expect(await instance.callStatic.avg(inputs[0], inputs[1])).to.equal(answer)
 		})
 	})
 
 	describe('#gavg', function() {
-		it('todo')
+		it('calculates average', async function(){
+			const inputs = [await instance.callStatic.fromInt(16),
+			await instance.callStatic.fromInt(25)]
+			const answer = await instance.callStatic.fromInt(20)
+			expect(await instance.callStatic.gavg(inputs[0], inputs[1])).to.equal(answer)
+		})
 
 		describe('reverts if', function() {
-			it('todo')
+			it('has negative radicant', async function(){
+				const inputs = [await instance.callStatic.fromInt(16),
+					await instance.callStatic.fromInt(-25)]
+				await (expect(instance.callStatic.gavg(inputs[0], inputs[1]))).to.be.reverted
+			})
 		})
 	})
 
 	describe('#pow', function() {
-		it('todo')
+		it('calculates power', async function(){
+			const input = await instance.callStatic.fromInt(5)
+			expect (await instance.callStatic.pow(input, 5)).to.equal(57646075230342348800000n)
+		})
 
 		describe('reverts if', function() {
 			it('todo')
