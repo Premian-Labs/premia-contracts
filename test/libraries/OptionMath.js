@@ -17,15 +17,23 @@ describe('ABDKMath64x64', function() {
     it('todo');
   });
 
-  describe('#rollingAvg', function () {
+  describe('#rollingEmaVar', function () {
     it('todo');
   });
 
-  describe('#rollingVar', function () {
+  describe('#d1', function () {
     it('todo');
   });
 
-  describe('#p', function () {
+  describe('#N', function () {
+    it('todo');
+  });
+
+  describe('#Xt', function () {
+    it('todo');
+  });
+
+  describe('#SlippageCoef', function () {
     it('todo');
   });
 
@@ -33,19 +41,11 @@ describe('ABDKMath64x64', function() {
     it('todo');
   });
 
-  describe('#calculateC', function () {
+  describe('#calcTradingDelta', function () {
     it('todo');
   });
 
-  describe('#pT', function () {
-    it('todo');
-  });
-
-  describe('#approx_pT', function () {
-    it('todo');
-  });
-
-  describe('#approx_Bsch', function () {
+  describe('#calculateCLevel', function () {
     it('todo');
   });
 });
