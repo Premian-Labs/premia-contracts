@@ -243,7 +243,11 @@ describe.only('ABDKMath64x64', function() {
 				await expect(instance.callStatic.muli(0x1000000000000000000000000000000000000000000000000n + 1n, 1)).to.be.reverted
 			})
 
-			it('todo: revert if result would overflow')
+			it('result would overflow', async function() {
+				const halfOfMax = 28948022309329048855892746252171976963317496166410141009864396001978282409984n
+
+				await expect(instance.callStatic.muli(halfOfMax, 2)).to.be.reverted
+			})
 		})
 	})
 
@@ -266,29 +270,54 @@ describe.only('ABDKMath64x64', function() {
 	})
 
 	describe('#div', function() {
-		it('todo')
+		it('divides x by y', async function(){
+			const x = await instance.callStatic.fromInt(21)
+			const y = await instance.callStatic.fromInt(7)
+			const answer = await instance.callStatic.fromInt(3)
+			expect(await instance.callStatic.div(x, y)).to.equal(answer)
+		})
 
 		describe('reverts if', function() {
-			it('y is 0')
-			it('overflows')
+			it('y is 0', async function(){
+				const x = await instance.callStatic.fromInt(21)
+				const y = await instance.callStatic.fromInt(0)
+				await expect(instance.callStatic.div(x,y)).to.be.reverted
+			})
+			it('overflows', async function(){
+				await expect(instance.callStatic.div(170141183460469231731687303715884105727n, 184467440737n)).to.be.reverted
+			})
 		})
 	})
 
 	describe('#divi', function() {
-		it('todo')
+		it('divided x by y where both are ints, result is 64x64', async function(){
+			const answer = await instance.callStatic.fromInt(-14)
+			expect(await instance.callStatic.divi(42, -3)).to.equal(answer)
+		})
 
 		describe('reverts if', function() {
-			it('y is 0')
-			it('overflows')
+			it('y is 0', async function(){
+				await expect(instance.callStatic.divi(99,0)).to.be.reverted
+			})
+			it('overflows', async function(){
+				await expect(instance.callStatic.divi(170141183460469231731687303715884105727n, 184467440737n)).to.be.reverted
+			})
 		})
 	})
 
 	describe('#divu', function() {
-		it('todo')
+		it('divided x by y where both are ints, result is 64x64', async function(){
+			const answer = await instance.callStatic.fromInt(14)
+			expect(await instance.callStatic.divu(42, 3)).to.equal(answer)
+		})
 
 		describe('reverts if', function() {
-			it('y is 0')
-			it('overflows')
+			it('y is 0', async function(){
+				await expect(instance.callStatic.divu(99,0)).to.be.reverted
+			})
+			it('overflows', async function(){
+				await expect(instance.callStatic.divu(170141183460469231731687303715884105727n, 184467440737n)).to.be.reverted
+			})
 		})
 	})
 
@@ -374,39 +403,66 @@ describe.only('ABDKMath64x64', function() {
 		})
 
 		describe('reverts if', function() {
-			it('todo')
+			it('overflow', async function(){
+				const input = await instance.callStatic.fromInt(2)
+				await (expect(instance.callStatic.pow(input, 129))).to.be.reverted
+			})
 		})
 	})
 
 	describe('#sqrt', function() {
-		it('todo')
+		it('calculates square root', async function() {
+			const input = await instance.callStatic.fromInt(25)
+			expect (await instance.callStatic.sqrt(input)).to.equal(92233720368547758080n)
+		})
 
 		describe('reverts if', function() {
-			it('todo')
+			it('x is negative', async function() {
+				const input = await instance.callStatic.fromInt(-1)
+				await (expect(instance.callStatic.sqrt(input))).to.be.reverted
+			})
 		})
 	})
 
 	describe('#log_2', function() {
-		it('todo')
+		it('calculates binary logarithm of x', async function(){
+			const input = await instance.callStatic.fromInt(8)
+			expect(await instance.callStatic.log_2(input)).to.equal(55340232221128654848n)
+		})
 
 		describe('reverts if', function() {
-			it('todo')
+			it('x is 0', async function(){
+				const input = await instance.callStatic.fromInt(0)
+				await (expect(instance.callStatic.log_2(input))).to.be.reverted
+			})
 		})
 	})
 
 	describe('#ln', function() {
-		it('todo')
+		it('calculates natural log of x', async function(){
+			const input = await instance.callStatic.fromInt(54)
+			expect(await instance.callStatic.ln(input)).to.equal(73583767821081474575n)
+		})
 
 		describe('reverts if', function() {
-			it('todo')
+			it('x is 0', async function(){
+				const input = await instance.callStatic.fromInt(0)
+				await (expect(instance.callStatic.ln(input))).to.be.reverted
+			})
 		})
 	})
 
 	describe('#exp_2', function() {
-		it('todo')
+		it('calculate binary exponent of x', async function(){
+			const input = await instance.callStatic.fromInt(8)
+			expect(await instance.callStatic.exp_2(input)).to.equal(4722366482869645213696n)
+		})
 
 		describe('reverts if', function() {
-			it('todo')
+			it('overflows', async function(){
+				const input = await instance.callStatic.fromInt(64)
+				await(expect(instance.callStatic.exp_2(input))).to.be.reverted
+			})
 		})
 	})
 })
