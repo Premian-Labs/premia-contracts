@@ -93,7 +93,15 @@ contract PremiaAMM is Ownable {
 
   function _getCallMaxSell(uint256 _optionId) internal view returns (uint256) {
     uint256 maxSell;
-    // TODO: calculate max sell
+    for (uint256 i = 0; i < callPools.length; i++) {
+      IPremiaLiquidityPool pool = callPools[i];
+      uint256 reserves = pool.getUnwritableAmount(_data.token, _data.expiration);
+
+      if (reserves > maxSell) {
+        maxSell = reserves; 
+      }
+    }
+
     return maxSell;
   }
 
@@ -106,7 +114,7 @@ contract PremiaAMM is Ownable {
     uint256 maxBuy;
     for (uint256 i = 0; i < putPools.length; i++) {
       IPremiaLiquidityPool pool = putPools[i];
-      uint256 reserves = pool.getWritableAmount(_optionContract.denominator(), _data.expiration);
+      uint256 reserves = pool.getWritableAmount(_data.token, _data.expiration);
 
       if (reserves > maxBuy) {
         maxBuy = reserves; 
@@ -123,7 +131,15 @@ contract PremiaAMM is Ownable {
 
   function _getPutMaxSell(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _optionId) internal view returns (uint256) {
     uint256 maxSell;
-    // TODO: calculate max sell
+    for (uint256 i = 0; i < putPools.length; i++) {
+      IPremiaLiquidityPool pool = putPools[i];
+      uint256 reserves = pool.getUnwritableAmount(_data.token, _data.expiration);
+
+      if (reserves > maxSell) {
+        maxSell = reserves; 
+      }
+    }
+
     return maxSell;
   }
 

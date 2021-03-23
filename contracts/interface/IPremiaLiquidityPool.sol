@@ -22,6 +22,7 @@ interface IPremiaLiquidityPool {
 
   function upgradeController(address _newController) external;
 
+  function getUnwritableAmount(address _token, uint256 _lockExpiration) external view returns (uint256);
   function getWritableAmount(address _token, uint256 _lockExpiration) external view returns (uint256);
   function hasWritableAmount(address _token, uint256 _lockExpiration, uint256 _amount) external view returns(bool);
   function getUnlockableAmount(address _user, address _token) external view returns (uint256);

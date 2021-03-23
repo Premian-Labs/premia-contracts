@@ -64,6 +64,9 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   // token => expiration => amount
   mapping(address => mapping(uint256 => uint256)) public amountsLockedByExpirationPerToken;
 
+  // token => expiration => amount
+  mapping(address => mapping(uint256 => uint256)) public amountsWrittenByExpirationPerToken;
+
   // optionContract => optionId => amountTokenOutstanding
   mapping(address => mapping(uint256 => uint256)) public optionsOutstanding;
     
@@ -165,6 +168,10 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     }
 
     return nextExpiration;
+  }
+  
+  function getUnwritableAmount(address _token, uint256 _lockExpiration) public view returns (uint256) {
+    return amountsWrittenByExpirationPerToken[_token][_lockExpiration];
   }
 
   function getWritableAmount(address _token, uint256 _lockExpiration) public view returns (uint256) {
@@ -547,6 +554,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     _subtractLockedAmounts(data.token, data.expiration, _amount);
 
+    amountsWrittenByExpirationPerToken[data.token][data.expiration] += _amount;
+
     IPremiaOption(_optionContract).writeOption(data.token, writeArgs, _referrer);
     IPremiaOption(_optionContract).safeTransferFrom(address(this), _receiver, _optionId, _amount, "");
 
@@ -571,6 +580,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
     optionsOutstanding[_optionContract][_optionId] = outstanding - _amount;
+    amountsWrittenByExpirationPerToken[data.token][data.expiration] -= _amount;
 
     if (data.expiration > block.timestamp) {
       IPremiaOption(_optionContract).withdraw(_optionId);
@@ -619,6 +629,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
     optionsOutstanding[_optionContract][_optionId] = outstanding - _amount;
+    amountsWrittenByExpirationPerToken[data.token][data.expiration] -= _amount;
 
     IPremiaOption(_optionContract).withdraw(_optionId);
 
