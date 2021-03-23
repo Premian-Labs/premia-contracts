@@ -8,13 +8,14 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
+import "../interface/IPremiaPoolController.sol";
 import "../interface/IPoolControllerChild.sol";
 
 contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    address public controller;
+    IPremiaPoolController public controller;
     IERC20 public premia;
 
     struct PoolInfo {
@@ -88,7 +89,7 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    constructor(address _controller, IERC20 _premia) {
+    constructor(IPremiaPoolController _controller, IERC20 _premia) {
         controller = _controller;
         premia = _premia;
     }
@@ -102,7 +103,7 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
     ///////////////
 
     modifier onlyController() {
-        require(msg.sender == controller, "Caller is not the controller");
+        require(msg.sender == address(controller), "Caller is not the controller");
         _;
     }
 
@@ -146,8 +147,8 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
     }
 
     function upgradeController(address _newController) external override {
-        require(msg.sender == owner() || msg.sender == controller, "Not owner or controller");
-        controller = _newController;
+        require(msg.sender == owner() || msg.sender == address(controller), "Not owner or controller");
+        controller = IPremiaPoolController(_newController);
         emit ControllerUpdated(_newController);
     }
 

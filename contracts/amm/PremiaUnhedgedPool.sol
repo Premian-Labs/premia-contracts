@@ -3,9 +3,10 @@
 pragma solidity ^0.8.0;
 
 import './PremiaLiquidityPool.sol';
+import '../interface/IPremiaPoolController.sol';
 
 contract PremiaUnhedgedPool is PremiaLiquidityPool {
-  constructor(address _controller) PremiaLiquidityPool(_controller) {}
+  constructor(IPremiaPoolController _controller) PremiaLiquidityPool(_controller) {}
 
   function getLoanableAmount(address _token, uint256 _lockExpiration) public override returns (uint256) {
     return 0;

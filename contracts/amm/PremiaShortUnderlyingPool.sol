@@ -3,38 +3,37 @@
 pragma solidity ^0.8.0;
 
 import './PremiaLiquidityPool.sol';
+import '../interface/IPremiaPoolController.sol';
+import '../interface/IPremiaOption.sol';
 
 contract PremiaShortUnderlyingPool is PremiaLiquidityPool {
   // token address => queue index => loan hash
-  mapping(address => mapping(uint256 => bytes32)) loansTaken;
+  mapping(address => mapping(uint256 => Loan)) loansTaken;
   // token address => index
   mapping(address => uint256) loanQueuesFirst;
   // token address => index
   mapping(address => uint256) loanQueuesLast;
 
-  constructor(address _controller) PremiaLiquidityPool(_controller) {}
+  constructor(IPremiaPoolController _controller) PremiaLiquidityPool(_controller) {}
 
-  function _enqueueLoan(Loan memory _loan) internal returns (bytes32) {
-      bytes32 hash = getLoanHash(_loan);
-      
+  function _enqueueLoan(Loan memory _loan) internal {
       loanQueuesLast[_loan.token] += 1;
-      loansTaken[_loan.token][loanQueuesLast[_loan.token]] = hash;
-
-      return hash;
+      loansTaken[_loan.token][loanQueuesLast[_loan.token]] = _loan;
   }
 
-  function _dequeueLoanHash(address _token) internal returns (bytes32) {
+  function _dequeueLoan(address _token) internal returns (Loan memory) {
       uint256 first = loanQueuesFirst[_token];
       uint256 last = loanQueuesLast[_token];
 
       require(last >= first);  // non-empty queue
 
-      bytes32 hash = loansTaken[_token][first];
+      Loan memory loan = loansTaken[_token][first];
+
       delete loansTaken[_token][first];
 
       loanQueuesFirst[_token] += 1;
-
-      return hash;
+      
+      return loan;
   }
 
   function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public override {
@@ -49,9 +48,7 @@ contract PremiaShortUnderlyingPool is PremiaLiquidityPool {
 
     Loan memory loan = loanPool.borrow(data.token, amountToBorrow, collateralToken, _amount, data.expiration);
     _swapTokensIn(data.token, collateralToken, amountToBorrow);
-
-    bytes32 hash = _enqueueLoan(loan);
-    loansCreated[hash] = loan;
+    _enqueueLoan(loan);
   }
 
   function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount) public override {
@@ -74,11 +71,10 @@ contract PremiaShortUnderlyingPool is PremiaLiquidityPool {
 
     uint256 amountLeft = amountOut + _tokenWithdrawn;
     while (amountLeft > 0) {
-      bytes32 hash = _dequeueLoanHash(collateralToken);
-      Loan memory loan = loansCreated[hash];
+      Loan memory loan = _dequeueLoan(collateralToken);
       PremiaLiquidityPool loanPool = PremiaLiquidityPool(loan.lender);
 
-      uint256 amountRepaid = loanPool.repay(hash, amountLeft);
+      uint256 amountRepaid = loanPool.repayLoan(loan, amountLeft);
 
       amountLeft -= amountRepaid;
     }
