@@ -15,9 +15,11 @@ interface IPremiaLiquidityPool {
     address collateralToken;
     uint256 amountTokenOutstanding;
     uint256 amountCollateralTokenHeld;
+    uint256 creationTime;
     uint256 lockExpiration;
     uint256 tokenPrice;
     uint256 collateralPrice;
+    uint256 lendingRate;
   }
 
   function upgradeController(address _newController) external;

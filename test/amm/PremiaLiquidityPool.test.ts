@@ -13,6 +13,7 @@ import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { resetHardhat, setTimestamp } from "../utils/evm";
 import { formatEther, parseEther } from "ethers/lib/utils";
+import { ZERO_ADDRESS } from "../utils/constants";
 
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
@@ -40,7 +41,9 @@ describe("PremiaLiquidityPool", () => {
     premia = await new TestErc20__factory(admin).deploy(18);
     controller = await new PremiaPoolController__factory(admin).deploy();
     liqPool = await new PremiaLiquidityPool__factory(admin).deploy(
-      controller.address
+      controller.address,
+      ZERO_ADDRESS,
+      ZERO_ADDRESS
     );
     mining = await new PremiaMiningV2__factory(admin).deploy(
       controller.address,
@@ -65,18 +68,21 @@ describe("PremiaLiquidityPool", () => {
           canWrite: false,
           isWhitelistedPool: true,
           isWhitelistedToken: false,
+          isWhitelistedOptionContract: false,
         },
         {
           canBorrow: false,
           canWrite: false,
           isWhitelistedPool: false,
           isWhitelistedToken: true,
+          isWhitelistedOptionContract: false,
         },
         {
           canBorrow: false,
           canWrite: false,
           isWhitelistedPool: false,
           isWhitelistedToken: true,
+          isWhitelistedOptionContract: false,
         },
       ]
     );
@@ -99,6 +105,7 @@ describe("PremiaLiquidityPool", () => {
             canWrite: false,
             isWhitelistedPool: false,
             isWhitelistedToken: false,
+            isWhitelistedOptionContract: false,
           },
         ]
       );

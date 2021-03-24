@@ -8,6 +8,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
 import '../interface/IPremiaOption.sol';
+import '../interface/IPremiaLiquidityPool.sol';
 import '../interface/IPriceOracleGetter.sol';
 import '../interface/ILendingRateOracleGetter.sol';
 import "../interface/IPremiaPoolController.sol";
@@ -259,11 +260,11 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
       return keccak256(abi.encode(_loan));
   }
 
-  function _getLoanPool(address _token, address _denominator, uint256 _expiration, bool _isCall, uint256 _amount) internal returns (PremiaLiquidityPool) {
-    PremiaLiquidityPool[] memory liquidityPools = _isCall ?  controller.getCallPools() : controller.getPutPools();
+  function _getLoanPool(address _token, address _denominator, uint256 _expiration, bool _isCall, uint256 _amount) internal returns (IPremiaLiquidityPool) {
+    IPremiaLiquidityPool[] memory liquidityPools = _isCall ?  controller.getCallPools() : controller.getPutPools();
 
     for (uint256 i = 0; i < liquidityPools.length; i++) {
-      PremiaLiquidityPool pool = liquidityPools[i];
+      IPremiaLiquidityPool pool = liquidityPools[i];
       uint256 amountAvailable = pool.getLoanableAmount(_isCall ? _token : _denominator, _expiration);
 
       if (amountAvailable >= _amount) {
@@ -316,7 +317,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
                                  uint256 _lendingRate,
                                  uint256 _loanLengthInSeconds) public view returns (uint256) {
     uint256 equivalentCollateral = getEquivalentCollateral(_tokenPrice, _collateralPrice, _amount);
-    uint256 ltvRatio = controller.getLoanToValueRatio(_collateralToken);
+    uint256 ltvRatio = controller.loanToValueRatios(_collateralToken);
     uint256 expectedCompoundInterest = calculateCompoundInterest(_lendingRate, _loanLengthInSeconds);
     return (equivalentCollateral * _inverseBasisPoint / ltvRatio) + expectedCompoundInterest;
   }
@@ -356,7 +357,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     require(_lockExpiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");
 
     for (uint256 i = 0; i < _tokens.length; i++) {
-      require(controller.getPermissions(_tokens[i]).isWhitelistedToken, "Token not whitelisted");
+      require(controller.permissions(_tokens[i]).isWhitelistedToken, "Token not whitelisted");
 
       if (_amounts[i] == 0) continue;
 
@@ -413,7 +414,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
       revert();
   }
 
-  function _lendCapital(Loan memory _loan) internal {                   
+  function _lendCapital(Loan memory _loan) internal {
     uint256 loanableAmount = getLoanableAmount(_loan.token, _loan.lockExpiration);
     uint256 collateralRequired = getRequiredCollateralToBorrowLoan(_loan, _loan.amountTokenOutstanding);
 
@@ -436,8 +437,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
   function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration)
     external virtual nonReentrant returns (Loan memory) {
-    require(controller.getLoanToValueRatio(_collateralToken) > 0, "Collateral token not allowed.");
-    require(controller.getPermissions(msg.sender).canBorrow, "Borrow not whitelisted.");
+    require(controller.loanToValueRatios(_collateralToken) > 0, "Collateral token not allowed.");
+    require(controller.permissions(msg.sender).canBorrow, "Borrow not whitelisted.");
 
     uint256 tokenPrice = priceOracle.getAssetPrice(_token);
     uint256 collateralPrice = priceOracle.getAssetPrice(_collateralToken);
@@ -504,12 +505,12 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   /// @param _outputToken The token to swap to
   /// @param _amountIn The amount of _inputToken to swap
   function _swapTokensIn(address _inputToken, address _outputToken, uint256 _amountIn) internal returns (uint256) {
-    IUniswapV2Router02 router = controller.getDesignedSwapRouter(_inputToken, _outputToken);
+    IUniswapV2Router02 router = controller.designatedSwapRouters(_inputToken, _outputToken);
 
     IERC20(_inputToken).safeIncreaseAllowance(address(router), _amountIn);
 
     address weth = router.WETH();
-    address[] memory path = controller.getCustomSwapPath(_inputToken, _outputToken);
+    address[] memory path = controller.customSwapPaths(_inputToken, _outputToken);
 
     if (path.length == 0) {
       path = new address[](2);
@@ -577,7 +578,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public virtual nonReentrant {
-    require(controller.getPermissions(msg.sender).canWrite, "Writer not whitelisted.");
+    require(controller.permissions(msg.sender).canWrite, "Writer not whitelisted.");
+    require(controller.permissions(_optionContract).isWhitelistedOptionContract, "Option contract not whitelisted.");
 
     uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
@@ -610,7 +612,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount) public virtual nonReentrant {
-    require(controller.getPermissions(msg.sender).canWrite, "Writer not whitelisted.");
+    require(controller.permissions(msg.sender).canWrite, "Writer not whitelisted.");
+    require(controller.permissions(_optionContract).isWhitelistedOptionContract, "Option contract not whitelisted.");
 
     IPremiaOption optionContract = IPremiaOption(_optionContract);
     IPremiaOption.OptionData memory data = optionContract.optionData(_optionId);
@@ -663,6 +666,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
 
     require(data.expiration > block.timestamp, "Option is not expired yet.");
+    require(controller.permissions(_optionContract).isWhitelistedOptionContract, "Option contract not whitelisted.");
 
     address denominatorToken = optionContract.denominator();
     uint256 preTokenBalance = IERC20(data.token).balanceOf(address(this));

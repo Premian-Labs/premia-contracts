@@ -44,7 +44,7 @@ contract PremiaLongUnderlyingPool is PremiaLiquidityPool {
     address tokenToBorrow = optionContract.denominator();
 
     IPremiaOption.OptionData memory data = optionContract.optionData(_optionId);
-    PremiaLiquidityPool loanPool = _getLoanPool(data.token, tokenToBorrow, data.expiration, data.isCall, _amount);
+    PremiaLiquidityPool loanPool = PremiaLiquidityPool(address(_getLoanPool(data.token, tokenToBorrow, data.expiration, data.isCall, _amount)));
 
     uint256 amountToBorrow = _getAmountToBorrow(_amount, data.token, tokenToBorrow);
 

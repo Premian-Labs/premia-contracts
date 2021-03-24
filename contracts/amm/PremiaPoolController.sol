@@ -6,7 +6,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
-import "./PremiaLiquidityPool.sol";
+import "../interface/IPremiaLiquidityPool.sol";
 import "../interface/IPoolControllerChild.sol";
 import "../interface/IPremiaMiningV2.sol";
 
@@ -26,10 +26,11 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
     }
 
     struct Permissions {
-      bool canBorrow;
-      bool canWrite;
-      bool isWhitelistedToken;
-      bool isWhitelistedPool;
+        bool canBorrow;
+        bool canWrite;
+        bool isWhitelistedToken;
+        bool isWhitelistedPool;
+        bool isWhitelistedOptionContract;
     }
 
     uint256 public constant _inverseBasisPoint = 1000;
@@ -46,16 +47,16 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
     mapping(address => mapping(address => IUniswapV2Router02)) public designatedSwapRouters;
 
     // The LTV ratio for each token usable as collateral
-    mapping(address => uint256) loanToValueRatios;
+    mapping(address => uint256) public loanToValueRatios;
 
-    PremiaLiquidityPool[] public callPools;
-    PremiaLiquidityPool[] public putPools;
+    EnumerableSet.AddressSet private _callPools;
+    EnumerableSet.AddressSet private _putPools;
 
     ///////////
     // Event //
     ///////////
 
-    event PermissionsUpdated(address indexed addr, bool canBorrow, bool canWrite, bool isWhitelistedToken, bool isWhitelistedPool);
+    event PermissionsUpdated(address indexed addr, bool canBorrow, bool canWrite, bool isWhitelistedToken, bool isWhitelistedPool, bool isWhitelistedOptionContract);
     event PremiaMiningUpdated(address indexed _addr);
 
     //////////////////////////////////////////////////
@@ -82,10 +83,31 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
                                     _permissions[i].canBorrow, 
                                     _permissions[i].canWrite, 
                                     _permissions[i].isWhitelistedToken, 
-                                    _permissions[i].isWhitelistedPool);
+                                    _permissions[i].isWhitelistedPool,
+                                    _permissions[i].isWhitelistedOptionContract);
         }
     }
-    
+
+    function addPools(address[] memory _callPoolsAddr, address[] memory _putPoolsAddr) external onlyOwner {
+        for (uint256 i=0; i < _callPoolsAddr.length; i++) {
+            _callPools.add(_callPoolsAddr[i]);
+        }
+
+        for (uint256 i=0; i < _putPoolsAddr.length; i++) {
+            _putPools.add(_putPoolsAddr[i]);
+        }
+    }
+
+    function removePools(address[] memory _callPoolsAddr, address[] memory _putPoolsAddr) external onlyOwner {
+        for (uint256 i=0; i < _callPoolsAddr.length; i++) {
+            _callPools.remove(_callPoolsAddr[i]);
+        }
+
+        for (uint256 i=0; i < _putPoolsAddr.length; i++) {
+            _putPools.remove(_putPoolsAddr[i]);
+        }
+    }
+
     /// @notice Set a custom swap path for a token
     /// @param _collateralToken The collateral token
     /// @param _token The token
@@ -120,28 +142,26 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
     // View //
     //////////
 
-    function getPermissions(address _user) external view returns (Permissions memory) {
-        return permissions[_user];
+    function getCallPools() external view returns(IPremiaLiquidityPool[] memory) {
+        uint256 length = _callPools.length();
+        IPremiaLiquidityPool[] memory result = new IPremiaLiquidityPool[](length);
+
+        for (uint256 i=0; i < length; i++) {
+            result[i] = IPremiaLiquidityPool(_callPools.at(i));
+        }
+
+        return result;
     }
 
-    function getCustomSwapPath(address _fromToken, address _toToken) external view returns (address[] memory) {
-        return customSwapPaths[_fromToken][_toToken];
-    }
+    function getPutPools() external view returns(IPremiaLiquidityPool[] memory) {
+        uint256 length = _putPools.length();
+        IPremiaLiquidityPool[] memory result = new IPremiaLiquidityPool[](length);
 
-    function getDesignedSwapRouter(address _fromToken, address _toToken) external view returns (IUniswapV2Router02) {
-        return designatedSwapRouters[_fromToken][_toToken];
-    }
+        for (uint256 i=0; i < length; i++) {
+            result[i] = IPremiaLiquidityPool(_putPools.at(i));
+        }
 
-    function getLoanToValueRatio(address _token) external view returns (uint256) {
-        return loanToValueRatios[_token];
-    }
-
-    function getCallPools() external view returns (PremiaLiquidityPool[] memory) {
-        return callPools;
-    }
-
-    function getPutPools() external view returns (PremiaLiquidityPool[] memory) {
-        return putPools;
+        return result;
     }
 
     //////////
@@ -152,7 +172,7 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
         for (uint256 i=0; i < _deposits.length; i++) {
             require(permissions[_deposits[i].pool].isWhitelistedPool, "Pool not whitelisted");
 
-            PremiaLiquidityPool(_deposits[i].pool).depositFrom(msg.sender, _deposits[i].tokens, _deposits[i].amounts, _deposits[i].lockExpiration);
+            IPremiaLiquidityPool(_deposits[i].pool).depositFrom(msg.sender, _deposits[i].tokens, _deposits[i].amounts, _deposits[i].lockExpiration);
 
             if (address(premiaMining) != address(0)) {
                 for (uint256 j=0; j < _deposits[i].tokens.length; j++) {
@@ -166,7 +186,7 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
         for (uint256 i=0; i < _withdrawals.length; i++) {
             require(permissions[_withdrawals[i].pool].isWhitelistedPool, "Pool not whitelisted");
 
-            PremiaLiquidityPool(_withdrawals[i].pool).withdrawExpiredFrom(msg.sender, _withdrawals[i].tokens);
+            IPremiaLiquidityPool(_withdrawals[i].pool).withdrawExpiredFrom(msg.sender, _withdrawals[i].tokens);
         }
     }
 }

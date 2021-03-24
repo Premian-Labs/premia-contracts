@@ -9,6 +9,7 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '../interface/IPremiaLiquidityPool.sol';
 import '../interface/IPremiaOption.sol';
 import '../interface/IBlackScholesPriceGetter.sol';
+import "../interface/IPremiaPoolController.sol";
 
 contract PremiaAMM is Ownable {
   using SafeERC20 for IERC20;
@@ -18,9 +19,6 @@ contract PremiaAMM is Ownable {
   // The oracle used to get black scholes prices on chain.
   IBlackScholesPriceGetter public blackScholesOracle;
 
-  IPremiaLiquidityPool[] public callPools;
-  IPremiaLiquidityPool[] public putPools;
-
   IERC20 public constant WETH = IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
   uint256 public blackScholesWeight = 500; // 500 = 50%
@@ -28,22 +26,26 @@ contract PremiaAMM is Ownable {
 
   uint256 public constant inverseBasisPoint = 1000;
 
+  IPremiaPoolController public controller;
+
   /// @notice Set new weights for pricing function, total must be 1,000
   /// @param _blackScholesWeight Black scholes weighting
   /// @param _constantProductWeight Weighting based on reserves
-  function setPriceWeights(uint256 _blackScholesWeight, uint256 _constantProductWeight) external onlyOwner {
+  function setPriceWeights(IPremiaPoolController _controller, uint256 _blackScholesWeight, uint256 _constantProductWeight) external onlyOwner {
     require(_blackScholesWeight + _constantProductWeight == inverseBasisPoint);
+    controller = _controller;
     blackScholesWeight = _blackScholesWeight;
     constantProductWeight = _constantProductWeight;
   }
 
-  function getCallReserves(address _optionContract, uint256 _optionId) public view returns (uint256) {
+  function getCallReserves(address _optionContract, uint256 _optionId) external view returns (uint256) {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     return _getCallReserves(data.token, data.expiration);
   }
 
   function _getCallReserves(address _token, uint256 _expiration) internal view returns (uint256) {
     uint256 reserveAmount;
+    IPremiaLiquidityPool[] memory callPools = controller.getCallPools();
     for (uint256 i = 0; i < callPools.length; i++) {
       IPremiaLiquidityPool pool = callPools[i];
       reserveAmount = reserveAmount + pool.getWritableAmount(_token, _expiration);
@@ -52,31 +54,33 @@ contract PremiaAMM is Ownable {
     return reserveAmount;
   }
 
-  function getPutReserves(address _optionContract, uint256 _optionId) public view returns (uint256 reserveAmount) {
+  function getPutReserves(address _optionContract, uint256 _optionId) external view returns (uint256 reserveAmount) {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     return _getPutReserves(IPremiaOption(_optionContract).denominator(), data.expiration);
   }
 
   function _getPutReserves(address _denominator, uint256 _expiration) internal view returns (uint256) {
     uint256 reserveAmount;
-    for (uint256 i = 0; i < callPools.length; i++) {
-      IPremiaLiquidityPool pool = callPools[i];
+    IPremiaLiquidityPool[] memory putPools = controller.getPutPools();
+    for (uint256 i = 0; i < putPools.length; i++) {
+      IPremiaLiquidityPool pool = putPools[i];
       reserveAmount = reserveAmount + pool.getWritableAmount(_denominator, _expiration);
     }
 
     return reserveAmount;
   }
 
-  function getCallMaxBuy(address _optionContract, uint256 _optionId) public view returns (uint256) {
+  function getCallMaxBuy(address _optionContract, uint256 _optionId) external view returns (uint256) {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
-    return _getCallMaxBuy(data);
+    return _getCallMaxBuy(data.token, data.expiration);
   }
 
-  function _getCallMaxBuy(IPremiaOption.OptionData memory _data) internal view returns (uint256) {
+  function _getCallMaxBuy(address _token, uint256 _expiration) internal view returns (uint256) {
     uint256 maxBuy;
+    IPremiaLiquidityPool[] memory callPools = controller.getCallPools();
     for (uint256 i = 0; i < callPools.length; i++) {
       IPremiaLiquidityPool pool = callPools[i];
-      uint256 reserves = pool.getWritableAmount(_data.token, _data.expiration);
+      uint256 reserves = pool.getWritableAmount(_token, _expiration);
 
       if (reserves > maxBuy) {
         maxBuy = reserves; 
@@ -86,16 +90,17 @@ contract PremiaAMM is Ownable {
     return maxBuy;
   }
 
-  function getCallMaxSell(address _optionContract, uint256 _optionId) public view returns (uint256) {
+  function getCallMaxSell(address _optionContract, uint256 _optionId) external view returns (uint256) {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
-    return _getCallMaxSell(data);
+    return _getCallMaxSell(data.token, data.expiration);
   }
 
-  function _getCallMaxSell(IPremiaOption.OptionData memory _data) internal view returns (uint256) {
+  function _getCallMaxSell(address _token, uint256 _expiration) internal view returns (uint256) {
     uint256 maxSell;
+    IPremiaLiquidityPool[] memory callPools = controller.getCallPools();
     for (uint256 i = 0; i < callPools.length; i++) {
       IPremiaLiquidityPool pool = callPools[i];
-      uint256 reserves = pool.getUnwritableAmount(_data.token, _data.expiration);
+      uint256 reserves = pool.getUnwritableAmount(_token, _expiration);
 
       if (reserves > maxSell) {
         maxSell = reserves; 
@@ -105,16 +110,17 @@ contract PremiaAMM is Ownable {
     return maxSell;
   }
 
-  function getPutMaxBuy(address _optionContract, uint256 _optionId) public view returns (uint256) {
+  function getPutMaxBuy(address _optionContract, uint256 _optionId) external view returns (uint256) {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
-    return _getPutMaxBuy(data);
+    return _getPutMaxBuy(data.token, data.expiration);
   }
 
-  function _getPutMaxBuy(IPremiaOption.OptionData memory _data) internal view returns (uint256) {
+  function _getPutMaxBuy(address _token, uint256 _expiration) internal view returns (uint256) {
     uint256 maxBuy;
+    IPremiaLiquidityPool[] memory putPools = controller.getPutPools();
     for (uint256 i = 0; i < putPools.length; i++) {
       IPremiaLiquidityPool pool = putPools[i];
-      uint256 reserves = pool.getWritableAmount(_data.token, _data.expiration);
+      uint256 reserves = pool.getWritableAmount(_token, _expiration);
 
       if (reserves > maxBuy) {
         maxBuy = reserves; 
@@ -124,16 +130,17 @@ contract PremiaAMM is Ownable {
     return maxBuy;
   }
 
-  function getPutMaxSell(address _optionContract, uint256 _optionId) public view returns (uint256) {
+  function getPutMaxSell(address _optionContract, uint256 _optionId) external view returns (uint256) {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
-    return _getPutMaxSell(data);
+    return _getPutMaxSell(data.token, data.expiration);
   }
 
-  function _getPutMaxSell(IPremiaOption.OptionData memory _data) internal view returns (uint256) {
+  function _getPutMaxSell(address _token, uint256 _expiration) internal view returns (uint256) {
     uint256 maxSell;
+    IPremiaLiquidityPool[] memory putPools = controller.getPutPools();
     for (uint256 i = 0; i < putPools.length; i++) {
-      IPremiaLiquidityPool pool = putPools[i];
-      uint256 reserves = pool.getUnwritableAmount(_data.token, _data.expiration);
+      IPremiaLiquidityPool pool = IPremiaLiquidityPool(putPools[i]);
+      uint256 reserves = pool.getUnwritableAmount(_token, _expiration);
 
       if (reserves > maxSell) {
         maxSell = reserves; 
@@ -152,8 +159,7 @@ contract PremiaAMM is Ownable {
       return blackScholesPrice * _amountIn * inverseBasisPoint / blackScholesWeight;
   }
 
-  function priceOption(IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount, address _premiumToken)
-    public view returns (uint256 optionPrice) {
+  function priceOption(IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount, address _premiumToken) external view returns (uint256 optionPrice) {
     IPremiaOption.OptionData memory data = _optionContract.optionData(_optionId);
     return _priceOption(data.token, _optionContract.denominator(), data.strikePrice, data.expiration, data.isCall, _side, _amount, _premiumToken);
   }
@@ -199,12 +205,12 @@ contract PremiaAMM is Ownable {
       return price;
   }
 
-  function _getLiquidityPool(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _amount) internal view returns (IPremiaLiquidityPool) {
-    IPremiaLiquidityPool[] memory liquidityPools = _data.isCall ? callPools : putPools;
+  function _getLiquidityPool(address _token, address _denominator, uint256 _expiration, bool _isCall, uint256 _amount) internal view returns (IPremiaLiquidityPool) {
+    IPremiaLiquidityPool[] memory liquidityPools = _isCall ? controller.getCallPools() : controller.getPutPools();
 
     for (uint256 i = 0; i < liquidityPools.length; i++) {
       IPremiaLiquidityPool pool = liquidityPools[i];
-      uint256 amountAvailable = pool.getWritableAmount(_data.isCall ? _data.token : _optionContract.denominator(), _data.expiration);
+      uint256 amountAvailable = pool.getWritableAmount(_isCall ? _token : _denominator, _expiration);
 
       if (amountAvailable >= _amount && address(pool) != address(msg.sender)) {
         return pool;
@@ -215,8 +221,9 @@ contract PremiaAMM is Ownable {
   }
 
   function buy(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _maxPremiumAmount, address _referrer) external {
+    require(controller.permissions(_optionContract).isWhitelistedOptionContract, "Option contract not whitelisted.");
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
-    IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data, IPremiaOption(_optionContract), _amount);
+    IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data.token, IPremiaOption(_optionContract).denominator(), data.expiration, data.isCall, _amount);
 
     uint256 optionPrice = _priceOption(data.token, IPremiaOption(_optionContract).denominator(), data.strikePrice, data.expiration, data.isCall, SaleSide.Buy, _amount, _premiumToken);
 
@@ -227,8 +234,9 @@ contract PremiaAMM is Ownable {
   }
 
   function sell(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _minPremiumAmount) external {
+    require(controller.permissions(_optionContract).isWhitelistedOptionContract, "Option contract not whitelisted.");
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
-    IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data, IPremiaOption(_optionContract), _amount);
+    IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data.token, IPremiaOption(_optionContract).denominator(), data.expiration, data.isCall, _amount);
 
     uint256 optionPrice = _priceOption(data.token, IPremiaOption(_optionContract).denominator(), data.strikePrice, data.expiration, data.isCall, SaleSide.Sell, _amount, _premiumToken);
 
