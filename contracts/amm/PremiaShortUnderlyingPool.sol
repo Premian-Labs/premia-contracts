@@ -14,8 +14,9 @@ contract PremiaShortUnderlyingPool is PremiaLiquidityPool {
   // token address => index
   mapping(address => uint256) loanQueuesLast;
 
-  constructor(IPremiaPoolController _controller) PremiaLiquidityPool(_controller) {}
-
+  constructor(IPremiaPoolController _controller, IPriceOracleGetter _priceOracle, ILendingRateOracleGetter _lendingRateOracle) 
+    PremiaLiquidityPool(_controller, _priceOracle, _lendingRateOracle) {}
+    
   function _enqueueLoan(Loan memory _loan) internal {
       loanQueuesLast[_loan.token] += 1;
       loansTaken[_loan.token][loanQueuesLast[_loan.token]] = _loan;

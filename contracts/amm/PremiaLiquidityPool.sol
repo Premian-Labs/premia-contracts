@@ -9,6 +9,7 @@ import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
 import '../interface/IPremiaOption.sol';
 import '../interface/IPriceOracleGetter.sol';
+import '../interface/ILendingRateOracleGetter.sol';
 import "../interface/IPremiaPoolController.sol";
 import "../interface/IPoolControllerChild.sol";
 import '../uniswapV2/interfaces/IUniswapV2Router02.sol';
@@ -23,9 +24,11 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     address collateralToken;
     uint256 amountTokenOutstanding;
     uint256 amountCollateralTokenHeld;
+    uint256 creationTime;
     uint256 lockExpiration;
     uint256 tokenPrice;
     uint256 collateralPrice;
+    uint256 lendingRate;
   }
 
   // Offset to add to Unix timestamp to make it Fri 23:59:59 UTC
@@ -51,9 +54,13 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   uint256 public constant _maxUnlockReward = 250;  // 250 = 25% fee
 
   uint256 public constant _inverseBasisPoint = 1000;
+  uint256 public constant WAD = 1e18;
+  uint256 public constant WAD_RAY_RATIO = 1e9;
+  uint256 public constant SECONDS_PER_YEAR = 365 days;
 
   IPremiaPoolController public controller;
   IPriceOracleGetter public priceOracle;
+  ILendingRateOracleGetter public lendingRateOracle;
 
   // user address -> token address -> expiration -> amount
   mapping(address => mapping(address => mapping (uint256 => uint256))) public depositsByUser;
@@ -79,7 +86,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
   event Deposit(address indexed user, address indexed token,uint256 lockExpiration, uint256 amountToken);
   event Withdraw(address indexed user, address indexed token, uint256 amountToken);
-  event Borrow(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed lockExpiration, uint256 amount);
+  event Borrow(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed lockExpiration, uint256 amount, uint256 lendingRate);
   event RepayLoan(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed amount);
   event LiquidateLoan(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed amount, uint256 rewardFee);
   event WriteOption(address indexed receiver, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
@@ -91,8 +98,10 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   //////////////////////////////////////////////////
   //////////////////////////////////////////////////
 
-  constructor(IPremiaPoolController _controller) {
+  constructor(IPremiaPoolController _controller, IPriceOracleGetter _priceOracle, ILendingRateOracleGetter _lendingRateOracle) {
     controller = _controller;
+    priceOracle = _priceOracle;
+    lendingRateOracle = _lendingRateOracle;
   }
 
   //////////////////////////////////////////////////
@@ -153,6 +162,12 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   /// @param _priceOracleAddress The address of the oracle
   function setPriceOracle(address _priceOracleAddress) external onlyOwner {
     priceOracle = IPriceOracleGetter(_priceOracleAddress);
+  }
+
+  /// @notice Set the address of the oracle used for getting on-chain lending rates
+  /// @param _lendingRateOracleAddress The address of the oracle
+  function setLendingRateOracle(address _lendingRateOracleAddress) external onlyOwner {
+    lendingRateOracle = ILendingRateOracleGetter(_lendingRateOracleAddress);
   }
 
   //////////////////////////////////////////////////
@@ -258,7 +273,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
   function getLoanableAmount(address _token, uint256 _lockExpiration) public virtual returns (uint256) {
     // TODO: Do we want to limit the amount loaned vs. the total amount deposited?
-    // Or, do we allow the full amount deposited to be loaned - if so, we need to introduce borrow/lend APY?
+    // Or, do we allow the full amount deposited to be loaned?
+    // Aave sets their max borrow rate to 25% of available capital. Perhaps we copy and make it updatable.
 
     return getWritableAmount(_token, _lockExpiration);
   }
@@ -271,16 +287,36 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     return getEquivalentCollateral(_loan.tokenPrice, _loan.collateralPrice, _amount);
   }
 
-  function getRequiredCollateral(address _collateralToken, uint256 _tokenPrice, uint256 _collateralPrice, uint256 _amount) public view returns (uint256) {
-    uint256 equivalentCollateral = getEquivalentCollateral(_tokenPrice, _collateralPrice, _amount);
-    uint256 ltvRatio = controller.getLoanToValueRatio(_collateralToken);
-    return equivalentCollateral * _inverseBasisPoint / ltvRatio;
+  function getRequiredCollateralToBorrowLoan(Loan memory _loan, uint256 _amount) public view returns (uint256) {
+    uint256 expectedTime = _loan.lockExpiration - _loan.creationTime;
+    return getRequiredCollateral(_loan.collateralToken,
+                                 _loan.tokenPrice,
+                                 _loan.collateralPrice,
+                                 _loan.amountTokenOutstanding,
+                                 _loan.lendingRate,
+                                 expectedTime);
   }
 
-  function getRequiredCollateralForLoan(Loan memory _loan, uint256 _amount) public view returns (uint256) {
-    uint256 equivalentCollateral = getEquivalentCollateralForLoan(_loan, _amount);
-    uint256 ltvRatio = controller.getLoanToValueRatio(_loan.collateralToken);
-    return equivalentCollateral * _inverseBasisPoint / ltvRatio;
+  function getRequiredCollateralToRepayLoan(Loan memory _loan, uint256 _amount) public view returns (uint256) {
+    uint256 timeElapsed = block.timestamp - _loan.creationTime;
+    return getRequiredCollateral(_loan.collateralToken,
+                                 _loan.tokenPrice,
+                                 _loan.collateralPrice,
+                                 _loan.amountTokenOutstanding,
+                                 _loan.lendingRate,
+                                 timeElapsed);
+  }
+
+  function getRequiredCollateral(address _collateralToken,
+                                 uint256 _tokenPrice,
+                                 uint256 _collateralPrice,
+                                 uint256 _amount,
+                                 uint256 _lendingRate,
+                                 uint256 _loanLengthInSeconds) public view returns (uint256) {
+    uint256 equivalentCollateral = getEquivalentCollateral(_tokenPrice, _collateralPrice, _amount);
+    uint256 ltvRatio = controller.getLoanToValueRatio(_collateralToken);
+    uint256 expectedCompoundInterest = calculateCompoundInterest(_lendingRate, _loanLengthInSeconds);
+    return (equivalentCollateral * _inverseBasisPoint / ltvRatio) + expectedCompoundInterest;
   }
 
   function _unlockExpired(address _token) internal returns(uint256) {
@@ -375,6 +411,27 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
       revert();
   }
 
+  function _lendCapital(Loan memory _loan) internal {                   
+    uint256 loanableAmount = getLoanableAmount(_loan.token, _loan.lockExpiration);
+    uint256 collateralRequired = getRequiredCollateralToBorrowLoan(_loan, _loan.amountTokenOutstanding);
+
+    require(loanableAmount >= _loan.amountTokenOutstanding, "Amount too high.");
+    require(collateralRequired <= _loan.amountCollateralTokenHeld, "Not enough collateral.");
+
+    _subtractLockedAmounts(_loan.token, _loan.lockExpiration, _loan.amountTokenOutstanding);
+
+    amountsLockedByExpirationPerToken[_loan.collateralToken][_loan.lockExpiration] += _loan.amountCollateralTokenHeld;
+    depositsByUser[msg.sender][_loan.collateralToken][_loan.lockExpiration] += _loan.amountCollateralTokenHeld;
+
+    IERC20(_loan.token).safeTransferFrom(address(this), msg.sender, _loan.amountTokenOutstanding);
+    IERC20(_loan.collateralToken).safeTransferFrom(msg.sender, address(this), _loan.amountCollateralTokenHeld);
+
+    bytes32 hash = getLoanHash(_loan);
+    loans[hash] = _loan;
+
+    emit Borrow(hash, msg.sender, _loan.token, _loan.lockExpiration, _loan.amountTokenOutstanding, _loan.lendingRate);
+  }
+
   function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration)
     external virtual nonReentrant returns (Loan memory) {
     require(controller.getLoanToValueRatio(_collateralToken) > 0, "Collateral token not allowed.");
@@ -382,6 +439,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     uint256 tokenPrice = priceOracle.getAssetPrice(_token);
     uint256 collateralPrice = priceOracle.getAssetPrice(_collateralToken);
+    uint256 lendingRate = rayToWad(lendingRateOracle.getMarketBorrowRate(_token));
 
     Loan memory loan = Loan(address(this),
                             msg.sender,
@@ -389,29 +447,13 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
                             _collateralToken,
                             _amountToken,
                             _amountCollateral,
+                            block.timestamp,
                             _lockExpiration,
                             tokenPrice,
-                            collateralPrice);
-                            
-    uint256 loanableAmount = getLoanableAmount(_token, _lockExpiration);
-    uint256 collateralRequired = getRequiredCollateralForLoan(loan, _amountToken);
+                            collateralPrice,
+                            lendingRate);
 
-    require(loanableAmount >= _amountToken, "Amount too high.");
-    require(collateralRequired <= _amountCollateral, "Not enough collateral.");
-
-    _subtractLockedAmounts(_token, _lockExpiration, _amountToken);
-
-    amountsLockedByExpirationPerToken[_collateralToken][_lockExpiration] += _amountCollateral;
-    depositsByUser[msg.sender][_collateralToken][_lockExpiration] += _amountCollateral;
-
-    IERC20(_token).safeTransferFrom(address(this), msg.sender, _amountToken);
-    IERC20(_collateralToken).safeTransferFrom(msg.sender, address(this), _amountCollateral);
-
-    bytes32 hash = getLoanHash(loan);
-
-    loans[hash] = loan;
-
-    emit Borrow(hash, msg.sender, _token, _lockExpiration, _amountToken);
+    _lendCapital(loan);
 
     return loan;
   }
@@ -424,7 +466,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   function repay(bytes32 _hash, uint256 _amount) public virtual nonReentrant returns (uint256) {
     Loan storage loan = loans[_hash];
 
-    uint256 collateralOut = getRequiredCollateralForLoan(loan, _amount);
+    uint256 collateralOut = getRequiredCollateralToRepayLoan(loan, _amount);
 
     require(depositsByUser[loan.borrower][loan.collateralToken][loan.lockExpiration] >= collateralOut, "Not enough collateral.");
 
@@ -672,5 +714,43 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     }
 
     emit UnlockCollateral(msg.sender, _optionContract, _optionId, _amount, tokenRewardFee, denominatorRewardFee);
+  }
+
+  function rayToWad(uint256 a) internal pure returns (uint256) {
+      uint256 halfRatio = WAD_RAY_RATIO / 2;
+      return (halfRatio + a) / WAD_RAY_RATIO;
+  }
+
+  /**
+  * @dev function to calculate the interest using a compounded interest rate formula
+  * @param _rate the interest rate
+  * @param _expiration the timestamp of the expiration of the loan
+  * @return the interest rate compounded during the timeDelta
+  **/
+  function calculateExpectedCompoundInterest(uint256 _rate, uint256 _expiration) external view returns (uint256) {
+      uint256 timeDifference = _expiration - block.timestamp;
+      return calculateCompoundInterest(_rate, timeDifference);
+  }
+
+  /**
+  * @dev function to calculate the interest using a compounded interest rate formula
+  * @param _rate the interest rate
+  * @param _loanCreationDate the timestamp the loan was created
+  * @return the interest rate compounded during the timeDelta
+  **/
+  function calculateRealizedCompoundInterest(uint256 _rate, uint256 _loanCreationDate) external view returns (uint256) {
+      uint256 timeDifference = block.timestamp - _loanCreationDate;
+      return calculateCompoundInterest(_rate, timeDifference);
+  }
+
+  /**
+  * @dev function to calculate the interest using a compounded interest rate formula
+  * @param _rate the interest rate
+  * @param _loanLengthInSeconds the length of the loan in seconds
+  * @return the interest rate compounded during the timeDelta
+  **/
+  function calculateCompoundInterest(uint256 _rate, uint256 _loanLengthInSeconds) public view returns (uint256) {
+      uint256 ratePerSecond = _rate / SECONDS_PER_YEAR;
+      return ratePerSecond + (WAD ** _loanLengthInSeconds);
   }
 }

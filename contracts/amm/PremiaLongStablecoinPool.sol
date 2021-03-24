@@ -10,7 +10,8 @@ import '../interface/IPremiaPoolController.sol';
 contract PremiaLongStablecoinPool is PremiaLiquidityPool {
   IPremiaAMM amm;
 
-  constructor(IPremiaPoolController _controller) PremiaLiquidityPool(_controller) {}
+  constructor(IPremiaPoolController _controller, IPriceOracleGetter _priceOracle, ILendingRateOracleGetter _lendingRateOracle)
+    PremiaLiquidityPool(_controller, _priceOracle, _lendingRateOracle) {}
 
   function getLoanableAmount(address _token, uint256 _lockExpiration) public override returns (uint256) {
     return 0;
