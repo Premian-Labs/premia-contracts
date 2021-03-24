@@ -74,9 +74,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   // token => expiration => amount
   mapping(address => mapping(uint256 => uint256)) public amountsLockedByExpirationPerToken;
 
-  // token => expiration => amount
-  mapping(address => mapping(uint256 => uint256)) public amountsWrittenByExpirationPerToken;
-
   // optionContract => optionId => amountTokenOutstanding
   mapping(address => mapping(uint256 => uint256)) public optionsOutstanding;
     
@@ -195,8 +192,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     return nextExpiration;
   }
   
-  function getUnwritableAmount(address _token, uint256 _lockExpiration) public view returns (uint256) {
-    return amountsWrittenByExpirationPerToken[_token][_lockExpiration];
+  function getUnwritableAmount(address _optionContract, uint256 _optionId) public view returns (uint256) {
+    return optionsOutstanding[_optionContract][_optionId];
   }
 
   function getWritableAmount(address _token, uint256 _lockExpiration) public view returns (uint256) {
@@ -583,7 +580,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
-    outstanding = outstanding + _amount;
+    optionsOutstanding[_optionContract][_optionId] = outstanding + _amount;
 
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     IPremiaOption.OptionWriteArgs memory writeArgs = IPremiaOption.OptionWriteArgs({
@@ -595,8 +592,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     });
 
     _subtractLockedAmounts(data.token, data.expiration, _amount);
-
-    amountsWrittenByExpirationPerToken[data.token][data.expiration] += _amount;
 
     IPremiaOption(_optionContract).writeOption(data.token, writeArgs, _referrer);
     IPremiaOption(_optionContract).safeTransferFrom(address(this), _receiver, _optionId, _amount, "");
@@ -614,6 +609,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount) public virtual nonReentrant {
     require(controller.permissions(msg.sender).canWrite, "Writer not whitelisted.");
     require(controller.permissions(_optionContract).isWhitelistedOptionContract, "Option contract not whitelisted.");
+    require(optionsOutstanding[_optionContract][_optionId] >= _amount, "Not enough written.");
 
     IPremiaOption optionContract = IPremiaOption(_optionContract);
     IPremiaOption.OptionData memory data = optionContract.optionData(_optionId);
@@ -621,10 +617,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     address denominatorToken = optionContract.denominator();
     uint256 preTokenBalance = IERC20(data.token).balanceOf(address(this));
     uint256 preDenominatorBalance = IERC20(denominatorToken).balanceOf(address(this));
-    uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
-    optionsOutstanding[_optionContract][_optionId] = outstanding - _amount;
-    amountsWrittenByExpirationPerToken[data.token][data.expiration] -= _amount;
+    optionsOutstanding[_optionContract][_optionId] -= _amount;
 
     if (data.expiration > block.timestamp) {
       IPremiaOption(_optionContract).withdraw(_optionId);
@@ -634,29 +628,23 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     uint256 tokenWithdrawn = IERC20(data.token).balanceOf(address(this)) - preTokenBalance;
     uint256 denominatorWithdrawn = IERC20(denominatorToken).balanceOf(address(this)) - preDenominatorBalance;
-
-    _postWithdrawal(_optionContract, _optionId, _amount, tokenWithdrawn, denominatorWithdrawn);
     
-    // TODO: the following should probably not use `max expiration` or `date.expiration`, but rather the original date the amount
-    // was locked until. However, this is not currently saved anywhere.
+    // TODO: the following should probably not use `date.expiration`, but rather the original date the amount
+    // was locked until. However, it is not possible to save this amount, for each trade.
+    // It may be possible to store an average over all trades in a specific option id, but this won't
+    // be entirely accurate either.
     //
-    // The following situation shows the importance of fixing this issue:
+    // The following situation shows the issue:
     // IF `data.expiration` is used:
     // User A deposits Token A locked for 1 Year.
     // User B immediately purchases call options of Token A, with expiration 1 week out, for the full amount deposited by User A.
     // 1 week later, User A's tokens are unlocked, but the user still cannot withdraw their tokens for 51 weeks
     // User A's tokens can no longer be used to write options on the market, and cannot be withdrawn for 51 weeks.
-    // OR
-    // IF `maxExpiration` is used:
-    // User A deposits Token A locked for 2 weeks.
-    // User B immediately purchases call options of Token A, with expiration 1 week out, for the full amount deposited by User A.
-    // 1 week later, User A's tokens are locked for 52 weeks, but the user can withdraw their tokens for 1 week.
-    // Meaning if the user tries to withdraw after the total 2 weeks, there may not be enough liquidity available for the next 51 weeks.
 
-    uint256 maxExpiration = _getNextExpiration() + _maxExpiration;
+    amountsLockedByExpirationPerToken[data.token][data.expiration] += tokenWithdrawn;
+    amountsLockedByExpirationPerToken[denominatorToken][data.expiration] += denominatorWithdrawn;
 
-    amountsLockedByExpirationPerToken[data.token][maxExpiration] += tokenWithdrawn;
-    amountsLockedByExpirationPerToken[denominatorToken][maxExpiration] += denominatorWithdrawn;
+    _postWithdrawal(_optionContract, _optionId, _amount, tokenWithdrawn, denominatorWithdrawn);
 
     emit UnwindOption(_sender, msg.sender, _optionContract, _optionId, _amount);
   }
@@ -667,45 +655,39 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     require(data.expiration > block.timestamp, "Option is not expired yet.");
     require(controller.permissions(_optionContract).isWhitelistedOptionContract, "Option contract not whitelisted.");
+    require(optionsOutstanding[_optionContract][_optionId] >= _amount, "Not enough written.");
 
     address denominatorToken = optionContract.denominator();
     uint256 preTokenBalance = IERC20(data.token).balanceOf(address(this));
     uint256 preDenominatorBalance = IERC20(denominatorToken).balanceOf(address(this));
-    uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
-    optionsOutstanding[_optionContract][_optionId] = outstanding - _amount;
-    amountsWrittenByExpirationPerToken[data.token][data.expiration] -= _amount;
+    optionsOutstanding[_optionContract][_optionId] -= _amount;
 
     IPremiaOption(_optionContract).withdraw(_optionId);
 
     uint256 tokenWithdrawn = IERC20(data.token).balanceOf(address(this)) - preTokenBalance;
     uint256 denominatorWithdrawn = IERC20(denominatorToken).balanceOf(address(this)) - preDenominatorBalance;
 
-    _postWithdrawal(_optionContract, _optionId, _amount, tokenWithdrawn, denominatorWithdrawn);
-
     uint256 tokenRewardFee = (tokenWithdrawn * _inverseBasisPoint) / _unlockReward;
     uint256 denominatorRewardFee = (denominatorWithdrawn * _inverseBasisPoint) / _unlockReward;
+
+    uint256 tokenIncrease = tokenWithdrawn - tokenRewardFee;
+    uint256 denominatorIncrease = denominatorWithdrawn - denominatorRewardFee;
     
-    // TODO: the following should probably not use `max expiration` or `date.expiration`, but rather the original date the amount
-    // was locked until. However, this is not currently saved anywhere.
+    // TODO: the following should probably not use `date.expiration`, but rather the original date the amount
+    // was locked until. However, it is not possible to save this amount, for each trade.
+    // It may be possible to store an average over all trades in a specific option id, but this won't
+    // be entirely accurate either.
     //
-    // The following situation shows the importance of fixing this issue:
+    // The following situation shows the issue:
     // IF `data.expiration` is used:
     // User A deposits Token A locked for 1 Year.
     // User B immediately purchases call options of Token A, with expiration 1 week out, for the full amount deposited by User A.
     // 1 week later, User A's tokens are unlocked, but the user still cannot withdraw their tokens for 51 weeks
     // User A's tokens can no longer be used to write options on the market, and cannot be withdrawn for 51 weeks.
-    // OR
-    // IF `maxExpiration` is used:
-    // User A deposits Token A locked for 2 weeks.
-    // User B immediately purchases call options of Token A, with expiration 1 week out, for the full amount deposited by User A.
-    // 1 week later, User A's tokens are locked for 52 weeks, but the user can withdraw their tokens for 1 week.
-    // Meaning if the user tries to withdraw after the total 2 weeks, there may not be enough liquidity available for the next 51 weeks.
 
-    uint256 maxExpiration = _getNextExpiration() + _maxExpiration;
-
-    amountsLockedByExpirationPerToken[data.token][maxExpiration] += (tokenWithdrawn - tokenRewardFee);
-    amountsLockedByExpirationPerToken[denominatorToken][maxExpiration] += (denominatorWithdrawn - denominatorRewardFee);
+    amountsLockedByExpirationPerToken[data.token][data.expiration] += tokenIncrease;
+    amountsLockedByExpirationPerToken[denominatorToken][data.expiration] += denominatorIncrease;
     
     if (tokenWithdrawn > 0 && denominatorWithdrawn > 0) {
       IERC20(data.token).safeTransferFrom(address(this), msg.sender, tokenRewardFee);
@@ -715,6 +697,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     } else {
       IERC20(denominatorToken).safeTransferFrom(address(this), msg.sender, denominatorRewardFee);
     }
+
+    _postWithdrawal(_optionContract, _optionId, _amount, tokenIncrease, denominatorIncrease);
 
     emit UnlockCollateral(msg.sender, _optionContract, _optionId, _amount, tokenRewardFee, denominatorRewardFee);
   }

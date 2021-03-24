@@ -91,16 +91,12 @@ contract PremiaAMM is Ownable {
   }
 
   function getCallMaxSell(address _optionContract, uint256 _optionId) external view returns (uint256) {
-    IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
-    return _getCallMaxSell(data.token, data.expiration);
-  }
-
-  function _getCallMaxSell(address _token, uint256 _expiration) internal view returns (uint256) {
-    uint256 maxSell;
     IPremiaLiquidityPool[] memory callPools = controller.getCallPools();
+    
+    uint256 maxSell;
     for (uint256 i = 0; i < callPools.length; i++) {
       IPremiaLiquidityPool pool = callPools[i];
-      uint256 reserves = pool.getUnwritableAmount(_token, _expiration);
+      uint256 reserves = pool.getUnwritableAmount(_optionContract, _optionId);
 
       if (reserves > maxSell) {
         maxSell = reserves; 
@@ -131,16 +127,12 @@ contract PremiaAMM is Ownable {
   }
 
   function getPutMaxSell(address _optionContract, uint256 _optionId) external view returns (uint256) {
-    IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
-    return _getPutMaxSell(data.token, data.expiration);
-  }
-
-  function _getPutMaxSell(address _token, uint256 _expiration) internal view returns (uint256) {
-    uint256 maxSell;
     IPremiaLiquidityPool[] memory putPools = controller.getPutPools();
+
+    uint256 maxSell;
     for (uint256 i = 0; i < putPools.length; i++) {
       IPremiaLiquidityPool pool = IPremiaLiquidityPool(putPools[i]);
-      uint256 reserves = pool.getUnwritableAmount(_token, _expiration);
+      uint256 reserves = pool.getUnwritableAmount(_optionContract, _optionId);
 
       if (reserves > maxSell) {
         maxSell = reserves; 
