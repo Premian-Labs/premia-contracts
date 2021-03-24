@@ -42,6 +42,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   uint256 public _requiredCollateralizationPercent = 1000;  // 1000 = 100% collateralized
   // Max percent of collateral liquidated in a single liquidation event
   uint256 public _maxPercentLiquidated = 500;  // 500 = 50% of collateral
+  // Max percent of capital allowed to be loaned in a single borrow event
+  uint256 public _maxLoanPercent = 500;  // 250 = 25% of capital
 
   // Fee rewarded to successful callers of the liquidate function
   uint256 public _liquidatorReward = 10;  // 10 = 0.1% fee
@@ -158,6 +160,13 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     _maxPercentLiquidated = _maxPercent;
   }
 
+  /// @notice Set a new max loan percent
+  /// @param _maxPercent New max percent
+  function setMaxLoanPercent(uint256 _maxPercent) external onlyOwner {
+    require(_maxPercent <= _inverseBasisPoint);
+    _maxLoanPercent = _maxPercent;
+  }
+
   /// @notice Set the address of the oracle used for getting on-chain prices
   /// @param _priceOracleAddress The address of the oracle
   function setPriceOracle(address _priceOracleAddress) external onlyOwner {
@@ -272,11 +281,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   function getLoanableAmount(address _token, uint256 _lockExpiration) public virtual returns (uint256) {
-    // TODO: Do we want to limit the amount loaned vs. the total amount deposited?
-    // Or, do we allow the full amount deposited to be loaned?
-    // Aave sets their max borrow rate to 25% of available capital. Perhaps we copy and make it updatable.
-
-    return getWritableAmount(_token, _lockExpiration);
+    uint256 writableAmount = getWritableAmount(_token, _lockExpiration);
+    return writableAmount * _inverseBasisPoint / _maxLoanPercent;
   }
 
   function getEquivalentCollateral(uint256 _tokenPrice, uint256 _collateralPrice, uint256 _amount) public view returns (uint256) {
