@@ -12,7 +12,7 @@ contract PremiaLongStablecoinPool is PremiaLiquidityPool {
 
   constructor(IPremiaPoolController _controller) PremiaLiquidityPool(_controller) {}
 
-  function getLoanableAmount(address _token, uint256 _lockExpiration) public override returns (uint256) {
+  function getLoanableAmount(address _token, uint256 _lockExpiration) public pure override returns (uint256) {
     return 0;
   }
 

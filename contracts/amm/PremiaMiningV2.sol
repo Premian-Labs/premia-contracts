@@ -281,8 +281,10 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
         emit Deposit(_user, _token, _amount);
     }
 
-    function harvest(address _token) external nonReentrant {
-        _harvest(msg.sender, _token, true);
+    function harvest(address[] memory _tokens) external nonReentrant {
+        for (uint256 i=0; i < _tokens.length; i++) {
+            _harvest(msg.sender, _tokens[i], true);
+        }
     }
 
     //////////////

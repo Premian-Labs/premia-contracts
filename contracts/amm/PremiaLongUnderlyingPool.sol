@@ -38,12 +38,13 @@ contract PremiaLongUnderlyingPool is PremiaLiquidityPool {
 
   function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public override {
     super.writeOptionFor(_receiver, _optionContract, _optionId, _amount, _premiumToken, _amountPremium, _referrer);
-    
-    IPremiaOption optionContract = IPremiaOption(_optionContract);
-    IPremiaOption.OptionData memory data = optionContract.optionData(_optionId);
-    PremiaLiquidityPool loanPool = _getLoanPool(data, optionContract, _amount);
 
+    IPremiaOption optionContract = IPremiaOption(_optionContract);
     address tokenToBorrow = optionContract.denominator();
+
+    IPremiaOption.OptionData memory data = optionContract.optionData(_optionId);
+    PremiaLiquidityPool loanPool = _getLoanPool(data.token, tokenToBorrow, data.expiration, data.isCall, _amount);
+
     uint256 amountToBorrow = _getAmountToBorrow(_amount, data.token, tokenToBorrow);
 
     Loan memory loan = loanPool.borrow(tokenToBorrow, amountToBorrow, data.token, _amount, data.expiration);

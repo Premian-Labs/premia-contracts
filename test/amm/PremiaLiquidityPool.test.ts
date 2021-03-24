@@ -229,8 +229,8 @@ describe("PremiaLiquidityPool", () => {
       const now = new Date().getTime() / 1000;
       await setTimestamp(now + 4 * 3600 * 24);
 
-      await mining.connect(user1).harvest(token.address);
-      await mining.connect(user1).harvest(dai.address);
+      await mining.connect(user1).harvest([token.address]);
+      await mining.connect(user1).harvest([dai.address]);
 
       let user1PremiaBal = await premia.balanceOf(user1.address);
       let user2PremiaBal = await premia.balanceOf(user2.address);
@@ -272,10 +272,8 @@ describe("PremiaLiquidityPool", () => {
       let user1DaiTargetBal = 20000 * multDai;
       let user2DaiTargetBal = 20000 * (1 - multDai);
 
-      await mining.connect(user1).harvest(token.address);
-      await mining.connect(user1).harvest(dai.address);
-      await mining.connect(user2).harvest(token.address);
-      await mining.connect(user2).harvest(dai.address);
+      await mining.connect(user1).harvest([token.address, dai.address]);
+      await mining.connect(user2).harvest([token.address, dai.address]);
 
       const user1PremiaBalBak = user1PremiaBal;
 
@@ -286,8 +284,7 @@ describe("PremiaLiquidityPool", () => {
         Math.floor(
           user1TokenTargetBal +
             user1DaiTargetBal +
-            Number(formatEther(user1PremiaBalBak)) +
-            1
+            Number(formatEther(user1PremiaBalBak))
         )
       );
 
@@ -406,7 +403,7 @@ describe("PremiaLiquidityPool", () => {
         amount.gt(parseEther("999999.99")) && amount.lte(parseEther("1000000"))
       ).to.be.true;
 
-      await mining.connect(user1).harvest(token.address);
+      await mining.connect(user1).harvest([token.address]);
 
       amount = await premia.balanceOf(user1.address);
 
@@ -425,7 +422,7 @@ describe("PremiaLiquidityPool", () => {
         amount.gt(parseEther("199999.99")) && amount.lte(parseEther("200000"))
       ).to.be.true;
 
-      await mining.connect(user1).harvest(token.address);
+      await mining.connect(user1).harvest([token.address]);
       amount = await premia.balanceOf(user1.address);
 
       expect(

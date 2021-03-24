@@ -8,19 +8,19 @@ import '../interface/IPremiaPoolController.sol';
 contract PremiaUnhedgedPool is PremiaLiquidityPool {
   constructor(IPremiaPoolController _controller) PremiaLiquidityPool(_controller) {}
 
-  function getLoanableAmount(address _token, uint256 _lockExpiration) public override returns (uint256) {
-    return 0;
-  }
-
-  function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration) external override returns (Loan memory) {
-    revert();
-  }
-
-  function repay(bytes32 _hash, uint256 _amount) public override returns (uint256) {
-    revert();
-  }
-
-  function liquidate(bytes32 _hash, uint256 _collateralAmount) public override {
-    revert();
-  }
+//  function getLoanableAmount(address _token, uint256 _lockExpiration) public override returns (uint256) {
+//    return 0;
+//  }
+//
+//  function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration) external override returns (Loan memory) {
+//    revert();
+//  }
+//
+//  function repay(bytes32 _hash, uint256 _amount) public override returns (uint256) {
+//    revert();
+//  }
+//
+//  function liquidate(bytes32 _hash, uint256 _collateralAmount) public override {
+//    revert();
+//  }
 }

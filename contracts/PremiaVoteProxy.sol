@@ -15,7 +15,7 @@ contract PremiaVoteProxy {
     IERC20 public xPremia;
     IPremiaFeeDiscount public premiaFeeDiscount;
 
-    constructor(ERC20 _premia, ERC20 _xPremia, IPremiaFeeDiscount _premiaFeeDiscount) public {
+    constructor(ERC20 _premia, ERC20 _xPremia, IPremiaFeeDiscount _premiaFeeDiscount) {
         premia = _premia;
         xPremia = _xPremia;
         premiaFeeDiscount = _premiaFeeDiscount;

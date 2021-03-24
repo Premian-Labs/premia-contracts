@@ -235,12 +235,12 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
       return keccak256(abi.encode(_loan));
   }
 
-  function _getLoanPool(IPremiaOption.OptionData memory _data, IPremiaOption _optionContract, uint256 _amount) internal returns (PremiaLiquidityPool) {
-    PremiaLiquidityPool[] memory liquidityPools = _data.isCall ?  controller.getCallPools() : controller.getPutPools();
+  function _getLoanPool(address _token, address _denominator, uint256 _expiration, bool _isCall, uint256 _amount) internal returns (PremiaLiquidityPool) {
+    PremiaLiquidityPool[] memory liquidityPools = _isCall ?  controller.getCallPools() : controller.getPutPools();
 
     for (uint256 i = 0; i < liquidityPools.length; i++) {
       PremiaLiquidityPool pool = liquidityPools[i];
-      uint256 amountAvailable = pool.getLoanableAmount(_data.isCall ? _data.token : _optionContract.denominator(), _data.expiration);
+      uint256 amountAvailable = pool.getLoanableAmount(_isCall ? _token : _denominator, _expiration);
 
       if (amountAvailable >= _amount) {
         return pool;
@@ -250,7 +250,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     revert("Not enough liquidity");
   }
 
-  function _getAmountToBorrow(uint256 _amount, address collateralToken, address tokenToBorrow) internal returns (uint256) {
+  function _getAmountToBorrow(uint256 _amount, address collateralToken, address tokenToBorrow) internal view returns (uint256) {
     uint256 priceOfCollateral = priceOracle.getAssetPrice(collateralToken);
     uint256 priceOfBorrowed = priceOracle.getAssetPrice(tokenToBorrow);
     return (_amount * _inverseBasisPoint / 997) * priceOfCollateral / priceOfBorrowed;
@@ -263,22 +263,14 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     return getWritableAmount(_token, _lockExpiration);
   }
 
-  function getEquivalentCollateral(uint256 _tokenPrice, uint256 _collateralPrice, uint256 _amount) public view returns (uint256) {
-    return (_amount * _tokenPrice) / _collateralPrice;
-  }
-
-  function getEquivalentCollateralForLoan(Loan memory _loan, uint256 _amount) public view returns (uint256) {
-    return getEquivalentCollateral(_loan.tokenPrice, _loan.collateralPrice, _amount);
-  }
-
   function getRequiredCollateral(address _collateralToken, uint256 _tokenPrice, uint256 _collateralPrice, uint256 _amount) public view returns (uint256) {
-    uint256 equivalentCollateral = getEquivalentCollateral(_tokenPrice, _collateralPrice, _amount);
+    uint256 equivalentCollateral = (_amount * _tokenPrice) / _collateralPrice;
     uint256 ltvRatio = controller.getLoanToValueRatio(_collateralToken);
     return equivalentCollateral * _inverseBasisPoint / ltvRatio;
   }
 
   function getRequiredCollateralForLoan(Loan memory _loan, uint256 _amount) public view returns (uint256) {
-    uint256 equivalentCollateral = getEquivalentCollateralForLoan(_loan, _amount);
+    uint256 equivalentCollateral = (_amount * _loan.tokenPrice) / _loan.collateralPrice;
     uint256 ltvRatio = controller.getLoanToValueRatio(_loan.collateralToken);
     return equivalentCollateral * _inverseBasisPoint / ltvRatio;
   }
@@ -449,14 +441,10 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     return collateralOut;
   }
 
-  function isLoanUnderCollateralized(Loan memory _loan) public returns (bool) {
+  function isLoanUnderCollateralized(Loan memory _loan) public view returns (bool) {
     uint256 collateralPrice = priceOracle.getAssetPrice(_loan.collateralToken);
     uint256 percentCollateralized = (_loan.amountCollateralTokenHeld * collateralPrice * _inverseBasisPoint) / (_loan.amountTokenOutstanding * _loan.tokenPrice);
     return percentCollateralized < _requiredCollateralizationPercent;
-  }
-
-  function isExpirationPast(Loan memory loan) public returns (bool) {
-    return loan.lockExpiration < block.timestamp;
   }
 
   /// @notice Convert collateral back into original tokens
@@ -509,7 +497,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     Loan storage loan = loans[_hash];
 
     require(loan.amountCollateralTokenHeld * _inverseBasisPoint / _collateralAmount >= _maxPercentLiquidated, "Too much liquidated.");
-    require(isLoanUnderCollateralized(loan) || isExpirationPast(loan), "Loan cannot be liquidated.");
+    require(isLoanUnderCollateralized(loan) ||  loan.lockExpiration < block.timestamp, "Loan cannot be liquidated.");
 
     uint256 amountToken = _liquidateCollateral(loan.collateralToken, loan.token, _collateralAmount);
 
@@ -562,6 +550,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     emit WriteOption(_receiver, msg.sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium);
   }
 
+  // ToDo: _amount not used in any override, can we remove it ?
   function _postWithdrawal(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _tokenWithdrawn, uint256 _denominatorWithdrawn) virtual internal {}
 
   function unwindOption(address _optionContract, uint256 _optionId, uint256 _amount) external {
