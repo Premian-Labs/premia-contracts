@@ -199,10 +199,9 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
             uint256 elapsed = block.timestamp - pInfo.lastUpdate;
             uint256 premiaAmount = _getPremiaAmountMined(_token, elapsed, _totalPremiaRewarded);
             _totalPremiaRewarded += premiaAmount;
+            _accPremiaPerShare = pInfo.accPremiaPerShare + ((premiaAmount * premiaPerShareMult) / pInfo.totalScore);
 
-            _accPremiaPerShare += ((premiaAmount * premiaPerShareMult) / pInfo.totalScore);
-
-            return uInfo.totalScore * _accPremiaPerShare / premiaPerShareMult - uInfo.rewardDebt;
+            return (uInfo.totalScore * _accPremiaPerShare / premiaPerShareMult) - uInfo.rewardDebt;
         }
 
         _accPremiaPerShare = _getAccPremiaPerShare(_token, expiration);

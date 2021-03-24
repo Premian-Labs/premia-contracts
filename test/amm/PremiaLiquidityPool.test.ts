@@ -57,7 +57,29 @@ describe("PremiaLiquidityPool", () => {
     await premia.connect(admin).approve(mining.address, parseEther("1000000"));
     await mining.connect(admin).addRewards(parseEther("1000000"));
 
-    await controller.addWhitelistedPools([liqPool.address]);
+    await controller.setPermissions(
+      [liqPool.address, token.address, dai.address],
+      [
+        {
+          canBorrow: false,
+          canWrite: false,
+          isWhitelistedPool: true,
+          isWhitelistedToken: false,
+        },
+        {
+          canBorrow: false,
+          canWrite: false,
+          isWhitelistedPool: false,
+          isWhitelistedToken: true,
+        },
+        {
+          canBorrow: false,
+          canWrite: false,
+          isWhitelistedPool: false,
+          isWhitelistedToken: true,
+        },
+      ]
+    );
 
     for (const u of [user1, user2]) {
       await token.mint(u.address, parseEther("1000"));
@@ -65,32 +87,17 @@ describe("PremiaLiquidityPool", () => {
       await token.connect(u).approve(liqPool.address, parseEther("1000000"));
       await dai.connect(u).approve(liqPool.address, parseEther("1000000"));
     }
-
-    await liqPool.setPermissions(
-      [token.address, dai.address],
-      [
-        {
-          canBorrow: false,
-          canWrite: false,
-          isWhitelistedToken: true,
-        },
-        {
-          canBorrow: false,
-          canWrite: false,
-          isWhitelistedToken: true,
-        },
-      ]
-    );
   });
 
   describe("deposits", () => {
     it("should fail depositing token if token is not whitelisted", async () => {
-      await liqPool.setPermissions(
+      await controller.setPermissions(
         [token.address],
         [
           {
             canBorrow: false,
             canWrite: false,
+            isWhitelistedPool: false,
             isWhitelistedToken: false,
           },
         ]
