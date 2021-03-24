@@ -199,10 +199,9 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
             uint256 elapsed = block.timestamp - pInfo.lastUpdate;
             uint256 premiaAmount = _getPremiaAmountMined(_token, elapsed, _totalPremiaRewarded);
             _totalPremiaRewarded += premiaAmount;
+            _accPremiaPerShare = pInfo.accPremiaPerShare + ((premiaAmount * premiaPerShareMult) / pInfo.totalScore);
 
-            _accPremiaPerShare += ((premiaAmount * premiaPerShareMult) / pInfo.totalScore);
-
-            return uInfo.totalScore * _accPremiaPerShare / premiaPerShareMult - uInfo.rewardDebt;
+            return (uInfo.totalScore * _accPremiaPerShare / premiaPerShareMult) - uInfo.rewardDebt;
         }
 
         _accPremiaPerShare = _getAccPremiaPerShare(_token, expiration);
@@ -281,8 +280,10 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
         emit Deposit(_user, _token, _amount);
     }
 
-    function harvest(address _token) external nonReentrant {
-        _harvest(msg.sender, _token, true);
+    function harvest(address[] memory _tokens) external nonReentrant {
+        for (uint256 i=0; i < _tokens.length; i++) {
+            _harvest(msg.sender, _tokens[i], true);
+        }
     }
 
     //////////////

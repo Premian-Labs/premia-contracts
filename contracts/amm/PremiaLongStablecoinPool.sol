@@ -13,7 +13,7 @@ contract PremiaLongStablecoinPool is PremiaLiquidityPool {
   constructor(IPremiaPoolController _controller, IPriceOracleGetter _priceOracle, ILendingRateOracleGetter _lendingRateOracle)
     PremiaLiquidityPool(_controller, _priceOracle, _lendingRateOracle) {}
 
-  function getLoanableAmount(address _token, uint256 _lockExpiration) public override returns (uint256) {
+  function getLoanableAmount(address _token, uint256 _lockExpiration) public pure override returns (uint256) {
     return 0;
   }
 

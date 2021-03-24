@@ -15,7 +15,7 @@ contract PremiaMiningDrain is ERC20("MiningDrainToken", "MiningDrain") {
     address public miningFund = 0x81d6F46981B4fE4A6FafADDa716eE561A17761aE;
     uint256 public pid = 1;
 
-    constructor() public {
+    constructor() {
         _mint(address(this), 1);
     }
 

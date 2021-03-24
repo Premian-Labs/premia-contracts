@@ -1001,10 +1001,10 @@
     "@types/sinon-chai" "^3.2.3"
     "@types/web3" "1.0.19"
 
-"@openzeppelin/contracts@4.0.0-beta.1":
-  version "4.0.0-beta.1"
-  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.0.0-beta.1.tgz#23476cf3e4e3fdd9deb246457e7edea4aebe7228"
-  integrity sha512-O+zuP2DbZPHlX/ViTmewpVU12k7vi4YU6fzWRXDKzJql7RHF5mFOL/z3cILp4iVoz8wH+drFYXnQMaj8/Sc0BQ==
+"@openzeppelin/contracts@4.0.0":
+  version "4.0.0"
+  resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.0.0.tgz#54d1de30911635020c383cb73b160b698e7ae179"
+  integrity sha512-UcIJl/vUVjTr3H1yYXZi7Sr2PlXzBEHVUJKOUlVyzyy0FI8oQCCy0Wx+BuK/fojdnmLeMvUk4KUvhKUybP+C7Q==
 
 "@resolver-engine/core@^0.3.3":
   version "0.3.3"
@@ -1140,10 +1140,10 @@
   dependencies:
     ethers "^5.0.2"
 
-"@typechain/ethers-v5@^6.0.4":
-  version "6.0.4"
-  resolved "https://registry.yarnpkg.com/@typechain/ethers-v5/-/ethers-v5-6.0.4.tgz#b9bb2da36fcb4e10b8249dfb4408667151277010"
-  integrity sha512-m6mLwkwBtjmTfrMdvB+sZgbKSsMkfTCV5g2aqxZJFMyX1b9vLNPyqStmUQ8LaNs6ipCkG6+Q7erXJEkdjoDBSA==
+"@typechain/ethers-v5@^6.0.5":
+  version "6.0.5"
+  resolved "https://registry.yarnpkg.com/@typechain/ethers-v5/-/ethers-v5-6.0.5.tgz#39bbf9baadd0e8d9efad9d16c60152b7cd9a467b"
+  integrity sha512-KJh+EWuxmX1a17fQWS1ba8DCYcqK7UpdbqMZZwyfiv9FQfn8ZQJX17anbkCMOSU8TV3EvRuJ/vFEKGzKnpkO8g==
 
 "@types/bn.js@*", "@types/bn.js@^4.11.3", "@types/bn.js@^4.11.5":
   version "4.11.6"
@@ -1187,10 +1187,10 @@
   dependencies:
     "@types/node" "*"
 
-"@types/mocha@^8.0.4":
-  version "8.2.0"
-  resolved "https://registry.yarnpkg.com/@types/mocha/-/mocha-8.2.0.tgz#3eb56d13a1de1d347ecb1957c6860c911704bc44"
-  integrity sha512-/Sge3BymXo4lKc31C8OINJgXLaw+7vL1/L1pGiBNpGrBiT8FQiaFpSYV0uhTaG4y78vcMBTMFsWaHDvuD+xGzQ==
+"@types/mocha@^8.2.2":
+  version "8.2.2"
+  resolved "https://registry.yarnpkg.com/@types/mocha/-/mocha-8.2.2.tgz#91daa226eb8c2ff261e6a8cbf8c7304641e095e0"
+  integrity sha512-Lwh0lzzqT5Pqh6z61P3c3P5nm6fzQK/MMHl9UKeneAeInVflBSz1O2EkX6gM6xfJd7FBXBY5purtLx7fUiZ7Hw==
 
 "@types/node-fetch@^2.5.5":
   version "2.5.7"
@@ -6464,12 +6464,12 @@ prettier-linter-helpers@^1.0.0:
   dependencies:
     fast-diff "^1.1.2"
 
-prettier-plugin-solidity@^1.0.0-beta.5:
-  version "1.0.0-beta.5"
-  resolved "https://registry.yarnpkg.com/prettier-plugin-solidity/-/prettier-plugin-solidity-1.0.0-beta.5.tgz#04347bc3fb8deb5d097c9c823cbc01451a40da7a"
-  integrity sha512-Fd0a+rF/FD7dnN/ZyaSHjH9q/onw6Qd4lzU+nIPj9FoqBkt+WDUYLpiwuVZ/I0i5hZRTVAxiwErp7qmgdyqYpA==
+prettier-plugin-solidity@^1.0.0-beta.6:
+  version "1.0.0-beta.6"
+  resolved "https://registry.yarnpkg.com/prettier-plugin-solidity/-/prettier-plugin-solidity-1.0.0-beta.6.tgz#aa7b14a60cd6e22e46db75c84d836b569fb63f65"
+  integrity sha512-WymLqd22Hl93t5+HDNLk08TAWp4i4vZMhpihuVqkwOApjCT7mH1qwhLtvf3m+NdU//qj8vrPDmMoT+xc74skcg==
   dependencies:
-    "@solidity-parser/parser" "^0.11.0"
+    "@solidity-parser/parser" "^0.12.0"
     dir-to-object "^2.0.0"
     emoji-regex "^9.2.1"
     escape-string-regexp "^4.0.0"
@@ -7293,10 +7293,10 @@ solc@^0.6.3:
     semver "^5.5.0"
     tmp "0.0.33"
 
-solc@^0.8.2:
-  version "0.8.2"
-  resolved "https://registry.yarnpkg.com/solc/-/solc-0.8.2.tgz#6033d75c6166fd0feb7fe08eddc198aaf52025da"
-  integrity sha512-fMfcAPaePLfsOY82jqONt0RMh5M8m+pK6QtnMGMUFUm8uEDlUmoqnyLxGVFelosJaVfXhygAB+mTlb+HxiV7DQ==
+solc@^0.8.3:
+  version "0.8.3"
+  resolved "https://registry.yarnpkg.com/solc/-/solc-0.8.3.tgz#896fdca2f0c4ccf18ff7a99f8183a5a1a8f6345c"
+  integrity sha512-VZvSHtwe2zAsoviClIpWjvrg22bIZ0pLtzFrYD9BtPfR7mhMZYwpptnzRizNaSvMngTR+gB9Ul8IyL5xaC7+jw==
   dependencies:
     command-exists "^1.2.8"
     commander "3.0.2"
@@ -7315,10 +7315,10 @@ solhint-plugin-prettier@0.0.5:
   dependencies:
     prettier-linter-helpers "^1.0.0"
 
-solhint@^3.3.3:
-  version "3.3.3"
-  resolved "https://registry.yarnpkg.com/solhint/-/solhint-3.3.3.tgz#1d1ff6c4bdbf71a188f726bb0124280b9280b1a3"
-  integrity sha512-eRtzroFWmJPFpeFPAApuB4RfYSwCSqquk2zJJoOR4ASq2SC8XhyBCVb86BExxvd7y03JrrxusngKMmSctXXcWg==
+solhint@^3.3.4:
+  version "3.3.4"
+  resolved "https://registry.yarnpkg.com/solhint/-/solhint-3.3.4.tgz#81770c60eeb027e6e447cb91ed599baf5e888e09"
+  integrity sha512-AEyjshF/PC6kox1c1l79Pji+DK9WVuk5u2WEh6bBKt188gWa63NBOAgYg0fBRr5CTUmsuGc1sGH7dgUVs83mKw==
   dependencies:
     "@solidity-parser/parser" "^0.12.0"
     ajv "^6.6.1"
