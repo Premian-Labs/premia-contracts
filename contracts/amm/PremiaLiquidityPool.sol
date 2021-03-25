@@ -258,11 +258,12 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   function _getLoanPool(address _token, address _denominator, uint256 _expiration, bool _isCall, uint256 _amount) internal returns (IPremiaLiquidityPool) {
-    IPremiaLiquidityPool[] memory liquidityPools = _isCall ?  controller.getCallPools() : controller.getPutPools();
+    // Call borrow from put pools / Put borrows from call pools
+    IPremiaLiquidityPool[] memory liquidityPools = _isCall ?  controller.getPutPools() : controller.getCallPools();
 
     for (uint256 i = 0; i < liquidityPools.length; i++) {
       IPremiaLiquidityPool pool = liquidityPools[i];
-      uint256 amountAvailable = pool.getLoanableAmount(_isCall ? _token : _denominator, _expiration);
+      uint256 amountAvailable = pool.getLoanableAmount(_isCall ? _denominator : _token, _expiration);
 
       if (amountAvailable >= _amount) {
         return pool;
