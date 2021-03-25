@@ -19,7 +19,7 @@ const range = function(bits, signed) {
 	}
 }
 
-describe.only('ABDKMath64x64', function() {
+describe('ABDKMath64x64', function() {
 	let instance
 
 	before(async function() {
