@@ -14,7 +14,7 @@ module.exports = {
   defaultNetwork: process.env.NETWORK,
 
   solidity: {
-    version: '0.8.2',
+    version: '0.8.3',
     settings: {
       optimizer: {
         enabled: true,
