@@ -201,7 +201,7 @@ library OptionMath {
         uint256 _St1,
         int128 _steepness
     ) internal pure returns (int128) {
-        calcTradingDelta(_St0, _St1, _steepness).mul(_oldC);
+        return calcTradingDelta(_St0, _St1, _steepness).mul(_oldC);
     }
 
     /**
