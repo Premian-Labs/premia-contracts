@@ -28,10 +28,27 @@ interface IPremiaPoolController {
         bool isWhitelistedOptionContract;
     }
 
+    ///////////
+    // Event //
+    ///////////
+
+    event DefaultSwapRouterUpdated(IUniswapV2Router02 indexed router);
+    event PairSwapRouterUpdated(address indexed tokenA, address indexed tokenB, IUniswapV2Router02 indexed router);
+    event CustomSwapPathUpdated(address indexed collateralToken, address indexed token, address[] path);
+    event LoanToValueRatioUpdated(address indexed collateralToken, uint256 loanToValueRatio);
+    event PremiaMiningUpdated(address indexed addr);
+
+    event CallPoolAdded(address indexed addr);
+    event CallPoolRemoved(address indexed addr);
+    event PutPoolAdded(address indexed addr);
+    event PutPoolRemoved(address indexed addr);
+
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+    //////////////////////////////////////////////////
+
     function loanToValueRatios(address _token) external view returns (uint256);
-    function designatedSwapRouters(address _fromToken, address _toToken) external view returns (IUniswapV2Router02);
     function customSwapPaths(address _fromToken, address _toToken) external view returns (address[] memory);
-    function permissions(address _addr) external view returns (Permissions memory);
 
     function upgradeController(IPoolControllerChild[] memory _children, address _newController) external;
     function setPermissions(address[] memory _addr, Permissions[] memory _permissions) external;
@@ -39,6 +56,7 @@ interface IPremiaPoolController {
     function setDesignatedSwapRouter(address _tokenA, address _tokenB, IUniswapV2Router02 _router) external;
     function setLoanToValueRatio(address _collateralToken, uint256 _loanToValueRatio) external;
     function setPremiaMining(IPremiaMiningV2 _premiaMining) external;
+    function getDesignatedSwapRouter(address _tokenA, address _tokenB) external returns(IUniswapV2Router02);
 
     function getCallPools() external view returns (IPremiaLiquidityPool[] memory);
     function getPutPools() external view returns (IPremiaLiquidityPool[] memory);

@@ -32,6 +32,13 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     uint256 lendingRate;
   }
 
+  struct Permissions {
+    bool canBorrow;
+    bool canWrite;
+    bool isWhitelistedToken;
+    bool isWhitelistedOptionContract;
+  }
+
   // Offset to add to Unix timestamp to make it Fri 23:59:59 UTC
   uint256 public constant _baseExpiration = 172799;
   // Expiration increment
@@ -65,6 +72,9 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   IPriceOracleGetter public priceOracle;
   ILendingRateOracleGetter public lendingRateOracle;
 
+  // Mapping of addresses with special permissions (Contracts who can borrow / write or whitelisted routers / tokens)
+  mapping(address => Permissions) public permissions;
+
   // user address -> token address -> expiration -> amount
   mapping(address => mapping(address => mapping (uint256 => uint256))) public depositsByUser;
 
@@ -84,6 +94,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   // Events //
   ////////////
 
+  event PermissionsUpdated(address indexed addr, bool canBorrow, bool canWrite, bool isWhitelistedToken, bool isWhitelistedOptionContract);
   event Deposit(address indexed user, address indexed token,uint256 lockExpiration, uint256 amountToken);
   event Withdraw(address indexed user, address indexed token, uint256 amountToken);
   event Borrow(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed lockExpiration, uint256 amount, uint256 lendingRate);
@@ -129,6 +140,21 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     require(msg.sender == owner() || msg.sender == address(controller), "Not owner or controller");
     controller = IPremiaPoolController(_newController);
     emit ControllerUpdated(_newController);
+  }
+
+
+  function setPermissions(address[] memory _addr, Permissions[] memory _permissions) external onlyOwner {
+    require(_addr.length == _permissions.length, "Arrays diff length");
+
+    for (uint256 i=0; i < _addr.length; i++) {
+      permissions[_addr[i]] = _permissions[i];
+
+      emit PermissionsUpdated(_addr[i],
+        _permissions[i].canBorrow,
+        _permissions[i].canWrite,
+        _permissions[i].isWhitelistedToken,
+        _permissions[i].isWhitelistedOptionContract);
+    }
   }
 
   /// @notice Set a new max expiration date for options writing (By default, 1 year from current date)
@@ -355,7 +381,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     require(_lockExpiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");
 
     for (uint256 i = 0; i < _tokens.length; i++) {
-      require(controller.permissions(_tokens[i]).isWhitelistedToken, "Token not whitelisted");
+      require(permissions[_tokens[i]].isWhitelistedToken, "Token not whitelisted");
 
       if (_amounts[i] == 0) continue;
 
@@ -436,7 +462,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration)
     external virtual nonReentrant returns (Loan memory) {
     require(controller.loanToValueRatios(_collateralToken) > 0, "Collateral token not allowed.");
-    require(controller.permissions(msg.sender).canBorrow, "Borrow not whitelisted.");
+    require(permissions[msg.sender].canBorrow, "Borrow not whitelisted.");
 
     uint256 tokenPrice = priceOracle.getAssetPrice(_token);
     uint256 collateralPrice = priceOracle.getAssetPrice(_collateralToken);
@@ -503,7 +529,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   /// @param _outputToken The token to swap to
   /// @param _amountIn The amount of _inputToken to swap
   function _swapTokensIn(address _inputToken, address _outputToken, uint256 _amountIn) internal returns (uint256) {
-    IUniswapV2Router02 router = controller.designatedSwapRouters(_inputToken, _outputToken);
+    IUniswapV2Router02 router = controller.getDesignatedSwapRouter(_inputToken, _outputToken);
 
     IERC20(_inputToken).safeIncreaseAllowance(address(router), _amountIn);
 
@@ -576,8 +602,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public virtual nonReentrant {
-    require(controller.permissions(msg.sender).canWrite, "Writer not whitelisted.");
-    require(controller.permissions(_optionContract).isWhitelistedOptionContract, "Option contract not whitelisted.");
+    require(permissions[msg.sender].canWrite, "Writer not whitelisted.");
+    require(permissions[_optionContract].isWhitelistedOptionContract, "Option contract not whitelisted.");
 
     uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
 
@@ -608,8 +634,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount) public virtual nonReentrant {
-    require(controller.permissions(msg.sender).canWrite, "Writer not whitelisted.");
-    require(controller.permissions(_optionContract).isWhitelistedOptionContract, "Option contract not whitelisted.");
+    require(permissions[msg.sender].canWrite, "Writer not whitelisted.");
+    require(permissions[_optionContract].isWhitelistedOptionContract, "Option contract not whitelisted.");
     require(optionsOutstanding[_optionContract][_optionId] >= _amount, "Not enough written.");
 
     IPremiaOption optionContract = IPremiaOption(_optionContract);
@@ -655,7 +681,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
 
     require(data.expiration > block.timestamp, "Option is not expired yet.");
-    require(controller.permissions(_optionContract).isWhitelistedOptionContract, "Option contract not whitelisted.");
+    require(permissions[_optionContract].isWhitelistedOptionContract, "Option contract not whitelisted.");
     require(optionsOutstanding[_optionContract][_optionId] >= _amount, "Not enough written.");
 
     address denominatorToken = optionContract.denominator();

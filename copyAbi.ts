@@ -98,6 +98,16 @@ fs.copyFileSync(
   './abi/PremiaPoolController.json',
 );
 
+fs.copyFileSync(
+  './artifacts/contracts/amm/PremiaLongUnderlyingPool.sol/PremiaLongUnderlyingPool.json',
+  './abi/PremiaLongUnderlyingPool.json',
+);
+
+fs.copyFileSync(
+  './artifacts/contracts/amm/PremiaShortUnderlyingPool.sol/PremiaShortUnderlyingPool.json',
+  './abi/PremiaShortUnderlyingPool.json',
+);
+
 // Test contracts
 fs.copyFileSync(
   './artifacts/contracts/test/TestErc20.sol/TestErc20.json',

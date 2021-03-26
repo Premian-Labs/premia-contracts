@@ -25,26 +25,18 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
         address[] tokens;
     }
 
-    struct Permissions {
-        bool canBorrow;
-        bool canWrite;
-        bool isWhitelistedToken;
-        bool isWhitelistedPool;
-        bool isWhitelistedOptionContract;
-    }
-
     uint256 public constant _inverseBasisPoint = 1000;
 
     IPremiaMiningV2 public premiaMining;
 
-    // Mapping of addresses with special permissions (Contracts who can borrow / write or whitelisted routers / tokens)
-    mapping(address => Permissions) public permissions;
-
     // Set a custom swap path for a token
-    mapping(address => mapping(address => address[])) public customSwapPaths;
+    mapping(address => mapping(address => address[])) customSwapPaths;
 
     // Each token swap path requires a designated router to ensure liquid swapping
-    mapping(address => mapping(address => IUniswapV2Router02)) public designatedSwapRouters;
+    mapping(address => mapping(address => IUniswapV2Router02)) public _designatedSwapRouters;
+
+    // Default swap router to use in case no custom router has been set for a pair
+    IUniswapV2Router02 public defaultSwapRouter;
 
     // The LTV ratio for each token usable as collateral
     mapping(address => uint256) public loanToValueRatios;
@@ -56,8 +48,16 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
     // Event //
     ///////////
 
-    event PermissionsUpdated(address indexed addr, bool canBorrow, bool canWrite, bool isWhitelistedToken, bool isWhitelistedPool, bool isWhitelistedOptionContract);
-    event PremiaMiningUpdated(address indexed _addr);
+    event DefaultSwapRouterUpdated(IUniswapV2Router02 indexed router);
+    event PairSwapRouterUpdated(address indexed tokenA, address indexed tokenB, IUniswapV2Router02 indexed router);
+    event CustomSwapPathUpdated(address indexed collateralToken, address indexed token, address[] path);
+    event LoanToValueRatioUpdated(address indexed collateralToken, uint256 loanToValueRatio);
+    event PremiaMiningUpdated(address indexed addr);
+
+    event CallPoolAdded(address indexed addr);
+    event CallPoolRemoved(address indexed addr);
+    event PutPoolAdded(address indexed addr);
+    event PutPoolRemoved(address indexed addr);
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
@@ -73,38 +73,27 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
         }
     }
 
-    function setPermissions(address[] memory _addr, Permissions[] memory _permissions) external onlyOwner {
-        require(_addr.length == _permissions.length, "Arrays diff length");
-
-        for (uint256 i=0; i < _addr.length; i++) {
-            permissions[_addr[i]] = _permissions[i];
-
-            emit PermissionsUpdated(_addr[i], 
-                                    _permissions[i].canBorrow, 
-                                    _permissions[i].canWrite, 
-                                    _permissions[i].isWhitelistedToken, 
-                                    _permissions[i].isWhitelistedPool,
-                                    _permissions[i].isWhitelistedOptionContract);
-        }
-    }
-
     function addPools(address[] memory _callPoolsAddr, address[] memory _putPoolsAddr) external onlyOwner {
         for (uint256 i=0; i < _callPoolsAddr.length; i++) {
             _callPools.add(_callPoolsAddr[i]);
+            emit CallPoolAdded(_callPoolsAddr[i]);
         }
 
         for (uint256 i=0; i < _putPoolsAddr.length; i++) {
             _putPools.add(_putPoolsAddr[i]);
+            emit PutPoolAdded(_putPoolsAddr[i]);
         }
     }
 
     function removePools(address[] memory _callPoolsAddr, address[] memory _putPoolsAddr) external onlyOwner {
         for (uint256 i=0; i < _callPoolsAddr.length; i++) {
             _callPools.remove(_callPoolsAddr[i]);
+            emit CallPoolRemoved(_callPoolsAddr[i]);
         }
 
         for (uint256 i=0; i < _putPoolsAddr.length; i++) {
             _putPools.remove(_putPoolsAddr[i]);
+            emit PutPoolRemoved(_putPoolsAddr[i]);
         }
     }
 
@@ -114,6 +103,7 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
     /// @param _path The swap path
     function setCustomSwapPath(address _collateralToken, address _token, address[] memory _path) external onlyOwner {
         customSwapPaths[_collateralToken][_token] = _path;
+        emit CustomSwapPathUpdated(_collateralToken, _token, _path);
     }
 
     /// @notice Set a designated router for a pair of tokens
@@ -121,8 +111,17 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
     /// @param _tokenB The second token
     /// @param _router The router to swap with
     function setDesignatedSwapRouter(address _tokenA, address _tokenB, IUniswapV2Router02 _router) external onlyOwner {
-        designatedSwapRouters[_tokenA][_tokenB] = _router;
-        designatedSwapRouters[_tokenB][_tokenA] = _router;
+        require(_tokenA != _tokenB, "Identical addresses");
+        (address _tokenA, address _tokenB) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenA, _tokenB);
+        require(_tokenA != address(0), 'Zero address');
+
+        _designatedSwapRouters[_tokenA][_tokenB] = _router;
+        emit PairSwapRouterUpdated(_tokenA, _tokenB, _router);
+    }
+
+    function setDefaultSwapRouter(IUniswapV2Router02 _router) external onlyOwner {
+        defaultSwapRouter = _router;
+        emit DefaultSwapRouterUpdated(_router);
     }
 
     /// @notice Set a custom loan to calue ratio for a collateral token
@@ -131,6 +130,7 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
     function setLoanToValueRatio(address _collateralToken, uint256 _loanToValueRatio) external onlyOwner {
         require(_loanToValueRatio <= _inverseBasisPoint);
         loanToValueRatios[_collateralToken] = _loanToValueRatio;
+        emit LoanToValueRatioUpdated(_collateralToken, _loanToValueRatio);
     }
 
     function setPremiaMining(IPremiaMiningV2 _premiaMining) external onlyOwner {
@@ -141,6 +141,18 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
     //////////
     // View //
     //////////
+
+    function getDesignatedSwapRouter(address _tokenA, address _tokenB) external view returns(IUniswapV2Router02) {
+        require(_tokenA != _tokenB, "Identical addresses");
+        (address _tokenA, address _tokenB) = _tokenA < _tokenB ? (_tokenA, _tokenB) : (_tokenA, _tokenB);
+        require(_tokenA != address(0), 'Zero address');
+
+        IUniswapV2Router02 swapRouter = _designatedSwapRouters[_tokenA][_tokenB];
+
+        if (address(swapRouter) == address(0)) return defaultSwapRouter;
+
+        return swapRouter;
+    }
 
     function getCallPools() external view returns(IPremiaLiquidityPool[] memory) {
         uint256 length = _callPools.length();
@@ -170,7 +182,7 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
 
     function deposit(DepositArgs[] memory _deposits) external nonReentrant {
         for (uint256 i=0; i < _deposits.length; i++) {
-            require(permissions[_deposits[i].pool].isWhitelistedPool, "Pool not whitelisted");
+            require(_callPools.contains(_deposits[i].pool) || _putPools.contains(_deposits[i].pool), "Pool not whitelisted");
 
             IPremiaLiquidityPool(_deposits[i].pool).depositFrom(msg.sender, _deposits[i].tokens, _deposits[i].amounts, _deposits[i].lockExpiration);
 
@@ -184,7 +196,7 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
 
     function withdrawExpired(WithdrawExpiredArgs[] memory _withdrawals) external nonReentrant {
         for (uint256 i=0; i < _withdrawals.length; i++) {
-            require(permissions[_withdrawals[i].pool].isWhitelistedPool, "Pool not whitelisted");
+            require(_callPools.contains(_withdrawals[i].pool) || _putPools.contains(_withdrawals[i].pool), "Pool not whitelisted");
 
             IPremiaLiquidityPool(_withdrawals[i].pool).withdrawExpiredFrom(msg.sender, _withdrawals[i].tokens);
         }

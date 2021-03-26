@@ -11,7 +11,7 @@ import '../interface/IPremiaOption.sol';
 import '../interface/IBlackScholesPriceGetter.sol';
 import "../interface/IPremiaPoolController.sol";
 
-contract PremiaAMM is Ownable {
+contract PremiaAMM is Ownable, IPoolControllerChild {
   using SafeERC20 for IERC20;
 
   enum SaleSide {Buy, Sell}
@@ -27,6 +27,33 @@ contract PremiaAMM is Ownable {
   uint256 public constant inverseBasisPoint = 1000;
 
   IPremiaPoolController public controller;
+
+  ////////////
+  // Events //
+  ////////////
+
+  event Bought(address indexed user, address indexed optionContract, uint256 indexed optionId, uint256 amount, address premiumToken, uint256 optionPrice);
+  event Sold(address indexed user, address indexed optionContract, uint256 indexed optionId, uint256 amount, address premiumToken, uint256 optionPrice);
+  event ControllerUpdated(address indexed newController);
+
+  //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+
+  ///////////
+  // Admin //
+  ///////////
+
+  function upgradeController(address _newController) external override {
+    require(msg.sender == owner() || msg.sender == address(controller), "Not owner or controller");
+    controller = IPremiaPoolController(_newController);
+    emit ControllerUpdated(_newController);
+  }
+
+  //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+
 
   /// @notice Set new weights for pricing function, total must be 1,000
   /// @param _blackScholesWeight Black scholes weighting
@@ -213,7 +240,6 @@ contract PremiaAMM is Ownable {
   }
 
   function buy(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _maxPremiumAmount, address _referrer) external {
-    require(controller.permissions(_optionContract).isWhitelistedOptionContract, "Option contract not whitelisted.");
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data.token, IPremiaOption(_optionContract).denominator(), data.expiration, data.isCall, _amount);
 
@@ -222,11 +248,13 @@ contract PremiaAMM is Ownable {
     require(optionPrice >= _maxPremiumAmount, "Price too high.");
 
     IERC20(_premiumToken).safeTransferFrom(msg.sender, address(liquidityPool), optionPrice);
+
+    // The pool needs to check that the option contract is whitelisted
     liquidityPool.writeOptionFor(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice, _referrer);
+    emit Bought(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice);
   }
 
   function sell(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _minPremiumAmount) external {
-    require(controller.permissions(_optionContract).isWhitelistedOptionContract, "Option contract not whitelisted.");
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data.token, IPremiaOption(_optionContract).denominator(), data.expiration, data.isCall, _amount);
 
@@ -234,7 +262,9 @@ contract PremiaAMM is Ownable {
 
     require(optionPrice <= _minPremiumAmount, "Price too low.");
 
+    // The pool needs to check that the option contract is whitelisted
     liquidityPool.unwindOptionFor(msg.sender, _optionContract, _optionId, _amount);
     IERC20(_premiumToken).safeTransferFrom(address(liquidityPool), msg.sender, optionPrice);
+    emit Sold(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice);
   }
 }
