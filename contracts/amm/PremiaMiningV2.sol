@@ -44,7 +44,7 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
     // Max expiration time from now
     uint256 public _maxExpiration = 365 days;
 
-    uint256 public constant _inverseBasisPoint = 1000;
+    uint256 constant _inverseBasisPoint = 1e4;
 
     uint256 constant premiaPerShareMult = 1e12;
 
@@ -262,6 +262,7 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
             _harvest(_user, _token, false);
         }
 
+        // ToDo : See what multiplier we want when user stake max expiration (Currently x2)
         uint256 multiplier = _inverseBasisPoint + ((_lockExpiration - block.timestamp) * _inverseBasisPoint / _maxExpiration);
         uint256 score = _amount * multiplier / _inverseBasisPoint;
 

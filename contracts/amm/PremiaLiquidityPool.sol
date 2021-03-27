@@ -47,23 +47,21 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   uint256 public _maxExpiration = 365 days;
 
   // Required collateralization level
-  uint256 public _requiredCollateralizationPercent = 1000;  // 1000 = 100% collateralized
+  uint256 public _requiredCollateralizationPercent = 1e4;  // 10000 = 100% collateralized
   // Max percent of collateral liquidated in a single liquidation event
-  uint256 public _maxPercentLiquidated = 500;  // 500 = 50% of collateral
+  uint256 public _maxPercentLiquidated = 5e3;  // 5000 = 50% of collateral
   // Max percent of capital allowed to be loaned in a single borrow event
-  uint256 public _maxLoanPercent = 500;  // 250 = 25% of capital
+  uint256 public _maxLoanPercent = 5e3;  // 5000 = 50% of capital
 
   // Fee rewarded to successful callers of the liquidate function
   uint256 public _liquidatorReward = 10;  // 10 = 0.1% fee
   // Max fee rewarded to successful callers of the liquidate function
-  uint256 public constant _maxLiquidatorReward = 250;  // 250 = 25% fee
+  uint256 public constant _maxLiquidatorReward = 2500;  // 2500 = 25% fee
 
   // Fee rewarded to successful callers of the unlockCollateral function
   uint256 public _unlockReward = 10;  // 10 = 0.1% fee
-  // Max fee rewarded to successful callers of the unlockCollateral function
-  uint256 public constant _maxUnlockReward = 250;  // 250 = 25% fee
 
-  uint256 public constant _inverseBasisPoint = 1000;
+  uint256 constant _inverseBasisPoint = 1e4;
   uint256 public constant WAD = 1e18;
   uint256 public constant WAD_RAY_RATIO = 1e9;
   uint256 public constant SECONDS_PER_YEAR = 365 days;
@@ -78,8 +76,9 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   // user address -> token address -> expiration -> amount
   mapping(address => mapping(address => mapping (uint256 => uint256))) public depositsByUser;
 
+  // Last timestamp at which deposits unlock was run. This is necessary so that we know from which timestamp we need to iterate, when unlocking
   // user address -> token address -> timestamp
-  mapping(address => mapping(address => uint256)) public userDepositsUnlockedUntil;
+  mapping(address => mapping(address => uint256)) public userDepositsLastUnlock;
 
   // token => expiration => amount
   mapping(address => mapping(uint256 => uint256)) public amountsLockedByExpirationPerToken;
@@ -170,13 +169,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     _liquidatorReward = _reward;
   }
 
-  /// @notice Set a new unlock reward
-  /// @param _reward New reward
-  function setUnlockReward(uint256 _reward) external onlyOwner {
-    require(_reward <= _maxUnlockReward);
-    _unlockReward = _reward;
-  }
-
   /// @notice Set a new max percent liquidated
   /// @param _maxPercent New max percent
   function setMaxPercentLiquidated(uint256 _maxPercent) external onlyOwner {
@@ -258,12 +250,12 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   function getUnlockableAmount(address _user, address _token) external view returns (uint256) {
-    uint256 unlockedUntil = userDepositsUnlockedUntil[msg.sender][_token];
+    uint256 lastUnlock = userDepositsLastUnlock[msg.sender][_token];
 
     // If 0, no deposits has ever been made
-    if (unlockedUntil == 0) return 0;
+    if (lastUnlock == 0) return 0;
 
-    uint256 expiration = ((unlockedUntil / _expirationIncrement) * _expirationIncrement) + _baseExpiration;
+    uint256 expiration = ((lastUnlock / _expirationIncrement) * _expirationIncrement) + _baseExpiration;
 
     uint256 unlockableAmount;
     while (expiration < block.timestamp) {
@@ -302,7 +294,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   function _getAmountToBorrow(uint256 _amount, address collateralToken, address tokenToBorrow) internal view returns (uint256) {
     uint256 priceOfCollateral = priceOracle.getAssetPrice(collateralToken);
     uint256 priceOfBorrowed = priceOracle.getAssetPrice(tokenToBorrow);
-    return (_amount * _inverseBasisPoint / 997) * priceOfCollateral / priceOfBorrowed;
+    // ToDo : Do we wanna add ability to modify the 0.3% fee ?
+    return (_amount * _inverseBasisPoint / 9970) * priceOfCollateral / priceOfBorrowed;
   }
 
   function getLoanableAmount(address _token, uint256 _lockExpiration) public virtual returns (uint256) {
@@ -347,7 +340,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   function _unlockExpired(address _token) internal returns(uint256) {
-    uint256 unlockedUntil = userDepositsUnlockedUntil[msg.sender][_token];
+    uint256 unlockedUntil = userDepositsLastUnlock[msg.sender][_token];
 
     // If 0, no deposits has ever been made
     if (unlockedUntil == 0) return 0;
@@ -365,7 +358,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
       expiration += _expirationIncrement;
     }
 
-    userDepositsUnlockedUntil[msg.sender][_token] = block.timestamp;
+    userDepositsLastUnlock[msg.sender][_token] = block.timestamp;
 
     return unlockedToken;
   }
@@ -390,8 +383,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
       depositsByUser[_from][_tokens[i]][_lockExpiration] += _amounts[i];
 
       // If this is the first deposit ever made by this user, for this token
-      if (userDepositsUnlockedUntil[_from][_tokens[i]] == 0) {
-        userDepositsUnlockedUntil[_from][_tokens[i]] = block.timestamp;
+      if (userDepositsLastUnlock[_from][_tokens[i]] == 0) {
+        userDepositsLastUnlock[_from][_tokens[i]] = block.timestamp;
       }
 
       emit Deposit(_from, _tokens[i], _lockExpiration, _amounts[i]);

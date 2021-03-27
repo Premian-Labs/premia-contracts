@@ -25,7 +25,7 @@ contract PremiaPoolController is Ownable, ReentrancyGuard {
         address[] tokens;
     }
 
-    uint256 public constant _inverseBasisPoint = 1000;
+    uint256 constant _inverseBasisPoint = 1e4;
 
     IPremiaMiningV2 public premiaMining;
 

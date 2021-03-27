@@ -21,10 +21,10 @@ contract PremiaAMM is Ownable, IPoolControllerChild {
 
   IERC20 public constant WETH = IERC20(0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2);
 
-  uint256 public blackScholesWeight = 500; // 500 = 50%
-  uint256 public constantProductWeight = 500; // 500 = 50%
+  uint256 public blackScholesWeight = 5e3; // 500 = 50%
+  uint256 public constantProductWeight = 5e3; // 500 = 50%
 
-  uint256 public constant inverseBasisPoint = 1000;
+  uint256 constant _inverseBasisPoint = 1e4;
 
   IPremiaPoolController public controller;
 
@@ -59,7 +59,7 @@ contract PremiaAMM is Ownable, IPoolControllerChild {
   /// @param _blackScholesWeight Black scholes weighting
   /// @param _constantProductWeight Weighting based on reserves
   function setPriceWeights(IPremiaPoolController _controller, uint256 _blackScholesWeight, uint256 _constantProductWeight) external onlyOwner {
-    require(_blackScholesWeight + _constantProductWeight == inverseBasisPoint);
+    require(_blackScholesWeight + _constantProductWeight == _inverseBasisPoint);
     controller = _controller;
     blackScholesWeight = _blackScholesWeight;
     constantProductWeight = _constantProductWeight;
@@ -175,7 +175,7 @@ contract PremiaAMM is Ownable, IPoolControllerChild {
       uint256 ethPrice = blackScholesOracle.getAssetPrice(address(WETH));
       uint256 premiumTokenPrice = blackScholesOracle.getAssetPrice(_premiumToken);
       uint256 blackScholesPrice = ethPrice * uint256(1e12) / premiumTokenPrice * blackScholesPriceInEth / uint256(1e12);
-      return blackScholesPrice * _amountIn * inverseBasisPoint / blackScholesWeight;
+      return blackScholesPrice * _amountIn * _inverseBasisPoint / blackScholesWeight;
   }
 
   function priceOption(IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount, address _premiumToken) external view returns (uint256 optionPrice) {
@@ -200,22 +200,22 @@ contract PremiaAMM is Ownable, IPoolControllerChild {
         if (_isCall) {
           // User is Buying Call
           xt1 = xt0 - amountIn;
-          price = weightedBsPrice + (k / xt1 * inverseBasisPoint / constantProductWeight);
+          price = weightedBsPrice + (k / xt1 * _inverseBasisPoint / constantProductWeight);
           yt1 = yt0 + price;
         } else {
           // User is Buying Put
           yt1 = yt0 - amountIn;
-          price = weightedBsPrice + (k / yt1 * inverseBasisPoint / constantProductWeight);
+          price = weightedBsPrice + (k / yt1 * _inverseBasisPoint / constantProductWeight);
         }
       } else {
         if (_isCall) {
           // User is Selling Call
           yt1 = yt0 - amountIn;
-          price = weightedBsPrice + (k / yt1 * inverseBasisPoint / constantProductWeight);
+          price = weightedBsPrice + (k / yt1 * _inverseBasisPoint / constantProductWeight);
         } else {
           // User is Selling Put
           xt1 = xt0 - amountIn;
-          price = weightedBsPrice + (k / xt1 * inverseBasisPoint / constantProductWeight);
+          price = weightedBsPrice + (k / xt1 * _inverseBasisPoint / constantProductWeight);
         }
       }
 
