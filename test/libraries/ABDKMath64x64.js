@@ -1,4 +1,3 @@
-const { BigNumber } = require('@ethersproject/bignumber')
 const { expect } = require('chai')
 
 const toFixed = function(bn) {
@@ -229,8 +228,8 @@ describe('ABDKMath64x64', function() {
 
 			for (let i; i < inputs.length; i++) {
 				const bn = await instance.callStatic.fromInt(inputs[i])
-				const answer = bn * BigNumber(7)
-				expect(await instance.callStatic.muli(bn, BigNumber(7)).to.equal(answer))
+				const answer = bn * ethers.BigNumber(7)
+				expect(await instance.callStatic.muli(bn, ethers.BigNumber(7)).to.equal(answer))
 			}
 		})
 
@@ -257,8 +256,8 @@ describe('ABDKMath64x64', function() {
 
 			for (let i; i < inputs.length; i++) {
 				const bn = await instance.callStatic.fromInt(inputs[i])
-				const answer = bn * BigNumber(7)
-				expect(await instance.callStatic.mulu(bn, BigNumber(7)).to.equal(answer))
+				const answer = bn * ethers.BigNumber(7)
+				expect(await instance.callStatic.mulu(bn, ethers.BigNumber(7)).to.equal(answer))
 			}
 		})
 
