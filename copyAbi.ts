@@ -84,6 +84,11 @@ fs.copyFileSync(
 // AMM
 
 fs.copyFileSync(
+  './artifacts/contracts/amm/PremiaAMM.sol/PremiaAMM.json',
+  './abi/PremiaAMM.json',
+);
+
+fs.copyFileSync(
   './artifacts/contracts/amm/PremiaLiquidityPool.sol/PremiaLiquidityPool.json',
   './abi/PremiaLiquidityPool.json',
 );
@@ -91,11 +96,6 @@ fs.copyFileSync(
 fs.copyFileSync(
   './artifacts/contracts/amm/PremiaMiningV2.sol/PremiaMiningV2.json',
   './abi/PremiaMiningV2.json',
-);
-
-fs.copyFileSync(
-  './artifacts/contracts/amm/PremiaPoolController.sol/PremiaPoolController.json',
-  './abi/PremiaPoolController.json',
 );
 
 fs.copyFileSync(

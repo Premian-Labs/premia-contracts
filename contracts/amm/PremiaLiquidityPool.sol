@@ -11,7 +11,7 @@ import '../interface/IPremiaOption.sol';
 import '../interface/IPremiaLiquidityPool.sol';
 import '../interface/IPriceOracleGetter.sol';
 import '../interface/ILendingRateOracleGetter.sol';
-import "../interface/IPremiaPoolController.sol";
+import "../interface/IPremiaAMM.sol";
 import "../interface/IPoolControllerChild.sol";
 import '../uniswapV2/interfaces/IUniswapV2Router02.sol';
 
@@ -66,7 +66,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   uint256 public constant WAD_RAY_RATIO = 1e9;
   uint256 public constant SECONDS_PER_YEAR = 365 days;
 
-  IPremiaPoolController public controller;
+  IPremiaAMM public controller;
   IPriceOracleGetter public priceOracle;
   ILendingRateOracleGetter public lendingRateOracle;
 
@@ -85,6 +85,28 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
   // optionContract => optionId => amountTokenOutstanding
   mapping(address => mapping(uint256 => uint256)) public optionsOutstanding;
+
+  ////////
+  ////////
+
+  // Token -> Expiration -> Profit / loss
+  mapping(address => mapping(uint256 => int256)) public tokenPnl;
+
+  // Token -> Expiration -> Profit / loss
+  mapping(address => mapping(uint256 => int256)) public denominatorPnl;
+
+  // User address -> Token address -> Expiration -> Score
+  mapping(address => mapping(address => mapping(uint256 => uint256))) public userScore;
+
+  // Max stake length multiplier
+  uint256 public maxScoreMultiplier = 1e5; // 100% bonus if max stake length
+
+  ////////
+  ////////
+
+  // Token -> amount
+  mapping (address => uint256) public totalTokenDeposit;
+
     
   // hash => Loan
   mapping(bytes32 => Loan) public loans;
@@ -108,7 +130,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   //////////////////////////////////////////////////
   //////////////////////////////////////////////////
 
-  constructor(IPremiaPoolController _controller, IPriceOracleGetter _priceOracle, ILendingRateOracleGetter _lendingRateOracle) {
+  constructor(IPremiaAMM _controller, IPriceOracleGetter _priceOracle, ILendingRateOracleGetter _lendingRateOracle) {
     controller = _controller;
     priceOracle = _priceOracle;
     lendingRateOracle = _lendingRateOracle;
@@ -137,7 +159,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
   function upgradeController(address _newController) external override {
     require(msg.sender == owner() || msg.sender == address(controller), "Not owner or controller");
-    controller = IPremiaPoolController(_newController);
+    controller = IPremiaAMM(_newController);
     emit ControllerUpdated(_newController);
   }
 
@@ -640,10 +662,10 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     optionsOutstanding[_optionContract][_optionId] -= _amount;
 
-    if (data.expiration > block.timestamp) {
+    if (data.expiration < block.timestamp) {
       IPremiaOption(_optionContract).withdraw(_optionId);
     } else {
-      IPremiaOption(_optionContract).cancelOptionFrom(_sender, _optionId, _amount);
+      IPremiaOption(_optionContract).cancelOption(_optionId, _amount);
     }
 
     uint256 tokenWithdrawn = IERC20(data.token).balanceOf(address(this)) - preTokenBalance;

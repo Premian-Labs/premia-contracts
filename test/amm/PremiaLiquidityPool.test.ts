@@ -1,12 +1,12 @@
 import { expect } from 'chai';
 import {
+  PremiaAMM,
+  PremiaAMM__factory,
   PremiaLiquidityPool,
   PremiaLiquidityPool__factory,
   PremiaLongUnderlyingPool,
   PremiaMiningV2,
   PremiaMiningV2__factory,
-  PremiaPoolController,
-  PremiaPoolController__factory,
   PremiaShortUnderlyingPool,
   PremiaShortUnderlyingPool__factory,
   TestErc20,
@@ -22,7 +22,7 @@ let admin: SignerWithAddress;
 let user1: SignerWithAddress;
 let user2: SignerWithAddress;
 let premia: TestErc20;
-let controller: PremiaPoolController;
+let controller: PremiaAMM;
 let longPool: PremiaLongUnderlyingPool;
 let shortPool: PremiaShortUnderlyingPool;
 let mining: PremiaMiningV2;
@@ -44,7 +44,7 @@ describe('PremiaLiquidityPool', () => {
 
     [admin, user1, user2] = await ethers.getSigners();
     premia = await new TestErc20__factory(admin).deploy(18);
-    controller = await new PremiaPoolController__factory(admin).deploy();
+    controller = await new PremiaAMM__factory(admin).deploy();
 
     longPool = await new PremiaLiquidityPool__factory(admin).deploy(
       controller.address,
@@ -105,7 +105,7 @@ describe('PremiaLiquidityPool', () => {
     it('should fail depositing if pool is not whitelisted', async () => {
       await controller.removePools([longPool.address], []);
       await expect(
-        controller.connect(user1).deposit([
+        controller.connect(user1).depositLiquidity([
           {
             pool: longPool.address,
             tokens: [token1.address],
@@ -129,7 +129,7 @@ describe('PremiaLiquidityPool', () => {
         ],
       );
       await expect(
-        controller.connect(user1).deposit([
+        controller.connect(user1).depositLiquidity([
           {
             pool: longPool.address,
             tokens: [token1.address],
@@ -141,7 +141,7 @@ describe('PremiaLiquidityPool', () => {
     });
 
     it('should successfully deposit tokens', async () => {
-      await controller.connect(user1).deposit([
+      await controller.connect(user1).depositLiquidity([
         {
           pool: longPool.address,
           tokens: [token1.address, token2.address],
@@ -165,7 +165,7 @@ describe('PremiaLiquidityPool', () => {
 
     it('should fail deposit if invalid expiration selected', async () => {
       await expect(
-        controller.connect(user1).deposit([
+        controller.connect(user1).depositLiquidity([
           {
             pool: longPool.address,
             tokens: [token1.address],
@@ -175,7 +175,7 @@ describe('PremiaLiquidityPool', () => {
         ]),
       ).revertedWith('Exp passed');
       await expect(
-        controller.connect(user1).deposit([
+        controller.connect(user1).depositLiquidity([
           {
             pool: longPool.address,
             tokens: [token1.address],
@@ -185,7 +185,7 @@ describe('PremiaLiquidityPool', () => {
         ]),
       ).revertedWith('Exp > max exp');
       await expect(
-        controller.connect(user1).deposit([
+        controller.connect(user1).depositLiquidity([
           {
             pool: longPool.address,
             tokens: [token1.address],
@@ -197,7 +197,7 @@ describe('PremiaLiquidityPool', () => {
     });
 
     it('should correctly calculate writable amount', async () => {
-      await controller.connect(user1).deposit([
+      await controller.connect(user1).depositLiquidity([
         {
           pool: longPool.address,
           tokens: [token1.address, token2.address],
@@ -205,7 +205,7 @@ describe('PremiaLiquidityPool', () => {
           lockExpiration: nextExpiration,
         },
       ]);
-      await controller.connect(user1).deposit([
+      await controller.connect(user1).depositLiquidity([
         {
           pool: longPool.address,
           tokens: [token1.address, token2.address],
@@ -250,7 +250,7 @@ describe('PremiaLiquidityPool', () => {
     });
 
     it('should properly harvest rewards', async () => {
-      await controller.connect(user1).deposit([
+      await controller.connect(user1).depositLiquidity([
         {
           pool: longPool.address,
           tokens: [token1.address, token2.address],
@@ -273,7 +273,7 @@ describe('PremiaLiquidityPool', () => {
           user1PremiaBal.lt(parseEther('40000')),
       ).to.be.true;
 
-      await controller.connect(user2).deposit([
+      await controller.connect(user2).depositLiquidity([
         {
           pool: longPool.address,
           tokens: [token1.address, token2.address],
@@ -329,7 +329,7 @@ describe('PremiaLiquidityPool', () => {
     });
 
     it('should properly calculate pending reward', async () => {
-      await controller.connect(user1).deposit([
+      await controller.connect(user1).depositLiquidity([
         {
           pool: longPool.address,
           tokens: [token1.address, token2.address],
@@ -367,7 +367,7 @@ describe('PremiaLiquidityPool', () => {
           user1DaiBal.lt(parseEther('20000')),
       ).to.be.true;
 
-      await controller.connect(user2).deposit([
+      await controller.connect(user2).depositLiquidity([
         {
           pool: longPool.address,
           tokens: [token1.address, token2.address],
@@ -413,7 +413,7 @@ describe('PremiaLiquidityPool', () => {
       );
 
       expect(Math.floor(Number(formatEther(user2TokenBal)))).to.eq(
-        Math.floor(user2TokenTargetBal - 1),
+        Math.floor(user2TokenTargetBal),
       );
 
       expect(Math.floor(Number(formatEther(user1DaiBal)))).to.eq(
@@ -426,7 +426,7 @@ describe('PremiaLiquidityPool', () => {
     });
 
     it('should stop distributing premia when allocated amount is reached', async () => {
-      await controller.connect(user1).deposit([
+      await controller.connect(user1).depositLiquidity([
         {
           pool: longPool.address,
           tokens: [token1.address],

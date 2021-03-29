@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 import './PremiaLiquidityPool.sol';
-import '../interface/IPremiaPoolController.sol';
+import '../interface/IPremiaAMM.sol';
 import '../interface/IPremiaOption.sol';
 
 contract PremiaLongUnderlyingPool is PremiaLiquidityPool {
@@ -14,7 +14,7 @@ contract PremiaLongUnderlyingPool is PremiaLiquidityPool {
   // token address => index
   mapping(address => uint256) loanQueuesLast;
 
-  constructor(IPremiaPoolController _controller, IPriceOracleGetter _priceOracle, ILendingRateOracleGetter _lendingRateOracle)
+  constructor(IPremiaAMM _controller, IPriceOracleGetter _priceOracle, ILendingRateOracleGetter _lendingRateOracle)
     PremiaLiquidityPool(_controller, _priceOracle, _lendingRateOracle) {}
 
   function _enqueueLoan(Loan memory _loan) internal {
