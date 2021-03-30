@@ -1,7 +1,16 @@
 const { expect } = require('chai');
 
-const toFixed = function (bn) {
+const fixedFromBigNumber = function (bn) {
   return bn.shl(64);
+};
+
+const fixedFromFloat = function (float) {
+  const [integer = '', decimal = ''] = float.toString().split('.');
+  return fixedFromBigNumber(
+    ethers.BigNumber.from(`${ integer }${ decimal }`)
+  ).div(
+    ethers.BigNumber.from(10 ** decimal.length)
+  );
 };
 
 describe('OptionMath', function () {
