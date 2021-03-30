@@ -32,6 +32,7 @@ library OptionMath {
      * @return the new EMA value for today
      * alpha * (current - old ) + old
      */
+    // inconsistent ordering of args
     function rollingEma(
         int256 _old,
         int256 _current,
