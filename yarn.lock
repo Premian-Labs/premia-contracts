@@ -1134,6 +1134,10 @@ abbrev@1.0.x:
   resolved "https://registry.yarnpkg.com/abbrev/-/abbrev-1.0.9.tgz#91b4792588a7738c25f35dd6f63752a2f8776135"
   integrity sha1-kbR5JYinc4wl813W9jdSovh3YTU=
 
+"abdk-libraries-solidity@https://github.com/Median-Finance/abdk-libraries-solidity":
+  version "0.3.0"
+  resolved "https://github.com/Median-Finance/abdk-libraries-solidity#205c577667c7c1d8a5fcde0b6db4d2df02688fbc"
+
 abort-controller@^3.0.0:
   version "3.0.0"
   resolved "https://registry.yarnpkg.com/abort-controller/-/abort-controller-3.0.0.tgz#eaf54d53b62bae4138e809ca225c8439a6efb392"

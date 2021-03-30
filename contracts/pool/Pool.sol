@@ -10,7 +10,7 @@ import '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
 import '../pair/Pair.sol';
 import './PoolStorage.sol';
 
-import { ABDKMath64x64 } from '../libraries/ABDKMath64x64.sol';
+import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { OptionMath } from "../libraries/OptionMath.sol";
 
 /**
@@ -49,7 +49,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint volatility = Pair(l.pair).getVolatility();
 
     uint liquidity = l.liquidity;
-    cLevel = OptionMath.calculateCLevel(l.cLevel, liquidity, liquidity - amount, ABDKMath64x64.ONE_64x64);
+    cLevel = OptionMath.calculateCLevel(l.cLevel, liquidity, liquidity - amount, OptionMath.ONE_64x64);
   }
 
   /**
@@ -92,7 +92,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     uint oldLiquidity = l.liquidity;
     uint newLiquidity = oldLiquidity + amount;
-    l.cLevel = OptionMath.calculateCLevel(l.cLevel, oldLiquidity, newLiquidity, ABDKMath64x64.ONE_64x64);
+    l.cLevel = OptionMath.calculateCLevel(l.cLevel, oldLiquidity, newLiquidity, OptionMath.ONE_64x64);
     l.liquidity = newLiquidity;
   }
 
@@ -117,7 +117,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     uint oldLiquidity = l.liquidity;
     uint newLiquidity = oldLiquidity - amount;
-    l.cLevel = OptionMath.calculateCLevel(l.cLevel, oldLiquidity, newLiquidity, ABDKMath64x64.ONE_64x64);
+    l.cLevel = OptionMath.calculateCLevel(l.cLevel, oldLiquidity, newLiquidity, OptionMath.ONE_64x64);
     l.liquidity = newLiquidity;
   }
 
