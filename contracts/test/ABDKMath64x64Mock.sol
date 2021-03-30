@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import '../libraries/ABDKMath64x64.sol';
+import 'abdk-libraries-solidity/ABDKMath64x64.sol';
 
 contract ABDKMath64x64Mock {
   function fromInt (int256 x) external pure returns (int128) {
