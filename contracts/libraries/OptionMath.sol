@@ -2,10 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import {ABDKMath64x64} from "../libraries/ABDKMath64x64.sol";
+import {ABDKMath64x64} from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 
 library OptionMath {
     using ABDKMath64x64 for int128;
+
+    int128 internal constant ONE_64x64 = 0x10000000000000000;
 
     /**
      * @notice calculates the log return for a given day
@@ -68,7 +70,7 @@ library OptionMath {
         int128 yesterdayema = ABDKMath64x64.fromInt(_yesterdayema);
         int128 today64x64 = ABDKMath64x64.fromInt(_today);
         return
-            ABDKMath64x64.ONE_64x64.sub(alpha).mul(
+            ONE_64x64.sub(alpha).mul(
                 yesterdayemavariance64x64.add(
                     alpha.mul(today64x64.sub(yesterdayema)).pow(2)
                 )
@@ -112,7 +114,7 @@ library OptionMath {
             const_1.add(const_2.mul(_x)).add(
                 const_3.mul(_x.pow(2).add(ABDKMath64x64.fromInt(3)).sqrt())
             );
-        return ABDKMath64x64.ONE_64x64.sub(const_0.mul(num.div(den)));
+        return ONE_64x64.sub(const_0.mul(num.div(den)));
     }
 
     /**
@@ -142,8 +144,7 @@ library OptionMath {
         int128 _steepness
     ) internal pure returns (int128) {
         return
-            ABDKMath64x64
-                .ONE_64x64
+            ONE_64x64
                 .sub(calcTradingDelta(_St0, _St1, _steepness))
                 .div(_Xt.mul(_steepness));
     }
