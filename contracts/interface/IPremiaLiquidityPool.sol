@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
-pragma experimental ABIEncoderV2;
 
 import '../interface/IPriceOracleGetter.sol';
 import '../interface/IPremiaOption.sol';
@@ -44,9 +43,7 @@ interface IPremiaLiquidityPool {
   function isExpirationPast(Loan memory loan) external returns (bool);
   function liquidateLoan(Loan memory _loan, uint256 _amount) external;
   function liquidate(bytes32 _hash, uint256 _collateralAmount) external;
-  function writeOption(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) external;
-  function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) external;
-  function unwindOption(address _optionContract, uint256 _optionId, uint256 _amount) external;
-  function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount) external;
+  function buyOption(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) external;
+  function sellOption(address _sender, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium) external;
   function unlockCollateralFromOption(address _optionContract, uint256 _optionId, uint256 _amount) external;
 }

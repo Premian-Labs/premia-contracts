@@ -388,7 +388,7 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
   // Main //
   //////////
 
-  function buy(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _maxPremiumAmount, address _referrer) external {
+  function buy(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _maxPremiumAmount, address _referrer) external nonReentrant {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data.token, IPremiaOption(_optionContract).denominator(), data.expiration, data.isCall, _amount);
 
@@ -396,14 +396,12 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
 
     require(optionPrice >= _maxPremiumAmount, "Price too high.");
 
-    IERC20(_premiumToken).safeTransferFrom(msg.sender, address(liquidityPool), optionPrice);
-
     // The pool needs to check that the option contract is whitelisted
-    liquidityPool.writeOptionFor(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice, _referrer);
+    liquidityPool.buyOption(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice, _referrer);
     emit Bought(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice);
   }
 
-  function sell(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _minPremiumAmount) external {
+  function sell(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _minPremiumAmount) external nonReentrant {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data.token, IPremiaOption(_optionContract).denominator(), data.expiration, data.isCall, _amount);
 
@@ -412,8 +410,7 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
     require(optionPrice <= _minPremiumAmount, "Price too low.");
 
     // The pool needs to check that the option contract is whitelisted
-    liquidityPool.unwindOptionFor(msg.sender, _optionContract, _optionId, _amount);
-    IERC20(_premiumToken).safeTransferFrom(address(liquidityPool), msg.sender, optionPrice);
+    liquidityPool.sellOption(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice);
     emit Sold(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice);
   }
 

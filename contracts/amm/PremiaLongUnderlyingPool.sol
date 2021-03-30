@@ -37,9 +37,7 @@ contract PremiaLongUnderlyingPool is PremiaLiquidityPool {
       return loan;
   }
 
-  function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public override {
-    super.writeOptionFor(_receiver, _optionContract, _optionId, _amount, _premiumToken, _amountPremium, _referrer);
-
+  function _afterBuyOption(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) internal override {
     IPremiaOption optionContract = IPremiaOption(_optionContract);
     address tokenToBorrow = optionContract.denominator();
 
@@ -53,17 +51,7 @@ contract PremiaLongUnderlyingPool is PremiaLiquidityPool {
     _enqueueLoan(loan);
   }
 
-  function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount) public override {
-    super.unwindOptionFor(_sender, _optionContract, _optionId, _amount);
-  }
-
-  function unlockCollateralFromOption(address _optionContract, uint256 _optionId, uint256 _amount) public override {
-    super.unlockCollateralFromOption(_optionContract, _optionId, _amount);
-  }
-
-  function _postLiquidate(Loan memory loan, uint256 _collateralAmount) internal override {}
-
-  function _postWithdrawal(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _tokenWithdrawn, uint256 _denominatorWithdrawn)
+  function _afterSellOption(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _tokenWithdrawn, uint256 _denominatorWithdrawn)
     internal override {
     IPremiaOption optionContract = IPremiaOption(_optionContract);
     IPremiaOption.OptionData memory data = optionContract.optionData(_optionId);

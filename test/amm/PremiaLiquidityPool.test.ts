@@ -3,8 +3,8 @@ import {
   PremiaAMM,
   PremiaAMM__factory,
   PremiaLiquidityPool,
-  PremiaLiquidityPool__factory,
   PremiaLongUnderlyingPool,
+  PremiaLongUnderlyingPool__factory,
   PremiaMiningV2,
   PremiaMiningV2__factory,
   PremiaShortUnderlyingPool,
@@ -17,6 +17,11 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { resetHardhat, setTimestamp } from '../utils/evm';
 import { formatEther, parseEther } from 'ethers/lib/utils';
 import { ZERO_ADDRESS } from '../utils/constants';
+
+const chai = require('chai');
+const chaiAlmost = require('chai-almost');
+
+chai.use(chaiAlmost(0.1));
 
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
@@ -46,7 +51,7 @@ describe('PremiaLiquidityPool', () => {
     premia = await new TestErc20__factory(admin).deploy(18);
     controller = await new PremiaAMM__factory(admin).deploy();
 
-    longPool = await new PremiaLiquidityPool__factory(admin).deploy(
+    longPool = await new PremiaLongUnderlyingPool__factory(admin).deploy(
       controller.address,
       ZERO_ADDRESS,
       ZERO_ADDRESS,
@@ -80,13 +85,11 @@ describe('PremiaLiquidityPool', () => {
       [
         {
           canBorrow: false,
-          canWrite: false,
           isWhitelistedToken: true,
           isWhitelistedOptionContract: false,
         },
         {
           canBorrow: false,
-          canWrite: false,
           isWhitelistedToken: true,
           isWhitelistedOptionContract: false,
         },
@@ -122,7 +125,6 @@ describe('PremiaLiquidityPool', () => {
         [
           {
             canBorrow: false,
-            canWrite: false,
             isWhitelistedToken: false,
             isWhitelistedOptionContract: false,
           },
@@ -315,16 +317,14 @@ describe('PremiaLiquidityPool', () => {
       user1PremiaBal = await premia.balanceOf(user1.address);
       user2PremiaBal = await premia.balanceOf(user2.address);
 
-      expect(Math.floor(Number(formatEther(user1PremiaBal)))).to.eq(
-        Math.floor(
-          user1TokenTargetBal +
-            user1DaiTargetBal +
-            Number(formatEther(user1PremiaBalBak)),
-        ),
+      expect(Number(formatEther(user1PremiaBal))).to.almost.eq(
+        user1TokenTargetBal +
+          user1DaiTargetBal +
+          Number(formatEther(user1PremiaBalBak)),
       );
 
-      expect(Math.floor(Number(formatEther(user2PremiaBal)))).to.eq(
-        Math.floor(user2DaiTargetBal + user2TokenTargetBal),
+      expect(Number(formatEther(user2PremiaBal))).to.almost.eq(
+        user2DaiTargetBal + user2TokenTargetBal,
       );
     });
 
@@ -408,21 +408,17 @@ describe('PremiaLiquidityPool', () => {
       user1DaiBal = await mining.pendingReward(user1.address, token2.address);
       user2DaiBal = await mining.pendingReward(user2.address, token2.address);
 
-      expect(Math.floor(Number(formatEther(user1TokenBal)))).to.eq(
-        Math.floor(user1TokenTargetBal),
+      expect(Number(formatEther(user1TokenBal))).to.almost.eq(
+        user1TokenTargetBal,
       );
 
-      expect(Math.floor(Number(formatEther(user2TokenBal)))).to.eq(
-        Math.floor(user2TokenTargetBal),
+      expect(Number(formatEther(user2TokenBal))).to.almost.eq(
+        user2TokenTargetBal,
       );
 
-      expect(Math.floor(Number(formatEther(user1DaiBal)))).to.eq(
-        Math.floor(user1DaiTargetBal),
-      );
+      expect(Number(formatEther(user1DaiBal))).to.almost.eq(user1DaiTargetBal);
 
-      expect(Math.floor(Number(formatEther(user2DaiBal)))).to.eq(
-        Math.floor(user2DaiTargetBal),
-      );
+      expect(Number(formatEther(user2DaiBal))).to.almost.eq(user2DaiTargetBal);
     });
 
     it('should stop distributing premia when allocated amount is reached', async () => {

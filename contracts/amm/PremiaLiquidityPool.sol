@@ -34,7 +34,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
   struct Permissions {
     bool canBorrow;
-    bool canWrite;
     bool isWhitelistedToken;
     bool isWhitelistedOptionContract;
   }
@@ -89,10 +88,10 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   ////////
   ////////
 
-  // Token -> Expiration -> Profit / loss
+  // Token -> Expiration -> Profit / loss (in token amount)
   mapping(address => mapping(uint256 => int256)) public tokenPnl;
 
-  // Token -> Expiration -> Profit / loss
+  // Token -> Expiration -> Profit / loss (in denominator amount)
   mapping(address => mapping(uint256 => int256)) public denominatorPnl;
 
   // User address -> Token address -> Expiration -> Score
@@ -115,14 +114,14 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   // Events //
   ////////////
 
-  event PermissionsUpdated(address indexed addr, bool canBorrow, bool canWrite, bool isWhitelistedToken, bool isWhitelistedOptionContract);
+  event PermissionsUpdated(address indexed addr, bool canBorrow, bool isWhitelistedToken, bool isWhitelistedOptionContract);
   event Deposit(address indexed user, address indexed token,uint256 lockExpiration, uint256 amountToken);
   event Withdraw(address indexed user, address indexed token, uint256 amountToken);
   event Borrow(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed lockExpiration, uint256 amount, uint256 lendingRate);
   event RepayLoan(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed amount);
   event LiquidateLoan(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed amount, uint256 rewardFee);
-  event WriteOption(address indexed receiver, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
-  event UnwindOption(address indexed sender, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount);
+  event BoughtOption(address indexed receiver, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
+  event SoldOption(address indexed sender, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount);
   event UnlockCollateral(address indexed unlocker, address indexed optionContract, uint256 indexed optionId, uint256 amount, uint256 tokenRewardFee, uint256 denominatorRewardFee);
   event ControllerUpdated(address indexed newController);
 
@@ -172,7 +171,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
       emit PermissionsUpdated(_addr[i],
         _permissions[i].canBorrow,
-        _permissions[i].canWrite,
         _permissions[i].isWhitelistedToken,
         _permissions[i].isWhitelistedOptionContract);
     }
@@ -385,11 +383,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     return unlockedToken;
   }
 
-  function depositFrom(address _from, address[] memory _tokens, uint256[] memory _amounts, uint256 _lockExpiration) external onlyController {
-    _deposit(_from, _tokens, _amounts, _lockExpiration);
-  }
-
-  function _deposit(address _from, address[] memory _tokens, uint256[] memory _amounts, uint256 _lockExpiration) internal nonReentrant {
+  function depositFrom(address _from, address[] memory _tokens, uint256[] memory _amounts, uint256 _lockExpiration) external onlyController nonReentrant {
     require(_tokens.length == _amounts.length, "Arrays diff length");
     require(_lockExpiration > block.timestamp, "Exp passed");
     require(_lockExpiration - block.timestamp <= _maxExpiration, "Exp > max exp");
@@ -413,11 +407,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     }
   }
 
-  function withdrawExpiredFrom(address _from, address[] memory _tokens) external onlyController {
-    _withdrawExpired(_from, _tokens);
-  }
-
-  function _withdrawExpired(address _from, address[] memory _tokens) internal nonReentrant {
+  function withdrawExpiredFrom(address _from, address[] memory _tokens) external onlyController nonReentrant {
     for (uint256 i = 0; i < _tokens.length; i++) {
       uint256 unlockedAmount = _unlockExpired(_tokens[i]);
 
@@ -475,7 +465,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration)
-    external virtual nonReentrant returns (Loan memory) {
+    external nonReentrant returns (Loan memory) {
     require(controller.loanToValueRatios(_collateralToken) > 0, "Collateral token not allowed.");
     require(permissions[msg.sender].canBorrow, "Borrow not whitelisted.");
 
@@ -500,12 +490,12 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     return loan;
   }
 
-  function repayLoan(Loan memory _loan, uint256 _amount) external virtual returns (uint256) {
+  function repayLoan(Loan memory _loan, uint256 _amount) external returns (uint256) {
     bytes32 hash = getLoanHash(_loan);
     return repay(hash, _amount);
   }
 
-  function repay(bytes32 _hash, uint256 _amount) public virtual nonReentrant returns (uint256) {
+  function repay(bytes32 _hash, uint256 _amount) public nonReentrant returns (uint256) {
     Loan storage loan = loans[_hash];
 
     uint256 collateralOut = getRequiredCollateralToRepayLoan(loan, _amount);
@@ -585,7 +575,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     liquidate(hash, _amount);
   }
 
-  function liquidate(bytes32 _hash, uint256 _collateralAmount) public virtual nonReentrant {
+  function liquidate(bytes32 _hash, uint256 _collateralAmount) public nonReentrant {
     Loan storage loan = loans[_hash];
 
     require(loan.amountCollateralTokenHeld * _inverseBasisPoint / _collateralAmount >= _maxPercentLiquidated, "Too much liquidated.");
@@ -612,16 +602,14 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     emit LiquidateLoan(_hash, msg.sender, loan.token, _collateralAmount, rewardFee);
   }
 
-  function writeOption(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) external {
-    writeOptionFor(msg.sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium, _referrer);
-  }
-
-  function writeOptionFor(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public virtual nonReentrant {
-    require(permissions[msg.sender].canWrite, "Writer not whitelisted.");
+  function buyOption(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) public nonReentrant onlyController {
     require(permissions[_optionContract].isWhitelistedOptionContract, "Option contract not whitelisted.");
 
-    uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
+    IERC20(_premiumToken).safeTransferFrom(msg.sender, address(this), _amountPremium);
 
+    // ToDo : Account for "profit"
+
+    uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
     optionsOutstanding[_optionContract][_optionId] = outstanding + _amount;
 
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
@@ -638,18 +626,17 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     IPremiaOption(_optionContract).writeOption(data.token, writeArgs, _referrer);
     IPremiaOption(_optionContract).safeTransferFrom(address(this), _receiver, _optionId, _amount, "");
 
-    emit WriteOption(_receiver, msg.sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium);
+    _afterBuyOption(_receiver, _optionContract, _optionId, _amount, _premiumToken, _amountPremium, _referrer);
+
+    emit BoughtOption(_receiver, msg.sender, _optionContract, _optionId, _amount, _premiumToken, _amountPremium);
   }
+
+  function _afterBuyOption(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) internal virtual {}
 
   // ToDo: _amount not used in any override, can we remove it ?
-  function _postWithdrawal(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _tokenWithdrawn, uint256 _denominatorWithdrawn) virtual internal {}
+  function _afterSellOption(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _tokenWithdrawn, uint256 _denominatorWithdrawn) virtual internal {}
 
-  function unwindOption(address _optionContract, uint256 _optionId, uint256 _amount) external {
-    unwindOptionFor(msg.sender, _optionContract, _optionId, _amount);
-  }
-
-  function unwindOptionFor(address _sender, address _optionContract, uint256 _optionId, uint256 _amount) public virtual nonReentrant {
-    require(permissions[msg.sender].canWrite, "Writer not whitelisted.");
+  function sellOption(address _sender, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium) public nonReentrant onlyController {
     require(permissions[_optionContract].isWhitelistedOptionContract, "Option contract not whitelisted.");
     require(optionsOutstanding[_optionContract][_optionId] >= _amount, "Not enough written.");
 
@@ -686,12 +673,15 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     amountsLockedByExpirationPerToken[data.token][data.expiration] += tokenWithdrawn;
     amountsLockedByExpirationPerToken[denominatorToken][data.expiration] += denominatorWithdrawn;
 
-    _postWithdrawal(_optionContract, _optionId, _amount, tokenWithdrawn, denominatorWithdrawn);
+    // ToDo : Account for "Loss"
+    IERC20(_premiumToken).safeTransfer(_sender, _amountPremium);
 
-    emit UnwindOption(_sender, msg.sender, _optionContract, _optionId, _amount);
+    _afterSellOption(_optionContract, _optionId, _amount, tokenWithdrawn, denominatorWithdrawn);
+
+    emit SoldOption(_sender, msg.sender, _optionContract, _optionId, _amount);
   }
 
-  function unlockCollateralFromOption(address _optionContract, uint256 _optionId, uint256 _amount) public virtual nonReentrant {
+  function unlockCollateralFromOption(address _optionContract, uint256 _optionId, uint256 _amount) public nonReentrant {
     IPremiaOption optionContract = IPremiaOption(_optionContract);
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
 
@@ -740,7 +730,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
       IERC20(denominatorToken).safeTransferFrom(address(this), msg.sender, denominatorRewardFee);
     }
 
-    _postWithdrawal(_optionContract, _optionId, _amount, tokenIncrease, denominatorIncrease);
+    _afterSellOption(_optionContract, _optionId, _amount, tokenIncrease, denominatorIncrease);
 
     emit UnlockCollateral(msg.sender, _optionContract, _optionId, _amount, tokenRewardFee, denominatorRewardFee);
   }
