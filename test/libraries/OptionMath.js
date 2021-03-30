@@ -1,7 +1,7 @@
 const { expect } = require('chai');
 
 const fixedFromBigNumber = function (bn) {
-  return bn.shl(64);
+  return bn.abs().shl(64).mul(bn.abs().div(bn));
 };
 
 const fixedFromFloat = function (float) {
