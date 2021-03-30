@@ -9,7 +9,7 @@ const fixedFromFloat = function (float) {
   return fixedFromBigNumber(
     ethers.BigNumber.from(`${ integer }${ decimal }`)
   ).div(
-    ethers.BigNumber.from(10 ** decimal.length)
+    ethers.BigNumber.from(`1${ '0'.repeat(decimal.length) }`)
   );
 };
 
@@ -51,9 +51,7 @@ const raw = [
   [1616889600000,55284.28125],
 ];
 
-const input = raw.map(([x,y]) =>
-  [new Date(x), ethers.BigNumber.from(Math.floor(y))]
-);
+const input = raw.map(([x,y]) => [new Date(x), fixedFromFloat(y)]);
 
 let [input_t, input_t_1] = input.reverse();
 
@@ -68,11 +66,25 @@ describe('OptionMath', function () {
 
   describe('#logreturns', function () {
     it('returns the natural log returns for a given day', async function () {
-      const logReturnAssert = -0.012386;
-      // input_t_1[1] > input_t[1]
-      const logReturn_1 = await instance.callStatic.logreturns(input_t[1], input_t_1[1]); // fails under overflow
-      // const logReturn_2 = await instance.callStatic.logreturns(input_t_1[1], input_t[1]);  // returns 0
-      expect(logReturn_1.toNumber()).to.be.eq(logReturnAssert);
+      expect(
+        await instance.callStatic.logreturns(
+          input_t[1],
+          input_t_1[1]
+        )
+      ).to.be.closeTo(
+        fixedFromFloat(-0.012389950714774214),
+        10
+      );
+
+      expect(
+        await instance.callStatic.logreturns(
+          input_t_1[1],
+          input_t[1]
+        )
+      ).to.be.closeTo(
+        fixedFromFloat(0.012389950714774214),
+        10
+      );
     });
   });
 

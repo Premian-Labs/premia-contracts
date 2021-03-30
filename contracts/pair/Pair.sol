@@ -38,9 +38,10 @@ contract Pair is OwnableInternal {
   function update() internal {
     PairStorage.Layout storage l = PairStorage.layout();
     require(l.lasttimestamp + l.period < block.timestamp, "Wait to update");
+
     l.lasttimestamp = block.timestamp;
-    (l.priceyesterday, l.pricetoday) = (l.pricetoday, l.IPrice.getLatestPrice(l.oracle));
-    l.logreturns = OptionMath.logreturns(l.pricetoday, l.priceyesterday);
+    (l.priceYesterday64x64, l.priceToday64x64) = (l.priceToday64x64, l.IPrice.getLatestPrice(l.oracle));
+    l.logreturns = OptionMath.logreturns(l.priceToday64x64, l.priceYesterday64x64);
     (l.emalogreturns_yesterday, l.emalogreturns_today) = (l.emalogreturns_today, OptionMath.rollingEma(l.emalogreturns_yesterday, l.logreturns, l.window));
     l.emavariance = OptionMath.rollingEmaVar(l.logreturns, l.emalogreturns_yesterday, l.emavariance, l.window);
   }

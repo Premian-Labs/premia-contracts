@@ -22,8 +22,8 @@ library PairStorage {
     //time
     uint256 lasttimestamp;
     //prices
-    int256 priceyesterday;
-    int256 pricetoday;
+    int128 priceYesterday64x64;
+    int128 priceToday64x64;
     //Rolling stats
     int256 logreturns;
     int256 emalogreturns_yesterday;

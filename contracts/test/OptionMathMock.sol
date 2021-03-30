@@ -7,17 +7,17 @@ import {OptionMath} from "../libraries/OptionMath.sol";
 contract OptionMathMock {
     /**
      * @notice calculates the log return for a given day
-     * @param _today todays close
-     * @param _yesterday yesterdays close
+     * @param today64x64 todays close
+     * @param yesterday64x64 yesterdays close
      * @return log of returns
      * ln( today / yesterday)
      */
-    function logreturns(int256 _today, int256 _yesterday)
+    function logreturns(int128 today64x64, int128 yesterday64x64)
         external
         pure
-        returns (int256)
+        returns (int128)
     {
-        return OptionMath.logreturns(_today, _yesterday);
+        return OptionMath.logreturns(today64x64, yesterday64x64);
     }
 
     /**

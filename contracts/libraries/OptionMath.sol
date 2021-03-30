@@ -11,19 +11,17 @@ library OptionMath {
 
     /**
      * @notice calculates the log return for a given day
-     * @param _today todays close
-     * @param _yesterday yesterdays close
+     * @param today64x64 today's close
+     * @param yesterday64x64 yesterday's close
      * @return log of returns
      * ln( today / yesterday)
      */
-    function logreturns(int256 _today, int256 _yesterday)
+    function logreturns(int128 today64x64, int128 yesterday64x64)
         internal
         pure
-        returns (int256)
+        returns (int128)
     {
-        int128 today64x64 = ABDKMath64x64.fromInt(_today);
-        int128 yesterday64x64 = ABDKMath64x64.fromInt(_yesterday);
-        return ABDKMath64x64.toInt(today64x64.div(yesterday64x64).ln());
+        return today64x64.div(yesterday64x64).ln();
     }
 
     /**
