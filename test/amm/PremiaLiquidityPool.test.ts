@@ -21,7 +21,7 @@ import { ZERO_ADDRESS } from '../utils/constants';
 const chai = require('chai');
 const chaiAlmost = require('chai-almost');
 
-chai.use(chaiAlmost(0.1));
+chai.use(chaiAlmost(0.2));
 
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
@@ -49,6 +49,10 @@ describe('PremiaLiquidityPool', () => {
 
     [admin, user1, user2] = await ethers.getSigners();
     premia = await new TestErc20__factory(admin).deploy(18);
+    token1 = await new TestErc20__factory(admin).deploy(18);
+    token2 = await new TestErc20__factory(admin).deploy(18);
+    dai = await new TestErc20__factory(admin).deploy(18);
+
     controller = await new PremiaAMM__factory(admin).deploy();
 
     longPool = await new PremiaLongUnderlyingPool__factory(admin).deploy(
@@ -68,10 +72,6 @@ describe('PremiaLiquidityPool', () => {
       controller.address,
       premia.address,
     );
-
-    token1 = await new TestErc20__factory(admin).deploy(18);
-    token2 = await new TestErc20__factory(admin).deploy(18);
-    dai = await new TestErc20__factory(admin).deploy(18);
 
     await controller.setPremiaMining(mining.address);
     await mining.setPool(token2.address, 1000, false);

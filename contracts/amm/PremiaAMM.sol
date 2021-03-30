@@ -314,24 +314,24 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
     return maxSell;
   }
 
-  function _getWeightedBlackScholesPrice(address _token, address _denominator, uint256 _strikePrice, uint256 _expiration, uint256 _amountIn, address _premiumToken)
+  function _getWeightedBlackScholesPrice(address _token, address _denominator, uint256 _strikePrice, uint256 _expiration, uint256 _amountIn)
     internal view returns (uint256) {
       uint256 blackScholesPriceInEth = blackScholesOracle.getBlackScholesEstimate(_token, _denominator, _strikePrice, _expiration, _amountIn);
       uint256 ethPrice = blackScholesOracle.getAssetPrice(address(WETH));
-      uint256 premiumTokenPrice = blackScholesOracle.getAssetPrice(_premiumToken);
+      uint256 premiumTokenPrice = blackScholesOracle.getAssetPrice(_denominator);
       uint256 blackScholesPrice = ethPrice * uint256(1e12) / premiumTokenPrice * blackScholesPriceInEth / uint256(1e12);
       return blackScholesPrice * _amountIn * _inverseBasisPoint / blackScholesWeight;
   }
 
-  function priceOption(IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount, address _premiumToken) external view returns (uint256 optionPrice) {
+  function priceOption(IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount) external view returns (uint256 optionPrice) {
     IPremiaOption.OptionData memory data = _optionContract.optionData(_optionId);
-    return _priceOption(data.token, _optionContract.denominator(), data.strikePrice, data.expiration, data.isCall, _side, _amount, _premiumToken);
+    return _priceOption(data.token, _optionContract.denominator(), data.strikePrice, data.expiration, data.isCall, _side, _amount);
   }
 
-  function _priceOption(address _token, address _denominator, uint256 _strikePrice, uint256 _expiration, bool _isCall, SaleSide _side, uint256 _amount, address _premiumToken)
+  function _priceOption(address _token, address _denominator, uint256 _strikePrice, uint256 _expiration, bool _isCall, SaleSide _side, uint256 _amount)
     internal view returns (uint256) {
       uint256 amountIn = _isCall ? _amount : _amount * _strikePrice;
-      uint256 weightedBsPrice = _getWeightedBlackScholesPrice(_token, _denominator, _strikePrice, _expiration, amountIn, _premiumToken);
+      uint256 weightedBsPrice = _getWeightedBlackScholesPrice(_token, _denominator, _strikePrice, _expiration, amountIn);
 
       uint256 xt0 = _getCallReserves(_token, _expiration);
       uint256 yt0 = _getPutReserves(_denominator, _expiration);
@@ -388,30 +388,32 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
   // Main //
   //////////
 
-  function buy(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _maxPremiumAmount, address _referrer) external nonReentrant {
+  function buy(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _maxPremiumAmount, address _referrer) external nonReentrant {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data.token, IPremiaOption(_optionContract).denominator(), data.expiration, data.isCall, _amount);
 
-    uint256 optionPrice = _priceOption(data.token, IPremiaOption(_optionContract).denominator(), data.strikePrice, data.expiration, data.isCall, SaleSide.Buy, _amount, _premiumToken);
+    address denominator = IPremiaOption(_optionContract).denominator();
+    uint256 optionPrice = _priceOption(data.token, denominator, data.strikePrice, data.expiration, data.isCall, SaleSide.Buy, _amount);
 
     require(optionPrice >= _maxPremiumAmount, "Price too high.");
 
     // The pool needs to check that the option contract is whitelisted
-    liquidityPool.buyOption(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice, _referrer);
-    emit Bought(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice);
+    liquidityPool.buyOption(msg.sender, _optionContract, _optionId, _amount, optionPrice, _referrer);
+    emit Bought(msg.sender, _optionContract, _optionId, _amount, denominator, optionPrice);
   }
 
-  function sell(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _minPremiumAmount) external nonReentrant {
+  function sell(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _minPremiumAmount) external nonReentrant {
     IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
     IPremiaLiquidityPool liquidityPool = _getLiquidityPool(data.token, IPremiaOption(_optionContract).denominator(), data.expiration, data.isCall, _amount);
 
-    uint256 optionPrice = _priceOption(data.token, IPremiaOption(_optionContract).denominator(), data.strikePrice, data.expiration, data.isCall, SaleSide.Sell, _amount, _premiumToken);
+    address denominator = IPremiaOption(_optionContract).denominator();
+    uint256 optionPrice = _priceOption(data.token, IPremiaOption(_optionContract).denominator(), data.strikePrice, data.expiration, data.isCall, SaleSide.Sell, _amount);
 
     require(optionPrice <= _minPremiumAmount, "Price too low.");
 
     // The pool needs to check that the option contract is whitelisted
-    liquidityPool.sellOption(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice);
-    emit Sold(msg.sender, _optionContract, _optionId, _amount, _premiumToken, optionPrice);
+    liquidityPool.sellOption(msg.sender, _optionContract, _optionId, _amount, optionPrice);
+    emit Sold(msg.sender, _optionContract, _optionId, _amount, denominator, optionPrice);
   }
 
   function depositLiquidity(DepositArgs[] memory _deposits) external nonReentrant {

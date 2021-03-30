@@ -28,8 +28,8 @@ interface IPremiaAMM {
   // Events //
   ////////////
 
-  event Bought(address indexed user, address indexed optionContract, uint256 indexed optionId, uint256 amount, address premiumToken, uint256 optionPrice);
-  event Sold(address indexed user, address indexed optionContract, uint256 indexed optionId, uint256 amount, address premiumToken, uint256 optionPrice);
+  event Bought(address indexed user, address indexed optionContract, uint256 indexed optionId, uint256 amount, uint256 optionPrice);
+  event Sold(address indexed user, address indexed optionContract, uint256 indexed optionId, uint256 amount, uint256 optionPrice);
 
   event DefaultSwapRouterUpdated(IUniswapV2Router02 indexed router);
   event PairSwapRouterUpdated(address indexed tokenA, address indexed tokenB, IUniswapV2Router02 indexed router);
@@ -60,12 +60,12 @@ interface IPremiaAMM {
   function getPutMaxBuy(address _optionContract, uint256 _optionId) external view returns (uint256);
 
   function getPutMaxSell(address _optionContract, uint256 _optionId) external view returns (uint256);
-  function priceOption(IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount, address _premiumToken) external view returns (uint256 optionPrice);
+  function priceOption(IPremiaOption _optionContract, uint256 _optionId, SaleSide _side, uint256 _amount) external view returns (uint256 optionPrice);
 
   //////////////////////////////////////////////////
 
-  function buy(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _maxPremiumAmount, address _referrer) external;
-  function sell(address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _minPremiumAmount) external;
+  function buy(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _maxPremiumAmount, address _referrer) external;
+  function sell(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _minPremiumAmount) external;
   function depositLiquidity(DepositArgs[] memory _deposits) external;
   function withdrawExpiredLiquidity(WithdrawExpiredArgs[] memory _withdrawals) external;
 }

@@ -37,7 +37,7 @@ contract PremiaShortUnderlyingPool is PremiaLiquidityPool {
       return loan;
   }
 
-  function _afterBuyOption(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) internal override {
+  function _afterBuyOption(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, uint256 _amountPremium, address _referrer) internal override {
     IPremiaOption optionContract = IPremiaOption(_optionContract);
     address collateralToken = optionContract.denominator();
 

@@ -21,6 +21,25 @@ interface IPremiaLiquidityPool {
     uint256 lendingRate;
   }
 
+  ////////////
+  // Events //
+  ////////////
+
+  event PermissionsUpdated(address indexed addr, bool canBorrow, bool isWhitelistedToken, bool isWhitelistedOptionContract);
+  event Deposit(address indexed user, address indexed token,uint256 lockExpiration, uint256 amountToken);
+  event Withdraw(address indexed user, address indexed token, uint256 amountToken);
+  event Borrow(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed lockExpiration, uint256 amount, uint256 lendingRate);
+  event RepayLoan(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed amount);
+  event LiquidateLoan(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed amount, uint256 rewardFee);
+  event BoughtOption(address indexed receiver, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount, uint256 amountPremium);
+  event SoldOption(address indexed sender, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount, uint256 amountPremium);
+  event UnlockCollateral(address indexed unlocker, address indexed optionContract, uint256 indexed optionId, uint256 amount, uint256 tokenRewardFee, uint256 denominatorRewardFee);
+  event ControllerUpdated(address indexed newController);
+
+  //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+  //////////////////////////////////////////////////
+
   function upgradeController(address _newController) external;
 
   function getUnwritableAmount(address _optionContract, uint256 _optionId) external view returns (uint256);
@@ -43,7 +62,7 @@ interface IPremiaLiquidityPool {
   function isExpirationPast(Loan memory loan) external returns (bool);
   function liquidateLoan(Loan memory _loan, uint256 _amount) external;
   function liquidate(bytes32 _hash, uint256 _collateralAmount) external;
-  function buyOption(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium, address _referrer) external;
-  function sellOption(address _sender, address _optionContract, uint256 _optionId, uint256 _amount, address _premiumToken, uint256 _amountPremium) external;
+  function buyOption(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, uint256 _amountPremium, address _referrer) external;
+  function sellOption(address _sender, address _optionContract, uint256 _optionId, uint256 _amount, uint256 _amountPremium) external;
   function unlockCollateralFromOption(address _optionContract, uint256 _optionId, uint256 _amount) external;
 }
