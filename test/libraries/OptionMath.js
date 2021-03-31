@@ -168,7 +168,19 @@ describe('OptionMath', function () {
   });
 
   describe('#N', function () {
-    it('todo');
+    it('calculates CDF approximation', async function f() {
+      const prob = fixedFromFloat(-0.8514075553);
+      const expected = fixedFromFloat(0.8027285019);
+      expect(
+        expected / await instance.callStatic.N(
+          prob
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
+
+    });
   });
 
   describe('#Xt', function () {
