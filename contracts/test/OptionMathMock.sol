@@ -22,18 +22,18 @@ contract OptionMathMock {
 
     /**
      * @notice calculates the log return for a given day
-     * @param _old the price from yesterday
-     * @param _current today's price
-     * @param _window the period for the EMA average
+     * @param today64x64 today's close
+     * @param yesterday64x64 yesterday's close
+     * @param window the period for the EMA average
      * @return the new EMA value for today
      * alpha * (current - old ) + old
      */
     function rollingEma(
-        int256 _old,
-        int256 _current,
-        int256 _window
-    ) external pure returns (int256) {
-        return OptionMath.rollingEma(_old, _current, _window);
+        int128 today64x64,
+        int128 yesterday64x64,
+        uint256 window
+    ) external pure returns (int128) {
+        return OptionMath.rollingEma(today64x64, yesterday64x64, window);
     }
 
     /**
@@ -49,7 +49,7 @@ contract OptionMathMock {
         int256 _today,
         int256 _yesterdayema,
         int256 _yesterdayemavariance,
-        int256 _window
+        uint256 _window
     ) external pure returns (int256) {
         return
             OptionMath.rollingEmaVar(

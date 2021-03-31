@@ -14,9 +14,12 @@ library OptionMath {
      * @param today64x64 today's close
      * @param yesterday64x64 yesterday's close
      * @return log of returns
-     * ln( today / yesterday)
+     * ln(today / yesterday)
      */
-    function logreturns(int128 today64x64, int128 yesterday64x64)
+    function logreturns (
+      int128 today64x64,
+      int128 yesterday64x64
+    )
         internal
         pure
         returns (int128)
@@ -26,25 +29,20 @@ library OptionMath {
 
     /**
      * @notice calculates the log return for a given day
-     * @param _old the price from yesterday
-     * @param _current today's price
-     * @param _window the period for the EMA average
+     * @param today64x64 today's close
+     * @param yesterday64x64 yesterday's close
+     * @param window the period for the EMA average
      * @return the new EMA value for today
-     * alpha * (current - old ) + old
+     * alpha * (today - yesterday) + yesterday
      */
-    // inconsistent ordering of args
-    function rollingEma(
-        int256 _old,
-        int256 _current,
-        int256 _window
-    ) internal pure returns (int256) {
-        int128 alpha = ABDKMath64x64.fromInt(2).divi(1 + _window);
-        int128 current64x64 = ABDKMath64x64.fromInt(_current);
-        int128 old64x64 = ABDKMath64x64.fromInt(_old);
-        return
-            ABDKMath64x64.toInt(
-                alpha.mul(current64x64.sub(old64x64)).add(old64x64)
-            );
+    function rollingEma (
+        int128 today64x64,
+        int128 yesterday64x64,
+        uint256 window
+    ) internal pure returns (int128) {
+        return ABDKMath64x64.divu(2, window + 1).mul(
+          today64x64.sub(yesterday64x64)
+        ).add(yesterday64x64);
     }
 
     /**
@@ -60,9 +58,9 @@ library OptionMath {
         int256 _today,
         int256 _yesterdayema,
         int256 _yesterdayemavariance,
-        int256 _window
+        uint256 _window
     ) internal pure returns (int256) {
-        int128 alpha = ABDKMath64x64.fromInt(2).divi(1 + _window);
+        int128 alpha = ABDKMath64x64.divu(2, _window + 1);
         int128 yesterdayemavariance64x64 =
             ABDKMath64x64.fromInt(_yesterdayemavariance);
         int128 yesterdayema = ABDKMath64x64.fromInt(_yesterdayema);
