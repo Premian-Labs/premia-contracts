@@ -9,6 +9,12 @@ library OptionMath {
 
     int128 internal constant ONE_64x64 = 0x10000000000000000;
 
+    // constants used in Choudhury’s approximation of the Black-Scholes CDF
+    int128 internal constant N_CONST_0_64x64 = 0x661e4f765fd8adab; // 0.3989
+    int128 internal constant N_CONST_1_64x64 = 0x39db22d0e5604189; // 0.226
+    int128 internal constant N_CONST_2_64x64 = 0xa3d70a3d70a3d70a; // 0.64
+    int128 internal constant N_CONST_3_64x64 = 0x547ae147ae147ae1; // 0.33
+
     /**
      * @notice calculates the log return for a given day
      * @param today64x64 today's close
@@ -102,16 +108,12 @@ library OptionMath {
      * @return the approximated CDF of random variable x
      */
     function N(int128 _x) internal pure returns (int128) {
-        int128 const_0 = ABDKMath64x64.fromInt(3989).divi(10000);
-        int128 const_1 = ABDKMath64x64.fromInt(226).divi(1000);
-        int128 const_2 = ABDKMath64x64.fromInt(64).divi(100);
-        int128 const_3 = ABDKMath64x64.fromInt(33).divi(100);
         int128 num = _x.pow(2).div(ABDKMath64x64.fromInt(2)).neg().exp();
         int128 den =
-            const_1.add(const_2.mul(_x)).add(
-                const_3.mul(_x.pow(2).add(ABDKMath64x64.fromInt(3)).sqrt())
+            N_CONST_1_64x64.add(N_CONST_2_64x64.mul(_x)).add(
+                N_CONST_3_64x64.mul(_x.pow(2).add(ABDKMath64x64.fromInt(3)).sqrt())
             );
-        return ONE_64x64.sub(const_0.mul(num.div(den)));
+        return ONE_64x64.sub(N_CONST_0_64x64.mul(num.div(den)));
     }
 
     /**
