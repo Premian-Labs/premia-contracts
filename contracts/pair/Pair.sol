@@ -27,9 +27,8 @@ contract Pair is OwnableInternal {
    * @notice calculate or get cached volatility for current day
    * @return volatility
    */
-  function getVolatility () external view returns (uint) {
-    PairStorage.Layout storage l = PairStorage.layout();
-    return uint(l.emavariance);
+  function getVolatility () external view returns (int128) {
+    return PairStorage.layout().emavariance;
   }
 
   /**

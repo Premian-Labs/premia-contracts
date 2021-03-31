@@ -46,7 +46,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    uint volatility = Pair(l.pair).getVolatility();
+    int128 volatility = Pair(l.pair).getVolatility();
 
     uint liquidity = l.liquidity;
     cLevel = OptionMath.calculateCLevel(l.cLevel, liquidity, liquidity - amount, OptionMath.ONE_64x64);

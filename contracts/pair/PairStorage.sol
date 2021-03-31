@@ -28,7 +28,7 @@ library PairStorage {
     int128 logreturns;
     int128 emalogreturns_yesterday;
     int128 emalogreturns_today;
-    int256 emavariance;
+    int128 emavariance;
   }
 
   function layout () internal pure returns (Layout storage l) {

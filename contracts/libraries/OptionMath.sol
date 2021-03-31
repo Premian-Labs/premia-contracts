@@ -47,28 +47,27 @@ library OptionMath {
 
     /**
      * @notice calculates the log return for a given day
-     * @param _today the price from today
-     * @param _yesterdayema the average from yesterday
-     * @param _yesterdayemavariance the variation from yesterday
-     * @param _window the period for the average
+     * @param today64x64 the price from today
+     * @param yesterdayEma64x64 the average from yesterday
+     * @param yesterdayEmaVariance64x64 the variation from yesterday
+     * @param window the period for the average
      * @return the new variance value for today
      * (1 - a)(EMAVar t-1  +  a( x t - EMA t-1)^2)
      */
     function rollingEmaVariance (
-        int256 _today,
-        int256 _yesterdayema,
-        int256 _yesterdayemavariance,
-        uint256 _window
-    ) internal pure returns (int256) {
-        int128 alpha = ABDKMath64x64.divu(2, _window + 1);
-        int128 yesterdayemavariance64x64 =
-            ABDKMath64x64.fromInt(_yesterdayemavariance);
-        int128 yesterdayema = ABDKMath64x64.fromInt(_yesterdayema);
-        int128 today64x64 = ABDKMath64x64.fromInt(_today);
+        int128 today64x64,
+        int128 yesterdayEma64x64,
+        int128 yesterdayEmaVariance64x64,
+        uint256 window
+    ) internal pure returns (int128) {
+        int128 alpha = ABDKMath64x64.divu(2, window + 1);
+
         return
             ONE_64x64.sub(alpha).mul(
-                yesterdayemavariance64x64.add(
-                    alpha.mul(today64x64.sub(yesterdayema)).pow(2)
+                yesterdayEmaVariance64x64.add(
+                    alpha.mul(
+                      today64x64.sub(yesterdayEma64x64)
+                    ).pow(2)
                 )
             );
     }
