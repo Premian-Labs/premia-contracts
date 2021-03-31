@@ -227,7 +227,7 @@ describe('OptionMath', function () {
   });
 
   describe('#bsPrice', function () {
-    it('put / call ITM, put / call OTM');
+    it('put / call ITM, put / call OTM, cherk `require case - Promise must be rejected`');
   });
 
   describe('#calculateCLevel', function () {
