@@ -87,11 +87,13 @@ library OptionMath {
         int128 _maturity
     ) internal pure returns (int128) {
         return
-            _strike.div(_price).ln().add(
-                _maturity.mul(_variance.divi(2)).div(
-                    _maturity.mul(_variance).sqrt()
+            _strike.div(_price).ln()
+                .add(
+                    _maturity.mul(_variance.divi(2))
                 )
-            );
+                .div(
+                    _maturity.mul(_variance).sqrt()
+                );
     }
 
     /**
