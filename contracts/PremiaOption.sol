@@ -604,8 +604,13 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         data.claimsPostExp = uint256(data.claimsPostExp).add(claimsUser);
         delete nbWritten[_from][_optionId];
 
-        denominator.safeTransfer(_from, denominatorAmount);
-        IERC20(optionData[_optionId].token).safeTransfer(_from, tokenAmount);
+        if (denominatorAmount > 0) {
+            denominator.safeTransfer(_from, denominatorAmount);
+        }
+
+        if (tokenAmount > 0) {
+            IERC20(optionData[_optionId].token).safeTransfer(_from, tokenAmount);
+        }
 
         emit Withdraw(_from, _optionId, data.token, claimsUser);
     }
