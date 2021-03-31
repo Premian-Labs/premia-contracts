@@ -90,10 +90,31 @@ describe('OptionMath', function () {
 
   describe('#rollingEma', function () {
     it('return the rolling ema value', async function () {
-      // does not pass contracts/libraries/ABDKMath64x64.sol:135
-      const rollingEma = await instance.callStatic.rollingEma(input_t[1], input_t_1[1], ethers.BigNumber.from(14));
-      console.log('rollingEma: ', rollingEma);
-      expect(rollingEma).not.to.be.reverted;
+      const ema_t_1 = fixedFromFloat(0.1);
+
+      expect(
+        await instance.callStatic.rollingEma(
+          ema_t_1,
+          ema_t_1,
+          ethers.BigNumber.from(14)
+        )
+      ).to.be.closeTo(
+        ema_t_1,
+        10
+      );
+
+      const logReturn_t = fixedFromFloat(-0.01239);
+
+      expect(
+        await instance.callStatic.rollingEma(
+          logReturn_t,
+          ema_t_1,
+          ethers.BigNumber.from(14)
+        )
+      ).to.be.closeTo(
+        fixedFromFloat(0.08501466667),
+        100000000
+      );
     });
   });
 
