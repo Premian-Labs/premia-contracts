@@ -227,7 +227,7 @@ describe('OptionMath', function () {
   });
 
   describe('#bsPrice', function () {
-    it('todo');
+    it('put / call ITM, put / call OTM');
   });
 
   describe('#calculateCLevel', function () {

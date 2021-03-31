@@ -155,6 +155,8 @@ library OptionMath {
      * @param _isCall is this a call option
      * @return the price of the option
      */
+
+    // TODO: add require to check _variance, _price, _duration > 0, _strike => 0.5 * _price,  _strike <= 2 * _price
     function bsPrice(
         int128 _variance,
         int128 _strike,
