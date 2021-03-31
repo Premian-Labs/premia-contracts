@@ -66,24 +66,26 @@ describe('OptionMath', function () {
 
   describe('#logreturns', function () {
     it('returns the natural log returns for a given day', async function () {
+      let expected = fixedFromFloat(-0.012389950714774214);
       expect(
-        await instance.callStatic.logreturns(
+        expected / await instance.callStatic.logreturns(
           input_t[1],
           input_t_1[1]
         )
       ).to.be.closeTo(
-        fixedFromFloat(-0.012389950714774214),
-        10
+        1,
+        0.001
       );
 
+      expected = fixedFromFloat(0.012389950714774214);
       expect(
-        await instance.callStatic.logreturns(
+        expected / await instance.callStatic.logreturns(
           input_t_1[1],
           input_t[1]
         )
       ).to.be.closeTo(
-        fixedFromFloat(0.012389950714774214),
-        10
+        1,
+        0.001
       );
     });
   });
@@ -100,31 +102,43 @@ describe('OptionMath', function () {
         )
       ).to.be.closeTo(
         ema_t_1,
-        10
+        1
       );
 
       const logReturn_t = fixedFromFloat(-0.01239);
+      const expected = fixedFromFloat(0.08501466667);
 
       expect(
-        await instance.callStatic.rollingEma(
+        expected / await instance.callStatic.rollingEma(
           logReturn_t,
           ema_t_1,
           ethers.BigNumber.from(14)
         )
       ).to.be.closeTo(
-        fixedFromFloat(0.08501466667),
-        100000000
+        1,
+        0.001
       );
     });
   });
 
   describe('#rollingEmaVariance', function () {
     it('return the rolling variance value', async function () {
-      // does not pass contracts/libraries/ABDKMath64x64.sol:122
-      // also - it invokes OptionMathMock.bsPrice function without any reason to be invoked!
-      const rollingEmaVariance = await instance.callStatic.rollingEmaVariance(input_t[1], input_t_1[1], fixedFromFloat(0.4), ethers.BigNumber.from(14));
-      console.log(rollingEmaVariance);
-      expect(rollingEmaVariance).not.to.be.reverted;
+      const logReturn_t = fixedFromFloat(-0.01239);
+      const ema_t_1 = fixedFromFloat(0.1);
+      const emvar_t_1 = fixedFromFloat(0.2);
+      const expected = fixedFromFloat(0.1750175349);
+
+      expect(
+        expected / await instance.callStatic.rollingEmaVariance(
+          logReturn_t,
+          ema_t_1,
+          emvar_t_1,
+          ethers.BigNumber.from(14)
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
     });
   });
 
