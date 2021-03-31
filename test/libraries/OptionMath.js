@@ -184,9 +184,44 @@ describe('OptionMath', function () {
   });
 
   describe('#Xt', function () {
-    it('todo');
-  });
+    it('calculates supply-demand percentage change (signed)', async function f() {
+      const S0 = fixedFromFloat(100);
+      const S1 = fixedFromFloat(20);
+      const expected_supply_withdrawn = fixedFromFloat(-0.8);
+      const expected_supply_added = fixedFromFloat(0.8);
 
+      expect(
+        await instance.callStatic.Xt(
+          S0,
+          S0
+        )
+      ).to.be.closeTo(
+        0,
+        0.0001
+      );
+
+      expect(
+        expected_supply_withdrawn / await instance.callStatic.Xt(
+          S0,
+          S1
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
+
+      expect(
+        expected_supply_added / await instance.callStatic.Xt(
+          S1,
+          S0
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
+
+    });
+  });
   describe('#slippageCoefficient', function () {
     it('todo');
   });
@@ -195,11 +230,7 @@ describe('OptionMath', function () {
     it('todo');
   });
 
-  describe('#calcTradingDelta', function () {
-    it('todo');
-  });
-
   describe('#calculateCLevel', function () {
-    it('todo');
+    it('calculates C coefficient level (also covers calcTradingDelta implicitly)');
   });
 });
