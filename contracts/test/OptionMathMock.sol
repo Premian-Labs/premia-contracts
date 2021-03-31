@@ -53,13 +53,13 @@ contract OptionMathMock {
         return OptionMath.Xt(_St0, _St1);
     }
 
-    function SlippageCoef(
+    function slippageCoefficient(
         uint256 _St0,
         uint256 _St1,
         int128 _Xt,
         int128 _steepness
     ) external pure returns (int128) {
-        return OptionMath.SlippageCoef(_St0, _St1, _Xt, _steepness);
+        return OptionMath.slippageCoefficient(_St0, _St1, _Xt, _steepness);
     }
 
     function bsPrice(

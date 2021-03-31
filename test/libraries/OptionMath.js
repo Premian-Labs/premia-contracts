@@ -140,7 +140,7 @@ describe('OptionMath', function () {
     it('todo');
   });
 
-  describe('#SlippageCoef', function () {
+  describe('#slippageCoefficient', function () {
     it('todo');
   });
 

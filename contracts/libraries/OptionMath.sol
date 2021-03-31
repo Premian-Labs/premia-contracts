@@ -132,7 +132,7 @@ library OptionMath {
      * @param _steepness Pool state at t1
      * @return return intermediate viarable Xt
      */
-    function SlippageCoef(
+    function slippageCoefficient (
         uint256 _St0,
         uint256 _St1,
         int128 _Xt,
@@ -228,7 +228,7 @@ library OptionMath {
         int128 strike = ABDKMath64x64.fromUInt(_strike);
         int128 price = ABDKMath64x64.fromUInt(_price);
         int128 duration = ABDKMath64x64.fromUInt(_duration);
-        int128 slip = SlippageCoef(_St0, _St1, Xt(_St0, _St1), _steepness);
+        int128 slip = slippageCoefficient(_St0, _St1, Xt(_St0, _St1), _steepness);
         return
             calculateCLevel(_Ct, _St0, _St1, _steepness).mul(slip).mul(
                 bsPrice(variance, strike, price, duration, _isCall)
