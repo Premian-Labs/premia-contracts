@@ -43,6 +43,6 @@ contract Pair is OwnableInternal {
     (l.priceYesterday64x64, l.priceToday64x64) = (l.priceToday64x64, l.IPrice.getLatestPrice(l.oracle));
     l.logreturns = OptionMath.logreturns(l.priceToday64x64, l.priceYesterday64x64);
     (l.emalogreturns_yesterday, l.emalogreturns_today) = (l.emalogreturns_today, OptionMath.rollingEma(l.emalogreturns_yesterday, l.logreturns, l.window));
-    l.emavariance = OptionMath.rollingEmaVar(l.logreturns, l.emalogreturns_yesterday, l.emavariance, l.window);
+    l.emavariance = OptionMath.rollingEmaVariance(l.logreturns, l.emalogreturns_yesterday, l.emavariance, l.window);
   }
 }

@@ -54,7 +54,7 @@ library OptionMath {
      * @return the new variance value for today
      * (1 - a)(EMAVar t-1  +  a( x t - EMA t-1)^2)
      */
-    function rollingEmaVar(
+    function rollingEmaVariance (
         int256 _today,
         int256 _yesterdayema,
         int256 _yesterdayemavariance,

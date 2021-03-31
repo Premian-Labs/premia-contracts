@@ -118,13 +118,13 @@ describe('OptionMath', function () {
     });
   });
 
-  describe('#rollingEmaVar', function () {
+  describe('#rollingEmaVariance', function () {
     it('return the rolling variance value', async function () {
       // does not pass contracts/libraries/ABDKMath64x64.sol:122
       // also - it invokes OptionMathMock.bsPrice function without any reason to be invoked!
-      const rollingEmaVar = await instance.callStatic.rollingEmaVar(input_t[1], input_t_1[1], fixedFromFloat(0.4), ethers.BigNumber.from(14));
-      console.log(rollingEmaVar);
-      expect(rollingEmaVar).not.to.be.reverted;
+      const rollingEmaVariance = await instance.callStatic.rollingEmaVariance(input_t[1], input_t_1[1], fixedFromFloat(0.4), ethers.BigNumber.from(14));
+      console.log(rollingEmaVariance);
+      expect(rollingEmaVariance).not.to.be.reverted;
     });
   });
 
