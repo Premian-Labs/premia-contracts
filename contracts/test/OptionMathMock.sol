@@ -38,9 +38,9 @@ contract OptionMathMock {
     int128 variance,
     int128 strike,
     int128 price,
-    int128 maturity
+    int128 timeToMaturity
   ) external pure returns (int128) {
-    return OptionMath.d1(variance, strike, price, maturity);
+    return OptionMath.d1(variance, strike, price, timeToMaturity);
   }
 
   function N (
@@ -69,10 +69,10 @@ contract OptionMathMock {
     int128 variance,
     int128 strike,
     int128 price,
-    int128 duration,
+    int128 timeToMaturity,
     bool isCall
   ) external pure returns (int128) {
-    return OptionMath.bsPrice(variance, strike, price, duration, isCall);
+    return OptionMath.bsPrice(variance, strike, price, timeToMaturity, isCall);
   }
 
   function calcTradingDelta (
@@ -96,7 +96,7 @@ contract OptionMathMock {
     int128 variance,
     int128 strike,
     int128 price,
-    int128 duration,
+    int128 timeToMaturity,
     int128 Ct,
     int128 St0,
     int128 St1,
@@ -107,7 +107,7 @@ contract OptionMathMock {
       variance,
       strike,
       price,
-      duration,
+      timeToMaturity,
       Ct,
       St0,
       St1,

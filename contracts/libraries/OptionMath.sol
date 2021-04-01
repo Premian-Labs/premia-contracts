@@ -79,22 +79,22 @@ library OptionMath {
   * @param variance the price from yesterday
   * @param strike the price from today
   * @param price the average from yesterday
-  * @param maturity the average from today
+  * @param timeToMaturity duration of option contract (in years)
   * @return the probability
   */
   function d1 (
     int128 variance,
     int128 strike,
     int128 price,
-    int128 maturity
+    int128 timeToMaturity
   ) internal pure returns (int128) {
     return
     strike.div(price).ln()
     .add(
-      maturity.mul(variance / 2)
+      timeToMaturity.mul(variance / 2)
     )
     .div(
-      maturity.mul(variance).sqrt()
+      timeToMaturity.mul(variance).sqrt()
     );
   }
 
@@ -152,22 +152,21 @@ library OptionMath {
   * @param variance the price from yesterday
   * @param strike the price from today
   * @param price the average from yesterday
-  * @param duration temporal length of option contract
+  * @param timeToMaturity duration of option contract (in years)
   * @param isCall is this a call option
   * @return the price of the option
   */
 
-  // TODO: add require to check variance, price, duration > 0, strike => 0.5 * price,  strike <= 2 * price
+  // TODO: add require to check variance, price, timeToMaturity > 0, strike => 0.5 * price,  strike <= 2 * price
   function bsPrice (
     int128 variance,
     int128 strike,
     int128 price,
-    int128 duration,
+    int128 timeToMaturity,
     bool isCall
   ) internal pure returns (int128) {
-    int128 maturity = duration / (365 days);
-    int128 d1 = d1(variance, strike, price, maturity);
-    int128 d2 = d1.sub(maturity.mul(variance).sqrt());
+    int128 d1 = d1(variance, strike, price, timeToMaturity);
+    int128 d2 = d1.sub(timeToMaturity.mul(variance).sqrt());
     if (isCall) return price.mul(N(d1)).sub(strike.mul(N(d2)));
     return strike.mul(N(d2.neg())).sub(price.mul(N(d1.neg())));
   }
@@ -209,7 +208,7 @@ library OptionMath {
   * @param variance the price from yesterday
   * @param strike the price from today
   * @param price the average from yesterday
-  * @param duration temporal length of option contract
+  * @param timeToMaturity duration of option contract (in years)
   * @param Ct previous C-Level
   * @param St0 current state of the pool
   * @param St1 state of the pool after trade
@@ -221,7 +220,7 @@ library OptionMath {
     int128 variance,
     int128 strike,
     int128 price,
-    int128 duration,
+    int128 timeToMaturity,
     int128 Ct,
     int128 St0,
     int128 St1,
@@ -231,7 +230,7 @@ library OptionMath {
     return calculateCLevel(Ct, St0, St1, steepness).mul(
       slippageCoefficient(St0, St1, Xt(St0, St1), steepness)
     ).mul(
-      bsPrice(variance, strike, price, duration, isCall)
+      bsPrice(variance, strike, price, timeToMaturity, isCall)
     );
   }
 }
