@@ -124,7 +124,7 @@ library OptionMath {
     int128 St0,
     int128 St1
   ) internal pure returns (int128) {
-    return St0.sub(St1).div(St0 > St1 ? St0 : St1);
+    return St1.sub(St0).div(St0 > St1 ? St0 : St1);
   }
 
   /**
