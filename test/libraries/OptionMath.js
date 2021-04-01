@@ -143,7 +143,7 @@ describe('OptionMath', function () {
   });
 
   describe('#d1', function () {
-    it('calculates d1 in Black-Scholes', async function f() {
+    it('calculates d1 in Black-Scholes', async function () {
       const price = input_t[1];
       const strike = fixedFromFloat(55973.51171875 * 0.9);
       const variance = fixedFromFloat(0.175);
@@ -168,7 +168,7 @@ describe('OptionMath', function () {
   });
 
   describe('#N', function () {
-    it('calculates CDF approximation', async function f() {
+    it('calculates CDF approximation', async function () {
       const prob = fixedFromFloat(-0.8514075553);
       const expected = fixedFromFloat(0.8027285019);
       expect(
@@ -184,21 +184,11 @@ describe('OptionMath', function () {
   });
 
   describe('#Xt', function () {
-    it('calculates supply-demand percentage change (signed)', async function f() {
+    it('calculates supply-demand percentage change (signed)', async function () {
       const S0 = fixedFromFloat(100);
       const S1 = fixedFromFloat(20);
       const expected_supply_withdrawn = fixedFromFloat(-0.8);
       const expected_supply_added = fixedFromFloat(0.8);
-      //
-      // expect(
-      //   await instance.callStatic.Xt(
-      //     S0,
-      //     S0
-      //   )
-      // ).to.be.closeTo(
-      //   0,
-      //   0.0001
-      // );
 
       expect(
         expected_supply_withdrawn / await instance.callStatic.Xt(
@@ -231,6 +221,35 @@ describe('OptionMath', function () {
   });
 
   describe('#calculateCLevel', function () {
-    it('calculates C coefficient level (also covers calcTradingDelta implicitly)');
+    it('calculates C coefficient level (also covers calcTradingDelta implicitly)', async function (){
+      const S0 = fixedFromFloat(100);
+      const S1 = fixedFromFloat(20);
+      const expected_c_withdrawn = fixedFromFloat(0.4493289641);
+      const expected_c_added = fixedFromFloat(2.2255409285);
+
+      expect(
+        expected_c_withdrawn / await instance.callStatic.calculateCLevel(
+          fixedFromFloat(1),
+          S0,
+          S1,
+          fixedFromFloat(1)
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
+
+      expect(
+        expected_c_added / await instance.callStatic.calculateCLevel(
+          fixedFromFloat(1),
+          S1,
+          S0,
+          fixedFromFloat(1)
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
+    });
   });
 });

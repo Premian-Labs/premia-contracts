@@ -183,7 +183,7 @@ library OptionMath {
     int128 St1,
     int128 steepness
   ) internal pure returns (int128) {
-    return St0.sub(St1).div(St0 > St1 ? St0 : St1).mul(steepness).exp();
+    return Xt(St0, St1).mul(steepness).exp();
   }
 
   /**
