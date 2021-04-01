@@ -212,13 +212,6 @@ describe('OptionMath', function () {
 
     });
   });
-  describe('#slippageCoefficient', function () {
-    it('todo');
-  });
-
-  describe('#bsPrice', function () {
-    it('put / call ITM, put / call OTM, cherk `require case - Promise must be rejected`');
-  });
 
   describe('#calculateCLevel', function () {
     it('calculates C coefficient level (also covers calcTradingDelta implicitly)', async function (){
@@ -252,4 +245,17 @@ describe('OptionMath', function () {
       );
     });
   });
+
+  describe('#slippageCoefficient', function () {
+    it('todo');
+  });
+
+  describe('#bsPrice', function () {
+    it('put / call ITM, put / call OTM, cherk `require case - Promise must be rejected`');
+  });
+
+  describe('#quotePrice', function () {
+    it('pass');
+  });
+
 });
