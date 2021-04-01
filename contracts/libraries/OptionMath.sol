@@ -95,7 +95,7 @@ library OptionMath {
         return
             _strike.div(_price).ln()
                 .add(
-                    _maturity.mul(_variance.divi(2))
+                    _maturity.mul(_variance / 2)
                 )
                 .div(
                     _maturity.mul(_variance).sqrt()
@@ -166,7 +166,7 @@ library OptionMath {
         int128 _duration,
         bool _isCall
     ) internal pure returns (int128) {
-        int128 maturity = _duration.divi(365 days);
+        int128 maturity = _duration / (365 days);
         int128 d1 = d1(_variance, _strike, _price, maturity);
         int128 d2 = d1.sub(maturity.mul(_variance).sqrt());
         if (_isCall) return _price.mul(N(d1)).sub(_strike.mul(N(d2)));
