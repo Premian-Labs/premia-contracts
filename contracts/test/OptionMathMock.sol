@@ -37,81 +37,81 @@ contract OptionMathMock {
   }
 
   function d1(
-    int128 _variance,
-    int128 _strike,
-    int128 _price,
-    int128 _maturity
+    int128 variance,
+    int128 strike,
+    int128 price,
+    int128 maturity
   ) external pure returns (int128) {
-    return OptionMath.d1(_variance, _strike, _price, _maturity);
+    return OptionMath.d1(variance, strike, price, maturity);
   }
 
-  function N(int128 _x) external pure returns (int128) {
-    return OptionMath.N(_x);
+  function N(int128 x) external pure returns (int128) {
+    return OptionMath.N(x);
   }
 
-  function Xt(uint256 _St0, uint256 _St1) external pure returns (int128) {
-    return OptionMath.Xt(_St0, _St1);
+  function Xt(uint256 St0, uint256 St1) external pure returns (int128) {
+    return OptionMath.Xt(St0, St1);
   }
 
   function slippageCoefficient(
-    uint256 _St0,
-    uint256 _St1,
-    int128 _Xt,
-    int128 _steepness
+    uint256 St0,
+    uint256 St1,
+    int128 Xt,
+    int128 steepness
   ) external pure returns (int128) {
-    return OptionMath.slippageCoefficient(_St0, _St1, _Xt, _steepness);
+    return OptionMath.slippageCoefficient(St0, St1, Xt, steepness);
   }
 
   function bsPrice(
-    int128 _variance,
-    int128 _strike,
-    int128 _price,
-    int128 _duration,
-    bool _isCall
+    int128 variance,
+    int128 strike,
+    int128 price,
+    int128 duration,
+    bool isCall
   ) external pure returns (int128) {
     return
-    OptionMath.bsPrice(_variance, _strike, _price, _duration, _isCall);
+    OptionMath.bsPrice(variance, strike, price, duration, isCall);
   }
 
   function calcTradingDelta(
-    uint256 _St0,
-    uint256 _St1,
-    int128 _steepness
+    uint256 St0,
+    uint256 St1,
+    int128 steepness
   ) external pure returns (int128) {
-    return OptionMath.calcTradingDelta(_St0, _St1, _steepness);
+    return OptionMath.calcTradingDelta(St0, St1, steepness);
   }
 
   function calculateCLevel(
-    int128 _oldC,
-    uint256 _St0,
-    uint256 _St1,
-    int128 _steepness
+    int128 oldC,
+    uint256 St0,
+    uint256 St1,
+    int128 steepness
   ) external pure returns (int128) {
-    return OptionMath.calculateCLevel(_oldC, _St0, _St1, _steepness);
+    return OptionMath.calculateCLevel(oldC, St0, St1, steepness);
   }
 
   function quotePrice(
-    uint256 _variance,
-    uint256 _strike,
-    uint256 _price,
-    uint256 _duration,
-    int128 _Ct,
-    uint256 _St0,
-    uint256 _St1,
-    int128 _steepness,
-    bool _isCall
+    uint256 variance,
+    uint256 strike,
+    uint256 price,
+    uint256 duration,
+    int128 Ct,
+    uint256 St0,
+    uint256 St1,
+    int128 steepness,
+    bool isCall
   ) external pure returns (int128) {
     return
     OptionMath.quotePrice(
-      _variance,
-      _strike,
-      _price,
-      _duration,
-      _Ct,
-      _St0,
-      _St1,
-      _steepness,
-      _isCall
+      variance,
+      strike,
+      price,
+      duration,
+      Ct,
+      St0,
+      St1,
+      steepness,
+      isCall
     );
   }
 }

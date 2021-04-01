@@ -80,164 +80,164 @@ library OptionMath {
 
   /**
   * @notice calculates an internal probability for bscholes model
-  * @param _variance the price from yesterday
-  * @param _strike the price from today
-  * @param _price the average from yesterday
-  * @param _maturity the average from today
+  * @param variance the price from yesterday
+  * @param strike the price from today
+  * @param price the average from yesterday
+  * @param maturity the average from today
   * @return the probability
   */
   function d1(
-    int128 _variance,
-    int128 _strike,
-    int128 _price,
-    int128 _maturity
+    int128 variance,
+    int128 strike,
+    int128 price,
+    int128 maturity
   ) internal pure returns (int128) {
     return
-    _strike.div(_price).ln()
+    strike.div(price).ln()
     .add(
-      _maturity.mul(_variance / 2)
+      maturity.mul(variance / 2)
     )
     .div(
-      _maturity.mul(_variance).sqrt()
+      maturity.mul(variance).sqrt()
     );
   }
 
   /**
   * @notice calculates approximated CDF
-  * @param _x random variable
+  * @param x random variable
   * @return the approximated CDF of random variable x
   */
-  function N(int128 _x) internal pure returns (int128) {
-    int128 num = _x.pow(2).div(ABDKMath64x64.fromInt(2)).neg().exp();
+  function N(int128 x) internal pure returns (int128) {
+    int128 num = x.pow(2).div(ABDKMath64x64.fromInt(2)).neg().exp();
     int128 den =
-    N_CONST_1_64x64.add(N_CONST_2_64x64.mul(_x)).add(
-      N_CONST_3_64x64.mul(_x.pow(2).add(ABDKMath64x64.fromInt(3)).sqrt())
+    N_CONST_1_64x64.add(N_CONST_2_64x64.mul(x)).add(
+      N_CONST_3_64x64.mul(x.pow(2).add(ABDKMath64x64.fromInt(3)).sqrt())
     );
     return ONE_64x64.sub(N_CONST_0_64x64.mul(num.div(den)));
   }
 
   /**
   * @notice xt
-  * @param _St0 Pool state at t0
-  * @param _St1 Pool state at t1
+  * @param St0 Pool state at t0
+  * @param St1 Pool state at t1
   * @return return intermediate viarable Xt
   */
-  function Xt(uint256 _St0, uint256 _St1) internal pure returns (int128) {
-    int128 St0 = ABDKMath64x64.fromUInt(_St0);
-    int128 St1 = ABDKMath64x64.fromUInt(_St1);
+  function Xt(uint256 St0, uint256 St1) internal pure returns (int128) {
+    int128 St0 = ABDKMath64x64.fromUInt(St0);
+    int128 St1 = ABDKMath64x64.fromUInt(St1);
     return St0.sub(St1).div(St0 > St1 ? St0 : St1);
   }
 
   /**
   * @notice xt
-  * @param _St0 Pool state at t0
-  * @param _St1 Pool state at t1
-  * @param _Xt Pool state at t0
-  * @param _steepness Pool state at t1
+  * @param St0 Pool state at t0
+  * @param St1 Pool state at t1
+  * @param Xt Pool state at t0
+  * @param steepness Pool state at t1
   * @return return intermediate viarable Xt
   */
   function slippageCoefficient (
-    uint256 _St0,
-    uint256 _St1,
-    int128 _Xt,
-    int128 _steepness
+    uint256 St0,
+    uint256 St1,
+    int128 Xt,
+    int128 steepness
   ) internal pure returns (int128) {
     return
     ONE_64x64
-    .sub(calcTradingDelta(_St0, _St1, _steepness))
-    .div(_Xt.mul(_steepness));
+    .sub(calcTradingDelta(St0, St1, steepness))
+    .div(Xt.mul(steepness));
   }
 
   /**
   * @notice calculates the black scholes price
-  * @param _variance the price from yesterday
-  * @param _strike the price from today
-  * @param _price the average from yesterday
-  * @param _duration temporal length of option contract
-  * @param _isCall is this a call option
+  * @param variance the price from yesterday
+  * @param strike the price from today
+  * @param price the average from yesterday
+  * @param duration temporal length of option contract
+  * @param isCall is this a call option
   * @return the price of the option
   */
 
-  // TODO: add require to check _variance, _price, _duration > 0, _strike => 0.5 * _price,  _strike <= 2 * _price
+  // TODO: add require to check variance, price, duration > 0, strike => 0.5 * price,  strike <= 2 * price
   function bsPrice(
-    int128 _variance,
-    int128 _strike,
-    int128 _price,
-    int128 _duration,
-    bool _isCall
+    int128 variance,
+    int128 strike,
+    int128 price,
+    int128 duration,
+    bool isCall
   ) internal pure returns (int128) {
-    int128 maturity = _duration / (365 days);
-    int128 d1 = d1(_variance, _strike, _price, maturity);
-    int128 d2 = d1.sub(maturity.mul(_variance).sqrt());
-    if (_isCall) return _price.mul(N(d1)).sub(_strike.mul(N(d2)));
-    return _strike.mul(N(d2.neg())).sub(_price.mul(N(d1.neg())));
+    int128 maturity = duration / (365 days);
+    int128 d1 = d1(variance, strike, price, maturity);
+    int128 d2 = d1.sub(maturity.mul(variance).sqrt());
+    if (isCall) return price.mul(N(d1)).sub(strike.mul(N(d2)));
+    return strike.mul(N(d2.neg())).sub(price.mul(N(d1.neg())));
   }
 
   /**
   * @notice calculate new C-Level based on change in liquidity
-  * @param _St0 liquidity in pool before update
-  * @param _St1 liquidity in pool after update
-  * @param _steepness steepness coefficient
+  * @param St0 liquidity in pool before update
+  * @param St1 liquidity in pool after update
+  * @param steepness steepness coefficient
   * @return new C-Level
   */
   function calcTradingDelta(
-    uint256 _St0,
-    uint256 _St1,
-    int128 _steepness
+    uint256 St0,
+    uint256 St1,
+    int128 steepness
   ) internal pure returns (int128) {
-    int128 St0 = ABDKMath64x64.fromUInt(_St0);
-    int128 St1 = ABDKMath64x64.fromUInt(_St1);
-    return St0.sub(St1).div(St0 > St1 ? St0 : St1).mul(_steepness).exp();
+    int128 St0 = ABDKMath64x64.fromUInt(St0);
+    int128 St1 = ABDKMath64x64.fromUInt(St1);
+    return St0.sub(St1).div(St0 > St1 ? St0 : St1).mul(steepness).exp();
   }
 
   /**
   * @notice calculate new C-Level based on change in liquidity
-  * @param _oldC previous C-Level
-  * @param _St0 liquidity in pool before update
-  * @param _St1 liquidity in pool after update
-  * @param _steepness steepness coefficient
+  * @param oldC previous C-Level
+  * @param St0 liquidity in pool before update
+  * @param St1 liquidity in pool after update
+  * @param steepness steepness coefficient
   * @return new C-Level
   */
   function calculateCLevel(
-    int128 _oldC,
-    uint256 _St0,
-    uint256 _St1,
-    int128 _steepness
+    int128 oldC,
+    uint256 St0,
+    uint256 St1,
+    int128 steepness
   ) internal pure returns (int128) {
-    return calcTradingDelta(_St0, _St1, _steepness).mul(_oldC);
+    return calcTradingDelta(St0, St1, steepness).mul(oldC);
   }
 
   /**
   * @notice calculates the black scholes price
-  * @param _variance the price from yesterday
-  * @param _strike the price from today
-  * @param _price the average from yesterday
-  * @param _duration temporal length of option contract
-  * @param _Ct previous C-Level
-  * @param _St0 current state of the pool
-  * @param _St1 state of the pool after trade
-  * @param _steepness state of the pool after trade
+  * @param variance the price from yesterday
+  * @param strike the price from today
+  * @param price the average from yesterday
+  * @param duration temporal length of option contract
+  * @param Ct previous C-Level
+  * @param St0 current state of the pool
+  * @param St1 state of the pool after trade
+  * @param steepness state of the pool after trade
   * @return the price of the option
   */
   function quotePrice(
-    uint256 _variance,
-    uint256 _strike,
-    uint256 _price,
-    uint256 _duration,
-    int128 _Ct,
-    uint256 _St0,
-    uint256 _St1,
-    int128 _steepness,
-    bool _isCall
+    uint256 variance,
+    uint256 strike,
+    uint256 price,
+    uint256 duration,
+    int128 Ct,
+    uint256 St0,
+    uint256 St1,
+    int128 steepness,
+    bool isCall
   ) internal pure returns (int128) {
-    int128 variance = ABDKMath64x64.fromUInt(_variance);
-    int128 strike = ABDKMath64x64.fromUInt(_strike);
-    int128 price = ABDKMath64x64.fromUInt(_price);
-    int128 duration = ABDKMath64x64.fromUInt(_duration);
-    int128 slip = slippageCoefficient(_St0, _St1, Xt(_St0, _St1), _steepness);
+    int128 variance = ABDKMath64x64.fromUInt(variance);
+    int128 strike = ABDKMath64x64.fromUInt(strike);
+    int128 price = ABDKMath64x64.fromUInt(price);
+    int128 duration = ABDKMath64x64.fromUInt(duration);
+    int128 slip = slippageCoefficient(St0, St1, Xt(St0, St1), steepness);
     return
-    calculateCLevel(_Ct, _St0, _St1, _steepness).mul(slip).mul(
-      bsPrice(variance, strike, price, duration, _isCall)
+    calculateCLevel(Ct, St0, St1, steepness).mul(slip).mul(
+      bsPrice(variance, strike, price, duration, isCall)
     );
   }
 }
