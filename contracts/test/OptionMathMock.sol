@@ -5,15 +5,14 @@ pragma solidity ^0.8.0;
 import {OptionMath} from "../libraries/OptionMath.sol";
 
 contract OptionMathMock {
-  function logreturns(int128 today64x64, int128 yesterday64x64)
-  external
-  pure
-  returns (int128)
-  {
+  function logreturns (
+    int128 today64x64,
+    int128 yesterday64x64
+  ) external pure returns (int128) {
     return OptionMath.logreturns(today64x64, yesterday64x64);
   }
 
-  function rollingEma(
+  function rollingEma (
     int128 today64x64,
     int128 yesterday64x64,
     uint256 window
@@ -21,14 +20,13 @@ contract OptionMathMock {
     return OptionMath.rollingEma(today64x64, yesterday64x64, window);
   }
 
-  function rollingEmaVariance(
+  function rollingEmaVariance (
     int128 today64x64,
     int128 yesterdayEma64x64,
     int128 yesterdayEmaVariance64x64,
     uint256 window
   ) external pure returns (int128) {
-    return
-    OptionMath.rollingEmaVariance(
+    return OptionMath.rollingEmaVariance(
       today64x64,
       yesterdayEma64x64,
       yesterdayEmaVariance64x64,
@@ -36,7 +34,7 @@ contract OptionMathMock {
     );
   }
 
-  function d1(
+  function d1 (
     int128 variance,
     int128 strike,
     int128 price,
@@ -45,7 +43,9 @@ contract OptionMathMock {
     return OptionMath.d1(variance, strike, price, maturity);
   }
 
-  function N(int128 x) external pure returns (int128) {
+  function N (
+    int128 x
+  ) external pure returns (int128) {
     return OptionMath.N(x);
   }
 
@@ -65,15 +65,14 @@ contract OptionMathMock {
     return OptionMath.slippageCoefficient(St0, St1, Xt, steepness);
   }
 
-  function bsPrice(
+  function bsPrice (
     int128 variance,
     int128 strike,
     int128 price,
     int128 duration,
     bool isCall
   ) external pure returns (int128) {
-    return
-    OptionMath.bsPrice(variance, strike, price, duration, isCall);
+    return OptionMath.bsPrice(variance, strike, price, duration, isCall);
   }
 
   function calcTradingDelta (
@@ -84,7 +83,7 @@ contract OptionMathMock {
     return OptionMath.calcTradingDelta(St0, St1, steepness);
   }
 
-  function calculateCLevel(
+  function calculateCLevel (
     int128 oldC,
     int128 St0,
     int128 St1,
@@ -104,8 +103,7 @@ contract OptionMathMock {
     int128 steepness,
     bool isCall
   ) external pure returns (int128) {
-    return
-    OptionMath.quotePrice(
+    return OptionMath.quotePrice(
       variance,
       strike,
       price,

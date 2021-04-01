@@ -25,11 +25,7 @@ library OptionMath {
   function logreturns (
     int128 today64x64,
     int128 yesterday64x64
-  )
-  internal
-  pure
-  returns (int128)
-  {
+  ) internal pure returns (int128) {
     return today64x64.div(yesterday64x64).ln();
   }
 
@@ -86,7 +82,7 @@ library OptionMath {
   * @param maturity the average from today
   * @return the probability
   */
-  function d1(
+  function d1 (
     int128 variance,
     int128 strike,
     int128 price,
@@ -107,7 +103,9 @@ library OptionMath {
   * @param x random variable
   * @return the approximated CDF of random variable x
   */
-  function N(int128 x) internal pure returns (int128) {
+  function N (
+    int128 x
+  ) internal pure returns (int128) {
     int128 num = x.pow(2).div(ABDKMath64x64.fromInt(2)).neg().exp();
     int128 den =
     N_CONST_1_64x64.add(N_CONST_2_64x64.mul(x)).add(
@@ -160,7 +158,7 @@ library OptionMath {
   */
 
   // TODO: add require to check variance, price, duration > 0, strike => 0.5 * price,  strike <= 2 * price
-  function bsPrice(
+  function bsPrice (
     int128 variance,
     int128 strike,
     int128 price,
@@ -181,7 +179,7 @@ library OptionMath {
   * @param steepness steepness coefficient
   * @return new C-Level
   */
-  function calcTradingDelta(
+  function calcTradingDelta (
     int128 St0,
     int128 St1,
     int128 steepness
@@ -197,7 +195,7 @@ library OptionMath {
   * @param steepness steepness coefficient
   * @return new C-Level
   */
-  function calculateCLevel(
+  function calculateCLevel (
     int128 oldC,
     int128 St0,
     int128 St1,
@@ -219,7 +217,7 @@ library OptionMath {
   * @param isCall whether to price "call" or "put" option
   * @return the price of the option
   */
-  function quotePrice(
+  function quotePrice (
     int128 variance,
     int128 strike,
     int128 price,
