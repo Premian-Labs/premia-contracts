@@ -128,23 +128,22 @@ library OptionMath {
   }
 
   /**
-  * @notice xt
+  * @notice TODO
   * @param St0 Pool state at t0
   * @param St1 Pool state at t1
-  * @param Xt Pool state at t0
   * @param steepness Pool state at t1
-  * @return return intermediate viarable Xt
+  * @return TODO
   */
   function slippageCoefficient (
     int128 St0,
     int128 St1,
-    int128 Xt,
     int128 steepness
   ) internal pure returns (int128) {
-    return
-    ONE_64x64
-    .sub(calcTradingDelta(St0, St1, steepness))
-    .div(Xt.mul(steepness));
+    return ONE_64x64.sub(
+      calcTradingDelta(St0, St1, steepness)
+    ).div(
+      Xt(St0, St1).mul(steepness)
+    );
   }
 
   /**
@@ -228,7 +227,7 @@ library OptionMath {
     bool isCall
   ) internal pure returns (int128) {
     return calculateCLevel(Ct, St0, St1, steepness).mul(
-      slippageCoefficient(St0, St1, Xt(St0, St1), steepness)
+      slippageCoefficient(St0, St1, steepness)
     ).mul(
       bsPrice(variance, strike, price, timeToMaturity, isCall)
     );
