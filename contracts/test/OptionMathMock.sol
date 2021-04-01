@@ -59,10 +59,9 @@ contract OptionMathMock {
   function slippageCoefficient (
     int128 St0,
     int128 St1,
-    int128 Xt,
     int128 steepness
   ) external pure returns (int128) {
-    return OptionMath.slippageCoefficient(St0, St1, Xt, steepness);
+    return OptionMath.slippageCoefficient(St0, St1, steepness);
   }
 
   function bsPrice (
