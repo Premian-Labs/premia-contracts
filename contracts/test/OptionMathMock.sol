@@ -49,13 +49,16 @@ contract OptionMathMock {
     return OptionMath.N(x);
   }
 
-  function Xt(uint256 St0, uint256 St1) external pure returns (int128) {
+  function Xt (
+    int128 St0,
+    int128 St1
+  ) external pure returns (int128) {
     return OptionMath.Xt(St0, St1);
   }
 
-  function slippageCoefficient(
-    uint256 St0,
-    uint256 St1,
+  function slippageCoefficient (
+    int128 St0,
+    int128 St1,
     int128 Xt,
     int128 steepness
   ) external pure returns (int128) {
@@ -73,9 +76,9 @@ contract OptionMathMock {
     OptionMath.bsPrice(variance, strike, price, duration, isCall);
   }
 
-  function calcTradingDelta(
-    uint256 St0,
-    uint256 St1,
+  function calcTradingDelta (
+    int128 St0,
+    int128 St1,
     int128 steepness
   ) external pure returns (int128) {
     return OptionMath.calcTradingDelta(St0, St1, steepness);
@@ -83,21 +86,21 @@ contract OptionMathMock {
 
   function calculateCLevel(
     int128 oldC,
-    uint256 St0,
-    uint256 St1,
+    int128 St0,
+    int128 St1,
     int128 steepness
   ) external pure returns (int128) {
     return OptionMath.calculateCLevel(oldC, St0, St1, steepness);
   }
 
-  function quotePrice(
-    uint256 variance,
-    uint256 strike,
-    uint256 price,
-    uint256 duration,
+  function quotePrice (
+    int128 variance,
+    int128 strike,
+    int128 price,
+    int128 duration,
     int128 Ct,
-    uint256 St0,
-    uint256 St1,
+    int128 St0,
+    int128 St1,
     int128 steepness,
     bool isCall
   ) external pure returns (int128) {

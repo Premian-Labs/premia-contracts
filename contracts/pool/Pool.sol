@@ -49,7 +49,14 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     int128 volatility = Pair(l.pair).getVolatility();
 
     uint liquidity = l.liquidity;
-    cLevel = OptionMath.calculateCLevel(l.cLevel, liquidity, liquidity - amount, OptionMath.ONE_64x64);
+
+    // TODO: store liquidity as int128?
+    cLevel = OptionMath.calculateCLevel(
+      l.cLevel,
+      ABDKMath64x64.fromUInt(liquidity),
+      ABDKMath64x64.fromUInt(liquidity - amount),
+      OptionMath.ONE_64x64
+    );
   }
 
   /**
@@ -92,7 +99,14 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     uint oldLiquidity = l.liquidity;
     uint newLiquidity = oldLiquidity + amount;
-    l.cLevel = OptionMath.calculateCLevel(l.cLevel, oldLiquidity, newLiquidity, OptionMath.ONE_64x64);
+
+    l.cLevel = OptionMath.calculateCLevel(
+      l.cLevel,
+      ABDKMath64x64.fromUInt(oldLiquidity),
+      ABDKMath64x64.fromUInt(newLiquidity),
+      OptionMath.ONE_64x64
+    );
+
     l.liquidity = newLiquidity;
   }
 
@@ -117,7 +131,14 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     uint oldLiquidity = l.liquidity;
     uint newLiquidity = oldLiquidity - amount;
-    l.cLevel = OptionMath.calculateCLevel(l.cLevel, oldLiquidity, newLiquidity, OptionMath.ONE_64x64);
+
+    l.cLevel = OptionMath.calculateCLevel(
+      l.cLevel,
+      ABDKMath64x64.fromUInt(oldLiquidity),
+      ABDKMath64x64.fromUInt(newLiquidity),
+      OptionMath.ONE_64x64
+    );
+
     l.liquidity = newLiquidity;
   }
 
