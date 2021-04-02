@@ -100,24 +100,23 @@ library OptionMath {
   * @param x random variable
   * @return the approximated CDF of x
   */
-  // TODO: if x < 0, calculate for abs(x) and return 1 - result
   function N (
     int128 x
   ) internal pure returns (int128) {
     // squaring via mul is cheaper than via pow
     int128 x2 = x.mul(x);
 
-    return ONE_64x64.sub(
-      N_CONST_0_64x64.mul(
-        (-x2 >> 1).exp()
-      ).div(
-        N_CONST_1_64x64.add(
-          N_CONST_2_64x64.mul(x)
-        ).add(
-          N_CONST_3_64x64.mul(x2.add(THREE_64x64).sqrt())
-        )
+    int128 value = N_CONST_0_64x64.mul(
+      (-x2 >> 1).exp()
+    ).div(
+      N_CONST_1_64x64.add(
+        N_CONST_2_64x64.mul(x.abs())
+      ).add(
+        N_CONST_3_64x64.mul(x2.add(THREE_64x64).sqrt())
       )
     );
+
+    return x > 0 ? ONE_64x64.sub(value) : value;
   }
 
   /**
