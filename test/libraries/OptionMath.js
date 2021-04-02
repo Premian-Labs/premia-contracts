@@ -201,8 +201,8 @@ describe('OptionMath', function () {
     it('calculates C coefficient level (also covers calcTradingDelta implicitly)', async function (){
       const S0 = fixedFromFloat(100);
       const S1 = fixedFromFloat(20);
-      const expected_c_withdrawn = fixedFromFloat(0.4493289641);
-      const expected_c_added = fixedFromFloat(2.2255409285);
+      const expected_c_withdrawn = fixedFromFloat(2.2255409285);
+      const expected_c_added = fixedFromFloat(0.4493289641);
 
       expect(
         expected_c_withdrawn / await instance.callStatic.calculateCLevel(
@@ -231,11 +231,27 @@ describe('OptionMath', function () {
   });
 
   describe('#slippageCoefficient', function () {
-    it('todo');
+    it('calculates slippage correction coefficient level', async function (){
+      const S0 = fixedFromFloat(100);
+      const S1 = fixedFromFloat(20);
+      const expected = fixedFromFloat(1.5319261606);
+
+      // (1 - e^(-(20-100)/100))/((20-100)/100) = 1.5319261606
+      expect(
+        expected / await instance.callStatic.slippageCoefficient(
+          S0,
+          S1,
+          fixedFromFloat(1)
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
+    });
   });
 
   describe('#bsPrice', function () {
-    it('put / call ITM, put / call OTM, cherk `require case - Promise must be rejected`');
+    it('put / call ITM, put / call OTM, check `require case - Promise must be rejected`');
   });
 
   describe('#quotePrice', function () {

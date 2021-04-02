@@ -139,6 +139,8 @@ library OptionMath {
   * @param steepness TODO
   * @return TODO
   */
+
+  // TODO: function can only be callable if St1 < St0 , e.g. option purchase
   function slippageCoefficient (
     int128 St0,
     int128 St1,
@@ -187,7 +189,7 @@ library OptionMath {
     int128 St1,
     int128 steepness
   ) internal pure returns (int128) {
-    return Xt(St0, St1).mul(steepness).exp();
+    return Xt(St0, St1).mul(steepness).neg().exp();
   }
 
   /**
