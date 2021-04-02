@@ -88,7 +88,7 @@ library OptionMath {
     int128 price,
     int128 timeToMaturity
   ) internal pure returns (int128) {
-    return strike.div(price).ln().add(
+    return price.div(strike).ln().add(
       timeToMaturity.mul(variance) >> 1
     ).div(
       timeToMaturity.mul(variance).sqrt()

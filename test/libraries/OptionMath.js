@@ -113,13 +113,13 @@ describe('OptionMath', function () {
   describe('#d1', function () {
     it('calculates d1 in Black-Scholes', async function () {
       const price =  input_t[1];
-      const strike = fixedFromFloat(55284.28125 * 0.9); // input_t * 0.9
-      const variance = fixedFromFloat(0.175);
+      const strike = fixedFromFloat(55284.28125 * 0.95); // input_t * 0.9
+      const variance = fixedFromFloat(0.16);
       const maturity = fixedFromFloat(28 / 365);
-      const expected = fixedFromFloat(-0.8514075553);
+      const expected = fixedFromFloat(0.5183801513);
 
       // let strike price = 0.9 of stock price. then:
-      // d1 = (ln(0.9) + (28/365) * 0.175 * 0.5) / sqrt(28/365 * 0.175) = -0.8514075553
+      // d1 = (ln(1/0.95) + (28/365) * 0.16 * 0.5) / sqrt(28/365 * 0.16) = 0.5183801513
 
       expect(
         expected / await instance.callStatic.d1(
@@ -272,6 +272,24 @@ describe('OptionMath', function () {
       );
     });
     it('calculates European PUT option price', async function (){
+      const variance = fixedFromFloat(0.16);
+      const price =  input_t[1];
+      const strike = fixedFromFloat(55284.28125 * 1.05);
+      const maturity = fixedFromFloat(28 / 365);
+      const expected = fixedFromFloat(4123.964016283215);
+
+      expect(
+        expected / await instance.callStatic.bsPrice(
+          variance,
+          strike,
+          price,
+          maturity,
+          false
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
     });
   });
 
