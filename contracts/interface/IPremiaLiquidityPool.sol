@@ -11,14 +11,21 @@ interface IPremiaLiquidityPool {
     address lender;
     address borrower;
     address token;
-    address collateralToken;
-    uint256 amountTokenOutstanding;
-    uint256 amountCollateralTokenHeld;
+    address denominator;
+    bool borrowToken; // If true, we are borrowing token, if false, we are borrowing denominator
+    uint256 amountBorrow;
+    uint256 amountCollateral;
     uint256 creationTime;
     uint256 lockExpiration;
     uint256 tokenPrice;
-    uint256 collateralPrice;
+    uint256 denominatorPrice;
     uint256 lendingRate;
+  }
+
+  struct TokenPair {
+    address token;
+    address denominator;
+    bool useToken; // If true, we are using token, if false, we are using denominator
   }
 
   ////////////
@@ -55,7 +62,7 @@ interface IPremiaLiquidityPool {
 
   function depositFrom(address _from, address[] memory _tokens, uint256[] memory _amounts, uint256 _lockExpiration) external;
   function withdrawExpiredFrom(address _from, address[] memory _tokens) external;
-  function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration) external returns (Loan memory);
+  function borrow(TokenPair memory _pair, uint256 _amountBorrow, uint256 _amountCollateral, uint256 _lockExpiration) external returns (Loan memory);
   function repayLoan(Loan memory _loan, uint256 _amount) external returns (uint256);
   function repay(bytes32 _hash, uint256 _amount) external returns (uint256);
   function isLoanUnderCollateralized(Loan memory _loan) external returns (bool);

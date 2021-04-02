@@ -46,7 +46,10 @@ contract PremiaLongUnderlyingPool is PremiaLiquidityPool {
 
     uint256 amountToBorrow = _getAmountToBorrow(_amount, data.token, tokenToBorrow);
 
-    Loan memory loan = loanPool.borrow(tokenToBorrow, amountToBorrow, data.token, _amount, data.expiration);
+    PremiaLiquidityPool.TokenPair memory pair = PremiaLiquidityPool.TokenPair({token: data.token, denominator: tokenToBorrow, useToken: false});
+
+    // ToDo : Approve token transfer
+    Loan memory loan = loanPool.borrow(pair, amountToBorrow, _amount, data.expiration);
     _swapTokensIn(tokenToBorrow, data.token, amountToBorrow);
     _enqueueLoan(loan);
   }

@@ -151,18 +151,18 @@ describe('PremiaLiquidityPool', () => {
           lockExpiration: nextExpiration,
         },
       ]);
-      const tokenAmount = await longPool.depositsByUser(
+      const tokenAmount = await longPool.userInfos(
         user1.address,
         token1.address,
         nextExpiration,
       );
-      const daiAmount = await longPool.depositsByUser(
+      const daiAmount = await longPool.userInfos(
         user1.address,
         token2.address,
         nextExpiration,
       );
-      expect(tokenAmount).to.eq(parseEther('50'));
-      expect(daiAmount).to.eq(parseEther('100'));
+      expect(tokenAmount.amount).to.eq(parseEther('50'));
+      expect(daiAmount.amount).to.eq(parseEther('100'));
     });
 
     it('should fail deposit if invalid expiration selected', async () => {

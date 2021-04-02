@@ -48,6 +48,9 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     uint256 constant premiaPerShareMult = 1e12;
 
+    // Max stake length multiplier
+    uint256 public constant maxScoreMultiplier = 1e5; // 100% bonus if max stake length
+
     uint256 public premiaPerDay = 10000e18;
 
     // Total premia added to the contract as available reward
@@ -262,8 +265,7 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
             _harvest(_user, _token, false);
         }
 
-        // ToDo : See what multiplier we want when user stake max expiration (Currently x2)
-        uint256 multiplier = _inverseBasisPoint + ((_lockExpiration - block.timestamp) * _inverseBasisPoint / _maxExpiration);
+        uint256 multiplier = _inverseBasisPoint + ((_lockExpiration - block.timestamp) * maxScoreMultiplier / _maxExpiration);
         uint256 score = _amount * multiplier / _inverseBasisPoint;
 
         userScore[_token][_user][_lockExpiration] += score;

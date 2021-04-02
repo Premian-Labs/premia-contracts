@@ -24,13 +24,14 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     address lender;
     address borrower;
     address token;
-    address collateralToken;
-    uint256 amountTokenOutstanding;
-    uint256 amountCollateralTokenHeld;
+    address denominator;
+    bool borrowToken; // If true, we are borrowing token, if false, we are borrowing denominator
+    uint256 amountBorrow;
+    uint256 amountCollateral;
     uint256 creationTime;
     uint256 lockExpiration;
     uint256 tokenPrice;
-    uint256 collateralPrice;
+    uint256 denominatorPrice;
     uint256 lendingRate;
   }
 
@@ -38,6 +39,35 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     bool canBorrow;
     bool isWhitelistedToken;
     bool isWhitelistedOptionContract;
+  }
+
+  struct UserInfo {
+    uint256 tokenAmount;
+    uint256 denominatorAmount;
+
+    uint256 tokenScore;
+    uint256 denominatorScore;
+
+    uint256 tokenPnlDebt;
+    uint256 denominatorPnlDebt;
+
+    uint256 lastUnlock; // Last timestamp at which deposits unlock was run. This is necessary so that we know from which timestamp we need to iterate, when unlocking
+  }
+
+  struct TokenPair {
+    address token;
+    address denominator;
+    bool useToken; // If true, we are using token, if false, we are using denominator
+  }
+
+  struct PoolInfo {
+    uint256 tokenAmount;
+    uint256 denominatorAmount;
+
+    int256 tokenPnl;
+    int256 denominatorPnl;
+
+    uint256[] optionIdList;
   }
 
   // Offset to add to Unix timestamp to make it Fri 23:59:59 UTC
@@ -74,15 +104,20 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   // Mapping of addresses with special permissions (Contracts who can borrow / write or whitelisted routers / tokens)
   mapping(address => Permissions) public permissions;
 
-  // user address -> token address -> expiration -> amount
-  mapping(address => mapping(address => mapping (uint256 => uint256))) public depositsByUser;
+  // ToDo : Add optionContract to mapping ?
 
-  // Last timestamp at which deposits unlock was run. This is necessary so that we know from which timestamp we need to iterate, when unlocking
-  // user address -> token address -> timestamp
-  mapping(address => mapping(address => uint256)) public userDepositsLastUnlock;
+  // User -> Token -> Denominator -> Expiration -> UserInfo
+  mapping(address => mapping(address => mapping(address => mapping (uint256 => UserInfo)))) public userInfos;
 
-  // token => expiration => amount
-  mapping(address => mapping(uint256 => uint256)) public amountsLockedByExpirationPerToken;
+  // User -> Token -> Denominator -> Last unlock
+  mapping(address => mapping(address => mapping(address => uint256))) public userLastUnlock;
+
+  // Token -> Denominator -> Expiration -> UserInfo
+  mapping(address => mapping(address => mapping(uint256 => PoolInfo))) public poolInfos;
+
+  // ToDo : Remove / refactor this to work with new token/denom storage
+  // Token -> Denominator -> Expiration -> Amount
+  mapping(address => mapping(address => mapping(uint256 => uint256))) public amountsLockedByExpirationPerToken;
 
   // optionContract => optionId => amountTokenOutstanding
   mapping(address => mapping(uint256 => uint256)) public optionsOutstanding;
@@ -90,19 +125,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   ////////
   ////////
 
-  // Token -> Expiration -> Profit / loss (in token amount)
-  mapping(address => mapping(uint256 => int256)) public tokenPnl;
-
-  // Token -> Expiration -> Profit / loss (in denominator amount)
-  mapping(address => mapping(uint256 => int256)) public denominatorPnl;
-
-  // ToDo : Track PnL debt
-
-  // User address -> Token address -> Expiration -> Score
-  mapping(address => mapping(address => mapping(uint256 => uint256))) public userScore;
-
   // Max stake length multiplier
-  uint256 public maxScoreMultiplier = 1e5; // 100% bonus if max stake length
+  uint256 public constant maxScoreMultiplier = 1e5; // 100% bonus if max stake length
 
   ////////
   ////////
@@ -121,7 +145,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   event PermissionsUpdated(address indexed addr, bool canBorrow, bool isWhitelistedToken, bool isWhitelistedOptionContract);
   event Deposit(address indexed user, address indexed token,uint256 lockExpiration, uint256 amountToken);
   event Withdraw(address indexed user, address indexed token, uint256 amountToken);
-  event Borrow(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed lockExpiration, uint256 amount, uint256 lendingRate);
+  event Borrow(bytes32 hash, address indexed borrower, address indexed token, address indexed denominator, bool borrowToken, uint256 lockExpiration, uint256 amountBorrow, uint256 amountCollateral, uint256 lendingRate);
   event RepayLoan(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed amount);
   event LiquidateLoan(bytes32 hash, address indexed borrower, address indexed token, uint256 indexed amount, uint256 rewardFee);
   event BoughtOption(address indexed receiver, address indexed writer, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
@@ -238,7 +262,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     return optionsOutstanding[_optionContract][_optionId];
   }
 
-  function getWritableAmount(address _token, uint256 _lockExpiration) public view returns (uint256) {
+  function getWritableAmount(TokenPair memory _pair, uint256 _lockExpiration) public view returns (uint256) {
     uint256 expiration = _getNextExpiration();
 
     if (expiration < _lockExpiration) {
@@ -247,7 +271,14 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     uint256 writableAmount;
     while (expiration <= block.timestamp + _maxExpiration) {
-      writableAmount += amountsLockedByExpirationPerToken[_token][expiration];
+      PoolInfo memory pInfo = poolInfos[_pair.token][_pair.denominator][expiration];
+
+      if (_pair.useToken) {
+        writableAmount += pInfo.tokenAmount;
+      } else {
+        writableAmount += pInfo.denominatorAmount;
+      }
+
       expiration += _expirationIncrement;
     }
 
@@ -255,7 +286,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   /// @notice More gas efficient than getWritableAmount, as it stops iteration if amount required is reached
-  function hasWritableAmount(address _token, uint256 _lockExpiration, uint256 _amount) public view returns(bool) {
+  function hasWritableAmount(address _token, address _denominator, uint256 _lockExpiration, uint256 _amount) public view returns(bool) {
     uint256 expiration = _getNextExpiration();
 
     if (expiration < _lockExpiration) {
@@ -264,7 +295,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     uint256 writableAmount;
     while (expiration <= block.timestamp + _maxExpiration) {
-      writableAmount += amountsLockedByExpirationPerToken[_token][expiration];
+      writableAmount += amountsLockedByExpirationPerToken[_token][_denominator][expiration];
       expiration += _expirationIncrement;
 
       if (writableAmount >= _amount) return true;
@@ -273,21 +304,28 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     return false;
   }
 
-  function getUnlockableAmount(address _user, address _token) external view returns (uint256) {
-    uint256 lastUnlock = userDepositsLastUnlock[msg.sender][_token];
+  function getUnlockableAmount(address _user, address _token, address _denominator) external view returns (uint256 _tokenAmount, uint256 _denominatorAmount) {
+    require(_token != _denominator, "Token = Denominator");
+
+    uint256 lastUnlock = userLastUnlock[_user][_token][_denominator];
 
     // If 0, no deposits has ever been made
-    if (lastUnlock == 0) return 0;
+    if (lastUnlock == 0) return (0,0);
 
     uint256 expiration = ((lastUnlock / _expirationIncrement) * _expirationIncrement) + _baseExpiration;
 
-    uint256 unlockableAmount;
+    uint256 unlockableTokenAmount;
+    uint256 unlockableDenominatorAmount;
+
     while (expiration < block.timestamp) {
-      unlockableAmount += depositsByUser[msg.sender][_token][expiration];
+      UserInfo memory uInfo = userInfos[msg.sender][_token][_denominator][expiration];
+
+      unlockableTokenAmount += uInfo.tokenAmount;
+      unlockableDenominatorAmount += uInfo.denominatorAmount;
       expiration += _expirationIncrement;
     }
 
-    return unlockableAmount;
+    return (unlockableTokenAmount, unlockableDenominatorAmount);
   }
 
   //////////////////////////////////////////////////
@@ -322,31 +360,59 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     return (_amount * _inverseBasisPoint / 9970) * priceOfCollateral / priceOfBorrowed;
   }
 
-  function getLoanableAmount(address _token, uint256 _lockExpiration) public virtual returns (uint256) {
-    uint256 writableAmount = getWritableAmount(_token, _lockExpiration);
+  // ToDo : Use TokenPair
+  function getLoanableAmount(TokenPair memory _pair, uint256 _lockExpiration) public virtual returns (uint256) {
+    uint256 writableAmount = getWritableAmount(_pair, _lockExpiration);
     return writableAmount * _inverseBasisPoint / _maxLoanPercent;
   }
 
-  function getEquivalentCollateral(uint256 _tokenPrice, uint256 _collateralPrice, uint256 _amount) public view returns (uint256) {
-    return (_amount * _tokenPrice) / _collateralPrice;
-  }
-
-  function getRequiredCollateralToBorrowLoan(Loan memory _loan, uint256 _amount) public view returns (uint256) {
+  function getRequiredCollateralToBorrowLoan(Loan memory _loan) public view returns (uint256) {
     uint256 expectedTime = _loan.lockExpiration - _loan.creationTime;
-    return getRequiredCollateral(_loan.collateralToken,
-                                 _loan.tokenPrice,
-                                 _loan.collateralPrice,
-                                 _loan.amountTokenOutstanding,
+
+    // ToDo : Extract in an internal function as it is used at multiple places ?
+    address collateralToken;
+    uint256 tokenBorrowedPrice;
+    uint256 collateralPrice;
+
+    if (_loan.borrowToken) {
+      collateralToken = _loan.denominator;
+      tokenBorrowedPrice = _loan.tokenPrice;
+      collateralPrice = _loan.denominatorPrice;
+    } else {
+      collateralToken = _loan.token;
+      tokenBorrowedPrice = _loan.denominatorPrice;
+      collateralPrice = _loan.tokenPrice;
+    }
+
+    return getRequiredCollateral(collateralToken,
+                                 tokenBorrowedPrice,
+                                 collateralPrice,
+                                 _loan.amountBorrow,
                                  _loan.lendingRate,
                                  expectedTime);
   }
 
   function getRequiredCollateralToRepayLoan(Loan memory _loan, uint256 _amount) public view returns (uint256) {
     uint256 timeElapsed = block.timestamp - _loan.creationTime;
-    return getRequiredCollateral(_loan.collateralToken,
-                                 _loan.tokenPrice,
-                                 _loan.collateralPrice,
-                                 _loan.amountTokenOutstanding,
+
+    address collateralToken;
+    uint256 tokenBorrowedPrice;
+    uint256 collateralPrice;
+
+    if (_loan.borrowToken) {
+      collateralToken = _loan.denominator;
+      tokenBorrowedPrice = _loan.tokenPrice;
+      collateralPrice = _loan.denominatorPrice;
+    } else {
+      collateralToken = _loan.token;
+      tokenBorrowedPrice = _loan.denominatorPrice;
+      collateralPrice = _loan.tokenPrice;
+    }
+
+    return getRequiredCollateral(collateralToken,
+                                 tokenBorrowedPrice,
+                                 collateralPrice,
+                                 _loan.amountBorrow,
                                  _loan.lendingRate,
                                  timeElapsed);
   }
@@ -357,87 +423,136 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
                                  uint256 _amount,
                                  uint256 _lendingRate,
                                  uint256 _loanLengthInSeconds) public view returns (uint256) {
-    uint256 equivalentCollateral = getEquivalentCollateral(_tokenPrice, _collateralPrice, _amount);
+    uint256 equivalentCollateral = (_amount * _tokenPrice) / _collateralPrice;
     uint256 ltvRatio = controller.loanToValueRatios(_collateralToken);
     uint256 expectedCompoundInterest = calculateCompoundInterest(_lendingRate, _loanLengthInSeconds);
     return (equivalentCollateral * _inverseBasisPoint / ltvRatio) + expectedCompoundInterest;
   }
 
-  function _unlockExpired(address _token) internal returns(uint256) {
-    uint256 unlockedUntil = userDepositsLastUnlock[msg.sender][_token];
+  function _unlockExpired(address _user, address _token, address _denominator) internal returns(uint256 _unlockedToken, uint256 _unlockedDenominator) {
+    uint256 unlockedUntil = userLastUnlock[_user][_token][_denominator];
 
     // If 0, no deposits has ever been made
-    if (unlockedUntil == 0) return 0;
+    if (unlockedUntil == 0) return (0, 0);
 
     uint256 expiration = ((unlockedUntil / _expirationIncrement) * _expirationIncrement) + _baseExpiration;
 
     uint256 unlockedToken;
+    uint256 unlockedDenominator;
+
     while (expiration < block.timestamp) {
-      uint256 amount = depositsByUser[msg.sender][_token][expiration];
+      UserInfo storage uInfo = userInfos[_user][_token][_denominator][expiration];
 
-      delete depositsByUser[msg.sender][_token][expiration];
+      // ToDo : What can we clean from UserInfo ?
+      // delete userInfos[_user][_depositToken][_pairedToken][expiration];
 
-      amountsLockedByExpirationPerToken[_token][expiration] -= amount;
-      unlockedToken += amount;
+      amountsLockedByExpirationPerToken[_token][_denominator][expiration] -= uInfo.tokenAmount;
+      unlockedToken += uInfo.tokenAmount;
+      unlockedDenominator += uInfo.denominatorAmount;
       expiration += _expirationIncrement;
     }
 
-    userDepositsLastUnlock[msg.sender][_token] = block.timestamp;
+    userLastUnlock[_user][_token][_denominator] = block.timestamp;
 
-    return unlockedToken;
+    return (unlockedToken, unlockedDenominator);
   }
 
-  function depositFrom(address _from, address[] memory _tokens, uint256[] memory _amounts, uint256 _lockExpiration) external onlyController nonReentrant {
-    require(_tokens.length == _amounts.length, "Arrays diff length");
+  function depositFrom(address _from, TokenPair[] memory _pairs, uint256[] memory _amounts, uint256 _lockExpiration) external onlyController nonReentrant {
+    require(_pairs.length == _amounts.length, "Arrays diff length");
     require(_lockExpiration > block.timestamp, "Exp passed");
     require(_lockExpiration - block.timestamp <= _maxExpiration, "Exp > max exp");
     require(_lockExpiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");
 
-    for (uint256 i = 0; i < _tokens.length; i++) {
-      require(permissions[_tokens[i]].isWhitelistedToken, "Token not whitelisted");
+    for (uint256 i = 0; i < _pairs.length; i++) {
+      address tokenDeposit = _pairs[i].useToken ? _pairs[i].token : _pairs[i].denominator;
+
+      require(permissions[tokenDeposit].isWhitelistedToken, "Token not whitelisted");
 
       if (_amounts[i] == 0) continue;
 
-      IERC20(_tokens[i]).safeTransferFrom(_from, address(this), _amounts[i]);
-      amountsLockedByExpirationPerToken[_tokens[i]][_lockExpiration] += _amounts[i];
-      depositsByUser[_from][_tokens[i]][_lockExpiration] += _amounts[i];
+      IERC20(tokenDeposit).safeTransferFrom(_from, address(this), _amounts[i]);
 
-      // If this is the first deposit ever made by this user, for this token
-      if (userDepositsLastUnlock[_from][_tokens[i]] == 0) {
-        userDepositsLastUnlock[_from][_tokens[i]] = block.timestamp;
+      address token = _pairs[i].token;
+      address denominator = _pairs[i].denominator;
+
+      UserInfo storage uInfo = userInfos[_from][token][denominator][_lockExpiration];
+      PoolInfo storage pInfo = poolInfos[token][denominator][_lockExpiration];
+
+      if (_pairs[i].useToken) {
+        pInfo.tokenAmount += _amounts[i];
+      } else {
+        pInfo.denominatorAmount += _amounts[i];
       }
 
-      emit Deposit(_from, _tokens[i], _lockExpiration, _amounts[i]);
+      uint256 multiplier = _inverseBasisPoint + ((_lockExpiration - block.timestamp) * maxScoreMultiplier / _maxExpiration);
+
+      if (_pairs[i].useToken) {
+        uInfo.tokenAmount += _amounts[i];
+        uInfo.tokenScore += _amounts[i] * multiplier / _inverseBasisPoint;
+      } else {
+        uInfo.denominatorAmount += _amounts[i];
+        uInfo.denominatorScore += _amounts[i] * multiplier / _inverseBasisPoint;
+      }
+
+
+      // If this is the first deposit ever made by this user, for this token
+      if (userLastUnlock[_from][token][denominator] == 0) {
+        userLastUnlock[_from][token][denominator] = block.timestamp;
+      }
+
+      // ToDo : Improve
+      emit Deposit(_from, tokenDeposit, _lockExpiration, _amounts[i]);
     }
   }
 
-  function withdrawExpiredFrom(address _from, address[] memory _tokens) external onlyController nonReentrant {
-    for (uint256 i = 0; i < _tokens.length; i++) {
-      uint256 unlockedAmount = _unlockExpired(_tokens[i]);
+  function withdrawExpiredFrom(address _from, TokenPair[] memory _pairs) external onlyController nonReentrant {
+    for (uint256 i = 0; i < _pairs.length; i++) {
+      (uint256 tokenAmount, uint256 denominatorAmount) = _unlockExpired(_from, _pairs[i].token, _pairs[i].denominator);
 
-      if (unlockedAmount == 0) continue;
+      if (tokenAmount > 0) {
+        IERC20(_pairs[i].token).safeTransfer(_from, tokenAmount);
+        emit Withdraw(_from, _pairs[i].token, tokenAmount);
+      }
 
-      IERC20(_tokens[i]).safeTransferFrom(address(this), _from, unlockedAmount);
-
-      emit Withdraw(_from, _tokens[i], unlockedAmount);
+      if (denominatorAmount > 0) {
+        IERC20(_pairs[i].denominator).safeTransfer(_from, denominatorAmount);
+        emit Withdraw(_from, _pairs[i].denominator, denominatorAmount);
+      }
     }
   }
 
-  function _subtractLockedAmounts(address _token, uint256 _lockExpiration, uint256 _amount) internal {
+  // ToDo : Review this
+  function _subtractLockedAmounts(TokenPair memory _pair, uint256 _lockExpiration, uint256 _amount) internal {
     uint256 expiration = _lockExpiration;
     uint256 amountLeft = _amount;
 
-    uint256 amountLocked;
-    while (amountLeft > 0 && expiration <= block.timestamp + _maxExpiration) {
-      amountLocked = amountsLockedByExpirationPerToken[_token][expiration];
 
-      if (amountLocked > amountLeft) {
-        amountsLockedByExpirationPerToken[_token][expiration] -= amountLeft;
-        amountLeft = 0;
-        return;
+    while (amountLeft > 0 && expiration <= block.timestamp + _maxExpiration) {
+      PoolInfo storage pInfo = poolInfos[_pair.token][_pair.denominator][_lockExpiration];
+
+      uint256 amountLocked;
+
+      if (_pair.useToken) {
+        amountLocked = pInfo.tokenAmount;
+
+        if (amountLocked > amountLeft) {
+          pInfo.tokenAmount -= amountLeft;
+          return;
+        } else {
+          pInfo.tokenAmount = 0;
+          amountLeft -= amountLocked;
+        }
+
       } else {
-        amountsLockedByExpirationPerToken[_token][expiration] = 0;
-        amountLeft -= amountLocked;
+        amountLocked = pInfo.denominatorAmount;
+
+        if (amountLocked > amountLeft) {
+          pInfo.denominatorAmount -= amountLeft;
+          return;
+        } else {
+          pInfo.denominatorAmount = 0;
+          amountLeft -= amountLocked;
+        }
       }
 
       expiration += _expirationIncrement;
@@ -448,45 +563,62 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   }
 
   function _lendCapital(Loan memory _loan) internal {
-    uint256 loanableAmount = getLoanableAmount(_loan.token, _loan.lockExpiration);
-    uint256 collateralRequired = getRequiredCollateralToBorrowLoan(_loan, _loan.amountTokenOutstanding);
+    TokenPair memory pair = TokenPair({token: _loan.token, denominator: _loan.denominator, useToken: _loan.borrowToken});
+    uint256 loanableAmount = getLoanableAmount(pair, _loan.lockExpiration);
+    uint256 collateralRequired = getRequiredCollateralToBorrowLoan(_loan);
 
-    require(loanableAmount >= _loan.amountTokenOutstanding, "Amount too high.");
-    require(collateralRequired <= _loan.amountCollateralTokenHeld, "Not enough collateral.");
+    require(loanableAmount >= _loan.amountBorrow, "Amount too high.");
+    require(collateralRequired <= _loan.amountCollateral, "Not enough collateral.");
 
-    _subtractLockedAmounts(_loan.token, _loan.lockExpiration, _loan.amountTokenOutstanding);
+    _subtractLockedAmounts(pair, _loan.lockExpiration, _loan.amountBorrow);
 
-    amountsLockedByExpirationPerToken[_loan.collateralToken][_loan.lockExpiration] += _loan.amountCollateralTokenHeld;
-    depositsByUser[msg.sender][_loan.collateralToken][_loan.lockExpiration] += _loan.amountCollateralTokenHeld;
+    UserInfo storage uInfo = userInfos[msg.sender][_loan.token][_loan.denominator][_loan.lockExpiration];
+    PoolInfo storage pInfo = poolInfos[_loan.token][_loan.denominator][_loan.lockExpiration];
 
-    IERC20(_loan.token).safeTransferFrom(address(this), msg.sender, _loan.amountTokenOutstanding);
-    IERC20(_loan.collateralToken).safeTransferFrom(msg.sender, address(this), _loan.amountCollateralTokenHeld);
+    if (_loan.borrowToken) {
+      pInfo.denominatorAmount += _loan.amountCollateral;
+      uInfo.denominatorAmount += _loan.amountCollateral;
+
+      IERC20(_loan.denominator).safeTransferFrom(msg.sender, address(this), _loan.amountCollateral);
+      IERC20(_loan.token).safeTransfer(msg.sender, _loan.amountBorrow);
+    } else {
+      pInfo.tokenAmount += _loan.amountCollateral;
+      uInfo.tokenAmount += _loan.amountCollateral;
+
+      IERC20(_loan.token).safeTransferFrom(msg.sender, address(this), _loan.amountCollateral);
+      IERC20(_loan.denominator).safeTransfer(msg.sender, _loan.amountBorrow);
+    }
 
     bytes32 hash = getLoanHash(_loan);
     loans[hash] = _loan;
 
-    emit Borrow(hash, msg.sender, _loan.token, _loan.lockExpiration, _loan.amountTokenOutstanding, _loan.lendingRate);
+    emit Borrow(hash, msg.sender, _loan.token, _loan.denominator, _loan.borrowToken, _loan.lockExpiration, _loan.amountBorrow, _loan.amountCollateral, _loan.lendingRate);
   }
 
-  function borrow(address _token, uint256 _amountToken, address _collateralToken, uint256 _amountCollateral, uint256 _lockExpiration)
-    external nonReentrant returns (Loan memory) {
-    require(controller.loanToValueRatios(_collateralToken) > 0, "Collateral token not allowed.");
+  function borrow(TokenPair memory _pair, uint256 _amountBorrow, uint256 _amountCollateral, uint256 _lockExpiration) external nonReentrant returns (Loan memory) {
+    bool borrowToken = _pair.useToken;
+    address collateralToken = borrowToken ? _pair.denominator : _pair.token;
+
+    require(controller.loanToValueRatios(collateralToken) > 0, "Collateral token not allowed.");
     require(permissions[msg.sender].canBorrow, "Borrow not whitelisted.");
 
-    uint256 tokenPrice = priceOracle.getAssetPrice(_token);
-    uint256 collateralPrice = priceOracle.getAssetPrice(_collateralToken);
-    uint256 lendingRate = rayToWad(lendingRateOracle.getMarketBorrowRate(_token));
+    uint256 tokenPrice = priceOracle.getAssetPrice(_pair.token);
+    uint256 denominatorPrice = priceOracle.getAssetPrice(_pair.denominator);
+    // ToDo : Check this
+    uint256 lendingRate = rayToWad(lendingRateOracle.getMarketBorrowRate(_pair.token));
+
 
     Loan memory loan = Loan(address(this),
                             msg.sender,
-                            _token,
-                            _collateralToken,
-                            _amountToken,
+                            _pair.token,
+                            _pair.denominator,
+                            borrowToken,
+                            _amountBorrow,
                             _amountCollateral,
                             block.timestamp,
                             _lockExpiration,
                             tokenPrice,
-                            collateralPrice,
+                            denominatorPrice,
                             lendingRate);
 
     _lendCapital(loan);
@@ -499,37 +631,55 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     return repay(hash, _amount);
   }
 
+  // ToDo : Review / fix this
   function repay(bytes32 _hash, uint256 _amount) public nonReentrant returns (uint256) {
     Loan storage loan = loans[_hash];
 
     uint256 collateralOut = getRequiredCollateralToRepayLoan(loan, _amount);
 
-    require(depositsByUser[loan.borrower][loan.collateralToken][loan.lockExpiration] >= collateralOut, "Not enough collateral.");
+    UserInfo storage uInfo = userInfos[loan.borrower][loan.token][loan.denominator][loan.lockExpiration];
 
-    IERC20(loan.token).safeTransferFrom(msg.sender, address(this), _amount);
+    address borrowedToken = loan.borrowToken ? loan.token : loan.denominator;
+    address collateralToken = loan.borrowToken ? loan.denominator : loan.token;
+    uint256 collateralAmount = loan.borrowToken ? uInfo.denominatorAmount : uInfo.tokenAmount;
 
-    loan.amountTokenOutstanding = loan.amountTokenOutstanding - _amount;
+    require(collateralAmount >= collateralOut, "Not enough collateral.");
 
-    if (loan.amountTokenOutstanding == 0) {
-      collateralOut = loan.amountCollateralTokenHeld;
+    IERC20(borrowedToken).safeTransferFrom(msg.sender, address(this), _amount);
 
-      delete loans[_hash];
+    loan.amountBorrow -= _amount;
+
+//    if (loan.amountBorrow == 0) {
+//      collateralOut = loan.amountCollateral;
+//
+//      // ToDo : Cleanup ?
+//      delete loans[_hash];
+//    }
+
+    loan.amountCollateral -= collateralOut;
+
+    PoolInfo storage pInfo = poolInfos[loan.token][loan.denominator][loan.lockExpiration];
+    if (loan.borrowToken) {
+      pInfo.denominatorAmount -= collateralOut;
+      uInfo.denominatorAmount -= collateralOut;
+    } else {
+      pInfo.tokenAmount -= collateralOut;
+      uInfo.tokenAmount -= collateralOut;
     }
 
-    loan.amountCollateralTokenHeld = loan.amountCollateralTokenHeld - collateralOut;
-    amountsLockedByExpirationPerToken[loan.collateralToken][loan.lockExpiration] -= collateralOut;
-    depositsByUser[loan.borrower][loan.collateralToken][loan.lockExpiration] -= collateralOut;
+    IERC20(collateralToken).safeTransfer(loan.borrower, collateralOut);
 
-    IERC20(loan.collateralToken).safeTransferFrom(address(this), loan.borrower, collateralOut);
-
+    // ToDo : Fix
     emit RepayLoan(_hash, msg.sender, loan.token, _amount);
 
     return collateralOut;
   }
 
   function isLoanUnderCollateralized(Loan memory _loan) public view returns (bool) {
-    uint256 collateralPrice = priceOracle.getAssetPrice(_loan.collateralToken);
-    uint256 percentCollateralized = (_loan.amountCollateralTokenHeld * collateralPrice * _inverseBasisPoint) / (_loan.amountTokenOutstanding * _loan.tokenPrice);
+    address collateralToken = _loan.borrowToken ? _loan.denominator : _loan.token;
+
+    uint256 collateralPrice = priceOracle.getAssetPrice(collateralToken);
+    uint256 percentCollateralized = (_loan.amountCollateral * collateralPrice * _inverseBasisPoint) / (_loan.amountBorrow * _loan.tokenPrice);
     return percentCollateralized < _requiredCollateralizationPercent;
   }
 
@@ -582,16 +732,26 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
   function liquidate(bytes32 _hash, uint256 _collateralAmount) public nonReentrant {
     Loan storage loan = loans[_hash];
 
-    require(loan.amountCollateralTokenHeld * _inverseBasisPoint / _collateralAmount >= _maxPercentLiquidated, "Too much liquidated.");
+    address collateralToken = loan.borrowToken ? loan.denominator : loan.token;
+
+    require(loan.amountCollateral * _inverseBasisPoint / _collateralAmount >= _maxPercentLiquidated, "Too much liquidated.");
     require(isLoanUnderCollateralized(loan) ||  loan.lockExpiration < block.timestamp, "Loan cannot be liquidated.");
 
-    uint256 amountToken = _liquidateCollateral(loan.collateralToken, loan.token, _collateralAmount);
+    uint256 amountToken = _liquidateCollateral(collateralToken, loan.token, _collateralAmount);
 
-    loan.amountTokenOutstanding -= amountToken;
-    loan.amountCollateralTokenHeld -= _collateralAmount;
+    loan.amountBorrow -= amountToken;
+    loan.amountCollateral -= _collateralAmount;
 
-    amountsLockedByExpirationPerToken[loan.collateralToken][loan.lockExpiration] -= _collateralAmount;
-    depositsByUser[loan.borrower][loan.collateralToken][loan.lockExpiration] -= _collateralAmount;
+    UserInfo storage uInfo = userInfos[loan.borrower][loan.token][loan.denominator][loan.lockExpiration];
+    PoolInfo storage pInfo = poolInfos[loan.token][loan.denominator][loan.lockExpiration];
+
+    if (loan.borrowToken) {
+      uInfo.denominatorAmount -= _collateralAmount;
+      pInfo.denominatorAmount -= _collateralAmount;
+    } else {
+      uInfo.tokenAmount -= _collateralAmount;
+      pInfo.tokenAmount -= _collateralAmount;
+    }
 
     // ToDo : Account for loss
 
@@ -599,12 +759,13 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     uint256 rewardFee = (amountToken * _inverseBasisPoint) / _liquidatorReward;
 
-    IERC20(loan.token).safeTransferFrom(address(this), msg.sender, rewardFee);
+    IERC20(collateralToken).safeTransfer(msg.sender, rewardFee);
 
-    if (loan.amountCollateralTokenHeld == 0) {
+    if (loan.amountCollateral == 0) {
       delete loans[_hash];
     }
 
+    // Fix this
     emit LiquidateLoan(_hash, msg.sender, loan.token, _collateralAmount, rewardFee);
   }
 
@@ -615,8 +776,10 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     address denominator = IPremiaOption(_optionContract).denominator();
 
+    PoolInfo storage pInfo = poolInfos[data.token][denominator][data.expiration];
+
     IERC20(denominator).safeTransferFrom(msg.sender, address(this), _amountPremium);
-    tokenPnl[data.token][data.expiration] += _amountPremium.toInt256();
+    pInfo.tokenPnl += _amountPremium.toInt256();
 
     optionsOutstanding[_optionContract][_optionId] += _amount;
 
@@ -628,7 +791,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         isCall: data.isCall
     });
 
-    _subtractLockedAmounts(data.token, data.expiration, _amount);
+    TokenPair memory pair = TokenPair({token: data.token, denominator: denominator, useToken: data.isCall});
+    _subtractLockedAmounts(pair, data.expiration, _amount);
 
     IPremiaOption(_optionContract).writeOption(data.token, writeArgs, _referrer);
     IPremiaOption(_optionContract).safeTransferFrom(address(this), _receiver, _optionId, _amount, "");
@@ -656,6 +820,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     optionsOutstanding[_optionContract][_optionId] -= _amount;
 
+    // ToDo : The expired case should be treated separately, so that this function can be more gas efficient
     if (data.expiration < block.timestamp) {
       IPremiaOption(_optionContract).withdraw(_optionId);
     } else {
@@ -677,11 +842,13 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     // 1 week later, User A's tokens are unlocked, but the user still cannot withdraw their tokens for 51 weeks
     // User A's tokens can no longer be used to write options on the market, and cannot be withdrawn for 51 weeks.
 
-    amountsLockedByExpirationPerToken[data.token][data.expiration] += tokenWithdrawn;
-    amountsLockedByExpirationPerToken[denominator][data.expiration] += denominatorWithdrawn;
+    PoolInfo storage pInfo = poolInfos[data.token][denominator][data.expiration];
+
+    pInfo.tokenAmount -= tokenWithdrawn;
+    pInfo.denominatorAmount -= denominatorWithdrawn;
 
     // ToDo : If denominatorPnl ends up negative, need to be repaid through swapping tokens
-    denominatorPnl[data.token][data.expiration] -= _amountPremium.toInt256();
+    pInfo.denominatorPnl -= _amountPremium.toInt256();
     IERC20(denominator).safeTransfer(_sender, _amountPremium);
 
     _afterSellOption(_optionContract, _optionId, _amount, tokenWithdrawn, denominatorWithdrawn);
@@ -726,16 +893,16 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     // 1 week later, User A's tokens are unlocked, but the user still cannot withdraw their tokens for 51 weeks
     // User A's tokens can no longer be used to write options on the market, and cannot be withdrawn for 51 weeks.
 
-    amountsLockedByExpirationPerToken[data.token][data.expiration] += tokenIncrease;
-    amountsLockedByExpirationPerToken[denominatorToken][data.expiration] += denominatorIncrease;
+    amountsLockedByExpirationPerToken[data.token][denominatorToken][data.expiration] += tokenIncrease;
+    amountsLockedByExpirationPerToken[denominatorToken][data.token][data.expiration] += denominatorIncrease;
     
     if (tokenWithdrawn > 0 && denominatorWithdrawn > 0) {
-      IERC20(data.token).safeTransferFrom(address(this), msg.sender, tokenRewardFee);
-      IERC20(denominatorToken).safeTransferFrom(address(this), msg.sender, denominatorRewardFee);
+      IERC20(data.token).safeTransfer(msg.sender, tokenRewardFee);
+      IERC20(denominatorToken).safeTransfer(msg.sender, denominatorRewardFee);
     } else if (tokenWithdrawn > 0) {
-      IERC20(data.token).safeTransferFrom(address(this), msg.sender, tokenRewardFee);
+      IERC20(data.token).safeTransfer(msg.sender, tokenRewardFee);
     } else {
-      IERC20(denominatorToken).safeTransferFrom(address(this), msg.sender, denominatorRewardFee);
+      IERC20(denominatorToken).safeTransfer(msg.sender, denominatorRewardFee);
     }
 
     _afterSellOption(_optionContract, _optionId, _amount, tokenIncrease, denominatorIncrease);
