@@ -294,7 +294,35 @@ describe('OptionMath', function () {
   });
 
   describe('#quotePrice', function () {
-    it('pass');
+    it('calculates European CALL option price quote ', async function (){
+      const variance = fixedFromFloat(0.16);
+      const price =  input_t[1];
+      const strike = fixedFromFloat(55284.28125 * 0.95);
+      const maturity = fixedFromFloat(28 / 365);
+      const cLevel = fixedFromFloat(1);
+      const S0 = fixedFromFloat(100);
+      const S1 = fixedFromFloat(20);
+      const steepness = fixedFromFloat(1);
+
+      const expected = fixedFromFloat(2.2255409285 * 4013.677084809402 * 1.5319261606); // c * bsch * slippage
+
+      expect(
+        expected / await instance.callStatic.quotePrice(
+          variance,
+          strike,
+          price,
+          maturity,
+          cLevel,
+          S0,
+          S1,
+          steepness,
+          true
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
+    });
   });
 
 });
