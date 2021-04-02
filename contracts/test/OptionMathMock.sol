@@ -83,12 +83,12 @@ contract OptionMathMock {
   }
 
   function calculateCLevel (
-    int128 oldC,
+    int128 initialCLevel,
     int128 St0,
     int128 St1,
     int128 steepness
   ) external pure returns (int128) {
-    return OptionMath.calculateCLevel(oldC, St0, St1, steepness);
+    return OptionMath.calculateCLevel(initialCLevel, St0, St1, steepness);
   }
 
   function quotePrice (
@@ -96,7 +96,7 @@ contract OptionMathMock {
     int128 strike,
     int128 price,
     int128 timeToMaturity,
-    int128 Ct,
+    int128 cLevel,
     int128 St0,
     int128 St1,
     int128 steepness,
@@ -107,7 +107,7 @@ contract OptionMathMock {
       strike,
       price,
       timeToMaturity,
-      Ct,
+      cLevel,
       St0,
       St1,
       steepness,

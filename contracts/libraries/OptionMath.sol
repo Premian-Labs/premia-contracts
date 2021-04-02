@@ -16,7 +16,7 @@ library OptionMath {
   int128 internal constant N_CONST_3_64x64 = 0x547ae147ae147ae1; // 0.33
 
   /**
-  * @notice calculates the log return for a given day
+  * @notice TODO
   * @param today64x64 today's close
   * @param yesterday64x64 yesterday's close
   * @return log of returns
@@ -30,7 +30,7 @@ library OptionMath {
   }
 
   /**
-  * @notice calculates the log return for a given day
+  * @notice TODO
   * @param today64x64 today's close
   * @param yesterday64x64 yesterday's close
   * @param window the period for the EMA average
@@ -48,7 +48,7 @@ library OptionMath {
   }
 
   /**
-  * @notice calculates the log return for a given day
+  * @notice TODO
   * @param today64x64 the price from today
   * @param yesterdayEma64x64 the average from yesterday
   * @param yesterdayEmaVariance64x64 the variation from yesterday
@@ -64,8 +64,7 @@ library OptionMath {
   ) internal pure returns (int128) {
     int128 alpha = ABDKMath64x64.divu(2, window + 1);
 
-    return
-    ONE_64x64.sub(alpha).mul(
+    return ONE_64x64.sub(alpha).mul(
       yesterdayEmaVariance64x64.add(
         alpha.mul(
           today64x64.sub(yesterdayEma64x64).pow(2)
@@ -75,12 +74,12 @@ library OptionMath {
   }
 
   /**
-  * @notice calculates an internal probability for bscholes model
-  * @param variance the price from yesterday
-  * @param strike the price from today
-  * @param price the average from yesterday
+  * @notice calculate delta hedge
+  * @param variance TODO
+  * @param strike TODO
+  * @param price TODO
   * @param timeToMaturity duration of option contract (in years)
-  * @return the probability
+  * @return TODO
   */
   function d1 (
     int128 variance,
@@ -88,18 +87,15 @@ library OptionMath {
     int128 price,
     int128 timeToMaturity
   ) internal pure returns (int128) {
-    return
-    strike.div(price).ln()
-    .add(
+    return strike.div(price).ln().add(
       timeToMaturity.mul(variance / 2)
-    )
-    .div(
+    ).div(
       timeToMaturity.mul(variance).sqrt()
     );
   }
 
   /**
-  * @notice calculates approximated CDF
+  * @notice calculate approximated CDF
   * @param x random variable
   * @return the approximated CDF of random variable x
   */
@@ -115,7 +111,7 @@ library OptionMath {
   }
 
   /**
-  * @notice xt
+  * @notice TODO
   * @param St0 Pool state at t0
   * @param St1 Pool state at t1
   * @return return intermediate viarable Xt
@@ -131,7 +127,7 @@ library OptionMath {
   * @notice TODO
   * @param St0 Pool state at t0
   * @param St1 Pool state at t1
-  * @param steepness Pool state at t1
+  * @param steepness TODO
   * @return TODO
   */
   function slippageCoefficient (
@@ -147,13 +143,13 @@ library OptionMath {
   }
 
   /**
-  * @notice calculates the black scholes price
-  * @param variance the price from yesterday
-  * @param strike the price from today
-  * @param price the average from yesterday
+  * @notice calculate the price of an option using the Black-Scholes model
+  * @param variance TODO
+  * @param strike TODO
+  * @param price TODO
   * @param timeToMaturity duration of option contract (in years)
-  * @param isCall is this a call option
-  * @return the price of the option
+  * @param isCall whether to price "call" or "put" option
+  * @return TODO
   */
 
   // TODO: add require to check variance, price, timeToMaturity > 0, strike => 0.5 * price,  strike <= 2 * price
@@ -171,7 +167,7 @@ library OptionMath {
   }
 
   /**
-  * @notice calculate new C-Level based on change in liquidity
+  * @notice calculate multiplier to apply to C-Level based on change in liquidity
   * @param St0 liquidity in pool before update
   * @param St1 liquidity in pool after update
   * @param steepness steepness coefficient
@@ -186,47 +182,47 @@ library OptionMath {
   }
 
   /**
-  * @notice calculate new C-Level based on change in liquidity
-  * @param oldC previous C-Level
+  * @notice recalculate C-Level based on change in liquidity
+  * @param initialCLevel C-Level of Pool before update
   * @param St0 liquidity in pool before update
   * @param St1 liquidity in pool after update
   * @param steepness steepness coefficient
   * @return new C-Level
   */
   function calculateCLevel (
-    int128 oldC,
+    int128 initialCLevel,
     int128 St0,
     int128 St1,
     int128 steepness
   ) internal pure returns (int128) {
-    return calcTradingDelta(St0, St1, steepness).mul(oldC);
+    return calcTradingDelta(St0, St1, steepness).mul(initialCLevel);
   }
 
   /**
-  * @notice calculates the black scholes price
-  * @param variance the price from yesterday
-  * @param strike the price from today
-  * @param price the average from yesterday
+  * @notice calculate the price of an option using the Median Finance model
+  * @param variance TODO
+  * @param strike TODO
+  * @param price TODO
   * @param timeToMaturity duration of option contract (in years)
-  * @param Ct previous C-Level
+  * @param cLevel C-Level of Pool before purchase
   * @param St0 current state of the pool
   * @param St1 state of the pool after trade
   * @param steepness state of the pool after trade
   * @param isCall whether to price "call" or "put" option
-  * @return the price of the option
+  * @return TODO
   */
   function quotePrice (
     int128 variance,
     int128 strike,
     int128 price,
     int128 timeToMaturity,
-    int128 Ct,
+    int128 cLevel,
     int128 St0,
     int128 St1,
     int128 steepness,
     bool isCall
   ) internal pure returns (int128) {
-    return calculateCLevel(Ct, St0, St1, steepness).mul(
+    return calculateCLevel(cLevel, St0, St1, steepness).mul(
       slippageCoefficient(St0, St1, steepness)
     ).mul(
       bsPrice(variance, strike, price, timeToMaturity, isCall)
