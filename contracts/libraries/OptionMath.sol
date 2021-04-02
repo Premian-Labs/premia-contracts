@@ -100,6 +100,7 @@ library OptionMath {
   * @param x random variable
   * @return the approximated CDF of x
   */
+  // TODO: if x < 0, calculate for abs(x) and return 1 - result
   function N (
     int128 x
   ) internal pure returns (int128) {
