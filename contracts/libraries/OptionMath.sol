@@ -106,6 +106,7 @@ library OptionMath {
   function N (
     int128 x
   ) internal pure returns (int128) {
+    // TODO: if x < 0, calculate for abs(x) and return 1 - result
     int128 num = x.pow(2).div(ABDKMath64x64.fromInt(2)).neg().exp();
     int128 den =
     N_CONST_1_64x64.add(N_CONST_2_64x64.mul(x)).add(

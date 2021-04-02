@@ -14,39 +14,6 @@ const fixedFromFloat = function (float) {
 };
 
 const raw = [
-  [1613952000000,54207.3203125],
-  [1614038400000,48824.42578125],
-  [1614124800000,49705.33203125],
-  [1614211200000,47093.8515625],
-  [1614297600000,46339.76171875],
-  [1614384000000,46188.453125],
-  [1614470400000,45137.76953125],
-  [1614556800000,49631.2421875],
-  [1614643200000,48378.98828125],
-  [1614729600000,50538.2421875],
-  [1614816000000,48561.16796875],
-  [1614902400000,48927.3046875],
-  [1614988800000,48912.3828125],
-  [1615075200000,51206.69140625],
-  [1615161600000,52246.5234375],
-  [1615248000000,54824.1171875],
-  [1615334400000,56008.55078125],
-  [1615420800000,57805.12109375],
-  [1615507200000,57332.08984375],
-  [1615593600000,61243.0859375],
-  [1615680000000,59302.31640625],
-  [1615766400000,55907.19921875],
-  [1615852800000,56804.90234375],
-  [1615939200000,58870.89453125],
-  [1616025600000,57858.921875],
-  [1616112000000,58346.65234375],
-  [1616198400000,58313.64453125],
-  [1616284800000,57523.421875],
-  [1616371200000,54529.14453125],
-  [1616457600000,54738.9453125],
-  [1616544000000,52774.265625],
-  [1616630400000,51704.16015625],
-  [1616716800000,55137.3125],
   [1616803200000,55973.51171875],
   [1616889600000,55284.28125],
 ];
@@ -145,14 +112,15 @@ describe('OptionMath', function () {
 
   describe('#d1', function () {
     it('calculates d1 in Black-Scholes', async function () {
-      const price = input_t[1];
-      const strike = fixedFromFloat(55973.51171875 * 0.9);
+      const price =  input_t[1];
+      const strike = fixedFromFloat(55284.28125 * 0.9); // input_t * 0.9
       const variance = fixedFromFloat(0.175);
       const maturity = fixedFromFloat(28 / 365);
       const expected = fixedFromFloat(-0.8514075553);
 
       // let strike price = 0.9 of stock price. then:
       // d1 = (ln(0.9) + (28/365) * 0.175 * 0.5) / sqrt(28/365 * 0.175) = -0.8514075553
+
       expect(
         expected / await instance.callStatic.d1(
           variance,
@@ -170,8 +138,23 @@ describe('OptionMath', function () {
 
   describe('#N', function () {
     it('calculates CDF approximation', async function () {
-      const prob = fixedFromFloat(-0.8514075553);
-      const expected = fixedFromFloat(0.8027285019);
+      let prob = fixedFromFloat(0.8);
+      let expected = fixedFromFloat(0.7881146014);
+
+      // 1 - 0.3989 * e^(-0.64/2) / (0.266 + 0.64 * 0.8 + 0.33 * sqrt(0.64+3))
+      expect(
+        expected / await instance.callStatic.N(
+          prob
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
+
+      prob = fixedFromFloat(-0.8);
+      expected = fixedFromFloat(1 - 0.7881146014);
+
+      // 1 - 0.3989 * e^(-0.64/2) / (0.266 - 0.64 * 0.8 + 0.33 * sqrt(0.64+3))
       expect(
         expected / await instance.callStatic.N(
           prob
