@@ -251,7 +251,28 @@ describe('OptionMath', function () {
   });
 
   describe('#bsPrice', function () {
-    it('put / call ITM, put / call OTM, check `require case - Promise must be rejected`');
+    it('calculates European CALL option price', async function (){
+      const variance = fixedFromFloat(0.16);
+      const price =  input_t[1];
+      const strike = fixedFromFloat(55284.28125 * 0.95);
+      const maturity = fixedFromFloat(28 / 365);
+      const expected = fixedFromFloat(4013.677084809402);
+
+      expect(
+        expected / await instance.callStatic.bsPrice(
+          variance,
+          strike,
+          price,
+          maturity,
+          true
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
+    });
+    it('calculates European PUT option price', async function (){
+    });
   });
 
   describe('#quotePrice', function () {
