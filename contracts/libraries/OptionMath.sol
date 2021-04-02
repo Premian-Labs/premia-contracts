@@ -8,12 +8,13 @@ library OptionMath {
   using ABDKMath64x64 for int128;
 
   int128 internal constant ONE_64x64 = 0x10000000000000000;
+  int128 internal constant THREE_64x64 = ONE_64x64 * 3;
 
   // constants used in Choudhury’s approximation of the Black-Scholes CDF
-  int128 internal constant N_CONST_0_64x64 = 0x661e4f765fd8adab; // 0.3989
-  int128 internal constant N_CONST_1_64x64 = 0x39db22d0e5604189; // 0.226
-  int128 internal constant N_CONST_2_64x64 = 0xa3d70a3d70a3d70a; // 0.64
-  int128 internal constant N_CONST_3_64x64 = 0x547ae147ae147ae1; // 0.33
+  int128 internal constant N_CONST_0_64x64 = ONE_64x64 * 3989 / 10000;
+  int128 internal constant N_CONST_1_64x64 = ONE_64x64 * 226 / 1000;
+  int128 internal constant N_CONST_2_64x64 = ONE_64x64 * 64 / 100;
+  int128 internal constant N_CONST_3_64x64 = ONE_64x64 * 33 / 100;
 
   /**
   * @notice TODO
@@ -88,26 +89,34 @@ library OptionMath {
     int128 timeToMaturity
   ) internal pure returns (int128) {
     return strike.div(price).ln().add(
-      timeToMaturity.mul(variance / 2)
+      timeToMaturity.mul(variance) >> 1
     ).div(
       timeToMaturity.mul(variance).sqrt()
     );
   }
 
   /**
-  * @notice calculate approximated CDF
+  * @notice calculate Choudhury’s approximation of the Black-Scholes CDF
   * @param x random variable
-  * @return the approximated CDF of random variable x
+  * @return the approximated CDF of x
   */
   function N (
     int128 x
   ) internal pure returns (int128) {
-    int128 num = x.pow(2).div(ABDKMath64x64.fromInt(2)).neg().exp();
-    int128 den =
-    N_CONST_1_64x64.add(N_CONST_2_64x64.mul(x)).add(
-      N_CONST_3_64x64.mul(x.pow(2).add(ABDKMath64x64.fromInt(3)).sqrt())
+    // squaring via mul is cheaper than via pow
+    int128 x2 = x.mul(x);
+
+    return ONE_64x64.sub(
+      N_CONST_0_64x64.mul(
+        (-x2 >> 1).exp()
+      ).div(
+        N_CONST_1_64x64.add(
+          N_CONST_2_64x64.mul(x)
+        ).add(
+          N_CONST_3_64x64.mul(x2.add(THREE_64x64).sqrt())
+        )
+      )
     );
-    return ONE_64x64.sub(N_CONST_0_64x64.mul(num.div(den)));
   }
 
   /**
