@@ -66,10 +66,10 @@ library OptionMath {
 
     return
     ONE_64x64.sub(alpha).mul(
-      yesterdayEmaVariance64x64.add(
-        alpha.mul(
-          today64x64.sub(yesterdayEma64x64).pow(2)
-        )
+      yesterdayEmaVariance64x64
+    ).add(
+      alpha.mul(
+        today64x64.sub(yesterdayEma64x64).pow(2)
       )
     );
   }

@@ -124,10 +124,11 @@ describe('OptionMath', function () {
   describe('#rollingEmaVariance', function () {
     it('return the rolling variance value', async function () {
       const logReturn_t = fixedFromFloat(-0.01239);
-      const ema_t_1 = fixedFromFloat(0.1);
-      const emvar_t_1 = fixedFromFloat(0.2);
-      const expected = fixedFromFloat(0.1750175349);
+      const ema_t_1 = fixedFromFloat(0.3);
+      const emvar_t_1 = fixedFromFloat(0.1);
+      const expected = fixedFromFloat(0.09967833495);
 
+      // (1 - 2/15) * 0.1 + 2/15 * (-0.01239 - 0.3)^2
       expect(
         expected / await instance.callStatic.rollingEmaVariance(
           logReturn_t,
