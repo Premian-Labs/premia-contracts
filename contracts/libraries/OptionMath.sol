@@ -147,7 +147,7 @@ library OptionMath {
     int128 steepness
   ) internal pure returns (int128) {
     return ONE_64x64.sub(
-      calcTradingDelta(St0, St1, steepness)
+      calculateTradingDelta(St0, St1, steepness)
     ).div(
       Xt(St0, St1).mul(steepness)
     );
@@ -184,7 +184,7 @@ library OptionMath {
   * @param steepness steepness coefficient
   * @return new C-Level
   */
-  function calcTradingDelta (
+  function calculateTradingDelta (
     int128 St0,
     int128 St1,
     int128 steepness
@@ -206,7 +206,7 @@ library OptionMath {
     int128 St1,
     int128 steepness
   ) internal pure returns (int128) {
-    return calcTradingDelta(St0, St1, steepness).mul(initialCLevel);
+    return calculateTradingDelta(St0, St1, steepness).mul(initialCLevel);
   }
 
   /**
