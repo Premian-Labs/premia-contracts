@@ -12,14 +12,14 @@ import '../interface/IBlackScholesPriceGetter.sol';
 interface IPremiaAMM {
     struct DepositArgs {
         address pool;
-        address[] tokens;
+        IPremiaLiquidityPool.TokenPair[] pairs;
         uint256[] amounts;
         uint256 lockExpiration;
     }
 
     struct WithdrawExpiredArgs {
         address pool;
-        address[] tokens;
+        IPremiaLiquidityPool.TokenPair[] pairs;
     }
 
     enum SaleSide {Buy, Sell}

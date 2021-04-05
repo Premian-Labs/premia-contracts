@@ -20,14 +20,14 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
 
     struct DepositArgs {
         address pool;
-        address[] tokens;
+        IPremiaLiquidityPool.TokenPair[] pairs;
         uint256[] amounts;
         uint256 lockExpiration;
     }
 
     struct WithdrawExpiredArgs {
         address pool;
-        address[] tokens;
+        IPremiaLiquidityPool.TokenPair[] pairs;
     }
 
     enum SaleSide {Buy, Sell}
@@ -212,15 +212,16 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
 
     function getCallReserves(address _optionContract, uint256 _optionId) external view returns (uint256) {
         IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
-        return _getCallReserves(data.token, data.expiration);
+        return _getCallReserves(data.token, IPremiaOption(_optionContract).denominator(), data.expiration);
     }
 
-    function _getCallReserves(address _token, uint256 _expiration) internal view returns (uint256) {
+    function _getCallReserves(address _token, address _denominator, uint256 _expiration) internal view returns (uint256) {
         uint256 reserveAmount;
         IPremiaLiquidityPool[] memory callPools = getCallPools();
         for (uint256 i = 0; i < callPools.length; i++) {
             IPremiaLiquidityPool pool = callPools[i];
-            reserveAmount = reserveAmount + pool.getWritableAmount(_token, _expiration);
+            IPremiaLiquidityPool.TokenPair memory pair = IPremiaLiquidityPool.TokenPair({token: _token, denominator: _denominator, useToken: true});
+            reserveAmount = reserveAmount + pool.getWritableAmount(pair, _expiration);
         }
 
         return reserveAmount;
@@ -228,15 +229,16 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
 
     function getPutReserves(address _optionContract, uint256 _optionId) external view returns (uint256 reserveAmount) {
         IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
-        return _getPutReserves(IPremiaOption(_optionContract).denominator(), data.expiration);
+        return _getPutReserves(data.token, IPremiaOption(_optionContract).denominator(), data.expiration);
     }
 
-    function _getPutReserves(address _denominator, uint256 _expiration) internal view returns (uint256) {
+    function _getPutReserves(address _token, address _denominator, uint256 _expiration) internal view returns (uint256) {
         uint256 reserveAmount;
         IPremiaLiquidityPool[] memory putPools = getPutPools();
         for (uint256 i = 0; i < putPools.length; i++) {
             IPremiaLiquidityPool pool = putPools[i];
-            reserveAmount = reserveAmount + pool.getWritableAmount(_denominator, _expiration);
+            IPremiaLiquidityPool.TokenPair memory pair = IPremiaLiquidityPool.TokenPair({token: _token, denominator: _denominator, useToken: false});
+            reserveAmount = reserveAmount + pool.getWritableAmount(pair, _expiration);
         }
 
         return reserveAmount;
@@ -244,15 +246,16 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
 
     function getCallMaxBuy(address _optionContract, uint256 _optionId) external view returns (uint256) {
         IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
-        return _getCallMaxBuy(data.token, data.expiration);
+        return _getCallMaxBuy(data.token, IPremiaOption(_optionContract).denominator(), data.expiration);
     }
 
-    function _getCallMaxBuy(address _token, uint256 _expiration) internal view returns (uint256) {
+    function _getCallMaxBuy(address _token, address _denominator, uint256 _expiration) internal view returns (uint256) {
         uint256 maxBuy;
         IPremiaLiquidityPool[] memory callPools = getCallPools();
         for (uint256 i = 0; i < callPools.length; i++) {
             IPremiaLiquidityPool pool = callPools[i];
-            uint256 reserves = pool.getWritableAmount(_token, _expiration);
+            IPremiaLiquidityPool.TokenPair memory pair = IPremiaLiquidityPool.TokenPair({token: _token, denominator: _denominator, useToken: true});
+            uint256 reserves = pool.getWritableAmount(pair, _expiration);
 
             if (reserves > maxBuy) {
                 maxBuy = reserves; 
@@ -264,14 +267,14 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
 
     function getCallMaxSell(address _optionContract, uint256 _optionId) external view returns (uint256) {
         IPremiaLiquidityPool[] memory callPools = getCallPools();
-        
+
         uint256 maxSell;
         for (uint256 i = 0; i < callPools.length; i++) {
             IPremiaLiquidityPool pool = callPools[i];
             uint256 reserves = pool.getUnwritableAmount(_optionContract, _optionId);
 
             if (reserves > maxSell) {
-                maxSell = reserves; 
+                maxSell = reserves;
             }
         }
 
@@ -280,15 +283,16 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
 
     function getPutMaxBuy(address _optionContract, uint256 _optionId) external view returns (uint256) {
         IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
-        return _getPutMaxBuy(data.token, data.expiration);
+        return _getPutMaxBuy(data.token, IPremiaOption(_optionContract).denominator(), data.expiration);
     }
 
-    function _getPutMaxBuy(address _token, uint256 _expiration) internal view returns (uint256) {
+    function _getPutMaxBuy(address _token, address _denominator, uint256 _expiration) internal view returns (uint256) {
         uint256 maxBuy;
         IPremiaLiquidityPool[] memory putPools = getPutPools();
         for (uint256 i = 0; i < putPools.length; i++) {
             IPremiaLiquidityPool pool = putPools[i];
-            uint256 reserves = pool.getWritableAmount(_token, _expiration);
+            IPremiaLiquidityPool.TokenPair memory pair = IPremiaLiquidityPool.TokenPair({token: _token, denominator: _denominator, useToken: false});
+            uint256 reserves = pool.getWritableAmount(pair, _expiration);
 
             if (reserves > maxBuy) {
                 maxBuy = reserves; 
@@ -333,8 +337,8 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
             uint256 amountIn = _isCall ? _amount : _amount * _strikePrice;
             uint256 weightedBsPrice = _getWeightedBlackScholesPrice(_token, _denominator, _strikePrice, _expiration, amountIn);
 
-            uint256 xt0 = _getCallReserves(_token, _expiration);
-            uint256 yt0 = _getPutReserves(_denominator, _expiration);
+            uint256 xt0 = _getCallReserves(_token, _denominator, _expiration);
+            uint256 yt0 = _getPutReserves(_token, _denominator, _expiration);
             uint256 k = xt0 * yt0;
 
             uint256 xt1;
@@ -374,7 +378,8 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
 
         for (uint256 i = 0; i < liquidityPools.length; i++) {
             IPremiaLiquidityPool pool = liquidityPools[i];
-            uint256 amountAvailable = pool.getWritableAmount(_isCall ? _token : _denominator, _expiration);
+            IPremiaLiquidityPool.TokenPair memory pair = IPremiaLiquidityPool.TokenPair({token: _token, denominator: _denominator, useToken: _isCall});
+            uint256 amountAvailable = pool.getWritableAmount(pair, _expiration);
 
             if (amountAvailable >= _amount && address(pool) != address(msg.sender)) {
                 return pool;
@@ -420,11 +425,12 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
         for (uint256 i=0; i < _deposits.length; i++) {
             require(_callPools.contains(_deposits[i].pool) || _putPools.contains(_deposits[i].pool), "Pool not whitelisted");
 
-            IPremiaLiquidityPool(_deposits[i].pool).depositFrom(msg.sender, _deposits[i].tokens, _deposits[i].amounts, _deposits[i].lockExpiration);
+            IPremiaLiquidityPool(_deposits[i].pool).depositFrom(msg.sender, _deposits[i].pairs, _deposits[i].amounts, _deposits[i].lockExpiration);
 
             if (address(premiaMining) != address(0)) {
-                for (uint256 j=0; j < _deposits[i].tokens.length; j++) {
-                    premiaMining.deposit(msg.sender, _deposits[i].tokens[j], _deposits[i].amounts[j], _deposits[i].lockExpiration);
+                for (uint256 j=0; j < _deposits[i].pairs.length; j++) {
+                    address token = _deposits[i].pairs[j].useToken ? _deposits[i].pairs[j].token : _deposits[i].pairs[j].denominator;
+                    premiaMining.deposit(msg.sender, token, _deposits[i].amounts[j], _deposits[i].lockExpiration);
                 }
             }
         }
@@ -434,7 +440,7 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
         for (uint256 i=0; i < _withdrawals.length; i++) {
             require(_callPools.contains(_withdrawals[i].pool) || _putPools.contains(_withdrawals[i].pool), "Pool not whitelisted");
 
-            IPremiaLiquidityPool(_withdrawals[i].pool).withdrawExpiredFrom(msg.sender, _withdrawals[i].tokens);
+            IPremiaLiquidityPool(_withdrawals[i].pool).withdrawExpiredFrom(msg.sender, _withdrawals[i].pairs);
         }
     }
 }

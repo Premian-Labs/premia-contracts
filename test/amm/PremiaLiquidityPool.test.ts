@@ -111,7 +111,13 @@ describe('PremiaLiquidityPool', () => {
         controller.connect(user1).depositLiquidity([
           {
             pool: longPool.address,
-            tokens: [token1.address],
+            pairs: [
+              {
+                token: token1.address,
+                denominator: dai.address,
+                useToken: true,
+              },
+            ],
             amounts: [parseEther('50')],
             lockExpiration: nextExpiration,
           },
@@ -134,7 +140,13 @@ describe('PremiaLiquidityPool', () => {
         controller.connect(user1).depositLiquidity([
           {
             pool: longPool.address,
-            tokens: [token1.address],
+            pairs: [
+              {
+                token: token1.address,
+                denominator: dai.address,
+                useToken: true,
+              },
+            ],
             amounts: [parseEther('50')],
             lockExpiration: nextExpiration,
           },
@@ -146,7 +158,10 @@ describe('PremiaLiquidityPool', () => {
       await controller.connect(user1).depositLiquidity([
         {
           pool: longPool.address,
-          tokens: [token1.address, token2.address],
+          pairs: [
+            { token: token1.address, denominator: dai.address, useToken: true },
+            { token: token2.address, denominator: dai.address, useToken: true },
+          ],
           amounts: [parseEther('50'), parseEther('100')],
           lockExpiration: nextExpiration,
         },
@@ -154,15 +169,17 @@ describe('PremiaLiquidityPool', () => {
       const tokenAmount = await longPool.userInfos(
         user1.address,
         token1.address,
+        dai.address,
         nextExpiration,
       );
       const daiAmount = await longPool.userInfos(
         user1.address,
         token2.address,
+        dai.address,
         nextExpiration,
       );
-      expect(tokenAmount.amount).to.eq(parseEther('50'));
-      expect(daiAmount.amount).to.eq(parseEther('100'));
+      expect(tokenAmount.tokenAmount).to.eq(parseEther('50'));
+      expect(daiAmount.tokenAmount).to.eq(parseEther('100'));
     });
 
     it('should fail deposit if invalid expiration selected', async () => {
@@ -170,7 +187,13 @@ describe('PremiaLiquidityPool', () => {
         controller.connect(user1).depositLiquidity([
           {
             pool: longPool.address,
-            tokens: [token1.address],
+            pairs: [
+              {
+                token: token1.address,
+                denominator: dai.address,
+                useToken: true,
+              },
+            ],
             amounts: [parseEther('50')],
             lockExpiration: 1200,
           },
@@ -180,7 +203,13 @@ describe('PremiaLiquidityPool', () => {
         controller.connect(user1).depositLiquidity([
           {
             pool: longPool.address,
-            tokens: [token1.address],
+            pairs: [
+              {
+                token: token1.address,
+                denominator: dai.address,
+                useToken: true,
+              },
+            ],
             amounts: [parseEther('50')],
             lockExpiration: nextExpiration + 55 * oneWeek,
           },
@@ -190,7 +219,13 @@ describe('PremiaLiquidityPool', () => {
         controller.connect(user1).depositLiquidity([
           {
             pool: longPool.address,
-            tokens: [token1.address],
+            pairs: [
+              {
+                token: token1.address,
+                denominator: dai.address,
+                useToken: true,
+              },
+            ],
             amounts: [parseEther('50')],
             lockExpiration: nextExpiration + 1,
           },
@@ -202,7 +237,18 @@ describe('PremiaLiquidityPool', () => {
       await controller.connect(user1).depositLiquidity([
         {
           pool: longPool.address,
-          tokens: [token1.address, token2.address],
+          pairs: [
+            {
+              token: token1.address,
+              denominator: dai.address,
+              useToken: true,
+            },
+            {
+              token: token2.address,
+              denominator: dai.address,
+              useToken: true,
+            },
+          ],
           amounts: [parseEther('50'), parseEther('100')],
           lockExpiration: nextExpiration,
         },
@@ -210,26 +256,37 @@ describe('PremiaLiquidityPool', () => {
       await controller.connect(user1).depositLiquidity([
         {
           pool: longPool.address,
-          tokens: [token1.address, token2.address],
+          pairs: [
+            {
+              token: token1.address,
+              denominator: dai.address,
+              useToken: true,
+            },
+            {
+              token: token2.address,
+              denominator: dai.address,
+              useToken: true,
+            },
+          ],
           amounts: [parseEther('20'), parseEther('200')],
           lockExpiration: nextExpiration + oneWeek * 2,
         },
       ]);
 
       const writableAmount1 = await longPool.getWritableAmount(
-        token1.address,
+        { token: token1.address, denominator: dai.address, useToken: true },
         nextExpiration,
       );
       const writableAmount2 = await longPool.getWritableAmount(
-        token1.address,
+        { token: token1.address, denominator: dai.address, useToken: true },
         nextExpiration + oneWeek,
       );
       const writableAmount3 = await longPool.getWritableAmount(
-        token1.address,
+        { token: token1.address, denominator: dai.address, useToken: true },
         nextExpiration + oneWeek * 2,
       );
       const writableAmount4 = await longPool.getWritableAmount(
-        token1.address,
+        { token: token1.address, denominator: dai.address, useToken: true },
         nextExpiration + oneWeek * 3,
       );
 
@@ -255,7 +312,18 @@ describe('PremiaLiquidityPool', () => {
       await controller.connect(user1).depositLiquidity([
         {
           pool: longPool.address,
-          tokens: [token1.address, token2.address],
+          pairs: [
+            {
+              token: token1.address,
+              denominator: dai.address,
+              useToken: true,
+            },
+            {
+              token: token2.address,
+              denominator: dai.address,
+              useToken: true,
+            },
+          ],
           amounts: [parseEther('50'), parseEther('150')],
           lockExpiration: nextExpiration + oneWeek * 2,
         },
@@ -278,7 +346,18 @@ describe('PremiaLiquidityPool', () => {
       await controller.connect(user2).depositLiquidity([
         {
           pool: longPool.address,
-          tokens: [token1.address, token2.address],
+          pairs: [
+            {
+              token: token1.address,
+              denominator: dai.address,
+              useToken: true,
+            },
+            {
+              token: token2.address,
+              denominator: dai.address,
+              useToken: true,
+            },
+          ],
           amounts: [parseEther('150'), parseEther('150')],
           lockExpiration: nextExpiration + oneWeek * 2,
         },
@@ -332,7 +411,18 @@ describe('PremiaLiquidityPool', () => {
       await controller.connect(user1).depositLiquidity([
         {
           pool: longPool.address,
-          tokens: [token1.address, token2.address],
+          pairs: [
+            {
+              token: token1.address,
+              denominator: dai.address,
+              useToken: true,
+            },
+            {
+              token: token2.address,
+              denominator: dai.address,
+              useToken: true,
+            },
+          ],
           amounts: [parseEther('50'), parseEther('150')],
           lockExpiration: nextExpiration + oneWeek * 2,
         },
@@ -370,7 +460,18 @@ describe('PremiaLiquidityPool', () => {
       await controller.connect(user2).depositLiquidity([
         {
           pool: longPool.address,
-          tokens: [token1.address, token2.address],
+          pairs: [
+            {
+              token: token1.address,
+              denominator: dai.address,
+              useToken: true,
+            },
+            {
+              token: token2.address,
+              denominator: dai.address,
+              useToken: true,
+            },
+          ],
           amounts: [parseEther('150'), parseEther('150')],
           lockExpiration: nextExpiration + oneWeek * 2,
         },
@@ -425,7 +526,13 @@ describe('PremiaLiquidityPool', () => {
       await controller.connect(user1).depositLiquidity([
         {
           pool: longPool.address,
-          tokens: [token1.address],
+          pairs: [
+            {
+              token: token1.address,
+              denominator: dai.address,
+              useToken: true,
+            },
+          ],
           amounts: [parseEther('50')],
           lockExpiration: nextExpiration + oneWeek * 50,
         },
