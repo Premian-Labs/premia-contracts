@@ -94,7 +94,7 @@ describe('PremiaVestingCancellable', () => {
     await premiaVesting.transferOwnership(user1.address);
   });
 
-  it('should withdraw 200 premia, then 50 premia if withdrawing after 100 days and then after 25 days', async () => {
+  it('should withdraw 100 premia, then 25 premia if withdrawing after 100 days and then after 25 days', async () => {
     let lastWithdraw = await premiaVesting.lastWithdrawalTimestamp();
     // We remove 1s to timestamp, as it will increment when transaction is mined in hardhat network
     await setTimestamp(lastWithdraw.add(100 * 24 * 3600 - 1).toNumber());
