@@ -1,7 +1,6 @@
 require('dotenv').config();
 
 require('@nomiclabs/hardhat-waffle');
-require('hardhat-dependency-compiler');
 require('hardhat-docgen');
 require('hardhat-gas-reporter');
 require('hardhat-spdx-license-identifier');
@@ -30,14 +29,6 @@ module.exports = {
         mnemonic: process.env.MNEMONIC,
       },
     },
-  },
-
-  dependencyCompiler: {
-    paths: [
-      '@solidstate/contracts/access/SafeOwnable.sol',
-      '@solidstate/contracts/proxy/diamond/DiamondCuttable.sol',
-      '@solidstate/contracts/proxy/diamond/DiamondLoupe.sol',
-    ],
   },
 
   docgen: {

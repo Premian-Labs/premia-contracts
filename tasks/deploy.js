@@ -9,22 +9,16 @@ task(
   const pool = await factory.Pool({ deployer });
 
   const facets = [
-    await factory.DiamondCuttable({ deployer }),
-    await factory.DiamondLoupe({ deployer }),
     await factory.PriceConsumer({ deployer }),
     await factory.ProxyManager({ deployer }),
-    await factory.SafeOwnable({ deployer }),
   ];
 
-  const facetCuts = [];
-
-  facets.forEach(function (f) {
-    Object.keys(f.interface.functions).forEach(function (fn) {
-      facetCuts.push([
-        f.address,
-        f.interface.getSighash(fn),
-      ]);
-    });
+  const facetCuts = facets.map(function (f) {
+    return{
+      target: f.address,
+      action: 0,
+      selectors: Object.keys(f.interface.functions).map(fn => f.interface.getSighash(fn)),
+    };
   });
 
   const instance = await factory.Median({

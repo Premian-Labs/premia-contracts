@@ -18,22 +18,16 @@ describe('PairProxy', function () {
     const pool = await factory.Pool({ deployer: owner });
 
     const facets = [
-      await factory.DiamondCuttable({ deployer: owner }),
-      await factory.DiamondLoupe({ deployer: owner }),
       await factory.PriceConsumer({ deployer: owner }),
       await factory.ProxyManager({ deployer: owner }),
-      await factory.SafeOwnable({ deployer: owner }),
     ];
 
-    const facetCuts = [];
-
-    facets.forEach(function (f) {
-      Object.keys(f.interface.functions).forEach(function (fn) {
-        facetCuts.push([
-          f.address,
-          f.interface.getSighash(fn),
-        ]);
-      });
+    const facetCuts = facets.map(function (f) {
+      return {
+        target: f.address,
+        action: 0,
+        selectors: Object.keys(f.interface.functions).map(fn => f.interface.getSighash(fn)),
+      };
     });
 
     median = await factory.Median({

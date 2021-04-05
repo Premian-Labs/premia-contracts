@@ -1,9 +1,6 @@
 const factory = require('../../lib/factory.js');
 
-const describeBehaviorOfDiamondBase = require('@solidstate/spec/proxy/diamond/DiamondBase.behavior.js');
-const describeBehaviorOfDiamondCuttable = require('@solidstate/spec/proxy/diamond/DiamondCuttable.behavior.js');
-const describeBehaviorOfDiamondLoupe = require('@solidstate/spec/proxy/diamond/DiamondLoupe.behavior.js');
-const describeBehaviorOfSafeOwnable = require('@solidstate/spec/access/SafeOwnable.behavior.js');
+const describeBehaviorOfDiamond = require('@solidstate/spec/proxy/diamond/Diamond.behavior.js');
 
 const describeBehaviorOfPriceConsumer = require('./PriceConsumer.behavior.js');
 const describeBehaviorOfProxyManager = require('./ProxyManager.behavior.js');
@@ -17,7 +14,8 @@ describe('Median', function () {
   let facetMock;
 
   let facets;
-  let facetCuts = [];
+  // eslint-disable-next-line no-sparse-arrays
+  let facetCuts = [,];
 
   let instance;
 
@@ -29,19 +27,15 @@ describe('Median', function () {
     pool = await factory.Pool({ deployer: owner });
 
     facets = [
-      await factory.DiamondCuttable({ deployer: owner }),
-      await factory.DiamondLoupe({ deployer: owner }),
       await factory.PriceConsumer({ deployer: owner }),
       await factory.ProxyManager({ deployer: owner }),
-      await factory.SafeOwnable({ deployer: owner }),
     ];
 
     facets.forEach(function (f) {
-      Object.keys(f.interface.functions).forEach(function (fn) {
-        facetCuts.push([
-          f.address,
-          f.interface.getSighash(fn),
-        ]);
+      facetCuts.push({
+        target: f.address,
+        action: 0,
+        selectors: Object.keys(f.interface.functions).map(fn => f.interface.getSighash(fn)),
       });
     });
 
@@ -54,33 +48,26 @@ describe('Median', function () {
   beforeEach(async function () {
     instance = await factory.Median({
       deployer: owner,
-      facetCuts,
+      facetCuts: facetCuts.slice(1),
       pairImplementation: pair.address,
       poolImplementation: pool.address,
     });
+
+    facetCuts[0] = {
+      target: instance.address,
+      action: 0,
+      selectors: await instance.callStatic.facetFunctionSelectors(instance.address),
+    };
   });
 
   // eslint-disable-next-line mocha/no-setup-in-describe
-  describeBehaviorOfDiamondBase({
+  describeBehaviorOfDiamond({
     deploy: () => instance,
-    facetFunction: 'owner()',
-    facetFunctionArgs: [],
-  }, []);
-
-  // eslint-disable-next-line mocha/no-setup-in-describe
-  describeBehaviorOfDiamondCuttable({
-    deploy: () => instance,
-    deployFacet: () => facetMock,
     getOwner: () => owner,
+    getNomineeOwner: () => nomineeOwner,
     getNonOwner: () => nobody,
-    facetFunction: 'test()',
-    facetFunctionArgs: '',
-  }, []);
-
-  // eslint-disable-next-line mocha/no-setup-in-describe
-  describeBehaviorOfDiamondLoupe({
-    deploy: () => instance,
     facetCuts,
+    fallbackAddress: ethers.constants.AddressZero,
   }, []);
 
   // eslint-disable-next-line mocha/no-setup-in-describe
@@ -93,13 +80,5 @@ describe('Median', function () {
     deploy: () => instance,
     getPairImplementationAddress: () => pair.address,
     getPoolImplementationAddress: () => pool.address,
-  }, []);
-
-  // eslint-disable-next-line mocha/no-setup-in-describe
-  describeBehaviorOfSafeOwnable({
-    deploy: () => instance,
-    getOwner: () => owner,
-    getNomineeOwner: () => nomineeOwner,
-    getNonOwner: () => nobody,
   }, []);
 });
