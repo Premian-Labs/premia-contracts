@@ -68,6 +68,10 @@ fs.copyFileSync(
   './abi/PremiaVesting.json',
 );
 fs.copyFileSync(
+  './artifacts/contracts/PremiaVestingCancellable.sol/PremiaVestingCancellable.json',
+  './abi/PremiaVestingCancellable.json',
+);
+fs.copyFileSync(
   './artifacts/contracts/PriceProvider.sol/PriceProvider.json',
   './abi/PriceProvider.json',
 );
