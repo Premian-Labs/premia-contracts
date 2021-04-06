@@ -10,12 +10,6 @@ library OptionMath {
   int128 internal constant ONE_64x64 = 0x10000000000000000;
   int128 internal constant THREE_64x64 = ONE_64x64 * 3;
 
-  // constants used in Choudhury’s approximation of the Black-Scholes CDF
-  int128 internal constant N_CONST_0_64x64 = ONE_64x64 * 3989 / 10000;
-  int128 internal constant N_CONST_1_64x64 = ONE_64x64 * 226 / 1000;
-  int128 internal constant N_CONST_2_64x64 = ONE_64x64 * 64 / 100;
-  int128 internal constant N_CONST_3_64x64 = ONE_64x64 * 33 / 100;
-
   /**
   * @notice TODO
   * @param today64x64 today's close
@@ -106,13 +100,11 @@ library OptionMath {
     // squaring via mul is cheaper than via pow
     int128 x2 = x.mul(x);
 
-    int128 value = N_CONST_0_64x64.mul(
-      (-x2 >> 1).exp()
-    ).div(
-      N_CONST_1_64x64.add(
-        N_CONST_2_64x64.mul(x.abs())
+    int128 value = (-x2 >> 1).exp().div(
+      (ONE_64x64 * 2260 / 3989).add(
+        (ONE_64x64 * 6400 / 3989).mul(x.abs())
       ).add(
-        N_CONST_3_64x64.mul(x2.add(THREE_64x64).sqrt())
+        (ONE_64x64 * 3300 / 3989).mul(x2.add(THREE_64x64).sqrt())
       )
     );
 
