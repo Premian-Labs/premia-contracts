@@ -173,8 +173,12 @@ library OptionMath {
   ) internal pure returns (int128) {
     int128 d1 = d1(variance, strike, price, timeToMaturity);
     int128 d2 = d1.sub(timeToMaturity.mul(variance).sqrt());
-    if (isCall) return price.mul(N(d1)).sub(strike.mul(N(d2)));
-    return strike.mul(N(d2.neg())).sub(price.mul(N(d1.neg())));
+
+    if (isCall) {
+      return price.mul(N(d1)).sub(strike.mul(N(d2)));
+    } else {
+      return -price.mul(N(-d1)).sub(strike.mul(N(-d2)));
+    }
   }
 
   /**
