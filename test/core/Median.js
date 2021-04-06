@@ -11,9 +11,6 @@ describe('Median', function () {
   let pair;
   let pool;
 
-  let facetMock;
-
-  let facets;
   // eslint-disable-next-line no-sparse-arrays
   let facetCuts = [,];
 
@@ -26,22 +23,16 @@ describe('Median', function () {
     pair = await factory.Pair({ deployer: owner });
     pool = await factory.Pool({ deployer: owner });
 
-    facets = [
+    [
       await factory.PriceConsumer({ deployer: owner }),
       await factory.ProxyManager({ deployer: owner }),
-    ];
-
-    facets.forEach(function (f) {
+    ].forEach(function (f) {
       facetCuts.push({
         target: f.address,
         action: 0,
         selectors: Object.keys(f.interface.functions).map(fn => f.interface.getSighash(fn)),
       });
     });
-
-    const facetMockFactory = await ethers.getContractFactory('FacetMock', nobody);
-    facetMock = await facetMockFactory.deploy();
-    await facetMock.deployed();
   });
 
   // eslint-disable-next-line mocha/no-hooks-for-single-case

@@ -8,12 +8,10 @@ task(
   const pair = await factory.Pair({ deployer });
   const pool = await factory.Pool({ deployer });
 
-  const facets = [
+  [
     await factory.PriceConsumer({ deployer }),
     await factory.ProxyManager({ deployer }),
-  ];
-
-  const facetCuts = facets.map(function (f) {
+  ].map(function (f) {
     return{
       target: f.address,
       action: 0,

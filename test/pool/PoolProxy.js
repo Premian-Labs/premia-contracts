@@ -17,12 +17,10 @@ describe('PoolProxy', function () {
     const pair = await factory.Pair({ deployer: owner });
     const pool = await factory.Pool({ deployer: owner });
 
-    const facets = [
+    const facetCuts = [
       await factory.PriceConsumer({ deployer: owner }),
       await factory.ProxyManager({ deployer: owner }),
-    ];
-
-    const facetCuts = facets.map(function (f) {
+    ].map(function (f) {
       return {
         target: f.address,
         action: 0,
