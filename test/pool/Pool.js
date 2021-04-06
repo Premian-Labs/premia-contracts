@@ -2,6 +2,19 @@ const { expect } = require('chai');
 
 const describeBehaviorOfPool = require('./Pool.behavior.js');
 
+const fixedFromBigNumber = function (bn) {
+  return bn.abs().shl(64).mul(bn.abs().div(bn));
+};
+
+const fixedFromFloat = function (float) {
+  const [integer = '', decimal = ''] = float.toString().split('.');
+  return fixedFromBigNumber(
+    ethers.BigNumber.from(`${ integer }${ decimal }`)
+  ).div(
+    ethers.BigNumber.from(`1${ '0'.repeat(decimal.length) }`)
+  );
+};
+
 describe('Pool', function () {
   let owner;
 
@@ -30,24 +43,41 @@ describe('Pool', function () {
     describe('#_tokenIdFor', function () {
       it('returns concatenation of maturity and strikePrice', async function () {
         const maturity = ethers.BigNumber.from(Math.floor(new Date().getTime() / 1000));
-        const strikePrice = ethers.utils.parseEther((Math.random() * 1000).toString());
+        const strikePrice = fixedFromFloat(Math.random() * 1000);
+        const tokenId = ethers.utils.hexConcat([
+          maturity,
+          ethers.utils.hexZeroPad(strikePrice, 16),
+        ]);
 
         expect(
-          await instance.callStatic['tokenIdFor(uint192,uint64)'](
-            strikePrice,
-            maturity
+          await instance.callStatic['tokenIdFor(uint64,int128)'](
+            maturity,
+            strikePrice
           )
         ).to.equal(
-          ethers.utils.hexConcat([
-            maturity,
-            ethers.utils.hexZeroPad(strikePrice, 24),
-          ])
+          tokenId
         );
       });
     });
 
     describe('#_parametersFor', function () {
-      it('todo');
+      it('returns parameters derived from tokenId', async function () {
+        const maturity = ethers.BigNumber.from(Math.floor(new Date().getTime() / 1000));
+        const strikePrice = fixedFromFloat(Math.random() * 1000);
+        const tokenId = ethers.utils.hexConcat([
+          maturity,
+          ethers.utils.hexZeroPad(strikePrice, 16),
+        ]);
+
+        expect(
+          await instance.callStatic['parametersFor(uint256)'](tokenId)
+        ).to.deep.equal(
+          [
+            maturity,
+            strikePrice,
+          ]
+        );
+      });
     });
   });
 });

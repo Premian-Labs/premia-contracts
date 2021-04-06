@@ -31,15 +31,15 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   /**
    * @notice get price of option contract
    * @param amount size of option contract
-   * @param strikePrice option strike price
    * @param maturity timestamp of option maturity
+   * @param strikePrice option strike price
    * @return price price of option contract
    * @return cLevel C-Level after purchase
    */
   function quote (
     uint amount,
-    uint192 strikePrice,
-    uint64 maturity
+    uint64 maturity,
+    int128 strikePrice
   ) public view returns (uint price, int128 cLevel) {
     require(maturity > block.timestamp, 'Pool: expiration must be in the future');
     // TODO: calculate
@@ -65,14 +65,14 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   function valueOfOption (
     uint tokenId,
     uint amount
-  ) public view returns (uint) {
-    (uint192 strikePrice, uint64 maturity) = _parametersFor(tokenId);
+  ) public view returns (int128) {
+    (uint64 maturity, int128 strikePrice) = _parametersFor(tokenId);
 
     // TODO: get spot price now or at maturity
-    uint spotPrice;
+    int128 spotPrice;
 
     if (strikePrice > spotPrice) {
-      return (strikePrice - spotPrice) * amount;
+      return strikePrice.sub(spotPrice).mul(ABDKMath64x64.fromUInt(amount));
     } else {
       return 0;
     }
@@ -145,13 +145,13 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   /**
    * @notice purchase put option
    * @param amount size of option contract
-   * @param strikePrice option strike price
    * @param maturity timestamp of option maturity
+   * @param strikePrice option strike price
    */
   function purchase (
     uint amount,
-    uint192 strikePrice,
-    uint64 maturity
+    uint64 maturity,
+    int128 strikePrice
   ) external returns (uint price) {
     // TODO: convert ETH to WETH if applicable
     // TODO: maturity must be integer number of calendar days
@@ -161,12 +161,12 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     int128 cLevel;
-    (price, cLevel) = quote(amount, strikePrice, maturity);
+    (price, cLevel) = quote(amount, maturity, strikePrice);
     l.cLevel = cLevel;
 
     IERC20(l.base).transferFrom(msg.sender, address(this), price);
 
-    _mint(msg.sender, _tokenIdFor(strikePrice, maturity), amount, '');
+    _mint(msg.sender, _tokenIdFor(maturity, strikePrice), amount, '');
   }
 
   /**
@@ -178,7 +178,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint tokenId,
     uint amount
   ) public {
-    uint value = valueOfOption(tokenId, amount);
+    // TODO: multiply by decimals
+    uint value = valueOfOption(tokenId, amount).toUInt();
 
     require(value > 0, 'Pool: option must be in-the-money');
 
@@ -189,27 +190,31 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
   /**
    * @notice calculate ERC1155 token id for given option parameters
-   * @param strikePrice option strike price
    * @param maturity timestamp of option maturity
-   * @return token id
+   * @param strikePrice option strike price
+   * @return tokenId token id
    */
   function _tokenIdFor (
-    uint192 strikePrice,
-    uint64 maturity
-  ) internal pure returns (uint) {
-    return (uint256(maturity) << 192) + strikePrice;
+    uint64 maturity,
+    int128 strikePrice
+  ) internal pure returns (uint tokenId) {
+    assembly {
+      tokenId := add(strikePrice, shl(128, maturity))
+    }
   }
 
   /**
    * @notice derive option strike price and maturity from ERC1155 token id
    * @param tokenId token id
-   * @return strikePrice option strike price
    * @return maturity timestamp of option maturity
+   * @return strikePrice option strike price
    */
   function _parametersFor (
     uint tokenId
-  ) internal pure returns (uint192 strikePrice, uint64 maturity) {
-    strikePrice = uint192(tokenId);
-    maturity = uint64(tokenId >> 192);
+  ) internal pure returns (uint64 maturity, int128 strikePrice) {
+    assembly {
+      strikePrice := tokenId
+      maturity := shr(128, tokenId)
+    }
   }
 }
