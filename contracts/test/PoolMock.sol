@@ -13,15 +13,16 @@ contract PoolMock is Pool {
   using ERC165Storage for ERC165Storage.Layout;
 
   function tokenIdFor (
+    uint8 tokenType,
     uint64 maturity,
     int128 strikePrice
   ) external pure returns (uint) {
-    return _tokenIdFor(maturity, strikePrice);
+    return _tokenIdFor(tokenType, maturity, strikePrice);
   }
 
   function parametersFor (
     uint256 tokenId
-  ) external pure returns (uint64, int128) {
+  ) external pure returns (uint8, uint64, int128) {
     return _parametersFor(tokenId);
   }
 }

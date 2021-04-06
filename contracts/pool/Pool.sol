@@ -66,7 +66,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint tokenId,
     uint amount
   ) public view returns (int128) {
-    (uint64 maturity, int128 strikePrice) = _parametersFor(tokenId);
+    (uint8 tokenType, uint64 maturity, int128 strikePrice) = _parametersFor(tokenId);
+    // TODO: verify tokenType
 
     // TODO: get spot price now or at maturity
     int128 spotPrice;
@@ -166,7 +167,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     IERC20(l.base).transferFrom(msg.sender, address(this), price);
 
-    _mint(msg.sender, _tokenIdFor(maturity, strikePrice), amount, '');
+    // TODO: tokenType
+    _mint(msg.sender, _tokenIdFor(0, maturity, strikePrice), amount, '');
   }
 
   /**
@@ -190,31 +192,35 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
   /**
    * @notice calculate ERC1155 token id for given option parameters
+   * @param tokenType TODO
    * @param maturity timestamp of option maturity
    * @param strikePrice option strike price
    * @return tokenId token id
    */
   function _tokenIdFor (
+    uint8 tokenType,
     uint64 maturity,
     int128 strikePrice
   ) internal pure returns (uint tokenId) {
     assembly {
-      tokenId := add(strikePrice, shl(128, maturity))
+      tokenId := add(strikePrice, add(shl(128, maturity), shl(248, tokenType)))
     }
   }
 
   /**
-   * @notice derive option strike price and maturity from ERC1155 token id
+   * @notice derive option maturity and strike price from ERC1155 token id
    * @param tokenId token id
+   * @return tokenType TODO
    * @return maturity timestamp of option maturity
    * @return strikePrice option strike price
    */
   function _parametersFor (
     uint tokenId
-  ) internal pure returns (uint64 maturity, int128 strikePrice) {
+  ) internal pure returns (uint8 tokenType, uint64 maturity, int128 strikePrice) {
     assembly {
-      strikePrice := tokenId
+      tokenType := shr(248, tokenId)
       maturity := shr(128, tokenId)
+      strikePrice := tokenId
     }
   }
 }
