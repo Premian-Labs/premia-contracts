@@ -84,7 +84,7 @@ contract Pool is OwnableInternal, ERC1155Base {
 
     // TODO: multiply by decimals
 
-    IERC20(l.underlying).transferFrom(msg.sender, address(this), amount);
+    _pull(l.underlying, amount);
 
     // TODO: mint liquidity tokens
 
@@ -117,7 +117,7 @@ contract Pool is OwnableInternal, ERC1155Base {
     // TODO: calculate share of pool
 
     // TODO: calculate amount out
-    IERC20(l.underlying).transfer(msg.sender, amount);
+    _push(l.underlying, amount);
 
     int128 oldLiquidity = l.liquidity;
     int128 newLiquidity = oldLiquidity.sub(_weiToFixed(amount, l.underlyingDecimals));
@@ -146,14 +146,12 @@ contract Pool is OwnableInternal, ERC1155Base {
     // TODO: maturity must be integer number of calendar days
     // TODO: accept minimum price to prevent slippage
     // TODO: reserve liquidity
+    // TODO: set C-Level
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     price = _fixedToWei(quote(amount, maturity, strikePrice), l.baseDecimals);
-
-    // TODO: set C-Level
-
-    IERC20(l.base).transferFrom(msg.sender, address(this), price);
+    _pull(l.base, price);
 
     // TODO: tokenType
     _mint(msg.sender, _tokenIdFor(0, maturity, strikePrice), amount, '');
@@ -180,11 +178,10 @@ contract Pool is OwnableInternal, ERC1155Base {
 
     _burn(msg.sender, tokenId, amount);
 
-
     int128 value64x64 = strikePrice.sub(spotPrice).mul(ABDKMath64x64.fromUInt(amount));
 
     // TODO: convert base value to underlying value
-    IERC20(PoolStorage.layout().underlying).transfer(msg.sender, _fixedToWei(value64x64, l.underlyingDecimals));
+    _push(l.underlying, _fixedToWei(value64x64, l.underlyingDecimals));
   }
 
   /**
@@ -235,7 +232,7 @@ contract Pool is OwnableInternal, ERC1155Base {
   }
 
   /**
-   * @notice convert 64x64 fixed point representation of token amount to wei
+   * @notice convert wei representation of token amount to 64x64 fixed point
    * @param amount wei representation of token amount
    * @param decimals token display decimals
    * @return amount64x64 64x64 fixed point representation of token amount
@@ -245,5 +242,35 @@ contract Pool is OwnableInternal, ERC1155Base {
     uint8 decimals
   ) internal pure returns (int128 amount64x64) {
     amount64x64 = ABDKMath64x64.divu(amount, 10 ** decimals);
+  }
+
+  /**
+   * @notice transfer ERC20 tokens to message sender
+   * @param token ERC20 token address
+   * @param amount quantity of token to transfer
+   */
+  function _push (
+    address token,
+    uint256 amount
+  ) internal {
+    require(
+      IERC20(token).transfer(msg.sender, amount),
+      'Pool: ERC20 transfer failed'
+    );
+  }
+
+  /**
+   * @notice transfer ERC20 tokens from message sender
+   * @param token ERC20 token address
+   * @param amount quantity of token to transfer
+   */
+  function _pull (
+    address token,
+    uint256 amount
+  ) internal {
+    require(
+      IERC20(token).transferFrom(msg.sender, address(this), amount),
+      'Pool: ERC20 transfer failed'
+    );
   }
 }
