@@ -23,13 +23,13 @@ task('accounts', 'Prints the list of accounts', async (args, hre) => {
 const ETH_TEST_KEY = process.env.ETH_TEST_PKEY;
 const ALCHEMY_KEY = process.env.ALCHEMY_KEY;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
-// const ETH_MAIN_KEY = fs.readFileSync('./.secret').toString();
+const ETH_MAIN_KEY = fs.readFileSync('./.secret').toString();
 
 export default {
   solidity: {
     compilers: [
       {
-        version: '0.8.2',
+        version: '0.8.3',
         settings: {
           optimizer: {
             enabled: true,
@@ -80,17 +80,17 @@ export default {
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
-      blockGasLimit: 120000000000,
+      blockGasLimit: 180000000000,
     },
 
-    // mainnet: {
-    //   url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-    //   accounts: [ETH_MAIN_KEY],
-    //   //gas: 120000000000,
-    //   // blockGasLimit: 120000000000,
-    //   gasPrice: 150000000000,
-    //   timeout: 100000,
-    // },
+    mainnet: {
+      url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
+      accounts: [ETH_MAIN_KEY],
+      //gas: 120000000000,
+      // blockGasLimit: 120000000000,
+      gasPrice: 160000000000,
+      timeout: 100000,
+    },
     rinkeby: {
       url: `https://eth-rinkeby.alchemyapi.io/v2/${ALCHEMY_KEY}`,
       accounts: [ETH_TEST_KEY],
