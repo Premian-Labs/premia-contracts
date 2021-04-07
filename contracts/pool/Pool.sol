@@ -194,8 +194,8 @@ contract Pool is OwnableInternal, ERC1155Base {
 
     _burn(msg.sender, tokenId, amount);
 
-    // TODO: multiply by decimals
-    IERC20(PoolStorage.layout().underlying).transfer(msg.sender, value64x64.toUInt());
+    // TODO: convert base value to underlying value
+    IERC20(PoolStorage.layout().underlying).transfer(msg.sender, _fixedToWei(value64x64, l.underlyingDecimals));
   }
 
   /**
