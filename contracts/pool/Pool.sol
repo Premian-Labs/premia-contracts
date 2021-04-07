@@ -10,7 +10,7 @@ import '../pair/Pair.sol';
 import './PoolStorage.sol';
 
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
-import { OptionMath } from "../libraries/OptionMath.sol";
+import { OptionMath } from '../libraries/OptionMath.sol';
 
 /**
  * @title Median option pool
@@ -33,37 +33,50 @@ contract Pool is OwnableInternal, ERC1155Base {
    * @param maturity timestamp of option maturity
    * @param strikePrice option strike price
    * @return price price of option contract
-   * @return cLevel C-Level after purchase
    */
   function quote (
-    uint amount,
+    uint256 amount,
     uint64 maturity,
     int128 strikePrice
-  ) public view returns (uint price, int128 cLevel) {
-    require(maturity > block.timestamp, 'Pool: expiration must be in the future');
-    // TODO: calculate
+  ) public view returns (int128 price) {
+    require(maturity > block.timestamp, 'Pool: maturity must be in the future');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    int128 volatility = Pair(l.pair).getVolatility();
+    // TODO: convert wei amount to fixed point
+    int128 amount64x64;
 
-    uint liquidity = l.liquidity;
+    int128 oldLiquidity = l.liquidity;
+    int128 newLiquidity = oldLiquidity.add(amount64x64);
 
-    // TODO: store liquidity as int128?
-    cLevel = OptionMath.calculateCLevel(
+    // TODO: convert volatility to variance
+    int128 variance = Pair(l.pair).getVolatility();
+
+    // TODO: fetch
+    int128 spotPrice;
+
+    // TODO: convert maturity to timeToMaturity
+    int128 timeToMaturity = ABDKMath64x64.fromUInt(maturity);
+
+    price = OptionMath.quotePrice(
+      variance,
+      strikePrice,
+      spotPrice,
+      timeToMaturity,
       l.cLevel,
-      ABDKMath64x64.fromUInt(liquidity),
-      ABDKMath64x64.fromUInt(liquidity - amount),
-      OptionMath.ONE_64x64
-    );
+      oldLiquidity,
+      newLiquidity,
+      OptionMath.ONE_64x64,
+      false
+    ).mul(amount64x64);
   }
 
   /**
    * @notice TODO
    */
   function valueOfOption (
-    uint tokenId,
-    uint amount
+    uint256 tokenId,
+    uint256 amount
   ) public view returns (int128) {
     (uint8 tokenType, uint64 maturity, int128 strikePrice) = _parametersFor(tokenId);
     // TODO: verify tokenType
@@ -84,28 +97,31 @@ contract Pool is OwnableInternal, ERC1155Base {
    * @return share of pool granted
    */
   function deposit (
-    uint amount
-  ) external returns (uint share) {
+    uint256 amount
+  ) external returns (uint256 share) {
     // TODO: convert ETH to WETH if applicable
-    // TODO: set lockup period
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
+    // TODO: multiply by decimals
+
     IERC20(l.underlying).transferFrom(msg.sender, address(this), amount);
+
+    // TODO: convert wei amount to fixed point
+    int128 amount64x64;
 
     // TODO: mint liquidity tokens
 
-    uint oldLiquidity = l.liquidity;
-    uint newLiquidity = oldLiquidity + amount;
+    int128 oldLiquidity = l.liquidity;
+    int128 newLiquidity = oldLiquidity.add(amount64x64);
+    l.liquidity = newLiquidity;
 
     l.cLevel = OptionMath.calculateCLevel(
       l.cLevel,
-      ABDKMath64x64.fromUInt(oldLiquidity),
-      ABDKMath64x64.fromUInt(newLiquidity),
+      oldLiquidity,
+      newLiquidity,
       OptionMath.ONE_64x64
     );
-
-    l.liquidity = newLiquidity;
   }
 
   /**
@@ -114,9 +130,8 @@ contract Pool is OwnableInternal, ERC1155Base {
    * @return amount of underlying asset withdrawn
    */
   function withdraw (
-    uint share
-  ) external returns (uint amount) {
-    // TODO: check lockup period
+    uint256 share
+  ) external returns (uint256 amount) {
     // TODO: ensure available liquidity, queue if necessary
 
     PoolStorage.Layout storage l = PoolStorage.layout();
@@ -125,19 +140,22 @@ contract Pool is OwnableInternal, ERC1155Base {
 
     // TODO: calculate share of pool
 
+    // TODO: calculate amount out
     IERC20(l.underlying).transfer(msg.sender, amount);
 
-    uint oldLiquidity = l.liquidity;
-    uint newLiquidity = oldLiquidity - amount;
+    // TODO: convert wei amount to fixed point
+    int128 amount64x64;
+
+    int128 oldLiquidity = l.liquidity;
+    int128 newLiquidity = oldLiquidity.sub(amount64x64);
+    l.liquidity = newLiquidity;
 
     l.cLevel = OptionMath.calculateCLevel(
       l.cLevel,
-      ABDKMath64x64.fromUInt(oldLiquidity),
-      ABDKMath64x64.fromUInt(newLiquidity),
+      oldLiquidity,
+      newLiquidity,
       OptionMath.ONE_64x64
     );
-
-    l.liquidity = newLiquidity;
   }
 
   /**
@@ -147,10 +165,10 @@ contract Pool is OwnableInternal, ERC1155Base {
    * @param strikePrice option strike price
    */
   function purchase (
-    uint amount,
+    uint256 amount,
     uint64 maturity,
     int128 strikePrice
-  ) external returns (uint price) {
+  ) external returns (uint256 price) {
     // TODO: convert ETH to WETH if applicable
     // TODO: maturity must be integer number of calendar days
     // TODO: accept minimum price to prevent slippage
@@ -158,10 +176,11 @@ contract Pool is OwnableInternal, ERC1155Base {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    int128 cLevel;
-    (price, cLevel) = quote(amount, maturity, strikePrice);
-    l.cLevel = cLevel;
+    int128 price64x64 = quote(amount, maturity, strikePrice);
 
+    // TODO: set C-Level
+
+    // TODO: convert wei amount to fixed point
     IERC20(l.base).transferFrom(msg.sender, address(this), price);
 
     // TODO: tokenType
@@ -174,17 +193,17 @@ contract Pool is OwnableInternal, ERC1155Base {
    * @param amount quantity of option contract tokens to exercise
    */
   function exercise (
-    uint tokenId,
-    uint amount
+    uint256 tokenId,
+    uint256 amount
   ) public {
-    // TODO: multiply by decimals
-    uint value = valueOfOption(tokenId, amount).toUInt();
+    int128 value64x64 = valueOfOption(tokenId, amount);
 
-    require(value > 0, 'Pool: option must be in-the-money');
+    require(value64x64 > 0, 'Pool: option must be in-the-money');
 
     _burn(msg.sender, tokenId, amount);
 
-    IERC20(PoolStorage.layout().underlying).transfer(msg.sender, value);
+    // TODO: multiply by decimals
+    IERC20(PoolStorage.layout().underlying).transfer(msg.sender, value64x64.toUInt());
   }
 
   /**
@@ -198,7 +217,7 @@ contract Pool is OwnableInternal, ERC1155Base {
     uint8 tokenType,
     uint64 maturity,
     int128 strikePrice
-  ) internal pure returns (uint tokenId) {
+  ) internal pure returns (uint256 tokenId) {
     assembly {
       tokenId := add(strikePrice, add(shl(128, maturity), shl(248, tokenType)))
     }
@@ -212,7 +231,7 @@ contract Pool is OwnableInternal, ERC1155Base {
    * @return strikePrice option strike price
    */
   function _parametersFor (
-    uint tokenId
+    uint256 tokenId
   ) internal pure returns (uint8 tokenType, uint64 maturity, int128 strikePrice) {
     assembly {
       tokenType := shr(248, tokenId)

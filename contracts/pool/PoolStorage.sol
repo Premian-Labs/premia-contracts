@@ -11,8 +11,7 @@ library PoolStorage {
     address pair;
     address base;
     address underlying;
-    uint liquidity;
-    // fixed point representation
+    int128 liquidity;
     int128 cLevel;
   }
 
