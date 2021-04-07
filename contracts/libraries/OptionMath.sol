@@ -8,7 +8,7 @@ library OptionMath {
   using ABDKMath64x64 for int128;
 
   int128 internal constant ONE_64x64 = 0x10000000000000000;
-  int128 internal constant THREE_64x64 = ONE_64x64 * 3;
+  int128 internal constant THREE_64x64 = 0x30000000000000000;
 
   int128 private constant N_CONST_0 = 0x09109f285df452394; // 2260 / 3989
   int128 private constant N_CONST_1 = 0x19abac0ea1da65036; // 6400 / 3989
