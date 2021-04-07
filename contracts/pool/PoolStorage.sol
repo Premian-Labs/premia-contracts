@@ -11,6 +11,9 @@ library PoolStorage {
     address pair;
     address base;
     address underlying;
+    // TODO: set decimals on initialization
+    uint8 baseDecimals;
+    uint8 underlyingDecimals;
     int128 liquidity;
     int128 cLevel;
   }

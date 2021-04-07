@@ -43,8 +43,7 @@ contract Pool is OwnableInternal, ERC1155Base {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    // TODO: convert wei amount to fixed point
-    int128 amount64x64;
+    int128 amount64x64 = _weiToFixed(amount, l.underlyingDecimals);
 
     int128 oldLiquidity = l.liquidity;
     int128 newLiquidity = oldLiquidity.add(amount64x64);
@@ -107,13 +106,10 @@ contract Pool is OwnableInternal, ERC1155Base {
 
     IERC20(l.underlying).transferFrom(msg.sender, address(this), amount);
 
-    // TODO: convert wei amount to fixed point
-    int128 amount64x64;
-
     // TODO: mint liquidity tokens
 
     int128 oldLiquidity = l.liquidity;
-    int128 newLiquidity = oldLiquidity.add(amount64x64);
+    int128 newLiquidity = oldLiquidity.add(_weiToFixed(amount, l.underlyingDecimals));
     l.liquidity = newLiquidity;
 
     l.cLevel = OptionMath.calculateCLevel(
@@ -143,11 +139,8 @@ contract Pool is OwnableInternal, ERC1155Base {
     // TODO: calculate amount out
     IERC20(l.underlying).transfer(msg.sender, amount);
 
-    // TODO: convert wei amount to fixed point
-    int128 amount64x64;
-
     int128 oldLiquidity = l.liquidity;
-    int128 newLiquidity = oldLiquidity.sub(amount64x64);
+    int128 newLiquidity = oldLiquidity.sub(_weiToFixed(amount, l.underlyingDecimals));
     l.liquidity = newLiquidity;
 
     l.cLevel = OptionMath.calculateCLevel(
@@ -176,11 +169,10 @@ contract Pool is OwnableInternal, ERC1155Base {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    int128 price64x64 = quote(amount, maturity, strikePrice);
+    price = _fixedToWei(quote(amount, maturity, strikePrice), l.baseDecimals);
 
     // TODO: set C-Level
 
-    // TODO: convert wei amount to fixed point
     IERC20(l.base).transferFrom(msg.sender, address(this), price);
 
     // TODO: tokenType
@@ -238,5 +230,31 @@ contract Pool is OwnableInternal, ERC1155Base {
       maturity := shr(128, tokenId)
       strikePrice := tokenId
     }
+  }
+
+  /**
+   * @notice convert 64x64 fixed point representation of token amount to wei
+   * @param amount64x64 64x64 fixed point representation of token amount
+   * @param decimals token display decimals
+   * @return amount wei representation of token amount
+   */
+  function _fixedToWei (
+    int128 amount64x64,
+    uint8 decimals
+  ) internal pure returns (uint256 amount) {
+    amount = amount64x64.mulu(10 ** decimals);
+  }
+
+  /**
+   * @notice convert 64x64 fixed point representation of token amount to wei
+   * @param amount wei representation of token amount
+   * @param decimals token display decimals
+   * @return amount64x64 64x64 fixed point representation of token amount
+   */
+  function _weiToFixed (
+    uint256 amount,
+    uint8 decimals
+  ) internal pure returns (int128 amount64x64) {
+    amount64x64 = ABDKMath64x64.divu(amount, 10 ** decimals);
   }
 }
