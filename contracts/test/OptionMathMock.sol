@@ -50,18 +50,18 @@ contract OptionMathMock {
   }
 
   function Xt (
-    int128 St0,
-    int128 St1
+    int128 oldPoolState,
+    int128 newPoolState
   ) external pure returns (int128) {
-    return OptionMath.Xt(St0, St1);
+    return OptionMath.Xt(oldPoolState, newPoolState);
   }
 
   function slippageCoefficient (
-    int128 St0,
-    int128 St1,
+    int128 oldPoolState,
+    int128 newPoolState,
     int128 steepness
   ) external pure returns (int128) {
-    return OptionMath.slippageCoefficient(St0, St1, steepness);
+    return OptionMath.slippageCoefficient(oldPoolState, newPoolState, steepness);
   }
 
   function bsPrice (
@@ -75,20 +75,20 @@ contract OptionMathMock {
   }
 
   function calculateTradingDelta (
-    int128 St0,
-    int128 St1,
+    int128 oldPoolState,
+    int128 newPoolState,
     int128 steepness
   ) external pure returns (int128) {
-    return OptionMath.calculateTradingDelta(St0, St1, steepness);
+    return OptionMath.calculateTradingDelta(oldPoolState, newPoolState, steepness);
   }
 
   function calculateCLevel (
     int128 initialCLevel,
-    int128 St0,
-    int128 St1,
+    int128 oldPoolState,
+    int128 newPoolState,
     int128 steepness
   ) external pure returns (int128) {
-    return OptionMath.calculateCLevel(initialCLevel, St0, St1, steepness);
+    return OptionMath.calculateCLevel(initialCLevel, oldPoolState, newPoolState, steepness);
   }
 
   function quotePrice (
@@ -97,8 +97,8 @@ contract OptionMathMock {
     int128 price,
     int128 timeToMaturity,
     int128 cLevel,
-    int128 St0,
-    int128 St1,
+    int128 oldPoolState,
+    int128 newPoolState,
     int128 steepness,
     bool isCall
   ) external pure returns (int128) {
@@ -108,8 +108,8 @@ contract OptionMathMock {
       price,
       timeToMaturity,
       cLevel,
-      St0,
-      St1,
+      oldPoolState,
+      newPoolState,
       steepness,
       isCall
     );

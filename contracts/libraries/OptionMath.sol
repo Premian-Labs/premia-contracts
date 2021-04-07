@@ -113,35 +113,35 @@ library OptionMath {
 
   /**
   * @notice TODO
-  * @param St0 Pool state at t0
-  * @param St1 Pool state at t1
+  * @param oldPoolState Pool state at t0
+  * @param newPoolState Pool state at t1
   * @return return intermediate viarable Xt
   */
   function Xt (
-    int128 St0,
-    int128 St1
+    int128 oldPoolState,
+    int128 newPoolState
   ) internal pure returns (int128) {
-    return St1.sub(St0).div(St0 > St1 ? St0 : St1);
+    return newPoolState.sub(oldPoolState).div(oldPoolState > newPoolState ? oldPoolState : newPoolState);
   }
 
   /**
   * @notice TODO
-  * @param St0 Pool state at t0
-  * @param St1 Pool state at t1
+  * @param oldPoolState Pool state at t0
+  * @param newPoolState Pool state at t1
   * @param steepness TODO
   * @return TODO
   */
 
-  // TODO: function can only be callable if St1 < St0 , e.g. option purchase
+  // TODO: function can only be callable if newPoolState < oldPoolState , e.g. option purchase
   function slippageCoefficient (
-    int128 St0,
-    int128 St1,
+    int128 oldPoolState,
+    int128 newPoolState,
     int128 steepness
   ) internal pure returns (int128) {
     return ONE_64x64.sub(
-      calculateTradingDelta(St0, St1, steepness)
+      calculateTradingDelta(oldPoolState, newPoolState, steepness)
     ).div(
-      Xt(St0, St1).mul(steepness)
+      Xt(oldPoolState, newPoolState).mul(steepness)
     );
   }
 
@@ -175,34 +175,34 @@ library OptionMath {
 
   /**
   * @notice calculate multiplier to apply to C-Level based on change in liquidity
-  * @param St0 liquidity in pool before update
-  * @param St1 liquidity in pool after update
+  * @param oldPoolState liquidity in pool before update
+  * @param newPoolState liquidity in pool after update
   * @param steepness steepness coefficient
   * @return new C-Level
   */
   function calculateTradingDelta (
-    int128 St0,
-    int128 St1,
+    int128 oldPoolState,
+    int128 newPoolState,
     int128 steepness
   ) internal pure returns (int128) {
-    return Xt(St0, St1).mul(steepness).neg().exp();
+    return Xt(oldPoolState, newPoolState).mul(steepness).neg().exp();
   }
 
   /**
   * @notice recalculate C-Level based on change in liquidity
   * @param initialCLevel C-Level of Pool before update
-  * @param St0 liquidity in pool before update
-  * @param St1 liquidity in pool after update
+  * @param oldPoolState liquidity in pool before update
+  * @param newPoolState liquidity in pool after update
   * @param steepness steepness coefficient
   * @return new C-Level
   */
   function calculateCLevel (
     int128 initialCLevel,
-    int128 St0,
-    int128 St1,
+    int128 oldPoolState,
+    int128 newPoolState,
     int128 steepness
   ) internal pure returns (int128) {
-    return calculateTradingDelta(St0, St1, steepness).mul(initialCLevel);
+    return calculateTradingDelta(oldPoolState, newPoolState, steepness).mul(initialCLevel);
   }
 
   /**
@@ -212,8 +212,8 @@ library OptionMath {
   * @param price TODO
   * @param timeToMaturity duration of option contract (in years)
   * @param cLevel C-Level of Pool before purchase
-  * @param St0 current state of the pool
-  * @param St1 state of the pool after trade
+  * @param oldPoolState current state of the pool
+  * @param newPoolState state of the pool after trade
   * @param steepness state of the pool after trade
   * @param isCall whether to price "call" or "put" option
   * @return TODO
@@ -224,13 +224,13 @@ library OptionMath {
     int128 price,
     int128 timeToMaturity,
     int128 cLevel,
-    int128 St0,
-    int128 St1,
+    int128 oldPoolState,
+    int128 newPoolState,
     int128 steepness,
     bool isCall
   ) internal pure returns (int128) {
-    return calculateCLevel(cLevel, St0, St1, steepness).mul(
-      slippageCoefficient(St0, St1, steepness)
+    return calculateCLevel(cLevel, oldPoolState, newPoolState, steepness).mul(
+      slippageCoefficient(oldPoolState, newPoolState, steepness)
     ).mul(
       bsPrice(variance, strike, price, timeToMaturity, isCall)
     );
