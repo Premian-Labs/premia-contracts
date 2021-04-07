@@ -1,6 +1,5 @@
 const { expect } = require('chai');
 
-const describeBehaviorOfERC20 = require('@solidstate/spec/token/ERC20/ERC20.behavior.js');
 const describeBehaviorOfERC1155Base = require('@solidstate/spec/token/ERC1155/ERC1155Base.behavior.js');
 
 const describeBehaviorOfPool = function ({ deploy, supply, name, symbol, decimals }, skips) {
@@ -10,15 +9,6 @@ const describeBehaviorOfPool = function ({ deploy, supply, name, symbol, decimal
     beforeEach(async function () {
       instance = await ethers.getContractAt('Pool', (await deploy()).address);
     });
-
-    // eslint-disable-next-line mocha/no-setup-in-describe
-    describeBehaviorOfERC20({
-      deploy: () => instance,
-      supply,
-      name,
-      symbol,
-      decimals,
-    }, skips);
 
     // eslint-disable-next-line mocha/no-setup-in-describe
     describeBehaviorOfERC1155Base({

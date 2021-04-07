@@ -3,7 +3,6 @@
 pragma solidity ^0.8.0;
 
 import '@solidstate/contracts/access/OwnableInternal.sol';
-import '@solidstate/contracts/token/ERC20/ERC20.sol';
 import '@solidstate/contracts/token/ERC20/IERC20.sol';
 import '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
 
@@ -17,7 +16,7 @@ import { OptionMath } from "../libraries/OptionMath.sol";
  * @title Median option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract Pool is OwnableInternal, ERC20, ERC1155Base {
+contract Pool is OwnableInternal, ERC1155Base {
   using ABDKMath64x64 for int128;
 
   /**
@@ -94,9 +93,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     IERC20(l.underlying).transferFrom(msg.sender, address(this), amount);
 
-    share = l.liquidity * amount / totalSupply();
-
-    _mint(msg.sender, share);
+    // TODO: mint liquidity tokens
 
     uint oldLiquidity = l.liquidity;
     uint newLiquidity = oldLiquidity + amount;
@@ -124,7 +121,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    _burn(msg.sender, share);
+    // TODO: burn liquidity tokens
 
     // TODO: calculate share of pool
 
