@@ -12,7 +12,7 @@ const describeBehaviorOfPool = function ({ deploy }, skips) {
       it('returns pool addresses');
     });
 
-    describe('#getVolatility', function () {
+    describe('#getVariance', function () {
       it('todo');
     });
 

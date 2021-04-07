@@ -48,8 +48,7 @@ contract Pool is OwnableInternal, ERC1155Base {
     int128 oldLiquidity = l.liquidity;
     int128 newLiquidity = oldLiquidity.add(amount64x64);
 
-    // TODO: convert volatility to variance
-    int128 variance = Pair(l.pair).getVolatility();
+    int128 variance = Pair(l.pair).getVariance();
 
     // TODO: fetch
     int128 spotPrice;

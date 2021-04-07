@@ -24,10 +24,11 @@ contract Pair is OwnableInternal {
   }
 
   /**
-   * @notice calculate or get cached volatility for current day
-   * @return volatility
+   * @notice calculate or get cached variance for current day
+   * @return variance
    */
-  function getVolatility () external view returns (int128) {
+  function getVariance () external view returns (int128) {
+    // TODO: calculate
     return PairStorage.layout().emavariance;
   }
 
