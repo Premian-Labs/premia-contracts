@@ -10,6 +10,10 @@ library OptionMath {
   int128 internal constant ONE_64x64 = 0x10000000000000000;
   int128 internal constant THREE_64x64 = ONE_64x64 * 3;
 
+  int128 private constant N_CONST_0 = 0x09109f285df452394; // 2260 / 3989
+  int128 private constant N_CONST_1 = 0x19abac0ea1da65036; // 6400 / 3989
+  int128 private constant N_CONST_2 = 0x0d3c84b78b749bd6b; // 3300 / 3989
+
   /**
   * @notice TODO
   * @param today64x64 today's close
@@ -101,10 +105,10 @@ library OptionMath {
     int128 x2 = x.mul(x);
 
     int128 value = (-x2 >> 1).exp().div(
-      (ONE_64x64 * 2260 / 3989).add(
-        (ONE_64x64 * 6400 / 3989).mul(x.abs())
+      N_CONST_0.add(
+        N_CONST_1.mul(x.abs())
       ).add(
-        (ONE_64x64 * 3300 / 3989).mul(x2.add(THREE_64x64).sqrt())
+        N_CONST_2.mul(x2.add(THREE_64x64).sqrt())
       )
     );
 
