@@ -10,9 +10,10 @@ library OptionMath {
   int128 internal constant ONE_64x64 = 0x10000000000000000;
   int128 internal constant THREE_64x64 = 0x30000000000000000;
 
-  int128 private constant N_CONST_0 = 0x09109f285df452394; // 2260 / 3989
-  int128 private constant N_CONST_1 = 0x19abac0ea1da65036; // 6400 / 3989
-  int128 private constant N_CONST_2 = 0x0d3c84b78b749bd6b; // 3300 / 3989
+  // constants used in Choudhury’s approximation of the Black-Scholes CDF
+  int128 private constant CDF_CONST_0 = 0x09109f285df452394; // 2260 / 3989
+  int128 private constant CDF_CONST_1 = 0x19abac0ea1da65036; // 6400 / 3989
+  int128 private constant CDF_CONST_2 = 0x0d3c84b78b749bd6b; // 3300 / 3989
 
   /**
   * @notice TODO
@@ -105,10 +106,10 @@ library OptionMath {
     int128 x2 = x.mul(x);
 
     int128 value = (-x2 >> 1).exp().div(
-      N_CONST_0.add(
-        N_CONST_1.mul(x.abs())
+      CDF_CONST_0.add(
+        CDF_CONST_1.mul(x.abs())
       ).add(
-        N_CONST_2.mul(x2.add(THREE_64x64).sqrt())
+        CDF_CONST_2.mul(x2.add(THREE_64x64).sqrt())
       )
     );
 
