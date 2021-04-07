@@ -71,26 +71,6 @@ contract Pool is OwnableInternal, ERC1155Base {
   }
 
   /**
-   * @notice TODO
-   */
-  function valueOfOption (
-    uint256 tokenId,
-    uint256 amount
-  ) public view returns (int128) {
-    (uint8 tokenType, uint64 maturity, int128 strikePrice) = _parametersFor(tokenId);
-    // TODO: verify tokenType
-
-    // TODO: get spot price now or at maturity
-    int128 spotPrice;
-
-    if (strikePrice > spotPrice) {
-      return strikePrice.sub(spotPrice).mul(ABDKMath64x64.fromUInt(amount));
-    } else {
-      return 0;
-    }
-  }
-
-  /**
    * @notice deposit underlying currency, underwriting puts of that currency with respect to base currency
    * @param amount quantity of underlying currency to deposit
    * @return share of pool granted
@@ -188,11 +168,20 @@ contract Pool is OwnableInternal, ERC1155Base {
     uint256 tokenId,
     uint256 amount
   ) public {
-    int128 value64x64 = valueOfOption(tokenId, amount);
+    (uint8 tokenType, uint64 maturity, int128 strikePrice) = _parametersFor(tokenId);
+    // TODO: verify tokenType
 
-    require(value64x64 > 0, 'Pool: option must be in-the-money');
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    // TODO: get spot price now or at maturity
+    int128 spotPrice;
+
+    require(strikePrice > spotPrice, 'Pool: option must be in-the-money');
 
     _burn(msg.sender, tokenId, amount);
+
+
+    int128 value64x64 = strikePrice.sub(spotPrice).mul(ABDKMath64x64.fromUInt(amount));
 
     // TODO: convert base value to underlying value
     IERC20(PoolStorage.layout().underlying).transfer(msg.sender, _fixedToWei(value64x64, l.underlyingDecimals));
