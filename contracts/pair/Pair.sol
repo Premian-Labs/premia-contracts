@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import '@solidstate/contracts/access/OwnableInternal.sol';
 
+import '../core/IPriceConsumer.sol';
 import './PairStorage.sol';
 
 import { OptionMath } from '../libraries/OptionMath.sol';
@@ -37,12 +38,33 @@ contract Pair is OwnableInternal {
    */
   function update() internal {
     PairStorage.Layout storage l = PairStorage.layout();
-    require(l.lasttimestamp + l.period < block.timestamp, "Wait to update");
 
-    l.lasttimestamp = block.timestamp;
-    (l.priceYesterday64x64, l.priceToday64x64) = (l.priceToday64x64, l.IPrice.getLatestPrice(l.oracle));
-    l.logreturns = OptionMath.logreturns(l.priceToday64x64, l.priceYesterday64x64);
-    (l.emalogreturns_yesterday, l.emalogreturns_today) = (l.emalogreturns_today, OptionMath.rollingEma(l.emalogreturns_yesterday, l.logreturns, l.window));
-    l.emavariance = OptionMath.rollingEmaVariance(l.logreturns, l.emalogreturns_yesterday, l.emavariance, l.window);
+    // TODO: skip if trivial amount of time has passed since last update
+    // TODO: skip if retrieved round ID is same as last round ID
+
+    (
+      l.oldPrice64x64,
+      l.newPrice64x64
+    ) = (
+      l.newPrice64x64,
+      IPriceConsumer(OwnableStorage.layout().owner).getLatestPrice(l.oracle)
+    );
+
+    int128 logreturns64x64 = OptionMath.logreturns(l.newPrice64x64, l.oldPrice64x64);
+
+    (
+      l.oldEmaLogReturns64x64,
+      l.newEmaLogReturns64x64
+    ) = (
+      l.newEmaLogReturns64x64,
+      OptionMath.rollingEma(l.oldEmaLogReturns64x64, logreturns64x64, l.window)
+    );
+
+    l.emavariance = OptionMath.rollingEmaVariance(
+      logreturns64x64,
+      l.oldEmaLogReturns64x64,
+      l.emavariance,
+      l.window
+    );
   }
 }
