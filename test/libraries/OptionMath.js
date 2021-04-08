@@ -31,32 +31,6 @@ describe('OptionMath', function () {
     await instance.deployed();
   });
 
-  describe('#logreturns', function () {
-    it('returns the natural log returns for a given day', async function () {
-      let expected = fixedFromFloat(-0.012389950714774214);
-      expect(
-        expected / await instance.callStatic.logreturns(
-          input_t[1],
-          input_t_1[1]
-        )
-      ).to.be.closeTo(
-        1,
-        0.001
-      );
-
-      expected = fixedFromFloat(0.012389950714774214);
-      expect(
-        expected / await instance.callStatic.logreturns(
-          input_t_1[1],
-          input_t[1]
-        )
-      ).to.be.closeTo(
-        1,
-        0.001
-      );
-    });
-  });
-
   describe('#rollingEma', function () {
     it('return the rolling ema value', async function () {
       const ema_t_1 = fixedFromFloat(0.1);

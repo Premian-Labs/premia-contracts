@@ -7,6 +7,7 @@ import '@solidstate/contracts/access/OwnableInternal.sol';
 import '../core/IPriceConsumer.sol';
 import './PairStorage.sol';
 
+import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
 
 /**
@@ -14,6 +15,7 @@ import { OptionMath } from '../libraries/OptionMath.sol';
  * @dev deployed standalone and referenced by PairProxy
  */
 contract Pair is OwnableInternal {
+  using ABDKMath64x64 for int128;
   using PairStorage for PairStorage.Layout;
 
   /**
@@ -50,18 +52,18 @@ contract Pair is OwnableInternal {
       IPriceConsumer(OwnableStorage.layout().owner).getLatestPrice(l.oracle)
     );
 
-    int128 logreturns64x64 = OptionMath.logreturns(l.newPrice64x64, l.oldPrice64x64);
+    int128 logReturns64x64 = l.newPrice64x64.div(l.oldPrice64x64).ln();
 
     (
       l.oldEmaLogReturns64x64,
       l.newEmaLogReturns64x64
     ) = (
       l.newEmaLogReturns64x64,
-      OptionMath.rollingEma(l.oldEmaLogReturns64x64, logreturns64x64, l.window)
+      OptionMath.rollingEma(l.oldEmaLogReturns64x64, logReturns64x64, l.window)
     );
 
     l.emavariance = OptionMath.rollingEmaVariance(
-      logreturns64x64,
+      logReturns64x64,
       l.oldEmaLogReturns64x64,
       l.emavariance,
       l.window

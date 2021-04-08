@@ -19,20 +19,6 @@ library OptionMath {
   * @notice TODO
   * @param today64x64 today's close
   * @param yesterday64x64 yesterday's close
-  * @return log of returns
-  * ln(today / yesterday)
-  */
-  function logreturns (
-    int128 today64x64,
-    int128 yesterday64x64
-  ) internal pure returns (int128) {
-    return today64x64.div(yesterday64x64).ln();
-  }
-
-  /**
-  * @notice TODO
-  * @param today64x64 today's close
-  * @param yesterday64x64 yesterday's close
   * @param window the period for the EMA average
   * @return the new EMA value for today
   * alpha * (today - yesterday) + yesterday

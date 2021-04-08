@@ -5,13 +5,6 @@ pragma solidity ^0.8.0;
 import {OptionMath} from "../libraries/OptionMath.sol";
 
 contract OptionMathMock {
-  function logreturns (
-    int128 today64x64,
-    int128 yesterday64x64
-  ) external pure returns (int128) {
-    return OptionMath.logreturns(today64x64, yesterday64x64);
-  }
-
   function rollingEma (
     int128 today64x64,
     int128 yesterday64x64,
