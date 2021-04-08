@@ -12,9 +12,6 @@ import './IPriceConsumer.sol';
  * @dev deployed standalone and connected to Median as diamond facet
  */
 contract PriceConsumer is IPriceConsumer {
-  // TODO: no storage variables outside of diamond storage layout
-  AggregatorV3Interface internal priceFeed;
-
   function getLatestPrice(address _feed) override public view returns (int128) {
         (
             uint80 roundID,
