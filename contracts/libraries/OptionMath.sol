@@ -96,19 +96,6 @@ library OptionMath {
   }
 
   /**
-  * @notice TODO
-  * @param oldPoolState Pool state at t0
-  * @param newPoolState Pool state at t1
-  * @return return intermediate viarable Xt
-  */
-  function Xt (
-    int128 oldPoolState,
-    int128 newPoolState
-  ) internal pure returns (int128) {
-    return newPoolState.sub(oldPoolState).div(oldPoolState > newPoolState ? oldPoolState : newPoolState);
-  }
-
-  /**
   * @notice calculate the price of an option using the Black-Scholes model
   * @param variance TODO
   * @param strike TODO
@@ -153,7 +140,9 @@ library OptionMath {
     int128 newPoolState,
     int128 steepness
   ) internal pure returns (int128) {
-    return Xt(oldPoolState, newPoolState).mul(steepness).neg().exp();
+    return newPoolState.sub(oldPoolState).div(
+      oldPoolState > newPoolState ? oldPoolState : newPoolState
+    ).mul(steepness).neg().exp();
   }
 
   /**
@@ -197,15 +186,17 @@ library OptionMath {
     int128 steepness,
     bool isCall
   ) internal pure returns (int128) {
+    int128 tradingDelta64x64 = newPoolState.sub(oldPoolState).div(
+      oldPoolState
+    ).mul(steepness).neg().exp();
+
     return bsPrice(variance, strike, price, timeToMaturity, isCall).mul(
+      tradingDelta64x64.mul(cLevel)
+    ).mul(
       // slippage coefficient
-      ONE_64x64.sub(
-        calculateTradingDelta(oldPoolState, newPoolState, steepness)
-      ).div(
+      ONE_64x64.sub(tradingDelta64x64).div(
         newPoolState.sub(oldPoolState).div(oldPoolState).mul(steepness)
       )
-    ).mul(
-      calculateCLevel(cLevel, oldPoolState, newPoolState, steepness)
     );
   }
 }

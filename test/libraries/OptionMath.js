@@ -141,36 +141,6 @@ describe('OptionMath', function () {
     });
   });
 
-  describe('#Xt', function () {
-    it('calculates supply-demand percentage change (signed)', async function () {
-      const S0 = fixedFromFloat(100);
-      const S1 = fixedFromFloat(20);
-      const expected_supply_withdrawn = fixedFromFloat(-0.8);
-      const expected_supply_added = fixedFromFloat(0.8);
-
-      expect(
-        expected_supply_withdrawn / await instance.callStatic.Xt(
-          S0,
-          S1
-        )
-      ).to.be.closeTo(
-        1,
-        0.001
-      );
-
-      expect(
-        expected_supply_added / await instance.callStatic.Xt(
-          S1,
-          S0
-        )
-      ).to.be.closeTo(
-        1,
-        0.001
-      );
-
-    });
-  });
-
   describe('#calculateCLevel', function () {
     it('calculates C coefficient level (also covers calculateTradingDelta implicitly)', async function (){
       const S0 = fixedFromFloat(100);

@@ -40,13 +40,6 @@ contract OptionMathMock {
     return OptionMath.N(x);
   }
 
-  function Xt (
-    int128 oldPoolState,
-    int128 newPoolState
-  ) external pure returns (int128) {
-    return OptionMath.Xt(oldPoolState, newPoolState);
-  }
-
   function bsPrice (
     int128 variance,
     int128 strike,
