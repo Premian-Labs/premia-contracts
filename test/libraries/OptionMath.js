@@ -204,26 +204,6 @@ describe('OptionMath', function () {
     });
   });
 
-  describe('#slippageCoefficient', function () {
-    it('calculates slippage correction coefficient level', async function (){
-      const S0 = fixedFromFloat(100);
-      const S1 = fixedFromFloat(20);
-      const expected = fixedFromFloat(1.5319261606);
-
-      // (1 - e^(-(20-100)/100))/((20-100)/100) = 1.5319261606
-      expect(
-        expected / await instance.callStatic.slippageCoefficient(
-          S0,
-          S1,
-          fixedFromFloat(1)
-        )
-      ).to.be.closeTo(
-        1,
-        0.001
-      );
-    });
-  });
-
   describe('#bsPrice', function () {
     it('calculates European CALL option price', async function (){
       const variance = fixedFromFloat(0.16);

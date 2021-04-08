@@ -47,14 +47,6 @@ contract OptionMathMock {
     return OptionMath.Xt(oldPoolState, newPoolState);
   }
 
-  function slippageCoefficient (
-    int128 oldPoolState,
-    int128 newPoolState,
-    int128 steepness
-  ) external pure returns (int128) {
-    return OptionMath.slippageCoefficient(oldPoolState, newPoolState, steepness);
-  }
-
   function bsPrice (
     int128 variance,
     int128 strike,
