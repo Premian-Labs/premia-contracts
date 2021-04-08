@@ -142,7 +142,7 @@ describe('OptionMath', function () {
   });
 
   describe('#calculateCLevel', function () {
-    it('calculates C coefficient level (also covers calculateTradingDelta implicitly)', async function (){
+    it('calculates C coefficient level', async function (){
       const S0 = fixedFromFloat(100);
       const S1 = fixedFromFloat(20);
       const expected_c_withdrawn = fixedFromFloat(2.2255409285);

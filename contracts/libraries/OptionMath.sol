@@ -129,23 +129,6 @@ library OptionMath {
   }
 
   /**
-  * @notice calculate multiplier to apply to C-Level based on change in liquidity
-  * @param oldPoolState liquidity in pool before update
-  * @param newPoolState liquidity in pool after update
-  * @param steepness steepness coefficient
-  * @return new C-Level
-  */
-  function calculateTradingDelta (
-    int128 oldPoolState,
-    int128 newPoolState,
-    int128 steepness
-  ) internal pure returns (int128) {
-    return newPoolState.sub(oldPoolState).div(
-      oldPoolState > newPoolState ? oldPoolState : newPoolState
-    ).mul(steepness).neg().exp();
-  }
-
-  /**
   * @notice recalculate C-Level based on change in liquidity
   * @param initialCLevel C-Level of Pool before update
   * @param oldPoolState liquidity in pool before update
@@ -159,7 +142,9 @@ library OptionMath {
     int128 newPoolState,
     int128 steepness
   ) internal pure returns (int128) {
-    return calculateTradingDelta(oldPoolState, newPoolState, steepness).mul(initialCLevel);
+    return newPoolState.sub(oldPoolState).div(
+      oldPoolState > newPoolState ? oldPoolState : newPoolState
+    ).mul(steepness).neg().exp().mul(initialCLevel);
   }
 
   /**
@@ -191,6 +176,7 @@ library OptionMath {
     ).mul(steepness).neg().exp();
 
     return bsPrice(variance, strike, price, timeToMaturity, isCall).mul(
+      // C-Level
       tradingDelta64x64.mul(cLevel)
     ).mul(
       // slippage coefficient

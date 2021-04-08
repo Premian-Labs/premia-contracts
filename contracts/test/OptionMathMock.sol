@@ -50,14 +50,6 @@ contract OptionMathMock {
     return OptionMath.bsPrice(variance, strike, price, timeToMaturity, isCall);
   }
 
-  function calculateTradingDelta (
-    int128 oldPoolState,
-    int128 newPoolState,
-    int128 steepness
-  ) external pure returns (int128) {
-    return OptionMath.calculateTradingDelta(oldPoolState, newPoolState, steepness);
-  }
-
   function calculateCLevel (
     int128 initialCLevel,
     int128 oldPoolState,
