@@ -74,27 +74,6 @@ library OptionMath {
   }
 
   /**
-  * @notice calculate delta hedge
-  * @param variance TODO
-  * @param strike TODO
-  * @param price TODO
-  * @param timeToMaturity duration of option contract (in years)
-  * @return TODO
-  */
-  function d1 (
-    int128 variance,
-    int128 strike,
-    int128 price,
-    int128 timeToMaturity
-  ) internal pure returns (int128) {
-    return price.div(strike).ln().add(
-      timeToMaturity.mul(variance) >> 1
-    ).div(
-      timeToMaturity.mul(variance).sqrt()
-    );
-  }
-
-  /**
   * @notice calculate Choudhury’s approximation of the Black-Scholes CDF
   * @param x random variable
   * @return the approximated CDF of x
@@ -168,7 +147,12 @@ library OptionMath {
     int128 timeToMaturity,
     bool isCall
   ) internal pure returns (int128) {
-    int128 d1 = d1(variance, strike, price, timeToMaturity);
+    int128 d1 = price.div(strike).ln().add(
+      timeToMaturity.mul(variance) >> 1
+    ).div(
+      timeToMaturity.mul(variance).sqrt()
+    );
+
     int128 d2 = d1.sub(timeToMaturity.mul(variance).sqrt());
 
     if (isCall) {

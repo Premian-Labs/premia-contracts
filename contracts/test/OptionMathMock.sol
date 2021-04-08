@@ -34,15 +34,6 @@ contract OptionMathMock {
     );
   }
 
-  function d1 (
-    int128 variance,
-    int128 strike,
-    int128 price,
-    int128 timeToMaturity
-  ) external pure returns (int128) {
-    return OptionMath.d1(variance, strike, price, timeToMaturity);
-  }
-
   function N (
     int128 x
   ) external pure returns (int128) {
