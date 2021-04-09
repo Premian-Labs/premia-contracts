@@ -31,9 +31,9 @@ library OptionMath {
 
   /**
   * @notice calculate the rolling EMA of a time series
-  * @param oldValue64x64 previous value
-  * @param newValue64x64 current value
-  * @param window the period for the EMA average
+  * @param oldValue64x64 64x64 fixed point representation of previous value
+  * @param newValue64x64 64x64 fixed point representation of current value
+  * @param window number of periods to use in calculation
   * @return the new EMA value for today
   */
   function rollingEma (
@@ -47,27 +47,26 @@ library OptionMath {
   }
 
   /**
-  * @notice TODO
-  * @param today64x64 the price from today
-  * @param yesterdayEma64x64 the average from yesterday
-  * @param yesterdayEmaVariance64x64 the variation from yesterday
-  * @param window the period for the average
+  * @notice calculate the rolling EMA variance of a time series
+  * @param oldVariance64x64 64x64 fixed point representation of previous variance
+  * @param oldValue64x64 64x64 fixed point representation of previous value
+  * @param newValue64x64 64x64 fixed point representation of current value
+  * @param window number of periods to use in calculation
   * @return the new variance value for today
-  * (1 - a)(EMAVar t-1  +  a( x t - EMA t-1)^2)
   */
   function rollingEmaVariance (
-    int128 today64x64,
-    int128 yesterdayEma64x64,
-    int128 yesterdayEmaVariance64x64,
+    int128 oldVariance64x64,
+    int128 oldValue64x64,
+    int128 newValue64x64,
     uint256 window
   ) internal pure returns (int128) {
     int128 alpha = ABDKMath64x64.divu(2, window + 1);
 
     return ONE_64x64.sub(alpha).mul(
-      yesterdayEmaVariance64x64
+      oldVariance64x64
     ).add(
       alpha.mul(
-        today64x64.sub(yesterdayEma64x64).pow(2)
+        newValue64x64.sub(oldValue64x64).pow(2)
       )
     );
   }
@@ -156,10 +155,8 @@ library OptionMath {
   * @param price TODO
   * @param timeToMaturity duration of option contract (in years)
   * @param isCall whether to price "call" or "put" option
-  * @return TODO
+  * @return 64x64 fixed point representation of Black-Scholes option price
   */
-
-  // TODO: add require to check variance, price, timeToMaturity > 0, strike => 0.5 * price,  strike <= 2 * price
   function bsPrice (
     int128 variance,
     int128 strike,
@@ -167,6 +164,7 @@ library OptionMath {
     int128 timeToMaturity,
     bool isCall
   ) internal pure returns (int128) {
+    // TODO: add require to check variance, price, timeToMaturity > 0, strike => 0.5 * price,  strike <= 2 * price
     int128 d1 = d1(variance, strike, price, timeToMaturity);
     int128 d2 = d1.sub(timeToMaturity.mul(variance).sqrt());
 
@@ -220,7 +218,7 @@ library OptionMath {
   * @param newPoolState state of the pool after trade
   * @param steepness state of the pool after trade
   * @param isCall whether to price "call" or "put" option
-  * @return TODO
+  * @return 64x64 fixed point representation of Median option price
   */
   function quotePrice (
     int128 variance,
