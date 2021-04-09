@@ -77,8 +77,6 @@ contract Pool is OwnableInternal, ERC1155Base {
   function deposit (
     uint256 amount
   ) external returns (uint256 share) {
-    // TODO: convert ETH to WETH if applicable
-
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     // TODO: multiply by decimals
@@ -141,7 +139,6 @@ contract Pool is OwnableInternal, ERC1155Base {
     uint64 maturity,
     int128 strikePrice
   ) external returns (uint256 price) {
-    // TODO: convert ETH to WETH if applicable
     // TODO: maturity must be integer number of calendar days
     // TODO: accept minimum price to prevent slippage
     // TODO: reserve liquidity
@@ -267,6 +264,8 @@ contract Pool is OwnableInternal, ERC1155Base {
     address token,
     uint256 amount
   ) internal {
+    // TODO: convert ETH to WETH if applicable
+
     require(
       IERC20(token).transferFrom(msg.sender, address(this), amount),
       'Pool: ERC20 transfer failed'

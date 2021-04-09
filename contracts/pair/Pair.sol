@@ -63,9 +63,9 @@ contract Pair is OwnableInternal {
     );
 
     l.emaVarianceAnnualized64x64 = OptionMath.rollingEmaVariance(
-      logReturns64x64,
-      l.oldEmaLogReturns64x64,
       l.emaVarianceAnnualized64x64 / 365,
+      l.oldEmaLogReturns64x64,
+      logReturns64x64,
       l.window
     ) * 365;
   }
