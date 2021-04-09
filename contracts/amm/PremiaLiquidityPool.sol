@@ -42,6 +42,11 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         bool isWhitelistedOptionContract;
     }
 
+    struct OptionId {
+        address contractAddress;
+        uint256 optionId;
+    }
+
     struct UserInfo {
         uint256 tokenAmount;
         uint256 denominatorAmount;
@@ -68,15 +73,19 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         int256 tokenPnl;
         int256 denominatorPnl;
 
-        uint256[] optionIdList;
+        OptionId[] optionIdList;
+        bool isUnwinded;
     }
 
     // Offset to add to Unix timestamp to make it Fri 23:59:59 UTC
     uint256 private constant _baseExpiration = 172799;
     // Expiration increment
     uint256 private constant _expirationIncrement = 1 weeks;
-    // Max expiration time from now
+    // Max expiration time from now of options from option contract (Same value as PremiaOption contract)
     uint256 private _maxExpiration = 365 days;
+
+    // Limit initial max deposit length to 1 month, during beta. Will be increased later
+    uint256 public maxDepositExpiration = 30 days;
 
     // Required collateralization level
     uint256 public requiredCollateralizationPercent = 1e4;    // 10000 = 100% collateralized
@@ -105,15 +114,13 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     // Mapping of addresses with special permissions (Contracts who can borrow / write or whitelisted routers / tokens)
     mapping(address => Permissions) public permissions;
 
-    // ToDo : Add optionContract to mapping ?
-
     // User -> Token -> Denominator -> Expiration -> UserInfo
     mapping(address => mapping(address => mapping(address => mapping (uint256 => UserInfo)))) public userInfos;
 
     // User -> Token -> Denominator -> Last unlock
     mapping(address => mapping(address => mapping(address => uint256))) public userLastUnlock;
 
-    // Token -> Denominator -> Expiration -> UserInfo
+    // Token -> Denominator -> Expiration -> PoolInfo
     mapping(address => mapping(address => mapping(uint256 => PoolInfo))) public poolInfos;
 
     // ToDo : Remove / refactor this to work with new token/denom storage
@@ -127,7 +134,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     ////////
 
     // Max stake length multiplier
-    uint256 public constant maxScoreMultiplier = 1e5; // 100% bonus if max stake length
+    uint256 public constant maxScoreMultiplier = 1e4; // 100% bonus if max stake length
 
     ////////
     ////////
@@ -151,7 +158,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     event LiquidateLoan(bytes32 hash, address indexed borrower, address indexed token, address indexed denominator, bool borrowToken, uint256 amount, uint256 rewardFee);
     event BoughtOption(address indexed from, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
     event SoldOption(address indexed from, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
-    event UnwindedOption(address indexed optionContract, uint256 indexed optionId, uint256 amount, address premiumToken, uint256 amountPremium);
+    event UnwindedOption(address indexed optionContract, uint256 indexed optionId, uint256 amount);
     event UnlockCollateral(address indexed unlocker, address indexed optionContract, uint256 indexed optionId, uint256 amount, uint256 tokenRewardFee, uint256 denominatorRewardFee);
     event ControllerUpdated(address indexed newController);
 
@@ -210,6 +217,12 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     /// @param _max The max amount of seconds in the future for which an option expiration can be set
     function setMaxExpiration(uint256 _max) external onlyOwner {
         _maxExpiration = _max;
+    }
+
+    /// @notice Set a new max expiration date for deposits
+    /// @param _max The max amount of seconds in the future for which a deposit expiration can be set
+    function setMaxDepositExpiration(uint256 _max) external onlyOwner {
+        maxDepositExpiration = _max;
     }
 
     /// @notice Set a new liquidator reward
@@ -516,7 +529,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     function depositFrom(address _from, TokenPair[] memory _pairs, uint256[] memory _amounts, uint256 _lockExpiration) external onlyController nonReentrant {
         require(_pairs.length == _amounts.length, "Arrays diff length");
         require(_lockExpiration > block.timestamp, "Exp passed");
-        require(_lockExpiration - block.timestamp <= _maxExpiration, "Exp > max exp");
+        require(_lockExpiration - block.timestamp <= _maxExpiration, "Exp > max option exp");
+        require(_lockExpiration - block.timestamp <= maxDepositExpiration, "Exp > max deposit exp");
         require(_lockExpiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");
 
         for (uint256 i = 0; i < _pairs.length; i++) {
@@ -695,8 +709,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         address collateralToken = loan.borrowToken ? loan.denominator : loan.token;
         uint256 collateralAmount = loan.borrowToken ? uInfo.denominatorAmount : uInfo.tokenAmount;
 
-        require(collateralAmount >= collateralOut, "Not enough collateral.");
-
         IERC20(borrowedToken).safeTransferFrom(msg.sender, address(this), _amount);
 
         uint256 collateralOut;
@@ -708,6 +720,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
             loans[_hash].amountBorrow -= _amount;
             loans[_hash].amountCollateral -= collateralOut;
         }
+
+        require(collateralAmount >= collateralOut, "Not enough collateral.");
 
         PoolInfo storage pInfo = poolInfos[loan.token][loan.denominator][loan.lockExpiration];
         if (loan.borrowToken) {
@@ -812,6 +826,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     }
 
     function buyOption(address _from, address _optionContract, uint256 _optionId, uint256 _amount, uint256 _amountPremium, address _referrer) public nonReentrant onlyController {
+        if (_amount == 0) return;
         require(permissions[_optionContract].isWhitelistedOptionContract, "Option contract not whitelisted.");
 
         IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
@@ -836,6 +851,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         TokenPair memory pair = TokenPair({token: data.token, denominator: denominator, useToken: data.isCall});
         _subtractLockedAmounts(pair, data.expiration, _amount);
 
+        _addOptionToList(data.token, denominator, data.expiration, OptionId(_optionContract, _optionId));
         IPremiaOption(_optionContract).writeOption(data.token, writeArgs, _referrer);
         IPremiaOption(_optionContract).safeTransferFrom(address(this), _from, _optionId, _amount, "");
 
@@ -844,10 +860,34 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         emit BoughtOption(_from, _optionContract, _optionId, _amount, denominator, _amountPremium);
     }
 
+    function _addOptionToList(address _token, address _denominator, uint256 _expiration, OptionId memory _optionId) internal {
+        PoolInfo storage pInfo = poolInfos[_token][_denominator][_expiration];
+
+        for (uint256 i=0; i < pInfo.optionIdList.length; i++) {
+            OptionId memory oId = pInfo.optionIdList[i];
+
+            if (oId.contractAddress == _optionId.contractAddress && oId.optionId == _optionId.optionId) return;
+        }
+
+        pInfo.optionIdList.push(_optionId);
+    }
+
     function _afterBuyOption(address _receiver, address _optionContract, uint256 _optionId, uint256 _amount, uint256 _amountPremium, address _referrer) internal virtual {}
 
     // ToDo: _amount not used in any override, can we remove it ?
+    // ToDo : Rename to make it more clear ?
     function _afterSellOption(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _tokenWithdrawn, uint256 _denominatorWithdrawn) virtual internal {}
+
+    function _unwindPool(address _token, address _denominator, uint256 _expiration) internal {
+        require(block.timestamp >= _expiration, "Not expired");
+        PoolInfo storage pInfo = poolInfos[_token][_denominator][_expiration];
+        if (pInfo.isUnwinded) return;
+
+        for (uint256 i=0; i < pInfo.optionIdList.length; i++) {
+            OptionId memory optionId = pInfo.optionIdList[i];
+            unwindOption(optionId.contractAddress, optionId.optionId);
+        }
+    }
 
     function unwindOption(address _optionContract, uint256 _optionId) public nonReentrant {
         uint256 outstanding = optionsOutstanding[_optionContract][_optionId];
@@ -862,21 +902,18 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
         // Option contract has a check to make sure that the option is expired
         require(block.timestamp >= data.expiration, "Option not expired");
-        optionContract.withdraw(_optionId, outstanding);
+        optionContract.withdraw(_optionId);
 
         uint256 tokenWithdrawn = IERC20(data.token).balanceOf(address(this)) - preTokenBalance;
         uint256 denominatorWithdrawn = IERC20(denominator).balanceOf(address(this)) - preDenominatorBalance;
 
         PoolInfo storage pInfo = poolInfos[data.token][denominator][data.expiration];
 
-        pInfo.tokenAmount -= tokenWithdrawn;
-        pInfo.denominatorAmount -= denominatorWithdrawn;
+        // ToDo : Track expiration of deposit and add back into corresponding pool
+        pInfo.tokenAmount += tokenWithdrawn;
+        pInfo.denominatorAmount += denominatorWithdrawn;
 
-        // ToDo : If denominatorPnl ends up negative, need to be repaid through swapping tokens
-        pInfo.denominatorPnl -= _amountPremium.toInt256();
-        IERC20(denominator).safeTransfer(_sender, _amountPremium);
-
-        _afterSellOption(_optionContract, _optionId, _amount, tokenWithdrawn, denominatorWithdrawn);
+        _afterSellOption(_optionContract, _optionId, outstanding, tokenWithdrawn, denominatorWithdrawn);
 
         emit UnwindedOption(_optionContract, _optionId, outstanding);
     }
@@ -894,11 +931,19 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         address denominator = optionContract.denominator();
 
         optionsOutstanding[_optionContract][_optionId] -= _amount;
+
         IPremiaOption(_optionContract).cancelOption(_optionId, _amount);
 
-        uint256 tokenWithdrawn = IERC20(data.token).balanceOf(address(this)) - preTokenBalance;
-        uint256 denominatorWithdrawn = IERC20(denominator).balanceOf(address(this)) - preDenominatorBalance;
-        
+        // Amount of tokens withdrawn from option contract and to be added as available in the pool
+        uint256 tokenWithdrawn;
+        uint256 denominatorWithdrawn;
+
+        if (data.isCall) {
+            tokenWithdrawn = _amount;
+        } else {
+            denominatorWithdrawn = (_amount * data.strikePrice) / (10 ** data.decimals);
+        }
+
         // TODO: the following should probably not use `date.expiration`, but rather the original date the amount
         // was locked until. However, it is not possible to save this amount, for each trade.
         // It may be possible to store an average over all trades in a specific option id, but this won't
@@ -913,8 +958,9 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
         PoolInfo storage pInfo = poolInfos[data.token][denominator][data.expiration];
 
-        pInfo.tokenAmount -= tokenWithdrawn;
-        pInfo.denominatorAmount -= denominatorWithdrawn;
+        // ToDo : Track expiration of deposit and add back into corresponding pool
+        pInfo.tokenAmount += tokenWithdrawn;
+        pInfo.denominatorAmount += denominatorWithdrawn;
 
         // ToDo : If denominatorPnl ends up negative, need to be repaid through swapping tokens
         pInfo.denominatorPnl -= _amountPremium.toInt256();
