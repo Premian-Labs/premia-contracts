@@ -22,7 +22,7 @@ library PairStorage {
 
     int128 oldEmaLogReturns64x64;
     int128 newEmaLogReturns64x64;
-    int128 emavariance;
+    int128 emaVarianceAnnualized64x64;
   }
 
   function layout () internal pure returns (Layout storage l) {

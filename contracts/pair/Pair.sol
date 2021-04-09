@@ -30,7 +30,7 @@ contract Pair is OwnableInternal {
    */
   function getVariance () external view returns (int128) {
     // TODO: calculate
-    return PairStorage.layout().emavariance;
+    return PairStorage.layout().emaVarianceAnnualized64x64;
   }
 
   /**
@@ -60,11 +60,11 @@ contract Pair is OwnableInternal {
       OptionMath.rollingEma(l.oldEmaLogReturns64x64, logreturns64x64, l.window)
     );
 
-    l.emavariance = OptionMath.rollingEmaVariance(
+    l.emaVarianceAnnualized64x64 = OptionMath.rollingEmaVariance(
       logreturns64x64,
       l.oldEmaLogReturns64x64,
-      l.emavariance,
+      l.emaVarianceAnnualized64x64 / 365,
       l.window
-    );
+    ) * 365;
   }
 }

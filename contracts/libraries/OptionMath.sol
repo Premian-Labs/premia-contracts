@@ -152,7 +152,7 @@ library OptionMath {
 
   /**
   * @notice calculate the price of an option using the Black-Scholes model
-  * @param variance TODO
+  * @param emaVarianceAnnualized64x64 TODO
   * @param strike TODO
   * @param price TODO
   * @param timeToMaturity duration of option contract (in years)
@@ -162,14 +162,14 @@ library OptionMath {
 
   // TODO: add require to check variance, price, timeToMaturity > 0, strike => 0.5 * price,  strike <= 2 * price
   function bsPrice (
-    int128 variance,
+    int128 emaVarianceAnnualized64x64,
     int128 strike,
     int128 price,
     int128 timeToMaturity,
     bool isCall
   ) internal pure returns (int128) {
-    int128 d1 = d1(variance, strike, price, timeToMaturity);
-    int128 d2 = d1.sub(timeToMaturity.mul(variance).sqrt());
+    int128 d1 = d1(emaVarianceAnnualized64x64, strike, price, timeToMaturity);
+    int128 d2 = d1.sub(timeToMaturity.mul(emaVarianceAnnualized64x64).sqrt());
 
     if (isCall) {
       return price.mul(N(d1)).sub(strike.mul(N(d2)));
@@ -212,7 +212,7 @@ library OptionMath {
 
   /**
   * @notice calculate the price of an option using the Median Finance model
-  * @param variance TODO
+  * @param emaVarianceAnnualized64x64 TODO
   * @param strike TODO
   * @param price TODO
   * @param timeToMaturity duration of option contract (in years)
@@ -224,7 +224,7 @@ library OptionMath {
   * @return TODO
   */
   function quotePrice (
-    int128 variance,
+    int128 emaVarianceAnnualized64x64,
     int128 strike,
     int128 price,
     int128 timeToMaturity,
@@ -237,7 +237,7 @@ library OptionMath {
     return calculateCLevel(cLevel, oldPoolState, newPoolState, steepness).mul(
       slippageCoefficient(oldPoolState, newPoolState, steepness)
     ).mul(
-      bsPrice(variance, strike, price, timeToMaturity, isCall)
+      bsPrice(emaVarianceAnnualized64x64, strike, price, timeToMaturity, isCall)
     );
   }
 }
