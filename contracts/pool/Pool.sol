@@ -45,8 +45,8 @@ contract Pool is OwnableInternal, ERC1155Base {
 
     int128 amount64x64 = _weiToFixed(amount, l.underlyingDecimals);
 
-    int128 oldLiquidity = l.liquidity;
-    int128 newLiquidity = oldLiquidity.add(amount64x64);
+    int128 oldLiquidity64x64 = l.liquidity64x64;
+    int128 newLiquidity64x64 = oldLiquidity64x64.add(amount64x64);
 
     int128 variance = Pair(l.pair).getVariance();
 
@@ -61,9 +61,9 @@ contract Pool is OwnableInternal, ERC1155Base {
       strikePrice,
       spotPrice,
       timeToMaturity,
-      l.cLevel,
-      oldLiquidity,
-      newLiquidity,
+      l.cLevel64x64,
+      oldLiquidity64x64,
+      newLiquidity64x64,
       OptionMath.ONE_64x64,
       false
     ).mul(amount64x64);
@@ -85,14 +85,14 @@ contract Pool is OwnableInternal, ERC1155Base {
 
     // TODO: mint liquidity tokens
 
-    int128 oldLiquidity = l.liquidity;
-    int128 newLiquidity = oldLiquidity.add(_weiToFixed(amount, l.underlyingDecimals));
-    l.liquidity = newLiquidity;
+    int128 oldLiquidity64x64 = l.liquidity64x64;
+    int128 newLiquidity64x64 = oldLiquidity64x64.add(_weiToFixed(amount, l.underlyingDecimals));
+    l.liquidity64x64 = newLiquidity64x64;
 
-    l.cLevel = OptionMath.calculateCLevel(
-      l.cLevel,
-      oldLiquidity,
-      newLiquidity,
+    l.cLevel64x64 = OptionMath.calculateCLevel(
+      l.cLevel64x64,
+      oldLiquidity64x64,
+      newLiquidity64x64,
       OptionMath.ONE_64x64
     );
   }
@@ -116,14 +116,14 @@ contract Pool is OwnableInternal, ERC1155Base {
     // TODO: calculate amount out
     _push(l.underlying, amount);
 
-    int128 oldLiquidity = l.liquidity;
-    int128 newLiquidity = oldLiquidity.sub(_weiToFixed(amount, l.underlyingDecimals));
-    l.liquidity = newLiquidity;
+    int128 oldLiquidity64x64 = l.liquidity64x64;
+    int128 newLiquidity64x64 = oldLiquidity64x64.sub(_weiToFixed(amount, l.underlyingDecimals));
+    l.liquidity64x64 = newLiquidity64x64;
 
-    l.cLevel = OptionMath.calculateCLevel(
-      l.cLevel,
-      oldLiquidity,
-      newLiquidity,
+    l.cLevel64x64 = OptionMath.calculateCLevel(
+      l.cLevel64x64,
+      oldLiquidity64x64,
+      newLiquidity64x64,
       OptionMath.ONE_64x64
     );
   }

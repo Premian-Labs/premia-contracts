@@ -14,8 +14,8 @@ library PoolStorage {
     // TODO: set decimals on initialization
     uint8 baseDecimals;
     uint8 underlyingDecimals;
-    int128 liquidity;
-    int128 cLevel;
+    int128 liquidity64x64;
+    int128 cLevel64x64;
   }
 
   function layout () internal pure returns (Layout storage l) {
