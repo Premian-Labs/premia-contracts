@@ -99,13 +99,11 @@ library OptionMath {
     int128 timeToMaturity,
     bool isCall
   ) internal pure returns (int128) {
-    int128 d1 = price.div(strike).ln().add(
-      timeToMaturity.mul(emaVarianceAnnualized64x64) >> 1
-    ).div(
-      timeToMaturity.mul(emaVarianceAnnualized64x64).sqrt()
-    );
+    int128 cumulativeVariance64x64 = timeToMaturity.mul(emaVarianceAnnualized64x64);
+    int128 cumulativeVarianceSqrt64x64 = cumulativeVariance64x64.sqrt();
 
-    int128 d2 = d1.sub(timeToMaturity.mul(emaVarianceAnnualized64x64).sqrt());
+    int128 d1 = price.div(strike).ln().add(cumulativeVariance64x64 >> 1).div(cumulativeVarianceSqrt64x64);
+    int128 d2 = d1.sub(cumulativeVarianceSqrt64x64);
 
     if (isCall) {
       return price.mul(N(d1)).sub(strike.mul(N(d2)));
