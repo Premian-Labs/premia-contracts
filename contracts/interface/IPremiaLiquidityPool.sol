@@ -28,6 +28,11 @@ interface IPremiaLiquidityPool {
         bool isWhitelistedOptionContract;
     }
 
+    struct OptionId {
+        address contractAddress;
+        uint256 optionId;
+    }
+
     struct UserInfo {
         uint256 tokenAmount;
         uint256 denominatorAmount;
@@ -35,8 +40,8 @@ interface IPremiaLiquidityPool {
         uint256 tokenScore;
         uint256 denominatorScore;
 
-        uint256 tokenPnlDebt;
-        uint256 denominatorPnlDebt;
+        int256 tokenPnlDebt;
+        int256 denominatorPnlDebt;
 
         uint256 lastUnlock; // Last timestamp at which deposits unlock was run. This is necessary so that we know from which timestamp we need to iterate, when unlocking
     }
@@ -54,7 +59,8 @@ interface IPremiaLiquidityPool {
         int256 tokenPnl;
         int256 denominatorPnl;
 
-        uint256[] optionIdList;
+        OptionId[] optionIdList;
+        bool isUnwinded;
     }
 
     ////////////
@@ -69,7 +75,7 @@ interface IPremiaLiquidityPool {
     event LiquidateLoan(bytes32 hash, address indexed borrower, address indexed token, address indexed denominator, bool borrowToken, uint256 amount, uint256 rewardFee);
     event BoughtOption(address indexed from, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
     event SoldOption(address indexed from, address indexed optionContract, uint256 optionId, uint256 amount, address premiumToken, uint256 amountPremium);
-    event UnwindedOption(address indexed optionContract, uint256 indexed optionId, uint256 amount, address premiumToken, uint256 amountPremium);
+    event UnwindedOption(address indexed optionContract, uint256 indexed optionId, uint256 amount);
     event UnlockCollateral(address indexed unlocker, address indexed optionContract, uint256 indexed optionId, uint256 amount, uint256 tokenRewardFee, uint256 denominatorRewardFee);
     event ControllerUpdated(address indexed newController);
 
