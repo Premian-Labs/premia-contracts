@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import {ABDKMath64x64} from 'abdk-libraries-solidity/ABDKMath64x64.sol';
+import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 
 library OptionMath {
   using ABDKMath64x64 for int128;
@@ -157,18 +157,18 @@ library OptionMath {
     int128 steepness,
     bool isCall
   ) internal pure returns (int128) {
-    int128 tradingDelta64x64 = newPoolState.sub(oldPoolState).div(
-      oldPoolState
-    ).mul(steepness).neg().exp();
+    // TODO: formalize newPoolState < oldPoolState
+    int128 deltaPoolState64x64 = newPoolState.sub(oldPoolState).div(oldPoolState).mul(steepness);
+    int128 tradingDelta64x64 = deltaPoolState64x64.neg().exp();
 
-    return bsPrice(variance, strike, price, timeToMaturity, isCall).mul(
+    int128 bsPrice64x64 = bsPrice(variance, strike, price, timeToMaturity, isCall);
+
+    return bsPrice64x64.mul(
       // C-Level
       tradingDelta64x64.mul(cLevel)
     ).mul(
       // slippage coefficient
-      ONE_64x64.sub(tradingDelta64x64).div(
-        newPoolState.sub(oldPoolState).div(oldPoolState).mul(steepness)
-      )
+      ONE_64x64.sub(tradingDelta64x64).div(deltaPoolState64x64)
     );
   }
 }
