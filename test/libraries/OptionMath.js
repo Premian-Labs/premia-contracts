@@ -77,8 +77,8 @@ describe('OptionMath', function () {
 
       expect(
         expected / await instance.callStatic.rollingEma(
-          logReturn_t,
           ema_t_1,
+          logReturn_t,
           ethers.BigNumber.from(14)
         )
       ).to.be.closeTo(

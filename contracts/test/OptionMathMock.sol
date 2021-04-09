@@ -13,11 +13,11 @@ contract OptionMathMock {
   }
 
   function rollingEma (
-    int128 today64x64,
-    int128 yesterday64x64,
+    int128 oldValue64x64,
+    int128 newValue64x64,
     uint256 window
   ) external pure returns (int128) {
-    return OptionMath.rollingEma(today64x64, yesterday64x64, window);
+    return OptionMath.rollingEma(oldValue64x64, newValue64x64, window);
   }
 
   function rollingEmaVariance (

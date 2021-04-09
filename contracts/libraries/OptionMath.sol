@@ -30,21 +30,20 @@ library OptionMath {
   }
 
   /**
-  * @notice TODO
-  * @param today64x64 today's close
-  * @param yesterday64x64 yesterday's close
+  * @notice calculate the rolling EMA of a time series
+  * @param oldValue64x64 previous value
+  * @param newValue64x64 current value
   * @param window the period for the EMA average
   * @return the new EMA value for today
-  * alpha * (today - yesterday) + yesterday
   */
   function rollingEma (
-    int128 today64x64,
-    int128 yesterday64x64,
+    int128 oldValue64x64,
+    int128 newValue64x64,
     uint256 window
   ) internal pure returns (int128) {
     return ABDKMath64x64.divu(2, window + 1).mul(
-      today64x64.sub(yesterday64x64)
-    ).add(yesterday64x64);
+      newValue64x64.sub(oldValue64x64)
+    ).add(oldValue64x64);
   }
 
   /**
