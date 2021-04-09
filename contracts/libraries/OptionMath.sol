@@ -17,12 +17,12 @@ library OptionMath {
   int128 private constant CDF_CONST_2 = 0x0d3c84b78b749bd6b; // 3300 / 3989
 
   /**
-  * @notice calculate the rolling EMA of a time series
-  * @param oldValue64x64 64x64 fixed point representation of previous value
-  * @param newValue64x64 64x64 fixed point representation of current value
-  * @param window number of periods to use in calculation
-  * @return the new EMA value for today
-  */
+   * @notice calculate the rolling EMA of a time series
+   * @param oldValue64x64 64x64 fixed point representation of previous value
+   * @param newValue64x64 64x64 fixed point representation of current value
+   * @param window number of periods to use in calculation
+   * @return the new EMA value for today
+   */
   function rollingEma (
     int128 oldValue64x64,
     int128 newValue64x64,
@@ -34,13 +34,13 @@ library OptionMath {
   }
 
   /**
-  * @notice calculate the rolling EMA variance of a time series
-  * @param oldVariance64x64 64x64 fixed point representation of previous variance
-  * @param oldValue64x64 64x64 fixed point representation of previous value
-  * @param newValue64x64 64x64 fixed point representation of current value
-  * @param window number of periods to use in calculation
-  * @return the new variance value for today
-  */
+   * @notice calculate the rolling EMA variance of a time series
+   * @param oldVariance64x64 64x64 fixed point representation of previous variance
+   * @param oldValue64x64 64x64 fixed point representation of previous value
+   * @param newValue64x64 64x64 fixed point representation of current value
+   * @param window number of periods to use in calculation
+   * @return the new variance value for today
+   */
   function rollingEmaVariance (
     int128 oldVariance64x64,
     int128 oldValue64x64,
@@ -59,10 +59,10 @@ library OptionMath {
   }
 
   /**
-  * @notice calculate Choudhury’s approximation of the Black-Scholes CDF
-  * @param input64x64 64x64 fixed point representation of random variable
-  * @return the approximated CDF of x
-  */
+   * @notice calculate Choudhury’s approximation of the Black-Scholes CDF
+   * @param input64x64 64x64 fixed point representation of random variable
+   * @return the approximated CDF of x
+   */
   function N (
     int128 input64x64
   ) internal pure returns (int128) {
@@ -81,14 +81,14 @@ library OptionMath {
   }
 
   /**
-  * @notice calculate the price of an option using the Black-Scholes model
-  * @param emaVarianceAnnualized64x64 64x64 fixed point representation of annualized EMA of variance
-  * @param strike64x64 64x64 fixed point representation of strike price
-  * @param spot64x64 64x64 fixed point representation of spot price
-  * @param timeToMaturity64x64 64x64 fixed point representation of duration of option contract (in years)
-  * @param isCall whether to price "call" or "put" option
-  * @return 64x64 fixed point representation of Black-Scholes option price
-  */
+   * @notice calculate the price of an option using the Black-Scholes model
+   * @param emaVarianceAnnualized64x64 64x64 fixed point representation of annualized EMA of variance
+   * @param strike64x64 64x64 fixed point representation of strike price
+   * @param spot64x64 64x64 fixed point representation of spot price
+   * @param timeToMaturity64x64 64x64 fixed point representation of duration of option contract (in years)
+   * @param isCall whether to price "call" or "put" option
+   * @return 64x64 fixed point representation of Black-Scholes option price
+   */
   function bsPrice (
     int128 emaVarianceAnnualized64x64,
     int128 strike64x64,
@@ -111,13 +111,13 @@ library OptionMath {
   }
 
   /**
-  * @notice recalculate C-Level based on change in liquidity
-  * @param initialCLevel64x64 64x64 fixed point representation of C-Level of Pool before update
-  * @param oldPoolState64x64 64x64 fixed point representation of liquidity in pool before update
-  * @param newPoolState64x64 64x64 fixed point representation of liquidity in pool after update
-  * @param steepness64x64 64x64 fixed point representation of steepness coefficient
-  * @return new C-Level
-  */
+   * @notice recalculate C-Level based on change in liquidity
+   * @param initialCLevel64x64 64x64 fixed point representation of C-Level of Pool before update
+   * @param oldPoolState64x64 64x64 fixed point representation of liquidity in pool before update
+   * @param newPoolState64x64 64x64 fixed point representation of liquidity in pool after update
+   * @param steepness64x64 64x64 fixed point representation of steepness coefficient
+   * @return new C-Level
+   */
   function calculateCLevel (
     int128 initialCLevel64x64,
     int128 oldPoolState64x64,
@@ -130,18 +130,18 @@ library OptionMath {
   }
 
   /**
-  * @notice calculate the price of an option using the Median Finance model
-  * @param emaVarianceAnnualized64x64 64x64 fixed point representation of annualized EMA of variance
-  * @param strike64x64 64x64 fixed point representation of strike price
-  * @param spot64x64 64x64 fixed point representation of spot price
-  * @param timeToMaturity64x64 64x64 fixed point representation of duration of option contract (in years)
-  * @param cLevel64x64 64x64 fixed point representation of C-Level of Pool before purchase
-  * @param oldPoolState 64x64 fixed point representation of current state of the pool
-  * @param newPoolState 64x64 fixed point representation of state of the pool after trade
-  * @param steepness64x64 64x64 fixed point representation of Pool state delta multiplier
-  * @param isCall whether to price "call" or "put" option
-  * @return 64x64 fixed point representation of Median option price
-  */
+   * @notice calculate the price of an option using the Median Finance model
+   * @param emaVarianceAnnualized64x64 64x64 fixed point representation of annualized EMA of variance
+   * @param strike64x64 64x64 fixed point representation of strike price
+   * @param spot64x64 64x64 fixed point representation of spot price
+   * @param timeToMaturity64x64 64x64 fixed point representation of duration of option contract (in years)
+   * @param cLevel64x64 64x64 fixed point representation of C-Level of Pool before purchase
+   * @param oldPoolState 64x64 fixed point representation of current state of the pool
+   * @param newPoolState 64x64 fixed point representation of state of the pool after trade
+   * @param steepness64x64 64x64 fixed point representation of Pool state delta multiplier
+   * @param isCall whether to price "call" or "put" option
+   * @return 64x64 fixed point representation of Median option price
+   */
   function quotePrice (
     int128 emaVarianceAnnualized64x64,
     int128 strike64x64,
