@@ -1159,13 +1159,6 @@
   dependencies:
     "@types/chai" "*"
 
-"@types/chai-roughly@^1.0.1":
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/@types/chai-roughly/-/chai-roughly-1.0.1.tgz#5c9c84b4857aae43994ed6d2e3236a6f8bf54af8"
-  integrity sha512-Lx1DabhJ7lLKhpyecGvhIupQsb+UBiy+ZhJWht0NtWBNO/845ciAOfQSMa9Y+d8TQif1G7chHRqKyfYmGAF16w==
-  dependencies:
-    "@types/chai" "*"
-
 "@types/chai@*":
   version "4.2.14"
   resolved "https://registry.yarnpkg.com/@types/chai/-/chai-4.2.14.tgz#44d2dd0b5de6185089375d976b4ec5caf6861193"
@@ -2512,13 +2505,6 @@ chai-almost@^1.0.1:
     deep-eql "^2.0.2"
     type-detect "^4.0.3"
 
-chai-roughly@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/chai-roughly/-/chai-roughly-1.0.0.tgz#1fea8e03ab7c76b428a2bc97a7d844d82e6ee176"
-  integrity sha1-H+qOA6t8drQooryXp9hE2C5u4XY=
-  dependencies:
-    deep-eql "git+https://github.com/Turbo87/deep-eql.git#9bad4db"
-
 chai@^4.3.4:
   version "4.3.4"
   resolved "https://registry.yarnpkg.com/chai/-/chai-4.3.4.tgz#b55e655b31e1eac7099be4c08c21964fce2e6c49"
@@ -3006,12 +2992,6 @@ deep-eql@^3.0.1:
   integrity sha512-+QeIQyN5ZuO+3Uk5DYh6/1eKO0m0YmJFGNmFHGACpf1ClL1nmlV/p4gNgbl2pJGxgXb4faqo6UE+M5ACEMyVcw==
   dependencies:
     type-detect "^4.0.0"
-
-"deep-eql@git+https://github.com/Turbo87/deep-eql.git#9bad4db":
-  version "0.1.3"
-  resolved "git+https://github.com/Turbo87/deep-eql.git#9bad4db6794aa0ce74a1118ad6e38df5c70992f3"
-  dependencies:
-    type-detect "^1.0.0"
 
 deep-equal@~1.1.1:
   version "1.1.1"
@@ -7919,11 +7899,6 @@ type-check@~0.3.2:
   integrity sha1-WITKtRLPHTVeP7eE8wgEsrUg23I=
   dependencies:
     prelude-ls "~1.1.2"
-
-type-detect@^1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/type-detect/-/type-detect-1.0.0.tgz#762217cc06db258ec48908a1298e8b95121e8ea2"
-  integrity sha1-diIXzAbbJY7EiQihKY6LlRIejqI=
 
 type-detect@^3.0.0:
   version "3.0.0"
