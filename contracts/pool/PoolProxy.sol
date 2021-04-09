@@ -5,8 +5,6 @@ pragma solidity ^0.8.0;
 import '@solidstate/contracts/access/OwnableStorage.sol';
 import '@solidstate/contracts/introspection/ERC165Storage.sol';
 import '@solidstate/contracts/proxy/managed/ManagedProxyOwnable.sol';
-import '@solidstate/contracts/token/ERC20/ERC20.sol';
-import '@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol';
 import '@solidstate/contracts/token/ERC1155/IERC1155.sol';
 
 import '../core/IProxyManager.sol';
@@ -18,8 +16,8 @@ import './PoolStorage.sol';
 contract PoolProxy is ManagedProxyOwnable {
   using ERC165Storage for ERC165Storage.Layout;
 
-  // 64x64 fixed point representeation of 5
-  int128 private constant INITIAL_C_LEVEL = 0x50000000000000000;
+  // 64x64 fixed point representeation of 2e
+  int128 private constant INITIAL_C_LEVEL = 0x56fc2a2c515da32ea;
 
   constructor (
     address owner,
@@ -34,28 +32,6 @@ contract PoolProxy is ManagedProxyOwnable {
       l.base = base;
       l.underlying = underlying;
       l.cLevel = INITIAL_C_LEVEL;
-    }
-
-    {
-      ERC20MetadataStorage.Layout storage l = ERC20MetadataStorage.layout();
-
-      string memory symbolUnderlying = ERC20(underlying).symbol();
-      string memory symbolBase = ERC20(base).symbol();
-
-      l.name = string(abi.encodePacked(
-        'Median Liquidity: ',
-        symbolUnderlying,
-        '/',
-        symbolBase
-      ));
-
-      l.symbol = string(abi.encodePacked(
-        'MED-',
-        symbolUnderlying,
-        symbolBase
-      ));
-
-      l.decimals = 18;
     }
 
     {

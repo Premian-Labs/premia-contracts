@@ -82,16 +82,16 @@ library OptionMath {
   /**
   * @notice calculate the price of an option using the Black-Scholes model
   * @param emaVarianceAnnualized64x64 TODO
-  * @param strike TODO
-  * @param price TODO
+  * @param strike64x64 64x64 fixed point representation of strike price
+  * @param spot64x64 64x64 fixed point representation of spot price
   * @param timeToMaturity duration of option contract (in years)
   * @param isCall whether to price "call" or "put" option
   * @return 64x64 fixed point representation of Black-Scholes option price
   */
   function bsPrice (
     int128 emaVarianceAnnualized64x64,
-    int128 strike,
-    int128 price,
+    int128 strike64x64,
+    int128 spot64x64,
     int128 timeToMaturity,
     bool isCall
   ) internal pure returns (int128) {
@@ -99,13 +99,13 @@ library OptionMath {
     int128 cumulativeVariance64x64 = timeToMaturity.mul(emaVarianceAnnualized64x64);
     int128 cumulativeVarianceSqrt64x64 = cumulativeVariance64x64.sqrt();
 
-    int128 d1 = price.div(strike).ln().add(cumulativeVariance64x64 >> 1).div(cumulativeVarianceSqrt64x64);
+    int128 d1 = spot64x64.div(strike64x64).ln().add(cumulativeVariance64x64 >> 1).div(cumulativeVarianceSqrt64x64);
     int128 d2 = d1.sub(cumulativeVarianceSqrt64x64);
 
     if (isCall) {
-      return price.mul(N(d1)).sub(strike.mul(N(d2)));
+      return spot64x64.mul(N(d1)).sub(strike64x64.mul(N(d2)));
     } else {
-      return -price.mul(N(-d1)).sub(strike.mul(N(-d2)));
+      return -spot64x64.mul(N(-d1)).sub(strike64x64.mul(N(-d2)));
     }
   }
 
@@ -131,8 +131,8 @@ library OptionMath {
   /**
   * @notice calculate the price of an option using the Median Finance model
   * @param emaVarianceAnnualized64x64 TODO
-  * @param strike TODO
-  * @param price TODO
+  * @param strike64x64 64x64 fixed point representation of strike price
+  * @param spot64x64 64x64 fixed point representation of spot price
   * @param timeToMaturity duration of option contract (in years)
   * @param cLevel C-Level of Pool before purchase
   * @param oldPoolState current state of the pool
@@ -143,8 +143,8 @@ library OptionMath {
   */
   function quotePrice (
     int128 emaVarianceAnnualized64x64,
-    int128 strike,
-    int128 price,
+    int128 strike64x64,
+    int128 spot64x64,
     int128 timeToMaturity,
     int128 cLevel,
     int128 oldPoolState,
@@ -156,7 +156,7 @@ library OptionMath {
     int128 deltaPoolState64x64 = newPoolState.sub(oldPoolState).div(oldPoolState).mul(steepness);
     int128 tradingDelta64x64 = deltaPoolState64x64.neg().exp();
 
-    int128 bsPrice64x64 = bsPrice(emaVarianceAnnualized64x64, strike, price, timeToMaturity, isCall);
+    int128 bsPrice64x64 = bsPrice(emaVarianceAnnualized64x64, strike64x64, spot64x64, timeToMaturity, isCall);
 
     return bsPrice64x64.mul(
       // C-Level
