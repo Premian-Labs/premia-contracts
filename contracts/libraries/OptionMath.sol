@@ -83,7 +83,7 @@ library OptionMath {
 
   /**
   * @notice calculate the price of an option using the Black-Scholes model
-  * @param variance TODO
+  * @param emaVarianceAnnualized64x64 TODO
   * @param strike TODO
   * @param price TODO
   * @param timeToMaturity duration of option contract (in years)
@@ -93,19 +93,19 @@ library OptionMath {
 
   // TODO: add require to check variance, price, timeToMaturity > 0, strike => 0.5 * price,  strike <= 2 * price
   function bsPrice (
-    int128 variance,
+    int128 emaVarianceAnnualized64x64,
     int128 strike,
     int128 price,
     int128 timeToMaturity,
     bool isCall
   ) internal pure returns (int128) {
     int128 d1 = price.div(strike).ln().add(
-      timeToMaturity.mul(variance) >> 1
+      timeToMaturity.mul(emaVarianceAnnualized64x64) >> 1
     ).div(
-      timeToMaturity.mul(variance).sqrt()
+      timeToMaturity.mul(emaVarianceAnnualized64x64).sqrt()
     );
 
-    int128 d2 = d1.sub(timeToMaturity.mul(variance).sqrt());
+    int128 d2 = d1.sub(timeToMaturity.mul(emaVarianceAnnualized64x64).sqrt());
 
     if (isCall) {
       return price.mul(N(d1)).sub(strike.mul(N(d2)));
@@ -135,7 +135,7 @@ library OptionMath {
 
   /**
   * @notice calculate the price of an option using the Median Finance model
-  * @param variance TODO
+  * @param emaVarianceAnnualized64x64 TODO
   * @param strike TODO
   * @param price TODO
   * @param timeToMaturity duration of option contract (in years)
@@ -147,7 +147,7 @@ library OptionMath {
   * @return TODO
   */
   function quotePrice (
-    int128 variance,
+    int128 emaVarianceAnnualized64x64,
     int128 strike,
     int128 price,
     int128 timeToMaturity,
@@ -161,7 +161,7 @@ library OptionMath {
     int128 deltaPoolState64x64 = newPoolState.sub(oldPoolState).div(oldPoolState).mul(steepness);
     int128 tradingDelta64x64 = deltaPoolState64x64.neg().exp();
 
-    int128 bsPrice64x64 = bsPrice(variance, strike, price, timeToMaturity, isCall);
+    int128 bsPrice64x64 = bsPrice(emaVarianceAnnualized64x64, strike, price, timeToMaturity, isCall);
 
     return bsPrice64x64.mul(
       // C-Level
