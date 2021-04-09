@@ -21,7 +21,7 @@ library OptionMath {
    * @param oldValue64x64 64x64 fixed point representation of previous value
    * @param newValue64x64 64x64 fixed point representation of current value
    * @param window number of periods to use in calculation
-   * @return the new EMA value for today
+   * @return EMA for current period
    */
   function rollingEma (
     int128 oldValue64x64,
@@ -39,7 +39,7 @@ library OptionMath {
    * @param oldValue64x64 64x64 fixed point representation of previous value
    * @param newValue64x64 64x64 fixed point representation of current value
    * @param window number of periods to use in calculation
-   * @return the new variance value for today
+   * @return EMA of variance for current period
    */
   function rollingEmaVariance (
     int128 oldVariance64x64,
@@ -48,13 +48,10 @@ library OptionMath {
     uint256 window
   ) internal pure returns (int128) {
     int128 alpha64x64 = ABDKMath64x64.divu(2, window + 1);
+    int128 difference = newValue64x64.sub(oldValue64x64);
 
-    return ONE_64x64.sub(alpha64x64).mul(
-      oldVariance64x64
-    ).add(
-      alpha64x64.mul(
-        newValue64x64.sub(oldValue64x64).pow(2)
-      )
+    return ONE_64x64.sub(alpha64x64).mul(oldVariance64x64).add(
+      alpha64x64.mul(difference.mul(difference))
     );
   }
 
