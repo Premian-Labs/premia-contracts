@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import '@solidstate/contracts/access/OwnableStorage.sol';
 import '@solidstate/contracts/introspection/ERC165Storage.sol';
 import '@solidstate/contracts/proxy/managed/ManagedProxyOwnable.sol';
+import '@solidstate/contracts/token/ERC20/IERC20Metadata.sol';
 import '@solidstate/contracts/token/ERC1155/IERC1155.sol';
 
 import '../core/IProxyManager.sol';
@@ -31,6 +32,8 @@ contract PoolProxy is ManagedProxyOwnable {
       l.pair = msg.sender;
       l.base = base;
       l.underlying = underlying;
+      l.baseDecimals = IERC20Metadata(base).decimals();
+      l.underlyingDecimals = IERC20Metadata(underlying).decimals();
       l.cLevel = INITIAL_C_LEVEL;
     }
 
