@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import '@solidstate/contracts/access/OwnableInternal.sol';
 
 import '../core/IPriceConsumer.sol';
+import './IPair.sol';
 import './PairStorage.sol';
 
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
@@ -14,7 +15,7 @@ import { OptionMath } from '../libraries/OptionMath.sol';
  * @title Median options pair
  * @dev deployed standalone and referenced by PairProxy
  */
-contract Pair is OwnableInternal {
+contract Pair is IPair, OwnableInternal {
   using ABDKMath64x64 for int128;
   using PairStorage for PairStorage.Layout;
 
@@ -27,12 +28,11 @@ contract Pair is OwnableInternal {
   }
 
   /**
-   * @notice calculate or get cached variance for current day
-   * @return variance
+   * @inheritdoc IPair
    */
-  function getVariance () external view returns (int128) {
+  function getVariance () external override view returns (int128 variance64x64) {
     // TODO: calculate
-    return PairStorage.layout().emaVarianceAnnualized64x64;
+    variance64x64 = PairStorage.layout().emaVarianceAnnualized64x64;
   }
 
   /**

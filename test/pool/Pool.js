@@ -42,7 +42,7 @@ describe('Pool', function () {
   describe('__internal', function () {
     describe('#_tokenIdFor', function () {
       it('returns concatenation of maturity and strikePrice', async function () {
-        const tokenType = Math.floor(Math.random() * 256);
+        const tokenType = ethers.constants.One;
         const maturity = ethers.BigNumber.from(Math.floor(new Date().getTime() / 1000));
         const strikePrice = fixedFromFloat(Math.random() * 1000);
         const tokenId = ethers.utils.hexConcat([
@@ -66,7 +66,7 @@ describe('Pool', function () {
 
     describe('#_parametersFor', function () {
       it('returns parameters derived from tokenId', async function () {
-        const tokenType = Math.floor(Math.random() * 256);
+        const tokenType = ethers.constants.One;
         const maturity = ethers.BigNumber.from(Math.floor(new Date().getTime() / 1000));
         const strikePrice = fixedFromFloat(Math.random() * 1000);
         const tokenId = ethers.utils.hexConcat([
@@ -80,7 +80,7 @@ describe('Pool', function () {
           await instance.callStatic['parametersFor(uint256)'](tokenId)
         ).to.deep.equal(
           [
-            tokenType,
+            tokenType.toNumber(),
             maturity,
             strikePrice,
           ]

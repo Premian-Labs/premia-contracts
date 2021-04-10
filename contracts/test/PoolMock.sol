@@ -12,8 +12,10 @@ import '../pool/Pool.sol';
 contract PoolMock is Pool {
   using ERC165Storage for ERC165Storage.Layout;
 
+  constructor () Pool(address(0)) {}
+
   function tokenIdFor (
-    uint8 tokenType,
+    TokenType tokenType,
     uint64 maturity,
     int128 strikePrice
   ) external pure returns (uint) {
@@ -22,7 +24,7 @@ contract PoolMock is Pool {
 
   function parametersFor (
     uint256 tokenId
-  ) external pure returns (uint8, uint64, int128) {
+  ) external pure returns (TokenType, uint64, int128) {
     return _parametersFor(tokenId);
   }
 }

@@ -10,8 +10,6 @@ require('./tasks/deploy.js');
 require('./tasks/accounts.js');
 
 module.exports = {
-  defaultNetwork: process.env.NETWORK,
-
   solidity: {
     version: '0.8.3',
     settings: {
@@ -24,7 +22,7 @@ module.exports = {
 
   networks: {
     kovan: {
-      url: 'https://kovan.infura.io/v3/'+process.env.INFURA_KEY,
+      url: `${ process.env.KOVAN_URL }`,
       accounts: {
         mnemonic: process.env.MNEMONIC,
       },
@@ -37,7 +35,7 @@ module.exports = {
   },
 
   gasReporter: {
-    enabled: process.env.REPORT_GAS,
+    enabled: process.env.REPORT_GAS === 'true',
   },
 
   spdxLicenseIdentifier: {
