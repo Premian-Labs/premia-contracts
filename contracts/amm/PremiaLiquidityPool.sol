@@ -576,8 +576,18 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     function withdrawExpiredFrom(address _from, TokenPair[] memory _pairs) external onlyController nonReentrant {
         for (uint256 i = 0; i < _pairs.length; i++) {
+
+            PoolInfo memory pInfo = poolInfos[_from][_pairs[i].token][_pairs[i].denominator];
+
+            // ToDo : See if we do a separate function for pool unwinding
+            if (!pInfo.isUnwinded) {
+                _unwindPool(_pairs[i].token, _pairs[i].denominator);
+            }
+
+            // ToDo : Check this
             (uint256 tokenAmount, uint256 denominatorAmount) = _unlockExpired(_from, _pairs[i].token, _pairs[i].denominator);
 
+            // ToDo : Distribute PnL
             if (tokenAmount > 0) {
                 IERC20(_pairs[i].token).safeTransfer(_from, tokenAmount);
                 emit Withdraw(_from, _pairs[i].token, _pairs[i].denominator, true, tokenAmount);
@@ -869,6 +879,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     // ToDo : Rename to make it more clear ?
     function _afterSellOption(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _tokenWithdrawn, uint256 _denominatorWithdrawn) virtual internal {}
 
+    // ToDo : Do we add a reward for the user unwinding the pool ?
     function _unwindPool(address _token, address _denominator, uint256 _expiration) internal {
         require(block.timestamp >= _expiration, "Not expired");
         PoolInfo storage pInfo = poolInfos[_token][_denominator][_expiration];
@@ -878,6 +889,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
             OptionId memory optionId = pInfo.optionIdList[i];
             unwindOption(optionId.contractAddress, optionId.optionId);
         }
+
+        pInfo.isUnwinded = true;
     }
 
     function unwindOption(address _optionContract, uint256 _optionId) public nonReentrant {
