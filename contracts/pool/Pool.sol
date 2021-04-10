@@ -28,17 +28,17 @@ contract Pool is OwnableInternal, ERC1155Base {
   }
 
   /**
-   * @notice get price of option contract
+   * @notice calculate price of option contract
    * @param amount size of option contract
    * @param maturity timestamp of option maturity
-   * @param strikePrice option strike price
-   * @return price price of option contract
+   * @param strike64x64 64x64 fixed point representation of strike price
+   * @return price64x64 64x64 fixed point representation of option price
    */
   function quote (
     uint256 amount,
     uint64 maturity,
-    int128 strikePrice
-  ) public view returns (int128 price) {
+    int128 strike64x64
+  ) public view returns (int128 price64x64) {
     require(maturity > block.timestamp, 'Pool: maturity must be in the future');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
@@ -48,19 +48,19 @@ contract Pool is OwnableInternal, ERC1155Base {
     int128 oldLiquidity64x64 = l.liquidity64x64;
     int128 newLiquidity64x64 = oldLiquidity64x64.add(amount64x64);
 
-    int128 variance = Pair(l.pair).getVariance();
+    int128 variance64x64 = Pair(l.pair).getVariance();
 
     // TODO: fetch
-    int128 spotPrice;
+    int128 spot64x64;
 
     // TODO: convert maturity to timeToMaturity
-    int128 timeToMaturity = ABDKMath64x64.fromUInt(maturity);
+    int128 timeToMaturity64x64 = ABDKMath64x64.fromUInt(maturity);
 
-    price = OptionMath.quotePrice(
-      variance,
-      strikePrice,
-      spotPrice,
-      timeToMaturity,
+    price64x64 = OptionMath.quotePrice(
+      variance64x64,
+      strike64x64,
+      spot64x64,
+      timeToMaturity64x64,
       l.cLevel64x64,
       oldLiquidity64x64,
       newLiquidity64x64,
@@ -132,12 +132,12 @@ contract Pool is OwnableInternal, ERC1155Base {
    * @notice purchase put option
    * @param amount size of option contract
    * @param maturity timestamp of option maturity
-   * @param strikePrice option strike price
+   * @param strike64x64 64x64 fixed point representation of strike price
    */
   function purchase (
     uint256 amount,
     uint64 maturity,
-    int128 strikePrice
+    int128 strike64x64
   ) external returns (uint256 price) {
     // TODO: maturity must be integer number of calendar days
     // TODO: accept minimum price to prevent slippage
@@ -146,11 +146,11 @@ contract Pool is OwnableInternal, ERC1155Base {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    price = _fixedToWei(quote(amount, maturity, strikePrice), l.baseDecimals);
+    price = _fixedToWei(quote(amount, maturity, strike64x64), l.baseDecimals);
     _pull(l.base, price);
 
     // TODO: tokenType
-    _mint(msg.sender, _tokenIdFor(0, maturity, strikePrice), amount, '');
+    _mint(msg.sender, _tokenIdFor(0, maturity, strike64x64), amount, '');
   }
 
   /**
@@ -162,19 +162,19 @@ contract Pool is OwnableInternal, ERC1155Base {
     uint256 tokenId,
     uint256 amount
   ) public {
-    (uint8 tokenType, uint64 maturity, int128 strikePrice) = _parametersFor(tokenId);
+    (uint8 tokenType, uint64 maturity, int128 strike64x64) = _parametersFor(tokenId);
     // TODO: verify tokenType
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     // TODO: get spot price now or at maturity
-    int128 spotPrice;
+    int128 spot64x64;
 
-    require(strikePrice > spotPrice, 'Pool: option must be in-the-money');
+    require(strike64x64 > spot64x64, 'Pool: option must be in-the-money');
 
     _burn(msg.sender, tokenId, amount);
 
-    int128 value64x64 = strikePrice.sub(spotPrice).mul(ABDKMath64x64.fromUInt(amount));
+    int128 value64x64 = strike64x64.sub(spot64x64).mul(ABDKMath64x64.fromUInt(amount));
 
     // TODO: convert base value to underlying value
     _push(l.underlying, _fixedToWei(value64x64, l.underlyingDecimals));
@@ -184,16 +184,16 @@ contract Pool is OwnableInternal, ERC1155Base {
    * @notice calculate ERC1155 token id for given option parameters
    * @param tokenType TODO
    * @param maturity timestamp of option maturity
-   * @param strikePrice option strike price
+   * @param strike64x64 64x64 fixed point representation of strike price
    * @return tokenId token id
    */
   function _tokenIdFor (
     uint8 tokenType,
     uint64 maturity,
-    int128 strikePrice
+    int128 strike64x64
   ) internal pure returns (uint256 tokenId) {
     assembly {
-      tokenId := add(strikePrice, add(shl(128, maturity), shl(248, tokenType)))
+      tokenId := add(strike64x64, add(shl(128, maturity), shl(248, tokenType)))
     }
   }
 
@@ -202,15 +202,15 @@ contract Pool is OwnableInternal, ERC1155Base {
    * @param tokenId token id
    * @return tokenType TODO
    * @return maturity timestamp of option maturity
-   * @return strikePrice option strike price
+   * @return strike64x64 option strike price
    */
   function _parametersFor (
     uint256 tokenId
-  ) internal pure returns (uint8 tokenType, uint64 maturity, int128 strikePrice) {
+  ) internal pure returns (uint8 tokenType, uint64 maturity, int128 strike64x64) {
     assembly {
       tokenType := shr(248, tokenId)
       maturity := shr(128, tokenId)
-      strikePrice := tokenId
+      strike64x64 := tokenId
     }
   }
 
