@@ -430,7 +430,8 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
             if (address(premiaMining) != address(0)) {
                 for (uint256 j=0; j < _deposits[i].pairs.length; j++) {
                     address token = _deposits[i].pairs[j].useToken ? _deposits[i].pairs[j].token : _deposits[i].pairs[j].denominator;
-                    premiaMining.deposit(msg.sender, token, _deposits[i].amounts[j], _deposits[i].lockExpiration);
+                    IPremiaMiningV2.Pair memory miningPair = IPremiaMiningV2.Pair(_deposits[i].pairs[j].token, _deposits[i].pairs[j].denominator, _deposits[i].pairs[j].useToken);
+                    premiaMining.deposit(msg.sender, miningPair, _deposits[i].amounts[j], _deposits[i].lockExpiration);
                 }
             }
         }

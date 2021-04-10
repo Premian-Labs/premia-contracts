@@ -510,6 +510,13 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         uint256 unlockedDenominator;
 
         while (expiration < block.timestamp) {
+            PoolInfo memory pInfo = poolInfos[_token][_denominator][expiration];
+
+            // ToDo : See if we do a separate function for pool unwinding
+            if (!pInfo.isUnwinded) {
+                _unwindPool(_token, _denominator, expiration);
+            }
+
             UserInfo storage uInfo = userInfos[_user][_token][_denominator][expiration];
 
             // ToDo : What can we clean from UserInfo ?
@@ -576,14 +583,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     function withdrawExpiredFrom(address _from, TokenPair[] memory _pairs) external onlyController nonReentrant {
         for (uint256 i = 0; i < _pairs.length; i++) {
-
-            PoolInfo memory pInfo = poolInfos[_from][_pairs[i].token][_pairs[i].denominator];
-
-            // ToDo : See if we do a separate function for pool unwinding
-            if (!pInfo.isUnwinded) {
-                _unwindPool(_pairs[i].token, _pairs[i].denominator);
-            }
-
             // ToDo : Check this
             (uint256 tokenAmount, uint256 denominatorAmount) = _unlockExpired(_from, _pairs[i].token, _pairs[i].denominator);
 

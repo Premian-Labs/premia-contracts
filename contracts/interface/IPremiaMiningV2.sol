@@ -3,5 +3,11 @@
 pragma solidity ^0.8.0;
 
 interface IPremiaMiningV2 {
-    function deposit(address _user, address _token, uint256 _amount, uint256 _lockExpiration) external;
+    struct Pair {
+        address token;
+        address denominator;
+        bool useToken;
+    }
+
+    function deposit(address _user, Pair memory _pair, uint256 _amount, uint256 _lockExpiration) external;
 }

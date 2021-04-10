@@ -6,20 +6,23 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
 import "../interface/IPremiaAMM.sol";
 import "../interface/IPoolControllerChild.sol";
 
 contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
     using SafeERC20 for IERC20;
-    using EnumerableSet for EnumerableSet.AddressSet;
 
     IPremiaAMM public controller;
     IERC20 public premia;
 
-    struct PoolInfo {
+    struct Pair {
         address token;
+        address denominator;
+        bool useToken;
+    }
+
+    struct PoolInfo {
         uint256 allocPoints;
         uint256 totalScore;
         uint256 smallestExpiration;
@@ -63,20 +66,19 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     uint256 totalAllocPoints;
 
-    // Addresses allowed to set referrers
-    EnumerableSet.AddressSet private _poolTokens;
+    Pair[] public pairs;
 
-    // Info of each pool.
-    mapping(address => PoolInfo) public poolInfo;
+    // Info of each pool. (Token -> Denominator -> useToken)
+    mapping(address => mapping(address => mapping(bool => PoolInfo))) public poolInfo;
 
-    // Pool token -> User -> UserInfo
-    mapping(address => mapping(address => UserInfo)) public userInfo;
+    // User -> Pool token -> Pool denominator -> useToken -> UserInfo
+    mapping(address => mapping(address => mapping(address => mapping(bool => UserInfo)))) public userInfo;
 
-    // Pool token -> User -> Expiration -> Score
-    mapping(address => mapping(address => mapping(uint256 => uint256))) public userScore;
+    // User -> Pool token -> Pool denominator -> useToken -> Expiration -> Score
+    mapping(address => mapping(address => mapping(address => mapping(bool => mapping(uint256 => uint256))))) public userScore;
 
-    // Pool token -> Expiration -> PoolExpInfo
-    mapping(address => mapping(uint256 => PoolExpInfo)) public poolExpInfo;
+    // Pool token -> Pool denominator -> useToken -> Expiration -> PoolExpInfo
+    mapping(address => mapping(address => mapping(bool => mapping(uint256 => PoolExpInfo)))) public poolExpInfo;
 
     ////////////
     // Events //
@@ -84,9 +86,9 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     event PremiaAdded(uint256 amount);
     event ControllerUpdated(address indexed newController);
-    event Deposit(address indexed user, address indexed token, uint256 amount);
-    event Harvest(address indexed user, address indexed token, uint256 amount);
-    event PoolSet(address indexed token, uint256 allocPoints);
+    event Deposit(address indexed user, address indexed token, address indexed denominator, bool useToken, uint256 amount);
+    event Harvest(address indexed user, address indexed token, address indexed denominator, bool useToken, uint256 amount);
+    event PoolSet(address indexed token, address indexed denominator, uint256 allocPoints);
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
@@ -118,35 +120,52 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
     // Admin //
     ///////////
 
-    function addPool(address _token, uint256 _allocPoints, bool _withUpdate) external onlyOwner {
-        require(!_poolTokens.contains(_token), "Pool already exists for token");
+    function addPool(address _token, address _denominator, uint256 _allocPoints, bool _withUpdate) external onlyOwner {
+        require(poolInfo[_token][_denominator][true].lastUpdate == 0, "Pool already exists for token");
         if (_withUpdate) {
             massUpdatePools();
         }
 
-        poolInfo[_token] = PoolInfo({
-        token: _token,
-        allocPoints: _allocPoints,
-        totalScore: 0,
-        smallestExpiration: 0,
-        lastUpdate: block.timestamp,
-        accPremiaPerShare: 0
+        uint256 halfAllocPoints = _allocPoints / 2;
+
+        poolInfo[_token][_denominator][true] = PoolInfo({
+            allocPoints: halfAllocPoints,
+            totalScore: 0,
+            smallestExpiration: 0,
+            lastUpdate: block.timestamp,
+            accPremiaPerShare: 0
         });
 
-        _poolTokens.add(_token);
+        poolInfo[_token][_denominator][false] = PoolInfo({
+            allocPoints: halfAllocPoints,
+            totalScore: 0,
+            smallestExpiration: 0,
+            lastUpdate: block.timestamp,
+            accPremiaPerShare: 0
+        });
 
-        totalAllocPoints += _allocPoints;
-        emit PoolSet(_token, _allocPoints);
+        // useToken field does not matter here
+        pairs.push(Pair(_token, _denominator, false));
+
+        // We use halfAllocPoints in case there has been rounding
+        totalAllocPoints += (halfAllocPoints * 2);
+
+        emit PoolSet(_token, _denominator, _allocPoints);
     }
 
-    function setPool(address _token, uint256 _allocPoints, bool _withUpdate) external onlyOwner {
+    function setPool(address _token, address _denominator, uint256 _allocPoints, bool _withUpdate) external onlyOwner {
         if (_withUpdate) {
             massUpdatePools();
         }
 
-        totalAllocPoints = totalAllocPoints - poolInfo[_token].allocPoints + _allocPoints;
-        poolInfo[_token].allocPoints = _allocPoints;
-        emit PoolSet(_token, _allocPoints);
+        uint256 halfAllocPoints = _allocPoints / 2;
+
+        // We use halfAllocPoints in case there has been rounding
+        totalAllocPoints = totalAllocPoints - (poolInfo[_token][_denominator][true].allocPoints * 2) + (halfAllocPoints * 2);
+        poolInfo[_token][_denominator][true].allocPoints = halfAllocPoints;
+        poolInfo[_token][_denominator][false].allocPoints = halfAllocPoints;
+
+        emit PoolSet(_token, _denominator, _allocPoints);
     }
 
     function upgradeController(address _newController) external override {
@@ -166,27 +185,28 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     // Update reward variables for all pools. Be careful of gas spending!
     function massUpdatePools() public {
-        for (uint256 i = 0; i < _poolTokens.length(); ++i) {
-            updatePool(_poolTokens.at(i));
+        for (uint256 i = 0; i < pairs.length; ++i) {
+            updatePool(Pair(pairs[i].token, pairs[i].denominator, true));
+            updatePool(Pair(pairs[i].token, pairs[i].denominator, false));
         }
     }
 
-    /// @notice Get the list of pool tokens addresses
-    /// @return The list of pool tokens addresses
-    function getPoolTokens() external view returns(address[] memory) {
-        uint256 length = _poolTokens.length();
-        address[] memory result = new address[](length);
+    /// @notice Get the list of pool pairs
+    /// @return The list of pool pairs
+    function getPairs() external view returns(Pair[] memory) {
+        uint256 length = pairs.length;
+        Pair[] memory result = new Pair[](length);
 
         for (uint256 i=0; i < length; i++) {
-            result[i] = _poolTokens.at(i);
+            result[i] = pairs[i];
         }
 
         return result;
     }
 
-    function pendingReward(address _user, address _token) external view returns (uint256) {
-        PoolInfo memory pInfo = poolInfo[_token];
-        UserInfo memory uInfo = userInfo[_token][_user];
+    function pendingReward(address _user, Pair memory _pair) external view returns (uint256) {
+        PoolInfo memory pInfo = poolInfo[_pair.token][_pair.denominator][_pair.useToken];
+        UserInfo memory uInfo = userInfo[_user][_pair.token][_pair.denominator][_pair.useToken];
 
         uint256 expiration = (pInfo.lastUpdate / _expirationIncrement) * _expirationIncrement + _baseExpiration;
         if (expiration < pInfo.lastUpdate) {
@@ -200,78 +220,80 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
             if (pInfo.totalScore == 0 || uInfo.totalScore == 0) return 0;
 
             uint256 elapsed = block.timestamp - pInfo.lastUpdate;
-            uint256 premiaAmount = _getPremiaAmountMined(_token, elapsed, _totalPremiaRewarded);
+            uint256 premiaAmount = _getPremiaAmountMined(_pair, elapsed, _totalPremiaRewarded);
             _totalPremiaRewarded += premiaAmount;
             _accPremiaPerShare = pInfo.accPremiaPerShare + ((premiaAmount * premiaPerShareMult) / pInfo.totalScore);
 
             return (uInfo.totalScore * _accPremiaPerShare / premiaPerShareMult) - uInfo.rewardDebt;
         }
 
-        _accPremiaPerShare = _getAccPremiaPerShare(_token, expiration);
+        _accPremiaPerShare = _getAccPremiaPerShare(_pair, expiration);
         uint256 totalReward;
 
         totalReward += (_accPremiaPerShare * uInfo.totalScore / premiaPerShareMult) - uInfo.rewardDebt;
         uInfo.rewardDebt = _accPremiaPerShare * uInfo.totalScore / premiaPerShareMult;
 
-        uInfo.totalScore -= userScore[_token][_user][expiration];
-        pInfo.totalScore -= poolExpInfo[_token][expiration].expScore;
+        uInfo.totalScore -= userScore[_user][_pair.token][_pair.denominator][_pair.useToken][expiration];
+        pInfo.totalScore -= poolExpInfo[_pair.token][_pair.denominator][_pair.useToken][expiration].expScore;
 
 
         while (uInfo.totalScore > 0 && (expiration + _expirationIncrement) < block.timestamp) {
             expiration += _expirationIncrement;
 
-            _accPremiaPerShare = _getAccPremiaPerShare(_token, expiration);
+            _accPremiaPerShare = _getAccPremiaPerShare(_pair, expiration);
             totalReward += (_accPremiaPerShare * uInfo.totalScore / premiaPerShareMult) - uInfo.rewardDebt;
             uInfo.rewardDebt = _accPremiaPerShare * uInfo.totalScore / premiaPerShareMult;
 
-            uInfo.totalScore -= userScore[_token][_user][expiration];
-            pInfo.totalScore -= poolExpInfo[_token][expiration].expScore;
+            uInfo.totalScore -= userScore[_user][_pair.token][_pair.denominator][_pair.useToken][expiration];
+            pInfo.totalScore -= poolExpInfo[_pair.token][_pair.denominator][_pair.useToken][expiration].expScore;
         }
 
         if (uInfo.totalScore > 0) {
-            _accPremiaPerShare = _getAccPremiaPerShare(_token, block.timestamp);
+            _accPremiaPerShare = _getAccPremiaPerShare(_pair, block.timestamp);
             totalReward += (_accPremiaPerShare * uInfo.totalScore / premiaPerShareMult) - uInfo.rewardDebt;
         }
 
         return totalReward;
     }
 
-    function updatePool(address _token) public {
-        PoolInfo storage pInfo = poolInfo[_token];
+    function updatePool(Pair memory _pair) public {
+        PoolInfo storage pInfo = poolInfo[_pair.token][_pair.denominator][_pair.useToken];
 
         if (pInfo.smallestExpiration != 0 && block.timestamp > pInfo.smallestExpiration) {
             while (pInfo.smallestExpiration <= block.timestamp) {
-                _updateUntil(_token, pInfo.smallestExpiration);
-                pInfo.totalScore -= poolExpInfo[_token][pInfo.smallestExpiration].expScore;
-                poolExpInfo[_token][pInfo.smallestExpiration].expAccPremiaPerShare = pInfo.accPremiaPerShare;
+                _updateUntil(_pair, pInfo.smallestExpiration);
+                PoolExpInfo storage pExpInfo = poolExpInfo[_pair.token][_pair.denominator][_pair.useToken][pInfo.smallestExpiration];
+
+                pInfo.totalScore -= pExpInfo.expScore;
+                pExpInfo.expAccPremiaPerShare = pInfo.accPremiaPerShare;
                 pInfo.smallestExpiration += _expirationIncrement;
             }
         }
 
         if (pInfo.smallestExpiration != block.timestamp) {
-            _updateUntil(_token, block.timestamp);
+            _updateUntil(_pair, block.timestamp);
         }
     }
 
 
-    function deposit(address _user, address _token, uint256 _amount, uint256 _lockExpiration) external onlyController nonReentrant {
-        updatePool(_token);
+    function deposit(address _user, Pair memory _pair, uint256 _amount, uint256 _lockExpiration) external onlyController nonReentrant {
+        updatePool(_pair);
 
-        PoolInfo storage pInfo = poolInfo[_token];
-        UserInfo storage uInfo = userInfo[_token][_user];
+        PoolInfo storage pInfo = poolInfo[_pair.token][_pair.denominator][_pair.useToken];
+        UserInfo storage uInfo = userInfo[_user][_pair.token][_pair.denominator][_pair.useToken];
 
         if (uInfo.totalScore > 0) {
             // Pool already updated so we dont need to update it again
-            _harvest(_user, _token, false);
+            _harvest(_user, _pair, false);
         }
 
         uint256 multiplier = _inverseBasisPoint + ((_lockExpiration - block.timestamp) * maxScoreMultiplier / _maxExpiration);
         uint256 score = _amount * multiplier / _inverseBasisPoint;
 
-        userScore[_token][_user][_lockExpiration] += score;
+        userScore[_user][_pair.token][_pair.denominator][_pair.useToken][_lockExpiration] += score;
         uInfo.totalScore += score;
 
-        poolExpInfo[_token][_lockExpiration].expScore += score;
+        poolExpInfo[_pair.token][_pair.denominator][_pair.useToken][_lockExpiration].expScore += score;
         pInfo.totalScore += score;
 
         if (pInfo.smallestExpiration == 0 || _lockExpiration < pInfo.smallestExpiration) {
@@ -280,12 +302,12 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
 
         uInfo.rewardDebt = uInfo.totalScore * pInfo.accPremiaPerShare / premiaPerShareMult;
 
-        emit Deposit(_user, _token, _amount);
+        emit Deposit(_user, _pair.token, _pair.denominator, _pair.useToken, _amount);
     }
 
-    function harvest(address[] memory _tokens) external nonReentrant {
-        for (uint256 i=0; i < _tokens.length; i++) {
-            _harvest(msg.sender, _tokens[i], true);
+    function harvest(Pair[] memory _pairs) external nonReentrant {
+        for (uint256 i=0; i < _pairs.length; i++) {
+            _harvest(msg.sender, _pairs[i], true);
         }
     }
 
@@ -293,14 +315,14 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
     // Internal //
     //////////////
 
-    function _updateUntil(address _token, uint256 _timestamp) internal {
-        PoolInfo storage pInfo = poolInfo[_token];
+    function _updateUntil(Pair memory _pair, uint256 _timestamp) internal {
+        PoolInfo storage pInfo = poolInfo[_pair.token][_pair.denominator][_pair.useToken];
 
         if (_timestamp <= pInfo.lastUpdate) return;
 
         if (pInfo.totalScore > 0) {
             uint256 elapsed = _timestamp - pInfo.lastUpdate;
-            uint256 premiaAmount = _getPremiaAmountMined(_token, elapsed, totalPremiaRewarded);
+            uint256 premiaAmount = _getPremiaAmountMined(_pair, elapsed, totalPremiaRewarded);
 
             pInfo.accPremiaPerShare += ((premiaAmount * premiaPerShareMult) / pInfo.totalScore);
             totalPremiaRewarded += premiaAmount;
@@ -309,15 +331,15 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
         pInfo.lastUpdate = _timestamp;
     }
 
-    function _harvest(address _user, address _token, bool _updatePool) internal {
+    function _harvest(address _user, Pair memory _pair, bool _updatePool) internal {
         if (_updatePool) {
-            updatePool(_token);
+            updatePool(_pair);
         }
 
-        UserInfo storage uInfo = userInfo[_token][_user];
+        UserInfo storage uInfo = userInfo[_user][_pair.token][_pair.denominator][_pair.useToken];
 
         // Harvest reward
-        uint256 accAmount = uInfo.totalScore * poolInfo[_token].accPremiaPerShare / premiaPerShareMult;
+        uint256 accAmount = uInfo.totalScore * poolInfo[_pair.token][_pair.denominator][_pair.useToken].accPremiaPerShare / premiaPerShareMult;
         uint256 rewardAmount = accAmount - uInfo.rewardDebt;
         if (rewardAmount > 0) {
             _safePremiaTransfer(_user, rewardAmount);
@@ -325,7 +347,7 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
 
         uInfo.rewardDebt = accAmount;
 
-        emit Harvest(_user, _token, rewardAmount);
+        emit Harvest(_user, _pair.token, _pair.denominator, _pair.useToken, rewardAmount);
     }
 
     /// @notice Safe premia transfer function, just in case if rounding error causes contract to not have enough PREMIAs.
@@ -340,29 +362,29 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
         }
     }
 
-    function _getAccPremiaPerShare(address _token, uint256 _expiration) public view returns(uint256) {
-        PoolInfo memory pInfo = poolInfo[_token];
+    function _getAccPremiaPerShare(Pair memory _pair, uint256 _expiration) public view returns(uint256) {
+        PoolInfo memory pInfo = poolInfo[_pair.token][_pair.denominator][_pair.useToken];
 
         if (_expiration <= pInfo.lastUpdate) {
-            return poolExpInfo[_token][_expiration].expAccPremiaPerShare;
+            return poolExpInfo[_pair.token][_pair.denominator][_pair.useToken][_expiration].expAccPremiaPerShare;
         } else {
             uint256 _totalPremiaRewarded = totalPremiaRewarded;
 
             while (pInfo.smallestExpiration <= _expiration && pInfo.totalScore > 0) {
                 uint256 elapsed = pInfo.smallestExpiration - pInfo.lastUpdate;
-                uint256 premiaAmount = _getPremiaAmountMined(_token, elapsed, _totalPremiaRewarded);
+                uint256 premiaAmount = _getPremiaAmountMined(_pair, elapsed, _totalPremiaRewarded);
                 _totalPremiaRewarded += premiaAmount;
 
                 pInfo.accPremiaPerShare += ((premiaAmount * premiaPerShareMult) / pInfo.totalScore);
 
-                pInfo.totalScore -= poolExpInfo[_token][pInfo.smallestExpiration].expScore;
+                pInfo.totalScore -= poolExpInfo[_pair.token][_pair.denominator][_pair.useToken][pInfo.smallestExpiration].expScore;
                 pInfo.lastUpdate = pInfo.smallestExpiration;
                 pInfo.smallestExpiration += _expirationIncrement;
             }
 
             if (pInfo.smallestExpiration != _expiration && pInfo.totalScore > 0) {
                 uint256 elapsed = _expiration - pInfo.lastUpdate;
-                uint256 premiaAmount = _getPremiaAmountMined(_token, elapsed, _totalPremiaRewarded);
+                uint256 premiaAmount = _getPremiaAmountMined(_pair, elapsed, _totalPremiaRewarded);
                 _totalPremiaRewarded += premiaAmount;
 
                 pInfo.accPremiaPerShare += ((premiaAmount * premiaPerShareMult) / pInfo.totalScore);
@@ -372,8 +394,8 @@ contract PremiaMiningV2 is Ownable, ReentrancyGuard, IPoolControllerChild {
         }
     }
 
-    function _getPremiaAmountMined(address _token, uint256 _elapsed, uint256 _totalPremiaRewarded) internal view returns(uint256) {
-        uint256 premiaAmount = premiaPerDay * poolInfo[_token].allocPoints * _elapsed / (3600 * 24) / totalAllocPoints;
+    function _getPremiaAmountMined(Pair memory _pair, uint256 _elapsed, uint256 _totalPremiaRewarded) internal view returns(uint256) {
+        uint256 premiaAmount = premiaPerDay * poolInfo[_pair.token][_pair.denominator][_pair.useToken].allocPoints * _elapsed / (3600 * 24) / totalAllocPoints;
 
         if (premiaAmount > totalPremiaAdded - _totalPremiaRewarded) {
             premiaAmount = totalPremiaAdded - _totalPremiaRewarded;

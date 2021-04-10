@@ -73,9 +73,11 @@ describe('PremiaLiquidityPool', () => {
       premia.address,
     );
 
+    await longPool.setMaxDepositExpiration(365 * 24 * 3600);
+    await shortPool.setMaxDepositExpiration(365 * 24 * 3600);
     await controller.setPremiaMining(mining.address);
-    await mining.setPool(token2.address, 1000, false);
-    await mining.setPool(token1.address, 1000, false);
+    await mining.setPool(token2.address, dai.address, 1000, false);
+    await mining.setPool(token1.address, dai.address, 1000, false);
     await premia.mint(admin.address, parseEther('1000000'));
     await premia.connect(admin).approve(mining.address, parseEther('1000000'));
     await mining.connect(admin).addRewards(parseEther('1000000'));
@@ -214,7 +216,7 @@ describe('PremiaLiquidityPool', () => {
             lockExpiration: nextExpiration + 55 * oneWeek,
           },
         ]),
-      ).revertedWith('Exp > max exp');
+      ).revertedWith('Exp > max option exp');
       await expect(
         controller.connect(user1).depositLiquidity([
           {
@@ -332,16 +334,15 @@ describe('PremiaLiquidityPool', () => {
       const now = new Date().getTime() / 1000;
       await setTimestamp(now + 4 * 3600 * 24);
 
-      await mining.connect(user1).harvest([token1.address]);
-      await mining.connect(user1).harvest([token2.address]);
+      await mining.connect(user1).harvest([
+        { token: token1.address, denominator: dai.address, useToken: true },
+        { token: token2.address, denominator: dai.address, useToken: true },
+      ]);
 
       let user1PremiaBal = await premia.balanceOf(user1.address);
       let user2PremiaBal = await premia.balanceOf(user2.address);
 
-      expect(
-        user1PremiaBal.gt(parseEther('39995')) &&
-          user1PremiaBal.lt(parseEther('40000')),
-      ).to.be.true;
+      expect(Number(formatEther(user1PremiaBal))).to.almost(20000, 2);
 
       await controller.connect(user2).depositLiquidity([
         {
@@ -363,15 +364,18 @@ describe('PremiaLiquidityPool', () => {
         },
       ]);
 
-      const tokenTotalScore = (await mining.poolInfo(token1.address))
-        .totalScore;
+      const tokenTotalScore = (
+        await mining.poolInfo(token1.address, dai.address, true)
+      ).totalScore;
       const user1TokenScore = (
-        await mining.userInfo(token1.address, user1.address)
+        await mining.userInfo(user1.address, token1.address, dai.address, true)
       ).totalScore;
 
-      const daiTotalScore = (await mining.poolInfo(token2.address)).totalScore;
+      const daiTotalScore = (
+        await mining.poolInfo(token2.address, dai.address, true)
+      ).totalScore;
       const user1DaiScore = (
-        await mining.userInfo(token2.address, user1.address)
+        await mining.userInfo(user1.address, token2.address, dai.address, true)
       ).totalScore;
 
       await setTimestamp(now + 8 * 3600 * 24);
@@ -382,14 +386,20 @@ describe('PremiaLiquidityPool', () => {
       const multDai =
         Number(formatEther(user1DaiScore)) / Number(formatEther(daiTotalScore));
 
-      let user1TokenTargetBal = 20000 * multToken;
-      let user2TokenTargetBal = 20000 * (1 - multToken);
+      let user1TokenTargetBal = 10000 * multToken;
+      let user2TokenTargetBal = 10000 * (1 - multToken);
 
-      let user1DaiTargetBal = 20000 * multDai;
-      let user2DaiTargetBal = 20000 * (1 - multDai);
+      let user1DaiTargetBal = 10000 * multDai;
+      let user2DaiTargetBal = 10000 * (1 - multDai);
 
-      await mining.connect(user1).harvest([token1.address, token2.address]);
-      await mining.connect(user2).harvest([token1.address, token2.address]);
+      await mining.connect(user1).harvest([
+        { token: token1.address, denominator: dai.address, useToken: true },
+        { token: token2.address, denominator: dai.address, useToken: true },
+      ]);
+      await mining.connect(user2).harvest([
+        { token: token1.address, denominator: dai.address, useToken: true },
+        { token: token2.address, denominator: dai.address, useToken: true },
+      ]);
 
       const user1PremiaBalBak = user1PremiaBal;
 
@@ -431,31 +441,29 @@ describe('PremiaLiquidityPool', () => {
       const now = new Date().getTime() / 1000;
       await setTimestamp(now + 4 * 3600 * 24);
 
-      let user1TokenBal = await mining.pendingReward(
-        user1.address,
-        token1.address,
-      );
-      let user2TokenBal = await mining.pendingReward(
-        user2.address,
-        token1.address,
-      );
-      let user1DaiBal = await mining.pendingReward(
-        user1.address,
-        token2.address,
-      );
-      let user2DaiBal = await mining.pendingReward(
-        user2.address,
-        token2.address,
-      );
+      let user1TokenBal = await mining.pendingReward(user1.address, {
+        token: token1.address,
+        denominator: dai.address,
+        useToken: true,
+      });
+      let user2TokenBal = await mining.pendingReward(user2.address, {
+        token: token1.address,
+        denominator: dai.address,
+        useToken: true,
+      });
+      let user1DaiBal = await mining.pendingReward(user1.address, {
+        token: token2.address,
+        denominator: dai.address,
+        useToken: true,
+      });
+      let user2DaiBal = await mining.pendingReward(user2.address, {
+        token: token2.address,
+        denominator: dai.address,
+        useToken: true,
+      });
 
-      expect(
-        user1TokenBal.gt(parseEther('19995')) &&
-          user1TokenBal.lt(parseEther('20000')),
-      ).to.be.true;
-      expect(
-        user1DaiBal.gt(parseEther('19995')) &&
-          user1DaiBal.lt(parseEther('20000')),
-      ).to.be.true;
+      expect(Number(formatEther(user1TokenBal))).to.almost(10000, 1);
+      expect(Number(formatEther(user1DaiBal))).to.almost(10000, 1);
 
       await controller.connect(user2).depositLiquidity([
         {
@@ -477,15 +485,18 @@ describe('PremiaLiquidityPool', () => {
         },
       ]);
 
-      const tokenTotalScore = (await mining.poolInfo(token1.address))
-        .totalScore;
+      const tokenTotalScore = (
+        await mining.poolInfo(token1.address, dai.address, true)
+      ).totalScore;
       const user1TokenScore = (
-        await mining.userInfo(token1.address, user1.address)
+        await mining.userInfo(user1.address, token1.address, dai.address, true)
       ).totalScore;
 
-      const daiTotalScore = (await mining.poolInfo(token2.address)).totalScore;
+      const daiTotalScore = (
+        await mining.poolInfo(token2.address, dai.address, true)
+      ).totalScore;
       const user1DaiScore = (
-        await mining.userInfo(token2.address, user1.address)
+        await mining.userInfo(user1.address, token2.address, dai.address, true)
       ).totalScore;
 
       await setTimestamp(now + 8 * 3600 * 24);
@@ -497,17 +508,33 @@ describe('PremiaLiquidityPool', () => {
         Number(formatEther(user1DaiScore)) / Number(formatEther(daiTotalScore));
 
       let user1TokenTargetBal =
-        Number(formatEther(user1TokenBal)) + 20000 * multToken;
-      let user2TokenTargetBal = 20000 * (1 - multToken);
+        Number(formatEther(user1TokenBal)) + 10000 * multToken;
+      let user2TokenTargetBal = 10000 * (1 - multToken);
 
       let user1DaiTargetBal =
-        Number(formatEther(user1DaiBal)) + 20000 * multDai;
-      let user2DaiTargetBal = 20000 * (1 - multDai);
+        Number(formatEther(user1DaiBal)) + 10000 * multDai;
+      let user2DaiTargetBal = 10000 * (1 - multDai);
 
-      user1TokenBal = await mining.pendingReward(user1.address, token1.address);
-      user2TokenBal = await mining.pendingReward(user2.address, token1.address);
-      user1DaiBal = await mining.pendingReward(user1.address, token2.address);
-      user2DaiBal = await mining.pendingReward(user2.address, token2.address);
+      user1TokenBal = await mining.pendingReward(user1.address, {
+        token: token1.address,
+        denominator: dai.address,
+        useToken: true,
+      });
+      user2TokenBal = await mining.pendingReward(user2.address, {
+        token: token1.address,
+        denominator: dai.address,
+        useToken: true,
+      });
+      user1DaiBal = await mining.pendingReward(user1.address, {
+        token: token2.address,
+        denominator: dai.address,
+        useToken: true,
+      });
+      user2DaiBal = await mining.pendingReward(user2.address, {
+        token: token2.address,
+        denominator: dai.address,
+        useToken: true,
+      });
 
       expect(Number(formatEther(user1TokenBal))).to.almost.eq(
         user1TokenTargetBal,
@@ -537,44 +564,57 @@ describe('PremiaLiquidityPool', () => {
           lockExpiration: nextExpiration + oneWeek * 50,
         },
       ]);
-      await mining.connect(admin).setPool(token2.address, 0, false);
+      await mining
+        .connect(admin)
+        .setPool(token2.address, dai.address, 0, false);
 
       const now = new Date().getTime() / 1000;
 
-      await setTimestamp(now + 110 * 3600 * 24);
+      await setTimestamp(now + 210 * 3600 * 24);
 
-      let amount = await mining.pendingReward(user1.address, token1.address);
+      let amount = await mining.pendingReward(user1.address, {
+        token: token1.address,
+        denominator: dai.address,
+        useToken: true,
+      });
 
-      expect(
-        amount.gt(parseEther('999999.99')) && amount.lte(parseEther('1000000')),
-      ).to.be.true;
+      expect(Number(formatEther(amount))).to.almost.eq(1000000);
 
-      await mining.connect(user1).harvest([token1.address]);
+      await mining.connect(user1).harvest([
+        {
+          token: token1.address,
+          denominator: dai.address,
+          useToken: true,
+        },
+      ]);
 
       amount = await premia.balanceOf(user1.address);
 
-      expect(
-        amount.gt(parseEther('999999.99')) && amount.lte(parseEther('1000000')),
-      ).to.be.true;
+      expect(Number(formatEther(amount))).to.almost.eq(1000000);
 
       await premia.mint(admin.address, parseEther('200000'));
       await premia.connect(admin).approve(mining.address, parseEther('200000'));
       await mining.connect(admin).addRewards(parseEther('200000'));
 
-      await setTimestamp(now + 131 * 3600 * 24);
+      await setTimestamp(now + 251 * 3600 * 24);
 
-      amount = await mining.pendingReward(user1.address, token1.address);
-      expect(
-        amount.gt(parseEther('199999.99')) && amount.lte(parseEther('200000')),
-      ).to.be.true;
+      amount = await mining.pendingReward(user1.address, {
+        token: token1.address,
+        denominator: dai.address,
+        useToken: true,
+      });
+      expect(Number(formatEther(amount))).to.almost.eq(200000);
 
-      await mining.connect(user1).harvest([token1.address]);
+      await mining.connect(user1).harvest([
+        {
+          token: token1.address,
+          denominator: dai.address,
+          useToken: true,
+        },
+      ]);
       amount = await premia.balanceOf(user1.address);
 
-      expect(
-        amount.gt(parseEther('1199999.99')) &&
-          amount.lte(parseEther('1200000')),
-      ).to.be.true;
+      expect(Number(formatEther(amount))).to.almost.eq(1200000);
     });
   });
 });
