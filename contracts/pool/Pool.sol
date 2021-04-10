@@ -21,6 +21,14 @@ contract Pool is OwnableInternal, ERC1155Base {
 
   enum TokenType { OPTION, LIQUIDITY }
 
+  address private immutable WETH_ADDRESS;
+
+  constructor (
+    address weth
+  ) {
+    WETH_ADDRESS = weth;
+  }
+
   /**
    * @notice get address of PairProxy contract
    * @return pair address
@@ -77,7 +85,7 @@ contract Pool is OwnableInternal, ERC1155Base {
    */
   function deposit (
     uint256 amount
-  ) external returns (uint256 share) {
+  ) external payable returns (uint256 share) {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     // TODO: multiply by decimals
@@ -141,7 +149,7 @@ contract Pool is OwnableInternal, ERC1155Base {
     int128 strike64x64,
     uint256 amount,
     uint256 maxCost
-  ) external returns (uint256 cost) {
+  ) external payable returns (uint256 cost) {
     // TODO: maturity must be integer number of calendar days
     // TODO: specify payment currency
     // TODO: reserve liquidity
@@ -267,11 +275,18 @@ contract Pool is OwnableInternal, ERC1155Base {
     address token,
     uint256 amount
   ) internal {
-    // TODO: convert ETH to WETH if applicable
+    if (token == WETH_ADDRESS) {
+      amount -= msg.value;
+      // TODO: wrap ETH
+    } else {
+      require(msg.value == 0, 'Pool: function is payable only if deposit token is WETH');
+    }
 
-    require(
-      IERC20(token).transferFrom(msg.sender, address(this), amount),
-      'Pool: ERC20 transfer failed'
-    );
+    if (amount > 0) {
+      require(
+        IERC20(token).transferFrom(msg.sender, address(this), amount),
+        'Pool: ERC20 transfer failed'
+      );
+    }
   }
 }

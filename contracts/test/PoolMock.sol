@@ -12,6 +12,8 @@ import '../pool/Pool.sol';
 contract PoolMock is Pool {
   using ERC165Storage for ERC165Storage.Layout;
 
+  constructor () Pool(address(0)) {}
+
   function tokenIdFor (
     TokenType tokenType,
     uint64 maturity,
