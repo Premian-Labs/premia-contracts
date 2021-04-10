@@ -6,7 +6,7 @@ import '@solidstate/contracts/access/OwnableInternal.sol';
 import '@solidstate/contracts/token/ERC20/IERC20.sol';
 import '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
 
-import '../pair/Pair.sol';
+import '../pair/IPair.sol';
 import './PoolStorage.sol';
 
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
@@ -48,7 +48,7 @@ contract Pool is OwnableInternal, ERC1155Base {
     int128 oldLiquidity64x64 = l.liquidity64x64;
     int128 newLiquidity64x64 = oldLiquidity64x64.add(amount64x64);
 
-    int128 variance64x64 = Pair(l.pair).getVariance();
+    int128 variance64x64 = IPair(l.pair).getVariance();
 
     // TODO: fetch
     int128 spot64x64;
