@@ -10,8 +10,6 @@ require('./tasks/deploy.js');
 require('./tasks/accounts.js');
 
 module.exports = {
-  defaultNetwork: process.env.NETWORK,
-
   solidity: {
     version: '0.8.3',
     settings: {
