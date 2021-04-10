@@ -53,8 +53,7 @@ contract Pool is OwnableInternal, ERC1155Base {
     // TODO: fetch
     int128 spot64x64;
 
-    // TODO: convert maturity to timeToMaturity
-    int128 timeToMaturity64x64 = ABDKMath64x64.fromUInt(maturity);
+    int128 timeToMaturity64x64 = ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
 
     price64x64 = OptionMath.quotePrice(
       variance64x64,
