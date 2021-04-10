@@ -19,6 +19,8 @@ import { OptionMath } from '../libraries/OptionMath.sol';
 contract Pool is OwnableInternal, ERC1155Base {
   using ABDKMath64x64 for int128;
 
+  enum TokenType { OPTION, LIQUIDITY }
+
   /**
    * @notice get address of PairProxy contract
    * @return pair address
@@ -148,8 +150,7 @@ contract Pool is OwnableInternal, ERC1155Base {
     price = _fixedToWei(quote(amount, maturity, strike64x64), l.baseDecimals);
     _pull(l.base, price);
 
-    // TODO: tokenType
-    _mint(msg.sender, _tokenIdFor(0, maturity, strike64x64), amount, '');
+    _mint(msg.sender, _tokenIdFor(TokenType.OPTION, maturity, strike64x64), amount, '');
   }
 
   /**
@@ -161,8 +162,8 @@ contract Pool is OwnableInternal, ERC1155Base {
     uint256 tokenId,
     uint256 amount
   ) public {
-    (uint8 tokenType, uint64 maturity, int128 strike64x64) = _parametersFor(tokenId);
-    // TODO: verify tokenType
+    (TokenType tokenType, uint64 maturity, int128 strike64x64) = _parametersFor(tokenId);
+    require(tokenType == TokenType.OPTION, 'Pool: invalid token type');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -181,13 +182,13 @@ contract Pool is OwnableInternal, ERC1155Base {
 
   /**
    * @notice calculate ERC1155 token id for given option parameters
-   * @param tokenType TODO
+   * @param tokenType TokenType enum
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
    * @return tokenId token id
    */
   function _tokenIdFor (
-    uint8 tokenType,
+    TokenType tokenType,
     uint64 maturity,
     int128 strike64x64
   ) internal pure returns (uint256 tokenId) {
@@ -199,13 +200,13 @@ contract Pool is OwnableInternal, ERC1155Base {
   /**
    * @notice derive option maturity and strike price from ERC1155 token id
    * @param tokenId token id
-   * @return tokenType TODO
+   * @return tokenType TokenType enum
    * @return maturity timestamp of option maturity
    * @return strike64x64 option strike price
    */
   function _parametersFor (
     uint256 tokenId
-  ) internal pure returns (uint8 tokenType, uint64 maturity, int128 strike64x64) {
+  ) internal pure returns (TokenType tokenType, uint64 maturity, int128 strike64x64) {
     assembly {
       tokenType := shr(248, tokenId)
       maturity := shr(128, tokenId)
