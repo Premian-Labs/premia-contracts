@@ -22,7 +22,7 @@ module.exports = {
 
   networks: {
     kovan: {
-      url: 'https://kovan.infura.io/v3/'+process.env.INFURA_KEY,
+      url: `${ process.env.KOVAN_URL }`,
       accounts: {
         mnemonic: process.env.MNEMONIC,
       },
