@@ -825,39 +825,30 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         emit LiquidateLoan(_hash, msg.sender, loan.token, loan.denominator, loan.borrowToken, _collateralAmount, rewardFee);
     }
 
-    function buyOption(address _from, address _optionContract, uint256 _optionId, uint256 _amount, uint256 _amountPremium, address _referrer) public nonReentrant onlyController {
-        if (_amount == 0) return;
+    function buyOption(address _from, address _optionContract, IPremiaOption.OptionWriteArgs memory _option, uint256 _amountPremium, address _referrer) public nonReentrant onlyController returns (uint256)  {
+        if (_option.amount == 0) return 0;
         require(permissions[_optionContract].isWhitelistedOptionContract, "Option contract not whitelisted.");
-
-        IPremiaOption.OptionData memory data = IPremiaOption(_optionContract).optionData(_optionId);
 
         address denominator = IPremiaOption(_optionContract).denominator();
 
-        PoolInfo storage pInfo = poolInfos[data.token][denominator][data.expiration];
+        PoolInfo storage pInfo = poolInfos[_option.token][denominator][_option.expiration];
 
         IERC20(denominator).safeTransferFrom(_from, address(this), _amountPremium);
         pInfo.tokenPnl += _amountPremium.toInt256();
 
-        optionsOutstanding[_optionContract][_optionId] += _amount;
+        TokenPair memory pair = TokenPair({token: _option.token, denominator: denominator, useToken: _option.isCall});
+        _subtractLockedAmounts(pair, _option.expiration, _option.amount);
 
-        IPremiaOption.OptionWriteArgs memory writeArgs = IPremiaOption.OptionWriteArgs({
-                amount: _amount,
-                token: data.token,
-                strikePrice: data.strikePrice,
-                expiration: data.expiration,
-                isCall: data.isCall
-        });
+        uint256 optionId = IPremiaOption(_optionContract).writeOption(_option.token, _option, _referrer);
+        _addOptionToList(_option.token, denominator, _option.expiration, OptionId(_optionContract, optionId));
+        IPremiaOption(_optionContract).safeTransferFrom(address(this), _from, optionId, _option.amount, "");
 
-        TokenPair memory pair = TokenPair({token: data.token, denominator: denominator, useToken: data.isCall});
-        _subtractLockedAmounts(pair, data.expiration, _amount);
+        _afterBuyOption(_from, _optionContract, optionId, _option.amount, _amountPremium, _referrer);
+        optionsOutstanding[_optionContract][optionId] += _option.amount;
 
-        _addOptionToList(data.token, denominator, data.expiration, OptionId(_optionContract, _optionId));
-        IPremiaOption(_optionContract).writeOption(data.token, writeArgs, _referrer);
-        IPremiaOption(_optionContract).safeTransferFrom(address(this), _from, _optionId, _amount, "");
+        emit BoughtOption(_from, _optionContract, optionId, _option.amount, denominator, _amountPremium);
 
-        _afterBuyOption(_from, _optionContract, _optionId, _amount, _amountPremium, _referrer);
-
-        emit BoughtOption(_from, _optionContract, _optionId, _amount, denominator, _amountPremium);
+        return optionId;
     }
 
     function _addOptionToList(address _token, address _denominator, uint256 _expiration, OptionId memory _optionId) internal {

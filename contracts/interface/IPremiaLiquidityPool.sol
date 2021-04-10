@@ -116,7 +116,7 @@ interface IPremiaLiquidityPool {
     function repay(bytes32 _hash, uint256 _amount) external returns (uint256);
     function liquidateLoan(Loan memory _loan, uint256 _amount) external;
     function liquidate(bytes32 _hash, uint256 _collateralAmount) external;
-    function buyOption(address _from, address _optionContract, uint256 _optionId, uint256 _amount, uint256 _amountPremium, address _referrer) external;
+    function buyOption(address _from, address _optionContract, IPremiaOption.OptionWriteArgs memory _option, uint256 _amountPremium, address _referrer) external returns (uint256);
     function sellOption(address _from, address _optionContract, uint256 _optionId, uint256 _amount, uint256 _amountPremium) external;
     function unwindOption(address _optionContract, uint256 _optionId) external;
     function unlockCollateralFromOption(address _optionContract, uint256 _optionId, uint256 _amount) external;

@@ -64,7 +64,7 @@ interface IPremiaAMM {
 
     //////////////////////////////////////////////////
 
-    function buy(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _maxPremiumAmount, address _referrer) external;
+    function buy(address _optionContract, IPremiaOption.OptionWriteArgs memory _option, uint256 _maxPremiumAmount, address _referrer) external returns(uint256);
     function sell(address _optionContract, uint256 _optionId, uint256 _amount, uint256 _minPremiumAmount) external;
     function depositLiquidity(DepositArgs[] memory _deposits) external;
     function withdrawExpiredLiquidity(WithdrawExpiredArgs[] memory _withdrawals) external;
