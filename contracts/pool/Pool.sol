@@ -149,9 +149,9 @@ contract Pool is OwnableInternal, ERC1155Base {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    cost = _fixedToWei(quote(amount, maturity, strike64x64), l.baseDecimals);
+    cost = _fixedToWei(quote(maturity, strike64x64, amount), l.baseDecimals);
     require(cost <= maxCost, 'Pool: excessive slippage');
-    _pull(l.base, price);
+    _pull(l.base, cost);
 
     _mint(msg.sender, _tokenIdFor(TokenType.OPTION, maturity, strike64x64), amount, '');
   }
