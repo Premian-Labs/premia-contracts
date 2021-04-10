@@ -30,7 +30,7 @@ contract Pair is IPair, OwnableInternal {
    */
   function getVariance () external override view returns (int128 variance64x64) {
     // TODO: calculate
-    variance64x64 = PairStorage.layout().emavariance;
+    variance64x64 = PairStorage.layout().emaVarianceAnnualized64x64;
   }
 
   /**
@@ -60,11 +60,11 @@ contract Pair is IPair, OwnableInternal {
       OptionMath.rollingEma(l.oldEmaLogReturns64x64, logreturns64x64, l.window)
     );
 
-    l.emavariance = OptionMath.rollingEmaVariance(
-      l.emavariance,
+    l.emaVarianceAnnualized64x64 = OptionMath.rollingEmaVariance(
+      l.emaVarianceAnnualized64x64 / 365,
       l.oldEmaLogReturns64x64,
       logreturns64x64,
       l.window
-    );
+    ) * 365;
   }
 }
