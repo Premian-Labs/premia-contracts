@@ -31,15 +31,15 @@ contract Pool is OwnableInternal, ERC1155Base {
 
   /**
    * @notice calculate price of option contract
-   * @param amount size of option contract
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
+   * @param amount size of option contract
    * @return price64x64 64x64 fixed point representation of option price
    */
   function quote (
-    uint256 amount,
     uint64 maturity,
-    int128 strike64x64
+    int128 strike64x64,
+    uint256 amount
   ) public view returns (int128 price64x64) {
     require(maturity > block.timestamp, 'Pool: maturity must be in the future');
 
@@ -131,23 +131,26 @@ contract Pool is OwnableInternal, ERC1155Base {
 
   /**
    * @notice purchase put option
-   * @param amount size of option contract
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
+   * @param amount size of option contract
+   * @param maxCost maximum acceptable cost after accounting for slippage
    */
   function purchase (
-    uint256 amount,
     uint64 maturity,
-    int128 strike64x64
-  ) external returns (uint256 price) {
+    int128 strike64x64,
+    uint256 amount,
+    uint256 maxCost
+  ) external returns (uint256 cost) {
     // TODO: maturity must be integer number of calendar days
-    // TODO: accept minimum price to prevent slippage
+    // TODO: specify payment currency
     // TODO: reserve liquidity
     // TODO: set C-Level
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    price = _fixedToWei(quote(amount, maturity, strike64x64), l.baseDecimals);
+    cost = _fixedToWei(quote(amount, maturity, strike64x64), l.baseDecimals);
+    require(cost <= maxCost, 'Pool: excessive slippage');
     _pull(l.base, price);
 
     _mint(msg.sender, _tokenIdFor(TokenType.OPTION, maturity, strike64x64), amount, '');
