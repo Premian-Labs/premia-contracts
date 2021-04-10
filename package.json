@@ -23,7 +23,7 @@
     "@solidstate/contracts": "^0.0.6",
     "@solidstate/library": "^0.0.6",
     "@solidstate/spec": "^0.0.6",
-    "abdk-libraries-solidity": "https://github.com/Median-Finance/abdk-libraries-solidity",
+    "abdk-libraries-solidity": "^3.0.0",
     "chai": "^4.3.4",
     "dotenv": "^8.2.0",
     "eslint": "^7.24.0",
