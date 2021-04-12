@@ -17,7 +17,7 @@
   "private": true,
   "repository": "https://github.com/Median-Finance/median-contracts",
   "devDependencies": {
-    "@chainlink/contracts": "0.1.6",
+    "@chainlink/contracts": "^0.1.7",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@solidstate/contracts": "^0.0.6",
