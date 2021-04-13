@@ -12,7 +12,7 @@ import './IPriceConsumer.sol';
  * @dev deployed standalone and connected to Median as diamond facet
  */
 contract PriceConsumer is IPriceConsumer {
-  function getLatestPrice(address _feed) override public view returns (int128) {
+  function getLatestPrice(address _feed) override public view returns (uint80, int128) {
         (
             uint80 roundID,
             int price,
@@ -22,6 +22,6 @@ contract PriceConsumer is IPriceConsumer {
         ) = AggregatorV3Interface(_feed).latestRoundData();
 
         // TODO: convert received price to 64x64 fixed-point representation
-        return ABDKMath64x64.fromInt(price);
+        return (roundID, ABDKMath64x64.fromInt(price));
     }
 }

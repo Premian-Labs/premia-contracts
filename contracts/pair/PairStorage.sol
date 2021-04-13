@@ -16,13 +16,15 @@ library PairStorage {
     uint256 period;
     // number of periods in EMA window
     uint256 window;
-
-    int128 oldPrice64x64;
-    int128 newPrice64x64;
+    uint256 lasttimestamp;
 
     int128 oldEmaLogReturns64x64;
     int128 newEmaLogReturns64x64;
     int128 emaVarianceAnnualized64x64;
+
+    mapping (uint256 => int128) dayToOpeningPrice64x64;
+    mapping (uint256 => int128) dayToClosingPrice64x64;
+    mapping (uint256 => uint256) dayToRoundId;
   }
 
   function layout () internal pure returns (Layout storage l) {
