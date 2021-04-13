@@ -90,7 +90,7 @@ interface IPremiaLiquidityPool {
 
     function getUnwritableAmount(address _optionContract, uint256 _optionId) external view returns (uint256);
     function getWritableAmount(TokenPair memory _pair, uint256 _lockExpiration) external view returns (uint256);
-    function hasWritableAmount(address _token, address _denominator, uint256 _lockExpiration, uint256 _amount) external view returns(bool);
+    function hasWritableAmount(TokenPair memory _pair, uint256 _lockExpiration, uint256 _amount) external view returns(bool);
     function getUnlockableAmount(address _user, address _token, address _denominator) external view returns (uint256 _tokenAmount, uint256 _denominatorAmount);
     function getLoanHash(Loan memory _loan) external pure returns(bytes32);
     function getLoanableAmount(TokenPair memory _pair, uint256 _lockExpiration) external view returns (uint256);

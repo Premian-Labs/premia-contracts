@@ -9,6 +9,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+import '../interface/IERC20Extended.sol';
 import '../interface/IPremiaOption.sol';
 import '../interface/IPremiaLiquidityPool.sol';
 import '../interface/IPriceOracleGetter.sol';
@@ -70,6 +71,9 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         uint256 tokenAmount;
         uint256 denominatorAmount;
 
+        uint256 tokenAmountLocked;
+        uint256 denominatorAmountLocked;
+
         int256 tokenPnl;
         int256 denominatorPnl;
 
@@ -125,10 +129,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     // Oldest potential non-unwinded option in this pool
     // Token -> Denominator -> Timestamp of oldest outstanding option
     mapping(address => mapping(address => uint256)) public oldestOutstandingOption;
-
-    // ToDo : Remove / refactor this to work with new token/denom storage
-    // Token -> Denominator -> Expiration -> Amount
-    mapping(address => mapping(address => mapping(uint256 => uint256))) public amountsLockedByExpirationPerToken;
 
     // optionContract => optionId => amountTokenOutstanding
     mapping(address => mapping(uint256 => uint256)) public optionsOutstanding;
@@ -292,9 +292,9 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
             PoolInfo memory pInfo = poolInfos[_pair.token][_pair.denominator][expiration];
 
             if (_pair.useToken) {
-                writableAmount += pInfo.tokenAmount;
+                writableAmount += pInfo.tokenAmount - pInfo.tokenAmountLocked;
             } else {
-                writableAmount += pInfo.denominatorAmount;
+                writableAmount += pInfo.denominatorAmount - pInfo.denominatorAmountLocked;
             }
 
             expiration += _expirationIncrement;
@@ -304,7 +304,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     }
 
     /// @notice More gas efficient than getWritableAmount, as it stops iteration if amount required is reached
-    function hasWritableAmount(address _token, address _denominator, uint256 _lockExpiration, uint256 _amount) public view returns(bool) {
+    function hasWritableAmount(TokenPair memory _pair, uint256 _lockExpiration, uint256 _amount) public view returns(bool) {
         uint256 expiration = _getNextExpiration();
 
         if (expiration < _lockExpiration) {
@@ -313,7 +313,14 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
         uint256 writableAmount;
         while (expiration <= block.timestamp + _maxExpiration) {
-            writableAmount += amountsLockedByExpirationPerToken[_token][_denominator][expiration];
+            PoolInfo memory pInfo = poolInfos[_pair.token][_pair.denominator][expiration];
+
+            if (_pair.useToken) {
+                writableAmount += pInfo.tokenAmount - pInfo.tokenAmountLocked;
+            } else {
+                writableAmount += pInfo.denominatorAmount - pInfo.denominatorAmountLocked;
+            }
+
             expiration += _expirationIncrement;
 
             if (writableAmount >= _amount) return true;
@@ -525,7 +532,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
             // ToDo : What can we clean from UserInfo ?
             // delete userInfos[_user][_depositToken][_pairedToken][expiration];
 
-            amountsLockedByExpirationPerToken[_token][_denominator][expiration] -= uInfo.tokenAmount;
+            // ToDo : Deal with unlocking of tokens from PoolInfo
             unlockedToken += uInfo.tokenAmount;
             unlockedDenominator += uInfo.denominatorAmount;
             expiration += _expirationIncrement;
@@ -602,45 +609,53 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         }
     }
 
-    // ToDo : Review this
-    function _subtractLockedAmounts(TokenPair memory _pair, uint256 _lockExpiration, uint256 _amount) internal {
-        uint256 expiration = _lockExpiration;
-        uint256 amountLeft = _amount;
+    function _lockTokens(TokenPair memory _pair, uint256 _expiration, uint256 _amount, uint256 _amountPremium) internal {
+        // Add to locked amounts (closest possible >= expiration of option)
+        uint256 amountLeftToLock = _amount;
 
-
-        while (amountLeft > 0 && expiration <= block.timestamp + _maxExpiration) {
-            PoolInfo storage pInfo = poolInfos[_pair.token][_pair.denominator][_lockExpiration];
-
-            uint256 amountLocked;
+        while (_expiration <= block.timestamp + _maxExpiration) {
+            PoolInfo storage pInfo = poolInfos[_pair.token][_pair.denominator][_expiration];
 
             if (_pair.useToken) {
-                amountLocked = pInfo.tokenAmount;
+                uint256 amountUnlocked = pInfo.tokenAmount - pInfo.tokenAmountLocked;
 
-                if (amountLocked > amountLeft) {
-                    pInfo.tokenAmount -= amountLeft;
-                    return;
+                uint256 toLockForExp;
+                if (amountLeftToLock > amountUnlocked) {
+                    toLockForExp = amountUnlocked;
                 } else {
-                    pInfo.tokenAmount = 0;
-                    amountLeft -= amountLocked;
+                    toLockForExp = amountLeftToLock;
                 }
 
-            } else {
-                amountLocked = pInfo.denominatorAmount;
+                amountLeftToLock -= toLockForExp;
 
-                if (amountLocked > amountLeft) {
-                    pInfo.denominatorAmount -= amountLeft;
-                    return;
+                // Distribute the profit from the premium, in a proportional amount to what is locked for this expiration
+                uint256 ratioLocked = toLockForExp * 1e12 / _amount;
+                pInfo.denominatorPnl += (_amountPremium * ratioLocked / 1e12).toInt256();
+
+            }
+            else {
+                uint256 amountUnlocked = pInfo.denominatorAmount - pInfo.denominatorAmountLocked;
+
+                uint256 toLockForExp;
+                if (amountLeftToLock > amountUnlocked) {
+                    toLockForExp = amountUnlocked;
                 } else {
-                    pInfo.denominatorAmount = 0;
-                    amountLeft -= amountLocked;
+                    toLockForExp = amountLeftToLock;
                 }
+
+                amountLeftToLock -= toLockForExp;
+
+                // Distribute the profit from the premium, in a proportional amount to what is locked for this expiration
+                uint256 ratioLocked = toLockForExp * 1e12 / _amount;
+                pInfo.denominatorPnl += (_amountPremium * ratioLocked / 1e12).toInt256();
             }
 
-            expiration += _expirationIncrement;
-        }
+            if (amountLeftToLock == 0) {
+                break;
+            }
 
-        if (amountLeft > 0)
-            revert();
+            _expiration += _expirationIncrement;
+        }
     }
 
     function _lendCapital(Loan memory _loan) internal {
@@ -651,7 +666,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         require(loanableAmount >= _loan.amountBorrow, "Amount too high.");
         require(collateralRequired <= _loan.amountCollateral, "Not enough collateral.");
 
-        _subtractLockedAmounts(pair, _loan.lockExpiration, _loan.amountBorrow);
+        // ToDo : Review this + how to deal with PnL (premium amount for the particular exp from which funds are taken)
+        _lockTokens(pair, _loan.lockExpiration, _loan.amountBorrow, 0);
 
         UserInfo storage uInfo = userInfos[msg.sender][_loan.token][_loan.denominator][_loan.lockExpiration];
         PoolInfo storage pInfo = poolInfos[_loan.token][_loan.denominator][_loan.lockExpiration];
@@ -842,16 +858,23 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         require(permissions[_optionContract].isWhitelistedOptionContract, "Option contract not whitelisted.");
 
         address denominator = IPremiaOption(_optionContract).denominator();
-
-        PoolInfo storage pInfo = poolInfos[_option.token][denominator][_option.expiration];
-
         IERC20(denominator).safeTransferFrom(_from, address(this), _amountPremium);
-        pInfo.tokenPnl += _amountPremium.toInt256();
 
-        TokenPair memory pair = TokenPair({token: _option.token, denominator: denominator, useToken: _option.isCall});
-        _subtractLockedAmounts(pair, _option.expiration, _option.amount);
+        uint256 amountToLock;
 
-        uint256 optionId = IPremiaOption(_optionContract).writeOption(_option.token, _option, _referrer);
+        // Token approval
+        if (_option.isCall) {
+            amountToLock = _option.amount;
+            IERC20(_option.token).approve(_optionContract, _option.amount);
+        } else {
+            uint256 decimals = IERC20Extended(_option.token).decimals();
+            amountToLock = (_option.amount * _option.strikePrice) / (10 ** decimals);
+            IERC20(denominator).approve(_optionContract, amountToLock);
+        }
+
+        _lockTokens(TokenPair({token: _option.token, denominator: denominator, useToken: _option.isCall}), _option.expiration, amountToLock, _amountPremium);
+
+        uint256 optionId = IPremiaOption(_optionContract).writeOption(_option, _referrer);
         _addOptionToList(_option.token, denominator, _option.expiration, OptionId(_optionContract, optionId));
         IPremiaOption(_optionContract).safeTransferFrom(address(this), _from, optionId, _option.amount, "");
 
@@ -891,7 +914,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     }
 
     // ToDo : Do we add a reward for the user unwinding the pool ?
-    // ToDo : Ensure pool is also unwinded for all previous expirations
     function _unwindPool(address _token, address _denominator, uint256 _expiration) internal {
         require(block.timestamp >= _expiration, "Not expired");
 

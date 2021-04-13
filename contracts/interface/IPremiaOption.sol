@@ -74,7 +74,7 @@ interface IPremiaOption is IERC1155 {
     function getExerciseQuote(address _from, OptionData memory _option, uint256 _amount, address _referrer, uint8 _decimals) external view returns(QuoteExercise memory);
 
     function writeOptionWithIdFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) external returns(uint256);
-    function writeOption(address _token, OptionWriteArgs memory _option, address _referrer) external returns(uint256);
+    function writeOption(OptionWriteArgs memory _option, address _referrer) external returns(uint256);
     function writeOptionFrom(address _from, OptionWriteArgs memory _option, address _referrer) external returns(uint256);
     function cancelOption(uint256 _optionId, uint256 _amount) external;
     function cancelOptionFrom(address _from, uint256 _optionId, uint256 _amount) external;
