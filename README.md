@@ -1,31 +1,33 @@
 # Median Contracts
 
-Median options markets.
+Median Finance options markets.
 
 ## Development
 
 Install dependencies via Yarn:
 
 ```bash
-
 yarn install
+```
 
+Install the Hardhat Shorthand package globally and enable autocompletion:
+
+```bash
+yarn global add hardhat-shorthand
+hardhat-completion install
 ```
 
 Compile contracts via Hardhat:
 
 ```bash
-
-yarn compile
-
+hh compile
 ```
 
-### Dotenv
+### Environment Variables
 
-Create a .env file in the root directory for storing environement variables
+Several commands rely on the configuration of environment variables.  These can be set per-command in the terminal, or defined in the `.env` file in the project root directory.
 
 - MNEMONIC - Seed phrase for your deployer account
-- NETWORK - local or kovan
 - INFURA_KEY - Your infura api key
 - REPORT_GAS - bool for if you want to report gas
 
@@ -34,25 +36,19 @@ Create a .env file in the root directory for storing environement variables
 To use a default network network:
 
 ```bash
-
-yarn test
-
+hh test
 ```
 
 Test contracts on specific network:
 
 ```bash
-
-yarn test --network localhost
-
+hh test --network localhost
 ```
 
 Generate a code coverage report using `solidity-coverage`:
 
 ```bash
-
-yarn coverage
-
+hh coverage
 ```
 
 ### Deployment
@@ -60,17 +56,7 @@ yarn coverage
 The contract can be deployed on the default network using the `deploy` task:
 
 ```bash
-
-yarn deploy
-
-```
-
-Deploy contracts on a specific network :
-
-```bash
-
-yarn deploy --network localhost
-
+hh deploy
 ```
 
 ### Documentation
@@ -78,7 +64,5 @@ yarn deploy --network localhost
 A documentation site is output on contract compilation to the `docgen` directory.  It can also be generated manually:
 
 ```bash
-
-yarn docgen
-
+hh docgen
 ```

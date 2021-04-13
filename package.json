@@ -1,7 +1,7 @@
 {
   "name": "median-contracts",
   "version": "0.0.0",
-  "description": "Median options markets",
+  "description": "Median Finance options markets",
   "keywords": [
     "hardhat",
     "waffle",
