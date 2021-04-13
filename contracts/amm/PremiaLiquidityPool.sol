@@ -616,41 +616,65 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         while (_expiration <= block.timestamp + _maxExpiration) {
             PoolInfo storage pInfo = poolInfos[_pair.token][_pair.denominator][_expiration];
 
+            uint256 amountUnlocked;
             if (_pair.useToken) {
-                uint256 amountUnlocked = pInfo.tokenAmount - pInfo.tokenAmountLocked;
-
-                uint256 toLockForExp;
-                if (amountLeftToLock > amountUnlocked) {
-                    toLockForExp = amountUnlocked;
-                } else {
-                    toLockForExp = amountLeftToLock;
-                }
-
-                amountLeftToLock -= toLockForExp;
-
-                // Distribute the profit from the premium, in a proportional amount to what is locked for this expiration
-                uint256 ratioLocked = toLockForExp * 1e12 / _amount;
-                pInfo.denominatorPnl += (_amountPremium * ratioLocked / 1e12).toInt256();
-
+                amountUnlocked = pInfo.tokenAmount - pInfo.tokenAmountLocked;
+            } else {
+                amountUnlocked = pInfo.denominatorAmount - pInfo.denominatorAmountLocked;
             }
-            else {
-                uint256 amountUnlocked = pInfo.denominatorAmount - pInfo.denominatorAmountLocked;
 
-                uint256 toLockForExp;
-                if (amountLeftToLock > amountUnlocked) {
-                    toLockForExp = amountUnlocked;
-                } else {
-                    toLockForExp = amountLeftToLock;
-                }
+            uint256 toLockForExp = amountLeftToLock > amountUnlocked ? amountUnlocked : amountLeftToLock;
 
-                amountLeftToLock -= toLockForExp;
-
-                // Distribute the profit from the premium, in a proportional amount to what is locked for this expiration
-                uint256 ratioLocked = toLockForExp * 1e12 / _amount;
-                pInfo.denominatorPnl += (_amountPremium * ratioLocked / 1e12).toInt256();
+            if (_pair.useToken) {
+                pInfo.tokenAmountLocked += toLockForExp;
+            } else {
+                pInfo.denominatorAmountLocked += toLockForExp;
             }
+
+            amountLeftToLock -= toLockForExp;
+
+            // Distribute the profit from the premium, in a proportional amount to what is locked for this expiration
+            uint256 ratioLocked = toLockForExp * 1e12 / _amount;
+            pInfo.denominatorPnl += (_amountPremium * ratioLocked / 1e12).toInt256();
 
             if (amountLeftToLock == 0) {
+                break;
+            }
+
+            _expiration += _expirationIncrement;
+        }
+    }
+
+    function _unlockTokens(TokenPair memory _pair, uint256 _expiration, uint256 _initialAmount, uint256 _finalTokenAmount, uint256 _finalDenominatorAmount) internal {
+        uint256 amountLeftToUnlock = _initialAmount;
+
+        while (_expiration <= block.timestamp + _maxExpiration) {
+            PoolInfo storage pInfo = poolInfos[_pair.token][_pair.denominator][_expiration];
+
+            uint256 amountLocked = _pair.useToken ? pInfo.tokenAmountLocked : pInfo.denominatorAmountLocked;
+
+            uint256 toUnlockForExp = amountLeftToUnlock > amountLocked ? amountLocked : amountLeftToUnlock;
+
+            if (_pair.useToken) {
+                pInfo.tokenAmountLocked -= toUnlockForExp;
+            } else {
+                pInfo.denominatorAmountLocked -= toUnlockForExp;
+            }
+
+            amountLeftToUnlock -= toUnlockForExp;
+
+            // Distribute the token/denominator, in a proportional amount to what is unlocked for this expiration
+            int256 ratioLocked = toUnlockForExp.toInt256() * 1e12 / _initialAmount.toInt256();
+
+            if (_pair.useToken) {
+                pInfo.tokenPnl += (_finalTokenAmount.toInt256() - _initialAmount.toInt256()) * ratioLocked / 1e12;
+                pInfo.denominatorPnl += _finalDenominatorAmount.toInt256() * ratioLocked / 1e12;
+            } else {
+                pInfo.tokenPnl += _finalTokenAmount.toInt256() * ratioLocked / 1e12;
+                pInfo.denominatorPnl += (_finalDenominatorAmount.toInt256() - _initialAmount.toInt256()) * ratioLocked / 1e12;
+            }
+
+            if (amountLeftToUnlock == 0) {
                 break;
             }
 
@@ -951,11 +975,14 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         uint256 tokenWithdrawn = IERC20(data.token).balanceOf(address(this)) - preTokenBalance;
         uint256 denominatorWithdrawn = IERC20(denominator).balanceOf(address(this)) - preDenominatorBalance;
 
-        PoolInfo storage pInfo = poolInfos[data.token][denominator][data.expiration];
+        uint256 amountTokenToUnlock;
+        if (data.isCall) {
+            amountTokenToUnlock = outstanding;
+        } else {
+            amountTokenToUnlock = (outstanding * data.strikePrice) / (10 ** data.decimals);
+        }
 
-        // ToDo : Track expiration of deposit and add back into corresponding pool
-        pInfo.tokenAmount += tokenWithdrawn;
-        pInfo.denominatorAmount += denominatorWithdrawn;
+        _unlockTokens(TokenPair(data.token, denominator, data.isCall), data.expiration, amountTokenToUnlock, tokenWithdrawn, denominatorWithdrawn);
 
         _afterSellOption(_optionContract, _optionId, outstanding, tokenWithdrawn, denominatorWithdrawn);
 
