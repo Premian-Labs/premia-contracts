@@ -15,7 +15,7 @@ contract PremiaShortUnderlyingPool is PremiaLiquidityPool {
     mapping(address => uint256) loanQueuesLast;
 
     constructor(IPremiaAMM _controller, IPriceOracleGetter _priceOracle, ILendingRateOracleGetter _lendingRateOracle)
-        PremiaLiquidityPool(_controller, _priceOracle, _lendingRateOracle) {}
+        PremiaLiquidityPool(_controller, false, _priceOracle, _lendingRateOracle) {}
 
     function _enqueueLoan(Loan memory _loan) internal {
         loanQueuesLast[_loan.token] += 1;
@@ -46,10 +46,8 @@ contract PremiaShortUnderlyingPool is PremiaLiquidityPool {
 
         uint256 amountToBorrow = _getAmountToBorrow(_amount, collateralToken, data.token);
 
-        PremiaLiquidityPool.TokenPair memory pair = PremiaLiquidityPool.TokenPair({token: data.token, denominator: collateralToken, useToken: true});
-
         // ToDo : Approve token transfer
-        Loan memory loan = loanPool.borrow(pair, amountToBorrow, _amount, data.expiration);
+        Loan memory loan = loanPool.borrow(PremiaLiquidityPool.TokenPair(data.token, collateralToken), amountToBorrow, _amount, data.expiration);
         _swapTokensIn(data.token, collateralToken, amountToBorrow);
         _enqueueLoan(loan);
     }

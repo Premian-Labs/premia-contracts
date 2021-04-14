@@ -321,7 +321,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         uint256 lastUnlock = userLastUnlock[_user][_token][_denominator];
 
         // If 0, no deposits has ever been made
-        if (lastUnlock == 0) return (0,0);
+        if (lastUnlock == 0) return 0;
 
         uint256 expiration = ((lastUnlock / _expirationIncrement) * _expirationIncrement) + _baseExpiration;
 
@@ -650,7 +650,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
                                 msg.sender,
                                 _pair.token,
                                 _pair.denominator,
-                                isTokenPool,
                                 _amountBorrow,
                                 _amountCollateral,
                                 block.timestamp,
@@ -922,10 +921,10 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
         if (isTokenPool) {
             tokenWithdrawn = _amount;
-            _unlockTokens(TokenPair(data.token, denominator), _amount, _amount, 0);
+            _unlockTokens(TokenPair(data.token, denominator), data.expiration, _amount, _amount, 0);
         } else {
             denominatorWithdrawn = (_amount * data.strikePrice) / (10 ** data.decimals);
-            _unlockTokens(TokenPair(data.token, denominator), denominatorWithdrawn, 0, denominatorWithdrawn);
+            _unlockTokens(TokenPair(data.token, denominator), data.expiration, denominatorWithdrawn, 0, denominatorWithdrawn);
         }
 
         PoolInfo storage pInfo = poolInfos[data.token][denominator][data.expiration];
