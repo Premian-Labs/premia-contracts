@@ -44,13 +44,13 @@ contract Pair is IPair, OwnableInternal {
 
     uint today = block.timestamp / 86400;
     uint lastDay = l.lasttimestamp / 86400;
-    (roundId, newPrice64x64) = IPriceConsumer(OwnableStorage.layout().owner).getLatestPrice(l.oracle);
+    (uint80 roundId, int128 newPrice64x64) = IPriceConsumer(OwnableStorage.layout().owner).getLatestPrice(l.oracle);
 
     // TODO: skip if retrieved round ID is same as last round ID
     if(l.dayToRoundId[lastDay] == roundId) return;
 
     l.dayToRoundId[today] = roundId;
-    
+
     if(today == lastDay){
       l.dayToClosingPrice64x64[today] = newPrice64x64;
     } else {
