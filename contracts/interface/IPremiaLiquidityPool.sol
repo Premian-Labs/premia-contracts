@@ -12,7 +12,6 @@ interface IPremiaLiquidityPool {
         address borrower;
         address token;
         address denominator;
-        bool borrowToken; // If true, we are borrowing token, if false, we are borrowing denominator
         uint256 amountBorrow;
         uint256 amountCollateral;
         uint256 creationTime;
@@ -34,11 +33,8 @@ interface IPremiaLiquidityPool {
     }
 
     struct UserInfo {
-        uint256 tokenAmount;
-        uint256 denominatorAmount;
-
-        uint256 tokenScore;
-        uint256 denominatorScore;
+        uint256 amount;
+        uint256 score;
 
         int256 tokenPnlDebt;
         int256 denominatorPnlDebt;
@@ -49,12 +45,11 @@ interface IPremiaLiquidityPool {
     struct TokenPair {
         address token;
         address denominator;
-        bool useToken; // If true, we are using token, if false, we are using denominator
     }
 
     struct PoolInfo {
-        uint256 tokenAmount;
-        uint256 denominatorAmount;
+        uint256 amount;
+        uint256 amountLocked;
 
         int256 tokenPnl;
         int256 denominatorPnl;
@@ -91,7 +86,7 @@ interface IPremiaLiquidityPool {
     function getUnwritableAmount(address _optionContract, uint256 _optionId) external view returns (uint256);
     function getWritableAmount(TokenPair memory _pair, uint256 _lockExpiration) external view returns (uint256);
     function hasWritableAmount(TokenPair memory _pair, uint256 _lockExpiration, uint256 _amount) external view returns(bool);
-    function getUnlockableAmount(address _user, address _token, address _denominator) external view returns (uint256 _tokenAmount, uint256 _denominatorAmount);
+    function getUnlockableAmount(address _user, address _token, address _denominator) external view returns(uint256);
     function getLoanHash(Loan memory _loan) external pure returns(bytes32);
     function getLoanableAmount(TokenPair memory _pair, uint256 _lockExpiration) external view returns (uint256);
     function getRequiredCollateralToBorrowLoan(Loan memory _loan) external view returns (uint256);
