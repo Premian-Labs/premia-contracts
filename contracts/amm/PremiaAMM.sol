@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
+import './AMMStruct.sol';
 import '../interface/IPremiaLiquidityPool.sol';
 import '../interface/IPremiaOption.sol';
 import '../interface/IBlackScholesPriceGetter.sol';
@@ -20,15 +21,14 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
 
     struct DepositArgs {
         address pool;
-        IPremiaLiquidityPool.TokenPair[] pairs;
-        bool useToken;
+        AMMStruct.TokenPair[] pairs;
         uint256[] amounts;
         uint256 lockExpiration;
     }
 
     struct WithdrawExpiredArgs {
         address pool;
-        IPremiaLiquidityPool.TokenPair[] pairs;
+        AMMStruct.TokenPair[] pairs;
     }
 
     enum SaleSide {Buy, Sell}
@@ -91,6 +91,12 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
     function upgradeController(IPoolControllerChild[] memory _children, address _newController) external onlyOwner {
         for (uint256 i=0; i < _children.length; i++) {
             _children[i].upgradeController(_newController);
+        }
+    }
+
+    function setWhitelistedPairs(IPremiaLiquidityPool[] memory _children, AMMStruct.TokenPair[] memory _pairs, bool[] memory _states) external onlyOwner {
+        for (uint256 i=0; i < _children.length; i++) {
+            _children[i].setWhitelistedPairs(_pairs, _states);
         }
     }
 
@@ -220,7 +226,7 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
         uint256 reserveAmount;
         IPremiaLiquidityPool[] memory callPools = getCallPools();
         for (uint256 i = 0; i < callPools.length; i++) {
-            IPremiaLiquidityPool.TokenPair memory pair = IPremiaLiquidityPool.TokenPair(_token, _denominator);
+            AMMStruct.TokenPair memory pair = AMMStruct.TokenPair(_token, _denominator);
             reserveAmount = reserveAmount + callPools[i].getWritableAmount(pair, _expiration);
         }
 
@@ -236,7 +242,7 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
         uint256 reserveAmount;
         IPremiaLiquidityPool[] memory putPools = getPutPools();
         for (uint256 i = 0; i < putPools.length; i++) {
-            IPremiaLiquidityPool.TokenPair memory pair = IPremiaLiquidityPool.TokenPair(_token, _denominator);
+            AMMStruct.TokenPair memory pair = AMMStruct.TokenPair(_token, _denominator);
             reserveAmount = reserveAmount + putPools[i].getWritableAmount(pair, _expiration);
         }
 
@@ -252,11 +258,11 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
         uint256 maxBuy;
         IPremiaLiquidityPool[] memory callPools = getCallPools();
         for (uint256 i = 0; i < callPools.length; i++) {
-            IPremiaLiquidityPool.TokenPair memory pair = IPremiaLiquidityPool.TokenPair(_token, _denominator);
+            AMMStruct.TokenPair memory pair = AMMStruct.TokenPair(_token, _denominator);
             uint256 reserves = callPools[i].getWritableAmount(pair, _expiration);
 
             if (reserves > maxBuy) {
-                maxBuy = reserves; 
+                maxBuy = reserves;
             }
         }
 
@@ -287,11 +293,11 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
         uint256 maxBuy;
         IPremiaLiquidityPool[] memory putPools = getPutPools();
         for (uint256 i = 0; i < putPools.length; i++) {
-            IPremiaLiquidityPool.TokenPair memory pair = IPremiaLiquidityPool.TokenPair(_token, _denominator);
+            AMMStruct.TokenPair memory pair = AMMStruct.TokenPair(_token, _denominator);
             uint256 reserves = putPools[i].getWritableAmount(pair, _expiration);
 
             if (reserves > maxBuy) {
-                maxBuy = reserves; 
+                maxBuy = reserves;
             }
         }
 
@@ -306,7 +312,7 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
             uint256 reserves = putPools[i].getUnwritableAmount(_optionContract, _optionId);
 
             if (reserves > maxSell) {
-                maxSell = reserves; 
+                maxSell = reserves;
             }
         }
 
@@ -373,7 +379,7 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
 
         for (uint256 i = 0; i < liquidityPools.length; i++) {
             IPremiaLiquidityPool pool = liquidityPools[i];
-            IPremiaLiquidityPool.TokenPair memory pair = IPremiaLiquidityPool.TokenPair(_token, _denominator);
+            AMMStruct.TokenPair memory pair = AMMStruct.TokenPair(_token, _denominator);
             uint256 amountAvailable = pool.getWritableAmount(pair, _expiration);
 
             if (amountAvailable >= _amount && address(pool) != address(msg.sender)) {
@@ -418,16 +424,14 @@ contract PremiaAMM is Ownable, ReentrancyGuard {
 
     function depositLiquidity(DepositArgs[] memory _deposits) external nonReentrant {
         for (uint256 i=0; i < _deposits.length; i++) {
-            require(
-                (_deposits[i].useToken && _callPools.contains(_deposits[i].pool)) ||
-                (!_deposits[i].useToken && _putPools.contains(_deposits[i].pool)), "Pool not whitelisted");
+            require(_callPools.contains(_deposits[i].pool) || _putPools.contains(_deposits[i].pool), "Pool not whitelisted");
 
-            IPremiaLiquidityPool(_deposits[i].pool).depositFrom(msg.sender, _deposits[i].pairs, _deposits[i].amounts, _deposits[i].lockExpiration);
+            IPremiaLiquidityPool pool = IPremiaLiquidityPool(_deposits[i].pool);
+            pool.depositFrom(msg.sender, _deposits[i].pairs, _deposits[i].amounts, _deposits[i].lockExpiration);
 
             if (address(premiaMining) != address(0)) {
                 for (uint256 j=0; j < _deposits[i].pairs.length; j++) {
-                    address token = _deposits[i].useToken ? _deposits[i].pairs[j].token : _deposits[i].pairs[j].denominator;
-                    IPremiaMiningV2.Pair memory miningPair = IPremiaMiningV2.Pair(_deposits[i].pairs[j].token, _deposits[i].pairs[j].denominator, _deposits[i].useToken);
+                    IPremiaMiningV2.Pair memory miningPair = IPremiaMiningV2.Pair(_deposits[i].pairs[j].token, _deposits[i].pairs[j].denominator, pool.isTokenPool());
                     premiaMining.deposit(msg.sender, miningPair, _deposits[i].amounts[j], _deposits[i].lockExpiration);
                 }
             }

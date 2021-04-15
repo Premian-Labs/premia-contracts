@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import './PremiaLiquidityPool.sol';
+import './AMMStruct.sol';
 import '../interface/IPremiaAMM.sol';
 import '../interface/IPremiaOption.sol';
 
@@ -47,7 +48,7 @@ contract PremiaShortUnderlyingPool is PremiaLiquidityPool {
         uint256 amountToBorrow = _getAmountToBorrow(_amount, collateralToken, data.token);
 
         // ToDo : Approve token transfer
-        Loan memory loan = loanPool.borrow(PremiaLiquidityPool.TokenPair(data.token, collateralToken), amountToBorrow, _amount, data.expiration);
+        Loan memory loan = loanPool.borrow(AMMStruct.TokenPair(data.token, collateralToken), amountToBorrow, _amount, data.expiration);
         _swapTokensIn(data.token, collateralToken, amountToBorrow);
         _enqueueLoan(loan);
     }

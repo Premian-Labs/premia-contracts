@@ -82,20 +82,13 @@ describe('PremiaLiquidityPool', () => {
     await premia.connect(admin).approve(mining.address, parseEther('1000000'));
     await mining.connect(admin).addRewards(parseEther('1000000'));
 
-    await longPool.setPermissions(
-      [token1.address, token2.address],
+    await controller.setWhitelistedPairs(
+      [longPool.address, shortPool.address],
       [
-        {
-          canBorrow: false,
-          isWhitelistedToken: true,
-          isWhitelistedOptionContract: false,
-        },
-        {
-          canBorrow: false,
-          isWhitelistedToken: true,
-          isWhitelistedOptionContract: false,
-        },
+        { token: token1.address, denominator: dai.address },
+        { token: token2.address, denominator: dai.address },
       ],
+      [true, true],
     );
 
     for (const u of [user1, user2]) {
@@ -117,7 +110,6 @@ describe('PremiaLiquidityPool', () => {
               {
                 token: token1.address,
                 denominator: dai.address,
-                useToken: true,
               },
             ],
             amounts: [parseEther('50')],
@@ -127,16 +119,10 @@ describe('PremiaLiquidityPool', () => {
       ).to.be.revertedWith('Pool not whitelisted');
     });
 
-    it('should fail depositing token if token is not whitelisted', async () => {
-      await longPool.setPermissions(
-        [token1.address],
-        [
-          {
-            canBorrow: false,
-            isWhitelistedToken: false,
-            isWhitelistedOptionContract: false,
-          },
-        ],
+    it('should fail depositing token if pair is not whitelisted', async () => {
+      await longPool.setWhitelistedPairs(
+        [{ token: token1.address, denominator: dai.address }],
+        [false],
       );
       await expect(
         controller.connect(user1).depositLiquidity([
@@ -146,42 +132,80 @@ describe('PremiaLiquidityPool', () => {
               {
                 token: token1.address,
                 denominator: dai.address,
-                useToken: true,
               },
             ],
             amounts: [parseEther('50')],
             lockExpiration: nextExpiration,
           },
         ]),
-      ).to.be.revertedWith('Token not whitelisted');
+      ).to.be.revertedWith('Pair not whitelisted');
     });
 
     it('should successfully deposit tokens', async () => {
+      await dai.mint(user1.address, parseEther('80'));
+      await dai.connect(user1).approve(shortPool.address, parseEther('80'));
+
       await controller.connect(user1).depositLiquidity([
         {
           pool: longPool.address,
           pairs: [
-            { token: token1.address, denominator: dai.address, useToken: true },
-            { token: token2.address, denominator: dai.address, useToken: true },
+            { token: token1.address, denominator: dai.address },
+            { token: token2.address, denominator: dai.address },
           ],
           amounts: [parseEther('50'), parseEther('100')],
           lockExpiration: nextExpiration,
         },
+        {
+          pool: shortPool.address,
+          pairs: [
+            { token: token1.address, denominator: dai.address },
+            { token: token2.address, denominator: dai.address },
+          ],
+          amounts: [parseEther('30'), parseEther('50')],
+          lockExpiration: nextExpiration,
+        },
       ]);
-      const tokenAmount = await longPool.userInfos(
-        user1.address,
-        token1.address,
-        dai.address,
-        nextExpiration,
-      );
-      const daiAmount = await longPool.userInfos(
-        user1.address,
-        token2.address,
-        dai.address,
-        nextExpiration,
-      );
-      expect(tokenAmount.tokenAmount).to.eq(parseEther('50'));
-      expect(daiAmount.tokenAmount).to.eq(parseEther('100'));
+
+      const token1Amount = (
+        await longPool.userInfos(
+          user1.address,
+          token1.address,
+          dai.address,
+          nextExpiration,
+        )
+      ).amount;
+      const token2Amount = (
+        await longPool.userInfos(
+          user1.address,
+          token2.address,
+          dai.address,
+          nextExpiration,
+        )
+      ).amount;
+
+      const daiToken1Amount = (
+        await shortPool.userInfos(
+          user1.address,
+          token1.address,
+          dai.address,
+          nextExpiration,
+        )
+      ).amount;
+      const daiToken2Amount = (
+        await shortPool.userInfos(
+          user1.address,
+          token2.address,
+          dai.address,
+          nextExpiration,
+        )
+      ).amount;
+      const daiBalance = await dai.balanceOf(shortPool.address);
+
+      expect(token1Amount).to.eq(parseEther('50'));
+      expect(token2Amount).to.eq(parseEther('100'));
+      expect(daiToken1Amount).to.eq(parseEther('30'));
+      expect(daiToken2Amount).to.eq(parseEther('50'));
+      expect(daiBalance).to.eq(parseEther('80'));
     });
 
     it('should fail deposit if invalid expiration selected', async () => {
@@ -193,7 +217,6 @@ describe('PremiaLiquidityPool', () => {
               {
                 token: token1.address,
                 denominator: dai.address,
-                useToken: true,
               },
             ],
             amounts: [parseEther('50')],
@@ -209,7 +232,6 @@ describe('PremiaLiquidityPool', () => {
               {
                 token: token1.address,
                 denominator: dai.address,
-                useToken: true,
               },
             ],
             amounts: [parseEther('50')],
@@ -225,7 +247,6 @@ describe('PremiaLiquidityPool', () => {
               {
                 token: token1.address,
                 denominator: dai.address,
-                useToken: true,
               },
             ],
             amounts: [parseEther('50')],
@@ -243,12 +264,10 @@ describe('PremiaLiquidityPool', () => {
             {
               token: token1.address,
               denominator: dai.address,
-              useToken: true,
             },
             {
               token: token2.address,
               denominator: dai.address,
-              useToken: true,
             },
           ],
           amounts: [parseEther('50'), parseEther('100')],
@@ -262,12 +281,10 @@ describe('PremiaLiquidityPool', () => {
             {
               token: token1.address,
               denominator: dai.address,
-              useToken: true,
             },
             {
               token: token2.address,
               denominator: dai.address,
-              useToken: true,
             },
           ],
           amounts: [parseEther('20'), parseEther('200')],
@@ -276,19 +293,19 @@ describe('PremiaLiquidityPool', () => {
       ]);
 
       const writableAmount1 = await longPool.getWritableAmount(
-        { token: token1.address, denominator: dai.address, useToken: true },
+        { token: token1.address, denominator: dai.address },
         nextExpiration,
       );
       const writableAmount2 = await longPool.getWritableAmount(
-        { token: token1.address, denominator: dai.address, useToken: true },
+        { token: token1.address, denominator: dai.address },
         nextExpiration + oneWeek,
       );
       const writableAmount3 = await longPool.getWritableAmount(
-        { token: token1.address, denominator: dai.address, useToken: true },
+        { token: token1.address, denominator: dai.address },
         nextExpiration + oneWeek * 2,
       );
       const writableAmount4 = await longPool.getWritableAmount(
-        { token: token1.address, denominator: dai.address, useToken: true },
+        { token: token1.address, denominator: dai.address },
         nextExpiration + oneWeek * 3,
       );
 
@@ -318,12 +335,10 @@ describe('PremiaLiquidityPool', () => {
             {
               token: token1.address,
               denominator: dai.address,
-              useToken: true,
             },
             {
               token: token2.address,
               denominator: dai.address,
-              useToken: true,
             },
           ],
           amounts: [parseEther('50'), parseEther('150')],
@@ -340,7 +355,7 @@ describe('PremiaLiquidityPool', () => {
       ]);
 
       let user1PremiaBal = await premia.balanceOf(user1.address);
-      let user2PremiaBal = await premia.balanceOf(user2.address);
+      // let user2PremiaBal = await premia.balanceOf(user2.address);
 
       expect(Number(formatEther(user1PremiaBal))).to.almost(20000, 2);
 
@@ -351,12 +366,10 @@ describe('PremiaLiquidityPool', () => {
             {
               token: token1.address,
               denominator: dai.address,
-              useToken: true,
             },
             {
               token: token2.address,
               denominator: dai.address,
-              useToken: true,
             },
           ],
           amounts: [parseEther('150'), parseEther('150')],
@@ -404,7 +417,7 @@ describe('PremiaLiquidityPool', () => {
       const user1PremiaBalBak = user1PremiaBal;
 
       user1PremiaBal = await premia.balanceOf(user1.address);
-      user2PremiaBal = await premia.balanceOf(user2.address);
+      let user2PremiaBal = await premia.balanceOf(user2.address);
 
       expect(Number(formatEther(user1PremiaBal))).to.almost.eq(
         user1TokenTargetBal +
@@ -425,12 +438,10 @@ describe('PremiaLiquidityPool', () => {
             {
               token: token1.address,
               denominator: dai.address,
-              useToken: true,
             },
             {
               token: token2.address,
               denominator: dai.address,
-              useToken: true,
             },
           ],
           amounts: [parseEther('50'), parseEther('150')],
@@ -446,21 +457,21 @@ describe('PremiaLiquidityPool', () => {
         denominator: dai.address,
         useToken: true,
       });
-      let user2TokenBal = await mining.pendingReward(user2.address, {
-        token: token1.address,
-        denominator: dai.address,
-        useToken: true,
-      });
+      // let user2TokenBal = await mining.pendingReward(user2.address, {
+      //   token: token1.address,
+      //   denominator: dai.address,
+      //   useToken: true,
+      // });
       let user1DaiBal = await mining.pendingReward(user1.address, {
         token: token2.address,
         denominator: dai.address,
         useToken: true,
       });
-      let user2DaiBal = await mining.pendingReward(user2.address, {
-        token: token2.address,
-        denominator: dai.address,
-        useToken: true,
-      });
+      // let user2DaiBal = await mining.pendingReward(user2.address, {
+      //   token: token2.address,
+      //   denominator: dai.address,
+      //   useToken: true,
+      // });
 
       expect(Number(formatEther(user1TokenBal))).to.almost(10000, 1);
       expect(Number(formatEther(user1DaiBal))).to.almost(10000, 1);
@@ -472,12 +483,10 @@ describe('PremiaLiquidityPool', () => {
             {
               token: token1.address,
               denominator: dai.address,
-              useToken: true,
             },
             {
               token: token2.address,
               denominator: dai.address,
-              useToken: true,
             },
           ],
           amounts: [parseEther('150'), parseEther('150')],
@@ -520,7 +529,7 @@ describe('PremiaLiquidityPool', () => {
         denominator: dai.address,
         useToken: true,
       });
-      user2TokenBal = await mining.pendingReward(user2.address, {
+      let user2TokenBal = await mining.pendingReward(user2.address, {
         token: token1.address,
         denominator: dai.address,
         useToken: true,
@@ -530,7 +539,7 @@ describe('PremiaLiquidityPool', () => {
         denominator: dai.address,
         useToken: true,
       });
-      user2DaiBal = await mining.pendingReward(user2.address, {
+      let user2DaiBal = await mining.pendingReward(user2.address, {
         token: token2.address,
         denominator: dai.address,
         useToken: true,
@@ -557,7 +566,6 @@ describe('PremiaLiquidityPool', () => {
             {
               token: token1.address,
               denominator: dai.address,
-              useToken: true,
             },
           ],
           amounts: [parseEther('50')],

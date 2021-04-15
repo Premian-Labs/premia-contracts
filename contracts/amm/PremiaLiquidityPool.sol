@@ -9,6 +9,7 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 import "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
+import './AMMStruct.sol';
 import '../interface/IERC20Extended.sol';
 import '../interface/IPremiaOption.sol';
 import '../interface/IPremiaLiquidityPool.sol';
@@ -38,7 +39,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
     struct Permissions {
         bool canBorrow;
-        bool isWhitelistedToken;
         bool isWhitelistedOptionContract;
     }
 
@@ -55,11 +55,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         int256 denominatorPnlDebt;
 
         uint256 lastUnlock; // Last timestamp at which deposits unlock was run. This is necessary so that we know from which timestamp we need to iterate, when unlocking
-    }
-
-    struct TokenPair {
-        address token;
-        address denominator;
     }
 
     struct PoolInfo {
@@ -109,6 +104,10 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     IPriceOracleGetter public priceOracle;
     ILendingRateOracleGetter public lendingRateOracle;
 
+    // Mapping of whitelisted pairs from which token can be deposited into the contract
+    // Token -> Denominator -> isWhitelisted
+    mapping(address => mapping(address => bool)) public whitelistedPairs;
+
     // Mapping of addresses with special permissions (Contracts who can borrow / write or whitelisted routers / tokens)
     mapping(address => Permissions) public permissions;
 
@@ -140,7 +139,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     // Token -> amount
     mapping (address => uint256) public totalTokenDeposit;
 
-        
+
     // hash => Loan
     mapping(bytes32 => Loan) public loans;
 
@@ -148,7 +147,8 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     // Events //
     ////////////
 
-    event PermissionsUpdated(address indexed addr, bool canBorrow, bool isWhitelistedToken, bool isWhitelistedOptionContract);
+    event PairWhitelisted(address indexed token, address indexed denominator, bool state);
+    event PermissionsUpdated(address indexed addr, bool canBorrow, bool isWhitelistedOptionContract);
     event Deposit(address indexed user, address indexed token, address indexed denominator, bool useToken, uint256 lockExpiration, uint256 amountToken);
     event Withdraw(address indexed user, address indexed token, address indexed denominator, bool useToken, uint256 amountToken);
     event Borrow(bytes32 hash, address indexed borrower, address indexed token, address indexed denominator, bool borrowToken, uint256 lockExpiration, uint256 amountBorrow, uint256 amountCollateral, uint256 lendingRate);
@@ -198,8 +198,17 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         emit ControllerUpdated(_newController);
     }
 
+    function setWhitelistedPairs(AMMStruct.TokenPair[] memory _pairs, bool[] memory _states) external {
+        require(msg.sender == owner() || msg.sender == address(controller), "Not owner or controller");
+        require(_pairs.length == _states.length, "Arrays diff length");
 
-    function setPermissions(address[] memory _addr, Permissions[] memory _permissions) external onlyOwner {
+        for (uint256 i=0; i < _pairs.length; i++) {
+            whitelistedPairs[_pairs[i].token][_pairs[i].denominator] = _states[i];
+            emit PairWhitelisted(_pairs[i].token, _pairs[i].denominator, _states[i]);
+        }
+    }
+
+    function setPermissions(address[] memory _addr, Permissions[] memory _permissions) external {
         require(_addr.length == _permissions.length, "Arrays diff length");
 
         for (uint256 i=0; i < _addr.length; i++) {
@@ -207,7 +216,6 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
             emit PermissionsUpdated(_addr[i],
                 _permissions[i].canBorrow,
-                _permissions[i].isWhitelistedToken,
                 _permissions[i].isWhitelistedOptionContract);
         }
     }
@@ -271,12 +279,12 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
         return nextExpiration;
     }
-    
+
     function getUnwritableAmount(address _optionContract, uint256 _optionId) public view returns (uint256) {
         return optionsOutstanding[_optionContract][_optionId];
     }
 
-    function getWritableAmount(TokenPair memory _pair, uint256 _lockExpiration) public view returns (uint256) {
+    function getWritableAmount(AMMStruct.TokenPair memory _pair, uint256 _lockExpiration) public view returns (uint256) {
         uint256 expiration = _getNextExpiration();
 
         if (expiration < _lockExpiration) {
@@ -295,7 +303,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     }
 
     /// @notice More gas efficient than getWritableAmount, as it stops iteration if amount required is reached
-    function hasWritableAmount(TokenPair memory _pair, uint256 _lockExpiration, uint256 _amount) public view returns(bool) {
+    function hasWritableAmount(AMMStruct.TokenPair memory _pair, uint256 _lockExpiration, uint256 _amount) public view returns(bool) {
         uint256 expiration = _getNextExpiration();
 
         if (expiration < _lockExpiration) {
@@ -351,7 +359,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
         for (uint256 i = 0; i < liquidityPools.length; i++) {
             IPremiaLiquidityPool pool = liquidityPools[i];
-            IPremiaLiquidityPool.TokenPair memory pair = IPremiaLiquidityPool.TokenPair(_token, _denominator);
+            AMMStruct.TokenPair memory pair = AMMStruct.TokenPair(_token, _denominator);
             uint256 amountAvailable = pool.getLoanableAmount(pair, _expiration);
 
             if (amountAvailable >= _amount) {
@@ -369,7 +377,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         return (_amount * _inverseBasisPoint / 9970) * priceOfCollateral / priceOfBorrowed;
     }
 
-    function getLoanableAmount(TokenPair memory _pair, uint256 _lockExpiration) public view virtual returns (uint256) {
+    function getLoanableAmount(AMMStruct.TokenPair memory _pair, uint256 _lockExpiration) public view virtual returns (uint256) {
         uint256 writableAmount = getWritableAmount(_pair, _lockExpiration);
         return writableAmount * _inverseBasisPoint / maxLoanPercent;
     }
@@ -491,7 +499,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     // Main //
     //////////
 
-    function depositFrom(address _from, TokenPair[] memory _pairs, uint256[] memory _amounts, uint256 _lockExpiration) external onlyController nonReentrant {
+    function depositFrom(address _from, AMMStruct.TokenPair[] memory _pairs, uint256[] memory _amounts, uint256 _lockExpiration) external onlyController nonReentrant {
         require(_pairs.length == _amounts.length, "Arrays diff length");
         require(_lockExpiration > block.timestamp, "Exp passed");
         require(_lockExpiration - block.timestamp <= _maxExpiration, "Exp > max option exp");
@@ -501,7 +509,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         for (uint256 i = 0; i < _pairs.length; i++) {
             address tokenDeposit = isTokenPool ? _pairs[i].token : _pairs[i].denominator;
 
-            require(permissions[tokenDeposit].isWhitelistedToken, "Token not whitelisted");
+            require(whitelistedPairs[_pairs[i].token][_pairs[i].denominator], "Pair not whitelisted");
 
             if (_amounts[i] == 0) continue;
 
@@ -529,7 +537,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         }
     }
 
-    function withdrawExpiredFrom(address _from, TokenPair[] memory _pairs) external onlyController nonReentrant {
+    function withdrawExpiredFrom(address _from, AMMStruct.TokenPair[] memory _pairs) external onlyController nonReentrant {
         for (uint256 i = 0; i < _pairs.length; i++) {
             uint256 lastExpiration = _getNextExpiration() - _expirationIncrement;
             _unwindPool(_pairs[i].token, _pairs[i].denominator, lastExpiration);
@@ -548,7 +556,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         }
     }
 
-    function _lockTokens(TokenPair memory _pair, uint256 _expiration, uint256 _amount, uint256 _amountPremium) internal {
+    function _lockTokens(AMMStruct.TokenPair memory _pair, uint256 _expiration, uint256 _amount, uint256 _amountPremium) internal {
         // Add to locked amounts (closest possible >= expiration of option)
         uint256 amountLeftToLock = _amount;
 
@@ -572,7 +580,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         }
     }
 
-    function _unlockTokens(TokenPair memory _pair, uint256 _expiration, uint256 _initialAmount, uint256 _finalTokenAmount, uint256 _finalDenominatorAmount) internal {
+    function _unlockTokens(AMMStruct.TokenPair memory _pair, uint256 _expiration, uint256 _initialAmount, uint256 _finalTokenAmount, uint256 _finalDenominatorAmount) internal {
         uint256 amountLeftToUnlock = _initialAmount;
 
         while (_expiration <= block.timestamp + _maxExpiration) {
@@ -602,7 +610,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
     }
 
     function _lendCapital(Loan memory _loan) internal {
-        TokenPair memory pair = TokenPair(_loan.token, _loan.denominator);
+        AMMStruct.TokenPair memory pair = AMMStruct.TokenPair(_loan.token, _loan.denominator);
         uint256 loanableAmount = getLoanableAmount(pair, _loan.lockExpiration);
         uint256 collateralRequired = getRequiredCollateralToBorrowLoan(_loan);
 
@@ -633,7 +641,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
         emit Borrow(hash, msg.sender, _loan.token, _loan.denominator, isTokenPool, _loan.lockExpiration, _loan.amountBorrow, _loan.amountCollateral, _loan.lendingRate);
     }
 
-    function borrow(TokenPair memory _pair, uint256 _amountBorrow, uint256 _amountCollateral, uint256 _lockExpiration) external nonReentrant returns (Loan memory) {
+    function borrow(AMMStruct.TokenPair memory _pair, uint256 _amountBorrow, uint256 _amountCollateral, uint256 _lockExpiration) external nonReentrant returns (Loan memory) {
         bool borrowToken = isTokenPool;
         address collateralToken = isTokenPool ? _pair.denominator : _pair.token;
 
@@ -804,7 +812,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
             IERC20(denominator).approve(_optionContract, amountToLock);
         }
 
-        _lockTokens(TokenPair(_option.token, denominator), _option.expiration, amountToLock, _amountPremium);
+        _lockTokens(AMMStruct.TokenPair(_option.token, denominator), _option.expiration, amountToLock, _amountPremium);
 
         uint256 optionId = IPremiaOption(_optionContract).writeOption(_option, _referrer);
         _addOptionToList(_option.token, denominator, _option.expiration, OptionId(_optionContract, optionId));
@@ -890,7 +898,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
             amountTokenToUnlock = (outstanding * data.strikePrice) / (10 ** data.decimals);
         }
 
-        _unlockTokens(TokenPair(data.token, denominator), data.expiration, amountTokenToUnlock, tokenWithdrawn, denominatorWithdrawn);
+        _unlockTokens(AMMStruct.TokenPair(data.token, denominator), data.expiration, amountTokenToUnlock, tokenWithdrawn, denominatorWithdrawn);
 
         _afterSellOption(_optionContract, _optionId, outstanding, tokenWithdrawn, denominatorWithdrawn);
 
@@ -921,10 +929,10 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
         if (isTokenPool) {
             tokenWithdrawn = _amount;
-            _unlockTokens(TokenPair(data.token, denominator), data.expiration, _amount, _amount, 0);
+            _unlockTokens(AMMStruct.TokenPair(data.token, denominator), data.expiration, _amount, _amount, 0);
         } else {
             denominatorWithdrawn = (_amount * data.strikePrice) / (10 ** data.decimals);
-            _unlockTokens(TokenPair(data.token, denominator), data.expiration, denominatorWithdrawn, 0, denominatorWithdrawn);
+            _unlockTokens(AMMStruct.TokenPair(data.token, denominator), data.expiration, denominatorWithdrawn, 0, denominatorWithdrawn);
         }
 
         PoolInfo storage pInfo = poolInfos[data.token][denominator][data.expiration];

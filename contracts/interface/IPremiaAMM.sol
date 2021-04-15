@@ -5,21 +5,22 @@ pragma solidity ^0.8.0;
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 
-import '../interface/IPremiaLiquidityPool.sol';
-import '../interface/IPremiaOption.sol';
-import '../interface/IBlackScholesPriceGetter.sol';
+import './IPremiaLiquidityPool.sol';
+import './IPremiaOption.sol';
+import './IBlackScholesPriceGetter.sol';
+import '../amm/AMMStruct.sol';
 
 interface IPremiaAMM {
     struct DepositArgs {
         address pool;
-        IPremiaLiquidityPool.TokenPair[] pairs;
+        AMMStruct.TokenPair[] pairs;
         uint256[] amounts;
         uint256 lockExpiration;
     }
 
     struct WithdrawExpiredArgs {
         address pool;
-        IPremiaLiquidityPool.TokenPair[] pairs;
+        AMMStruct.TokenPair[] pairs;
     }
 
     enum SaleSide {Buy, Sell}

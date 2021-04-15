@@ -2,8 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import '../interface/IPriceOracleGetter.sol';
-import '../interface/IPremiaOption.sol';
+import './IPriceOracleGetter.sol';
+import './IPremiaOption.sol';
+
+import "../amm/AMMStruct.sol";
+
 import "../uniswapV2/interfaces/IUniswapV2Router02.sol";
 
 interface IPremiaLiquidityPool {
@@ -42,11 +45,6 @@ interface IPremiaLiquidityPool {
         uint256 lastUnlock; // Last timestamp at which deposits unlock was run. This is necessary so that we know from which timestamp we need to iterate, when unlocking
     }
 
-    struct TokenPair {
-        address token;
-        address denominator;
-    }
-
     struct PoolInfo {
         uint256 amount;
         uint256 amountLocked;
@@ -78,17 +76,19 @@ interface IPremiaLiquidityPool {
     //////////////////////////////////////////////////
 
     function upgradeController(address _newController) external;
+    function setWhitelistedPairs(AMMStruct.TokenPair[] memory _pairs, bool[] memory _states) external;
 
     //////////
     // View //
     //////////
 
+    function isTokenPool() external view returns (bool);
     function getUnwritableAmount(address _optionContract, uint256 _optionId) external view returns (uint256);
-    function getWritableAmount(TokenPair memory _pair, uint256 _lockExpiration) external view returns (uint256);
-    function hasWritableAmount(TokenPair memory _pair, uint256 _lockExpiration, uint256 _amount) external view returns(bool);
+    function getWritableAmount(AMMStruct.TokenPair memory _pair, uint256 _lockExpiration) external view returns (uint256);
+    function hasWritableAmount(AMMStruct.TokenPair memory _pair, uint256 _lockExpiration, uint256 _amount) external view returns(bool);
     function getUnlockableAmount(address _user, address _token, address _denominator) external view returns(uint256);
     function getLoanHash(Loan memory _loan) external pure returns(bytes32);
-    function getLoanableAmount(TokenPair memory _pair, uint256 _lockExpiration) external view returns (uint256);
+    function getLoanableAmount(AMMStruct.TokenPair memory _pair, uint256 _lockExpiration) external view returns (uint256);
     function getRequiredCollateralToBorrowLoan(Loan memory _loan) external view returns (uint256);
     function getRequiredCollateralToRepayLoan(Loan memory _loan, uint256 _amount) external view returns (uint256);
     function isLoanUnderCollateralized(Loan memory _loan) external view returns (bool);
@@ -103,9 +103,9 @@ interface IPremiaLiquidityPool {
     // Main //
     //////////
 
-    function depositFrom(address _from, TokenPair[] memory _pairs, uint256[] memory _amounts, uint256 _lockExpiration) external;
-    function withdrawExpiredFrom(address _from, TokenPair[] memory _pairs) external;
-    function borrow(TokenPair memory _pair, uint256 _amountBorrow, uint256 _amountCollateral, uint256 _lockExpiration) external returns (Loan memory);
+    function depositFrom(address _from, AMMStruct.TokenPair[] memory _pairs, uint256[] memory _amounts, uint256 _lockExpiration) external;
+    function withdrawExpiredFrom(address _from, AMMStruct.TokenPair[] memory _pairs) external;
+    function borrow(AMMStruct.TokenPair memory _pair, uint256 _amountBorrow, uint256 _amountCollateral, uint256 _lockExpiration) external returns (Loan memory);
     function repayLoan(Loan memory _loan, uint256 _amount) external returns (uint256);
     function repay(bytes32 _hash, uint256 _amount) external returns (uint256);
     function liquidateLoan(Loan memory _loan, uint256 _amount) external;
