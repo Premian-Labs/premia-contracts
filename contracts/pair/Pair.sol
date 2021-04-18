@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 
 import '@solidstate/contracts/access/OwnableInternal.sol';
 
-import '../core/IPriceConsumer.sol';
 import './IPair.sol';
 import './PairStorage.sol';
 
@@ -44,18 +43,13 @@ contract Pair is IPair, OwnableInternal {
 
     uint today = block.timestamp / 86400;
     uint lastDay = l.lasttimestamp / 86400;
-    (uint80 roundId, int128 newPrice64x64) = IPriceConsumer(OwnableStorage.layout().owner).getLatestPrice(l.oracle);
-
-    // TODO: skip if retrieved round ID is same as last round ID
-    if(l.dayToRoundId[lastDay] == roundId) return;
-
-    l.dayToRoundId[today] = roundId;
+    // TODO: fetch latest price
+    int128 newPrice64x64;
 
     if(today == lastDay){
       l.dayToClosingPrice64x64[today] = newPrice64x64;
     } else {
       l.dayToOpeningPrice64x64[today] = newPrice64x64;
-      // TODO: perform binary search to find and store actual close (both price and roundId)
 
       int128 logreturns64x64 = OptionMath.logreturns(l.dayToClosingPrice64x64[today], l.dayToClosingPrice64x64[lastDay]);
 
