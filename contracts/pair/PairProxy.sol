@@ -29,8 +29,7 @@ contract PairProxy is ManagedProxyOwnable {
     PairStorage.Layout storage l = PairStorage.layout();
     l.asset0 = asset0;
     l.asset1 = asset1;
-    l.oracle0 = oracle0;
-    l.oracle1 = oracle1;
+    l.setOracles(oracle0, oracle1);
     l.setPools(address(pool0), address(pool1));
   }
 }
