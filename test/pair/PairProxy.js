@@ -18,7 +18,6 @@ describe('PairProxy', function () {
     const pool = await factory.Pool({ deployer: owner });
 
     const facetCuts = [
-      await factory.PriceConsumer({ deployer: owner }),
       await factory.ProxyManager({ deployer: owner }),
     ].map(function (f) {
       return {

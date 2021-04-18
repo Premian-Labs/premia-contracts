@@ -2,7 +2,6 @@ const factory = require('../../lib/factory.js');
 
 const describeBehaviorOfDiamond = require('@solidstate/spec/proxy/diamond/Diamond.behavior.js');
 
-const describeBehaviorOfPriceConsumer = require('./PriceConsumer.behavior.js');
 const describeBehaviorOfProxyManager = require('./ProxyManager.behavior.js');
 
 describe('Median', function () {
@@ -24,7 +23,6 @@ describe('Median', function () {
     pool = await factory.Pool({ deployer: owner });
 
     [
-      await factory.PriceConsumer({ deployer: owner }),
       await factory.ProxyManager({ deployer: owner }),
     ].forEach(function (f) {
       facetCuts.push({
@@ -59,11 +57,6 @@ describe('Median', function () {
     getNonOwner: () => nobody,
     facetCuts,
     fallbackAddress: ethers.constants.AddressZero,
-  }, []);
-
-  // eslint-disable-next-line mocha/no-setup-in-describe
-  describeBehaviorOfPriceConsumer({
-    deploy: () => instance,
   }, []);
 
   // eslint-disable-next-line mocha/no-setup-in-describe
