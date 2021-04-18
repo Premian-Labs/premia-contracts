@@ -8,23 +8,17 @@ library PairStorage {
   );
 
   struct Layout {
-    address oracle;
+    // TODO: ordering of assets (and oracles and pools)
+    address asset0;
+    address asset1;
+    address oracle0;
+    address oracle1;
     address pool0;
     address pool1;
 
-    // length of accounting period, in seconds
-    uint256 period;
-    // number of periods in EMA window
-    uint256 window;
-    uint256 lasttimestamp;
+    uint256 updatedAt;
 
-    int128 oldEmaLogReturns64x64;
-    int128 newEmaLogReturns64x64;
     int128 emaVarianceAnnualized64x64;
-
-    mapping (uint256 => int128) dayToOpeningPrice64x64;
-    mapping (uint256 => int128) dayToClosingPrice64x64;
-    mapping (uint256 => uint256) dayToRoundId;
   }
 
   function layout () internal pure returns (Layout storage l) {
