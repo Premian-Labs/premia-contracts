@@ -78,6 +78,64 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   }
 
   /**
+   * @notice purchase put option
+   * @param maturity timestamp of option maturity
+   * @param strike64x64 64x64 fixed point representation of strike price
+   * @param amount size of option contract
+   * @param maxCost maximum acceptable cost after accounting for slippage
+   */
+  function purchase (
+    uint64 maturity,
+    int128 strike64x64,
+    uint256 amount,
+    uint256 maxCost
+  ) external payable returns (uint256 cost) {
+    // TODO: maturity must be integer number of calendar days
+    // TODO: specify payment currency
+    // TODO: reserve liquidity
+    // TODO: set C-Level
+    // TODO: transfer portion of premium to treasury
+
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    cost = quote(maturity, strike64x64, amount).toDecimals(l.baseDecimals);
+    require(cost <= maxCost, 'Pool: excessive slippage');
+    _pull(l.base, cost);
+
+    _mint(msg.sender, _tokenIdFor(TokenType.OPTION, maturity, strike64x64), amount, '');
+  }
+
+  /**
+   * @notice exercise put option
+   * @param tokenId ERC1155 token id
+   * @param amount quantity of option contract tokens to exercise
+   */
+  function exercise (
+    uint256 tokenId,
+    uint256 amount
+  ) public {
+    (TokenType tokenType, uint64 maturity, int128 strike64x64) = _parametersFor(tokenId);
+    require(tokenType == TokenType.OPTION, 'Pool: invalid token type');
+
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    int128 spot64x64 = IPair(l.pair).updateAndGetHistoricalPrice(
+      maturity < block.timestamp ? maturity : block.timestamp
+    );
+
+    _burn(msg.sender, tokenId, amount);
+
+    if (strike64x64 > spot64x64) {
+      // option is in-the-money
+
+      int128 value64x64 = strike64x64.sub(spot64x64).mul(ABDKMath64x64.fromUInt(amount));
+
+      // TODO: convert base value to underlying value
+      _push(l.underlying, value64x64.toDecimals(l.underlyingDecimals));
+    }
+  }
+
+  /**
    * @notice deposit underlying currency, underwriting puts of that currency with respect to base currency
    * @param amount quantity of underlying currency to deposit
    * @return share of pool granted
@@ -140,63 +198,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
       newLiquidity64x64,
       OptionMath.ONE_64x64
     );
-  }
-
-  /**
-   * @notice purchase put option
-   * @param maturity timestamp of option maturity
-   * @param strike64x64 64x64 fixed point representation of strike price
-   * @param amount size of option contract
-   * @param maxCost maximum acceptable cost after accounting for slippage
-   */
-  function purchase (
-    uint64 maturity,
-    int128 strike64x64,
-    uint256 amount,
-    uint256 maxCost
-  ) external payable returns (uint256 cost) {
-    // TODO: maturity must be integer number of calendar days
-    // TODO: specify payment currency
-    // TODO: reserve liquidity
-    // TODO: set C-Level
-
-    PoolStorage.Layout storage l = PoolStorage.layout();
-
-    cost = quote(maturity, strike64x64, amount).toDecimals(l.baseDecimals);
-    require(cost <= maxCost, 'Pool: excessive slippage');
-    _pull(l.base, cost);
-
-    _mint(msg.sender, _tokenIdFor(TokenType.OPTION, maturity, strike64x64), amount, '');
-  }
-
-  /**
-   * @notice exercise put option
-   * @param tokenId ERC1155 token id
-   * @param amount quantity of option contract tokens to exercise
-   */
-  function exercise (
-    uint256 tokenId,
-    uint256 amount
-  ) public {
-    (TokenType tokenType, uint64 maturity, int128 strike64x64) = _parametersFor(tokenId);
-    require(tokenType == TokenType.OPTION, 'Pool: invalid token type');
-
-    PoolStorage.Layout storage l = PoolStorage.layout();
-
-    int128 spot64x64 = IPair(l.pair).updateAndGetHistoricalPrice(
-      maturity < block.timestamp ? maturity : block.timestamp
-    );
-
-    _burn(msg.sender, tokenId, amount);
-
-    if (strike64x64 > spot64x64) {
-      // option is in-the-money
-
-      int128 value64x64 = strike64x64.sub(spot64x64).mul(ABDKMath64x64.fromUInt(amount));
-
-      // TODO: convert base value to underlying value
-      _push(l.underlying, value64x64.toDecimals(l.underlyingDecimals));
-    }
   }
 
   /**
