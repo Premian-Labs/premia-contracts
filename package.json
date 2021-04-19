@@ -1,7 +1,7 @@
 {
   "name": "median-contracts",
   "version": "0.0.0",
-  "description": "Median options markets",
+  "description": "Median Finance options markets",
   "keywords": [
     "hardhat",
     "waffle",
@@ -17,7 +17,7 @@
   "private": true,
   "repository": "https://github.com/Median-Finance/median-contracts",
   "devDependencies": {
-    "@chainlink/contracts": "0.1.6",
+    "@chainlink/contracts": "^0.1.7",
     "@nomiclabs/hardhat-ethers": "^2.0.2",
     "@nomiclabs/hardhat-waffle": "^2.0.1",
     "@solidstate/contracts": "^0.0.6",
@@ -30,7 +30,7 @@
     "eslint-plugin-mocha": "^8.1.0",
     "ethereum-waffle": "^3.3.0",
     "ethers": "^5.1.0",
-    "hardhat": "^2.2.0-rc.1",
+    "hardhat": "^2.2.0",
     "hardhat-docgen": "^1.1.0",
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-spdx-license-identifier": "^2.0.3",

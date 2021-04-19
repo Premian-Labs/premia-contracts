@@ -23,12 +23,12 @@
     chalk "^2.0.0"
     js-tokens "^4.0.0"
 
-"@chainlink/contracts@0.1.6":
-  version "0.1.6"
-  resolved "https://registry.yarnpkg.com/@chainlink/contracts/-/contracts-0.1.6.tgz#e4795565c723f99adaf6e97382cfb41dff0bcf91"
-  integrity sha512-RXKMm+3ADEi1c4/XsXy2Z1m0KQh7H6Nn0FWXmCgXRIorOBt7dvh52c0c41ONJfIhHB/tGeoXnp4lPnZEDqkocA==
+"@chainlink/contracts@^0.1.7":
+  version "0.1.7"
+  resolved "https://registry.yarnpkg.com/@chainlink/contracts/-/contracts-0.1.7.tgz#ff8e8f1fad5f0766d52ad515f83148f9d82cccad"
+  integrity sha512-txVkGrwFYnyLUC/I5hTe7yZK7fjmB6YFULfBHqryRuREUmGd4bdpXfrcUUsZycmWibanp69QVyQBpsDrPhWsjw==
   optionalDependencies:
-    "@truffle/contract" "^4.2.29"
+    "@truffle/contract" "^4.3.8"
     ethers "^4.0.45"
 
 "@ensdomains/ens@^0.4.4":
@@ -125,6 +125,16 @@
     ethereumjs-util "^7.0.9"
     merkle-patricia-tree "^4.1.0"
 
+"@ethereumjs/block@^3.2.1":
+  version "3.2.1"
+  resolved "https://registry.yarnpkg.com/@ethereumjs/block/-/block-3.2.1.tgz#c24c345e6dd6299efa4bed40979280b7dda96d3a"
+  integrity sha512-FCxo5KwwULne2A2Yuae4iaGGqSsRjwzXOlDhGalOFiBbLfP3hE04RHaHGw4c8vh1PfOrLauwi0dQNUBkOG3zIA==
+  dependencies:
+    "@ethereumjs/common" "^2.2.0"
+    "@ethereumjs/tx" "^3.1.3"
+    ethereumjs-util "^7.0.10"
+    merkle-patricia-tree "^4.1.0"
+
 "@ethereumjs/blockchain@^5.2.1":
   version "5.2.1"
   resolved "https://registry.yarnpkg.com/@ethereumjs/blockchain/-/blockchain-5.2.1.tgz#83ed83647667265f1666f111caf065ef9d1e82b5"
@@ -158,7 +168,7 @@
     ethereumjs-util "^7.0.7"
     miller-rabin "^4.0.0"
 
-"@ethereumjs/tx@^3.1.0", "@ethereumjs/tx@^3.1.2":
+"@ethereumjs/tx@^3.1.0":
   version "3.1.2"
   resolved "https://registry.yarnpkg.com/@ethereumjs/tx/-/tx-3.1.2.tgz#17ac0d69727cd056b9bda62eb0ca695992a263f3"
   integrity sha512-bpnO+swaw2nmdBybDR0Nn+tt3AJxkUWakoQda5dCGh+yQiHlg8KZgBf84pK6Z/R0tdxn9mhi1b13qi0kn5RKGg==
@@ -166,15 +176,23 @@
     "@ethereumjs/common" "^2.2.0"
     ethereumjs-util "^7.0.10"
 
-"@ethereumjs/vm@^5.3.0":
-  version "5.3.0"
-  resolved "https://registry.yarnpkg.com/@ethereumjs/vm/-/vm-5.3.0.tgz#a2bd18a8b9521068d8c1ef05cd895fc2124a796b"
-  integrity sha512-sauQgdLs9wK3H8WEmCnuABkkso/KkrHIBAqk/qOpeUtyHtV/g/fmYnL1P3Q2gam1PazWi3Y6puNBIdyOeBqTHw==
+"@ethereumjs/tx@^3.1.3":
+  version "3.1.3"
+  resolved "https://registry.yarnpkg.com/@ethereumjs/tx/-/tx-3.1.3.tgz#0e4b0ccec2f12b1f0bbbb0e7542dd79d9ec25d87"
+  integrity sha512-DJBu6cbwYtiPTFeCUR8DF5p+PF0jxs+0rALJZiEcTz2tiRPIEkM72GEbrkGuqzENLCzBrJHT43O0DxSYTqeo+g==
   dependencies:
-    "@ethereumjs/block" "^3.2.0"
+    "@ethereumjs/common" "^2.2.0"
+    ethereumjs-util "^7.0.10"
+
+"@ethereumjs/vm@^5.3.2":
+  version "5.3.2"
+  resolved "https://registry.yarnpkg.com/@ethereumjs/vm/-/vm-5.3.2.tgz#b4d83a3d50a7ad22d6d412cc21bbde221b3e2871"
+  integrity sha512-QmCUQrW6xbhgEbQh9njue4kAJdM056C+ytBFUTF/kDYa3kNDm4Qxp9HUyTlt1OCSXvDhws0qqlh8+q+pmXpN7g==
+  dependencies:
+    "@ethereumjs/block" "^3.2.1"
     "@ethereumjs/blockchain" "^5.2.1"
     "@ethereumjs/common" "^2.2.0"
-    "@ethereumjs/tx" "^3.1.2"
+    "@ethereumjs/tx" "^3.1.3"
     async-eventemitter "^0.2.4"
     core-js-pure "^3.0.1"
     debug "^2.2.0"
@@ -762,7 +780,7 @@
     crypto-js "^3.1.9-1"
     debug "^4.3.1"
 
-"@truffle/contract@^4.2.29":
+"@truffle/contract@^4.3.8":
   version "4.3.13"
   resolved "https://registry.yarnpkg.com/@truffle/contract/-/contract-4.3.13.tgz#72e84bb5398a2bec0f28f9bc1cba7a8c8bff461a"
   integrity sha512-fj9XQUveNIDCQWwAoLwGLa0owfWlm5Sk8nF/PLXTG0Z6TwWa3D4itBiec8zEnZZIxS6yjDVBUpzBSMCvH7wh2A==
@@ -5205,16 +5223,16 @@ hardhat-spdx-license-identifier@^2.0.3:
   resolved "https://registry.yarnpkg.com/hardhat-spdx-license-identifier/-/hardhat-spdx-license-identifier-2.0.3.tgz#6dd89a7e036ede4f7e86fb349eb23daaaad6890f"
   integrity sha512-G4u4I1md0tWaitX6Os7Nq9sYZ/CFdR+ibm7clCksGJ4yrtdHEZxgLjWpJ0WiALF9SoFKt03PwCe9lczDQ/5ADA==
 
-hardhat@^2.2.0-rc.1:
-  version "2.2.0-rc.1"
-  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.2.0-rc.1.tgz#b0760af1f8c5e38428535e6e5af6ae797ac1a93d"
-  integrity sha512-SYwgqYoLiG1sQylIRjHdJwWBOak5hmHD4T0m+lkWeuGDh3SzhDOAiD/CjA4z8fvqn5ZfkFYsUDpWuGFwlf6log==
+hardhat@^2.2.0:
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.2.0.tgz#7d569d29678e5f786a228390b4c0b0cc9fd8ae32"
+  integrity sha512-3g0qFoQTkR4gfcHDZr59vPfbSH2PiAyxzYblkAAHUNTPBadO5W26z5RWzDv6/lRu8SqZZ9/8AdGZX4IZEa8EDg==
   dependencies:
-    "@ethereumjs/block" "^3.2.0"
+    "@ethereumjs/block" "^3.2.1"
     "@ethereumjs/blockchain" "^5.2.1"
     "@ethereumjs/common" "^2.2.0"
-    "@ethereumjs/tx" "^3.1.2"
-    "@ethereumjs/vm" "^5.3.0"
+    "@ethereumjs/tx" "^3.1.3"
+    "@ethereumjs/vm" "^5.3.2"
     "@sentry/node" "^5.18.1"
     "@solidity-parser/parser" "^0.11.0"
     "@types/bn.js" "^5.1.0"
