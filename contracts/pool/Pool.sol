@@ -11,6 +11,7 @@ import '../pair/IPair.sol';
 import './PoolStorage.sol';
 
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
+import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
 
 /**
@@ -19,6 +20,7 @@ import { OptionMath } from '../libraries/OptionMath.sol';
  */
 contract Pool is OwnableInternal, ERC20, ERC1155Base {
   using ABDKMath64x64 for int128;
+  using ABDKMath64x64Token for int128;
 
   enum TokenType { OPTION, LIQUIDITY }
 
@@ -54,7 +56,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    int128 amount64x64 = _weiToFixed(amount, l.underlyingDecimals);
+    int128 amount64x64 = ABDKMath64x64Token.fromDecimals(amount, l.underlyingDecimals);
 
     int128 oldLiquidity64x64 = l.liquidity64x64;
     int128 newLiquidity64x64 = oldLiquidity64x64.add(amount64x64);
@@ -96,7 +98,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     // TODO: mint liquidity tokens
 
     int128 oldLiquidity64x64 = l.liquidity64x64;
-    int128 newLiquidity64x64 = oldLiquidity64x64.add(_weiToFixed(amount, l.underlyingDecimals));
+    int128 newLiquidity64x64 = oldLiquidity64x64.add(
+      ABDKMath64x64Token.fromDecimals(amount, l.underlyingDecimals)
+    );
+
     l.liquidity64x64 = newLiquidity64x64;
 
     l.cLevel64x64 = OptionMath.calculateCLevel(
@@ -127,7 +132,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     _push(l.underlying, amount);
 
     int128 oldLiquidity64x64 = l.liquidity64x64;
-    int128 newLiquidity64x64 = oldLiquidity64x64.sub(_weiToFixed(amount, l.underlyingDecimals));
+    int128 newLiquidity64x64 = oldLiquidity64x64.sub(
+      ABDKMath64x64Token.fromDecimals(amount, l.underlyingDecimals)
+    );
+
     l.liquidity64x64 = newLiquidity64x64;
 
     l.cLevel64x64 = OptionMath.calculateCLevel(
@@ -158,7 +166,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    cost = _fixedToWei(quote(maturity, strike64x64, amount), l.baseDecimals);
+    cost = quote(maturity, strike64x64, amount).toDecimals(l.baseDecimals);
     require(cost <= maxCost, 'Pool: excessive slippage');
     _pull(l.base, cost);
 
@@ -189,7 +197,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     int128 value64x64 = strike64x64.sub(spot64x64).mul(ABDKMath64x64.fromUInt(amount));
 
     // TODO: convert base value to underlying value
-    _push(l.underlying, _fixedToWei(value64x64, l.underlyingDecimals));
+    _push(l.underlying, value64x64.toDecimals(l.underlyingDecimals));
   }
 
   /**
@@ -224,32 +232,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
       maturity := shr(128, tokenId)
       strike64x64 := tokenId
     }
-  }
-
-  /**
-   * @notice convert 64x64 fixed point representation of token amount to wei
-   * @param amount64x64 64x64 fixed point representation of token amount
-   * @param decimals token display decimals
-   * @return amount wei representation of token amount
-   */
-  function _fixedToWei (
-    int128 amount64x64,
-    uint8 decimals
-  ) internal pure returns (uint256 amount) {
-    amount = amount64x64.mulu(10 ** decimals);
-  }
-
-  /**
-   * @notice convert wei representation of token amount to 64x64 fixed point
-   * @param amount wei representation of token amount
-   * @param decimals token display decimals
-   * @return amount64x64 64x64 fixed point representation of token amount
-   */
-  function _weiToFixed (
-    uint256 amount,
-    uint8 decimals
-  ) internal pure returns (int128 amount64x64) {
-    amount64x64 = ABDKMath64x64.divu(amount, 10 ** decimals);
   }
 
   /**
