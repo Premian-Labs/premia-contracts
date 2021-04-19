@@ -8,6 +8,7 @@ import '../core/IPriceConsumer.sol';
 import './IPair.sol';
 import './PairStorage.sol';
 
+import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
 
 /**
@@ -15,6 +16,7 @@ import { OptionMath } from '../libraries/OptionMath.sol';
  * @dev deployed standalone and referenced by PairProxy
  */
 contract Pair is IPair, OwnableInternal {
+  using ABDKMath64x64 for int128;
   using PairStorage for PairStorage.Layout;
 
   /**
@@ -57,20 +59,22 @@ contract Pair is IPair, OwnableInternal {
       l.dayToOpeningPrice64x64[today] = newPrice64x64;
       // TODO: perform binary search to find and store actual close (both price and roundId)
 
-      int128 logreturns64x64 = OptionMath.logreturns(l.dayToClosingPrice64x64[today], l.dayToClosingPrice64x64[lastDay]);
+      int128 logReturns64x64 = l.dayToClosingPrice64x64[today].div(
+        l.dayToClosingPrice64x64[lastDay]
+      ).ln();
 
       (
         l.oldEmaLogReturns64x64,
         l.newEmaLogReturns64x64
       ) = (
         l.newEmaLogReturns64x64,
-        OptionMath.rollingEma(l.oldEmaLogReturns64x64, logreturns64x64, l.window)
+        OptionMath.rollingEma(l.oldEmaLogReturns64x64, logReturns64x64, l.window)
       );
 
       l.emaVarianceAnnualized64x64 = OptionMath.rollingEmaVariance(
         l.emaVarianceAnnualized64x64 / 365,
         l.oldEmaLogReturns64x64,
-        logreturns64x64,
+        logReturns64x64,
         l.window
       ) * 365;
     }
