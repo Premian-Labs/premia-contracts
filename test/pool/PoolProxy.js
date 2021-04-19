@@ -49,13 +49,22 @@ describe('PoolProxy', function () {
 
     const oracle0 = await deployMockContract(
       owner,
-      ['function latestRoundData () external view returns (uint80, int, uint, uint, uint80)']
+      [
+        'function latestRoundData () external view returns (uint80, int, uint, uint, uint80)',
+        'function decimals () external view returns (uint8)',
+      ]
     );
 
     const oracle1 = await deployMockContract(
       owner,
-      ['function latestRoundData () external view returns (uint80, int, uint, uint, uint80)']
+      [
+        'function latestRoundData () external view returns (uint80, int, uint, uint, uint80)',
+        'function decimals () external view returns (uint8)',
+      ]
     );
+
+    await oracle0.mock.decimals.returns(8);
+    await oracle1.mock.decimals.returns(8);
 
     const tx = await manager.deployPair(
       token0.address,
