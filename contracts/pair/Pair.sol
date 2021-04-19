@@ -10,7 +10,6 @@ import './PairStorage.sol';
 
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
-import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 
 /**
  * @title Median options pair
@@ -29,11 +28,25 @@ contract Pair is IPair, OwnableInternal {
   }
 
   /**
+   * TODO: define base and underlying
    * @inheritdoc IPair
    */
-  function getVariance () external override view returns (int128 variance64x64) {
-    // TODO: calculate
-    variance64x64 = PairStorage.layout().emaVarianceAnnualized64x64;
+  function updateAndGetLatestData () override external returns (int128 price64x64, int128 variance64x64) {
+    _update();
+    PairStorage.Layout storage l = PairStorage.layout();
+    price64x64 = l.getPriceUpdate(block.timestamp);
+    variance64x64 = l.emaVarianceAnnualized64x64;
+  }
+
+  /**
+   * TODO: define base and underlying
+   * @inheritdoc IPair
+   */
+  function updateAndGetHistoricalPrice (
+    uint256 timestamp
+  ) override external returns (int128 price64x64) {
+    _update();
+    price64x64 = PairStorage.layout().getPriceUpdateAfter(timestamp);
   }
 
   /**
@@ -53,13 +66,14 @@ contract Pair is IPair, OwnableInternal {
   function _update () internal {
     PairStorage.Layout storage l = PairStorage.layout();
 
-    // TODO: skip if trivial amount of time has passed since last update
-    if (block.timestamp <= l.updatedAt + 1 hours) return;
-
     int128 price64x64 = ABDKMath64x64.divi(
       _fetchLatestPrice(l.oracle0),
       _fetchLatestPrice(l.oracle1)
     );
+
+    if (l.getPriceUpdate(block.timestamp) == 0) {
+      l.setPriceUpdate(block.timestamp, price64x64);
+    }
 
     l.updatedAt = block.timestamp;
 

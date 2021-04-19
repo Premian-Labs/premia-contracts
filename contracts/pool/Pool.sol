@@ -51,7 +51,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     uint64 maturity,
     int128 strike64x64,
     uint256 amount
-  ) public view returns (int128 price64x64) {
+  ) public returns (int128 price64x64) {
     require(maturity > block.timestamp, 'Pool: maturity must be in the future');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
@@ -61,11 +61,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     int128 oldLiquidity64x64 = l.liquidity64x64;
     int128 newLiquidity64x64 = oldLiquidity64x64.add(amount64x64);
 
-    int128 variance64x64 = IPair(l.pair).getVariance();
-
-    // TODO: fetch
-    int128 spot64x64;
-
+    (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
     int128 timeToMaturity64x64 = ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
 
     price64x64 = OptionMath.quotePrice(
@@ -187,17 +183,20 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    // TODO: get spot price now or at maturity
-    int128 spot64x64;
-
-    require(strike64x64 > spot64x64, 'Pool: option must be in-the-money');
+    int128 spot64x64 = IPair(l.pair).updateAndGetHistoricalPrice(
+      maturity < block.timestamp ? maturity : block.timestamp
+    );
 
     _burn(msg.sender, tokenId, amount);
 
-    int128 value64x64 = strike64x64.sub(spot64x64).mul(ABDKMath64x64.fromUInt(amount));
+    if (strike64x64 > spot64x64) {
+      // option is in-the-money
 
-    // TODO: convert base value to underlying value
-    _push(l.underlying, value64x64.toDecimals(l.underlyingDecimals));
+      int128 value64x64 = strike64x64.sub(spot64x64).mul(ABDKMath64x64.fromUInt(amount));
+
+      // TODO: convert base value to underlying value
+      _push(l.underlying, value64x64.toDecimals(l.underlyingDecimals));
+    }
   }
 
   /**
