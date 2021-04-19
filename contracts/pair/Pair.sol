@@ -8,6 +8,7 @@ import '@solidstate/contracts/access/OwnableInternal.sol';
 import './IPair.sol';
 import './PairStorage.sol';
 
+import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 

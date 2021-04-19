@@ -31,32 +31,6 @@ describe('OptionMath', function () {
     await instance.deployed();
   });
 
-  describe('#logreturns', function () {
-    it('returns the natural log returns for a given day', async function () {
-      let expected = fixedFromFloat(-0.012389950714774214);
-      expect(
-        expected / await instance.callStatic.logreturns(
-          input_t[1],
-          input_t_1[1]
-        )
-      ).to.be.closeTo(
-        1,
-        0.001
-      );
-
-      expected = fixedFromFloat(0.012389950714774214);
-      expect(
-        expected / await instance.callStatic.logreturns(
-          input_t_1[1],
-          input_t[1]
-        )
-      ).to.be.closeTo(
-        1,
-        0.001
-      );
-    });
-  });
-
   describe('#rollingEma', function () {
     it('return the rolling ema value', async function () {
       const ema_t_1 = fixedFromFloat(0.1);
@@ -110,32 +84,6 @@ describe('OptionMath', function () {
     });
   });
 
-  describe('#d1', function () {
-    it('calculates d1 in Black-Scholes', async function () {
-      const price =  input_t[1];
-      const strike = fixedFromFloat(55284.28125 * 0.95); // input_t * 0.9
-      const variance = fixedFromFloat(0.16);
-      const maturity = fixedFromFloat(28 / 365);
-      const expected = fixedFromFloat(0.5183801513);
-
-      // let strike price = 0.9 of stock price. then:
-      // d1 = (ln(1/0.95) + (28/365) * 0.16 * 0.5) / sqrt(28/365 * 0.16) = 0.5183801513
-
-      expect(
-        expected / await instance.callStatic.d1(
-          variance,
-          strike,
-          price,
-          maturity
-        )
-      ).to.be.closeTo(
-        1,
-        0.001
-      );
-
-    });
-  });
-
   describe('#N', function () {
     it('calculates CDF approximation', async function () {
       let prob = fixedFromFloat(0.8);
@@ -167,38 +115,8 @@ describe('OptionMath', function () {
     });
   });
 
-  describe('#Xt', function () {
-    it('calculates supply-demand percentage change (signed)', async function () {
-      const S0 = fixedFromFloat(100);
-      const S1 = fixedFromFloat(20);
-      const expected_supply_withdrawn = fixedFromFloat(-0.8);
-      const expected_supply_added = fixedFromFloat(0.8);
-
-      expect(
-        expected_supply_withdrawn / await instance.callStatic.Xt(
-          S0,
-          S1
-        )
-      ).to.be.closeTo(
-        1,
-        0.001
-      );
-
-      expect(
-        expected_supply_added / await instance.callStatic.Xt(
-          S1,
-          S0
-        )
-      ).to.be.closeTo(
-        1,
-        0.001
-      );
-
-    });
-  });
-
   describe('#calculateCLevel', function () {
-    it('calculates C coefficient level (also covers calculateTradingDelta implicitly)', async function (){
+    it('calculates C coefficient level', async function (){
       const S0 = fixedFromFloat(100);
       const S1 = fixedFromFloat(20);
       const expected_c_withdrawn = fixedFromFloat(2.2255409285);
@@ -221,26 +139,6 @@ describe('OptionMath', function () {
           fixedFromFloat(1),
           S1,
           S0,
-          fixedFromFloat(1)
-        )
-      ).to.be.closeTo(
-        1,
-        0.001
-      );
-    });
-  });
-
-  describe('#slippageCoefficient', function () {
-    it('calculates slippage correction coefficient level', async function (){
-      const S0 = fixedFromFloat(100);
-      const S1 = fixedFromFloat(20);
-      const expected = fixedFromFloat(1.5319261606);
-
-      // (1 - e^(-(20-100)/100))/((20-100)/100) = 1.5319261606
-      expect(
-        expected / await instance.callStatic.slippageCoefficient(
-          S0,
-          S1,
           fixedFromFloat(1)
         )
       ).to.be.closeTo(

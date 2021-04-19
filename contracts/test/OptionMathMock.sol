@@ -5,13 +5,6 @@ pragma solidity ^0.8.0;
 import {OptionMath} from "../libraries/OptionMath.sol";
 
 contract OptionMathMock {
-  function logreturns (
-    int128 today64x64,
-    int128 yesterday64x64
-  ) external pure returns (int128) {
-    return OptionMath.logreturns(today64x64, yesterday64x64);
-  }
-
   function rollingEma (
     int128 oldValue64x64,
     int128 newValue64x64,
@@ -34,34 +27,10 @@ contract OptionMathMock {
     );
   }
 
-  function d1 (
-    int128 variance,
-    int128 strike,
-    int128 price,
-    int128 timeToMaturity
-  ) external pure returns (int128) {
-    return OptionMath.d1(variance, strike, price, timeToMaturity);
-  }
-
   function N (
     int128 x
   ) external pure returns (int128) {
     return OptionMath.N(x);
-  }
-
-  function Xt (
-    int128 oldPoolState,
-    int128 newPoolState
-  ) external pure returns (int128) {
-    return OptionMath.Xt(oldPoolState, newPoolState);
-  }
-
-  function slippageCoefficient (
-    int128 oldPoolState,
-    int128 newPoolState,
-    int128 steepness
-  ) external pure returns (int128) {
-    return OptionMath.slippageCoefficient(oldPoolState, newPoolState, steepness);
   }
 
   function bsPrice (
@@ -72,14 +41,6 @@ contract OptionMathMock {
     bool isCall
   ) external pure returns (int128) {
     return OptionMath.bsPrice(variance, strike, price, timeToMaturity, isCall);
-  }
-
-  function calculateTradingDelta (
-    int128 oldPoolState,
-    int128 newPoolState,
-    int128 steepness
-  ) external pure returns (int128) {
-    return OptionMath.calculateTradingDelta(oldPoolState, newPoolState, steepness);
   }
 
   function calculateCLevel (
