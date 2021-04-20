@@ -87,6 +87,7 @@ describe('PremiaVestingCancellable', () => {
     premiaVesting = await premiaVestingFactory.deploy(
       premia.address,
       admin.address,
+      admin.address,
     );
 
     const amount = parseEther('730');
@@ -133,9 +134,20 @@ describe('PremiaVestingCancellable', () => {
     );
   });
 
-  it('should fail cancelling the vesting if not called from treasury', async () => {
+  it('should fail cancelling the vesting if not called from thirdParty', async () => {
     await expect(premiaVesting.connect(user1).cancel()).to.be.revertedWith(
-      'Not treasury',
+      'Not thirdParty',
+    );
+  });
+
+  it('should fail cancelling the vesting before min release period is reached', async () => {
+    let lastWithdraw = await premiaVesting.lastWithdrawalTimestamp();
+    // We remove 1s to timestamp, as it will increment when transaction is mined in hardhat network
+    const balanceTreasuryBefore = await premia.balanceOf(admin.address);
+
+    await setTimestamp(lastWithdraw.add(100 * 24 * 3600 - 1).toNumber());
+    await expect(premiaVesting.connect(admin).cancel()).to.be.revertedWith(
+      'Min release period not ended',
     );
   });
 
@@ -144,16 +156,16 @@ describe('PremiaVestingCancellable', () => {
     // We remove 1s to timestamp, as it will increment when transaction is mined in hardhat network
     const balanceTreasuryBefore = await premia.balanceOf(admin.address);
 
-    await setTimestamp(lastWithdraw.add(100 * 24 * 3600 - 1).toNumber());
+    await setTimestamp(lastWithdraw.add(181 * 24 * 3600 - 1).toNumber());
     await premiaVesting.connect(admin).cancel();
 
     let balance = await premia.balanceOf(user1.address);
     let balanceLeft = await premia.balanceOf(premiaVesting.address);
     const balanceTreasuryAfter = await premia.balanceOf(admin.address);
-    expect(balance).to.eq(parseEther('100'));
+    expect(balance).to.eq(parseEther('181'));
     expect(balanceLeft).to.eq(0);
     expect(balanceTreasuryAfter).to.eq(
-      balanceTreasuryBefore.add(parseEther('630')),
+      balanceTreasuryBefore.add(parseEther('549')),
     );
   });
 });

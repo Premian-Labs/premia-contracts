@@ -2,15 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import '@openzeppelin/contracts/access/Ownable.sol';
 
 /// @author Premia
-/// @title Vesting contract for Premia founder allocations, releasing the allocations over the course of a year
+/// @title Vesting contract releasing premia over the course of 2 years, and cancellable by a third party
 contract PremiaVestingCancellable is Ownable {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // The premia token
@@ -19,21 +17,26 @@ contract PremiaVestingCancellable is Ownable {
     // The timestamp at which release ends
     uint256 public endTimestamp;
     // The length of the release period (Once this period is passed, amount is fully unlocked)
-    uint256 public releasePeriod = 730 days; // 2 years
+    uint256 public constant releasePeriod = 730 days; // 2 years
+    // The minimum release period before contract can be cancelled
+    uint256 public constant minReleasePeriod = 180 days; // 6 months
     // The timestamp at which last withdrawal has been done
     uint256 public lastWithdrawalTimestamp;
-    // The Premia treasury address
+    // The premia treasury address
     address public treasury;
+    // The thirdParty address
+    address public thirdParty;
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
     // @param _premia The premia token
-    constructor(IERC20 _premia, address _treasury) {
+    constructor(IERC20 _premia, address _treasury, address _thirdParty) {
         premia = _premia;
         treasury = _treasury;
-        endTimestamp = block.timestamp.add(releasePeriod);
+        thirdParty = _thirdParty;
+        endTimestamp = block.timestamp + releasePeriod;
         lastWithdrawalTimestamp = block.timestamp;
     }
 
@@ -60,15 +63,15 @@ contract PremiaVestingCancellable is Ownable {
         if (timestamp >= endTimestamp) {
             premia.safeTransfer(_user, balance);
         } else {
-
-            uint256 elapsedSinceLastWithdrawal = timestamp.sub(_lastWithdrawalTimestamp);
-            uint256 timeLeft = endTimestamp.sub(_lastWithdrawalTimestamp);
-            premia.safeTransfer(_user, balance.mul(elapsedSinceLastWithdrawal).div(timeLeft));
+            uint256 elapsedSinceLastWithdrawal = timestamp - _lastWithdrawalTimestamp;
+            uint256 timeLeft = endTimestamp - _lastWithdrawalTimestamp;
+            premia.safeTransfer(_user, balance * elapsedSinceLastWithdrawal / timeLeft);
         }
     }
 
     function cancel() public {
-        require(msg.sender == treasury, "Not treasury");
+        require(msg.sender == thirdParty, "Not thirdParty");
+        require(block.timestamp >= endTimestamp - releasePeriod + minReleasePeriod, "Min release period not ended");
         // Send pending withdrawal to contract owner
         _withdraw(owner());
 
