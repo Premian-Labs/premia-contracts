@@ -13,12 +13,35 @@ library PoolStorage {
     address underlying;
     uint8 baseDecimals;
     uint8 underlyingDecimals;
-    int128 liquidity64x64;
     int128 cLevel64x64;
+
+    // doubly linked list of free liquidity intervals
+    mapping (address => address) liquidityQueueAscending;
+    mapping (address => address) liquidityQueueDescending;
   }
 
   function layout () internal pure returns (Layout storage l) {
     bytes32 slot = STORAGE_SLOT;
     assembly { l.slot := slot }
+  }
+
+  function addUnderwriter (
+    Layout storage l,
+    address account
+  ) internal {
+    l.liquidityQueueAscending[l.liquidityQueueDescending[address(0)]] = account;
+  }
+
+  function removeUnderwriter (
+    Layout storage l,
+    address account
+  ) internal {
+    // TODO: move to _beforeTokenTransfer hook, account for transfers
+    address prev = l.liquidityQueueDescending[account];
+    address next = l.liquidityQueueAscending[account];
+    l.liquidityQueueAscending[prev] = next;
+    l.liquidityQueueDescending[next] = prev;
+    delete l.liquidityQueueAscending[account];
+    delete l.liquidityQueueDescending[account];
   }
 }

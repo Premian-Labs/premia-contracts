@@ -21,6 +21,7 @@ import { OptionMath } from '../libraries/OptionMath.sol';
 contract Pool is OwnableInternal, ERC20, ERC1155Base {
   using ABDKMath64x64 for int128;
   using ABDKMath64x64Token for int128;
+  using PoolStorage for PoolStorage.Layout;
 
   enum TokenType { OPTION, LIQUIDITY }
 
@@ -58,8 +59,11 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     int128 amount64x64 = ABDKMath64x64Token.fromDecimals(amount, l.underlyingDecimals);
 
-    int128 oldLiquidity64x64 = l.liquidity64x64;
-    int128 newLiquidity64x64 = oldLiquidity64x64.add(amount64x64);
+    int128 oldLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
+      totalSupply(), l.underlyingDecimals
+    );
+
+    int128 newLiquidity64x64 = oldLiquidity64x64.sub(amount64x64);
 
     (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
     int128 timeToMaturity64x64 = ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
@@ -92,9 +96,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   ) external payable returns (uint256 cost) {
     // TODO: maturity must be integer number of calendar days
     // TODO: specify payment currency
-    // TODO: reserve liquidity
     // TODO: set C-Level
     // TODO: transfer portion of premium to treasury
+
+    require(amount <= totalSupply(), 'Pool: insufficient liquidity');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -102,7 +107,30 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     require(cost <= maxCost, 'Pool: excessive slippage');
     _pull(l.base, cost);
 
+    // mint long option token (ERC1155)
     _mint(msg.sender, _tokenIdFor(TokenType.OPTION, maturity, strike64x64), amount, '');
+
+    uint256 shortTokenId = _tokenIdFor(TokenType.LIQUIDITY, maturity, strike64x64);
+    address underwriter;
+
+    while (amount > 0) {
+      underwriter = l.liquidityQueueAscending[underwriter];
+      uint256 balance = balanceOf(underwriter);
+
+      uint256 intervalAmount = balance < amount ? balance : amount;
+      amount -= intervalAmount;
+
+      // burn free liquidity tokens (ERC20)
+      _burn(underwriter, intervalAmount);
+      // mint short option token (ERC1155)
+      _mint(underwriter, shortTokenId, intervalAmount, '');
+
+      // TODO: transfer premia
+
+      if (intervalAmount == balance) {
+        l.removeUnderwriter(underwriter);
+      }
+    }
   }
 
   /**
@@ -123,6 +151,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
       maturity < block.timestamp ? maturity : block.timestamp
     );
 
+    // burn long option token (ERC1155)
     _burn(msg.sender, tokenId, amount);
 
     if (strike64x64 > spot64x64) {
@@ -138,25 +167,29 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   /**
    * @notice deposit underlying currency, underwriting puts of that currency with respect to base currency
    * @param amount quantity of underlying currency to deposit
-   * @return share of pool granted
    */
   function deposit (
     uint256 amount
-  ) external payable returns (uint256 share) {
+  ) external payable {
     PoolStorage.Layout storage l = PoolStorage.layout();
-
-    // TODO: multiply by decimals
 
     _pull(l.underlying, amount);
 
-    // TODO: mint liquidity tokens
+    if (balanceOf(msg.sender) == 0) {
+      require(amount > 0, 'TODO');
+      l.addUnderwriter(msg.sender);
+    }
 
-    int128 oldLiquidity64x64 = l.liquidity64x64;
-    int128 newLiquidity64x64 = oldLiquidity64x64.add(
-      ABDKMath64x64Token.fromDecimals(amount, l.underlyingDecimals)
+    int128 oldLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
+      totalSupply(), l.underlyingDecimals
     );
 
-    l.liquidity64x64 = newLiquidity64x64;
+    // mint free liquidity tokens (ERC20)
+    _mint(msg.sender, amount);
+
+    int128 newLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
+      totalSupply(), l.underlyingDecimals
+    );
 
     l.cLevel64x64 = OptionMath.calculateCLevel(
       l.cLevel64x64,
@@ -168,29 +201,32 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
   /**
    * @notice redeem pool share tokens for underlying asset
-   * @param share quantity of share tokens to redeem
-   * @return amount of underlying asset withdrawn
+   * @param amount quantity of share tokens to redeem
    */
   function withdraw (
-    uint256 share
-  ) external returns (uint256 amount) {
-    // TODO: ensure available liquidity, queue if necessary
-
+    uint256 amount
+  ) external {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    // TODO: burn liquidity tokens
+    int128 oldLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
+      totalSupply(), l.underlyingDecimals
+    );
 
-    // TODO: calculate share of pool
+    // burn free liquidity tokens (ERC20)
+    _burn(msg.sender, amount);
+
+    int128 newLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
+      totalSupply(), l.underlyingDecimals
+    );
+
+    if (balanceOf(msg.sender) == 0) {
+      l.removeUnderwriter(msg.sender);
+    }
+
+    // TODO: reassign held options if necessary
 
     // TODO: calculate amount out
     _push(l.underlying, amount);
-
-    int128 oldLiquidity64x64 = l.liquidity64x64;
-    int128 newLiquidity64x64 = oldLiquidity64x64.sub(
-      ABDKMath64x64Token.fromDecimals(amount, l.underlyingDecimals)
-    );
-
-    l.liquidity64x64 = newLiquidity64x64;
 
     l.cLevel64x64 = OptionMath.calculateCLevel(
       l.cLevel64x64,
