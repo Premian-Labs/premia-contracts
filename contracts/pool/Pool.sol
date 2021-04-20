@@ -46,13 +46,14 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
    * @param amount size of option contract
-   * @return price64x64 64x64 fixed point representation of option price
+   * @return cost64x64 64x64 fixed point representation of option cost
+   * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
    */
   function quote (
     uint64 maturity,
     int128 strike64x64,
     uint256 amount
-  ) public returns (int128 price64x64) {
+  ) public returns (int128 cost64x64, int128 cLevel64x64) {
     require(maturity > block.timestamp, 'Pool: maturity must be in the future');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
@@ -68,7 +69,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
     (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
     int128 timeToMaturity64x64 = ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
 
-    price64x64 = OptionMath.quotePrice(
+    int128 price64x64;
+
+    (price64x64, cLevel64x64) = OptionMath.quotePrice(
       variance64x64,
       strike64x64,
       spot64x64,
@@ -78,7 +81,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
       newLiquidity64x64,
       OptionMath.ONE_64x64,
       false
-    ).mul(amount64x64);
+    );
+
+    cost64x64 = price64x64.mul(amount64x64);
   }
 
   /**
@@ -96,14 +101,15 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   ) external payable returns (uint256 cost) {
     // TODO: maturity must be integer number of calendar days
     // TODO: specify payment currency
-    // TODO: set C-Level
     // TODO: transfer portion of premium to treasury
 
     require(amount <= totalSupply(), 'Pool: insufficient liquidity');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    cost = quote(maturity, strike64x64, amount).toDecimals(l.baseDecimals);
+    int128 cost64x64;
+    (cost64x64, l.cLevel64x64) = quote(maturity, strike64x64, amount);
+    cost = cost64x64.toDecimals(l.baseDecimals);
     require(cost <= maxCost, 'Pool: excessive slippage');
     _pull(l.base, cost);
 
@@ -156,12 +162,45 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     if (strike64x64 > spot64x64) {
       // option is in-the-money
-
-      int128 value64x64 = strike64x64.sub(spot64x64).mul(ABDKMath64x64.fromUInt(amount));
-
-      // TODO: convert base value to underlying value
-      _push(l.underlying, value64x64.toDecimals(l.underlyingDecimals));
+      uint value = strike64x64.sub(spot64x64).mulu(amount);
+      _push(l.underlying, value);
+      amount -= value;
     }
+
+    int128 oldLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
+      totalSupply(), l.underlyingDecimals
+    );
+
+    uint256 shortTokenId = _tokenIdFor(TokenType.LIQUIDITY, maturity, strike64x64);
+    address underwriter;
+
+    while (amount > 0) {
+      // TODO: iterate through short option token holders via ERC1155Enumerable
+      underwriter = underwriter;
+      uint256 balance = balanceOf(underwriter);
+
+      if (balance == 0) {
+        l.addUnderwriter(underwriter);
+      }
+
+      // TODO: quantity of short tokens corresponding to freed liquidity
+      uint256 fullAmount;
+
+      // TODO: amount of freed liquidity
+      uint256 intervalAmount;
+      amount -= intervalAmount;
+
+      // mint free liquidity tokens (ERC20)
+      _mint(underwriter, intervalAmount);
+      // burn short option token (ERC1155)
+      _burn(underwriter, shortTokenId, fullAmount);
+    }
+
+    int128 newLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
+      totalSupply(), l.underlyingDecimals
+    );
+
+    l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
@@ -191,12 +230,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
       totalSupply(), l.underlyingDecimals
     );
 
-    l.cLevel64x64 = OptionMath.calculateCLevel(
-      l.cLevel64x64,
-      oldLiquidity64x64,
-      newLiquidity64x64,
-      OptionMath.ONE_64x64
-    );
+    l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
@@ -225,15 +259,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     // TODO: reassign held options if necessary
 
-    // TODO: calculate amount out
     _push(l.underlying, amount);
 
-    l.cLevel64x64 = OptionMath.calculateCLevel(
-      l.cLevel64x64,
-      oldLiquidity64x64,
-      newLiquidity64x64,
-      OptionMath.ONE_64x64
-    );
+    l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**

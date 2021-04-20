@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.0;
 
+import { OptionMath } from '../libraries/OptionMath.sol';
+
 library PoolStorage {
   bytes32 internal constant STORAGE_SLOT = keccak256(
     'median.contracts.storage.Pool'
@@ -43,5 +45,18 @@ library PoolStorage {
     l.liquidityQueueDescending[next] = prev;
     delete l.liquidityQueueAscending[account];
     delete l.liquidityQueueDescending[account];
+  }
+
+  function setCLevel (
+    Layout storage l,
+    int128 oldLiquidity64x64,
+    int128 newLiquidity64x64
+  ) internal {
+    l.cLevel64x64 = OptionMath.calculateCLevel(
+      l.cLevel64x64,
+      oldLiquidity64x64,
+      newLiquidity64x64,
+      OptionMath.ONE_64x64
+    );
   }
 }
