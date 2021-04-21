@@ -7,7 +7,7 @@ import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 library OptionMath {
   using ABDKMath64x64 for int128;
 
-  // 64x64 integer constants
+  // 64x64 fixed point integer constants
   int128 internal constant ONE_64x64 = 0x10000000000000000;
   int128 internal constant THREE_64x64 = 0x30000000000000000;
 
@@ -52,6 +52,74 @@ library OptionMath {
 
     return ONE_64x64.sub(alpha64x64).mul(oldVariance64x64).add(
       alpha64x64.mul(difference.mul(difference))
+    );
+  }
+
+  /**
+   * @notice calculate the exponential decay coefficient for a given interval
+   * @param oldTimestamp timestamp of previous update
+   * @param newTimestamp current timestamp
+   * @return 64x64 fixed point representation of exponential decay coefficient
+   */
+  function decay (
+    uint256 oldTimestamp,
+    uint256 newTimestamp
+  ) internal pure returns (int128) {
+    return ONE_64x64.sub(
+      ABDKMath64x64.divu(
+        newTimestamp - oldTimestamp,
+        1 days
+      ).mul(-ABDKMath64x64.divu(1, 7)).exp()
+    );
+  }
+
+  /**
+   * @notice calculate the rolling EMA of an irregular time series
+   * @param oldEma64x64 64x64 fixed point representation of previous EMA
+   * @param oldValue64x64 64x64 fixed point representation of previous value
+   * @param newValue64x64 64x64 fixed point representation of current value
+   * @param oldTimestamp timestamp of previous update
+   * @param newTimestamp current timestamp
+   * @return 64x64 fixed point representation of EMA for current period
+   */
+  function irregularRollingEma (
+    int128 oldEma64x64,
+    int128 oldValue64x64,
+    int128 newValue64x64,
+    uint256 oldTimestamp,
+    uint256 newTimestamp
+  ) internal pure returns (int128) {
+    int128 decay64x64 = decay(oldTimestamp, newTimestamp);
+
+    return newValue64x64.div(oldValue64x64).ln().mul(decay64x64).add(
+      ONE_64x64.sub(decay64x64).mul(oldEma64x64)
+    );
+  }
+
+  /**
+   * @notice calculate the rolling EMA variance of an irregular time series
+   * @param oldEma64x64 64x64 fixed point representation of previous EMA
+   * @param oldEmaVariance64x64 64x64 fixed point representation of previous variance
+   * @param oldValue64x64 64x64 fixed point representation of previous value
+   * @param newValue64x64 64x64 fixed point representation of current value
+   * @param oldTimestamp timestamp of previous update
+   * @param newTimestamp current timestamp
+   * @return EMA of variance for current period
+   */
+  function irregularRollingEmaVariance (
+    int128 oldEma64x64,
+    int128 oldEmaVariance64x64,
+    int128 oldValue64x64,
+    int128 newValue64x64,
+    uint256 oldTimestamp,
+    uint256 newTimestamp
+  ) internal pure returns (int128) {
+    int128 decay64x64 = decay(oldTimestamp, newTimestamp);
+    int128 difference64x64 = newValue64x64.div(oldValue64x64).ln().sub(oldEma64x64);
+
+    return ONE_64x64.sub(decay64x64).mul(
+      // squaring via mul is cheaper than via pow
+      decay64x64.mul(difference64x64).mul(difference64x64).add(oldEmaVariance64x64)
     );
   }
 

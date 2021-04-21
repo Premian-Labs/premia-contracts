@@ -84,6 +84,18 @@ describe('OptionMath', function () {
     });
   });
 
+  describe('#decay', function () {
+    it('todo');
+  });
+
+  describe('#irregularRollingEma', function () {
+    it('todo');
+  });
+
+  describe('#irregularRollingEmaVariance', function () {
+    it('todo');
+  });
+
   describe('#N', function () {
     it('calculates CDF approximation', async function () {
       let prob = fixedFromFloat(0.8);
