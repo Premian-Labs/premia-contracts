@@ -27,10 +27,7 @@ library OptionMath {
     uint256 newTimestamp
   ) internal pure returns (int128) {
     return ONE_64x64.sub(
-      ABDKMath64x64.divu(
-        newTimestamp - oldTimestamp,
-        1 days
-      ).mul(-ABDKMath64x64.divu(1, 7)).exp()
+      (-ABDKMath64x64.divu(newTimestamp - oldTimestamp, 7 days)).exp()
     );
   }
 
