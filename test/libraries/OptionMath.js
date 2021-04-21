@@ -31,59 +31,6 @@ describe('OptionMath', function () {
     await instance.deployed();
   });
 
-  describe('#rollingEma', function () {
-    it('return the rolling ema value', async function () {
-      const ema_t_1 = fixedFromFloat(0.1);
-
-      expect(
-        await instance.callStatic.rollingEma(
-          ema_t_1,
-          ema_t_1,
-          ethers.BigNumber.from(14)
-        )
-      ).to.be.closeTo(
-        ema_t_1,
-        1
-      );
-
-      const logReturn_t = fixedFromFloat(-0.01239);
-      const expected = fixedFromFloat(0.08501466667);
-
-      expect(
-        expected / await instance.callStatic.rollingEma(
-          ema_t_1,
-          logReturn_t,
-          ethers.BigNumber.from(14)
-        )
-      ).to.be.closeTo(
-        1,
-        0.001
-      );
-    });
-  });
-
-  describe('#rollingEmaVariance', function () {
-    it('return the rolling variance value', async function () {
-      const emvar_t_1 = fixedFromFloat(0.1);
-      const ema_t_1 = fixedFromFloat(0.3);
-      const logReturn_t = fixedFromFloat(-0.01239);
-      const expected = fixedFromFloat(0.09967833495);
-
-      // (1 - 2/15) * 0.1 + 2/15 * (-0.01239 - 0.3)^2
-      expect(
-        expected / await instance.callStatic.rollingEmaVariance(
-          emvar_t_1,
-          ema_t_1,
-          logReturn_t,
-          ethers.BigNumber.from(14)
-        )
-      ).to.be.closeTo(
-        1,
-        0.001
-      );
-    });
-  });
-
   describe('#decay', function () {
     it('todo');
   });

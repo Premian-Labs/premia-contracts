@@ -17,45 +17,6 @@ library OptionMath {
   int128 private constant CDF_CONST_2 = 0x0d3c84b78b749bd6b; // 3300 / 3989
 
   /**
-   * @notice calculate the rolling EMA of a time series
-   * @param oldValue64x64 64x64 fixed point representation of previous value
-   * @param newValue64x64 64x64 fixed point representation of current value
-   * @param window number of periods to use in calculation
-   * @return EMA for current period
-   */
-  function rollingEma (
-    int128 oldValue64x64,
-    int128 newValue64x64,
-    uint256 window
-  ) internal pure returns (int128) {
-    return ABDKMath64x64.divu(2, window + 1).mul(
-      newValue64x64.sub(oldValue64x64)
-    ).add(oldValue64x64);
-  }
-
-  /**
-   * @notice calculate the rolling EMA variance of a time series
-   * @param oldVariance64x64 64x64 fixed point representation of previous variance
-   * @param oldValue64x64 64x64 fixed point representation of previous value
-   * @param newValue64x64 64x64 fixed point representation of current value
-   * @param window number of periods to use in calculation
-   * @return EMA of variance for current period
-   */
-  function rollingEmaVariance (
-    int128 oldVariance64x64,
-    int128 oldValue64x64,
-    int128 newValue64x64,
-    uint256 window
-  ) internal pure returns (int128) {
-    int128 alpha64x64 = ABDKMath64x64.divu(2, window + 1);
-    int128 difference = newValue64x64.sub(oldValue64x64);
-
-    return ONE_64x64.sub(alpha64x64).mul(oldVariance64x64).add(
-      alpha64x64.mul(difference.mul(difference))
-    );
-  }
-
-  /**
    * @notice calculate the exponential decay coefficient for a given interval
    * @param oldTimestamp timestamp of previous update
    * @param newTimestamp current timestamp
