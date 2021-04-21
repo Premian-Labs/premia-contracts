@@ -93,7 +93,6 @@ library OptionMath {
     int128 timeToMaturity64x64,
     bool isCall
   ) internal pure returns (int128) {
-    // TODO: add require to check variance, price, timeToMaturity64x64 > 0, strike => 0.5 * price,  strike <= 2 * price
     int128 cumulativeVariance64x64 = timeToMaturity64x64.mul(emaVarianceAnnualized64x64);
     int128 cumulativeVarianceSqrt64x64 = cumulativeVariance64x64.sqrt();
 
@@ -151,7 +150,6 @@ library OptionMath {
     int128 steepness64x64,
     bool isCall
   ) internal pure returns (int128 medianPrice64x64, int128 cLevel64x64) {
-    // TODO: formalize newPoolState < oldPoolState
     int128 deltaPoolState64x64 = newPoolState.sub(oldPoolState).div(oldPoolState).mul(steepness64x64);
     int128 tradingDelta64x64 = deltaPoolState64x64.neg().exp();
 

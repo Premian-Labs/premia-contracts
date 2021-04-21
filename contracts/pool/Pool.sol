@@ -56,7 +56,15 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   ) public returns (int128 cost64x64, int128 cLevel64x64) {
     require(maturity > block.timestamp, 'Pool: maturity must be in the future');
 
+    // TODO: require maturity in bucket
+
     PoolStorage.Layout storage l = PoolStorage.layout();
+
+    (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
+    int128 timeToMaturity64x64 = ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
+
+    require(strike64x64 <= spot64x64 * 2, 'Pool: strike price must not exceed two times spot price');
+    require(strike64x64 >= spot64x64 / 2, 'Pool: strike price must be at least one half spot price');
 
     int128 amount64x64 = ABDKMath64x64Token.fromDecimals(amount, l.underlyingDecimals);
 
@@ -66,8 +74,12 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     int128 newLiquidity64x64 = oldLiquidity64x64.sub(amount64x64);
 
-    (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
-    int128 timeToMaturity64x64 = ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
+    // TODO: validate values without spending gas
+    // assert(oldLiquidity64x64 >= newLiquidity64x64);
+    // assert(variance64x64 > 0);
+    // assert(strike64x64 > 0);
+    // assert(spot64x64 > 0);
+    // assert(timeToMaturity64x64 > 0);
 
     int128 price64x64;
 
