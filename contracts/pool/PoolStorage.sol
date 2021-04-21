@@ -2,6 +2,9 @@
 
 pragma solidity ^0.8.0;
 
+import '@solidstate/contracts/token/ERC20/ERC20BaseStorage.sol';
+
+import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
 
 library PoolStorage {
@@ -25,6 +28,14 @@ library PoolStorage {
   function layout () internal pure returns (Layout storage l) {
     bytes32 slot = STORAGE_SLOT;
     assembly { l.slot := slot }
+  }
+
+  function totalSupply64x64 (
+    Layout storage l
+  ) internal view returns (int128) {
+    return ABDKMath64x64Token.fromDecimals(
+      ERC20BaseStorage.layout().totalSupply, l.underlyingDecimals
+    );
   }
 
   function addUnderwriter (

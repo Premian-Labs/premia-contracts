@@ -68,10 +68,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
 
     int128 amount64x64 = ABDKMath64x64Token.fromDecimals(amount, l.underlyingDecimals);
 
-    int128 oldLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
-      totalSupply(), l.underlyingDecimals
-    );
-
+    int128 oldLiquidity64x64 = l.totalSupply64x64();
     int128 newLiquidity64x64 = oldLiquidity64x64.sub(amount64x64);
 
     // TODO: validate values without spending gas
@@ -179,9 +176,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
       amount -= value;
     }
 
-    int128 oldLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
-      totalSupply(), l.underlyingDecimals
-    );
+    int128 oldLiquidity64x64 = l.totalSupply64x64();
 
     uint256 shortTokenId = _tokenIdFor(TokenType.LIQUIDITY, maturity, strike64x64);
     address underwriter;
@@ -208,9 +203,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
       _burn(underwriter, shortTokenId, fullAmount);
     }
 
-    int128 newLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
-      totalSupply(), l.underlyingDecimals
-    );
+    int128 newLiquidity64x64 = l.totalSupply64x64();
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
   }
@@ -231,16 +224,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
       l.addUnderwriter(msg.sender);
     }
 
-    int128 oldLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
-      totalSupply(), l.underlyingDecimals
-    );
-
+    int128 oldLiquidity64x64 = l.totalSupply64x64();
     // mint free liquidity tokens (ERC20)
     _mint(msg.sender, amount);
-
-    int128 newLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
-      totalSupply(), l.underlyingDecimals
-    );
+    int128 newLiquidity64x64 = l.totalSupply64x64();
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
   }
@@ -254,16 +241,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Base {
   ) external {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    int128 oldLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
-      totalSupply(), l.underlyingDecimals
-    );
-
+    int128 oldLiquidity64x64 = l.totalSupply64x64();
     // burn free liquidity tokens (ERC20)
     _burn(msg.sender, amount);
-
-    int128 newLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
-      totalSupply(), l.underlyingDecimals
-    );
+    int128 newLiquidity64x64 = l.totalSupply64x64();
 
     if (balanceOf(msg.sender) == 0) {
       l.removeUnderwriter(msg.sender);
