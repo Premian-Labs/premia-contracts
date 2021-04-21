@@ -200,34 +200,33 @@ library OptionMath {
    * @param strike64x64 64x64 fixed point representation of strike price
    * @param spot64x64 64x64 fixed point representation of spot price
    * @param timeToMaturity64x64 64x64 fixed point representation of duration of option contract (in years)
-   * @param cLevel64x64 64x64 fixed point representation of C-Level of Pool before purchase
+   * @param oldCLevel64x64 64x64 fixed point representation of C-Level of Pool before purchase
    * @param oldPoolState 64x64 fixed point representation of current state of the pool
    * @param newPoolState 64x64 fixed point representation of state of the pool after trade
    * @param steepness64x64 64x64 fixed point representation of Pool state delta multiplier
    * @param isCall whether to price "call" or "put" option
-   * @return 64x64 fixed point representation of Median option price
+   * @return medianPrice64x64 64x64 fixed point representation of Median option price
+   * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
    */
   function quotePrice (
     int128 emaVarianceAnnualized64x64,
     int128 strike64x64,
     int128 spot64x64,
     int128 timeToMaturity64x64,
-    int128 cLevel64x64,
+    int128 oldCLevel64x64,
     int128 oldPoolState,
     int128 newPoolState,
     int128 steepness64x64,
     bool isCall
-  ) internal pure returns (int128) {
+  ) internal pure returns (int128 medianPrice64x64, int128 cLevel64x64) {
     // TODO: formalize newPoolState < oldPoolState
     int128 deltaPoolState64x64 = newPoolState.sub(oldPoolState).div(oldPoolState).mul(steepness64x64);
     int128 tradingDelta64x64 = deltaPoolState64x64.neg().exp();
 
     int128 bsPrice64x64 = bsPrice(emaVarianceAnnualized64x64, strike64x64, spot64x64, timeToMaturity64x64, isCall);
+    cLevel64x64 = tradingDelta64x64.mul(oldCLevel64x64);
 
-    return bsPrice64x64.mul(
-      // C-Level
-      tradingDelta64x64.mul(cLevel64x64)
-    ).mul(
+    medianPrice64x64 = bsPrice64x64.mul(cLevel64x64).mul(
       // slippage coefficient
       ONE_64x64.sub(tradingDelta64x64).div(deltaPoolState64x64)
     );

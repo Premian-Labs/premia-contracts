@@ -217,7 +217,7 @@ describe('OptionMath', function () {
       const expected = fixedFromFloat(2.2255409285 * 4013.677084809402 * 1.5319261606); // c * bsch * slippage
 
       expect(
-        expected / await instance.callStatic.quotePrice(
+        expected / (await instance.callStatic.quotePrice(
           variance,
           strike,
           price,
@@ -227,12 +227,11 @@ describe('OptionMath', function () {
           S1,
           steepness,
           true
-        )
+        ))[0]
       ).to.be.closeTo(
         1,
         0.001
       );
     });
   });
-
 });

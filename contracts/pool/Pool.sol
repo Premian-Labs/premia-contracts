@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import '@solidstate/contracts/access/OwnableInternal.sol';
+import '@solidstate/contracts/token/ERC20/ERC20.sol';
 import '@solidstate/contracts/token/ERC20/IERC20.sol';
 import '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
 
@@ -10,14 +11,17 @@ import '../pair/IPair.sol';
 import './PoolStorage.sol';
 
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
+import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
 
 /**
  * @title Median option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract Pool is OwnableInternal, ERC1155Base {
+contract Pool is OwnableInternal, ERC20, ERC1155Base {
   using ABDKMath64x64 for int128;
+  using ABDKMath64x64Token for int128;
+  using PoolStorage for PoolStorage.Layout;
 
   enum TokenType { OPTION, LIQUIDITY }
 
@@ -42,30 +46,32 @@ contract Pool is OwnableInternal, ERC1155Base {
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
    * @param amount size of option contract
-   * @return price64x64 64x64 fixed point representation of option price
+   * @return cost64x64 64x64 fixed point representation of option cost
+   * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
    */
   function quote (
     uint64 maturity,
     int128 strike64x64,
     uint256 amount
-  ) public view returns (int128 price64x64) {
+  ) public returns (int128 cost64x64, int128 cLevel64x64) {
     require(maturity > block.timestamp, 'Pool: maturity must be in the future');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    int128 amount64x64 = _weiToFixed(amount, l.underlyingDecimals);
+    int128 amount64x64 = ABDKMath64x64Token.fromDecimals(amount, l.underlyingDecimals);
 
-    int128 oldLiquidity64x64 = l.liquidity64x64;
-    int128 newLiquidity64x64 = oldLiquidity64x64.add(amount64x64);
+    int128 oldLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
+      totalSupply(), l.underlyingDecimals
+    );
 
-    int128 variance64x64 = IPair(l.pair).getVariance();
+    int128 newLiquidity64x64 = oldLiquidity64x64.sub(amount64x64);
 
-    // TODO: fetch
-    int128 spot64x64;
-
+    (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
     int128 timeToMaturity64x64 = ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
 
-    price64x64 = OptionMath.quotePrice(
+    int128 price64x64;
+
+    (price64x64, cLevel64x64) = OptionMath.quotePrice(
       variance64x64,
       strike64x64,
       spot64x64,
@@ -75,66 +81,9 @@ contract Pool is OwnableInternal, ERC1155Base {
       newLiquidity64x64,
       OptionMath.ONE_64x64,
       false
-    ).mul(amount64x64);
-  }
-
-  /**
-   * @notice deposit underlying currency, underwriting puts of that currency with respect to base currency
-   * @param amount quantity of underlying currency to deposit
-   * @return share of pool granted
-   */
-  function deposit (
-    uint256 amount
-  ) external payable returns (uint256 share) {
-    PoolStorage.Layout storage l = PoolStorage.layout();
-
-    // TODO: multiply by decimals
-
-    _pull(l.underlying, amount);
-
-    // TODO: mint liquidity tokens
-
-    int128 oldLiquidity64x64 = l.liquidity64x64;
-    int128 newLiquidity64x64 = oldLiquidity64x64.add(_weiToFixed(amount, l.underlyingDecimals));
-    l.liquidity64x64 = newLiquidity64x64;
-
-    l.cLevel64x64 = OptionMath.calculateCLevel(
-      l.cLevel64x64,
-      oldLiquidity64x64,
-      newLiquidity64x64,
-      OptionMath.ONE_64x64
     );
-  }
 
-  /**
-   * @notice redeem pool share tokens for underlying asset
-   * @param share quantity of share tokens to redeem
-   * @return amount of underlying asset withdrawn
-   */
-  function withdraw (
-    uint256 share
-  ) external returns (uint256 amount) {
-    // TODO: ensure available liquidity, queue if necessary
-
-    PoolStorage.Layout storage l = PoolStorage.layout();
-
-    // TODO: burn liquidity tokens
-
-    // TODO: calculate share of pool
-
-    // TODO: calculate amount out
-    _push(l.underlying, amount);
-
-    int128 oldLiquidity64x64 = l.liquidity64x64;
-    int128 newLiquidity64x64 = oldLiquidity64x64.sub(_weiToFixed(amount, l.underlyingDecimals));
-    l.liquidity64x64 = newLiquidity64x64;
-
-    l.cLevel64x64 = OptionMath.calculateCLevel(
-      l.cLevel64x64,
-      oldLiquidity64x64,
-      newLiquidity64x64,
-      OptionMath.ONE_64x64
-    );
+    cost64x64 = price64x64.mul(amount64x64);
   }
 
   /**
@@ -152,16 +101,42 @@ contract Pool is OwnableInternal, ERC1155Base {
   ) external payable returns (uint256 cost) {
     // TODO: maturity must be integer number of calendar days
     // TODO: specify payment currency
-    // TODO: reserve liquidity
-    // TODO: set C-Level
+    // TODO: transfer portion of premium to treasury
+
+    require(amount <= totalSupply(), 'Pool: insufficient liquidity');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    cost = _fixedToWei(quote(maturity, strike64x64, amount), l.baseDecimals);
+    int128 cost64x64;
+    (cost64x64, l.cLevel64x64) = quote(maturity, strike64x64, amount);
+    cost = cost64x64.toDecimals(l.baseDecimals);
     require(cost <= maxCost, 'Pool: excessive slippage');
     _pull(l.base, cost);
 
+    // mint long option token (ERC1155)
     _mint(msg.sender, _tokenIdFor(TokenType.OPTION, maturity, strike64x64), amount, '');
+
+    uint256 shortTokenId = _tokenIdFor(TokenType.LIQUIDITY, maturity, strike64x64);
+    address underwriter;
+
+    while (amount > 0) {
+      underwriter = l.liquidityQueueAscending[underwriter];
+      uint256 balance = balanceOf(underwriter);
+
+      uint256 intervalAmount = balance < amount ? balance : amount;
+      amount -= intervalAmount;
+
+      // burn free liquidity tokens (ERC20)
+      _burn(underwriter, intervalAmount);
+      // mint short option token (ERC1155)
+      _mint(underwriter, shortTokenId, intervalAmount, '');
+
+      // TODO: transfer premia
+
+      if (intervalAmount == balance) {
+        l.removeUnderwriter(underwriter);
+      }
+    }
   }
 
   /**
@@ -178,17 +153,115 @@ contract Pool is OwnableInternal, ERC1155Base {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    // TODO: get spot price now or at maturity
-    int128 spot64x64;
+    int128 spot64x64 = IPair(l.pair).updateAndGetHistoricalPrice(
+      maturity < block.timestamp ? maturity : block.timestamp
+    );
 
-    require(strike64x64 > spot64x64, 'Pool: option must be in-the-money');
-
+    // burn long option token (ERC1155)
     _burn(msg.sender, tokenId, amount);
 
-    int128 value64x64 = strike64x64.sub(spot64x64).mul(ABDKMath64x64.fromUInt(amount));
+    if (strike64x64 > spot64x64) {
+      // option is in-the-money
+      uint value = strike64x64.sub(spot64x64).mulu(amount);
+      _push(l.underlying, value);
+      amount -= value;
+    }
 
-    // TODO: convert base value to underlying value
-    _push(l.underlying, _fixedToWei(value64x64, l.underlyingDecimals));
+    int128 oldLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
+      totalSupply(), l.underlyingDecimals
+    );
+
+    uint256 shortTokenId = _tokenIdFor(TokenType.LIQUIDITY, maturity, strike64x64);
+    address underwriter;
+
+    while (amount > 0) {
+      // TODO: iterate through short option token holders via ERC1155Enumerable
+      underwriter = underwriter;
+      uint256 balance = balanceOf(underwriter);
+
+      if (balance == 0) {
+        l.addUnderwriter(underwriter);
+      }
+
+      // TODO: quantity of short tokens corresponding to freed liquidity
+      uint256 fullAmount;
+
+      // TODO: amount of freed liquidity
+      uint256 intervalAmount;
+      amount -= intervalAmount;
+
+      // mint free liquidity tokens (ERC20)
+      _mint(underwriter, intervalAmount);
+      // burn short option token (ERC1155)
+      _burn(underwriter, shortTokenId, fullAmount);
+    }
+
+    int128 newLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
+      totalSupply(), l.underlyingDecimals
+    );
+
+    l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
+  }
+
+  /**
+   * @notice deposit underlying currency, underwriting puts of that currency with respect to base currency
+   * @param amount quantity of underlying currency to deposit
+   */
+  function deposit (
+    uint256 amount
+  ) external payable {
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    _pull(l.underlying, amount);
+
+    if (balanceOf(msg.sender) == 0) {
+      require(amount > 0, 'TODO');
+      l.addUnderwriter(msg.sender);
+    }
+
+    int128 oldLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
+      totalSupply(), l.underlyingDecimals
+    );
+
+    // mint free liquidity tokens (ERC20)
+    _mint(msg.sender, amount);
+
+    int128 newLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
+      totalSupply(), l.underlyingDecimals
+    );
+
+    l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
+  }
+
+  /**
+   * @notice redeem pool share tokens for underlying asset
+   * @param amount quantity of share tokens to redeem
+   */
+  function withdraw (
+    uint256 amount
+  ) external {
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    int128 oldLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
+      totalSupply(), l.underlyingDecimals
+    );
+
+    // burn free liquidity tokens (ERC20)
+    _burn(msg.sender, amount);
+
+    int128 newLiquidity64x64 = ABDKMath64x64Token.fromDecimals(
+      totalSupply(), l.underlyingDecimals
+    );
+
+    if (balanceOf(msg.sender) == 0) {
+      l.removeUnderwriter(msg.sender);
+    }
+
+    // TODO: reassign held options if necessary
+
+    _push(l.underlying, amount);
+
+    l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
@@ -223,32 +296,6 @@ contract Pool is OwnableInternal, ERC1155Base {
       maturity := shr(128, tokenId)
       strike64x64 := tokenId
     }
-  }
-
-  /**
-   * @notice convert 64x64 fixed point representation of token amount to wei
-   * @param amount64x64 64x64 fixed point representation of token amount
-   * @param decimals token display decimals
-   * @return amount wei representation of token amount
-   */
-  function _fixedToWei (
-    int128 amount64x64,
-    uint8 decimals
-  ) internal pure returns (uint256 amount) {
-    amount = amount64x64.mulu(10 ** decimals);
-  }
-
-  /**
-   * @notice convert wei representation of token amount to 64x64 fixed point
-   * @param amount wei representation of token amount
-   * @param decimals token display decimals
-   * @return amount64x64 64x64 fixed point representation of token amount
-   */
-  function _weiToFixed (
-    uint256 amount,
-    uint8 decimals
-  ) internal pure returns (int128 amount64x64) {
-    amount64x64 = ABDKMath64x64.divu(amount, 10 ** decimals);
   }
 
   /**

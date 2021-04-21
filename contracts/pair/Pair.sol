@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
+import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 import '@solidstate/contracts/access/OwnableInternal.sol';
 
-import '../core/IPriceConsumer.sol';
 import './IPair.sol';
 import './PairStorage.sol';
 
@@ -28,55 +28,72 @@ contract Pair is IPair, OwnableInternal {
   }
 
   /**
+   * TODO: define base and underlying
    * @inheritdoc IPair
    */
-  function getVariance () external override view returns (int128 variance64x64) {
-    // TODO: calculate
-    variance64x64 = PairStorage.layout().emaVarianceAnnualized64x64;
+  function updateAndGetLatestData () override external returns (int128 price64x64, int128 variance64x64) {
+    _update();
+    PairStorage.Layout storage l = PairStorage.layout();
+    price64x64 = l.getPriceUpdate(block.timestamp);
+    variance64x64 = l.emaVarianceAnnualized64x64;
   }
 
- /**
-   * @notice updates state variables
+  /**
+   * TODO: define base and underlying
+   * @inheritdoc IPair
    */
-  function update() internal {
+  function updateAndGetHistoricalPrice (
+    uint256 timestamp
+  ) override external returns (int128 price64x64) {
+    _update();
+    price64x64 = PairStorage.layout().getPriceUpdateAfter(timestamp);
+  }
+
+  /**
+   * @notice fetch latest price from given oracle
+   * @param oracle Chainlink price aggregator address
+   * @return price latest price
+   */
+  function _fetchLatestPrice (
+    address oracle
+  ) internal view returns (int256 price) {
+    (, price, , ,) = AggregatorV3Interface(oracle).latestRoundData();
+  }
+
+  /**
+   * @notice TODO
+   */
+  function _update () internal {
     PairStorage.Layout storage l = PairStorage.layout();
 
-    // TODO: skip if trivial amount of time has passed since last update
-    if (l.lasttimestamp + l.period >= block.timestamp) return;
+    int128 price64x64 = ABDKMath64x64.divi(
+      _fetchLatestPrice(l.oracle0),
+      _fetchLatestPrice(l.oracle1)
+    );
 
-    uint today = block.timestamp / 86400;
-    uint lastDay = l.lasttimestamp / 86400;
-    (uint80 roundId, int128 newPrice64x64) = IPriceConsumer(OwnableStorage.layout().owner).getLatestPrice(l.oracle);
-
-    // TODO: skip if retrieved round ID is same as last round ID
-    if(l.dayToRoundId[lastDay] == roundId) return;
-
-    l.dayToRoundId[today] = roundId;
-
-    if(today == lastDay){
-      l.dayToClosingPrice64x64[today] = newPrice64x64;
-    } else {
-      l.dayToOpeningPrice64x64[today] = newPrice64x64;
-      // TODO: perform binary search to find and store actual close (both price and roundId)
-
-      int128 logReturns64x64 = l.dayToClosingPrice64x64[today].div(
-        l.dayToClosingPrice64x64[lastDay]
-      ).ln();
-
-      (
-        l.oldEmaLogReturns64x64,
-        l.newEmaLogReturns64x64
-      ) = (
-        l.newEmaLogReturns64x64,
-        OptionMath.rollingEma(l.oldEmaLogReturns64x64, logReturns64x64, l.window)
-      );
-
-      l.emaVarianceAnnualized64x64 = OptionMath.rollingEmaVariance(
-        l.emaVarianceAnnualized64x64 / 365,
-        l.oldEmaLogReturns64x64,
-        logReturns64x64,
-        l.window
-      ) * 365;
+    if (l.getPriceUpdate(block.timestamp) == 0) {
+      l.setPriceUpdate(block.timestamp, price64x64);
     }
+
+    l.updatedAt = block.timestamp;
+
+    // TODO: update time-weighted EMA
+    //
+    // int128 logreturns64x64 = OptionMath.logreturns(l.dayToClosingPrice64x64[today], l.dayToClosingPrice64x64[lastDay]);
+    //
+    // (
+    //   l.oldEmaLogReturns64x64,
+    //   l.newEmaLogReturns64x64
+    // ) = (
+    //   l.newEmaLogReturns64x64,
+    //   OptionMath.rollingEma(l.oldEmaLogReturns64x64, logreturns64x64, l.window)
+    // );
+    //
+    // l.emaVarianceAnnualized64x64 = OptionMath.rollingEmaVariance(
+    //   l.emaVarianceAnnualized64x64 / 365,
+    //   l.oldEmaLogReturns64x64,
+    //   logreturns64x64,
+    //   l.window
+    // ) * 365;
   }
 }
