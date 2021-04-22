@@ -10,10 +10,9 @@ import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
 import "./uniswapV2/interfaces/IUniswapV2Router02.sol";
 import "./uniswapV2/interfaces/IWETH.sol";
-import "./PremiaBondingCurve.sol";
 
 /// @author Premia
-/// @title A contract receiving all protocol fees, swapping them for eth, and using eth to purchase premia on the bonding curve
+/// @title A contract receiving all protocol fees, swapping them for premia
 contract PremiaMaker is Ownable {
     using SafeMath for uint256;
     using SafeERC20 for IERC20;
@@ -24,8 +23,6 @@ contract PremiaMaker is Ownable {
 
     // The premia token
     IERC20 public premia;
-    // The premia bonding curve
-    PremiaBondingCurve public premiaBondingCurve;
     // The premia staking contract (xPremia)
     address public premiaStaking;
 
@@ -50,7 +47,6 @@ contract PremiaMaker is Ownable {
     //////////////////////////////////////////////////
 
     // @param _premia The premia token
-    // @param _premiaBondingCurve The premia bonding curve
     // @param _premiaStaking The premia staking contract (xPremia)
     // @param _treasury The treasury address which will receive a portion of the protocol fees
     constructor(IERC20 _premia, address _premiaStaking, address _treasury) {
@@ -81,12 +77,6 @@ contract PremiaMaker is Ownable {
     function setTreasuryFee(uint256 _fee) external onlyOwner {
         require(_fee <= _inverseBasisPoint);
         treasuryFee = _fee;
-    }
-
-    /// @notice Set premia bonding curve contract
-    /// @param _premiaBondingCurve PremiaBondingCurve contract
-    function setPremiaBondingCurve(PremiaBondingCurve _premiaBondingCurve) external onlyOwner {
-        premiaBondingCurve = _premiaBondingCurve;
     }
 
     /// @notice Add UniswapRouters to the whitelist so that they can be used to swap tokens.
@@ -120,11 +110,10 @@ contract PremiaMaker is Ownable {
         return result;
     }
 
-    /// @notice Convert tokens into ETH, use ETH to purchase Premia on the bonding curve, and send Premia to PremiaStaking contract
+    /// @notice Convert tokens into Premia, and send Premia to PremiaStaking contract
     /// @param _router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
     /// @param _token The token to swap to premia
     function convert(IUniswapV2Router02 _router, address _token) public {
-        require(address(premiaBondingCurve) != address(0), "Premia bonding curve not set");
         require(_whitelistedRouters.contains(address(_router)), "Router not whitelisted");
 
         IERC20 token = IERC20(_token);
@@ -143,27 +132,25 @@ contract PremiaMaker is Ownable {
         uint256 premiaAmount;
 
         if (_token != address(premia)) {
+            address[] memory path = customPath[_token];
             if (_token != weth) {
-                address[] memory path = customPath[_token];
-
-                if (path.length == 0) {
-                    path = new address[](2);
-                    path[0] = _token;
-                    path[1] = weth;
-                }
-
-                _router.swapExactTokensForETH(
-                    amountMinusFee,
-                    0,
-                    path,
-                    address(this),
-                    block.timestamp.add(60)
-                );
+                path = new address[](3);
+                path[0] = _token;
+                path[1] = weth;
+                path[2] = address(premia);
             } else {
-                IWETH(weth).withdraw(amountMinusFee);
+                path = new address[](2);
+                path[0] = _token;
+                path[1] = address(premia);
             }
 
-            premiaAmount = premiaBondingCurve.buyTokenWithExactEthAmount{value: address(this).balance}(0, premiaStaking);
+            _router.swapExactTokensForTokens(
+                amountMinusFee,
+                0,
+                path,
+                premiaStaking,
+                block.timestamp.add(60)
+            );
         } else {
             premiaAmount = amountMinusFee;
             premia.safeTransfer(premiaStaking, premiaAmount);

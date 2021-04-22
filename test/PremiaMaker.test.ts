@@ -1,18 +1,21 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { getEthBalance, resetHardhat } from './utils/evm';
+import { resetHardhat } from './utils/evm';
 import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
-import { parseEther } from 'ethers/lib/utils';
+import { formatEther, parseEther } from 'ethers/lib/utils';
 import { createUniswap, IUniswap } from './utils/uniswap';
-import { PremiaBondingCurve } from '../contractsTyped';
 
 let p: IPremiaContracts;
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
 let treasury: SignerWithAddress;
 let uniswap: IUniswap;
-let premiaBondingCurve: PremiaBondingCurve;
+
+const chai = require('chai');
+const chaiAlmost = require('chai-almost');
+
+chai.use(chaiAlmost(0.01));
 
 describe('PremiaMaker', () => {
   beforeEach(async () => {
@@ -22,15 +25,17 @@ describe('PremiaMaker', () => {
 
     p = await deployContracts(admin, treasury.address, true);
 
-    uniswap = await createUniswap(admin);
-    premiaBondingCurve = p.premiaBondingCurve as PremiaBondingCurve;
+    uniswap = await createUniswap(admin, p.premia);
 
-    await p.premiaMaker.setPremiaBondingCurve(premiaBondingCurve.address);
     await p.premiaMaker.addWhitelistedRouter([uniswap.router.address]);
-    await p.premia.mint(premiaBondingCurve.address, parseEther('10000000'));
   });
 
   it('should make premia successfully', async () => {
+    await p.premia.mint(uniswap.premiaWeth.address, parseEther('10000'));
+    await uniswap.weth.deposit({ value: parseEther('1') });
+    await uniswap.weth.transfer(uniswap.premiaWeth.address, parseEther('1'));
+    await uniswap.premiaWeth.mint(user1.address);
+
     await uniswap.dai.mint(uniswap.daiWeth.address, parseEther('100'));
     await uniswap.weth.deposit({ value: parseEther('1') });
     await uniswap.weth.transfer(uniswap.daiWeth.address, parseEther('1'));
@@ -45,12 +50,16 @@ describe('PremiaMaker', () => {
     );
     expect(await uniswap.dai.balanceOf(p.premiaMaker.address)).to.eq(0);
     expect(
-      (await getEthBalance(premiaBondingCurve.address)).gt(parseEther('0.07')),
-    ).to.be.true;
-    expect((await p.premia.balanceOf(p.xPremia.address)).gt(360)).to.be.true;
+      Number(formatEther(await p.premia.balanceOf(p.xPremia.address))),
+    ).to.almost(685.94);
   });
 
   it('should make premia successfully with WETH', async () => {
+    await p.premia.mint(uniswap.premiaWeth.address, parseEther('10000'));
+    await uniswap.weth.deposit({ value: parseEther('1') });
+    await uniswap.weth.transfer(uniswap.premiaWeth.address, parseEther('1'));
+    await uniswap.premiaWeth.mint(user1.address);
+
     await uniswap.dai.mint(uniswap.daiWeth.address, parseEther('100'));
     await uniswap.weth.deposit({ value: parseEther('1') });
     await uniswap.weth.transfer(uniswap.daiWeth.address, parseEther('1'));
@@ -66,9 +75,8 @@ describe('PremiaMaker', () => {
     );
     expect(await uniswap.weth.balanceOf(p.premiaMaker.address)).to.eq(0);
     expect(
-      (await getEthBalance(premiaBondingCurve.address)).gt(parseEther('0.07')),
-    ).to.be.true;
-    expect((await p.premia.balanceOf(p.xPremia.address)).gt(360)).to.be.true;
+      Number(formatEther(await p.premia.balanceOf(p.xPremia.address))),
+    ).to.almost(8885.91);
   });
 
   it('should send premia successfully to premiaStaking', async () => {

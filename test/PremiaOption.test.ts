@@ -1453,7 +1453,7 @@ describe('PremiaOption', () => {
       // This test only works when we use WETH (Has been tested directly on testnet with wbtc)
       if (!TEST_USE_WETH) return;
 
-      uniswap = await createUniswap(admin, dai, weth);
+      uniswap = await createUniswap(admin, p.premia, dai, weth);
       await premiaOption.setWhitelistedUniswapRouters([uniswap.router.address]);
     });
 

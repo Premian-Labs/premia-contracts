@@ -1,4 +1,5 @@
 import {
+  PremiaErc20,
   TestErc20,
   TestErc20__factory,
   UniswapV2Factory,
@@ -18,10 +19,12 @@ export interface IUniswap {
   factory: UniswapV2Factory;
   router: UniswapV2Router02;
   daiWeth: UniswapV2Pair;
+  premiaWeth: UniswapV2Pair;
 }
 
 export async function createUniswap(
   admin: SignerWithAddress,
+  premia: PremiaErc20,
   dai?: TestErc20,
   weth?: WETH9,
 ) {
@@ -44,5 +47,12 @@ export async function createUniswap(
   const daiWethAddr = await factory.getPair(dai.address, weth.address);
   const daiWeth = await UniswapV2Pair__factory.connect(daiWethAddr, admin);
 
-  return { weth, factory, router, daiWeth, dai };
+  await factory.createPair(premia.address, weth.address);
+  const premiaWethAddr = await factory.getPair(premia.address, weth.address);
+  const premiaWeth = await UniswapV2Pair__factory.connect(
+    premiaWethAddr,
+    admin,
+  );
+
+  return { weth, factory, router, daiWeth, dai, premiaWeth };
 }
