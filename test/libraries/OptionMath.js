@@ -14,19 +14,19 @@ const fixedFromFloat = function (float) {
 };
 /*
   Pricing feed mock:
-  [unix timestamp, rounded price in USD]
+  [unix timestamp, rounded price in USD, log returns]
 */
 const raw = [
-  [1616603200000,55300], // Wed Mar 24 2021 16:26:40 GMT+0000
-  [1616623200000,55222], // Wed Mar 24 2021 22:00:00 GMT+0000
-  [1616803000000,55973], // Fri Mar 26 2021 23:56:40 GMT+0000
-  [1616803200000,55688], // Sat Mar 27 2021 00:00:00 GMT+0000
-  [1616889600000,55284], // Sun Mar 28 2021 00:00:00 GMT+0000
+  [1616543600000,55222,  0.000001], // Tue Mar 23 2021 23:53:20 GMT+0000
+  [1616803000000,55973,  0.013508], // Fri Mar 26 2021 23:56:40 GMT+0000
+  [1616803200000,55688, -0.005104], // Sat Mar 27 2021 00:00:00 GMT+0000
+  [1616889600000,55284, -0.007281], // Sun Mar 28 2021 00:00:00 GMT+0000
 ];
 
-const input = raw.map(([x,y]) => [ethers.BigNumber.from(Math.floor(x / 1000)), fixedFromFloat(y)]);
+const input = raw.map(([x,y, log_returns]) =>
+  [ethers.BigNumber.from(Math.floor(x / 1000)), fixedFromFloat(y), fixedFromFloat(log_returns)]);
 
-let [input_t, input_t_1, input_t_2, input_t_3, input_t_4] = input.reverse();
+let [input_t, input_t_1, input_t_2, input_t_3] = input.reverse();
 
 describe('OptionMath', function () {
   let instance;
@@ -55,14 +55,17 @@ describe('OptionMath', function () {
     });
   });
 
+  // assuming EMA_t-1 = x_t-1
   describe('#unevenRollingEma', function () {
     it('calculates exponential moving average for uneven intervals with significant difference', async function (){
       let t = input_t_2[0];
       let t_1 = input_t_3[0];
       let p = input_t_2[1];
       let p_1 = input_t_3[1];
-      let old_ema = input_t_4[1];
-      let expected = fixedFromFloat(1.0);
+      let old_ema = input_t_3[2];
+      let expected = fixedFromFloat(0.00470901265);
+
+      // 0.013508 * 0.3485609425 + (1 - 0.3485609425) * 0.000001 = 0.00470901265
 
       expect(
         expected / await instance.callStatic.unevenRollingEma(
@@ -83,9 +86,10 @@ describe('OptionMath', function () {
       let t_1 = input_t_2[0];
       let p = input_t_1[1];
       let p_1 = input_t_2[1];
-      let old_ema = input_t_3[1];
-      let expected = fixedFromFloat(1.0);
+      let old_ema = input_t_2[2];
+      let expected = fixedFromFloat(0.01350209255);
 
+      // -0.005104 * 0.0003174 + (1 - 0.0003174) * 0.013508 = 0.01350209255
       expect(
         expected / await instance.callStatic.unevenRollingEma(
           old_ema,
@@ -105,9 +109,10 @@ describe('OptionMath', function () {
       let t_1 = input_t_1[0];
       let p = input_t[1];
       let p_1 = input_t_1[1];
-      let old_ema = input_t_2[1];
-      let expected = fixedFromFloat(1.0);
+      let old_ema = input_t_1[2];
+      let expected = fixedFromFloat(-0.005393806812);
 
+      // -0.007281 * 0.1331221002 + (1 - 0.1331221002) * -0.005104 = -0.005393806812
       expect(
         expected / await instance.callStatic.unevenRollingEma(
           old_ema,
