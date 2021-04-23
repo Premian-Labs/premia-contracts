@@ -27,4 +27,20 @@ contract PoolMock is Pool {
   ) external pure returns (TokenType, uint64, int128) {
     return _parametersFor(tokenId);
   }
+
+  function mint (
+    address account,
+    uint id,
+    uint amount
+  ) external {
+    _mint(account, id, amount, '');
+  }
+
+  function burn (
+    address account,
+    uint id,
+    uint amount
+  ) external {
+    _burn(account, id, amount);
+  }
 }

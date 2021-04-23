@@ -33,6 +33,8 @@ describe('Pool', function () {
   // eslint-disable-next-line mocha/no-setup-in-describe
   describeBehaviorOfPool({
     deploy: () => instance,
+    mint: (recipient, tokenId, amount) => instance.mint(recipient, tokenId, amount),
+    burn: (recipient, tokenId, amount) => instance.burn(recipient, tokenId, amount),
     supply: 0,
     name: '',
     symbol: '',

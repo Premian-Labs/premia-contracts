@@ -94,5 +94,5 @@ describe('PoolProxy', function () {
     name: `Median Liquidity: ${ SYMBOL_UNDERLYING }/${ SYMBOL_BASE }`,
     symbol: `MED-${ SYMBOL_UNDERLYING }${ SYMBOL_BASE }`,
     decimals: 18,
-  }, []);
+  }, ['::ERC1155Enumerable']);
 });
