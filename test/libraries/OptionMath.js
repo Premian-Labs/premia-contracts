@@ -12,17 +12,19 @@ const fixedFromFloat = function (float) {
     ethers.BigNumber.from(`1${ '0'.repeat(decimal.length) }`)
   );
 };
-
-// [timestamp, rounded price USD]
+/*
+  Pricing feed mock:
+  [unix timestamp, rounded price in USD]
+*/
 const raw = [
   [1616603200000,55300], // Wed Mar 24 2021 16:26:40 GMT+0000
   [1616623200000,55222], // Wed Mar 24 2021 22:00:00 GMT+0000
-  [1616803200000,55973], // Sat Mar 27 2021 00:00:00 GMT+0000
-  [1616803300000,55688], // Sat Mar 27 2021 00:01:40 GMT+0000
+  [1616803000000,55973], // Fri Mar 26 2021 23:56:40 GMT+0000
+  [1616803200000,55688], // Sat Mar 27 2021 00:00:00 GMT+0000
   [1616889600000,55284], // Sun Mar 28 2021 00:00:00 GMT+0000
 ];
 
-const input = raw.map(([x,y]) => [new Date(x), fixedFromFloat(y)]);
+const input = raw.map(([x,y]) => [ethers.BigNumber.from(Math.floor(x / 1000)), fixedFromFloat(y)]);
 
 let [input_t, input_t_1, input_t_2, input_t_3, input_t_4] = input.reverse();
 
@@ -39,9 +41,8 @@ describe('OptionMath', function () {
     it('calculates exponential decay', async function (){
       let t = input_t[0];
       let t_1 = input_t_1[0];
-      let expected = fixedFromFloat(1.0);
+      let expected = fixedFromFloat(0.1331221002);
 
-      // 1 - 0.3989 * e^(-0.64/2) / (0.266 + 0.64 * 0.8 + 0.33 * sqrt(0.64+3))
       expect(
         expected / await instance.callStatic.decay(
           t_1,
