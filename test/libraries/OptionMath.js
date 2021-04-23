@@ -13,14 +13,18 @@ const fixedFromFloat = function (float) {
   );
 };
 
+// [timestamp, rounded price USD]
 const raw = [
-  [1616803200000,55973.51171875],
-  [1616889600000,55284.28125],
+  [1616603200000,55300], // Wed Mar 24 2021 16:26:40 GMT+0000
+  [1616623200000,55222], // Wed Mar 24 2021 22:00:00 GMT+0000
+  [1616803200000,55973], // Sat Mar 27 2021 00:00:00 GMT+0000
+  [1616803300000,55688], // Sat Mar 27 2021 00:01:40 GMT+0000
+  [1616889600000,55284], // Sun Mar 28 2021 00:00:00 GMT+0000
 ];
 
 const input = raw.map(([x,y]) => [new Date(x), fixedFromFloat(y)]);
 
-let [input_t, input_t_1] = input.reverse();
+let [input_t, input_t_1, input_t_2, input_t_3, input_t_4] = input.reverse();
 
 describe('OptionMath', function () {
   let instance;
@@ -32,15 +36,96 @@ describe('OptionMath', function () {
   });
 
   describe('#decay', function () {
-    it('todo');
+    it('calculates exponential decay', async function (){
+      let t = input_t[0];
+      let t_1 = input_t_1[0];
+      let expected = fixedFromFloat(1.0);
+
+      // 1 - 0.3989 * e^(-0.64/2) / (0.266 + 0.64 * 0.8 + 0.33 * sqrt(0.64+3))
+      expect(
+        expected / await instance.callStatic.decay(
+          t_1,
+          t
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
+    });
   });
 
   describe('#unevenRollingEma', function () {
-    it('todo');
+    it('calculates exponential moving average for uneven intervals with significant difference', async function (){
+      let t = input_t_2[0];
+      let t_1 = input_t_3[0];
+      let p = input_t_2[1];
+      let p_1 = input_t_3[1];
+      let old_ema = input_t_4[1];
+      let expected = fixedFromFloat(1.0);
+
+      expect(
+        expected / await instance.callStatic.unevenRollingEma(
+          old_ema,
+          p_1,
+          p,
+          t_1,
+          t
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
+    });
+
+    it('calculates exponential moving average for uneven intervals with small significant difference', async function (){
+      let t = input_t_1[0];
+      let t_1 = input_t_2[0];
+      let p = input_t_1[1];
+      let p_1 = input_t_2[1];
+      let old_ema = input_t_3[1];
+      let expected = fixedFromFloat(1.0);
+
+      expect(
+        expected / await instance.callStatic.unevenRollingEma(
+          old_ema,
+          p_1,
+          p,
+          t_1,
+          t
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
+    });
+
+    it('calculates exponential moving average for uneven intervals with normal (daily) significant difference', async function (){
+      let t = input_t[0];
+      let t_1 = input_t_1[0];
+      let p = input_t[1];
+      let p_1 = input_t_1[1];
+      let old_ema = input_t_2[1];
+      let expected = fixedFromFloat(1.0);
+
+      expect(
+        expected / await instance.callStatic.unevenRollingEma(
+          old_ema,
+          p_1,
+          p,
+          t_1,
+          t
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
+    });
   });
 
   describe('#unevenRollingEmaVariance', function () {
-    it('todo');
+    it('calculates CDF approximation', async function () {
+      void 0;
+    });
   });
 
   describe('#N', function () {
@@ -111,7 +196,7 @@ describe('OptionMath', function () {
     it('calculates European CALL option price', async function (){
       const variance = fixedFromFloat(0.16);
       const price =  input_t[1];
-      const strike = fixedFromFloat(55284.28125 * 0.95);
+      const strike = fixedFromFloat(55284 * 0.95);
       const maturity = fixedFromFloat(28 / 365);
       const expected = fixedFromFloat(4013.677084809402);
 
@@ -131,7 +216,7 @@ describe('OptionMath', function () {
     it('calculates European PUT option price', async function (){
       const variance = fixedFromFloat(0.16);
       const price =  input_t[1];
-      const strike = fixedFromFloat(55284.28125 * 1.05);
+      const strike = fixedFromFloat(55284 * 1.05);
       const maturity = fixedFromFloat(28 / 365);
       const expected = fixedFromFloat(4123.964016283215);
 
@@ -154,7 +239,7 @@ describe('OptionMath', function () {
     it('calculates European CALL option price quote ', async function (){
       const variance = fixedFromFloat(0.16);
       const price =  input_t[1];
-      const strike = fixedFromFloat(55284.28125 * 0.95);
+      const strike = fixedFromFloat(55284 * 0.95);
       const maturity = fixedFromFloat(28 / 365);
       const cLevel = fixedFromFloat(1);
       const S0 = fixedFromFloat(100);
