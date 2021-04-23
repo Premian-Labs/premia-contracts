@@ -1,3 +1,5 @@
+const describeBehaviorOfManagedProxyOwnable = require('@solidstate/spec/proxy/managed/ManagedProxyOwnable.behavior.js');
+
 const describeBehaviorOfPool = require('./Pool.behavior.js');
 
 const factory = require('../../lib/factory.js');
@@ -50,6 +52,13 @@ describe('PoolProxy', function () {
     const pair = await ethers.getContractAt('Pair', (await tx.wait()).events[0].args.pair);
 
     instance = await ethers.getContractAt('Pool', (await pair.callStatic.getPools())[0]);
+  });
+
+  // eslint-disable-next-line mocha/no-setup-in-describe
+  describeBehaviorOfManagedProxyOwnable({
+    deploy: () => instance,
+    implementationFunction: 'getPair()',
+    implementationFunctionArgs: [],
   });
 
   // eslint-disable-next-line mocha/no-setup-in-describe
