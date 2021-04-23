@@ -725,22 +725,22 @@
   resolved "https://registry.yarnpkg.com/@solidity-parser/parser/-/parser-0.12.0.tgz#18a0fb2a9d2484b23176f63b16093c64794fc323"
   integrity sha512-DT3f/Aa4tQysZwUsuqBwvr8YRJzKkvPUKV/9o2/o5EVw3xqlbzmtx4O60lTUcZdCawL+N8bBLNUyOGpHjGlJVQ==
 
-"@solidstate/contracts@^0.0.6":
-  version "0.0.6"
-  resolved "https://registry.yarnpkg.com/@solidstate/contracts/-/contracts-0.0.6.tgz#7ab3f5afe96fdc71a525a0c8bf8cdff1af4f85c3"
-  integrity sha512-InZLr1Tt5E020xSrepK4iQYzP3fAGuQBgfy/BGVJ7ELBL5Jb92+s3QsbNZSZPe9g1hjwyc5qPCBGlPGAEmUVJA==
+"@solidstate/contracts@^0.0.7":
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/@solidstate/contracts/-/contracts-0.0.7.tgz#afa8930da9944f5386364c23ebe632630c4c40e9"
+  integrity sha512-hjeI1ymlI9cFh8Zlu3Q8uRgVtK9NnrjkGYJzV3J3nur313gjWnFdDWCfCdoQSEsxD4ANW1wgfyi8vLOWpR7EhQ==
 
-"@solidstate/library@^0.0.6":
-  version "0.0.6"
-  resolved "https://registry.yarnpkg.com/@solidstate/library/-/library-0.0.6.tgz#834ef8573fdff21438f40f15faa8973e323129d0"
-  integrity sha512-SSUqTg2Nw4THvGKFxHfUZDLLl7aZCMaFyyEnKgQKrRX6h8EsBZBvyx7awChHKXMp/Ecz038txYXPIU/PTltNyA==
+"@solidstate/library@^0.0.7":
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/@solidstate/library/-/library-0.0.7.tgz#d45a012c129c26fa1fbbd2efac5bb72088e7b9ee"
+  integrity sha512-n2GHhwVKCPiIGgDDLNM1j0EJiI+v7bCkSUJ8XO2NbLxu1TLuwyJdZQjD+eQSfX2sU7pomOtsmVz/zc6vWzL+SA==
 
-"@solidstate/spec@^0.0.6":
-  version "0.0.6"
-  resolved "https://registry.yarnpkg.com/@solidstate/spec/-/spec-0.0.6.tgz#a7dce151a922e76a408526f60d265098b22fa934"
-  integrity sha512-qGWDeQzzipAYRFWS4HuBD1k4q/4ojVyi9Q6irxePs/9nn1XATcqlMdsKlBDhupgUhvFimwOwGQu9/cmAIxy/ng==
+"@solidstate/spec@^0.0.7":
+  version "0.0.7"
+  resolved "https://registry.yarnpkg.com/@solidstate/spec/-/spec-0.0.7.tgz#76a01dcc46c70bc5c24fc00d4dfa0805901b16ab"
+  integrity sha512-KS0zYObrdvQ6CorMpLZjQsPWlXM2uD8yBB235o094loRX+rvWcRuiJAWcZjpjL5XcQThw36G8R+exDVAbg/f9A==
   dependencies:
-    "@solidstate/library" "^0.0.6"
+    "@solidstate/library" "^0.0.7"
 
 "@szmarczak/http-timer@^1.1.2":
   version "1.1.2"
