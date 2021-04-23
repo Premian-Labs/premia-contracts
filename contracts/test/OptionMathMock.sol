@@ -12,14 +12,14 @@ contract OptionMathMock {
     return OptionMath.decay(oldTimestamp, newTimestamp);
   }
 
-  function irregularRollingEma (
+  function unevenRollingEma (
     int128 oldEma64x64,
     int128 oldValue64x64,
     int128 newValue64x64,
     uint256 oldTimestamp,
     uint256 newTimestamp
   ) internal pure returns (int128) {
-    return OptionMath.irregularRollingEma(
+    return OptionMath.unevenRollingEma(
       oldEma64x64,
       oldValue64x64,
       newValue64x64,
@@ -28,7 +28,7 @@ contract OptionMathMock {
     );
   }
 
-  function irregularRollingEmaVariance (
+  function unevenRollingEmaVariance (
     int128 oldEma64x64,
     int128 oldEmaVariance64x64,
     int128 oldValue64x64,
@@ -36,7 +36,7 @@ contract OptionMathMock {
     uint256 oldTimestamp,
     uint256 newTimestamp
   ) internal pure returns (int128) {
-    return OptionMath.irregularRollingEmaVariance(
+    return OptionMath.unevenRollingEmaVariance(
       oldEma64x64,
       oldEmaVariance64x64,
       oldValue64x64,

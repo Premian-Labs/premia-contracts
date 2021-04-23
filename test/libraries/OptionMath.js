@@ -35,11 +35,11 @@ describe('OptionMath', function () {
     it('todo');
   });
 
-  describe('#irregularRollingEma', function () {
+  describe('#unevenRollingEma', function () {
     it('todo');
   });
 
-  describe('#irregularRollingEmaVariance', function () {
+  describe('#unevenRollingEmaVariance', function () {
     it('todo');
   });
 

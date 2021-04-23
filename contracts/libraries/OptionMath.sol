@@ -32,7 +32,7 @@ library OptionMath {
   }
 
   /**
-   * @notice calculate the rolling EMA of an irregular time series
+   * @notice calculate the rolling EMA of an uneven time series
    * @param oldEma64x64 64x64 fixed point representation of previous EMA
    * @param oldValue64x64 64x64 fixed point representation of previous value
    * @param newValue64x64 64x64 fixed point representation of current value
@@ -40,7 +40,7 @@ library OptionMath {
    * @param newTimestamp current timestamp
    * @return 64x64 fixed point representation of EMA for current period
    */
-  function irregularRollingEma (
+  function unevenRollingEma (
     int128 oldEma64x64,
     int128 oldValue64x64,
     int128 newValue64x64,
@@ -55,7 +55,7 @@ library OptionMath {
   }
 
   /**
-   * @notice calculate the rolling EMA variance of an irregular time series
+   * @notice calculate the rolling EMA variance of an uneven time series
    * @param oldEma64x64 64x64 fixed point representation of previous EMA
    * @param oldEmaVariance64x64 64x64 fixed point representation of previous variance
    * @param oldValue64x64 64x64 fixed point representation of previous value
@@ -64,7 +64,7 @@ library OptionMath {
    * @param newTimestamp current timestamp
    * @return EMA of variance for current period
    */
-  function irregularRollingEmaVariance (
+  function unevenRollingEmaVariance (
     int128 oldEma64x64,
     int128 oldEmaVariance64x64,
     int128 oldValue64x64,
