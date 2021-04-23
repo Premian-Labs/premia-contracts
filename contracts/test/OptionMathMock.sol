@@ -8,7 +8,7 @@ contract OptionMathMock {
   function decay (
     uint256 oldTimestamp,
     uint256 newTimestamp
-  ) internal pure returns (int128) {
+  ) external pure returns (int128) {
     return OptionMath.decay(oldTimestamp, newTimestamp);
   }
 
@@ -18,7 +18,7 @@ contract OptionMathMock {
     int128 newValue64x64,
     uint256 oldTimestamp,
     uint256 newTimestamp
-  ) internal pure returns (int128) {
+  ) external pure returns (int128) {
     return OptionMath.unevenRollingEma(
       oldEma64x64,
       oldValue64x64,
@@ -35,7 +35,7 @@ contract OptionMathMock {
     int128 newValue64x64,
     uint256 oldTimestamp,
     uint256 newTimestamp
-  ) internal pure returns (int128) {
+  ) external pure returns (int128) {
     return OptionMath.unevenRollingEmaVariance(
       oldEma64x64,
       oldEmaVariance64x64,
