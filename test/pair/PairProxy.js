@@ -1,3 +1,7 @@
+const { deployMockContract } = require('@ethereum-waffle/mock-contract');
+
+const describeBehaviorOfManagedProxyOwnable = require('@solidstate/spec/proxy/managed/ManagedProxyOwnable.behavior.js');
+
 const describeBehaviorOfPair = require('./Pair.behavior.js');
 
 const factory = require('../../lib/factory.js');
@@ -45,8 +49,40 @@ describe('PairProxy', function () {
     const token1 = await erc20Factory.deploy(SYMBOL_UNDERLYING);
     await token1.deployed();
 
-    const tx = await manager.deployPair(token0.address, token1.address);
+    const oracle0 = await deployMockContract(
+      owner,
+      [
+        'function latestRoundData () external view returns (uint80, int, uint, uint, uint80)',
+        'function decimals () external view returns (uint8)',
+      ]
+    );
+
+    const oracle1 = await deployMockContract(
+      owner,
+      [
+        'function latestRoundData () external view returns (uint80, int, uint, uint, uint80)',
+        'function decimals () external view returns (uint8)',
+      ]
+    );
+
+    await oracle0.mock.decimals.returns(8);
+    await oracle1.mock.decimals.returns(8);
+
+    const tx = await manager.deployPair(
+      token0.address,
+      token1.address,
+      oracle0.address,
+      oracle1.address
+    );
+
     instance = await ethers.getContractAt('Pair', (await tx.wait()).events[0].args.pair);
+  });
+
+  // eslint-disable-next-line mocha/no-setup-in-describe
+  describeBehaviorOfManagedProxyOwnable({
+    deploy: () => instance,
+    implementationFunction: 'getPools()',
+    implementationFunctionArgs: [],
   });
 
   // eslint-disable-next-line mocha/no-setup-in-describe
