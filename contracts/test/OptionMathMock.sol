@@ -2,28 +2,47 @@
 
 pragma solidity ^0.8.0;
 
-import {OptionMath} from "../libraries/OptionMath.sol";
+import { OptionMath } from '../libraries/OptionMath.sol';
 
 contract OptionMathMock {
-  function rollingEma (
-    int128 oldValue64x64,
-    int128 newValue64x64,
-    uint256 window
+  function decay (
+    uint256 oldTimestamp,
+    uint256 newTimestamp
   ) external pure returns (int128) {
-    return OptionMath.rollingEma(oldValue64x64, newValue64x64, window);
+    return OptionMath.decay(oldTimestamp, newTimestamp);
   }
 
-  function rollingEmaVariance (
-    int128 yesterdayEmaVariance64x64,
-    int128 yesterdayEma64x64,
-    int128 today64x64,
-    uint256 window
+  function unevenRollingEma (
+    int128 oldEma64x64,
+    int128 oldValue64x64,
+    int128 newValue64x64,
+    uint256 oldTimestamp,
+    uint256 newTimestamp
   ) external pure returns (int128) {
-    return OptionMath.rollingEmaVariance(
-      yesterdayEmaVariance64x64,
-      yesterdayEma64x64,
-      today64x64,
-      window
+    return OptionMath.unevenRollingEma(
+      oldEma64x64,
+      oldValue64x64,
+      newValue64x64,
+      oldTimestamp,
+      newTimestamp
+    );
+  }
+
+  function unevenRollingEmaVariance (
+    int128 oldEma64x64,
+    int128 oldEmaVariance64x64,
+    int128 oldValue64x64,
+    int128 newValue64x64,
+    uint256 oldTimestamp,
+    uint256 newTimestamp
+  ) external pure returns (int128) {
+    return OptionMath.unevenRollingEmaVariance(
+      oldEma64x64,
+      oldEmaVariance64x64,
+      oldValue64x64,
+      newValue64x64,
+      oldTimestamp,
+      newTimestamp
     );
   }
 
