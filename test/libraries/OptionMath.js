@@ -66,7 +66,6 @@ describe('OptionMath', function () {
       let expected = fixedFromFloat(0.00470901265);
 
       // 0.013508 * 0.3485609425 + (1 - 0.3485609425) * 0.000001 = 0.00470901265
-
       expect(
         expected / await instance.callStatic.unevenRollingEma(
           old_ema,
@@ -129,8 +128,29 @@ describe('OptionMath', function () {
   });
 
   describe('#unevenRollingEmaVariance', function () {
-    it('calculates CDF approximation', async function () {
-      void 0;
+    it('calculates exponential moving variance for uneven intervals', async function (){
+      let t = input_t_2[0];
+      let t_1 = input_t_3[0];
+      let p = input_t_2[1];
+      let p_1 = input_t_3[1];
+      let old_ema = input_t_3[2];
+      let old_emvar = fixedFromFloat(0.000001); // ~ 0
+      let expected = fixedFromFloat(0.00004207718281);
+
+      // (1 - 0.3485609425) * (0.000001 + 0.3485609425 * (0.013508-0.000001)^2) = 0.00004207718281
+      expect(
+        expected / await instance.callStatic.unevenRollingEmaVariance(
+          old_ema,
+          old_emvar,
+          p_1,
+          p,
+          t_1,
+          t
+        )
+      ).to.be.closeTo(
+        1,
+        0.001
+      );
     });
   });
 
