@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import '@openzeppelin/contracts/access/Ownable.sol';
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 
 import "./uniswapV2/interfaces/IUniswapV2Router02.sol";
@@ -14,7 +13,6 @@ import "./uniswapV2/interfaces/IWETH.sol";
 /// @author Premia
 /// @title A contract receiving all protocol fees, swapping them for premia
 contract PremiaMaker is Ownable {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -119,8 +117,8 @@ contract PremiaMaker is Ownable {
         IERC20 token = IERC20(_token);
 
         uint256 amount = token.balanceOf(address(this));
-        uint256 fee = amount.mul(treasuryFee).div(_inverseBasisPoint);
-        uint256 amountMinusFee = amount.sub(fee);
+        uint256 fee = amount * treasuryFee / _inverseBasisPoint;
+        uint256 amountMinusFee = amount - fee;
 
         token.safeTransfer(treasury, fee);
 
@@ -149,7 +147,7 @@ contract PremiaMaker is Ownable {
                 0,
                 path,
                 premiaStaking,
-                block.timestamp.add(60)
+                block.timestamp + 60
             );
         } else {
             premiaAmount = amountMinusFee;
