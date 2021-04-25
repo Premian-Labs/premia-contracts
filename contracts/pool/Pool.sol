@@ -140,10 +140,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       _mint(underwriter, shortTokenId, intervalAmount, '');
 
       // TODO: transfer premia
-
-      if (intervalAmount == balance) {
-        l.removeUnderwriter(underwriter);
-      }
     }
   }
 
@@ -183,11 +179,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     while (amount > 0) {
       // TODO: iterate through short option token holders via ERC1155Enumerable
       underwriter = underwriter;
-      uint256 balance = balanceOf(underwriter);
-
-      if (balance == 0) {
-        l.addUnderwriter(underwriter);
-      }
 
       // TODO: quantity of short tokens corresponding to freed liquidity
       uint256 fullAmount;
@@ -218,11 +209,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     _pull(l.underlying, amount);
 
-    if (balanceOf(msg.sender) == 0) {
-      require(amount > 0, 'TODO');
-      l.addUnderwriter(msg.sender);
-    }
-
     int128 oldLiquidity64x64 = l.totalSupply64x64();
     // mint free liquidity tokens (ERC20)
     _mint(msg.sender, amount);
@@ -244,10 +230,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     // burn free liquidity tokens (ERC20)
     _burn(msg.sender, amount);
     int128 newLiquidity64x64 = l.totalSupply64x64();
-
-    if (balanceOf(msg.sender) == 0) {
-      l.removeUnderwriter(msg.sender);
-    }
 
     // TODO: reassign held options if necessary
 
@@ -303,10 +285,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       // transfer short option token (ERC1155)
       // TODO: ERC1155 internal transfer
       // _transfer(msg.sender, underwriter, tokenId, intervalAmount, '');
-
-      if (intervalAmount == balance) {
-        l.removeUnderwriter(underwriter);
-      }
     }
   }
 
@@ -383,6 +361,39 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
         IERC20(token).transferFrom(msg.sender, address(this), amount),
         'Pool: ERC20 transfer failed'
       );
+    }
+  }
+
+  /**
+   * @notice TODO
+   */
+  function _beforeTokenTransfer (
+    address operator,
+    address from,
+    address to,
+    uint[] memory ids,
+    uint[] memory amounts,
+    bytes memory data
+  ) override internal {
+    super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+
+    if (from != to) {
+      for (uint256 i; i < ids.length; i++) {
+        uint256 id = ids[i];
+        uint256 amount = amounts[i];
+
+        if (amount > 0) {
+          PoolStorage.Layout storage l = PoolStorage.layout();
+
+          if (balanceOf(from, id) == amount) {
+            l.removeUnderwriter(from);
+          }
+
+          if (balanceOf(to, id) == 0) {
+            l.addUnderwriter(to);
+          }
+        }
+      }
     }
   }
 }

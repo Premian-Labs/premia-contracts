@@ -49,7 +49,6 @@ library PoolStorage {
     Layout storage l,
     address account
   ) internal {
-    // TODO: move to _beforeTokenTransfer hook, account for transfers
     address prev = l.liquidityQueueDescending[account];
     address next = l.liquidityQueueAscending[account];
     l.liquidityQueueAscending[prev] = next;
