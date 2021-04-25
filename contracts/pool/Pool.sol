@@ -26,7 +26,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   using EnumerableSet for EnumerableSet.AddressSet;
   using PoolStorage for PoolStorage.Layout;
 
-  enum TokenType { LONG_PUT, SHORT_PUT }
+  enum TokenType { LONG_CALL, SHORT_CALL }
 
   address private immutable WETH_ADDRESS;
 
@@ -99,7 +99,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   }
 
   /**
-   * @notice purchase put option
+   * @notice purchase call option
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
    * @param amount size of option contract
@@ -125,9 +125,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     _pull(l.base, cost);
 
     // mint long option token (ERC1155)
-    _mint(msg.sender, _tokenIdFor(TokenType.LONG_PUT, maturity, strike64x64), amount, '');
+    _mint(msg.sender, _tokenIdFor(TokenType.LONG_CALL, maturity, strike64x64), amount, '');
 
-    uint256 shortTokenId = _tokenIdFor(TokenType.SHORT_PUT, maturity, strike64x64);
+    uint256 shortTokenId = _tokenIdFor(TokenType.SHORT_CALL, maturity, strike64x64);
     address underwriter;
 
     while (amount > 0) {
@@ -147,7 +147,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   }
 
   /**
-   * @notice exercise put option
+   * @notice exercise call option
    * @param tokenId ERC1155 token id
    * @param amount quantity of option contract tokens to exercise
    */
@@ -156,7 +156,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     uint256 amount
   ) public {
     (TokenType tokenType, uint64 maturity, int128 strike64x64) = _parametersFor(tokenId);
-    require(tokenType == TokenType.LONG_PUT, 'Pool: invalid token type');
+    require(tokenType == TokenType.LONG_CALL, 'Pool: invalid token type');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -176,7 +176,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     int128 oldLiquidity64x64 = l.totalSupply64x64();
 
-    uint256 shortTokenId = _tokenIdFor(TokenType.SHORT_PUT, maturity, strike64x64);
+    uint256 shortTokenId = _tokenIdFor(TokenType.SHORT_CALL, maturity, strike64x64);
     EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
     uint256 underwriterCount = underwriters.length();
 
@@ -202,7 +202,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   }
 
   /**
-   * @notice deposit underlying currency, underwriting puts of that currency with respect to base currency
+   * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
    * @param amount quantity of underlying currency to deposit
    */
   function deposit (
@@ -251,7 +251,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     uint256 amount
   ) external {
     (TokenType tokenType, uint64 maturity, int128 strike64x64) = _parametersFor(tokenId);
-    require(tokenType == TokenType.SHORT_PUT, 'Pool: invalid token type');
+    require(tokenType == TokenType.SHORT_CALL, 'Pool: invalid token type');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
