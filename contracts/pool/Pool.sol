@@ -145,16 +145,21 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     while (amount > 0) {
       underwriter = l.liquidityQueueAscending[underwriter];
       uint256 balance = balanceOf(underwriter);
+      // account for additional liquidity sourced from premium
+      balance += balance * (cost / amount);
 
+      // amount of liquidity provided by underwriter
       uint256 intervalAmount = balance < amount ? balance : amount;
       amount -= intervalAmount;
 
+      // amount of premium paid to underwriter
+      uint256 intervalCost = cost * intervalAmount / amount;
+      cost -= intervalCost;
+
       // burn free liquidity tokens (ERC20)
-      _burn(underwriter, intervalAmount);
+      _burn(underwriter, intervalAmount - intervalCost);
       // mint short option token (ERC1155)
       _mint(underwriter, shortTokenId, intervalAmount, '');
-
-      // TODO: transfer premia
     }
   }
 
@@ -291,13 +296,14 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     while (amount > 0) {
       underwriter = l.liquidityQueueAscending[underwriter];
       uint256 balance = balanceOf(underwriter);
-
-      // account for additional liquidity sourced from premia
+      // account for additional liquidity sourced from premium
       balance += balance * (cost / amount);
 
+      // amount of liquidity provided by underwriter
       uint256 intervalAmount = balance < amount ? balance : amount;
       amount -= intervalAmount;
 
+      // amount of premium paid to underwriter
       uint256 intervalCost = cost * intervalAmount / amount;
       cost -= intervalCost;
 
