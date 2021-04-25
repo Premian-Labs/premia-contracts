@@ -99,6 +99,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
    * @param strike64x64 64x64 fixed point representation of strike price
    * @param amount size of option contract
    * @param maxCost maximum acceptable cost after accounting for slippage
+   * @return cost quantity of tokens required to purchase long position
    */
   function purchase (
     uint64 maturity,
@@ -107,7 +108,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     uint256 maxCost
   ) external payable returns (uint256 cost) {
     // TODO: specify payment currency
-    // TODO: transfer portion of premium to treasury
 
     require(amount <= totalSupply(), 'Pool: insufficient liquidity');
 
@@ -131,6 +131,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       amount
     );
 
+    // TODO: transfer portion of premium to treasury
     cost = cost64x64.mul(spot64x64).toDecimals(l.underlyingDecimals);
     require(cost <= maxCost, 'Pool: excessive slippage');
     _pull(l.underlying, cost);
@@ -252,8 +253,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     _burn(msg.sender, amount);
     int128 newLiquidity64x64 = l.totalSupply64x64();
 
-    // TODO: reassign held options if necessary
-
     _push(l.underlying, amount);
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
@@ -263,11 +262,12 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
    * @notice reassign short position to new liquidity provider
    * @param tokenId ERC1155 token id
    * @param amount quantity of option contract tokens to reassign
+   * @return cost quantity of tokens required to reassign short position
    */
   function reassign (
     uint256 tokenId,
     uint256 amount
-  ) external {
+  ) external returns (uint256 cost) {
     (TokenType tokenType, uint64 maturity, int128 strike64x64) = _parametersFor(tokenId);
     require(tokenType == TokenType.SHORT_CALL, 'Pool: invalid token type');
 
@@ -282,11 +282,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       amount
     );
 
-    // TODO: get cost denominated in underlying rather than base
-    uint256 cost = cost64x64.toDecimals(l.underlyingDecimals);
-
     // TODO: transfer portion of premium to treasury
-
+    cost = cost64x64.mul(spot64x64).toDecimals(l.underlyingDecimals);
     _push(l.underlying, amount - cost);
 
     address underwriter;
