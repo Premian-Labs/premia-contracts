@@ -256,8 +256,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     // TODO: remove quote restrictions
-    int128 cost64x64;
-    (cost64x64, l.cLevel64x64) = quote(maturity, strike64x64, amount);
+    (int128 cost64x64, int128 cLevel64x64) = quote(maturity, strike64x64, amount);
 
     // TODO: get cost denominated in underlying rather than base
     uint256 cost = cost64x64.toDecimals(l.underlyingDecimals);
@@ -265,8 +264,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     // TODO: transfer portion of premium to treasury
 
     _push(l.underlying, amount - cost);
-
-    // TODO: deduct cost from C-Level change
 
     address underwriter;
 
@@ -289,6 +286,17 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       // TODO: ERC1155 internal transfer
       // _transfer(msg.sender, underwriter, tokenId, intervalAmount, '');
     }
+
+    // update C-Level, accounting for slippage and reinvested premia separately
+
+    int128 totalSupply64x64 = l.totalSupply64x64();
+
+    l.cLevel64x64 = OptionMath.calculateCLevel(
+      cLevel64x64,
+      totalSupply64x64.sub(cost64x64),
+      totalSupply64x64,
+      OptionMath.ONE_64x64
+    );
   }
 
   /**
