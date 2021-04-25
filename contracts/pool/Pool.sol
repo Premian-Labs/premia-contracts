@@ -14,6 +14,8 @@ import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
 
+// TODO: handle safe-transfer reverts
+
 /**
  * @title Median option pool
  * @dev deployed standalone and referenced by PoolProxy
@@ -21,6 +23,7 @@ import { OptionMath } from '../libraries/OptionMath.sol';
 contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   using ABDKMath64x64 for int128;
   using ABDKMath64x64Token for int128;
+  using EnumerableSet for EnumerableSet.AddressSet;
   using PoolStorage for PoolStorage.Layout;
 
   enum TokenType { LONG_PUT, SHORT_PUT }
@@ -174,11 +177,11 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     int128 oldLiquidity64x64 = l.totalSupply64x64();
 
     uint256 shortTokenId = _tokenIdFor(TokenType.SHORT_PUT, maturity, strike64x64);
-    address underwriter;
+    EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
+    uint256 underwriterCount = underwriters.length();
 
     while (amount > 0) {
-      // TODO: iterate through short option token holders via ERC1155Enumerable
-      underwriter = underwriter;
+      address underwriter = underwriters.at(--underwriterCount);
 
       // TODO: quantity of short tokens corresponding to freed liquidity
       uint256 fullAmount;
