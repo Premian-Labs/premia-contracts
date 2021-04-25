@@ -20,6 +20,8 @@ library PoolStorage {
     uint8 underlyingDecimals;
     int128 cLevel64x64;
 
+    mapping (address => uint256) depositedAt;
+
     // doubly linked list of free liquidity intervals
     mapping (address => address) liquidityQueueAscending;
     mapping (address => address) liquidityQueueDescending;

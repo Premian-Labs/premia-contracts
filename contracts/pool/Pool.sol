@@ -210,6 +210,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   ) external payable {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
+    l.depositedAt[msg.sender] = block.timestamp;
+
     _pull(l.underlying, amount);
 
     int128 oldLiquidity64x64 = l.totalSupply64x64();
@@ -228,6 +230,11 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     uint256 amount
   ) external {
     PoolStorage.Layout storage l = PoolStorage.layout();
+
+    require(
+      l.depositedAt[msg.sender] + (1 days) < block.timestamp,
+      'Pool: liquidity must remain locked for 1 day'
+    );
 
     int128 oldLiquidity64x64 = l.totalSupply64x64();
     // burn free liquidity tokens (ERC20)
