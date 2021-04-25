@@ -257,6 +257,60 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   }
 
   /**
+   * @notice reassign short position to new liquidity provider
+   * @param tokenId ERC1155 token id
+   * @param amount quantity of option contract tokens to reassign
+   */
+  function reassign (
+    uint256 tokenId,
+    uint256 amount
+  ) external {
+    (TokenType tokenType, uint64 maturity, int128 strike64x64) = _parametersFor(tokenId);
+    require(tokenType == TokenType.SHORT_PUT, 'Pool: invalid token type');
+
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    // TODO: remove quote restrictions
+    int128 cost64x64;
+    (cost64x64, l.cLevel64x64) = quote(maturity, strike64x64, amount);
+
+    // TODO: get cost denominated in underlying rather than base
+    uint256 cost = cost64x64.toDecimals(l.underlyingDecimals);
+
+    // TODO: transfer portion of premium to treasury
+
+    _push(l.underlying, amount - cost);
+
+    // TODO: deduct cost from C-Level change
+
+    address underwriter;
+
+    while (amount > 0) {
+      underwriter = l.liquidityQueueAscending[underwriter];
+      uint256 balance = balanceOf(underwriter);
+
+      // account for additional liquidity sourced from premia
+      balance += balance * (cost / amount);
+
+      uint256 intervalAmount = balance < amount ? balance : amount;
+      amount -= intervalAmount;
+
+      uint256 intervalCost = cost * intervalAmount / amount;
+      cost -= intervalCost;
+
+      // burn free liquidity tokens (ERC20)
+      _burn(underwriter, intervalAmount - intervalCost);
+      // transfer short option token (ERC1155)
+      // TODO: ERC1155 internal transfer
+      // _transfer(msg.sender, underwriter, tokenId, intervalAmount, '');
+
+      if (intervalAmount == balance) {
+        l.removeUnderwriter(underwriter);
+      }
+    }
+  }
+
+  /**
    * @notice calculate ERC1155 token id for given option parameters
    * @param tokenType TokenType enum
    * @param maturity timestamp of option maturity
