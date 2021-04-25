@@ -42,7 +42,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   }
 
   /**
-   * @notice calculate price of option contract
+   * @notice calculate price of option contract and trigger Pair state update
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
    * @param amount size of option contract
@@ -54,20 +54,20 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     int128 strike64x64,
     uint256 amount
   ) public returns (int128 cost64x64, int128 cLevel64x64) {
-    require(maturity > block.timestamp, 'Pool: maturity must be in the future');
-
-    // TODO: require maturity in bucket
+    require(maturity >= block.timestamp + (1 days), 'Pool: maturity must be at least 1 day in the future');
+    require(maturity < block.timestamp + (29 days), 'Pool: maturity must be at most 28 days in the future');
+    require(maturity % (1 days) == 0, 'Pool: maturity must correspond to end of UTC day');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
-    int128 timeToMaturity64x64 = ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
 
     require(strike64x64 <= spot64x64 * 2, 'Pool: strike price must not exceed two times spot price');
     require(strike64x64 >= spot64x64 / 2, 'Pool: strike price must be at least one half spot price');
 
-    int128 amount64x64 = ABDKMath64x64Token.fromDecimals(amount, l.underlyingDecimals);
+    int128 timeToMaturity64x64 = ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
 
+    int128 amount64x64 = ABDKMath64x64Token.fromDecimals(amount, l.underlyingDecimals);
     int128 oldLiquidity64x64 = l.totalSupply64x64();
     int128 newLiquidity64x64 = oldLiquidity64x64.sub(amount64x64);
 
@@ -108,7 +108,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     uint256 amount,
     uint256 maxCost
   ) external payable returns (uint256 cost) {
-    // TODO: maturity must be integer number of calendar days
     // TODO: specify payment currency
     // TODO: transfer portion of premium to treasury
 
@@ -319,7 +318,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       amount -= msg.value;
       // TODO: wrap ETH
     } else {
-      require(msg.value == 0, 'Pool: function is payable only if deposit token is WETH');
+      require(
+        msg.value == 0,
+        'Pool: function is payable only if deposit token is WETH'
+      );
     }
 
     if (amount > 0) {
