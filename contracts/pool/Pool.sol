@@ -45,28 +45,23 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   }
 
   /**
-   * @notice calculate price of option contract and trigger Pair state update
+   * @notice calculate price of option contract
+   * @param variance64x64 64x64 fixed point representation of variance
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
+   * @param spot64x64 64x64 fixed point representation of spot price
    * @param amount size of option contract
    * @return cost64x64 64x64 fixed point representation of option cost
    * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
    */
   function quote (
+    int128 variance64x64,
     uint64 maturity,
     int128 strike64x64,
+    int128 spot64x64,
     uint256 amount
-  ) public returns (int128 cost64x64, int128 cLevel64x64) {
-    require(maturity >= block.timestamp + (1 days), 'Pool: maturity must be at least 1 day in the future');
-    require(maturity < block.timestamp + (29 days), 'Pool: maturity must be at most 28 days in the future');
-    require(maturity % (1 days) == 0, 'Pool: maturity must correspond to end of UTC day');
-
+  ) public view returns (int128 cost64x64, int128 cLevel64x64) {
     PoolStorage.Layout storage l = PoolStorage.layout();
-
-    (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
-
-    require(strike64x64 <= spot64x64 * 2, 'Pool: strike price must not exceed two times spot price');
-    require(strike64x64 >= spot64x64 / 2, 'Pool: strike price must be at least one half spot price');
 
     int128 timeToMaturity64x64 = ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
 
@@ -116,10 +111,26 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     require(amount <= totalSupply(), 'Pool: insufficient liquidity');
 
+    require(maturity >= block.timestamp + (1 days), 'Pool: maturity must be at least 1 day in the future');
+    require(maturity < block.timestamp + (29 days), 'Pool: maturity must be at most 28 days in the future');
+    require(maturity % (1 days) == 0, 'Pool: maturity must correspond to end of UTC day');
+
     PoolStorage.Layout storage l = PoolStorage.layout();
 
+    (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
+
+    require(strike64x64 <= spot64x64 * 2, 'Pool: strike price must not exceed two times spot price');
+    require(strike64x64 >= spot64x64 / 2, 'Pool: strike price must be at least one half spot price');
+
     int128 cost64x64;
-    (cost64x64, l.cLevel64x64) = quote(maturity, strike64x64, amount);
+    (cost64x64, l.cLevel64x64) = quote(
+      variance64x64,
+      maturity,
+      strike64x64,
+      spot64x64,
+      amount
+    );
+
     cost = cost64x64.toDecimals(l.baseDecimals);
     require(cost <= maxCost, 'Pool: excessive slippage');
     _pull(l.base, cost);
@@ -262,8 +273,14 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    // TODO: remove quote restrictions
-    (int128 cost64x64, int128 cLevel64x64) = quote(maturity, strike64x64, amount);
+    (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
+    (int128 cost64x64, int128 cLevel64x64) = quote(
+      variance64x64,
+      maturity,
+      strike64x64,
+      spot64x64,
+      amount
+    );
 
     // TODO: get cost denominated in underlying rather than base
     uint256 cost = cost64x64.toDecimals(l.underlyingDecimals);
