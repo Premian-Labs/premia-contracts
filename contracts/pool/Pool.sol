@@ -131,9 +131,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       amount
     );
 
-    cost = cost64x64.toDecimals(l.baseDecimals);
+    cost = cost64x64.mul(spot64x64).toDecimals(l.underlyingDecimals);
     require(cost <= maxCost, 'Pool: excessive slippage');
-    _pull(l.base, cost);
+    _pull(l.underlying, cost);
 
     // mint long option token (ERC1155)
     _mint(msg.sender, _tokenIdFor(TokenType.LONG_CALL, maturity, strike64x64), amount, '');
