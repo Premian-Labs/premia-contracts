@@ -1,8 +1,15 @@
 const { expect } = require('chai');
 
-const toFixed = function(bn) {
-  return bn.shl(64);
+const fixedFromBigNumber = function (bn) {
+  if (bn == 0) return ethers.BigNumber.from(0)
+  return bn.abs().shl(64).mul(bn.abs().div(bn));
 };
+
+const BigNumberFromDecimals = function(number, decimals) {
+  return fixedFromBigNumber(
+    ethers.BigNumber.from(number)
+  ).div(ethers.BigNumber.from(`1${'0'.repeat(decimals)}`))
+}
 
 describe('ABDKMath64x64Token', function() {
   let instance;
@@ -16,7 +23,7 @@ describe('ABDKMath64x64Token', function() {
   describe('#toDecimals', function () {
     it('converts fixed point to decimals', async function(){
       const inputs = [123456, 0, 7777777777, 1, 100, 9876543210, 09287473894, 938435].map(ethers.BigNumber.from)
-      const decimals = [2, 4, 6, 8, 18]
+      const decimals = [0, 2, 4, 6, 8, 18]
 
       for (let bn of inputs) {
         for (let decimal of decimals) {
@@ -30,12 +37,12 @@ describe('ABDKMath64x64Token', function() {
   describe('#fromDecimals', function () {
     it('converts decimals to fixed point', async function(){
       const inputs = [123456, 0, 1, 100, 7777777777, 9876543210, 09287473894, 938435].map(ethers.BigNumber.from)
-      const decimals = [2, 4, 6, 8, 18]
+      const decimals = [0, 2, 4, 6, 8, 18]
 
       for (let bn of inputs) {
         for (let decimal of decimals) {
           expect(await instance.callStatic.fromDecimals(bn, decimal))
-          .to.be.closeTo(ethers.BigNumber.from(BigInt(toFixed(bn)) / 10n ** BigInt(decimal)), 1)
+          .to.be.closeTo(BigNumberFromDecimals(bn, decimal), 1)
         }
       }
     });
@@ -57,8 +64,7 @@ describe('ABDKMath64x64Token', function() {
       const inputs = [0, 1, 100, 123456, 777777777777, 938447477384737473847384n].map(ethers.BigNumber.from)
       
       for (let bn of inputs) {
-        expect(await instance.callStatic.fromWei(bn)).to.be
-        .closeTo(ethers.BigNumber.from(BigInt(toFixed(bn)) / BigInt(1e18)), 1)
+        expect(await instance.callStatic.fromWei(bn)).to.be.closeTo(BigNumberFromDecimals(bn, 18), 1)
       }
     });
   });
