@@ -278,18 +278,31 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
-    (int128 cost64x64, int128 cLevel64x64) = quote(
-      variance64x64,
-      maturity,
-      strike64x64,
-      spot64x64,
-      amount
-    );
+    {
+      (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
+      (int128 cost64x64, int128 cLevel64x64) = quote(
+        variance64x64,
+        maturity,
+        strike64x64,
+        spot64x64,
+        amount
+      );
 
-    // TODO: transfer portion of premium to treasury
-    cost = cost64x64.mul(spot64x64).toDecimals(l.underlyingDecimals);
-    _push(l.underlying, amount - cost);
+      // TODO: transfer portion of premium to treasury
+      cost = cost64x64.mul(spot64x64).toDecimals(l.underlyingDecimals);
+      _push(l.underlying, amount - cost);
+
+      // update C-Level, accounting for slippage and reinvested premia separately
+
+      int128 totalSupply64x64 = l.totalSupply64x64();
+
+      l.cLevel64x64 = OptionMath.calculateCLevel(
+        cLevel64x64,
+        totalSupply64x64,
+        totalSupply64x64.add(cost64x64),
+        OptionMath.ONE_64x64
+      );
+    }
 
     address underwriter;
 
@@ -312,18 +325,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       // transfer short option token (ERC1155)
       // TODO: ERC1155 internal transfer
       // _transfer(msg.sender, underwriter, tokenId, intervalAmount, '');
+      _burn(msg.sender, tokenId, intervalAmount);
+      _mint(underwriter, tokenId, intervalAmount, '');
     }
-
-    // update C-Level, accounting for slippage and reinvested premia separately
-
-    int128 totalSupply64x64 = l.totalSupply64x64();
-
-    l.cLevel64x64 = OptionMath.calculateCLevel(
-      cLevel64x64,
-      totalSupply64x64.sub(cost64x64),
-      totalSupply64x64,
-      OptionMath.ONE_64x64
-    );
   }
 
   /**
