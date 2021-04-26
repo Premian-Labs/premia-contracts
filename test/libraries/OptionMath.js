@@ -60,8 +60,7 @@ describe('OptionMath', function () {
     it('calculates exponential moving average for uneven intervals with significant difference', async function (){
       let t = input_t_2[0];
       let t_1 = input_t_3[0];
-      let p = input_t_2[1];
-      let p_1 = input_t_3[1];
+      let logReturns = input_t_2[2];
       let old_ema = input_t_3[2];
       let expected = fixedFromFloat(0.00470901265);
 
@@ -69,8 +68,7 @@ describe('OptionMath', function () {
       expect(
         expected / await instance.callStatic.unevenRollingEma(
           old_ema,
-          p_1,
-          p,
+          logReturns,
           t_1,
           t
         )
@@ -83,8 +81,7 @@ describe('OptionMath', function () {
     it('calculates exponential moving average for uneven intervals with small significant difference', async function (){
       let t = input_t_1[0];
       let t_1 = input_t_2[0];
-      let p = input_t_1[1];
-      let p_1 = input_t_2[1];
+      let logReturns = input_t_1[2];
       let old_ema = input_t_2[2];
       let expected = fixedFromFloat(0.01350209255);
 
@@ -92,8 +89,7 @@ describe('OptionMath', function () {
       expect(
         expected / await instance.callStatic.unevenRollingEma(
           old_ema,
-          p_1,
-          p,
+          logReturns,
           t_1,
           t
         )
@@ -106,8 +102,7 @@ describe('OptionMath', function () {
     it('calculates exponential moving average for uneven intervals with normal (daily) significant difference', async function (){
       let t = input_t[0];
       let t_1 = input_t_1[0];
-      let p = input_t[1];
-      let p_1 = input_t_1[1];
+      let logReturns = input_t[2];
       let old_ema = input_t_1[2];
       let expected = fixedFromFloat(-0.005393806812);
 
@@ -115,8 +110,7 @@ describe('OptionMath', function () {
       expect(
         expected / await instance.callStatic.unevenRollingEma(
           old_ema,
-          p_1,
-          p,
+          logReturns,
           t_1,
           t
         )
@@ -131,8 +125,7 @@ describe('OptionMath', function () {
     it('calculates exponential moving variance for uneven intervals', async function (){
       let t = input_t_2[0];
       let t_1 = input_t_3[0];
-      let p = input_t_2[1];
-      let p_1 = input_t_3[1];
+      let logReturns = input_t_2[2];
       let old_ema = input_t_3[2];
       let old_emvar = fixedFromFloat(0.000001); // ~ 0
       let expected = fixedFromFloat(0.00004207718281);
@@ -142,8 +135,7 @@ describe('OptionMath', function () {
         expected / await instance.callStatic.unevenRollingEmaVariance(
           old_ema,
           old_emvar,
-          p_1,
-          p,
+          logReturns,
           t_1,
           t
         )

@@ -14,15 +14,13 @@ contract OptionMathMock {
 
   function unevenRollingEma (
     int128 oldEma64x64,
-    int128 oldValue64x64,
-    int128 newValue64x64,
+    int128 logReturns64x64,
     uint256 oldTimestamp,
     uint256 newTimestamp
   ) external pure returns (int128) {
     return OptionMath.unevenRollingEma(
       oldEma64x64,
-      oldValue64x64,
-      newValue64x64,
+      logReturns64x64,
       oldTimestamp,
       newTimestamp
     );
@@ -31,16 +29,14 @@ contract OptionMathMock {
   function unevenRollingEmaVariance (
     int128 oldEma64x64,
     int128 oldEmaVariance64x64,
-    int128 oldValue64x64,
-    int128 newValue64x64,
+    int128 logReturns64x64,
     uint256 oldTimestamp,
     uint256 newTimestamp
   ) external pure returns (int128) {
     return OptionMath.unevenRollingEmaVariance(
       oldEma64x64,
       oldEmaVariance64x64,
-      oldValue64x64,
-      newValue64x64,
+      logReturns64x64,
       oldTimestamp,
       newTimestamp
     );
