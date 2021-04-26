@@ -407,7 +407,13 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   }
 
   /**
-   * @notice TODO
+   * @notice ERC1155 hook: track eligible underwriters
+   * @param operator transaction sender
+   * @param from sender of tokens
+   * @param to receier of tokens
+   * @param ids ids of transferred tokens
+   * @param amounts quantities of transferred tokens
+   * @param data data payload
    */
   function _beforeTokenTransfer (
     address operator,
@@ -419,13 +425,17 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   ) override internal {
     super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
 
+    // TODO: adapt and use ERC1155Enumerable
+
     if (from != to) {
       for (uint256 i; i < ids.length; i++) {
-        uint256 id = ids[i];
         uint256 amount = amounts[i];
+
+        // TODO: enforce minimum balance
 
         if (amount > 0) {
           PoolStorage.Layout storage l = PoolStorage.layout();
+          uint256 id = ids[i];
 
           if (balanceOf(from, id) == amount) {
             l.removeUnderwriter(from);
