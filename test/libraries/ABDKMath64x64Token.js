@@ -5,7 +5,7 @@ const fixedFromBigNumber = function (bn) {
   return bn.abs().shl(64).mul(bn.abs().div(bn));
 };
 
-const BigNumberFromDecimals = function(number, decimals) {
+const bigNumberFromDecimals = function(number, decimals) {
   return fixedFromBigNumber(
     ethers.BigNumber.from(number)
   ).div(ethers.BigNumber.from(`1${'0'.repeat(decimals)}`))
@@ -42,7 +42,7 @@ describe('ABDKMath64x64Token', function() {
       for (let bn of inputs) {
         for (let decimal of decimals) {
           expect(await instance.callStatic.fromDecimals(bn, decimal))
-          .to.be.closeTo(BigNumberFromDecimals(bn, decimal), 1)
+          .to.be.closeTo(bigNumberFromDecimals(bn, decimal), 1)
         }
       }
     });
@@ -51,7 +51,7 @@ describe('ABDKMath64x64Token', function() {
   describe('#toWei', function () {
     it('converts wei to eth', async function(){
       const inputs = [0, 1, 100, 123456, 777777777777, 938447477384737473847384n].map(ethers.BigNumber.from)
-      
+
       for (let bn of inputs) {
         const fixed = await instance.callStatic.fromWei(bn)
         expect(await instance.callStatic.toWei(fixed)).to.be.closeTo(bn, 1)
@@ -62,9 +62,9 @@ describe('ABDKMath64x64Token', function() {
   describe('#fromWei', function () {
     it('converts eth to wei', async function() {
       const inputs = [0, 1, 100, 123456, 777777777777, 938447477384737473847384n].map(ethers.BigNumber.from)
-      
+
       for (let bn of inputs) {
-        expect(await instance.callStatic.fromWei(bn)).to.be.closeTo(BigNumberFromDecimals(bn, 18), 1)
+        expect(await instance.callStatic.fromWei(bn)).to.be.closeTo(bigNumberFromDecimals(bn, 18), 1)
       }
     });
   });
