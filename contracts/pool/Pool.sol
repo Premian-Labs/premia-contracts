@@ -87,7 +87,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       oldLiquidity64x64,
       newLiquidity64x64,
       OptionMath.ONE_64x64,
-      false
+      true
     );
 
     cost64x64 = price64x64.mul(amount64x64);
