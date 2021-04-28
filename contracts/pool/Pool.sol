@@ -275,6 +275,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   ) external returns (uint256 cost) {
     (TokenType tokenType, uint64 maturity, int128 strike64x64) = _parametersFor(tokenId);
     require(tokenType == TokenType.SHORT_CALL, 'Pool: invalid token type');
+    require(maturity > block.timestamp, 'Pool: option must not be expired');
+
+    // TODO: allow exit of expired position
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
