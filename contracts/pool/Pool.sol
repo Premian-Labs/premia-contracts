@@ -51,7 +51,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
    * @param strike64x64 64x64 fixed point representation of strike price
    * @param spot64x64 64x64 fixed point representation of spot price
    * @param amount size of option contract
-   * @return cost64x64 64x64 fixed point representation of option cost denominated in base currency
+   * @return cost64x64 64x64 fixed point representation of option cost denominated in underlying currency
    * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
    */
   function quote (
@@ -90,7 +90,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       true
     );
 
-    cost64x64 = price64x64.mul(amount64x64);
+    cost64x64 = price64x64.mul(amount64x64).mul(
+      OptionMath.ONE_64x64.add(l.fee64x64)
+    ).mul(spot64x64);
   }
 
   /**
@@ -130,12 +132,21 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       amount
     );
 
-    // TODO: transfer portion of premium to treasury
-    cost = cost64x64.mul(spot64x64).toDecimals(l.underlyingDecimals);
+    cost = cost64x64.toDecimals(l.underlyingDecimals);
+    uint256 fee = cost64x64.mul(l.fee64x64).div(
+      OptionMath.ONE_64x64.add(l.fee64x64)
+    ).toDecimals(l.underlyingDecimals);
+
     require(cost <= maxCost, 'Pool: excessive slippage');
     _pull(l.underlying, cost);
 
-    // mint long option token (ERC1155)
+    // TODO: deduct fee from cost before distributing to underwriters
+    // TODO: do not modify return value
+
+    // mint free liquidity tokens for treasury (ERC20)
+    _mint(l.treasury, fee);
+
+    // mint long option token for buyer (ERC1155)
     _mint(msg.sender, _tokenIdFor(TokenType.LONG_CALL, maturity, strike64x64), amount, '');
 
     uint256 shortTokenId = _tokenIdFor(TokenType.SHORT_CALL, maturity, strike64x64);
@@ -155,9 +166,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       uint256 intervalCost = cost * intervalAmount / amount;
       cost -= intervalCost;
 
-      // burn free liquidity tokens (ERC20)
+      // burn free liquidity tokens from underwriter (ERC20)
       _burn(underwriter, intervalAmount - intervalCost);
-      // mint short option token (ERC1155)
+      // mint short option token for underwriter (ERC1155)
       _mint(underwriter, shortTokenId, intervalAmount, '');
     }
 
@@ -191,7 +202,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       maturity < block.timestamp ? maturity : block.timestamp
     );
 
-    // burn long option token (ERC1155)
+    // burn long option tokens from sender (ERC1155)
     _burn(msg.sender, tokenId, amount);
 
     if (strike64x64 > spot64x64) {
@@ -217,9 +228,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       uint256 intervalAmount;
       amount -= intervalAmount;
 
-      // mint free liquidity tokens (ERC20)
+      // mint free liquidity tokens for underwriter (ERC20)
       _mint(underwriter, intervalAmount);
-      // burn short option token (ERC1155)
+      // burn short option tokens from underwriter (ERC1155)
       _burn(underwriter, shortTokenId, fullAmount);
     }
 
@@ -242,7 +253,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     _pull(l.underlying, amount);
 
     int128 oldLiquidity64x64 = l.totalSupply64x64();
-    // mint free liquidity tokens (ERC20)
+    // mint free liquidity tokens for sender (ERC20)
     _mint(msg.sender, amount);
     int128 newLiquidity64x64 = l.totalSupply64x64();
 
@@ -264,7 +275,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     );
 
     int128 oldLiquidity64x64 = l.totalSupply64x64();
-    // burn free liquidity tokens (ERC20)
+    // burn free liquidity tokens from sender (ERC20)
     _burn(msg.sender, amount);
     int128 newLiquidity64x64 = l.totalSupply64x64();
 
@@ -301,9 +312,15 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
         amount
       );
 
-      // TODO: transfer portion of premium to treasury
-      cost = cost64x64.mul(spot64x64).toDecimals(l.underlyingDecimals);
-      _push(l.underlying, amount - cost);
+      cost = cost64x64.toDecimals(l.underlyingDecimals);
+      uint256 fee = cost64x64.mul(l.fee64x64).div(
+        OptionMath.ONE_64x64.add(l.fee64x64)
+      ).toDecimals(l.underlyingDecimals);
+
+      _push(l.underlying, amount - cost - fee);
+
+      // TODO: deduct fee from cost before distributing to underwriters
+      // TODO: do not modify return value
 
       // update C-Level, accounting for slippage and reinvested premia separately
 
@@ -315,6 +332,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
         totalSupply64x64.add(cost64x64),
         OptionMath.ONE_64x64
       );
+
+      // mint free liquidity tokens for treasury (ERC20)
+      _mint(l.treasury, fee);
     }
 
     address underwriter;
@@ -333,7 +353,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       uint256 intervalCost = cost * intervalAmount / amount;
       cost -= intervalCost;
 
-      // burn free liquidity tokens (ERC20)
+      // burn free liquidity tokens from underwriter (ERC20)
       _burn(underwriter, intervalAmount - intervalCost);
       // transfer short option token (ERC1155)
       _transfer(msg.sender, msg.sender, underwriter, tokenId, intervalAmount, '');

@@ -18,6 +18,7 @@ library PoolStorage {
     address underlying;
     uint8 underlyingDecimals;
     int128 cLevel64x64;
+    int128 fee64x64;
 
     mapping (address => uint256) depositedAt;
 
