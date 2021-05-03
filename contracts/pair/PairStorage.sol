@@ -20,6 +20,7 @@ library PairStorage {
 
     uint256 updatedAt;
 
+    int128 emaLogReturns64x64;
     int128 emaVarianceAnnualized64x64;
 
     // TODO: enforced interval size for maturity (maturity % interval == 0)

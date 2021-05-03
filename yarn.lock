@@ -706,22 +706,22 @@
   "resolved" "https://registry.npmjs.org/@solidity-parser/parser/-/parser-0.12.0.tgz"
   "version" "0.12.0"
 
-"@solidstate/contracts@^0.0.8":
-  "integrity" "sha512-7K+1AgEUCwJzo1/jgMgUcYo5d1GdIuD+vHs/BEw+TdjcnE8aw2jYmgnrj6YGP3g0JUX/rEH6BYmd8GwBJAAX3g=="
-  "resolved" "https://registry.npmjs.org/@solidstate/contracts/-/contracts-0.0.8.tgz"
-  "version" "0.0.8"
+"@solidstate/contracts@^0.0.9":
+  version "0.0.9"
+  resolved "https://registry.yarnpkg.com/@solidstate/contracts/-/contracts-0.0.9.tgz#677f4c74adc3803f4c1cf707fe7d3bc0285abf5a"
+  integrity sha512-A+ynAgTm0gO1w7pUzSPBYosG1yMwM/zoBn67ej1WwXkJBupHIxzRma61SMGb60FxKcVwofjV1ZYLmCyww1UHXw==
 
-"@solidstate/library@^0.0.8":
-  "integrity" "sha512-sAgsSIovme6Fv9VHSo+d2pZHtcYBBleJqei7cyBil0THHmBuFPuY6gTRdKMThdl+MEMVdCrdxUKYPszXZmnMxQ=="
-  "resolved" "https://registry.npmjs.org/@solidstate/library/-/library-0.0.8.tgz"
-  "version" "0.0.8"
+"@solidstate/library@^0.0.9":
+  version "0.0.9"
+  resolved "https://registry.yarnpkg.com/@solidstate/library/-/library-0.0.9.tgz#c1b145dc433c717f947c63da2f473e206fdecd7d"
+  integrity sha512-xwp131F8MCD8jZbXewue59K+JOg9RqtqTtTCehdxEaaYIrVWZt+1jWJsLye0k0+qXg2CSkKlYfzEVvfFvg5OhA==
 
-"@solidstate/spec@^0.0.8":
-  "integrity" "sha512-B9Rob9qcLfv+527VY8dXMu6k3eW/J+eLOC96akmdZZdEXKs6eMnNIhjSS0mYWcxt3qCEQuzPcoI2GBUvudshuQ=="
-  "resolved" "https://registry.npmjs.org/@solidstate/spec/-/spec-0.0.8.tgz"
-  "version" "0.0.8"
+"@solidstate/spec@^0.0.9":
+  version "0.0.9"
+  resolved "https://registry.yarnpkg.com/@solidstate/spec/-/spec-0.0.9.tgz#1b6da9bb57ed4fdc504de571a2db85c945bd502c"
+  integrity sha512-vrAfnsE98UMZY/ui0gkuGyyOuZodlyte7HCzHr5gt0sasS8QDYIjkQlR/Mb3N7plfb+lyWVZ6QSYde1/CJio0Q==
   dependencies:
-    "@solidstate/library" "^0.0.8"
+    "@solidstate/library" "^0.0.9"
 
 "@szmarczak/http-timer@^1.1.2":
   "integrity" "sha512-XIB2XbzHTN6ieIjfIMV9hlVcfPU26s2vafYWQcZHWXHOxiaRZYEDKEwdl129Zyg50+foYV2jCgtrqSA6qNuNSA=="

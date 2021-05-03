@@ -13,12 +13,14 @@ library PoolStorage {
   );
 
   struct Layout {
+    address treasury;
     address pair;
-    address base;
     address underlying;
-    uint8 baseDecimals;
     uint8 underlyingDecimals;
     int128 cLevel64x64;
+    int128 fee64x64;
+
+    mapping (address => uint256) depositedAt;
 
     // doubly linked list of free liquidity intervals
     mapping (address => address) liquidityQueueAscending;
@@ -49,7 +51,6 @@ library PoolStorage {
     Layout storage l,
     address account
   ) internal {
-    // TODO: move to _beforeTokenTransfer hook, account for transfers
     address prev = l.liquidityQueueDescending[account];
     address next = l.liquidityQueueAscending[account];
     l.liquidityQueueAscending[prev] = next;

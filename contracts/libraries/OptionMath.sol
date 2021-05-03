@@ -11,6 +11,9 @@ library OptionMath {
   int128 internal constant ONE_64x64 = 0x10000000000000000;
   int128 internal constant THREE_64x64 = 0x30000000000000000;
 
+  // 64x64 fixed point representation of 2e
+  int128 internal constant INITIAL_C_LEVEL_64x64 = 0x56fc2a2c515da32ea;
+
   // 64x64 fixed point constants used in Choudhury’s approximation of the Black-Scholes CDF
   int128 private constant CDF_CONST_0 = 0x09109f285df452394; // 2260 / 3989
   int128 private constant CDF_CONST_1 = 0x19abac0ea1da65036; // 6400 / 3989
@@ -33,47 +36,43 @@ library OptionMath {
 
   /**
    * @notice calculate the rolling EMA of an uneven time series
-   * @param oldEma64x64 64x64 fixed point representation of previous EMA
-   * @param oldValue64x64 64x64 fixed point representation of previous value
-   * @param newValue64x64 64x64 fixed point representation of current value
+   * @param oldEmaLogReturns64x64 64x64 fixed point representation of previous EMA
+   * @param logReturns64x64 64x64 fixed point representation of natural log of rate of return for current period
    * @param oldTimestamp timestamp of previous update
    * @param newTimestamp current timestamp
-   * @return 64x64 fixed point representation of EMA for current period
+   * @return 64x64 fixed point representation of EMA
    */
   function unevenRollingEma (
-    int128 oldEma64x64,
-    int128 oldValue64x64,
-    int128 newValue64x64,
+    int128 oldEmaLogReturns64x64,
+    int128 logReturns64x64,
     uint256 oldTimestamp,
     uint256 newTimestamp
   ) internal pure returns (int128) {
     int128 decay64x64 = decay(oldTimestamp, newTimestamp);
 
-    return newValue64x64.div(oldValue64x64).ln().mul(decay64x64).add(
-      ONE_64x64.sub(decay64x64).mul(oldEma64x64)
+    return logReturns64x64.mul(decay64x64).add(
+      ONE_64x64.sub(decay64x64).mul(oldEmaLogReturns64x64)
     );
   }
 
   /**
    * @notice calculate the rolling EMA variance of an uneven time series
-   * @param oldEma64x64 64x64 fixed point representation of previous EMA
+   * @param oldEmaLogReturns64x64 64x64 fixed point representation of previous EMA
    * @param oldEmaVariance64x64 64x64 fixed point representation of previous variance
-   * @param oldValue64x64 64x64 fixed point representation of previous value
-   * @param newValue64x64 64x64 fixed point representation of current value
+   * @param logReturns64x64 64x64 fixed point representation of natural log of rate of return for current period
    * @param oldTimestamp timestamp of previous update
    * @param newTimestamp current timestamp
-   * @return EMA of variance for current period
+   * @return 64x64 fixed point representation of EMA of variance
    */
   function unevenRollingEmaVariance (
-    int128 oldEma64x64,
+    int128 oldEmaLogReturns64x64,
     int128 oldEmaVariance64x64,
-    int128 oldValue64x64,
-    int128 newValue64x64,
+    int128 logReturns64x64,
     uint256 oldTimestamp,
     uint256 newTimestamp
   ) internal pure returns (int128) {
     int128 decay64x64 = decay(oldTimestamp, newTimestamp);
-    int128 difference64x64 = newValue64x64.div(oldValue64x64).ln().sub(oldEma64x64);
+    int128 difference64x64 = logReturns64x64.sub(oldEmaLogReturns64x64);
 
     return ONE_64x64.sub(decay64x64).mul(
       // squaring via mul is cheaper than via pow
@@ -84,7 +83,7 @@ library OptionMath {
   /**
    * @notice calculate Choudhury’s approximation of the Black-Scholes CDF
    * @param input64x64 64x64 fixed point representation of random variable
-   * @return the approximated CDF of x
+   * @return 64x64 fixed point representation of the approximated CDF of x
    */
   function N (
     int128 input64x64
@@ -138,7 +137,7 @@ library OptionMath {
    * @param oldPoolState64x64 64x64 fixed point representation of liquidity in pool before update
    * @param newPoolState64x64 64x64 fixed point representation of liquidity in pool after update
    * @param steepness64x64 64x64 fixed point representation of steepness coefficient
-   * @return new C-Level
+   * @return 64x64 fixed point representation of new C-Level
    */
   function calculateCLevel (
     int128 initialCLevel64x64,

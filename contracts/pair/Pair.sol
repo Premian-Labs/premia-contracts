@@ -66,34 +66,36 @@ contract Pair is IPair, OwnableInternal {
   function _update () internal {
     PairStorage.Layout storage l = PairStorage.layout();
 
-    int128 price64x64 = ABDKMath64x64.divi(
+    uint256 updatedAt = l.updatedAt;
+
+    int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
+    int128 newPrice64x64 = ABDKMath64x64.divi(
       _fetchLatestPrice(l.oracle0),
       _fetchLatestPrice(l.oracle1)
     );
 
     if (l.getPriceUpdate(block.timestamp) == 0) {
-      l.setPriceUpdate(block.timestamp, price64x64);
+      l.setPriceUpdate(block.timestamp, newPrice64x64);
     }
 
-    l.updatedAt = block.timestamp;
+    int128 logReturns64x64 = newPrice64x64.div(oldPrice64x64).ln();
+    int128 oldEmaLogReturns64x64 = l.emaLogReturns64x64;
 
-    // TODO: update time-weighted EMA
-    //
-    // int128 logreturns64x64 = OptionMath.logreturns(l.dayToClosingPrice64x64[today], l.dayToClosingPrice64x64[lastDay]);
-    //
-    // (
-    //   l.oldEmaLogReturns64x64,
-    //   l.newEmaLogReturns64x64
-    // ) = (
-    //   l.newEmaLogReturns64x64,
-    //   OptionMath.rollingEma(l.oldEmaLogReturns64x64, logreturns64x64, l.window)
-    // );
-    //
-    // l.emaVarianceAnnualized64x64 = OptionMath.rollingEmaVariance(
-    //   l.emaVarianceAnnualized64x64 / 365,
-    //   l.oldEmaLogReturns64x64,
-    //   logreturns64x64,
-    //   l.window
-    // ) * 365;
+    l.emaLogReturns64x64 = OptionMath.unevenRollingEma(
+      oldEmaLogReturns64x64,
+      logReturns64x64,
+      updatedAt,
+      block.timestamp
+    );
+
+    l.emaVarianceAnnualized64x64 = OptionMath.unevenRollingEmaVariance(
+      oldEmaLogReturns64x64,
+      l.emaVarianceAnnualized64x64 / 365,
+      logReturns64x64,
+      updatedAt,
+      block.timestamp
+    ) * 365;
+
+    l.updatedAt = block.timestamp;
   }
 }

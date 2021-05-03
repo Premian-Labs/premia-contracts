@@ -33,8 +33,10 @@ describe('Pool', function () {
   // eslint-disable-next-line mocha/no-setup-in-describe
   describeBehaviorOfPool({
     deploy: () => instance,
-    mint: (recipient, tokenId, amount) => instance.mint(recipient, tokenId, amount),
-    burn: (recipient, tokenId, amount) => instance.burn(recipient, tokenId, amount),
+    mintERC20: (recipient, amount) => instance['mint(address,uint256)'](recipient, amount),
+    burnERC20: (recipient, amount) => instance['burn(address,uint256)'](recipient, amount),
+    mintERC1155: (recipient, tokenId, amount) => instance['mint(address,uint256,uint256)'](recipient, tokenId, amount),
+    burnERC1155: (recipient, tokenId, amount) => instance['burn(address,uint256,uint256)'](recipient, tokenId, amount),
     supply: 0,
     name: '',
     symbol: '',
