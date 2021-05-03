@@ -420,44 +420,29 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   }
 
   /**
-   * @notice ERC1155 hook: track eligible underwriters
-   * @param operator transaction sender
-   * @param from sender of tokens
-   * @param to receier of tokens
-   * @param ids ids of transferred tokens
-   * @param amounts quantities of transferred tokens
-   * @param data data payload
+   * @notice ERC20 hook: track eligible underwriters
+   * @param from token sender
+   * @param to token receiver
+   * @param amount token quantity transferred
    */
   function _beforeTokenTransfer (
-    address operator,
     address from,
     address to,
-    uint[] memory ids,
-    uint[] memory amounts,
-    bytes memory data
+    uint256 amount
   ) override internal {
-    super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
+    super._beforeTokenTransfer(from, to, amount);
 
-    // TODO: adapt and use ERC1155Enumerable
+    // TODO: enforce minimum balance
 
-    if (from != to) {
-      for (uint256 i; i < ids.length; i++) {
-        uint256 amount = amounts[i];
+    if (amount > 0) {
+      PoolStorage.Layout storage l = PoolStorage.layout();
 
-        // TODO: enforce minimum balance
+      if (from != address(0) && balanceOf(from) == amount) {
+        l.removeUnderwriter(from);
+      }
 
-        if (amount > 0) {
-          PoolStorage.Layout storage l = PoolStorage.layout();
-          uint256 id = ids[i];
-
-          if (balanceOf(from, id) == amount) {
-            l.removeUnderwriter(from);
-          }
-
-          if (balanceOf(to, id) == 0) {
-            l.addUnderwriter(to);
-          }
-        }
+      if (to != address(0) && balanceOf(to) == 0) {
+        l.addUnderwriter(to);
       }
     }
   }
