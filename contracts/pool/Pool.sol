@@ -140,14 +140,14 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     require(cost <= maxCost, 'Pool: excessive slippage');
     _pull(l.underlying, cost);
 
-    // TODO: deduct fee from cost before distributing to underwriters
-    // TODO: do not modify return value
-
     // mint free liquidity tokens for treasury (ERC20)
     _mint(l.treasury, fee);
 
     // mint long option token for buyer (ERC1155)
     _mint(msg.sender, _tokenIdFor(TokenType.LONG_CALL, maturity, strike64x64), amount, '');
+
+    // remaining premia to be distributed to underwriters
+    uint256 costRemaining = cost - fee;
 
     uint256 shortTokenId = _tokenIdFor(TokenType.SHORT_CALL, maturity, strike64x64);
     address underwriter;
@@ -156,15 +156,15 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       underwriter = l.liquidityQueueAscending[underwriter];
       uint256 balance = balanceOf(underwriter);
       // account for additional liquidity sourced from premium
-      balance += balance * (cost / amount);
+      balance += balance * (costRemaining / amount);
 
       // amount of liquidity provided by underwriter
       uint256 intervalAmount = balance < amount ? balance : amount;
       amount -= intervalAmount;
 
       // amount of premium paid to underwriter
-      uint256 intervalCost = cost * intervalAmount / amount;
-      cost -= intervalCost;
+      uint256 intervalCost = costRemaining * intervalAmount / amount;
+      costRemaining -= intervalCost;
 
       // burn free liquidity tokens from underwriter (ERC20)
       _burn(underwriter, intervalAmount - intervalCost);
@@ -302,6 +302,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
+    uint256 costRemaining;
+
     {
       (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
       (int128 cost64x64, int128 cLevel64x64) = quote(
@@ -319,9 +321,6 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
       _push(l.underlying, amount - cost - fee);
 
-      // TODO: deduct fee from cost before distributing to underwriters
-      // TODO: do not modify return value
-
       // update C-Level, accounting for slippage and reinvested premia separately
 
       int128 totalSupply64x64 = l.totalSupply64x64();
@@ -335,6 +334,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
       // mint free liquidity tokens for treasury (ERC20)
       _mint(l.treasury, fee);
+
+      // remaining premia to be distributed to underwriters
+      costRemaining = cost - fee;
     }
 
     address underwriter;
@@ -343,15 +345,15 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       underwriter = l.liquidityQueueAscending[underwriter];
       uint256 balance = balanceOf(underwriter);
       // account for additional liquidity sourced from premium
-      balance += balance * (cost / amount);
+      balance += balance * (costRemaining / amount);
 
       // amount of liquidity provided by underwriter
       uint256 intervalAmount = balance < amount ? balance : amount;
       amount -= intervalAmount;
 
       // amount of premium paid to underwriter
-      uint256 intervalCost = cost * intervalAmount / amount;
-      cost -= intervalCost;
+      uint256 intervalCost = costRemaining * intervalAmount / amount;
+      costRemaining -= intervalCost;
 
       // burn free liquidity tokens from underwriter (ERC20)
       _burn(underwriter, intervalAmount - intervalCost);
