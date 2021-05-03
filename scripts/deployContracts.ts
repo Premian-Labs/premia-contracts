@@ -34,7 +34,11 @@ export async function deployContracts(
   let pbcBlockEnd: number;
 
   if (isTest) {
-    premia = await new TestErc20__factory(deployer).deploy(18);
+    if (!premiaAddress) {
+      premia = await new TestErc20__factory(deployer).deploy(18);
+    } else {
+      premia = PremiaErc20__factory.connect(premiaAddress, deployer);
+    }
 
     pbcBlockStart = 0;
     pbcBlockEnd = 100;

@@ -1,6 +1,7 @@
 import { ethers } from 'hardhat';
 import {
   PremiaDevFund__factory,
+  PremiaErc20__factory,
   PremiaMarket__factory,
   PremiaOption__factory,
   PremiaVesting__factory,
@@ -22,7 +23,7 @@ async function main() {
   let tokens: { [addr: string]: BigNumberish } = {};
   let uniswapRouters = [
     '0xd9e1cE17f2641f24aE83637ab66a2cca9C378B9F', // SushiSwap router
-    '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', // Uniswap router
+    // '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', // Uniswap router
   ];
 
   let founder1 = '0xC340B7A2A70d7e08F25435CB97F3B25A45002e6C';
@@ -31,6 +32,9 @@ async function main() {
   let founder4 = '0xDEAD5D3c486AcE753c839e2EB27BacdabBA06dD6';
 
   if (isTestnet) {
+    const premiaToken = await new PremiaErc20__factory(deployer).deploy();
+    premia = premiaToken.address;
+
     dai = '0x5592EC0cfb4dbc12D3aB100b257153436a1f0FEa';
     weth = '0xc778417E063141139Fce010982780140Aa0cD5Ab';
     wbtc = '0x577D296678535e4903D59A4C929B718e1D575e0A';
@@ -167,7 +171,7 @@ async function main() {
   );
 
   console.log(
-    `premiaMarket deployed at ${premiaMarket.address} (Args : ${ZERO_ADDRESS} / ${contracts.feeCalculator.address} / ${treasury})`,
+    `premiaMarket deployed at ${premiaMarket.address} (Args : ${ZERO_ADDRESS} / ${contracts.feeCalculator.address} / ${treasury} / ${contracts.premiaReferral.address})`,
   );
 
   await contracts.premiaReferral.addWhitelisted([
