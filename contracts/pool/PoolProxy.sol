@@ -12,14 +12,13 @@ import '@solidstate/contracts/token/ERC1155/IERC1155.sol';
 import '../core/IProxyManager.sol';
 import './PoolStorage.sol';
 
+import { OptionMath } from '../libraries/OptionMath.sol';
+
 /**
  * @title Upgradeable proxy with centrally controlled Pool implementation
  */
 contract PoolProxy is ManagedProxyOwnable {
   using ERC165Storage for ERC165Storage.Layout;
-
-  // 64x64 fixed point representation of 2e
-  int128 private constant INITIAL_C_LEVEL_64x64 = 0x56fc2a2c515da32ea;
 
   constructor (
     address owner,
@@ -35,7 +34,7 @@ contract PoolProxy is ManagedProxyOwnable {
       l.underlying = underlying;
       l.baseDecimals = IERC20Metadata(base).decimals();
       l.underlyingDecimals = IERC20Metadata(underlying).decimals();
-      l.cLevel64x64 = INITIAL_C_LEVEL_64x64;
+      l.cLevel64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
     }
 
     {

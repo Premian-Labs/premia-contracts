@@ -11,6 +11,9 @@ library OptionMath {
   int128 internal constant ONE_64x64 = 0x10000000000000000;
   int128 internal constant THREE_64x64 = 0x30000000000000000;
 
+  // 64x64 fixed point representation of 2e
+  int128 internal constant INITIAL_C_LEVEL_64x64 = 0x56fc2a2c515da32ea;
+
   // 64x64 fixed point constants used in Choudhury’s approximation of the Black-Scholes CDF
   int128 private constant CDF_CONST_0 = 0x09109f285df452394; // 2260 / 3989
   int128 private constant CDF_CONST_1 = 0x19abac0ea1da65036; // 6400 / 3989
