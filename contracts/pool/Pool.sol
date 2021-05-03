@@ -122,8 +122,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     require(strike64x64 <= spot64x64 * 2, 'Pool: strike price must not exceed two times spot price');
     require(strike64x64 >= spot64x64 / 2, 'Pool: strike price must be at least one half spot price');
 
-    int128 cost64x64;
-    (cost64x64, l.cLevel64x64) = quote(
+    (int128 cost64x64, int128 cLevel64x64) = quote(
       variance64x64,
       maturity,
       strike64x64,
@@ -161,6 +160,17 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       // mint short option token (ERC1155)
       _mint(underwriter, shortTokenId, intervalAmount, '');
     }
+
+    // update C-Level, accounting for slippage and reinvested premia separately
+
+    int128 totalSupply64x64 = l.totalSupply64x64();
+
+    l.cLevel64x64 = OptionMath.calculateCLevel(
+      cLevel64x64, // C-Level after liquidity is reserved
+      totalSupply64x64.sub(cost64x64),
+      totalSupply64x64,
+      OptionMath.ONE_64x64
+    );
   }
 
   /**
@@ -300,7 +310,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       int128 totalSupply64x64 = l.totalSupply64x64();
 
       l.cLevel64x64 = OptionMath.calculateCLevel(
-        cLevel64x64,
+        cLevel64x64, // C-Level after liquidity is reserved
         totalSupply64x64,
         totalSupply64x64.add(cost64x64),
         OptionMath.ONE_64x64
