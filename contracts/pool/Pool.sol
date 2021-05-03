@@ -336,10 +336,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       // burn free liquidity tokens (ERC20)
       _burn(underwriter, intervalAmount - intervalCost);
       // transfer short option token (ERC1155)
-      // TODO: ERC1155 internal transfer
-      // _transfer(msg.sender, underwriter, tokenId, intervalAmount, '');
-      _burn(msg.sender, tokenId, intervalAmount);
-      _mint(underwriter, tokenId, intervalAmount, '');
+      _transfer(msg.sender, msg.sender, underwriter, tokenId, intervalAmount, '');
     }
   }
 
