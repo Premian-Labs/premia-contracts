@@ -13,6 +13,7 @@ library PoolStorage {
   );
 
   struct Layout {
+    address treasury;
     address pair;
     address underlying;
     uint8 underlyingDecimals;

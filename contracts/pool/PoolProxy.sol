@@ -29,6 +29,7 @@ contract PoolProxy is ManagedProxyOwnable {
 
     {
       PoolStorage.Layout storage l = PoolStorage.layout();
+      l.treasury = owner;
       l.pair = msg.sender;
       l.underlying = underlying;
       l.underlyingDecimals = IERC20Metadata(underlying).decimals();
