@@ -14,9 +14,7 @@ library PoolStorage {
 
   struct Layout {
     address pair;
-    address base;
     address underlying;
-    uint8 baseDecimals;
     uint8 underlyingDecimals;
     int128 cLevel64x64;
 

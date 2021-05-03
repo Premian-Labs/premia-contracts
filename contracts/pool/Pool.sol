@@ -51,7 +51,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
    * @param strike64x64 64x64 fixed point representation of strike price
    * @param spot64x64 64x64 fixed point representation of spot price
    * @param amount size of option contract
-   * @return cost64x64 64x64 fixed point representation of option cost
+   * @return cost64x64 64x64 fixed point representation of option cost denominated in base currency
    * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
    */
   function quote (
