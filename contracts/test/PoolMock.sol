@@ -30,6 +30,20 @@ contract PoolMock is Pool {
 
   function mint (
     address account,
+    uint amount
+  ) external {
+    _mint(account, amount);
+  }
+
+  function burn (
+    address account,
+    uint amount
+  ) external {
+    _burn(account, amount);
+  }
+
+  function mint (
+    address account,
     uint id,
     uint amount
   ) external {
