@@ -17,7 +17,7 @@ https://premia.finance
 - **PremiaFeeDiscount** : Lock xPremia to get protocol fee discount
   https://etherscan.io/address/0xF5aae75D1AD6fDD62Cce66137F2674c96FEda854
 - **PremiaMaker** : Swap protocol fees to ETH, used ETH to purchase Premia on the bonding curve and send Premia to PremiaStaking contract
-  https://etherscan.io/address/0x121d14fa585585b2f6c638df131ccd90741a209e
+  https://etherscan.io/address/0x35b0a9fa6deb2fd06d07f976b57164b082c2d8d4
 - **PremiaMarket** : Option market
   https://etherscan.io/address/0x45eBD0FC72E2056adb5c864Ea6F151ad943d94af
 - **PremiaOption** : Option ERC1155 contract (One per denomination)

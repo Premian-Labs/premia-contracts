@@ -130,12 +130,16 @@ contract PremiaMaker is Ownable {
         uint256 premiaAmount;
 
         if (_token != address(premia)) {
-            address[] memory path = customPath[_token];
+            address[] memory path;
+
             if (_token != weth) {
-                path = new address[](3);
-                path[0] = _token;
-                path[1] = weth;
-                path[2] = address(premia);
+                path = customPath[_token];
+                if (path.length == 0) {
+                    path = new address[](3);
+                    path[0] = _token;
+                    path[1] = weth;
+                    path[2] = address(premia);
+                }
             } else {
                 path = new address[](2);
                 path[0] = _token;

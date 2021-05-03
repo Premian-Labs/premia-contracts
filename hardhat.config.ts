@@ -88,7 +88,7 @@ export default {
       accounts: [ETH_MAIN_KEY],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
-      gasPrice: 60000000000,
+      gasPrice: 30000000000,
       timeout: 100000,
     },
     rinkeby: {
