@@ -28,10 +28,6 @@ fs.copyFileSync(
   './abi/PremiaFeeDiscount.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaUncutErc20.sol/PremiaUncutErc20.json',
-  './abi/PremiaUncutErc20.json',
-);
-fs.copyFileSync(
   './artifacts/contracts/PremiaPBC.sol/PremiaPBC.json',
   './abi/PremiaPBC.json',
 );
@@ -42,10 +38,6 @@ fs.copyFileSync(
 fs.copyFileSync(
   './artifacts/contracts/PremiaMarket.sol/PremiaMarket.json',
   './abi/PremiaMarket.json',
-);
-fs.copyFileSync(
-  './artifacts/contracts/PremiaMining.sol/PremiaMining.json',
-  './abi/PremiaMining.json',
 );
 fs.copyFileSync(
   './artifacts/contracts/PremiaOption.sol/PremiaOption.json',
@@ -72,17 +64,8 @@ fs.copyFileSync(
   './abi/PremiaVestingCancellable.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PriceProvider.sol/PriceProvider.json',
-  './abi/PriceProvider.json',
-);
-fs.copyFileSync(
   './artifacts/contracts/PremiaVoteProxy.sol/PremiaVoteProxy.json',
   './abi/PremiaVoteProxy.json',
-);
-
-fs.copyFileSync(
-  './artifacts/contracts/PremiaUncutErc20Wrapper.sol/PremiaUncutErc20Wrapper.json',
-  './abi/PremiaUncutErc20Wrapper.json',
 );
 
 // AMM

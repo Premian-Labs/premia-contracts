@@ -7,7 +7,6 @@ import "../uniswapV2/interfaces/IUniswapV2Router02.sol";
 
 interface IPremiaMaker {
     function premia() external view returns(address);
-    function premiaBondingCurve() external view returns(address);
     function premiaStaking() external view returns(address);
     function treasury() external view returns(address);
     function treasuryFee() external view returns(uint256);
@@ -15,7 +14,6 @@ interface IPremiaMaker {
 
     function setCustomPath(address _token, address[] memory _path) external;
     function setTreasuryFee(uint256 _fee) external;
-    function setPremiaBondingCurve(address _premiaBondingCurve) external;
     function addWhitelistedRouter(address[] memory _addr) external;
     function removeWhitelistedRouter(address[] memory _addr) external;
 

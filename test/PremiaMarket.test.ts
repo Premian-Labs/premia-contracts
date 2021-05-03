@@ -61,7 +61,7 @@ describe('PremiaMarket', () => {
 
     const premiaMarketFactory = new PremiaMarket__factory(admin);
     premiaMarket = await premiaMarketFactory.deploy(
-      p.uPremia.address,
+      ZERO_ADDRESS,
       p.feeCalculator.address,
       admin.address,
       p.premiaReferral.address,
@@ -71,8 +71,6 @@ describe('PremiaMarket', () => {
       premiaOption.address,
       premiaMarket.address,
     ]);
-
-    await p.uPremia.addMinter([premiaMarket.address]);
 
     testToken = getToken(weth, wbtc);
 
@@ -118,7 +116,6 @@ describe('PremiaMarket', () => {
     await premiaOption.setTokens([testToken.address], [parseTestToken('10')]);
 
     await premiaMarket.addWhitelistedPaymentTokens([dai.address]);
-    await p.uPremia.addWhitelisted([premiaMarket.address]);
   });
 
   describe('createOrder', () => {
@@ -1317,48 +1314,6 @@ describe('PremiaMarket', () => {
       order2Amount = await premiaMarket.amounts(order2.hash);
       expect(order1Amount).to.eq(0);
       expect(order2Amount).to.eq(0);
-    });
-  });
-
-  describe('uPremia', () => {
-    it('should reward uPremia on fillOrder for both maker and taker and they should be able to claim it', async () => {
-      await p.priceProvider.setTokenPrices(
-        [dai.address, testToken.address],
-        [parseEther('10'), parseEther('10')],
-      );
-
-      const maker = user1;
-      const taker = user2;
-      const order = await marketTestUtil.setupOrder(maker, taker, {
-        taker: taker.address,
-        isBuy: true,
-      });
-
-      await premiaMarket
-        .connect(taker)
-        .fillOrder(order.order, parseTestToken('1'), false, ZERO_ADDRESS);
-
-      // expect(await p.uPremia.balanceOf(maker.address)).to.eq(parseEther('0.15')); // 0.015 eth fee at 1 eth = 10 usd
-      // expect(await p.uPremia.balanceOf(taker.address)).to.eq(parseEther('0.15')); // 0.015 eth fee at 1 eth = 10 usd
-      expect(await premiaMarket.uPremiaBalance(maker.address)).to.eq(
-        parseEther('0.15'),
-      ); // 0.015 eth fee at 1 dai = 10 usd
-      expect(await premiaMarket.uPremiaBalance(taker.address)).to.eq(
-        parseEther('0.15'),
-      ); // 0.015 dai fee at 1 dai = 10 usd
-
-      await premiaMarket.connect(maker).claimUPremia();
-      await premiaMarket.connect(taker).claimUPremia();
-
-      expect(await premiaMarket.uPremiaBalance(maker.address)).to.eq(0);
-      expect(await premiaMarket.uPremiaBalance(taker.address)).to.eq(0);
-
-      expect(await p.uPremia.balanceOf(maker.address)).to.eq(
-        parseEther('0.15'),
-      );
-      expect(await p.uPremia.balanceOf(taker.address)).to.eq(
-        parseEther('0.15'),
-      );
     });
   });
 

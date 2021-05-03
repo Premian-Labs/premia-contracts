@@ -22,7 +22,7 @@ import {
 } from './utils/constants';
 import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
 import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
-import { formatUnits, parseEther, parseUnits } from 'ethers/lib/utils';
+import { parseEther } from 'ethers/lib/utils';
 import { createUniswap, IUniswap } from './utils/uniswap';
 import {
   getAmountExceedsBalanceRevertMsg,
@@ -66,13 +66,12 @@ describe('PremiaOption', () => {
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
       dai.address,
-      p.uPremia.address,
+      ZERO_ADDRESS,
       p.feeCalculator.address,
       p.premiaReferral.address,
       feeRecipient.address,
     );
 
-    await p.uPremia.addMinter([premiaOption.address]);
     premiaFeeDiscount = await new TestPremiaFeeDiscount__factory(
       admin,
     ).deploy();
@@ -1409,42 +1408,6 @@ describe('PremiaOption', () => {
         feeRecipient.address,
       );
       expect(testTokenBalanceFeeRecipient).to.eq(0);
-    });
-  });
-
-  describe('premiaUncut', () => {
-    it('should not reward any uPremia if price not set for token in priceProvider', async () => {
-      await optionTestUtil.addTestTokenAndWriteOptions(parseTestToken('2'));
-      expect(await p.uPremia.balanceOf(writer1.address)).to.eq(0);
-    });
-
-    it('should reward uPremia on writeOption', async () => {
-      await p.priceProvider.setTokenPrices(
-        [dai.address, testToken.address],
-        [parseEther('1'), parseEther('10')],
-      );
-
-      await optionTestUtil.addTestTokenAndWriteOptions(parseTestToken('2'));
-      expect(await p.uPremia.balanceOf(writer1.address)).to.eq(
-        parseEther('0.2'),
-      );
-    });
-
-    it('should reward uPremia on exerciseOption', async () => {
-      await p.priceProvider.setTokenPrices(
-        [dai.address, testToken.address],
-        [parseEther('1'), parseEther('10')],
-      );
-
-      await optionTestUtil.addTestTokenAndWriteOptionsAndExercise(
-        true,
-        parseTestToken('2'),
-        parseTestToken('1'),
-      );
-      expect(await p.uPremia.balanceOf(writer1.address)).to.eq(
-        parseEther('0.2'),
-      );
-      expect(await p.uPremia.balanceOf(user1.address)).to.eq(parseEther('0.1'));
     });
   });
 
