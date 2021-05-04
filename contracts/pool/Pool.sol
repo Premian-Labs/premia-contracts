@@ -6,6 +6,7 @@ import '@solidstate/contracts/access/OwnableInternal.sol';
 import '@solidstate/contracts/token/ERC20/ERC20.sol';
 import '@solidstate/contracts/token/ERC20/IERC20.sol';
 import '@solidstate/contracts/token/ERC1155/ERC1155Enumerable.sol';
+import '@solidstate/contracts/utils/IWETH.sol';
 
 import '../pair/IPair.sol';
 import './PoolStorage.sol';
@@ -421,7 +422,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   ) internal {
     if (token == WETH_ADDRESS) {
       amount -= msg.value;
-      // TODO: wrap ETH
+      IWETH(WETH_ADDRESS).deposit{ value: msg.value }();
     } else {
       require(
         msg.value == 0,
