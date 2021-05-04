@@ -122,8 +122,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
 
-    require(strike64x64 <= spot64x64 * 2, 'Pool: strike price must not exceed two times spot price');
-    require(strike64x64 >= spot64x64 / 2, 'Pool: strike price must be at least one half spot price');
+    require(strike64x64 <= spot64x64 << 1, 'Pool: strike price must not exceed two times spot price');
+    require(strike64x64 >= spot64x64 >> 1, 'Pool: strike price must be at least one half spot price');
 
     (int128 cost64x64, int128 cLevel64x64) = quote(
       variance64x64,
