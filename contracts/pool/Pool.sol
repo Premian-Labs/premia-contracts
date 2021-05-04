@@ -154,12 +154,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     while (amount > 0) {
       underwriter = l.liquidityQueueAscending[underwriter];
-      uint256 balance = balanceOf(underwriter);
-      // account for additional liquidity sourced from premium
-      balance += balance * (costRemaining / amount);
 
-      // amount of liquidity provided by underwriter
-      uint256 intervalAmount = balance < amount ? balance : amount;
+      // amount of liquidity provided by underwriter, accounting for reinvested premium
+      uint256 intervalAmount = balanceOf(underwriter) * (amount + costRemaining) / amount;
+      if (amount < intervalAmount) intervalAmount = amount;
       amount -= intervalAmount;
 
       // amount of premium paid to underwriter
@@ -205,33 +203,36 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     // burn long option tokens from sender (ERC1155)
     _burn(msg.sender, tokenId, amount);
 
-    if (strike64x64 > spot64x64) {
-      // option is in-the-money
-      uint value = strike64x64.sub(spot64x64).mulu(amount);
-      _push(l.underlying, value);
-      amount -= value;
+    uint256 exerciseValue;
+    uint256 amountRemaining = amount;
+
+    if (spot64x64 > strike64x64) {
+      // option has a non-zero exercise value
+      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
+      _push(l.underlying, exerciseValue);
+      amountRemaining -= exerciseValue;
     }
 
     int128 oldLiquidity64x64 = l.totalSupply64x64();
 
     uint256 shortTokenId = _tokenIdFor(TokenType.SHORT_CALL, maturity, strike64x64);
     EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
-    uint256 underwriterCount = underwriters.length();
 
     while (amount > 0) {
-      address underwriter = underwriters.at(--underwriterCount);
+      address underwriter = underwriters.at(underwriters.length() - 1);
 
-      // TODO: quantity of short tokens corresponding to freed liquidity
-      uint256 fullAmount;
+      // amount of liquidity provided by underwriter
+      uint256 intervalAmount = balanceOf(underwriter, shortTokenId);
+      if (amountRemaining < intervalAmount) intervalAmount = amountRemaining;
 
-      // TODO: amount of freed liquidity
-      uint256 intervalAmount;
-      amount -= intervalAmount;
+      // amount of liquidity returned to underwriter, accounting for premium earned by buyer
+      uint256 freedAmount = intervalAmount * (amount - exerciseValue) / amount;
+      amountRemaining -= freedAmount;
 
       // mint free liquidity tokens for underwriter (ERC20)
-      _mint(underwriter, intervalAmount);
+      _mint(underwriter, freedAmount);
       // burn short option tokens from underwriter (ERC1155)
-      _burn(underwriter, shortTokenId, fullAmount);
+      _burn(underwriter, shortTokenId, intervalAmount);
     }
 
     int128 newLiquidity64x64 = l.totalSupply64x64();
@@ -343,12 +344,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     while (amount > 0) {
       underwriter = l.liquidityQueueAscending[underwriter];
-      uint256 balance = balanceOf(underwriter);
-      // account for additional liquidity sourced from premium
-      balance += balance * (costRemaining / amount);
 
-      // amount of liquidity provided by underwriter
-      uint256 intervalAmount = balance < amount ? balance : amount;
+      // amount of liquidity provided by underwriter, accounting for reinvested premium
+      uint256 intervalAmount = balanceOf(underwriter) * (amount + costRemaining) / amount;
+      if (amount < intervalAmount) intervalAmount = amount;
       amount -= intervalAmount;
 
       // amount of premium paid to underwriter
