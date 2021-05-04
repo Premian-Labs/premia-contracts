@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 
+pragma solidity ^0.8.0;
+
 import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
 
 contract ABDKMath64x64TokenMock {
