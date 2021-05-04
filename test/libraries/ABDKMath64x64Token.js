@@ -7,8 +7,7 @@ describe('ABDKMath64x64Token', function () {
     '0',
     '1',
     '2.718281828459045',
-    // max value of '9223372036854775807' does not work with all decimal settings
-    '922337203685477500',
+    '9223372036854775807',
   ];
 
   const fixedPointValues = [
