@@ -719,22 +719,22 @@
   resolved "https://registry.npmjs.org/@solidity-parser/parser/-/parser-0.12.0.tgz"
   integrity sha512-DT3f/Aa4tQysZwUsuqBwvr8YRJzKkvPUKV/9o2/o5EVw3xqlbzmtx4O60lTUcZdCawL+N8bBLNUyOGpHjGlJVQ==
 
-"@solidstate/contracts@^0.0.10":
-  version "0.0.10"
-  resolved "https://registry.yarnpkg.com/@solidstate/contracts/-/contracts-0.0.10.tgz#0fae1400ef2574dc76e5127086cdcf2faebf429c"
-  integrity sha512-Pqc5r1Rx3gDhiX3DGZNBOIpyCDqaEnHehAa7QGnFnN1NyfY2vrvHvKqOLoBvO/7LUAW6JHtjDxRSpI3d0q1jzg==
+"@solidstate/contracts@^0.0.11":
+  version "0.0.11"
+  resolved "https://registry.yarnpkg.com/@solidstate/contracts/-/contracts-0.0.11.tgz#65f4e2f2e9103de18ac2fe364c69b93e049b73f2"
+  integrity sha512-wQQPEoddtRJ1jBOv9/Bstke3m4ViWbvSf1Cuq2wMDmi6DWGtQ9IH25qvNMnBg7+Wp4GDiCmPbgKBxgdw8lR7TQ==
 
-"@solidstate/library@^0.0.10":
-  version "0.0.10"
-  resolved "https://registry.yarnpkg.com/@solidstate/library/-/library-0.0.10.tgz#2cbeebdf389cca67ac473d6467398f7ce1ea9a6b"
-  integrity sha512-rwM7coRy2p+N9VXIQOQwTUbOBdy9EncJ9GxWpEwcEMCLtiS9mwcER1+clReZIcegyF4oudeX7+A4ctYnBWelcQ==
+"@solidstate/library@^0.0.11":
+  version "0.0.11"
+  resolved "https://registry.yarnpkg.com/@solidstate/library/-/library-0.0.11.tgz#4a5a0c879dca3962676b0a059f63c535fd8a2cc4"
+  integrity sha512-/bAFfIg1wshUXP3WRs46Cxjl5vFv4XjWhtYNZ7K8tyNe+acsLBmjmer4C64DzoIc8TeQjfWEhBN2jXzOEdUDFQ==
 
-"@solidstate/spec@^0.0.10":
-  version "0.0.10"
-  resolved "https://registry.yarnpkg.com/@solidstate/spec/-/spec-0.0.10.tgz#d2c31f3feed02a0e2e2e724814fa66d2b022b54e"
-  integrity sha512-v9AQZhmlOW7ZYKfDSD6+8q3stJlv7Byanao6bxcQrSr0lgepyIdjTi0RcVCdvevmkdhbtDXbh9JLDqYXCiiceA==
+"@solidstate/spec@^0.0.11":
+  version "0.0.11"
+  resolved "https://registry.yarnpkg.com/@solidstate/spec/-/spec-0.0.11.tgz#8aa2664cf07c6b5746f03c7de4b2b6953f58c6d3"
+  integrity sha512-ZUGb6yr1wJcTk5rF7NHQTPpPLqSAhpCbbnmrW/s1Az0bsfDOAkQ2gIsZEiaEtuNsdxmRmBQPxU8D7DAKm11IeQ==
   dependencies:
-    "@solidstate/library" "^0.0.10"
+    "@solidstate/library" "^0.0.11"
 
 "@szmarczak/http-timer@^1.1.2":
   version "1.1.2"

@@ -15,8 +15,6 @@ import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
 
-// TODO: handle safe-transfer reverts
-
 /**
  * @title Median option pool
  * @dev deployed standalone and referenced by PoolProxy
