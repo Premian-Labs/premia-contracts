@@ -67,6 +67,10 @@ fs.copyFileSync(
   './artifacts/contracts/PremiaVoteProxy.sol/PremiaVoteProxy.json',
   './abi/PremiaVoteProxy.json',
 );
+fs.copyFileSync(
+  './artifacts/contracts/PremiaMultiVesting.sol/PremiaMultiVesting.json',
+  './abi/PremiaMultiVesting.json',
+);
 
 // AMM
 
