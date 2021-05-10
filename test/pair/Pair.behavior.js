@@ -1,6 +1,6 @@
 const { expect } = require('chai');
 
-const describeBehaviorOfPool = function ({ deploy }, skips) {
+const describeBehaviorOfPair = function ({ deploy }, skips) {
   describe('::Pool', function () {
     let instance;
 
@@ -23,4 +23,4 @@ const describeBehaviorOfPool = function ({ deploy }, skips) {
 };
 
 // eslint-disable-next-line mocha/no-exports
-module.exports = describeBehaviorOfPool;
+module.exports = describeBehaviorOfPair;
