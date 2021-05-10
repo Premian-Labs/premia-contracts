@@ -44,6 +44,14 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   }
 
   /**
+   * @notice get address of underlying token contract
+   * @return underlying address
+   */
+  function getUnderlying () external view returns (address) {
+    return PoolStorage.layout().underlying;
+  }
+
+  /**
    * @notice calculate price of option contract
    * @param variance64x64 64x64 fixed point representation of variance
    * @param maturity timestamp of option maturity

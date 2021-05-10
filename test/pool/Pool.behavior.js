@@ -33,6 +33,10 @@ const describeBehaviorOfPool = function ({ deploy, mintERC20, burnERC20, mintERC
       it('returns pair address');
     });
 
+    describe('#getUnderlying', function () {
+      it('todo');
+    });
+
     describe('#quote', function () {
       it('returns price for given option parameters');
     });
