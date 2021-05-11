@@ -9,7 +9,6 @@ task(
   const pool = await factory.Pool({ deployer });
 
   const facetCuts = [
-    await factory.PriceConsumer({ deployer }),
     await factory.ProxyManager({ deployer }),
   ].map(function (f) {
     return{
