@@ -736,7 +736,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
             0,
             path,
             address(this),
-            block.timestamp + 60
+            block.timestamp
         );
 
         return amounts[1];

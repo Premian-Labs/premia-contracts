@@ -151,7 +151,7 @@ contract PremiaMaker is Ownable {
                 0,
                 path,
                 premiaStaking,
-                block.timestamp + 60
+                block.timestamp
             );
         } else {
             premiaAmount = amountMinusFee;

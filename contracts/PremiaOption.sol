@@ -932,7 +932,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             _amountInMax,
             _path,
             address(this),
-            block.timestamp.add(60)
+            block.timestamp
         );
 
         IERC20(_from).approve(address(_router), 0);
