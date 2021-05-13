@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
-pragma experimental ABIEncoderV2;
 
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
@@ -21,7 +19,6 @@ import "./uniswapV2/interfaces/IUniswapV2Router02.sol";
 /// @author Premia
 /// @title An option contract
 contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     struct OptionWriteArgs {
@@ -269,7 +266,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             quote.collateralDecimals = _decimals;
         } else {
             quote.collateralToken = address(denominator);
-            quote.collateral = _option.amount.mul(_option.strikePrice).div(10**_decimals);
+            quote.collateral = _option.amount * _option.strikePrice / (10**_decimals);
             quote.collateralDecimals = denominatorDecimals;
         }
 
@@ -290,7 +287,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         QuoteExercise memory quote;
 
         uint256 tokenAmount = _amount;
-        uint256 denominatorAmount = _amount.mul(_option.strikePrice).div(10**_decimals);
+        uint256 denominatorAmount = _amount * _option.strikePrice / (10**_decimals);
 
         if (_option.isCall) {
             quote.inputToken = address(denominator);
@@ -353,7 +350,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
             emit OptionIdCreated(optionId, _token);
 
-            nextOptionId = nextOptionId.add(1);
+            nextOptionId += 1;
         }
 
         return optionId;
@@ -418,15 +415,15 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         QuoteWrite memory quote = getWriteQuote(_from, _option, _referrer, optionData[optionId].decimals);
 
         IERC20(quote.collateralToken).safeTransferFrom(_from, address(this), quote.collateral);
-        _payFees(_from, IERC20(quote.collateralToken), _referrer, quote.fee, quote.feeReferrer, quote.collateralDecimals);
+        _payFees(_from, IERC20(quote.collateralToken), _referrer, quote.fee, quote.feeReferrer);
 
         if (_option.isCall) {
-            pools[optionId].tokenAmount = pools[optionId].tokenAmount.add(quote.collateral);
+            pools[optionId].tokenAmount += quote.collateral;
         } else {
-            pools[optionId].denominatorAmount = pools[optionId].denominatorAmount.add(quote.collateral);
+            pools[optionId].denominatorAmount += quote.collateral;
         }
 
-        nbWritten[_from][optionId] = nbWritten[_from][optionId].add(_option.amount);
+        nbWritten[_from][optionId] += _option.amount;
 
         mint(_from, optionId, _option.amount);
 
@@ -469,14 +466,14 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         require(nbWritten[_from][_optionId] >= _amount, "Not enough written");
 
         burn(_from, _optionId, _amount);
-        nbWritten[_from][_optionId] = nbWritten[_from][_optionId].sub(_amount);
+        nbWritten[_from][_optionId] -= _amount;
 
         if (optionData[_optionId].isCall) {
-            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(_amount);
+            pools[_optionId].tokenAmount -= _amount;
             IERC20(optionData[_optionId].token).safeTransfer(_from, _amount);
         } else {
-            uint256 amount = _amount.mul(optionData[_optionId].strikePrice).div(10**optionData[_optionId].decimals);
-            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(amount);
+            uint256 amount = _amount * optionData[_optionId].strikePrice / (10**optionData[_optionId].decimals);
+            pools[_optionId].denominatorAmount -= amount;
             denominator.safeTransfer(_from, amount);
         }
 
@@ -515,21 +512,21 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         OptionData storage data = optionData[_optionId];
 
         burn(_from, _optionId, _amount);
-        data.exercised = uint256(data.exercised).add(_amount);
+        data.exercised += _amount;
 
         // Set referrer or get current if one already exists
         _referrer = _trySetReferrer(_from, _referrer);
 
         QuoteExercise memory quote = getExerciseQuote(_from, data, _amount, _referrer, data.decimals);
         IERC20(quote.inputToken).safeTransferFrom(_from, address(this), quote.input);
-        _payFees(_from, IERC20(quote.inputToken), _referrer, quote.fee, quote.feeReferrer, quote.inputDecimals);
+        _payFees(_from, IERC20(quote.inputToken), _referrer, quote.fee, quote.feeReferrer);
 
         if (data.isCall) {
-            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(quote.output);
-            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(quote.input);
+            pools[_optionId].tokenAmount -= quote.output;
+            pools[_optionId].denominatorAmount += quote.input;
         } else {
-            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(quote.output);
-            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(quote.input);
+            pools[_optionId].denominatorAmount -= quote.output;
+            pools[_optionId].tokenAmount += quote.input;
         }
 
         IERC20(quote.outputToken).safeTransfer(_from, quote.output);
@@ -572,25 +569,21 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _from Address on behalf of which the withdraw call is made (Which will receive the withdrawn funds)
     /// @param _optionId The id of the option to withdraw funds from
     function _withdraw(address _from, uint256 _optionId) internal nonReentrant expired(_optionId) {
-        require(nbWritten[_from][_optionId] > 0, "No option to claim");
+        // Amount of options user still has to claim funds from
+        uint256 claimsUser = nbWritten[_from][_optionId];
+        require(claimsUser > 0, "No option to claim");
 
         OptionData storage data = optionData[_optionId];
 
-        uint256 nbTotal = uint256(data.supply).add(data.exercised).sub(data.claimsPreExp);
+        uint256 nbTotal = data.supply + data.exercised - data.claimsPreExp;
+        //
 
-        // Amount of options user still has to claim funds from
-        uint256 claimsUser = nbWritten[_from][_optionId];
+        uint256 denominatorAmount = pools[_optionId].denominatorAmount * claimsUser / nbTotal;
+        uint256 tokenAmount = pools[_optionId].tokenAmount * claimsUser / nbTotal;
 
         //
 
-        uint256 denominatorAmount = pools[_optionId].denominatorAmount.mul(claimsUser).div(nbTotal);
-        uint256 tokenAmount = pools[_optionId].tokenAmount.mul(claimsUser).div(nbTotal);
-
-        //
-
-        pools[_optionId].denominatorAmount.sub(denominatorAmount);
-        pools[_optionId].tokenAmount.sub(tokenAmount);
-        data.claimsPostExp = uint256(data.claimsPostExp).add(claimsUser);
+        data.claimsPostExp += claimsUser;
         delete nbWritten[_from][_optionId];
 
         if (denominatorAmount > 0) {
@@ -678,20 +671,20 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
         OptionData storage data = optionData[_optionId];
 
-        uint256 nbClaimable = uint256(data.exercised).sub(data.claimsPreExp);
+        uint256 nbClaimable = data.exercised - data.claimsPreExp;
         require(nbClaimable >= _amount, "Not enough claimable");
 
         //
 
-        nbWritten[_from][_optionId] = nbWritten[_from][_optionId].sub(_amount);
-        data.claimsPreExp = uint256(data.claimsPreExp).add(_amount);
+        nbWritten[_from][_optionId] -= _amount;
+        data.claimsPreExp += _amount;
 
         if (data.isCall) {
-            uint256 amount = _amount.mul(data.strikePrice).div(10**data.decimals);
-            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(amount);
+            uint256 amount = _amount * data.strikePrice / (10**data.decimals);
+            pools[_optionId].denominatorAmount -= amount;
             denominator.safeTransfer(_from, amount);
         } else {
-            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(_amount);
+            pools[_optionId].tokenAmount -= _amount;
             IERC20(data.token).safeTransfer(_from, _amount);
         }
     }
@@ -748,7 +741,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         require(_amount > 0, "Amount <= 0");
 
         burn(_from, _optionId, _amount);
-        optionData[_optionId].exercised = uint256(optionData[_optionId].exercised).add(_amount);
+        optionData[_optionId].exercised += _amount;
 
         // Set referrer or get current if one already exists
         _referrer = _trySetReferrer(_from, _referrer);
@@ -761,11 +754,11 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 denominatorAmountRequired = denominator.balanceOf(address(this));
 
         if (optionData[_optionId].isCall) {
-            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.sub(quote.output);
-            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.add(quote.input);
+            pools[_optionId].tokenAmount -= quote.output;
+            pools[_optionId].denominatorAmount += quote.input;
         } else {
-            pools[_optionId].denominatorAmount = pools[_optionId].denominatorAmount.sub(quote.output);
-            pools[_optionId].tokenAmount = pools[_optionId].tokenAmount.add(quote.input);
+            pools[_optionId].denominatorAmount -= quote.output;
+            pools[_optionId].tokenAmount += quote.input;
         }
 
         //
@@ -775,12 +768,12 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         }
 
         // Swap enough denominator to tokenErc20 to pay fee + strike price
-        uint256 tokenAmountUsed = _swap(_router, quote.outputToken, quote.inputToken, quote.input.add(quote.fee).add(quote.feeReferrer), _amountInMax, _path)[0];
+        uint256 tokenAmountUsed = _swap(_router, quote.outputToken, quote.input + quote.fee + quote.feeReferrer, _amountInMax, _path)[0];
 
         // Pay fees
-        _payFees(address(this), IERC20(quote.inputToken), _referrer, quote.fee, quote.feeReferrer, quote.inputDecimals);
+        _payFees(address(this), IERC20(quote.inputToken), _referrer, quote.fee, quote.feeReferrer);
 
-        uint256 profit = quote.output.sub(tokenAmountUsed);
+        uint256 profit = quote.output - tokenAmountUsed;
 
         // Send profit to sender
         IERC20(quote.outputToken).safeTransfer(_from, profit);
@@ -788,11 +781,11 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         //
 
         if (optionData[_optionId].isCall) {
-            denominatorAmountRequired = denominatorAmountRequired.add(quote.input);
-            tokenAmountRequired = tokenAmountRequired.sub(quote.output);
+            denominatorAmountRequired += quote.input;
+            tokenAmountRequired -= quote.output;
         } else {
-            denominatorAmountRequired = denominatorAmountRequired.sub(quote.output);
-            tokenAmountRequired = tokenAmountRequired.add(quote.input);
+            denominatorAmountRequired -= quote.output;
+            tokenAmountRequired += quote.input;
         }
 
         require(denominator.balanceOf(address(this)) >= denominatorAmountRequired, "Wrong denom bal");
@@ -815,14 +808,14 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
         (uint256 fee,) = feeCalculator.getFeeAmounts(msg.sender, false, _amount, IFeeCalculator.FeeType.FlashLoan);
 
-        _receiver.execute(_tokenAddress, _amount, _amount.add(fee));
+        _receiver.execute(_tokenAddress, _amount, _amount + fee);
 
         uint256 endBalance = _token.balanceOf(address(this));
 
-        uint256 endBalanceRequired = startBalance.add(fee);
+        uint256 endBalanceRequired = startBalance + fee;
 
         require(endBalance >= endBalanceRequired, "Failed to pay back");
-        _token.safeTransfer(feeRecipient, endBalance.sub(startBalance));
+        _token.safeTransfer(feeRecipient, endBalance - startBalance);
 
         endBalance = _token.balanceOf(address(this));
         require(endBalance >= startBalance, "Failed to pay back");
@@ -842,7 +835,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         OptionData storage data = optionData[_id];
 
         _mint(_account, _id, _amount, "");
-        data.supply = uint256(data.supply).add(_amount);
+        data.supply += _amount;
     }
 
     /// @notice Burn ERC1155 representing the option
@@ -851,7 +844,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     function burn(address _account, uint256 _id, uint256 _amount) internal notExpired(_id) {
         OptionData storage data = optionData[_id];
 
-        data.supply = uint256(data.supply).sub(_amount);
+        data.supply -= _amount;
         _burn(_account, _id, _amount);
     }
 
@@ -876,8 +869,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _referrer The referrer of _from
     /// @param _fee Protocol fee to pay to feeRecipient
     /// @param _feeReferrer Fee to pay to referrer
-    /// @param _decimals Token decimals
-    function _payFees(address _from, IERC20 _token, address _referrer, uint256 _fee, uint256 _feeReferrer, uint8 _decimals) internal {
+    function _payFees(address _from, IERC20 _token, address _referrer, uint256 _fee, uint256 _feeReferrer) internal {
         if (_fee > 0) {
             // For flash exercise
             if (_from == address(this)) {
@@ -917,12 +909,11 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @notice Token swap (Used for flashExercise)
     /// @param _router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
     /// @param _from Input token for the swap
-    /// @param _to Output token of the swap
     /// @param _amount Amount of output tokens we want
     /// @param _amountInMax Max amount of input token to spend for the tx to not revert
     /// @param _path Path used for the routing of the swap
     /// @return Swap amounts
-    function _swap(IUniswapV2Router02 _router, address _from, address _to, uint256 _amount, uint256 _amountInMax, address[] memory _path) internal returns (uint256[] memory) {
+    function _swap(IUniswapV2Router02 _router, address _from, uint256 _amount, uint256 _amountInMax, address[] memory _path) internal returns (uint256[] memory) {
         require(_isInArray(address(_router), whitelistedUniswapRouters), "Router not whitelisted");
 
         IERC20(_from).approve(address(_router), _amountInMax);
@@ -949,7 +940,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         require(_strikePrice > 0, "Strike <= 0");
         require(_strikePrice % tokenStrikeIncrement[_token] == 0, "Wrong strike incr");
         require(_expiration > block.timestamp, "Exp passed");
-        require(_expiration.sub(block.timestamp) <= maxExpiration, "Exp > 1 yr");
+        require(_expiration - block.timestamp <= maxExpiration, "Exp > 1 yr");
         require(_expiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");
     }
 }
