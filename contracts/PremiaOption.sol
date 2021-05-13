@@ -11,7 +11,6 @@ import '@openzeppelin/contracts/utils/math/SafeCast.sol';
 import "./interface/IERC20Extended.sol";
 import "./interface/IFeeCalculator.sol";
 import "./interface/IFlashLoanReceiver.sol";
-import "./interface/IPremiaReferral.sol";
 
 import "./uniswapV2/interfaces/IUniswapV2Router02.sol";
 
@@ -41,16 +40,15 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint8 decimals;                 // Token decimals
     }
 
-    // Total write cost = collateral + fee + feeReferrer
+    // Total write cost = collateral + fee
     struct QuoteWrite {
         address collateralToken;        // The token to deposit as collateral
         uint256 collateral;             // The amount of collateral to deposit
         uint8 collateralDecimals;       // Decimals of collateral token
         uint256 fee;                    // The amount of collateralToken needed to be paid as protocol fee
-        uint256 feeReferrer;            // The amount of collateralToken which will be paid the referrer
     }
 
-    // Total exercise cost = input + fee + feeReferrer
+    // Total exercise cost = input + fee
     struct QuoteExercise {
         address inputToken;             // Input token for exercise
         uint256 input;                  // Amount of input token to pay to exercise
@@ -59,7 +57,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 output;                 // Amount of output tokens which will be received on exercise
         uint8 outputDecimals;           // Decimals of output token
         uint256 fee;                    // The amount of inputToken needed to be paid as protocol fee
-        uint256 feeReferrer;            // The amount of inputToken which will be paid to the referrer
     }
 
     struct Pool {
@@ -75,8 +72,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     // Address receiving protocol fees (PremiaMaker)
     address public feeRecipient;
 
-    // PremiaReferral contract
-    IPremiaReferral public premiaReferral;
     // FeeCalculator contract
     IFeeCalculator public feeCalculator;
 
@@ -124,7 +119,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     event OptionCancelled(address indexed owner, uint256 indexed optionId, address indexed token, uint256 amount);
     event OptionExercised(address indexed user, uint256 indexed optionId, address indexed token, uint256 amount);
     event Withdraw(address indexed user, uint256 indexed optionId, address indexed token, uint256 amount);
-    event FeePaid(address indexed user, address indexed token, address indexed referrer, uint256 feeProtocol, uint256 feeReferrer);
+    event FeePaid(address indexed user, address indexed token, uint256 fee);
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
@@ -133,14 +128,11 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _uri URI of ERC1155 metadata
     /// @param _denominator The token used as denominator
     /// @param _feeCalculator FeeCalculator contract
-    /// @param _premiaReferral PremiaReferral contract
     /// @param _feeRecipient Recipient of protocol fees (PremiaMaker)
-    constructor(string memory _uri, IERC20 _denominator, IFeeCalculator _feeCalculator,
-        IPremiaReferral _premiaReferral, address _feeRecipient) ERC1155(_uri) {
+    constructor(string memory _uri, IERC20 _denominator, IFeeCalculator _feeCalculator, address _feeRecipient) ERC1155(_uri) {
         denominator = _denominator;
         feeCalculator = _feeCalculator;
         feeRecipient = _feeRecipient;
-        premiaReferral = _premiaReferral;
         denominatorDecimals = IERC20Extended(address(_denominator)).decimals();
     }
 
@@ -186,12 +178,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _max The max amount of seconds in the future for which an option expiration can be set
     function setMaxExpiration(uint256 _max) external onlyOwner {
         maxExpiration = _max;
-    }
-
-    /// @notice Set a new PremiaReferral contract
-    /// @param _premiaReferral The new PremiaReferral Contract
-    function setPremiaReferral(IPremiaReferral _premiaReferral) external onlyOwner {
-        premiaReferral = _premiaReferral;
     }
 
     /// @notice Set a new FeeCalculator contract
@@ -254,10 +240,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @notice Get a quote to write an option
     /// @param _from Address which will write the option
     /// @param _option The option to write
-    /// @param _referrer Referrer
     /// @param _decimals The option token decimals
     /// @return The quote
-    function getWriteQuote(address _from, OptionWriteArgs memory _option, address _referrer, uint8 _decimals) public view returns(QuoteWrite memory) {
+    function getWriteQuote(address _from, OptionWriteArgs memory _option, uint8 _decimals) public view returns(QuoteWrite memory) {
         QuoteWrite memory quote;
 
         if (_option.isCall) {
@@ -270,9 +255,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             quote.collateralDecimals = denominatorDecimals;
         }
 
-        (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), quote.collateral, IFeeCalculator.FeeType.Write);
-        quote.fee = fee;
-        quote.feeReferrer = feeReferrer;
+        quote.fee = feeCalculator.getFeeAmount(_from, quote.collateral, IFeeCalculator.FeeType.Write);
 
         return quote;
     }
@@ -280,10 +263,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @notice Get a quote to exercise an option
     /// @param _from Address which will exercise the option
     /// @param _option The option to exercise
-    /// @param _referrer Referrer
     /// @param _decimals The option token decimals
     /// @return The quote
-    function getExerciseQuote(address _from, OptionData memory _option, uint256 _amount, address _referrer, uint8 _decimals) public view returns(QuoteExercise memory) {
+    function getExerciseQuote(address _from, OptionData memory _option, uint256 _amount, uint8 _decimals) public view returns(QuoteExercise memory) {
         QuoteExercise memory quote;
 
         uint256 tokenAmount = _amount;
@@ -305,9 +287,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             quote.outputDecimals = denominatorDecimals;
         }
 
-        (uint256 fee, uint256 feeReferrer) = feeCalculator.getFeeAmounts(_from, _referrer != address(0), quote.input, IFeeCalculator.FeeType.Exercise);
-        quote.fee = fee;
-        quote.feeReferrer = feeReferrer;
+        quote.fee = feeCalculator.getFeeAmount(_from, quote.input, IFeeCalculator.FeeType.Exercise);
 
         return quote;
     }
@@ -363,9 +343,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _from Address on behalf of which the option is written
     /// @param _optionId The id of the option to write
     /// @param _amount Amount of options to write
-    /// @param _referrer Referrer
     /// @return The option id
-    function writeOptionWithIdFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) external returns(uint256) {
+    function writeOptionWithIdFrom(address _from, uint256 _optionId, uint256 _amount) external returns(uint256) {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
 
         OptionData memory data = optionData[_optionId];
@@ -377,45 +356,39 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         isCall: data.isCall
         });
 
-        return _writeOption(_from, writeArgs, _referrer);
+        return _writeOption(_from, writeArgs);
     }
 
     /// @notice Write an option on behalf of an address
     /// @dev Requires approval on option contract + token needed to write the option
     /// @param _from Address on behalf of which the option is written
     /// @param _option The option to write
-    /// @param _referrer Referrer
     /// @return The option id
-    function writeOptionFrom(address _from, OptionWriteArgs memory _option, address _referrer) external returns(uint256) {
+    function writeOptionFrom(address _from, OptionWriteArgs memory _option) external returns(uint256) {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
-        return _writeOption(_from, _option, _referrer);
+        return _writeOption(_from, _option);
     }
 
     /// @notice Write an option
     /// @param _option The option to write
-    /// @param _referrer Referrer
     /// @return The option id
-    function writeOption(OptionWriteArgs memory _option, address _referrer) public returns(uint256) {
-        return _writeOption(msg.sender, _option, _referrer);
+    function writeOption(OptionWriteArgs memory _option) public returns(uint256) {
+        return _writeOption(msg.sender, _option);
     }
 
     /// @notice Write an option on behalf of an address
     /// @param _from Address on behalf of which the option is written
     /// @param _option The option to write
-    /// @param _referrer Referrer
     /// @return The option id
-    function _writeOption(address _from, OptionWriteArgs memory _option, address _referrer) internal nonReentrant returns(uint256) {
+    function _writeOption(address _from, OptionWriteArgs memory _option) internal nonReentrant returns(uint256) {
         require(_option.amount > 0, "Amount <= 0");
 
         uint256 optionId = getOptionIdOrCreate(_option.token, _option.expiration, _option.strikePrice, _option.isCall);
 
-        // Set referrer or get current if one already exists
-        _referrer = _trySetReferrer(_from, _referrer);
-
-        QuoteWrite memory quote = getWriteQuote(_from, _option, _referrer, optionData[optionId].decimals);
+        QuoteWrite memory quote = getWriteQuote(_from, _option, optionData[optionId].decimals);
 
         IERC20(quote.collateralToken).safeTransferFrom(_from, address(this), quote.collateral);
-        _payFees(_from, IERC20(quote.collateralToken), _referrer, quote.fee, quote.feeReferrer);
+        _payFees(_from, IERC20(quote.collateralToken), quote.fee);
 
         if (_option.isCall) {
             pools[optionId].tokenAmount += quote.collateral;
@@ -487,26 +460,23 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _from Address on behalf of which the option will be exercised
     /// @param _optionId The id of the option to exercise
     /// @param _amount Amount to exercise
-    /// @param _referrer Referrer
-    function exerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) external {
+    function exerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
-        _exerciseOption(_from, _optionId, _amount, _referrer);
+        _exerciseOption(_from, _optionId, _amount);
     }
 
     /// @notice Exercise an option
     /// @param _optionId The id of the option to exercise
     /// @param _amount Amount to exercise
-    /// @param _referrer Referrer
-    function exerciseOption(uint256 _optionId, uint256 _amount, address _referrer) public {
-        _exerciseOption(msg.sender, _optionId, _amount, _referrer);
+    function exerciseOption(uint256 _optionId, uint256 _amount) public {
+        _exerciseOption(msg.sender, _optionId, _amount);
     }
 
     /// @notice Exercise an option on behalf of an address
     /// @param _from Address on behalf of which the option will be exercised
     /// @param _optionId The id of the option to exercise
     /// @param _amount Amount to exercise
-    /// @param _referrer Referrer
-    function _exerciseOption(address _from, uint256 _optionId, uint256 _amount, address _referrer) internal nonReentrant {
+    function _exerciseOption(address _from, uint256 _optionId, uint256 _amount) internal nonReentrant {
         require(_amount > 0, "Amount <= 0");
 
         OptionData storage data = optionData[_optionId];
@@ -514,12 +484,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         burn(_from, _optionId, _amount);
         data.exercised += _amount;
 
-        // Set referrer or get current if one already exists
-        _referrer = _trySetReferrer(_from, _referrer);
-
-        QuoteExercise memory quote = getExerciseQuote(_from, data, _amount, _referrer, data.decimals);
+        QuoteExercise memory quote = getExerciseQuote(_from, data, _amount, data.decimals);
         IERC20(quote.inputToken).safeTransferFrom(_from, address(this), quote.input);
-        _payFees(_from, IERC20(quote.inputToken), _referrer, quote.fee, quote.feeReferrer);
+        _payFees(_from, IERC20(quote.inputToken), quote.fee);
 
         if (data.isCall) {
             pools[_optionId].tokenAmount -= quote.output;
@@ -700,13 +667,12 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _from Address on behalf of which the flash exercise is made (Which will receive the profit)
     /// @param _optionId The id of the option to flash exercise
     /// @param _amount Amount of option to flash exercise
-    /// @param _referrer Referrer
     /// @param _router The UniswapRouter used to perform the swap (Needs to be a whitelisted router)
     /// @param _amountInMax Max amount of collateral token to use for the swap, for the tx to not be reverted
     /// @param _path Path used for the routing of the swap
-    function flashExerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax, address[] memory _path) external {
+    function flashExerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, IUniswapV2Router02 _router, uint256 _amountInMax, address[] memory _path) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
-        _flashExerciseOption(_from, _optionId, _amount, _referrer, _router, _amountInMax, _path);
+        _flashExerciseOption(_from, _optionId, _amount, _router, _amountInMax, _path);
     }
 
     /// @notice Flash exercise an option
@@ -716,12 +682,11 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     ///         This allows any option in the money to be exercised without the need of owning the token needed to exercise
     /// @param _optionId The id of the option to flash exercise
     /// @param _amount Amount of option to flash exercise
-    /// @param _referrer Referrer
     /// @param _router The UniswapRouter used to perform the swap (Needs to be a whitelisted router)
     /// @param _amountInMax Max amount of collateral token to use for the swap, for the tx to not be reverted
     /// @param _path Path used for the routing of the swap
-    function flashExerciseOption(uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax, address[] memory _path) external {
-        _flashExerciseOption(msg.sender, _optionId, _amount, _referrer, _router, _amountInMax, _path);
+    function flashExerciseOption(uint256 _optionId, uint256 _amount, IUniswapV2Router02 _router, uint256 _amountInMax, address[] memory _path) external {
+        _flashExerciseOption(msg.sender, _optionId, _amount, _router, _amountInMax, _path);
     }
 
     /// @notice Flash exercise an option on behalf of an address
@@ -733,20 +698,16 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _from Address on behalf of which the flash exercise is made (Which will receive the profit)
     /// @param _optionId The id of the option to flash exercise
     /// @param _amount Amount of option to flash exercise
-    /// @param _referrer Referrer
     /// @param _router The UniswapRouter used to perform the swap (Needs to be a whitelisted router)
     /// @param _amountInMax Max amount of collateral token to use for the swap, for the tx to not be reverted
     /// @param _path Path used for the routing of the swap
-    function _flashExerciseOption(address _from, uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax, address[] memory _path) internal nonReentrant {
+    function _flashExerciseOption(address _from, uint256 _optionId, uint256 _amount, IUniswapV2Router02 _router, uint256 _amountInMax, address[] memory _path) internal nonReentrant {
         require(_amount > 0, "Amount <= 0");
 
         burn(_from, _optionId, _amount);
         optionData[_optionId].exercised += _amount;
 
-        // Set referrer or get current if one already exists
-        _referrer = _trySetReferrer(_from, _referrer);
-
-        QuoteExercise memory quote = getExerciseQuote(_from, optionData[_optionId], _amount, _referrer, optionData[_optionId].decimals);
+        QuoteExercise memory quote = getExerciseQuote(_from, optionData[_optionId], _amount, optionData[_optionId].decimals);
 
         IERC20 tokenErc20 = IERC20(optionData[_optionId].token);
 
@@ -768,10 +729,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         }
 
         // Swap enough denominator to tokenErc20 to pay fee + strike price
-        uint256 tokenAmountUsed = _swap(_router, quote.outputToken, quote.input + quote.fee + quote.feeReferrer, _amountInMax, _path)[0];
+        uint256 tokenAmountUsed = _swap(_router, quote.outputToken, quote.input + quote.fee, _amountInMax, _path)[0];
 
         // Pay fees
-        _payFees(address(this), IERC20(quote.inputToken), _referrer, quote.fee, quote.feeReferrer);
+        _payFees(address(this), IERC20(quote.inputToken), quote.fee);
 
         uint256 profit = quote.output - tokenAmountUsed;
 
@@ -806,7 +767,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 startBalance = _token.balanceOf(address(this));
         _token.safeTransfer(address(_receiver), _amount);
 
-        (uint256 fee,) = feeCalculator.getFeeAmounts(msg.sender, false, _amount, IFeeCalculator.FeeType.FlashLoan);
+        uint256 fee = feeCalculator.getFeeAmount(msg.sender, _amount, IFeeCalculator.FeeType.FlashLoan);
 
         _receiver.execute(_tokenAddress, _amount, _amount + fee);
 
@@ -866,10 +827,8 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @notice Pay protocol fees
     /// @param _from Address paying protocol fees
     /// @param _token The token in which protocol fees are paid
-    /// @param _referrer The referrer of _from
     /// @param _fee Protocol fee to pay to feeRecipient
-    /// @param _feeReferrer Fee to pay to referrer
-    function _payFees(address _from, IERC20 _token, address _referrer, uint256 _fee, uint256 _feeReferrer) internal {
+    function _payFees(address _from, IERC20 _token, uint256 _fee) internal {
         if (_fee > 0) {
             // For flash exercise
             if (_from == address(this)) {
@@ -880,30 +839,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
         }
 
-        if (_feeReferrer > 0) {
-            // For flash exercise
-            if (_from == address(this)) {
-                _token.safeTransfer(_referrer, _feeReferrer);
-            } else {
-                _token.safeTransferFrom(_from, _referrer, _feeReferrer);
-            }
-        }
-
-        emit FeePaid(_from, address(_token), _referrer, _fee, _feeReferrer);
-    }
-
-    /// @notice Try to set given referrer, returns current referrer if one already exists
-    /// @param _user Address for which we try to set a referrer
-    /// @param _referrer Potential referrer
-    /// @return Actual referrer (Potential referrer, or actual referrer if one already exists)
-    function _trySetReferrer(address _user, address _referrer) internal returns(address) {
-        if (address(premiaReferral) != address(0)) {
-            _referrer = premiaReferral.trySetReferrer(_user, _referrer);
-        } else {
-            _referrer = address(0);
-        }
-
-        return _referrer;
+        emit FeePaid(_from, address(_token), _fee);
     }
 
     /// @notice Token swap (Used for flashExercise)

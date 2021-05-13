@@ -48,10 +48,6 @@ fs.copyFileSync(
   './abi/PremiaOptionBatch.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaReferral.sol/PremiaReferral.json',
-  './abi/PremiaReferral.json',
-);
-fs.copyFileSync(
   './artifacts/contracts/PremiaStaking.sol/PremiaStaking.json',
   './abi/PremiaStaking.json',
 );

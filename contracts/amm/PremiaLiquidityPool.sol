@@ -814,7 +814,7 @@ contract PremiaLiquidityPool is Ownable, ReentrancyGuard, IPoolControllerChild {
 
         _lockTokens(AMMStruct.TokenPair(_option.token, denominator), _option.expiration, amountToLock, _amountPremium);
 
-        uint256 optionId = IPremiaOption(_optionContract).writeOption(_option, _referrer);
+        uint256 optionId = IPremiaOption(_optionContract).writeOption(_option);
         _addOptionToList(_option.token, denominator, _option.expiration, OptionId(_optionContract, optionId));
         IPremiaOption(_optionContract).safeTransferFrom(address(this), _from, optionId, _option.amount, "");
 

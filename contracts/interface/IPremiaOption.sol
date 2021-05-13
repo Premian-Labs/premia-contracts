@@ -28,16 +28,15 @@ interface IPremiaOption is IERC1155 {
         uint8 decimals;                 // Token decimals
     }
 
-    // Total write cost = collateral + fee + feeReferrer
+    // Total write cost = collateral + fee
     struct QuoteWrite {
         address collateralToken;        // The token to deposit as collateral
         uint256 collateral;             // The amount of collateral to deposit
         uint8 collateralDecimals;       // Decimals of collateral token
         uint256 fee;                    // The amount of collateralToken needed to be paid as protocol fee
-        uint256 feeReferrer;            // The amount of collateralToken which will be paid the referrer
     }
 
-    // Total exercise cost = input + fee + feeReferrer
+    // Total exercise cost = input + fee
     struct QuoteExercise {
         address inputToken;             // Input token for exercise
         uint256 input;                  // Amount of input token to pay to exercise
@@ -46,7 +45,6 @@ interface IPremiaOption is IERC1155 {
         uint256 output;                 // Amount of output tokens which will be received on exercise
         uint8 outputDecimals;           // Decimals of output token
         uint256 fee;                    // The amount of inputToken needed to be paid as protocol fee
-        uint256 feeReferrer;            // The amount of inputToken which will be paid to the referrer
     }
 
     struct Pool {
@@ -70,21 +68,21 @@ interface IPremiaOption is IERC1155 {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    function getWriteQuote(address _from, OptionWriteArgs memory _option, address _referrer, uint8 _decimals) external view returns(QuoteWrite memory);
-    function getExerciseQuote(address _from, OptionData memory _option, uint256 _amount, address _referrer, uint8 _decimals) external view returns(QuoteExercise memory);
+    function getWriteQuote(address _from, OptionWriteArgs memory _option, uint8 _decimals) external view returns(QuoteWrite memory);
+    function getExerciseQuote(address _from, OptionData memory _option, uint256 _amount, uint8 _decimals) external view returns(QuoteExercise memory);
 
-    function writeOptionWithIdFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) external returns(uint256);
-    function writeOption(OptionWriteArgs memory _option, address _referrer) external returns(uint256);
-    function writeOptionFrom(address _from, OptionWriteArgs memory _option, address _referrer) external returns(uint256);
+    function writeOptionWithIdFrom(address _from, uint256 _optionId, uint256 _amount) external returns(uint256);
+    function writeOption(OptionWriteArgs memory _option) external returns(uint256);
+    function writeOptionFrom(address _from, OptionWriteArgs memory _option) external returns(uint256);
     function cancelOption(uint256 _optionId, uint256 _amount) external;
     function cancelOptionFrom(address _from, uint256 _optionId, uint256 _amount) external;
     function exerciseOption(uint256 _optionId, uint256 _amount) external;
-    function exerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer) external;
+    function exerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount) external;
     function withdraw(uint256 _optionId) external;
     function withdrawFrom(address _from, uint256 _optionId) external;
     function withdrawPreExpiration(uint256 _optionId, uint256 _amount) external;
     function withdrawPreExpirationFrom(address _from, uint256 _optionId, uint256 _amount) external;
-    function flashExerciseOption(uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) external;
-    function flashExerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, address _referrer, IUniswapV2Router02 _router, uint256 _amountInMax) external;
+    function flashExerciseOption(uint256 _optionId, uint256 _amount, IUniswapV2Router02 _router, uint256 _amountInMax) external;
+    function flashExerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, IUniswapV2Router02 _router, uint256 _amountInMax) external;
     function flashLoan(address _tokenAddress, uint256 _amount, IFlashLoanReceiver _receiver) external;
 }

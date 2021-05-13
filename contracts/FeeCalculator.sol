@@ -6,11 +6,10 @@ import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 
-import "./interface/IPremiaReferral.sol";
 import "./interface/IPremiaFeeDiscount.sol";
 
 /// @author Premia
-/// @title Calculate protocol fees, including discount from xPremia locking and referrals
+/// @title Calculate protocol fees, including discount from xPremia locking
 contract FeeCalculator is Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
     using SafeMath for uint256;
@@ -23,11 +22,6 @@ contract FeeCalculator is Ownable {
     uint256 public writeFee = 100; // 1%
     uint256 public exerciseFee = 100; // 1%
     uint256 public flashLoanFee = 20; // 0.2%
-
-    // 10% of write/exercise fee | Referrer fee calculated after all discounts applied
-    uint256 public referrerFee = 1000;
-    // -10% from write/exercise fee
-    uint256 public referredDiscount = 1000;
 
     uint256 public makerFee = 150; // 1.5%
     uint256 public takerFee = 150; // 1.5%
@@ -83,21 +77,6 @@ contract FeeCalculator is Ownable {
         flashLoanFee = _fee;
     }
 
-    /// @notice Set new referrer fee
-    /// @dev This is expressed as % (in basis points) of fee paid. Ex : 1e3 means that 10% of fee paid goes toward referrer
-    /// @param _fee The new fee (In basis points)
-    function setReferrerFee(uint256 _fee) external onlyOwner {
-        require(_fee <= 1e4);
-        referrerFee = _fee;
-    }
-
-    /// @notice Set new discount for users having a referrer
-    /// @param _discount The new discount (In basis points)
-    function setReferredDiscount(uint256 _discount) external onlyOwner {
-        require(_discount <= 1e4);
-        referredDiscount = _discount;
-    }
-
     /// @notice Set new protocol fee for order maker
     /// @param _fee The new fee (In basis points)
     function setMakerFee(uint256 _fee) external onlyOwner {
@@ -149,10 +128,9 @@ contract FeeCalculator is Ownable {
 
     /// @notice Get fee (In basis points) to pay by a given user, for a given fee type
     /// @param _user The address for which to calculate the fee
-    /// @param _hasReferrer Whether the address has a referrer or not
     /// @param _feeType The type of fee
     /// @return The protocol fee to pay by _user (In basis points)
-    function getFee(address _user, bool _hasReferrer, FeeType _feeType) public view returns(uint256) {
+    function getFee(address _user, FeeType _feeType) external view returns(uint256) {
         if (_whitelisted.contains(_user)) return 0;
 
         uint256 fee = _getBaseFee(_feeType);
@@ -163,37 +141,28 @@ contract FeeCalculator is Ownable {
             fee = fee.mul(discount).div(_inverseBasisPoint);
         }
 
-        if (_hasReferrer) {
-            fee = fee.mul(_inverseBasisPoint.sub(referredDiscount)).div(_inverseBasisPoint);
-        }
-
         return fee;
     }
 
-    /// @notice Get the final fee amounts (In wei) to pay to protocol and referrer
+    /// @notice Get the final fee amounts (In wei) to pay to protocol
     /// @param _user The address for which to calculate the fee
-    /// @param _hasReferrer Whether the address has a referrer or not
     /// @param _amount The amount for which fee needs to be calculated
     /// @param _feeType The type of fee
-    /// @return _fee Fee amount to pay to protocol
-    /// @return _feeReferrer Fee amount to pay to referrer
-    function getFeeAmounts(address _user, bool _hasReferrer, uint256 _amount, FeeType _feeType) public view returns(uint256 _fee, uint256 _feeReferrer) {
-        if (_whitelisted.contains(_user)) return (0,0);
+    /// @return Fee amount to pay to protocol
+    function getFeeAmount(address _user, uint256 _amount, FeeType _feeType) external view returns(uint256) {
+        if (_whitelisted.contains(_user)) return 0;
 
         uint256 baseFee = _amount.mul(_getBaseFee(_feeType)).div(_inverseBasisPoint);
-        return getFeeAmountsWithDiscount(_user, _hasReferrer, baseFee);
+        return getFeeAmountWithDiscount(_user, baseFee);
     }
 
-    /// @notice Calculate protocol fee and referrer fee to pay, from a total fee (in wei), after applying all discounts
+    /// @notice Calculate protocol fee to pay, from a total fee (in wei), after applying all discounts
     /// @param _user The address for which to calculate the fee
-    /// @param _hasReferrer Whether the address has a referrer or not
     /// @param _baseFee The total fee to pay (without including any discount)
-    /// @return _fee Fee amount to pay to protocol
-    /// @return _feeReferrer Fee amount to pay to referrer
-    function getFeeAmountsWithDiscount(address _user, bool _hasReferrer, uint256 _baseFee) public view returns(uint256 _fee, uint256 _feeReferrer) {
-        if (_whitelisted.contains(_user)) return (0,0);
+    /// @return Fee amount to pay to protocol
+    function getFeeAmountWithDiscount(address _user, uint256 _baseFee) public view returns(uint256) {
+        if (_whitelisted.contains(_user)) return 0;
 
-        uint256 feeReferrer = 0;
         uint256 feeDiscount = 0;
 
         // If premiaFeeDiscount contract is set, we calculate discount
@@ -203,13 +172,7 @@ contract FeeCalculator is Ownable {
             feeDiscount = _baseFee.mul(discount).div(_inverseBasisPoint);
         }
 
-        if (_hasReferrer) {
-            // feeDiscount = feeDiscount + ( (_feeAmountBase - feeDiscount ) * referredDiscountRate)
-            feeDiscount = feeDiscount.add(_baseFee.sub(feeDiscount).mul(referredDiscount).div(_inverseBasisPoint));
-            feeReferrer = _baseFee.sub(feeDiscount).mul(referrerFee).div(_inverseBasisPoint);
-        }
-
-        return (_baseFee.sub(feeDiscount).sub(feeReferrer), feeReferrer);
+        return _baseFee.sub(feeDiscount);
     }
 
     //////////////////////////////////////////////////

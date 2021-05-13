@@ -15,7 +15,6 @@ contract AutoExerciseKeeper is IKeeperCompatible {
       uint256 optionId;
       address optionContract;
       address user; // address(0) = cancelled order
-      address referrer;
       address flashExerciseRouter; // address(0) = normal exercise
     }
 
@@ -26,7 +25,7 @@ contract AutoExerciseKeeper is IKeeperCompatible {
     // queue index => AutoExerciseOrder
     mapping(uint256 => bytes32) priceOrderQueue;
     uint256 priceOrderQueueLength = 1;
-    
+
     // expiration date => queue index => AutoExerciseOrder
     mapping(uint256 => mapping(uint256 => bytes32)) expirationOrderQueues;
     // expiration date => queue index
@@ -131,7 +130,7 @@ contract AutoExerciseKeeper is IKeeperCompatible {
       (bool isExpirationOrder, uint256 expiration) = abi.decode(checkData, (bool, uint256));
       uint256 maxQueueLength = isExpirationOrder ? expirationOrderQueueLengths[expiration] : priceOrderQueueLength;
       AutoExerciseOrder[] memory ordersToExercise = new AutoExerciseOrder[](maxQueueLength);
-      
+
       if (isExpirationOrder) {
         bool isWithinTimeWindow = block.timestamp > (expiration - minTimeToExpiryBeforeExercise);
 
@@ -181,19 +180,19 @@ contract AutoExerciseKeeper is IKeeperCompatible {
    */
   function performUpkeep(bytes calldata performData) external override {
     AutoExerciseOrder[] memory ordersToExercise = abi.decode(performData, (AutoExerciseOrder[]));
-    
+
     AutoExerciseOrder memory order;
     for (uint i = 0; i < ordersToExercise.length; i++) {
       order = ordersToExercise[i];
       bytes32 hash = getHash(order);
       IPremiaOption optionContract = IPremiaOption(order.optionContract);
-      
+
       if (order.flashExerciseRouter != address(0)) {
         uint256 maxAmountIn = order.amount * order.strikePrice;
 
-        optionContract.flashExerciseOptionFrom(order.user, order.optionId, order.amount, order.referrer, IUniswapV2Router02(order.flashExerciseRouter), maxAmountIn);
+        optionContract.flashExerciseOptionFrom(order.user, order.optionId, order.amount, IUniswapV2Router02(order.flashExerciseRouter), maxAmountIn);
       } else {
-        optionContract.exerciseOptionFrom(order.user, order.optionId, order.amount, order.referrer);
+        optionContract.exerciseOptionFrom(order.user, order.optionId, order.amount);
       }
 
       orders[hash] = AutoExerciseOrder(
@@ -204,7 +203,6 @@ contract AutoExerciseKeeper is IKeeperCompatible {
         order.optionId,
         order.optionContract,
         address(0),
-        order.referrer,
         order.flashExerciseRouter
       );
     }
