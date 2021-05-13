@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
-pragma experimental ABIEncoderV2;
 
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
@@ -17,7 +15,6 @@ import "./interface/IPremiaReferral.sol";
 /// @author Premia
 /// @title An option market contract
 contract PremiaMarket is Ownable, ReentrancyGuard {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -265,10 +262,10 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
         if (_order.side == SaleSide.Buy) {
             uint8 decimals = _order.decimals;
-            uint256 basePrice = _order.pricePerUnit.mul(amountLeft).div(10**decimals);
+            uint256 basePrice = _order.pricePerUnit * amountLeft / (10**decimals);
             uint256 makerFee = feeCalculator.getFee(_order.maker, false, IFeeCalculator.FeeType.Maker);
-            uint256 orderMakerFee = basePrice.mul(makerFee).div(_inverseBasisPoint);
-            uint256 totalPrice = basePrice.add(orderMakerFee);
+            uint256 orderMakerFee = basePrice * makerFee / _inverseBasisPoint;
+            uint256 totalPrice = basePrice + orderMakerFee;
 
             uint256 userBalance = token.balanceOf(_order.maker);
             uint256 allowance = token.allowance(_order.maker, address(this));
@@ -292,7 +289,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
                 uint256 userBalance = IERC20(quote.collateralToken).balanceOf(_order.maker);
                 uint256 allowance = IERC20(quote.collateralToken).allowance(_order.maker, _order.optionContract);
-                uint256 totalPrice = quote.collateral.add(quote.fee).add(quote.feeReferrer);
+                uint256 totalPrice = quote.collateral + quote.fee + quote.feeReferrer;
 
                 return isApproved && userBalance >= totalPrice && allowance >= totalPrice;
 
@@ -353,7 +350,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             _order.isDelayedWriting = false;
         }
 
-        salt = salt.add(1);
+        salt += 1;
 
         bytes32 hash = getOrderHash(_order);
         amounts[hash] = _amount;
@@ -433,7 +430,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         }
 
         if (totalFilled < _amount) {
-            createOrder(_order, _amount.sub(totalFilled));
+            createOrder(_order, _amount - totalFilled);
         }
     }
 
@@ -472,7 +469,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             _amount = amounts[hash];
         }
 
-        amounts[hash] = amounts[hash].sub(_amount);
+        amounts[hash] -= _amount;
 
         // If option has delayed minting on fill, we first need to mint it on behalf of order maker
         if (_order.side == SaleSide.Sell && _order.isDelayedWriting) {
@@ -482,7 +479,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             IPremiaOption(_order.optionContract).writeOptionWithIdFrom(msg.sender, _order.optionId, _amount, _referrer);
         }
 
-        uint256 basePrice = _order.pricePerUnit.mul(_amount).div(10**_order.decimals);
+        uint256 basePrice = _order.pricePerUnit * _amount / (10**_order.decimals);
 
         (uint256 orderMakerFee,) = feeCalculator.getFeeAmounts(_order.maker, false, basePrice, IFeeCalculator.FeeType.Maker);
         (uint256 orderTakerFee,) = feeCalculator.getFeeAmounts(msg.sender, false, basePrice, IFeeCalculator.FeeType.Taker);
@@ -490,12 +487,12 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         if (_order.side == SaleSide.Buy) {
             IPremiaOption(_order.optionContract).safeTransferFrom(msg.sender, _order.maker, _order.optionId, _amount, "");
 
-            IERC20(_order.paymentToken).safeTransferFrom(_order.maker, feeRecipient, orderMakerFee.add(orderTakerFee));
-            IERC20(_order.paymentToken).safeTransferFrom(_order.maker, msg.sender, basePrice.sub(orderTakerFee));
+            IERC20(_order.paymentToken).safeTransferFrom(_order.maker, feeRecipient, orderMakerFee + orderTakerFee);
+            IERC20(_order.paymentToken).safeTransferFrom(_order.maker, msg.sender, basePrice - orderTakerFee);
 
         } else {
-            IERC20(_order.paymentToken).safeTransferFrom(msg.sender, feeRecipient, orderMakerFee.add(orderTakerFee));
-            IERC20(_order.paymentToken).safeTransferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
+            IERC20(_order.paymentToken).safeTransferFrom(msg.sender, feeRecipient, orderMakerFee + orderTakerFee);
+            IERC20(_order.paymentToken).safeTransferFrom(msg.sender, _order.maker, basePrice - orderMakerFee);
 
             IPremiaOption(_order.optionContract).safeTransferFrom(_order.maker, msg.sender, _order.optionId, _amount, "");
         }
@@ -555,12 +552,12 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             if (block.timestamp >= _order.expirationTime) continue;
 
             uint256 amount = amounts[hash];
-            if (amountFilled.add(amount) > _maxAmount) {
-                amount = _maxAmount.sub(amountFilled);
+            if (amountFilled + amount > _maxAmount) {
+                amount = _maxAmount - amountFilled;
             }
 
-            amounts[hash] = amounts[hash].sub(amount);
-            amountFilled = amountFilled.add(amount);
+            amounts[hash] -= amount;
+            amountFilled += amount;
 
             // If option has delayed minting on fill, we first need to mint it on behalf of order maker
             if (_order.side == SaleSide.Sell && _order.isDelayedWriting) {
@@ -570,23 +567,23 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
                 IPremiaOption(_order.optionContract).writeOptionWithIdFrom(msg.sender, _order.optionId, amount, _referrer);
             }
 
-            uint256 basePrice = _order.pricePerUnit.mul(amount).div(10**_order.decimals);
+            uint256 basePrice = _order.pricePerUnit * amount / (10**_order.decimals);
 
             (uint256 orderMakerFee,) = feeCalculator.getFeeAmounts(_order.maker, false, basePrice, IFeeCalculator.FeeType.Maker);
-            uint256 orderTakerFee = basePrice.mul(takerFee).div(_inverseBasisPoint);
+            uint256 orderTakerFee = basePrice * takerFee / _inverseBasisPoint;
 
-            totalFee = totalFee.add(orderMakerFee).add(orderTakerFee);
+            totalFee += orderMakerFee + orderTakerFee;
 
             if (_order.side == SaleSide.Buy) {
                 IPremiaOption(_order.optionContract).safeTransferFrom(msg.sender, _order.maker, _order.optionId, amount, "");
 
                 // We transfer all to the contract, contract will pays fees, and send remainder to msg.sender
-                IERC20(_order.paymentToken).safeTransferFrom(_order.maker, address(this), basePrice.add(orderMakerFee));
-                totalAmount = totalAmount.add(basePrice.add(orderMakerFee));
+                IERC20(_order.paymentToken).safeTransferFrom(_order.maker, address(this), basePrice + orderMakerFee);
+                totalAmount += basePrice + orderMakerFee;
 
             } else {
                 // We pay order maker, fees will be all paid at once later
-                IERC20(_order.paymentToken).safeTransferFrom(msg.sender, _order.maker, basePrice.sub(orderMakerFee));
+                IERC20(_order.paymentToken).safeTransferFrom(msg.sender, _order.maker, basePrice - orderMakerFee);
                 IPremiaOption(_order.optionContract).safeTransferFrom(_order.maker, msg.sender, _order.optionId, amount, "");
             }
 
@@ -605,7 +602,7 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             // Batch payment of fees
             IERC20(_orders[0].paymentToken).safeTransfer(feeRecipient, totalFee);
             // Send remainder of tokens after fee payment, to msg.sender
-            IERC20(_orders[0].paymentToken).safeTransfer(msg.sender, totalAmount.sub(totalFee));
+            IERC20(_orders[0].paymentToken).safeTransfer(msg.sender, totalAmount - totalFee);
         } else {
             // Batch payment of fees
             IERC20(_orders[0].paymentToken).safeTransferFrom(msg.sender, feeRecipient, totalFee);
