@@ -14,7 +14,6 @@ import "./interface/IERC20Extended.sol";
 import "./interface/IFeeCalculator.sol";
 import "./interface/IFlashLoanReceiver.sol";
 import "./interface/IPremiaReferral.sol";
-import "./interface/IPremiaUncutErc20.sol";
 
 import "./uniswapV2/interfaces/IUniswapV2Router02.sol";
 
@@ -81,8 +80,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     // PremiaReferral contract
     IPremiaReferral public premiaReferral;
-    // The uPremia token
-    IPremiaUncutErc20 public uPremia;
     // FeeCalculator contract
     IFeeCalculator public feeCalculator;
 
@@ -138,14 +135,12 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
     /// @param _uri URI of ERC1155 metadata
     /// @param _denominator The token used as denominator
-    /// @param _uPremia The uPremia token
     /// @param _feeCalculator FeeCalculator contract
     /// @param _premiaReferral PremiaReferral contract
     /// @param _feeRecipient Recipient of protocol fees (PremiaMaker)
-    constructor(string memory _uri, IERC20 _denominator, IPremiaUncutErc20 _uPremia, IFeeCalculator _feeCalculator,
+    constructor(string memory _uri, IERC20 _denominator, IFeeCalculator _feeCalculator,
         IPremiaReferral _premiaReferral, address _feeRecipient) ERC1155(_uri) {
         denominator = _denominator;
-        uPremia = _uPremia;
         feeCalculator = _feeCalculator;
         feeRecipient = _feeRecipient;
         premiaReferral = _premiaReferral;
@@ -200,12 +195,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _premiaReferral The new PremiaReferral Contract
     function setPremiaReferral(IPremiaReferral _premiaReferral) external onlyOwner {
         premiaReferral = _premiaReferral;
-    }
-
-    /// @notice Set a new PremiaUncut contract
-    /// @param _uPremia The new PremiaUncut Contract
-    function setPremiaUncutErc20(IPremiaUncutErc20 _uPremia) external onlyOwner {
-        uPremia = _uPremia;
     }
 
     /// @notice Set a new FeeCalculator contract
@@ -905,14 +894,6 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
                 _token.safeTransfer(_referrer, _feeReferrer);
             } else {
                 _token.safeTransferFrom(_from, _referrer, _feeReferrer);
-            }
-        }
-
-        // If uPremia rewards are enabled
-        if (address(uPremia) != address(0)) {
-            uint256 totalFee = _fee.add(_feeReferrer);
-            if (totalFee > 0) {
-                uPremia.mintReward(_from, address(_token), totalFee, _decimals);
             }
         }
 

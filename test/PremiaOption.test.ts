@@ -66,7 +66,6 @@ describe('PremiaOption', () => {
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
       dai.address,
-      ZERO_ADDRESS,
       p.feeCalculator.address,
       p.premiaReferral.address,
       feeRecipient.address,

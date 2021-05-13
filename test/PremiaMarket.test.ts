@@ -53,7 +53,6 @@ describe('PremiaMarket', () => {
     premiaOption = await premiaOptionFactory.deploy(
       'dummyURI',
       dai.address,
-      ZERO_ADDRESS,
       p.feeCalculator.address,
       ZERO_ADDRESS,
       feeRecipient.address,
@@ -61,7 +60,6 @@ describe('PremiaMarket', () => {
 
     const premiaMarketFactory = new PremiaMarket__factory(admin);
     premiaMarket = await premiaMarketFactory.deploy(
-      ZERO_ADDRESS,
       p.feeCalculator.address,
       admin.address,
       p.premiaReferral.address,

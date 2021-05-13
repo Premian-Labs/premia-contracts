@@ -119,7 +119,6 @@ async function main() {
   const premiaOptionDai = await new PremiaOption__factory(deployer).deploy(
     uri,
     dai,
-    ZERO_ADDRESS,
     contracts.feeCalculator.address,
     contracts.premiaReferral.address,
     treasury,
@@ -164,7 +163,6 @@ async function main() {
   //
 
   const premiaMarket = await new PremiaMarket__factory(deployer).deploy(
-    ZERO_ADDRESS,
     contracts.feeCalculator.address,
     treasury,
     contracts.premiaReferral.address,

@@ -13,7 +13,6 @@ import "./interface/IERC20Extended.sol";
 import "./interface/IPremiaOption.sol";
 import "./interface/IFeeCalculator.sol";
 import "./interface/IPremiaReferral.sol";
-import "./interface/IPremiaUncutErc20.sol";
 
 /// @author Premia
 /// @title An option market contract
@@ -22,8 +21,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    // The uPremia token
-    IPremiaUncutErc20 public uPremia;
     // FeeCalculator contract
     IFeeCalculator public feeCalculator;
     // PremiaReferral contract
@@ -69,9 +66,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
 
     // OrderId -> Amount of options left to purchase/sell
     mapping(bytes32 => uint256) public amounts;
-
-    // Mapping of balances of uPremia to claim for each address
-    mapping(address => uint256) public uPremiaBalance;
 
     // Whether delayed option writing is enabled or not
     // This allow users to create a sell order for an option, without writing it, and delay the writing at the moment the order is filled
@@ -119,13 +113,11 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    /// @param _uPremia The uPremia token
     /// @param _feeCalculator FeeCalculator contract
     /// @param _feeRecipient Address receiving protocol fees (PremiaMaker)
-    constructor(IPremiaUncutErc20 _uPremia, IFeeCalculator _feeCalculator, address _feeRecipient, IPremiaReferral _premiaReferral) {
+    constructor(IFeeCalculator _feeCalculator, address _feeRecipient, IPremiaReferral _premiaReferral) {
         require(_feeRecipient != address(0), "FeeRecipient cannot be 0x0 address");
         feeRecipient = _feeRecipient;
-        uPremia = _uPremia;
         feeCalculator = _feeCalculator;
         premiaReferral = _premiaReferral;
     }
@@ -143,12 +135,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     function setFeeRecipient(address _feeRecipient) external onlyOwner {
         require(_feeRecipient != address(0), "FeeRecipient cannot be 0x0 address");
         feeRecipient = _feeRecipient;
-    }
-
-    /// @notice Set new PremiaUncut token address
-    /// @param _uPremia New uPremia contract
-    function setPremiaUncutErc20(IPremiaUncutErc20 _uPremia) external onlyOwner {
-        uPremia = _uPremia;
     }
 
     /// @notice Set new FeeCalculator contract
@@ -338,13 +324,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
     // Main //
     //////////
 
-    /// @notice Claim pending uPremia rewards
-    function claimUPremia() external {
-        uint256 amount = uPremiaBalance[msg.sender];
-        uPremiaBalance[msg.sender] = 0;
-        IERC20(address(uPremia)).safeTransfer(msg.sender, amount);
-    }
-
     /// @notice Create a new order
     /// @dev Maker, salt and expirationTime will be overridden by this function
     /// @param _order Order to create
@@ -521,16 +500,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
             IPremiaOption(_order.optionContract).safeTransferFrom(_order.maker, msg.sender, _order.optionId, _amount, "");
         }
 
-        // Mint uPremia
-        if (address(uPremia) != address(0)) {
-            uint256 paymentTokenPrice = uPremia.getTokenPrice(_order.paymentToken);
-
-            uPremiaBalance[_order.maker] = uPremiaBalance[_order.maker].add(orderMakerFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
-            uPremiaBalance[msg.sender] = uPremiaBalance[msg.sender].add(orderTakerFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
-
-            uPremia.mint(address(this), orderMakerFee.add(orderTakerFee).mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
-        }
-
         emit OrderFilled(
             hash,
             msg.sender,
@@ -568,11 +537,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
                 require(i == 0 || _orders[0].optionContract == _orders[i].optionContract, "Different option contract");
                 require(i == 0 || _orders[0].optionId == _orders[i].optionId, "Different option id");
             }
-        }
-
-        uint256 paymentTokenPrice;
-        if (address(uPremia) != address(0)) {
-            uPremia.getTokenPrice(_orders[0].paymentToken);
         }
 
         uint256 totalFee;
@@ -626,12 +590,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
                 IPremiaOption(_order.optionContract).safeTransferFrom(_order.maker, msg.sender, _order.optionId, amount, "");
             }
 
-            // Add uPremia reward to users balance
-            if (address(uPremia) != address(0)) {
-                uPremiaBalance[_order.maker] = uPremiaBalance[_order.maker].add(orderMakerFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
-                uPremiaBalance[msg.sender] = uPremiaBalance[msg.sender].add(orderTakerFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_order.paymentToken]));
-            }
-
             emit OrderFilled(
                 hash,
                 msg.sender,
@@ -651,11 +609,6 @@ contract PremiaMarket is Ownable, ReentrancyGuard {
         } else {
             // Batch payment of fees
             IERC20(_orders[0].paymentToken).safeTransferFrom(msg.sender, feeRecipient, totalFee);
-        }
-
-        // Mint uPremia
-        if (address(uPremia) != address(0)) {
-            uPremia.mint(address(this), totalFee.mul(paymentTokenPrice).div(10**paymentTokenDecimals[_orders[0].paymentToken]));
         }
 
         return amountFilled;
