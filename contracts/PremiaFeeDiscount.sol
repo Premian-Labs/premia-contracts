@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
-pragma experimental ABIEncoderV2;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import '@openzeppelin/contracts/utils/math/SafeCast.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
@@ -16,7 +14,6 @@ import "./interface/IERC2612Permit.sol";
 /// @author Premia
 /// @title A contract allowing you to lock xPremia to get Premia protocol fee discounts
 contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
@@ -152,11 +149,11 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         require(stakePeriods[_period] > 0, "Stake period does not exists");
         UserInfo storage user = userInfo[msg.sender];
 
-        uint256 lockedUntil = block.timestamp.add(_period);
+        uint256 lockedUntil = block.timestamp + _period;
         require(lockedUntil > user.lockedUntil, "Cannot add stake with lower stake period");
 
         xPremia.safeTransferFrom(msg.sender, address(this), _amount);
-        user.balance = user.balance.add(_amount);
+        user.balance = user.balance + _amount;
         user.lockedUntil = lockedUntil.toUint64();
         user.stakePeriod = _period.toUint64();
 
@@ -171,7 +168,7 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         // We allow unstake if the stakePeriod that the user used has been disabled
         require(stakePeriods[user.stakePeriod] == 0 || user.lockedUntil <= block.timestamp, "Stake still locked");
 
-        user.balance = user.balance.sub(_amount);
+        user.balance -= _amount;
         xPremia.safeTransfer(msg.sender, _amount);
 
         emit Unstaked(msg.sender, _amount);
@@ -194,7 +191,7 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
     /// @return The user stake amount after applying the bonus
     function getStakeAmountWithBonus(address _user) public view returns(uint256) {
         UserInfo memory user = userInfo[_user];
-        return user.balance.mul(stakePeriods[user.stakePeriod]).div(_inverseBasisPoint);
+        return user.balance * stakePeriods[user.stakePeriod] / _inverseBasisPoint;
     }
 
     /// @notice Calculate the % of fee discount for user, based on his stake
@@ -221,13 +218,13 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
                     discountPrevLevel = 0;
                 }
 
-                uint256 remappedDiscount = level.discount.sub(discountPrevLevel);
+                uint256 remappedDiscount = level.discount - discountPrevLevel;
 
-                uint256 remappedAmount = level.amount.sub(amountPrevLevel);
-                uint256 remappedBalance = userBalance.sub(amountPrevLevel);
-                uint256 levelProgress = remappedBalance.mul(_inverseBasisPoint).div(remappedAmount);
+                uint256 remappedAmount = level.amount - amountPrevLevel;
+                uint256 remappedBalance = userBalance - amountPrevLevel;
+                uint256 levelProgress = remappedBalance * _inverseBasisPoint / remappedAmount;
 
-                return discountPrevLevel.add(remappedDiscount.mul(levelProgress).div(_inverseBasisPoint));
+                return discountPrevLevel + (remappedDiscount * levelProgress / _inverseBasisPoint);
             }
         }
 

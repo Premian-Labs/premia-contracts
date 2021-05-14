@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 
 import "./interface/IPremiaFeeDiscount.sol";
 
@@ -12,7 +11,6 @@ import "./interface/IPremiaFeeDiscount.sol";
 /// @title Calculate protocol fees, including discount from xPremia locking
 contract FeeCalculator is Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
-    using SafeMath for uint256;
 
     enum FeeType {Write, Exercise, Maker, Taker, FlashLoan}
 
@@ -138,7 +136,7 @@ contract FeeCalculator is Ownable {
         // If premiaFeeDiscount contract is set, we calculate discount
         if (address(premiaFeeDiscount) != address(0)) {
             uint256 discount = premiaFeeDiscount.getDiscount(_user);
-            fee = fee.mul(discount).div(_inverseBasisPoint);
+            fee = fee * discount / _inverseBasisPoint;
         }
 
         return fee;
@@ -152,7 +150,7 @@ contract FeeCalculator is Ownable {
     function getFeeAmount(address _user, uint256 _amount, FeeType _feeType) external view returns(uint256) {
         if (_whitelisted.contains(_user)) return 0;
 
-        uint256 baseFee = _amount.mul(_getBaseFee(_feeType)).div(_inverseBasisPoint);
+        uint256 baseFee = _amount * _getBaseFee(_feeType) / _inverseBasisPoint;
         return getFeeAmountWithDiscount(_user, baseFee);
     }
 
@@ -169,10 +167,10 @@ contract FeeCalculator is Ownable {
         if (address(premiaFeeDiscount) != address(0)) {
             uint256 discount = premiaFeeDiscount.getDiscount(_user);
             require(discount <= _inverseBasisPoint, "Discount > max");
-            feeDiscount = _baseFee.mul(discount).div(_inverseBasisPoint);
+            feeDiscount = _baseFee * discount / _inverseBasisPoint;
         }
 
-        return _baseFee.sub(feeDiscount);
+        return _baseFee - feeDiscount;
     }
 
     //////////////////////////////////////////////////

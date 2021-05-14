@@ -1,16 +1,12 @@
 // SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
-pragma experimental ABIEncoderV2;
 
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 import "./interface/IPremiaFeeDiscount.sol";
 
 contract PremiaVoteProxy {
-    using SafeMath for uint256;
-
     IERC20 public premia;
     IERC20 public xPremia;
     IPremiaFeeDiscount public premiaFeeDiscount;
@@ -40,9 +36,9 @@ contract PremiaVoteProxy {
     function balanceOf(address _voter) external view returns (uint256) {
         uint256 _votes = premia.balanceOf(_voter);
 
-        uint256 totalXPremia = xPremia.balanceOf(_voter).add(premiaFeeDiscount.userInfo(_voter).balance);
-        uint256 premiaStaked = totalXPremia.mul(1e18).div(xPremia.totalSupply()).mul(premia.balanceOf(address(xPremia))).div(1e18);
-        _votes = _votes.add(premiaStaked);
+        uint256 totalXPremia = xPremia.balanceOf(_voter) + premiaFeeDiscount.userInfo(_voter).balance;
+        uint256 premiaStaked = totalXPremia * 1e18 / xPremia.totalSupply() * premia.balanceOf(address(xPremia)) / 1e18;
+        _votes += premiaStaked;
 
         return _votes;
     }

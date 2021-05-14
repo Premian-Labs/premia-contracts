@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
@@ -13,7 +12,6 @@ import "./interface/IERC2612Permit.sol";
 /// @author Premia (Code forked from Hegic's LinearBondingCurve)
 /// @title A premia <-> eth linear bonding curve
 contract PremiaBondingCurve is Ownable {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // The premia token
@@ -88,7 +86,7 @@ contract PremiaBondingCurve is Ownable {
     /// @param _newContract The new contract where funds will be migrated
     function startUpgrade(IPremiaBondingCurveUpgrade _newContract) external onlyOwner notUpgraded {
         newContract = _newContract;
-        upgradeETA = block.timestamp.add(upgradeDelay);
+        upgradeETA = block.timestamp + upgradeDelay;
         emit UpgradeStarted(address(newContract), upgradeETA);
     }
 
@@ -126,13 +124,13 @@ contract PremiaBondingCurve is Ownable {
     /// @notice Buy exact amount of premia (Will refund user any extra eth paid)
     /// @param _tokenAmount The amount of tokens to buy
     function buyExactTokenAmount(uint256 _tokenAmount) external payable notUpgraded {
-        uint256 nextSold = soldAmount.add(_tokenAmount);
+        uint256 nextSold = soldAmount + _tokenAmount;
         uint256 ethAmount = getEthCost(soldAmount, nextSold);
         soldAmount = nextSold;
         require(msg.value >= ethAmount, "Value is too small");
         premia.safeTransfer(msg.sender, _tokenAmount);
         if (msg.value > ethAmount)
-            payable(msg.sender).transfer(msg.value.sub(ethAmount));
+            payable(msg.sender).transfer(msg.value - ethAmount);
         emit Bought(msg.sender, msg.sender, _tokenAmount, ethAmount);
     }
 
@@ -144,7 +142,7 @@ contract PremiaBondingCurve is Ownable {
         uint256 ethAmount = msg.value;
         uint256 tokenAmount = getTokensPurchasable(ethAmount);
         require(tokenAmount >= _minToken, "< _minToken");
-        soldAmount = soldAmount.add(tokenAmount);
+        soldAmount += tokenAmount;
         premia.safeTransfer(_sendTo, tokenAmount);
         emit Bought(msg.sender, _sendTo, tokenAmount, ethAmount);
 
@@ -167,11 +165,11 @@ contract PremiaBondingCurve is Ownable {
     /// @param _tokenAmount The amount of tokens to sell
     /// @param _minEth The eth needed to not have the transaction reverted
     function sell(uint256 _tokenAmount, uint256 _minEth) public notUpgraded {
-        uint256 nextSold = soldAmount.sub(_tokenAmount);
+        uint256 nextSold = soldAmount - _tokenAmount;
         uint256 ethAmount = getEthCost(nextSold, soldAmount);
         require(ethAmount >= _minEth, "< _minEth");
-        uint256 commission = ethAmount.div(10);
-        uint256 refund = ethAmount.sub(commission);
+        uint256 commission = ethAmount / 10;
+        uint256 refund = ethAmount - commission;
         require(commission > 0);
 
         soldAmount = nextSold;
@@ -193,10 +191,7 @@ contract PremiaBondingCurve is Ownable {
     /// @return The eth cost
     function getEthCost(uint256 _x0, uint256 _x1) public view returns (uint256) {
         require(_x1 > _x0);
-        return _x1.add(_x0).mul(_x1.sub(_x0))
-        .div(2).div(k)
-        .add(startPrice.mul(_x1.sub(_x0)))
-        .div(1e18);
+        return (((_x1 + _x0) * (_x1 - _x0)) / (2 * k) + (startPrice * (_x1 - _x0))) / 1e18;
     }
 
     /// @notice Calculate the amount of tokens purchasable with a known eth amount
@@ -204,13 +199,7 @@ contract PremiaBondingCurve is Ownable {
     /// @return The amount of tokens purchasable with _ethAmount
     function getTokensPurchasable(uint256 _ethAmount) public view returns(uint256) {
         // x0 = soldAmount
-        uint256 x1 = _sqrt(
-            _ethAmount.mul(2e18).mul(k)
-            .add(k.mul(k).mul(startPrice).mul(startPrice))
-            .add(k.mul(2).mul(startPrice).mul(soldAmount))
-            .add(soldAmount.mul(soldAmount)))
-        .sub(k.mul(startPrice));
-
+        uint256 x1 = _sqrt((_ethAmount * 2e18 * k) + (k * k * startPrice * startPrice) + (k * k * startPrice * soldAmount) + (soldAmount * soldAmount)) - (k * startPrice);
         return x1 - soldAmount;
     }
 

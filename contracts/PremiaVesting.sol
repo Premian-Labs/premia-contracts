@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import '@openzeppelin/contracts/access/Ownable.sol';
@@ -10,7 +9,6 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 /// @author Premia
 /// @title Vesting contract for Premia founder allocations, releasing the allocations over the course of a year
 contract PremiaVesting is Ownable {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // The premia token
@@ -30,7 +28,7 @@ contract PremiaVesting is Ownable {
     // @param _premia The premia token
     constructor(IERC20 _premia) {
         premia = _premia;
-        endTimestamp = block.timestamp.add(releasePeriod);
+        endTimestamp = block.timestamp + releasePeriod;
         lastWithdrawalTimestamp = block.timestamp;
     }
 
@@ -53,9 +51,9 @@ contract PremiaVesting is Ownable {
             premia.safeTransfer(msg.sender, balance);
         } else {
 
-            uint256 elapsedSinceLastWithdrawal = timestamp.sub(_lastWithdrawalTimestamp);
-            uint256 timeLeft = endTimestamp.sub(_lastWithdrawalTimestamp);
-            premia.safeTransfer(msg.sender, balance.mul(elapsedSinceLastWithdrawal).div(timeLeft));
+            uint256 elapsedSinceLastWithdrawal = timestamp - _lastWithdrawalTimestamp;
+            uint256 timeLeft = endTimestamp - _lastWithdrawalTimestamp;
+            premia.safeTransfer(msg.sender, balance * elapsedSinceLastWithdrawal / timeLeft);
         }
     }
 }

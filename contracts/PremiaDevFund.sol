@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import '@openzeppelin/contracts/access/Ownable.sol';
@@ -10,7 +9,6 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 /// @author Premia
 /// @title 3 days timelock contract for dev fund
 contract PremiaDevFund is Ownable {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // The premia token
@@ -51,7 +49,7 @@ contract PremiaDevFund is Ownable {
     /// @param _to Destination address of the withdrawal
     /// @param _amount The withdrawal amount
     function startWithdrawal(address _to, uint256 _amount) external onlyOwner {
-        withdrawalETA = block.timestamp.add(withdrawalDelay);
+        withdrawalETA = block.timestamp + withdrawalDelay;
         pendingWithdrawalDestination = _to;
         pendingWithdrawalAmount = _amount;
 

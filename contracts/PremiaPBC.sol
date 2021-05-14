@@ -3,7 +3,6 @@
 pragma solidity ^0.8.0;
 
 
-import '@openzeppelin/contracts/utils/math/SafeMath.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
@@ -14,7 +13,6 @@ import '@openzeppelin/contracts/access/Ownable.sol';
 /// @title Primary Bootstrap Contribution
 ///        Allow users to contribute ETH to get a share of Premia equal to their percentage of total eth contribution by the end of the PBC
 contract PremiaPBC is Ownable, ReentrancyGuard {
-    using SafeMath for uint256;
     using SafeERC20 for IERC20;
 
     // The premia token
@@ -75,7 +73,7 @@ contract PremiaPBC is Ownable, ReentrancyGuard {
         require(block.number < endBlock, "PBC ended");
 
         premia.safeTransferFrom(msg.sender, address(this), _amount);
-        premiaTotal = premiaTotal.add(_amount);
+        premiaTotal += _amount;
     }
 
     /// @notice Send eth collected during the PBC, to the treasury address
@@ -104,8 +102,8 @@ contract PremiaPBC is Ownable, ReentrancyGuard {
         require(msg.value > 0, "No eth sent");
         require(block.number < endBlock, "PBC ended");
 
-        amountDeposited[msg.sender] = amountDeposited[msg.sender].add(msg.value);
-        ethTotal = ethTotal.add(msg.value);
+        amountDeposited[msg.sender] += msg.value;
+        ethTotal += msg.value;
         emit Contributed(msg.sender, msg.value);
     }
 
@@ -116,8 +114,8 @@ contract PremiaPBC is Ownable, ReentrancyGuard {
         require(amountDeposited[msg.sender] > 0, "Address did not contribute");
 
         hasCollected[msg.sender] = true;
-        uint256 contribution = amountDeposited[msg.sender].mul(1e12).div(ethTotal);
-        uint256 premiaAmount = premiaTotal.mul(contribution).div(1e12);
+        uint256 contribution = amountDeposited[msg.sender] * 1e12 / ethTotal;
+        uint256 premiaAmount = premiaTotal * contribution / 1e12;
         _safePremiaTransfer(msg.sender, premiaAmount);
         emit Collected(msg.sender, premiaAmount);
     }
@@ -131,7 +129,7 @@ contract PremiaPBC is Ownable, ReentrancyGuard {
     /// @notice Get the current premia price (in eth)
     /// @return The current premia price (in eth)
     function getPremiaPrice() external view returns(uint256) {
-        return ethTotal.mul(1e18).div(premiaTotal);
+        return ethTotal * 1e18 / premiaTotal;
     }
 
     //////////////////////////////////////////////////
