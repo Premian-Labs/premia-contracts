@@ -20,11 +20,11 @@ interface IPremiaOption is IERC1155 {
         uint256 strikePrice;            // Strike price (Must follow strikePriceIncrement of token)
         uint256 expiration;             // Expiration timestamp of the option (Must follow expirationIncrement)
         bool isCall;                    // If true : Call option | If false : Put option
+        uint8 decimals;                 // Token decimals
         uint256 claimsPreExp;           // Amount of options from which the funds have been withdrawn pre expiration
         uint256 claimsPostExp;          // Amount of options from which the funds have been withdrawn post expiration
         uint256 exercised;              // Amount of options which have been exercised
         uint256 supply;                 // Total circulating supply
-        uint8 decimals;                 // Token decimals
     }
 
     // Total write cost = collateral + fee

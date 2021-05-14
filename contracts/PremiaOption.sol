@@ -33,11 +33,11 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 strikePrice;            // Strike price (Must follow strikePriceIncrement of token)
         uint256 expiration;             // Expiration timestamp of the option (Must follow expirationIncrement)
         bool isCall;                    // If true : Call option | If false : Put option
+        uint8 decimals;                 // Token decimals
         uint256 claimsPreExp;           // Amount of options from which the funds have been withdrawn pre expiration
         uint256 claimsPostExp;          // Amount of options from which the funds have been withdrawn post expiration
         uint256 exercised;              // Amount of options which have been exercised
         uint256 supply;                 // Total circulating supply
-        uint8 decimals;                 // Token decimals
     }
 
     // Total write cost = collateral + fee
@@ -315,17 +315,16 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             uint8 decimals = IERC20Extended(_token).decimals();
             require(decimals <= 18, "Too many decimals");
 
-            pools[optionId] = Pool({ tokenAmount: 0, denominatorAmount: 0 });
-                optionData[optionId] = OptionData({
+            optionData[optionId] = OptionData({
                 token: _token,
                 expiration: _expiration,
                 strikePrice: _strikePrice,
                 isCall: _isCall,
+                decimals: decimals,
                 claimsPreExp: 0,
                 claimsPostExp: 0,
                 exercised: 0,
-                supply: 0,
-                decimals: decimals
+                supply: 0
             });
 
             emit OptionIdCreated(optionId, _token);

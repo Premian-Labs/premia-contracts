@@ -65,17 +65,6 @@ export default {
         },
       },
     ],
-    overrides: {
-      'contracts/PremiaOption.sol': {
-        version: '0.8.2',
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 50,
-          },
-        },
-      },
-    },
   },
   networks: {
     hardhat: {
