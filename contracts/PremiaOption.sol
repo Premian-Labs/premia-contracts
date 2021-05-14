@@ -315,17 +315,11 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             uint8 decimals = IERC20Extended(_token).decimals();
             require(decimals <= 18, "Too many decimals");
 
-            optionData[optionId] = OptionData({
-                token: _token,
-                expiration: _expiration,
-                strikePrice: _strikePrice,
-                isCall: _isCall,
-                decimals: decimals,
-                claimsPreExp: 0,
-                claimsPostExp: 0,
-                exercised: 0,
-                supply: 0
-            });
+            optionData[optionId].token = _token;
+            optionData[optionId].expiration = _expiration;
+            optionData[optionId].strikePrice = _strikePrice;
+            optionData[optionId].isCall = _isCall;
+            optionData[optionId].decimals = decimals;
 
             emit OptionIdCreated(optionId, _token);
 
