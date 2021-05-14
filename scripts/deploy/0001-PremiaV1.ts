@@ -120,13 +120,11 @@ async function main() {
     uri,
     dai,
     contracts.feeCalculator.address,
-    contracts.premiaReferral.address,
     treasury,
   );
 
   console.log(
-    `premiaOption dai deployed at ${premiaOptionDai.address} (Args : ${uri} / ${dai} / ${ZERO_ADDRESS} / 
-    ${contracts.feeCalculator.address} / ${contracts.premiaReferral.address} / ${treasury})`,
+    `premiaOption dai deployed at ${premiaOptionDai.address} (Args : ${uri} / ${dai} / ${contracts.feeCalculator.address} / ${treasury})`,
   );
 
   //
@@ -165,20 +163,11 @@ async function main() {
   const premiaMarket = await new PremiaMarket__factory(deployer).deploy(
     contracts.feeCalculator.address,
     treasury,
-    contracts.premiaReferral.address,
   );
 
   console.log(
-    `premiaMarket deployed at ${premiaMarket.address} (Args : ${ZERO_ADDRESS} / ${contracts.feeCalculator.address} / ${treasury} / ${contracts.premiaReferral.address})`,
+    `premiaMarket deployed at ${premiaMarket.address} (Args : ${ZERO_ADDRESS} / ${contracts.feeCalculator.address} / ${treasury})`,
   );
-
-  await contracts.premiaReferral.addWhitelisted([
-    premiaOptionDai.address,
-    premiaMarket.address,
-    // premiaOptionEth.address,
-    // premiaOptionWbtc.address,
-  ]);
-  console.log('Whitelisted PremiaOption on PremiaReferral');
 
   await premiaMarket.addWhitelistedOptionContracts([
     // premiaOptionEth.address,
@@ -269,9 +258,6 @@ async function main() {
 
   await contracts.premiaPBC.transferOwnership(treasury);
   console.log(`PremiaPBC ownership transferred to ${treasury}`);
-
-  await contracts.premiaReferral.transferOwnership(treasury);
-  console.log(`PremiaReferral ownership transferred to ${treasury}`);
 
   // ToDo after deployment :
   //  - Send Premia to founder vesting contracts

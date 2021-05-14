@@ -1,7 +1,7 @@
 import { PremiaOption, TestErc20, WETH9 } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber, BigNumberish } from 'ethers';
-import { ONE_WEEK, TEST_TOKEN_DECIMALS, ZERO_ADDRESS } from './constants';
+import { ONE_WEEK, TEST_TOKEN_DECIMALS } from './constants';
 import { formatUnits, parseEther } from 'ethers/lib/utils';
 import { mintTestToken, parseTestToken } from './token';
 
@@ -87,7 +87,6 @@ export class PremiaOptionTestUtil {
         isCall: args?.isCall == undefined ? defaults.isCall : args.isCall,
         amount: args?.amount == undefined ? defaults.amount : args?.amount,
       },
-      args?.referrer ?? ZERO_ADDRESS,
     );
   }
 
@@ -175,7 +174,6 @@ export class PremiaOptionTestUtil {
       .exerciseOption(
         optionId ?? 1,
         amountToExercise,
-        referrer ?? ZERO_ADDRESS,
       );
   }
 

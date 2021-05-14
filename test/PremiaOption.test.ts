@@ -18,7 +18,6 @@ import {
   ONE_WEEK,
   TEST_TOKEN_DECIMALS,
   TEST_USE_WETH,
-  ZERO_ADDRESS,
 } from './utils/constants';
 import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
 import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
@@ -67,7 +66,6 @@ describe('PremiaOption', () => {
       'dummyURI',
       dai.address,
       p.feeCalculator.address,
-      p.premiaReferral.address,
       feeRecipient.address,
     );
 
@@ -75,8 +73,6 @@ describe('PremiaOption', () => {
       admin,
     ).deploy();
     await p.feeCalculator.setPremiaFeeDiscount(premiaFeeDiscount.address);
-
-    await p.premiaReferral.addWhitelisted([premiaOption.address]);
 
     optionTestUtil = new PremiaOptionTestUtil({
       testToken,
@@ -260,7 +256,6 @@ describe('PremiaOption', () => {
             amount: contractAmount2,
           },
         ],
-        ZERO_ADDRESS,
       );
 
       const balance1 = await premiaOption.balanceOf(writer1.address, 1);
@@ -284,7 +279,6 @@ describe('PremiaOption', () => {
           .writeOptionFrom(
             writer1.address,
             { ...optionTestUtil.getOptionDefaults(), amount },
-            ZERO_ADDRESS,
           ),
       ).to.be.revertedWith('Not approved');
     });
@@ -306,7 +300,6 @@ describe('PremiaOption', () => {
         .writeOptionFrom(
           writer1.address,
           { ...optionTestUtil.getOptionDefaults(), amount },
-          ZERO_ADDRESS,
         );
 
       expect(await premiaOption.balanceOf(writer1.address, 1)).to.eq(amount);
@@ -445,7 +438,7 @@ describe('PremiaOption', () => {
       await expect(
         premiaOption
           .connect(user1)
-          .exerciseOption(1, parseTestToken('1'), ZERO_ADDRESS),
+          .exerciseOption(1, parseTestToken('1')),
       ).to.revertedWith('ERC1155: burn amount exceeds balance');
     });
 
@@ -455,7 +448,7 @@ describe('PremiaOption', () => {
       await expect(
         premiaOption
           .connect(user1)
-          .exerciseOption(1, parseTestToken('1'), ZERO_ADDRESS),
+          .exerciseOption(1, parseTestToken('1')),
       ).to.revertedWith('ERC20: transfer amount exceeds balance');
     });
 
@@ -577,7 +570,6 @@ describe('PremiaOption', () => {
           premiaOption.address,
           [1, 2],
           [parseTestToken('1'), parseTestToken('2')],
-          ZERO_ADDRESS,
         );
 
       const optionBalance1 = await premiaOption.balanceOf(user1.address, 1);
@@ -604,7 +596,7 @@ describe('PremiaOption', () => {
       await expect(
         premiaOption
           .connect(writer2)
-          .exerciseOptionFrom(user1.address, 1, amount, ZERO_ADDRESS),
+          .exerciseOptionFrom(user1.address, 1, amount),
       ).to.be.revertedWith('Not approved');
     });
 
@@ -623,7 +615,7 @@ describe('PremiaOption', () => {
         .setApprovalForAll(writer2.address, true);
       await premiaOption
         .connect(writer2)
-        .exerciseOptionFrom(user1.address, 1, amount, ZERO_ADDRESS);
+        .exerciseOptionFrom(user1.address, 1, amount);
 
       expect(await premiaOption.balanceOf(user1.address, 1)).to.eq(0);
       expect(await dai.balanceOf(user1.address)).to.eq(parseEther('20'));
@@ -1144,112 +1136,26 @@ describe('PremiaOption', () => {
     });
   });
 
-  describe('referral', () => {
-    it('should register user1 as referrer', async () => {
-      await optionTestUtil.addTestTokenAndWriteOptions(
-        parseTestToken('2'),
-        true,
-        user1.address,
-      );
-      const referrer = await p.premiaReferral.referrals(writer1.address);
-      expect(referrer).to.eq(user1.address);
-    });
-
-    it('should keep user1 as referrer, if try to set another referrer', async () => {
-      await optionTestUtil.addTestTokenAndWriteOptions(
-        parseTestToken('2'),
-        true,
-        user1.address,
-      );
-      await optionTestUtil.addTestTokenAndWriteOptions(
-        parseTestToken('2'),
-        true,
-        writer2.address,
-      );
-      const referrer = await p.premiaReferral.referrals(writer1.address);
-      expect(referrer).to.eq(user1.address);
-    });
-
-    it('should give user with referrer, 10% discount on write fee + give referrer 10% of fee', async () => {
-      await optionTestUtil.addTestTokenAndWriteOptions(
-        parseTestToken('2'),
-        true,
-        user1.address,
-      );
-
-      const writer1Options = await premiaOption.balanceOf(writer1.address, 1);
-      const writer1TestToken = await testToken.balanceOf(writer1.address);
-      const referrerTestToken = await testToken.balanceOf(user1.address);
-
-      expect(writer1Options).to.eq(parseTestToken('2'));
-      expect(writer1TestToken).to.eq(
-        parseTestToken('0.02').div(10), // Expect 10% of tax of 2 options writing
-      );
-      expect(referrerTestToken).to.eq(
-        parseTestToken('0.02').mul(9).div(10).div(10), // Expect 10% of 90% of tax for 2 options
-      );
-    });
-
-    it('should give user with referrer, 10% discount on exercise fee + give referrer 10% of fee', async () => {
-      await optionTestUtil.addTestTokenAndWriteOptionsAndExercise(
-        true,
-        parseTestToken('2'),
-        parseTestToken('2'),
-        writer2.address,
-      );
-
-      const user1Options = await premiaOption.balanceOf(writer1.address, 1);
-      const user1Dai = await dai.balanceOf(user1.address);
-      const referrerDai = await dai.balanceOf(writer2.address);
-
-      expect(user1Options).to.eq(0);
-      expect(user1Dai).to.eq(
-        BigNumber.from(parseEther('0.2')).div(10), // Expect 10% of the 1% tax of 2 options exercised at strike price of 10 DAI
-      );
-      expect(referrerDai).to.eq(
-        parseEther('0.2').mul(9).div(10).div(10), // Expect 10% of 90% of tax
-      );
-    });
-  });
-
   describe('fees', () => {
     it('should calculate total fee correctly without discount', async () => {
-      const fee = await p.feeCalculator.getFeeAmounts(
+      const fee = await p.feeCalculator.getFeeAmount(
         writer1.address,
-        false,
         parseTestToken('2'),
         0,
       );
 
-      expect(fee[0].add(fee[1])).to.eq(parseTestToken('0.02'));
+      expect(fee).to.eq(parseTestToken('0.02'));
     });
 
-    it('should calculate total fee correctly with a referral', async () => {
-      await optionTestUtil.addTestTokenAndWriteOptions(
-        parseTestToken('2'),
-        true,
-        user1.address,
-      );
-      const fee = await p.feeCalculator.getFeeAmounts(
-        writer1.address,
-        true,
-        parseTestToken('2'),
-        0,
-      );
-
-      expect(fee[0].add(fee[1])).to.eq(parseTestToken('0.018'));
-    });
-
-    it('should correctly calculate total fee with a referral + staking discount', async () => {
+    it('should correctly calculate total fee with staking discount', async () => {
       await premiaFeeDiscount.setDiscount(2000);
-      const fee = await p.feeCalculator.getFeeAmounts(
+      const fee = await p.feeCalculator.getFeeAmount(
         writer1.address,
-        true,
         parseTestToken('2'),
         0,
       );
 
-      expect(fee[0].add(fee[1])).to.eq(parseTestToken('0.0144'));
+      expect(fee).to.eq(parseTestToken('0.016'));
     });
 
     it('should correctly give a 30% discount from premia staking', async () => {
@@ -1270,7 +1176,7 @@ describe('PremiaOption', () => {
       );
     });
 
-    it('should correctly give a 30% discount from premia staking + 10% discount from referral', async () => {
+    it('should correctly give a 30% discount from premia staking', async () => {
       await premiaFeeDiscount.setDiscount(3000);
 
       await optionTestUtil.addTestTokenAndWriteOptionsAndExercise(
@@ -1282,14 +1188,10 @@ describe('PremiaOption', () => {
 
       const user1Options = await premiaOption.balanceOf(writer1.address, 1);
       const user1Dai = await dai.balanceOf(user1.address);
-      const referrerDai = await dai.balanceOf(writer2.address);
 
       expect(user1Options).to.eq(0);
       expect(user1Dai).to.eq(
-        BigNumber.from(parseEther('0.074')), // Expect 30% of the 1% tax of 2 options exercised at strike price of 10 DAI + 10% discount from referral
-      );
-      expect(referrerDai).to.eq(
-        parseEther('0.0126'), // Expect 10% of 90% of tax (After premia staking discount)
+        BigNumber.from(parseEther('0.06')), // Expect 30% of the 1% tax of 2 options exercised at strike price of 10 DAI
       );
     });
   });
@@ -1437,7 +1339,6 @@ describe('PremiaOption', () => {
         .flashExerciseOption(
           1,
           parseEther('1'),
-          ZERO_ADDRESS,
           uniswap.router.address,
           parseEther('100000'),
           testToken.address === weth.address
@@ -1476,7 +1377,6 @@ describe('PremiaOption', () => {
           .flashExerciseOption(
             1,
             parseEther('1'),
-            ZERO_ADDRESS,
             uniswap.router.address,
             parseEther('100000'),
             testToken.address === weth.address
@@ -1506,7 +1406,6 @@ describe('PremiaOption', () => {
             user1.address,
             1,
             parseEther('1'),
-            ZERO_ADDRESS,
             uniswap.router.address,
             parseEther('100000'),
             testToken.address === weth.address
@@ -1538,7 +1437,6 @@ describe('PremiaOption', () => {
           user1.address,
           1,
           parseEther('1'),
-          ZERO_ADDRESS,
           uniswap.router.address,
           parseEther('100000'),
           testToken.address === weth.address
