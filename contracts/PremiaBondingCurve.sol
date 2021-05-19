@@ -199,7 +199,7 @@ contract PremiaBondingCurve is Ownable {
     /// @return The amount of tokens purchasable with _ethAmount
     function getTokensPurchasable(uint256 _ethAmount) public view returns(uint256) {
         // x0 = soldAmount
-        uint256 x1 = _sqrt((_ethAmount * 2e18 * k) + (k * k * startPrice * startPrice) + (k * k * startPrice * soldAmount) + (soldAmount * soldAmount)) - (k * startPrice);
+        uint256 x1 = _sqrt((_ethAmount * 2e18 * k) + (k * k * startPrice * startPrice) + (k * 2 * startPrice * soldAmount) + (soldAmount * soldAmount)) - (k * startPrice);
         return x1 - soldAmount;
     }
 
