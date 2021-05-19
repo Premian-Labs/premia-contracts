@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import {
   PremiaFeeDiscount,
+  TestErc20,
   TestNewPremiaFeeDiscount__factory,
 } from '../contractsTyped';
 import { ethers } from 'hardhat';
@@ -37,7 +38,7 @@ describe('PremiaFeeDiscount', () => {
     await p.premiaFeeDiscount.setStakePeriod(6 * oneMonth, 15000);
     await p.premiaFeeDiscount.setStakePeriod(12 * oneMonth, 20000);
 
-    await p.premia.mint(user1.address, stakeAmount);
+    await (p.premia as TestErc20).mint(user1.address, stakeAmount);
     await p.premia
       .connect(user1)
       .increaseAllowance(p.xPremia.address, stakeAmount);

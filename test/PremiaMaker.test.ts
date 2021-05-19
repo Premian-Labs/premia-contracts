@@ -5,6 +5,7 @@ import { resetHardhat } from './utils/evm';
 import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
 import { formatEther, parseEther } from 'ethers/lib/utils';
 import { createUniswap, IUniswap } from './utils/uniswap';
+import { TestErc20 } from '../contractsTyped';
 
 let p: IPremiaContracts;
 let admin: SignerWithAddress;
@@ -31,7 +32,10 @@ describe('PremiaMaker', () => {
   });
 
   it('should make premia successfully', async () => {
-    await p.premia.mint(uniswap.premiaWeth.address, parseEther('10000'));
+    await (p.premia as TestErc20).mint(
+      uniswap.premiaWeth.address,
+      parseEther('10000'),
+    );
     await uniswap.weth.deposit({ value: parseEther('1') });
     await uniswap.weth.transfer(uniswap.premiaWeth.address, parseEther('1'));
     await uniswap.premiaWeth.mint(user1.address);
@@ -55,7 +59,10 @@ describe('PremiaMaker', () => {
   });
 
   it('should make premia successfully with WETH', async () => {
-    await p.premia.mint(uniswap.premiaWeth.address, parseEther('10000'));
+    await (p.premia as TestErc20).mint(
+      uniswap.premiaWeth.address,
+      parseEther('10000'),
+    );
     await uniswap.weth.deposit({ value: parseEther('1') });
     await uniswap.weth.transfer(uniswap.premiaWeth.address, parseEther('1'));
     await uniswap.premiaWeth.mint(user1.address);
@@ -80,7 +87,7 @@ describe('PremiaMaker', () => {
   });
 
   it('should send premia successfully to premiaStaking', async () => {
-    await p.premia.mint(p.premiaMaker.address, parseEther('10'));
+    await (p.premia as TestErc20).mint(p.premiaMaker.address, parseEther('10'));
     await p.premiaMaker.convert(uniswap.router.address, p.premia.address);
 
     expect(await p.premia.balanceOf(treasury.address)).to.eq(parseEther('2'));

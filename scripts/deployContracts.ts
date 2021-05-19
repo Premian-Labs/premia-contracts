@@ -152,7 +152,7 @@ export async function deployContracts(
 }
 
 export interface IPremiaContracts {
-  premia: PremiaErc20;
+  premia: PremiaErc20 | TestErc20;
   premiaPBC: PremiaPBC;
   xPremia: PremiaStaking;
   premiaBondingCurve?: PremiaBondingCurve;

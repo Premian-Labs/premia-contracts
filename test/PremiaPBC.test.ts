@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { PremiaPBC } from '../contractsTyped';
+import { PremiaPBC, TestErc20 } from '../contractsTyped';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { getEthBalance, mineBlockUntil, resetHardhat } from './utils/evm';
@@ -23,7 +23,7 @@ describe('PremiaPBC', () => {
 
     p = await deployContracts(admin, treasury.address, true);
 
-    await p.premia.mint(admin.address, pbcAmount);
+    await (p.premia as TestErc20).mint(admin.address, pbcAmount);
     await p.premia.increaseAllowance(p.premiaPBC.address, pbcAmount);
     await p.premiaPBC.addPremia(pbcAmount);
   });

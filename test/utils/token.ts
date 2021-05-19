@@ -14,9 +14,9 @@ export async function mintTestToken(
   amount: BigNumberish,
 ) {
   if (TEST_USE_WETH) {
-    await token.connect(user).deposit({ value: amount });
+    await (token as WETH9).connect(user).deposit({ value: amount });
   } else {
-    await token.connect(user).mint(user.address, amount);
+    await (token as TestErc20).connect(user).mint(user.address, amount);
   }
 }
 

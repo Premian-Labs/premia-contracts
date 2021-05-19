@@ -29,7 +29,7 @@ export default {
   solidity: {
     compilers: [
       {
-        version: '0.8.3',
+        version: '0.8.4',
         settings: {
           optimizer: {
             enabled: true,
@@ -77,7 +77,7 @@ export default {
       accounts: [ETH_MAIN_KEY],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
-      gasPrice: 30000000000,
+      gasPrice: 100000000000,
       timeout: 100000,
     },
     rinkeby: {

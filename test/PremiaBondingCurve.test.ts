@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import {
   PremiaBondingCurve,
+  TestErc20,
   TestPremiaBondingCurveUpgrade,
   TestPremiaBondingCurveUpgrade__factory,
 } from '../contractsTyped';
@@ -25,11 +26,13 @@ describe('PremiaBondingCurve', () => {
 
     p = await deployContracts(admin, treasury.address, true);
     premiaBondingCurve = p.premiaBondingCurve as PremiaBondingCurve;
-    testPremiaBondingCurveUpgrade = await new TestPremiaBondingCurveUpgrade__factory(
-      admin,
-    ).deploy();
+    testPremiaBondingCurveUpgrade =
+      await new TestPremiaBondingCurveUpgrade__factory(admin).deploy();
 
-    await p.premia.mint(premiaBondingCurve.address, parseEther('10000000'));
+    await (p.premia as TestErc20).mint(
+      premiaBondingCurve.address,
+      parseEther('10000000'),
+    );
   });
 
   it('should require 52k eth to purchase all premia from the bonding curve', async () => {

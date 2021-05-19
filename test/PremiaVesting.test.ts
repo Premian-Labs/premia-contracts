@@ -19,6 +19,7 @@ let user1: SignerWithAddress;
 let user2: SignerWithAddress;
 let premia: TestErc20;
 let premiaVesting: PremiaVesting;
+let premiaVestingCancellable: PremiaVestingCancellable;
 let premiaMultiVesting: PremiaMultiVesting;
 
 const oneMonth = 3600 * 24 * 30;
@@ -87,86 +88,85 @@ describe('PremiaVestingCancellable', () => {
     [admin, user1] = await ethers.getSigners();
 
     const premiaFactory = new TestErc20__factory(admin);
-    const premiaVestingFactory = new PremiaVestingCancellable__factory(admin);
 
     premia = await premiaFactory.deploy(18);
-    premiaVesting = await premiaVestingFactory.deploy(
-      premia.address,
-      admin.address,
-      admin.address,
-    );
+    premiaVestingCancellable = await new PremiaVestingCancellable__factory(
+      admin,
+    ).deploy(premia.address, admin.address, admin.address);
 
     const amount = parseEther('730');
-    await premia.mint(premiaVesting.address, amount);
-    await premiaVesting.transferOwnership(user1.address);
+    await premia.mint(premiaVestingCancellable.address, amount);
+    await premiaVestingCancellable.transferOwnership(user1.address);
   });
 
   it('should withdraw 100 premia, then 25 premia if withdrawing after 100 days and then after 25 days', async () => {
-    let lastWithdraw = await premiaVesting.lastWithdrawalTimestamp();
+    let lastWithdraw = await premiaVestingCancellable.lastWithdrawalTimestamp();
     // We remove 1s to timestamp, as it will increment when transaction is mined in hardhat network
     await setTimestamp(lastWithdraw.add(100 * 24 * 3600 - 1).toNumber());
-    await premiaVesting.connect(user1).withdraw();
+    await premiaVestingCancellable.connect(user1).withdraw();
 
     let balance = await premia.balanceOf(user1.address);
-    let balanceLeft = await premia.balanceOf(premiaVesting.address);
+    let balanceLeft = await premia.balanceOf(premiaVestingCancellable.address);
     expect(balance).to.eq(parseEther('100'));
     expect(balanceLeft).to.eq(parseEther('630'));
 
-    lastWithdraw = await premiaVesting.lastWithdrawalTimestamp();
+    lastWithdraw = await premiaVestingCancellable.lastWithdrawalTimestamp();
     await setTimestamp(lastWithdraw.add(25 * 24 * 3600 - 1).toNumber());
-    await premiaVesting.connect(user1).withdraw();
+    await premiaVestingCancellable.connect(user1).withdraw();
 
     balance = await premia.balanceOf(user1.address);
-    balanceLeft = await premia.balanceOf(premiaVesting.address);
+    balanceLeft = await premia.balanceOf(premiaVestingCancellable.address);
     expect(balance).to.eq(parseEther('125'));
     expect(balanceLeft).to.eq(parseEther('605'));
   });
 
   it('should withdraw all premia if withdrawing after endTimestamp', async () => {
-    const end = await premiaVesting.endTimestamp();
+    const end = await premiaVestingCancellable.endTimestamp();
     // We remove 1s to timestamp, as it will increment when transaction is mined in hardhat network
     await setTimestamp(end.add(1).toNumber());
-    await premiaVesting.connect(user1).withdraw();
+    await premiaVestingCancellable.connect(user1).withdraw();
 
     const balance = await premia.balanceOf(user1.address);
-    const balanceLeft = await premia.balanceOf(premiaVesting.address);
+    const balanceLeft = await premia.balanceOf(
+      premiaVestingCancellable.address,
+    );
     expect(balance).to.eq(parseEther('730'));
     expect(balanceLeft).to.eq(0);
   });
 
   it('should fail to withdraw if not called by owner', async () => {
-    await expect(premiaVesting.connect(admin).withdraw()).to.be.revertedWith(
-      'Ownable: caller is not the owner',
-    );
+    await expect(
+      premiaVestingCancellable.connect(admin).withdraw(),
+    ).to.be.revertedWith('Ownable: caller is not the owner');
   });
 
   it('should fail cancelling the vesting if not called from thirdParty', async () => {
-    await expect(premiaVesting.connect(user1).cancel()).to.be.revertedWith(
-      'Not thirdParty',
-    );
+    await expect(
+      premiaVestingCancellable.connect(user1).cancel(),
+    ).to.be.revertedWith('Not thirdParty');
   });
 
   it('should fail cancelling the vesting before min release period is reached', async () => {
-    let lastWithdraw = await premiaVesting.lastWithdrawalTimestamp();
+    let lastWithdraw = await premiaVestingCancellable.lastWithdrawalTimestamp();
     // We remove 1s to timestamp, as it will increment when transaction is mined in hardhat network
     const balanceTreasuryBefore = await premia.balanceOf(admin.address);
 
     await setTimestamp(lastWithdraw.add(100 * 24 * 3600 - 1).toNumber());
-    await expect(premiaVesting.connect(admin).cancel()).to.be.revertedWith(
-      'Min release period not ended',
-    );
+    await expect(
+      premiaVestingCancellable.connect(admin).cancel(),
+    ).to.be.revertedWith('Min release period not ended');
   });
 
   it('should successfully cancel the vesting', async () => {
-    let lastWithdraw = await premiaVesting.lastWithdrawalTimestamp();
+    let lastWithdraw = await premiaVestingCancellable.lastWithdrawalTimestamp();
     // We remove 1s to timestamp, as it will increment when transaction is mined in hardhat network
     const balanceTreasuryBefore = await premia.balanceOf(admin.address);
 
     await setTimestamp(lastWithdraw.add(181 * 24 * 3600 - 1).toNumber());
-    await premiaVesting.connect(admin).cancel();
+    await premiaVestingCancellable.connect(admin).cancel();
 
     let balance = await premia.balanceOf(user1.address);
-    let balanceLeft = await premia.balanceOf(premiaVesting.address);
+    let balanceLeft = await premia.balanceOf(premiaVestingCancellable.address);
     const balanceTreasuryAfter = await premia.balanceOf(admin.address);
     expect(balance).to.eq(parseEther('181'));
     expect(balanceLeft).to.eq(0);
