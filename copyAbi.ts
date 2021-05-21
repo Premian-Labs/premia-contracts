@@ -135,4 +135,27 @@ fs.copyFileSync(
   './abi/WETH9.json',
 );
 
+fs.copyFileSync(
+  './artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json',
+  './abi/ERC20.json',
+);
+
+// Diamond
+fs.copyFileSync(
+  './artifacts/contracts/core/Premia.sol/Premia.json',
+  './abi/Premia.json',
+);
+fs.copyFileSync(
+  './artifacts/contracts/core/ProxyManager.sol/ProxyManager.json',
+  './abi/ProxyManager.json',
+);
+fs.copyFileSync(
+  './artifacts/contracts/option/Option.sol/Option.json',
+  './abi/Option.json',
+);
+fs.copyFileSync(
+  './artifacts/contracts/market/Market.sol/Market.json',
+  './abi/Market.json',
+);
+
 rimraf.sync('./contractsTyped');

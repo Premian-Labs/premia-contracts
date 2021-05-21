@@ -10,8 +10,9 @@ library ProxyManagerStorage {
   struct Layout {
     address optionImplementation;
     address marketImplementation;
-    address optionProxy;
-    address marketProxy;
+    // denominator -> Option
+    mapping(address => address) options;
+    address market;
   }
 
   function layout () internal pure returns (Layout storage l) {
