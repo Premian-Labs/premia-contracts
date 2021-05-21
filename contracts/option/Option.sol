@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 import '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
-import '@solidstate/contracts/access/OwnableInternal.sol';
+import '@solidstate/contracts/access/Ownable.sol';
 import '@solidstate/contracts/utils/ReentrancyGuard.sol';
 
 import "../interface/IERC20Extended.sol";
@@ -18,7 +18,7 @@ import "../uniswapV2/interfaces/IUniswapV2Router02.sol";
 
 /// @author Premia
 /// @title An option contract
-contract Option is OwnableInternal, ERC1155Base, ReentrancyGuard {
+contract Option is Ownable, ERC1155Base, ReentrancyGuard {
     using OptionStorage for OptionStorage.Layout;
     using SafeERC20 for IERC20;
 
@@ -131,6 +131,18 @@ contract Option is OwnableInternal, ERC1155Base, ReentrancyGuard {
 
     function uri(uint256) public view returns (string memory) {
         return OptionStorage.layout().uri;
+    }
+
+    function nbWritten(address _user, uint256 _optionId) external view returns(uint256) {
+        return OptionStorage.layout().nbWritten[_user][_optionId];
+    }
+
+    function tokenStrikeIncrement(address _token) external view returns(uint256) {
+        return OptionStorage.layout().tokenStrikeIncrement[_token];
+    }
+
+    function optionData(uint256 _optionId) external view returns(OptionStorage.OptionData memory) {
+        return OptionStorage.layout().optionData[_optionId];
     }
 
     /// @notice Get the id of an option
