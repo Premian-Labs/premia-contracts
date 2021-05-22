@@ -1,4 +1,4 @@
-import { PremiaOption, TestErc20, WETH9 } from '../../contractsTyped';
+import { Option, TestErc20, WETH9 } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber, BigNumberish } from 'ethers';
 import { ONE_WEEK, TEST_TOKEN_DECIMALS } from './constants';
@@ -17,7 +17,7 @@ interface WriteOptionArgs {
 interface PremiaOptionTestUtilProps {
   testToken: WETH9 | TestErc20;
   dai: TestErc20;
-  premiaOption: PremiaOption;
+  premiaOption: Option;
   admin: SignerWithAddress;
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
@@ -29,7 +29,7 @@ interface PremiaOptionTestUtilProps {
 export class PremiaOptionTestUtil {
   testToken: WETH9 | TestErc20;
   dai: TestErc20;
-  premiaOption: PremiaOption;
+  premiaOption: Option;
   admin: SignerWithAddress;
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
@@ -79,15 +79,13 @@ export class PremiaOptionTestUtil {
   async writeOption(user: SignerWithAddress, args?: WriteOptionArgs) {
     const defaults = this.getOptionDefaults();
 
-    return this.premiaOption.connect(user).writeOption(
-      {
-        token: args?.address ?? defaults.token,
-        expiration: args?.expiration ?? defaults.expiration,
-        strikePrice: args?.strikePrice ?? defaults.strikePrice,
-        isCall: args?.isCall == undefined ? defaults.isCall : args.isCall,
-        amount: args?.amount == undefined ? defaults.amount : args?.amount,
-      },
-    );
+    return this.premiaOption.connect(user).writeOption({
+      token: args?.address ?? defaults.token,
+      expiration: args?.expiration ?? defaults.expiration,
+      strikePrice: args?.strikePrice ?? defaults.strikePrice,
+      isCall: args?.isCall == undefined ? defaults.isCall : args.isCall,
+      amount: args?.amount == undefined ? defaults.amount : args?.amount,
+    });
   }
 
   async mintAndWriteOption(
@@ -171,10 +169,7 @@ export class PremiaOptionTestUtil {
 
     return this.premiaOption
       .connect(this.user1)
-      .exerciseOption(
-        optionId ?? 1,
-        amountToExercise,
-      );
+      .exerciseOption(optionId ?? 1, amountToExercise);
   }
 
   async addTestTokenAndWriteOptionsAndExercise(

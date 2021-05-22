@@ -3,8 +3,8 @@ import { BigNumber } from 'ethers';
 import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
+  Option,
   PremiaOption,
-  PremiaOption__factory,
   TestErc20,
   TestErc20__factory,
   TestFlashLoan__factory,
@@ -35,7 +35,7 @@ let uniswap: IUniswap;
 let weth: WETH9;
 let wbtc: TestErc20;
 let dai: TestErc20;
-let premiaOption: PremiaOption;
+let premiaOption: Option;
 let premiaFeeDiscount: TestPremiaFeeDiscount;
 let admin: SignerWithAddress;
 let writer1: SignerWithAddress;
@@ -53,21 +53,13 @@ describe('PremiaOption', () => {
 
     [admin, writer1, writer2, user1, feeRecipient] = await ethers.getSigners();
     weth = await new WETH9__factory(admin).deploy();
-    dai = await new TestErc20__factory(admin).deploy(18);
     wbtc = await new TestErc20__factory(admin).deploy(TEST_TOKEN_DECIMALS);
 
     testToken = getToken(weth, wbtc);
 
     p = await deployContracts(admin, feeRecipient.address, true);
-
-    const premiaOptionFactory = new PremiaOption__factory(admin);
-
-    premiaOption = await premiaOptionFactory.deploy(
-      'dummyURI',
-      dai.address,
-      p.feeCalculator.address,
-      feeRecipient.address,
-    );
+    dai = p.dai as TestErc20;
+    premiaOption = p.option;
 
     premiaFeeDiscount = await new TestPremiaFeeDiscount__factory(
       admin,
@@ -240,9 +232,9 @@ describe('PremiaOption', () => {
       await premiaOption
         .connect(writer1)
         .setApprovalForAll(p.premiaOptionBatch.address, true);
-      await p.premiaOptionBatch.connect(writer1).batchWriteOption(
-        premiaOption.address,
-        [
+      await p.premiaOptionBatch
+        .connect(writer1)
+        .batchWriteOption(premiaOption.address, [
           {
             ...defaultOption,
             token: testToken.address,
@@ -255,8 +247,7 @@ describe('PremiaOption', () => {
             isCall: false,
             amount: contractAmount2,
           },
-        ],
-      );
+        ]);
 
       const balance1 = await premiaOption.balanceOf(writer1.address, 1);
       const balance2 = await premiaOption.balanceOf(writer1.address, 2);
@@ -274,12 +265,10 @@ describe('PremiaOption', () => {
         .approve(premiaOption.address, amountWithFee);
 
       await expect(
-        premiaOption
-          .connect(writer2)
-          .writeOptionFrom(
-            writer1.address,
-            { ...optionTestUtil.getOptionDefaults(), amount },
-          ),
+        premiaOption.connect(writer2).writeOptionFrom(writer1.address, {
+          ...optionTestUtil.getOptionDefaults(),
+          amount,
+        }),
       ).to.be.revertedWith('Not approved');
     });
 
@@ -295,12 +284,10 @@ describe('PremiaOption', () => {
       await premiaOption
         .connect(writer1)
         .setApprovalForAll(writer2.address, true);
-      await premiaOption
-        .connect(writer2)
-        .writeOptionFrom(
-          writer1.address,
-          { ...optionTestUtil.getOptionDefaults(), amount },
-        );
+      await premiaOption.connect(writer2).writeOptionFrom(writer1.address, {
+        ...optionTestUtil.getOptionDefaults(),
+        amount,
+      });
 
       expect(await premiaOption.balanceOf(writer1.address, 1)).to.eq(amount);
       expect(await premiaOption.nbWritten(writer1.address, 1)).to.eq(amount);
@@ -436,9 +423,7 @@ describe('PremiaOption', () => {
     it('should fail exercising call option if not owned', async () => {
       await optionTestUtil.addTestTokenAndWriteOptions(parseTestToken('2'));
       await expect(
-        premiaOption
-          .connect(user1)
-          .exerciseOption(1, parseTestToken('1')),
+        premiaOption.connect(user1).exerciseOption(1, parseTestToken('1')),
       ).to.revertedWith('ERC1155: burn amount exceeds balance');
     });
 
@@ -446,9 +431,7 @@ describe('PremiaOption', () => {
       await optionTestUtil.addTestTokenAndWriteOptions(parseTestToken('2'));
       await optionTestUtil.transferOptionToUser1(writer1);
       await expect(
-        premiaOption
-          .connect(user1)
-          .exerciseOption(1, parseTestToken('1')),
+        premiaOption.connect(user1).exerciseOption(1, parseTestToken('1')),
       ).to.revertedWith('ERC20: transfer amount exceeds balance');
     });
 
