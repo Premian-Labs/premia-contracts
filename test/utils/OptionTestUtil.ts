@@ -14,10 +14,10 @@ interface WriteOptionArgs {
   referrer?: string;
 }
 
-interface PremiaOptionTestUtilProps {
+interface OptionTestUtilProps {
   testToken: WETH9 | TestErc20;
   dai: TestErc20;
-  premiaOption: Option;
+  option: Option;
   admin: SignerWithAddress;
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
@@ -26,10 +26,10 @@ interface PremiaOptionTestUtilProps {
   tax: number;
 }
 
-export class PremiaOptionTestUtil {
+export class OptionTestUtil {
   testToken: WETH9 | TestErc20;
   dai: TestErc20;
-  premiaOption: Option;
+  option: Option;
   admin: SignerWithAddress;
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
@@ -37,10 +37,10 @@ export class PremiaOptionTestUtil {
   feeRecipient: SignerWithAddress;
   tax: number;
 
-  constructor(props: PremiaOptionTestUtilProps) {
+  constructor(props: OptionTestUtilProps) {
     this.testToken = props.testToken;
     this.dai = props.dai;
-    this.premiaOption = props.premiaOption;
+    this.option = props.option;
     this.admin = props.admin;
     this.writer1 = props.writer1;
     this.writer2 = props.writer2;
@@ -70,16 +70,13 @@ export class PremiaOptionTestUtil {
   }
 
   async addTestToken() {
-    return this.premiaOption.setTokens(
-      [this.testToken.address],
-      [parseEther('10')],
-    );
+    return this.option.setTokens([this.testToken.address], [parseEther('10')]);
   }
 
   async writeOption(user: SignerWithAddress, args?: WriteOptionArgs) {
     const defaults = this.getOptionDefaults();
 
-    return this.premiaOption.connect(user).writeOption({
+    return this.option.connect(user).writeOption({
       token: args?.address ?? defaults.token,
       expiration: args?.expiration ?? defaults.expiration,
       strikePrice: args?.strikePrice ?? defaults.strikePrice,
@@ -99,7 +96,7 @@ export class PremiaOptionTestUtil {
       await mintTestToken(user, this.testToken, amountWithFee);
       await this.testToken
         .connect(user)
-        .approve(this.premiaOption.address, amountWithFee);
+        .approve(this.option.address, amountWithFee);
     } else {
       const baseAmount = parseEther(
         (Number(formatUnits(amount, TEST_TOKEN_DECIMALS)) * 10).toString(),
@@ -108,7 +105,7 @@ export class PremiaOptionTestUtil {
       await this.dai.mint(user.address, amountWithFee);
       await this.dai
         .connect(user)
-        .increaseAllowance(this.premiaOption.address, amountWithFee);
+        .increaseAllowance(this.option.address, amountWithFee);
     }
 
     // await this.writeOption(user, { amount, isCall, referrer });
@@ -130,7 +127,7 @@ export class PremiaOptionTestUtil {
     amount?: BigNumber,
     optionId?: number,
   ) {
-    await this.premiaOption
+    await this.option
       .connect(from)
       .safeTransferFrom(
         from.address,
@@ -155,7 +152,7 @@ export class PremiaOptionTestUtil {
       await this.dai.mint(this.user1.address, amount);
       await this.dai
         .connect(this.user1)
-        .increaseAllowance(this.premiaOption.address, amount);
+        .increaseAllowance(this.option.address, amount);
     } else {
       const amount = amountToExercise.add(
         amountToExercise.mul(this.tax).div(1e4),
@@ -164,10 +161,10 @@ export class PremiaOptionTestUtil {
       await mintTestToken(this.user1, this.testToken, amount);
       await this.testToken
         .connect(this.user1)
-        .approve(this.premiaOption.address, amount);
+        .approve(this.option.address, amount);
     }
 
-    return this.premiaOption
+    return this.option
       .connect(this.user1)
       .exerciseOption(optionId ?? 1, amountToExercise);
   }

@@ -11,7 +11,7 @@ import {
   WETH9,
   WETH9__factory,
 } from '../contractsTyped';
-import { PremiaOptionTestUtil } from './utils/PremiaOptionTestUtil';
+import { OptionTestUtil } from './utils/OptionTestUtil';
 import { IOrderCreated } from '../types';
 import { PremiaMarketTestUtil } from './utils/PremiaMarketTestUtil';
 import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
@@ -34,7 +34,7 @@ let feeRecipient: SignerWithAddress;
 const tax = 100;
 let testToken: WETH9 | TestErc20;
 
-let optionTestUtil: PremiaOptionTestUtil;
+let optionTestUtil: OptionTestUtil;
 let marketTestUtil: PremiaMarketTestUtil;
 
 describe('PremiaMarket', () => {
@@ -65,10 +65,10 @@ describe('PremiaMarket', () => {
 
     testToken = getToken(weth, wbtc);
 
-    optionTestUtil = new PremiaOptionTestUtil({
+    optionTestUtil = new OptionTestUtil({
       testToken,
       dai,
-      premiaOption,
+      option: premiaOption,
       admin: admin,
       writer1: user1,
       writer2: user2,
@@ -152,7 +152,7 @@ describe('PremiaMarket', () => {
       );
       const r = await premiaMarket.queryFilter(filter, tx.blockHash);
 
-      const events = r.map((el) => (el.args as any) as IOrderCreated);
+      const events = r.map((el) => el.args as any as IOrderCreated);
       expect(events.length).to.eq(1);
       const orderAmount = await premiaMarket.amounts(events[0].hash);
       expect(orderAmount).to.eq(1);
@@ -191,7 +191,7 @@ describe('PremiaMarket', () => {
       );
       const r = await premiaMarket.queryFilter(filter, tx.blockHash);
 
-      const events = r.map((el) => (el.args as any) as IOrderCreated);
+      const events = r.map((el) => el.args as any as IOrderCreated);
 
       expect(events.length).to.eq(2);
 
@@ -241,11 +241,8 @@ describe('PremiaMarket', () => {
         .connect(user1)
         .setApprovalForAll(premiaMarket.address, true);
 
-      const {
-        strikePrice,
-        expiration,
-        token,
-      } = optionTestUtil.getOptionDefaults();
+      const { strikePrice, expiration, token } =
+        optionTestUtil.getOptionDefaults();
       await premiaMarket
         .connect(user1)
         .writeAndCreateOrder(
@@ -376,7 +373,7 @@ describe('PremiaMarket', () => {
 
       const r = await premiaMarket.queryFilter(filter, tx.blockHash);
       expect(r.length).to.eq(1);
-      const events = r.map((el) => (el.args as any) as IOrderCreated);
+      const events = r.map((el) => el.args as any as IOrderCreated);
       const order = events.find((order) =>
         marketTestUtil.isOrderSame(newOrder, order),
       );
@@ -515,7 +512,7 @@ describe('PremiaMarket', () => {
 
       const r = await premiaMarket.queryFilter(filter, tx.blockHash);
       expect(r.length).to.eq(1);
-      const events = r.map((el) => (el.args as any) as IOrderCreated);
+      const events = r.map((el) => el.args as any as IOrderCreated);
       const order = events.find((order) =>
         marketTestUtil.isOrderSame(newOrder, order),
       );
@@ -553,12 +550,7 @@ describe('PremiaMarket', () => {
       await expect(
         premiaMarket
           .connect(taker)
-          .createOrderAndTryToFill(
-            newOrder,
-            7,
-            [order.order],
-            false,
-          ),
+          .createOrderAndTryToFill(newOrder, 7, [order.order], false),
       ).to.be.revertedWith('Same order side');
     });
 
@@ -584,12 +576,7 @@ describe('PremiaMarket', () => {
       await expect(
         premiaMarket
           .connect(taker)
-          .createOrderAndTryToFill(
-            newOrder,
-            7,
-            [order.order],
-            false,
-          ),
+          .createOrderAndTryToFill(newOrder, 7, [order.order], false),
       ).to.be.revertedWith('Candidate order : Diff option contract');
     });
 
@@ -615,12 +602,7 @@ describe('PremiaMarket', () => {
       await expect(
         premiaMarket
           .connect(taker)
-          .createOrderAndTryToFill(
-            newOrder,
-            7,
-            [order.order],
-            false,
-          ),
+          .createOrderAndTryToFill(newOrder, 7, [order.order], false),
       ).to.be.revertedWith('Candidate order : Diff optionId');
     });
   });
@@ -773,9 +755,7 @@ describe('PremiaMarket', () => {
         });
 
         await expect(
-          premiaMarket
-            .connect(taker)
-            .fillOrder(order.order, 0, false),
+          premiaMarket.connect(taker).fillOrder(order.order, 0, false),
         ).to.be.revertedWith('Amount must be > 0');
       });
 
@@ -834,11 +814,7 @@ describe('PremiaMarket', () => {
 
         await premiaMarket
           .connect(taker)
-          .fillOrders(
-            [order1.order, order2.order],
-            parseTestToken('4'),
-            false,
-          );
+          .fillOrders([order1.order, order2.order], parseTestToken('4'), false);
 
         const optionBalanceMaker = await premiaOption.balanceOf(
           maker.address,
@@ -1209,9 +1185,7 @@ describe('PremiaMarket', () => {
           amount: parseTestToken('1'),
         });
 
-        await premiaMarket
-          .connect(taker)
-          .fillOrder(order.order, 1, true);
+        await premiaMarket.connect(taker).fillOrder(order.order, 1, true);
       });
     });
   });

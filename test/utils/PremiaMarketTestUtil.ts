@@ -7,7 +7,7 @@ import {
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber } from 'ethers';
 import { IOrder, IOrderCreated, IOrderCreateProps } from '../../types';
-import { PremiaOptionTestUtil } from './PremiaOptionTestUtil';
+import { OptionTestUtil } from './OptionTestUtil';
 import { formatUnits, parseEther } from 'ethers/lib/utils';
 import { mintTestToken, parseTestToken } from './token';
 import { TEST_TOKEN_DECIMALS } from './constants';
@@ -45,7 +45,7 @@ export class PremiaMarketTestUtil {
   writer2: SignerWithAddress;
   user1: SignerWithAddress;
   feeRecipient: SignerWithAddress;
-  optionTestUtil: PremiaOptionTestUtil;
+  optionTestUtil: OptionTestUtil;
 
   constructor(props: PremiaMarketTestUtilProps) {
     this.testToken = props.testToken;
@@ -58,10 +58,10 @@ export class PremiaMarketTestUtil {
     this.user1 = props.user1;
     this.feeRecipient = props.feeRecipient;
 
-    this.optionTestUtil = new PremiaOptionTestUtil({
+    this.optionTestUtil = new OptionTestUtil({
       testToken: this.testToken,
       dai: this.dai,
-      premiaOption: this.premiaOption,
+      option: this.premiaOption,
       admin: this.admin,
       writer1: this.writer1,
       writer2: this.writer2,
@@ -130,7 +130,7 @@ export class PremiaMarketTestUtil {
     );
     const r = await this.premiaMarket.queryFilter(filter, tx.blockHash);
 
-    const events = r.map((el) => (el.args as any) as IOrderCreated);
+    const events = r.map((el) => el.args as any as IOrderCreated);
     const order = events.find((order) => this.isOrderSame(newOrder, order));
 
     if (!order) {
