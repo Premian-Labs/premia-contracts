@@ -1,22 +1,17 @@
-import {
-  PremiaMarket,
-  PremiaOption,
-  TestErc20,
-  WETH9,
-} from '../../contractsTyped';
+import { Market, Option, TestErc20, WETH9 } from '../../contractsTyped';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber } from 'ethers';
 import { IOrder, IOrderCreated, IOrderCreateProps } from '../../types';
 import { OptionTestUtil } from './OptionTestUtil';
 import { formatUnits, parseEther } from 'ethers/lib/utils';
-import { mintTestToken, parseTestToken } from './token';
+import { parseTestToken } from './token';
 import { TEST_TOKEN_DECIMALS } from './constants';
 
-interface PremiaMarketTestUtilProps {
+interface MarketTestUtilProps {
   testToken: WETH9 | TestErc20;
   dai: TestErc20;
-  premiaOption: PremiaOption;
-  premiaMarket: PremiaMarket;
+  option: Option;
+  market: Market;
   admin: SignerWithAddress;
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
@@ -35,11 +30,11 @@ interface OrderOptions {
   pricePerUnit?: BigNumber;
 }
 
-export class PremiaMarketTestUtil {
+export class MarketTestUtil {
   testToken: WETH9 | TestErc20;
   dai: TestErc20;
-  premiaOption: PremiaOption;
-  premiaMarket: PremiaMarket;
+  option: Option;
+  market: Market;
   admin: SignerWithAddress;
   writer1: SignerWithAddress;
   writer2: SignerWithAddress;
@@ -47,11 +42,11 @@ export class PremiaMarketTestUtil {
   feeRecipient: SignerWithAddress;
   optionTestUtil: OptionTestUtil;
 
-  constructor(props: PremiaMarketTestUtilProps) {
+  constructor(props: MarketTestUtilProps) {
     this.testToken = props.testToken;
     this.dai = props.dai;
-    this.premiaOption = props.premiaOption;
-    this.premiaMarket = props.premiaMarket;
+    this.option = props.option;
+    this.market = props.market;
     this.admin = props.admin;
     this.writer1 = props.writer1;
     this.writer2 = props.writer2;
@@ -61,7 +56,7 @@ export class PremiaMarketTestUtil {
     this.optionTestUtil = new OptionTestUtil({
       testToken: this.testToken,
       dai: this.dai,
-      option: this.premiaOption,
+      option: this.option,
       admin: this.admin,
       writer1: this.writer1,
       writer2: this.writer2,
@@ -86,7 +81,7 @@ export class PremiaMarketTestUtil {
       maker: user.address,
       side: Number(!orderOptions?.isBuy),
       isDelayedWriting: !!orderOptions?.isDelayedWriting,
-      optionContract: orderOptions?.optionContract ?? this.premiaOption.address,
+      optionContract: orderOptions?.optionContract ?? this.option.address,
       pricePerUnit: orderOptions?.pricePerUnit ?? parseEther('1'),
       optionId: orderOptions?.optionId ?? 1,
       paymentToken: orderOptions?.paymentToken ?? this.dai.address,
@@ -102,7 +97,7 @@ export class PremiaMarketTestUtil {
     const newOrder = this.getDefaultOrder(user, orderOptions);
     const amount = orderOptions?.amount ?? parseTestToken('1');
 
-    const tx = await this.premiaMarket.connect(user).createOrder(
+    const tx = await this.market.connect(user).createOrder(
       {
         ...newOrder,
         expirationTime: 0,
@@ -114,7 +109,7 @@ export class PremiaMarketTestUtil {
 
     // console.log(tx.gasLimit.toString());
 
-    const filter = this.premiaMarket.filters.OrderCreated(
+    const filter = this.market.filters.OrderCreated(
       null,
       null,
       null,
@@ -128,7 +123,7 @@ export class PremiaMarketTestUtil {
       null,
       null,
     );
-    const r = await this.premiaMarket.queryFilter(filter, tx.blockHash);
+    const r = await this.market.queryFilter(filter, tx.blockHash);
 
     const events = r.map((el) => el.args as any as IOrderCreated);
     const order = events.find((order) => this.isOrderSame(newOrder, order));
@@ -168,11 +163,11 @@ export class PremiaMarketTestUtil {
       .mint(buyer.address, baseDaiAmount.add(baseDaiAmount.mul(150).div(1e4)));
     await this.dai
       .connect(buyer)
-      .approve(this.premiaMarket.address, parseEther('10000000000000'));
+      .approve(this.market.address, parseEther('10000000000000'));
 
-    await this.premiaOption
+    await this.option
       .connect(seller)
-      .setApprovalForAll(this.premiaMarket.address, true);
+      .setApprovalForAll(this.market.address, true);
 
     return await this.createOrder(maker, orderOptions);
   }
