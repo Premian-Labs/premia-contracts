@@ -68,6 +68,10 @@ contract Market is Ownable, ReentrancyGuard {
     // Admin //
     ///////////
 
+    function amounts(bytes32 _orderId) external view returns(uint256) {
+        return MarketStorage.layout().amounts[_orderId];
+    }
+
     /// @notice Change the protocol fee recipient
     /// @param _feeRecipient New protocol fee recipient address
     function setFeeRecipient(address _feeRecipient) external onlyOwner {
@@ -284,7 +288,7 @@ contract Market is Ownable, ReentrancyGuard {
     /// @param _amount Amount of options to buy / sell
     /// @return The hash of the order
     function createOrder(MarketStorage.Order memory _order, uint256 _amount) public returns(bytes32) {
-        bytes32 hash = getOrderHash(_order);
+        bytes32 hash;
 
         { // Scope to avoid stack too deep error
             MarketStorage.Layout storage l = MarketStorage.layout();
@@ -300,6 +304,8 @@ contract Market is Ownable, ReentrancyGuard {
             _order.expirationTime = data.expiration;
             _order.decimals = data.decimals;
             _order.salt = l.salt;
+
+            hash = getOrderHash(_order);
 
             l.salt += 1;
             l.amounts[hash] = _amount;
