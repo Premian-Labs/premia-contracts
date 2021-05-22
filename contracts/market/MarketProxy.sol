@@ -3,16 +3,17 @@
 pragma solidity ^0.8.0;
 
 import '@solidstate/contracts/access/OwnableStorage.sol';
-import '@solidstate/contracts/proxy/managed/ManagedProxyOwnable.sol';
 
 import '../core/IProxyManager.sol';
-import "./MarketStorage.sol";
+import './MarketStorage.sol';
+import '../manager/ManagedProxyWithManager.sol';
 
-contract MarketProxy is ManagedProxyOwnable {
+contract MarketProxy is ManagedProxyWithManager {
     using MarketStorage for MarketStorage.Layout;
 
-    constructor(address _feeCalculator, address _feeRecipient) ManagedProxy(IProxyManager.getMarketImplementation.selector) {
-        OwnableStorage.layout().owner = msg.sender;
+    constructor(address _owner, address _feeCalculator, address _feeRecipient) ManagedProxy(IProxyManager.getMarketImplementation.selector) {
+        OwnableStorage.layout().owner = _owner;
+        ManagerStorage.layout().manager = msg.sender;
 
         MarketStorage.Layout storage l = MarketStorage.layout();
         l.feeCalculator = _feeCalculator;

@@ -26,13 +26,13 @@ contract ProxyManager is IProxyManager, OwnableInternal {
   }
 
   function deployMarket(address _feeCalculator, address _feeRecipient) external onlyOwner returns(address) {
-    address market = address(new MarketProxy(_feeCalculator, _feeRecipient));
+    address market = address(new MarketProxy(msg.sender, _feeCalculator, _feeRecipient));
     ProxyManagerStorage.layout().market = market;
     return market;
   }
 
   function deployOption(string memory _uri, address _denominator, address _feeCalculator, address _feeRecipient) external onlyOwner returns(address) {
-    address option = address(new OptionProxy(_uri, _denominator, _feeCalculator, _feeRecipient));
+    address option = address(new OptionProxy(msg.sender, _uri, _denominator, _feeCalculator, _feeRecipient));
     ProxyManagerStorage.layout().options[_denominator] = option;
     return option;
   }
