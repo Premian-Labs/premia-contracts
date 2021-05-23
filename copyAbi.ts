@@ -36,14 +36,6 @@ fs.copyFileSync(
   './abi/PremiaMaker.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaMarket.sol/PremiaMarket.json',
-  './abi/PremiaMarket.json',
-);
-fs.copyFileSync(
-  './artifacts/contracts/PremiaOption.sol/PremiaOption.json',
-  './abi/PremiaOption.json',
-);
-fs.copyFileSync(
   './artifacts/contracts/PremiaOptionBatch.sol/PremiaOptionBatch.json',
   './abi/PremiaOptionBatch.json',
 );
