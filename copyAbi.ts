@@ -12,10 +12,6 @@ fs.copyFileSync(
   './abi/FeeCalculator.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaBondingCurve.sol/PremiaBondingCurve.json',
-  './abi/PremiaBondingCurve.json',
-);
-fs.copyFileSync(
   './artifacts/contracts/PremiaDevFund.sol/PremiaDevFund.json',
   './abi/PremiaDevFund.json',
 );
@@ -26,10 +22,6 @@ fs.copyFileSync(
 fs.copyFileSync(
   './artifacts/contracts/PremiaFeeDiscount.sol/PremiaFeeDiscount.json',
   './abi/PremiaFeeDiscount.json',
-);
-fs.copyFileSync(
-  './artifacts/contracts/PremiaPBC.sol/PremiaPBC.json',
-  './abi/PremiaPBC.json',
 );
 fs.copyFileSync(
   './artifacts/contracts/PremiaMaker.sol/PremiaMaker.json',
@@ -91,10 +83,6 @@ fs.copyFileSync(
 fs.copyFileSync(
   './artifacts/contracts/test/TestErc20.sol/TestErc20.json',
   './abi/TestErc20.json',
-);
-fs.copyFileSync(
-  './artifacts/contracts/test/TestPremiaBondingCurveUpgrade.sol/TestPremiaBondingCurveUpgrade.json',
-  './abi/TestPremiaBondingCurveUpgrade.json',
 );
 fs.copyFileSync(
   './artifacts/contracts/test/TestPremiaFeeDiscount.sol/TestPremiaFeeDiscount.json',
