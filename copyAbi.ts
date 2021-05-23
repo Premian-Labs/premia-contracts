@@ -36,11 +36,11 @@ fs.copyFileSync(
   './abi/PremiaStaking.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaVesting.sol/PremiaVesting.json',
+  './artifacts/contracts/vesting/PremiaVesting.sol/PremiaVesting.json',
   './abi/PremiaVesting.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaVestingCancellable.sol/PremiaVestingCancellable.json',
+  './artifacts/contracts/vesting/PremiaVestingCancellable.sol/PremiaVestingCancellable.json',
   './abi/PremiaVestingCancellable.json',
 );
 fs.copyFileSync(
@@ -48,7 +48,7 @@ fs.copyFileSync(
   './abi/PremiaVoteProxy.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaMultiVesting.sol/PremiaMultiVesting.json',
+  './artifacts/contracts/vesting/PremiaMultiVesting.sol/PremiaMultiVesting.json',
   './abi/PremiaMultiVesting.json',
 );
 

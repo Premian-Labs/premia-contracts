@@ -176,16 +176,9 @@ describe('Market', () => {
       );
       const r = await market.queryFilter(filter, tx.blockHash);
 
-      console.log(r);
-
       const events = r.map((el) => el.args as any as IOrderCreated);
 
       expect(events.length).to.eq(2);
-
-      console.log(events.length);
-      console.log(events[0]);
-      console.log(events[1]);
-      console.log(events);
 
       const order1Amount = await market.amounts(events[0].hash);
       const order2Amount = await market.amounts(events[1].hash);

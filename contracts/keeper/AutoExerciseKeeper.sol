@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import './uniswapV2/interfaces/IUniswapV2Router02.sol';
-import './interface/IKeeperCompatible.sol';
-import './interface/IPriceOracleGetter.sol';
-import './interface/IPremiaOption.sol';
+import '../uniswapV2/interfaces/IUniswapV2Router02.sol';
+import '../interface/IKeeperCompatible.sol';
+import '../interface/IPriceOracleGetter.sol';
+import '../interface/IPremiaOption.sol';
 
 contract AutoExerciseKeeper is IKeeperCompatible {
     struct AutoExerciseOrder {
