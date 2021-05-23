@@ -5,7 +5,7 @@ import {
   PremiaMarket__factory,
   PremiaOption__factory,
   PremiaVesting__factory,
-} from '../../contractsTyped';
+} from '../../typechain';
 import { BigNumberish } from 'ethers';
 import { deployContracts } from '../deployContracts';
 import { parseEther } from 'ethers/lib/utils';

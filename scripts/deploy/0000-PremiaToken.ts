@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { PremiaErc20__factory } from '../../contractsTyped';
+import { PremiaErc20__factory } from '../../typechain';
 
 async function main() {
   const [deployer] = await ethers.getSigners();

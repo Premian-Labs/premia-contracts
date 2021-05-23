@@ -3,7 +3,7 @@ import {
   PremiaFeeDiscount,
   TestErc20,
   TestNewPremiaFeeDiscount__factory,
-} from '../contractsTyped';
+} from '../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { resetHardhat, setTimestamp } from './utils/evm';

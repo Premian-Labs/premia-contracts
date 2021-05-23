@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { PremiaPBC, TestErc20 } from '../contractsTyped';
+import { PremiaPBC, TestErc20 } from '../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { getEthBalance, mineBlockUntil, resetHardhat } from './utils/evm';

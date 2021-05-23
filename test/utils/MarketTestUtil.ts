@@ -1,4 +1,4 @@
-import { Market, Option, TestErc20, WETH9 } from '../../contractsTyped';
+import { Market, Option, TestErc20, WETH9 } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber } from 'ethers';
 import { IOrder, IOrderCreated, IOrderCreateProps } from '../../types';

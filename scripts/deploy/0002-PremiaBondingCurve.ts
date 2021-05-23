@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { PremiaBondingCurve__factory } from '../../contractsTyped';
+import { PremiaBondingCurve__factory } from '../../typechain';
 import { BigNumberish } from 'ethers';
 
 // This will need to be deployed after end of PBC, in order to know start price of the bonding curve which will be the final price of the PBC

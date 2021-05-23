@@ -4,7 +4,7 @@ import {
   TestErc20,
   TestPremiaBondingCurveUpgrade,
   TestPremiaBondingCurveUpgrade__factory,
-} from '../contractsTyped';
+} from '../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { getEthBalance, resetHardhat, setTimestamp } from './utils/evm';

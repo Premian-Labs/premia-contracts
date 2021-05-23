@@ -11,7 +11,7 @@ import {
   TestPremiaFeeDiscount__factory,
   WETH9,
   WETH9__factory,
-} from '../contractsTyped';
+} from '../typechain';
 import { OptionTestUtil } from './utils/OptionTestUtil';
 import {
   ONE_WEEK,

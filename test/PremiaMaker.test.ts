@@ -5,7 +5,7 @@ import { resetHardhat } from './utils/evm';
 import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
 import { formatEther, parseEther } from 'ethers/lib/utils';
 import { createUniswap, IUniswap } from './utils/uniswap';
-import { TestErc20 } from '../contractsTyped';
+import { TestErc20 } from '../typechain';
 
 let p: IPremiaContracts;
 let admin: SignerWithAddress;

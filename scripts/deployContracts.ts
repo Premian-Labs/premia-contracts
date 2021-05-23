@@ -26,7 +26,7 @@ import {
   ProxyManager__factory,
   TestErc20,
   TestErc20__factory,
-} from '../contractsTyped';
+} from '../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { ZERO_ADDRESS } from '../test/utils/constants';
 

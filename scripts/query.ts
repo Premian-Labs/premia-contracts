@@ -1,7 +1,4 @@
-import {
-  PremiaMarket__factory,
-  PremiaOption__factory,
-} from '../contractsTyped';
+import { PremiaMarket__factory, PremiaOption__factory } from '../typechain';
 import { ethers } from 'hardhat';
 
 async function main() {

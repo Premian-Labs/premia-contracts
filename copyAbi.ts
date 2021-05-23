@@ -150,4 +150,4 @@ fs.copyFileSync(
   './abi/Market.json',
 );
 
-rimraf.sync('./contractsTyped');
+rimraf.sync('./typechain');

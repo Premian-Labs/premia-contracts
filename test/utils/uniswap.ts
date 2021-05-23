@@ -10,7 +10,7 @@ import {
   UniswapV2Router02__factory,
   WETH9,
   WETH9__factory,
-} from '../../contractsTyped';
+} from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 export interface IUniswap {

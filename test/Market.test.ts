@@ -8,7 +8,7 @@ import {
   TestErc20__factory,
   WETH9,
   WETH9__factory,
-} from '../contractsTyped';
+} from '../typechain';
 import { OptionTestUtil } from './utils/OptionTestUtil';
 import { IOrderCreated } from '../types';
 import { MarketTestUtil } from './utils/MarketTestUtil';

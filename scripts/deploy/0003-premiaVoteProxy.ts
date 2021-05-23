@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { PremiaVoteProxy__factory } from '../../contractsTyped';
+import { PremiaVoteProxy__factory } from '../../typechain';
 
 // This will need to be deployed after end of PBC, in order to know start price of the bonding curve which will be the final price of the PBC
 async function main() {

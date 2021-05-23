@@ -11,7 +11,7 @@
     "compile:force": "hardhat compile --force && yarn run copyAbi && yarn run typechain",
     "copyAbi": "ts-node \"./copyAbi.ts\"",
     "postinstall": "yarn run compile",
-    "typechain": "typechain --target ethers-v5 --out-dir contractsTyped \"./abi/*.json\"",
+    "typechain": "typechain --target ethers-v5 --out-dir typechain \"./abi/*.json\"",
     "test": "hardhat test",
     "contract-size": "yarn run hardhat size-contracts",
     "deploy:rinkeby": "hardhat run scripts/deploy/0001-PremiaV1.ts --network rinkeby"

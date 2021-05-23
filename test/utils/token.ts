@@ -1,4 +1,4 @@
-import { TestErc20, WETH9 } from '../../contractsTyped';
+import { TestErc20, WETH9 } from '../../typechain';
 import { TEST_TOKEN_DECIMALS, TEST_USE_WETH } from './constants';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumberish } from 'ethers';
