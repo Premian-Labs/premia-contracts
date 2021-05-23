@@ -22,10 +22,8 @@ library OptionStorage {
 
         //////////////////////////////////////////////////
 
-        // Whitelisted tokens for which options can be written (Each token must also have a non 0 strike price increment to be enabled)
-        address[] tokens;
-        // Strike price increment mapping of each token
-        mapping (address => uint256) tokenStrikeIncrement;
+        // Whitelisted tokens for which options can be written
+        mapping (address => bool) whitelistedTokens;
 
         //////////////////////////////////////////////////
 

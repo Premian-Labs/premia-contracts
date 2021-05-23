@@ -80,10 +80,7 @@ describe('Option', () => {
 
   it('should add testToken for trading', async () => {
     await optionTestUtil.addTestToken();
-    const strikePriceIncrement = await option.tokenStrikeIncrement(
-      testToken.address,
-    );
-    expect(strikePriceIncrement.eq(parseEther('10'))).to.true;
+    expect(await option.whitelistedTokens(testToken.address)).to.be.true;
   });
 
   it('should create a new optionId', async () => {
@@ -112,7 +109,7 @@ describe('Option', () => {
 
     it('should disable testToken for writing', async () => {
       await optionTestUtil.addTestToken();
-      await option.setTokens([testToken.address], [0]);
+      await option.setTokensWhitelisted([testToken.address], false);
       await expect(optionTestUtil.writeOption(writer1)).to.be.revertedWith(
         'Token not supported',
       );
@@ -130,15 +127,6 @@ describe('Option', () => {
       await expect(
         optionTestUtil.writeOption(writer1, { strikePrice: 0 }),
       ).to.be.revertedWith('Strike <= 0');
-    });
-
-    it('should revert if strike price increment is wrong', async () => {
-      await optionTestUtil.addTestToken();
-      await expect(
-        optionTestUtil.writeOption(writer1, {
-          strikePrice: parseEther('1'),
-        }),
-      ).to.be.revertedWith('Wrong strike incr');
     });
 
     it('should revert if timestamp already passed', async () => {

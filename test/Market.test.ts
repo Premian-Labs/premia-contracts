@@ -89,7 +89,7 @@ describe('Market', () => {
       .increaseAllowance(market.address, parseEther('10000'));
     await dai.connect(admin).approve(market.address, parseEther('10000'));
 
-    await option.setTokens([testToken.address], [parseTestToken('10')]);
+    await option.setTokensWhitelisted([testToken.address], true);
 
     await market.addWhitelistedPaymentTokens([dai.address]);
   });

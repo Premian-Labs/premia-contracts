@@ -32,7 +32,7 @@ contract Option is Ownable, ERC1155Base, ReentrancyGuard {
     // Events //
     ////////////
 
-    event SetToken(address indexed token, uint256 strikePriceIncrement);
+    event TokenWhitelisted(address indexed token, bool whitelisted);
     event OptionIdCreated(uint256 indexed optionId, address indexed token);
     event OptionWritten(address indexed owner, uint256 indexed optionId, address indexed token, uint256 amount);
     event OptionCancelled(address indexed owner, uint256 indexed optionId, address indexed token, uint256 amount);
@@ -90,24 +90,15 @@ contract Option is Ownable, ERC1155Base, ReentrancyGuard {
         OptionStorage.layout().feeCalculator = _feeCalculator;
     }
 
-    /// @notice Set settings for tokens to support writing of options paired to denominator
-    /// @dev A value of 0 means this token is disabled and options cannot be written for it
+    /// @notice Set whitelisting for token
     /// @param _tokens The list of tokens for which to set strike price increment
-    /// @param _strikePriceIncrement The new strike price increment to set for each token
-    function setTokens(address[] memory _tokens, uint256[] memory _strikePriceIncrement) external onlyOwner {
+    /// @param _whitelist Whether each token is to be added to the whitelist or removed
+    function setTokensWhitelisted(address[] memory _tokens, bool _whitelist) external onlyOwner {
         OptionStorage.Layout storage l = OptionStorage.layout();
 
-        require(_tokens.length == _strikePriceIncrement.length);
-
         for (uint256 i=0; i < _tokens.length; i++) {
-            if (!_isInArray(_tokens[i], l.tokens)) {
-                l.tokens.push(_tokens[i]);
-            }
-
-            require(_tokens[i] != address(l.denominator), "Cant add denominator");
-            l.tokenStrikeIncrement[_tokens[i]] = _strikePriceIncrement[i];
-
-            emit SetToken(_tokens[i], _strikePriceIncrement[i]);
+            l.whitelistedTokens[_tokens[i]] = _whitelist;
+            emit TokenWhitelisted(_tokens[i], _whitelist);
         }
     }
 
@@ -133,12 +124,12 @@ contract Option is Ownable, ERC1155Base, ReentrancyGuard {
         return OptionStorage.layout().uri;
     }
 
-    function nbWritten(address _user, uint256 _optionId) external view returns(uint256) {
-        return OptionStorage.layout().nbWritten[_user][_optionId];
+    function whitelistedTokens(address _token) external view returns(bool) {
+        return OptionStorage.layout().whitelistedTokens[_token];
     }
 
-    function tokenStrikeIncrement(address _token) external view returns(uint256) {
-        return OptionStorage.layout().tokenStrikeIncrement[_token];
+    function nbWritten(address _user, uint256 _optionId) external view returns(uint256) {
+        return OptionStorage.layout().nbWritten[_user][_optionId];
     }
 
     function optionData(uint256 _optionId) external view returns(OptionStorage.OptionData memory) {
@@ -153,12 +144,6 @@ contract Option is Ownable, ERC1155Base, ReentrancyGuard {
     /// @return The option id
     function getOptionId(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public view returns(uint256) {
         return OptionStorage.layout().options[_token][_expiration][_strikePrice][_isCall];
-    }
-
-    /// @notice Get the amount of whitelisted tokens
-    /// @return The amount of whitelisted tokens
-    function tokensLength() external view returns(uint256) {
-        return OptionStorage.layout().tokens.length;
     }
 
     /// @notice Get a quote to write an option
@@ -814,9 +799,8 @@ contract Option is Ownable, ERC1155Base, ReentrancyGuard {
     function _preCheckOptionIdCreate(address _token, uint256 _strikePrice, uint256 _expiration) internal view {
         OptionStorage.Layout storage l = OptionStorage.layout();
 
-        require(l.tokenStrikeIncrement[_token] != 0, "Token not supported");
+        require(l.whitelistedTokens[_token] == true, "Token not supported");
         require(_strikePrice > 0, "Strike <= 0");
-        require(_strikePrice % l.tokenStrikeIncrement[_token] == 0, "Wrong strike incr");
         require(_expiration > block.timestamp, "Exp passed");
         require(_expiration - block.timestamp <= l.maxExpiration, "Exp > 1 yr");
         require(_expiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");

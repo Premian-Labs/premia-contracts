@@ -70,7 +70,7 @@ export class OptionTestUtil {
   }
 
   async addTestToken() {
-    return this.option.setTokens([this.testToken.address], [parseEther('10')]);
+    return this.option.setTokensWhitelisted([this.testToken.address], true);
   }
 
   async writeOption(user: SignerWithAddress, args?: WriteOptionArgs) {
