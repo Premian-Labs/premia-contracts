@@ -9,8 +9,6 @@ import {
   Option__factory,
   Premia,
   Premia__factory,
-  PremiaBondingCurve,
-  PremiaBondingCurve__factory,
   PremiaErc20,
   PremiaErc20__factory,
   PremiaFeeDiscount,
@@ -19,8 +17,6 @@ import {
   PremiaMaker__factory,
   PremiaOptionBatch,
   PremiaOptionBatch__factory,
-  PremiaPBC,
-  PremiaPBC__factory,
   PremiaStaking,
   PremiaStaking__factory,
   ProxyManager__factory,
@@ -40,8 +36,6 @@ export async function deployContracts(
 ): Promise<IPremiaContracts> {
   let premia: PremiaErc20 | TestErc20;
   let dai: ERC20 | TestErc20;
-  let pbcBlockStart: number;
-  let pbcBlockEnd: number;
 
   if (isTest) {
     if (!premiaAddress) {
@@ -55,9 +49,6 @@ export async function deployContracts(
     } else {
       dai = ERC20__factory.connect(daiAddress, deployer);
     }
-
-    pbcBlockStart = 0;
-    pbcBlockEnd = 100;
   } else {
     if (!premiaAddress) {
       throw new Error('Premia address not set');
@@ -68,13 +59,6 @@ export async function deployContracts(
     // premia = await new PremiaErc20__factory(deployer).deploy();
     premia = PremiaErc20__factory.connect(premiaAddress, deployer);
     dai = ERC20__factory.connect(daiAddress, deployer);
-
-    pbcBlockStart = 11806500;
-    pbcBlockEnd = 11858500;
-
-    if (!pbcBlockStart || !pbcBlockEnd) {
-      throw new Error('Settings not set');
-    }
   }
 
   if (log) {
@@ -89,39 +73,6 @@ export async function deployContracts(
   if (log) {
     console.log(
       `PremiaStaking deployed at ${xPremia.address} (Args : ${premia.address})`,
-    );
-  }
-
-  let premiaBondingCurve: PremiaBondingCurve | undefined;
-  if (isTest) {
-    // We only deploy premiaBondingCurve now on testnet.
-    // For mainnet, we will need to know end price of the PBC, to use it as start price of the bonding curve
-
-    const startPrice = '200000000000000';
-    const k = '1000000000';
-
-    premiaBondingCurve = await new PremiaBondingCurve__factory(deployer).deploy(
-      premia.address,
-      treasury,
-      startPrice,
-      k,
-    );
-    if (log) {
-      console.log(
-        `PremiaBondingCurve deployed at ${premiaBondingCurve.address} (Args : ${premia.address} / ${treasury} / ${startPrice} / ${k})`,
-      );
-    }
-  }
-
-  const premiaPBC = await new PremiaPBC__factory(deployer).deploy(
-    premia.address,
-    pbcBlockStart,
-    pbcBlockEnd,
-    treasury,
-  );
-  if (log) {
-    console.log(
-      `PremiaPBC deployed at ${premiaPBC.address} (Args : ${premia.address} / ${pbcBlockStart} / ${pbcBlockEnd} / ${treasury})`,
     );
   }
 
@@ -224,9 +175,7 @@ export async function deployContracts(
     market,
     premia,
     dai,
-    premiaBondingCurve,
     premiaMaker,
-    premiaPBC,
     xPremia,
     premiaFeeDiscount,
     feeCalculator,
@@ -240,9 +189,7 @@ export interface IPremiaContracts {
   market: Market;
   premia: PremiaErc20 | TestErc20;
   dai: ERC20 | TestErc20;
-  premiaPBC: PremiaPBC;
   xPremia: PremiaStaking;
-  premiaBondingCurve?: PremiaBondingCurve;
   premiaFeeDiscount: PremiaFeeDiscount;
   premiaMaker: PremiaMaker;
   feeCalculator: FeeCalculator;
