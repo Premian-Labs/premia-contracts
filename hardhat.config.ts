@@ -1,15 +1,16 @@
-require('dotenv').config();
+import Dotenv from 'dotenv';
+Dotenv.config();
 
-require('@nomiclabs/hardhat-waffle');
-require('hardhat-docgen');
-require('hardhat-gas-reporter');
-require('hardhat-spdx-license-identifier');
-require('solidity-coverage');
+import '@nomiclabs/hardhat-waffle';
+import 'hardhat-docgen';
+import 'hardhat-gas-reporter';
+import 'hardhat-spdx-license-identifier';
+import 'solidity-coverage';
 
-require('./tasks/deploy.js');
-require('./tasks/accounts.js');
+import './tasks/deploy.js';
+import './tasks/accounts.js';
 
-module.exports = {
+export default {
   solidity: {
     version: '0.8.4',
     settings: {

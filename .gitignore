@@ -8,3 +8,6 @@ coverage.json
 
 docgen/
 .env
+
+abi
+typechain
