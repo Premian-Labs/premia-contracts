@@ -68,10 +68,6 @@ contract Market is Ownable, ReentrancyGuard {
     // Admin //
     ///////////
 
-    function amounts(bytes32 _orderId) external view returns(uint256) {
-        return MarketStorage.layout().amounts[_orderId];
-    }
-
     /// @notice Change the protocol fee recipient
     /// @param _feeRecipient New protocol fee recipient address
     function setFeeRecipient(address _feeRecipient) external onlyOwner {
@@ -139,6 +135,10 @@ contract Market is Ownable, ReentrancyGuard {
     //////////
     // View //
     //////////
+
+    function amounts(bytes32 _orderId) external view returns(uint256) {
+        return MarketStorage.layout().amounts[_orderId];
+    }
 
     /// @notice Get the amounts left to buy/sell for an order
     /// @param _orderIds A list of order hashes
