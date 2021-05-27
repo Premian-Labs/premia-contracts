@@ -290,6 +290,11 @@ contract Market is Ownable, ReentrancyGuard {
     function createOrder(MarketStorage.Order memory _order, uint256 _amount) public returns(bytes32) {
         bytes32 hash;
 
+        // If this is a buy order, isDelayedWriting is always false
+        if (_order.side == MarketStorage.SaleSide.Buy) {
+            _order.isDelayedWriting = false;
+        }
+
         { // Scope to avoid stack too deep error
             MarketStorage.Layout storage l = MarketStorage.layout();
 
@@ -312,11 +317,6 @@ contract Market is Ownable, ReentrancyGuard {
 
             require(_order.decimals <= 18, "Too many decimals");
             require(_order.isDelayedWriting == false || l.isDelayedWritingEnabled, "Delayed writing disabled");
-        }
-
-        // If this is a buy order, isDelayedWriting is always false
-        if (_order.side == MarketStorage.SaleSide.Buy) {
-            _order.isDelayedWriting = false;
         }
 
         emit OrderCreated(
