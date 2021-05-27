@@ -9,5 +9,5 @@ coverage.json
 docgen/
 .env
 
-abi
+dist
 typechain

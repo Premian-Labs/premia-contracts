@@ -2,6 +2,7 @@ import Dotenv from 'dotenv';
 Dotenv.config();
 
 import '@nomiclabs/hardhat-waffle';
+import '@typechain/hardhat';
 import 'hardhat-docgen';
 import 'hardhat-gas-reporter';
 import 'hardhat-spdx-license-identifier';
@@ -23,7 +24,7 @@ export default {
 
   networks: {
     kovan: {
-      url: `${ process.env.KOVAN_URL }`,
+      url: `${process.env.KOVAN_URL}`,
       accounts: {
         mnemonic: process.env.MNEMONIC,
       },
