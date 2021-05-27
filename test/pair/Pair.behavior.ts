@@ -1,6 +1,15 @@
-const { expect } = require('chai');
+import { expect } from 'chai';
+import { ethers } from 'hardhat';
+import { Pair } from '../../typechain';
 
-const describeBehaviorOfPair = function ({ deploy }, skips) {
+interface PairBehaviorArgs {
+  deploy: () => Promise<Pair>;
+}
+
+export function describeBehaviorOfPair(
+  { deploy }: PairBehaviorArgs,
+  skips?: string[],
+) {
   describe('::Pool', function () {
     let instance;
 
@@ -20,7 +29,4 @@ const describeBehaviorOfPair = function ({ deploy }, skips) {
       it('todo');
     });
   });
-};
-
-// eslint-disable-next-line mocha/no-exports
-module.exports = describeBehaviorOfPair;
+}
