@@ -58,7 +58,6 @@ describe('ABDKMath64x64Token', function () {
             new RegExp(`^\\d+(.\\d{,${decimals}})?`),
           );
 
-          console.log(truncatedArray);
           const truncated = truncatedArray?.[0] ?? '0';
 
           const bn = ethers.utils.parseUnits(truncated, decimals);
