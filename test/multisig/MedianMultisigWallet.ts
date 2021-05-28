@@ -38,7 +38,7 @@ describe('MedianMultisigWallet', function () {
   let instance: MedianMultisigWallet;
 
   before(async function () {
-    [nonSigner, ...signers] = (await ethers.getSigners()).slice(0, 4);
+    [owner, nonSigner, ...signers] = (await ethers.getSigners()).slice(0, 4);
   });
 
   beforeEach(async function () {
