@@ -3,19 +3,20 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 const { deployMockContract } = require('@ethereum-waffle/mock-contract');
 import { ethers } from 'hardhat';
 import {
+  ERC20Mock__factory,
   ManagedProxyOwnable,
   ManagedProxyOwnable__factory,
   Median,
+  Median__factory,
   Pair__factory,
-  Pool,
-  Pool__factory,
+  PoolMock,
+  PoolMock__factory,
+  ProxyManager__factory,
 } from '../../typechain';
 
-const describeBehaviorOfManagedProxyOwnable = require('@solidstate/spec/proxy/managed/ManagedProxyOwnable.behavior.js');
-
-const describeBehaviorOfPool = require('.|/Pool.behavior.ts');
-
-const factory = require('../../lib/factory.js');
+import { describeBehaviorOfManagedProxyOwnable } from '@solidstate/spec';
+import { describeBehaviorOfPool } from './Pool.behavior';
+import { BigNumber } from 'ethers';
 
 const SYMBOL_BASE = 'SYMBOL_BASE';
 const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
@@ -25,15 +26,15 @@ describe('PoolProxy', function () {
 
   let median: Median;
   let instanceProxy: ManagedProxyOwnable;
-  let instancePool: Pool;
+  let instancePool: PoolMock;
 
   before(async function () {
     [owner] = await ethers.getSigners();
 
-    const pair = await factory.Pair({ deployer: owner });
-    const pool = await factory.Pool({ deployer: owner });
+    const pair = await new Pair__factory(owner).deploy();
+    const pool = await new PoolMock__factory(owner).deploy();
 
-    const facetCuts = [await factory.ProxyManager({ deployer: owner })].map(
+    const facetCuts = [await new ProxyManager__factory(owner).deploy()].map(
       function (f) {
         return {
           target: f.address,
@@ -45,18 +46,18 @@ describe('PoolProxy', function () {
       },
     );
 
-    median = await factory.Median({
-      deployer: owner,
-      facetCuts,
-      pairImplementation: pair.address,
-      poolImplementation: pool.address,
-    });
+    median = await new Median__factory(owner).deploy(
+      pair.address,
+      pool.address,
+    );
+
+    await median.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
   });
 
   beforeEach(async function () {
-    const manager = await ethers.getContractAt('ProxyManager', median.address);
+    const manager = ProxyManager__factory.connect(median.address, owner);
 
-    const erc20Factory = await ethers.getContractFactory('ERC20Mock', owner);
+    const erc20Factory = new ERC20Mock__factory(owner);
 
     const token0 = await erc20Factory.deploy(SYMBOL_BASE);
     await token0.deployed();
@@ -83,12 +84,12 @@ describe('PoolProxy', function () {
       oracle1.address,
     );
 
-    const pairAddress = (await tx.wait()).events[0].args.pair;
+    const pairAddress = (await tx.wait()).events![0].args!.pair;
     const pair = Pair__factory.connect(pairAddress, owner);
     const pools = await pair.callStatic.getPools();
 
     instanceProxy = ManagedProxyOwnable__factory.connect(pools[0], owner);
-    instancePool = Pool__factory.connect(pools[0], owner);
+    instancePool = PoolMock__factory.connect(pools[0], owner);
   });
 
   describeBehaviorOfManagedProxyOwnable({
@@ -100,10 +101,16 @@ describe('PoolProxy', function () {
   describeBehaviorOfPool(
     {
       deploy: async () => instancePool,
-      supply: 0,
+      supply: BigNumber.from(0),
       name: `Median Liquidity: ${SYMBOL_UNDERLYING}/${SYMBOL_BASE}`,
       symbol: `MED-${SYMBOL_UNDERLYING}${SYMBOL_BASE}`,
       decimals: 18,
+      mintERC20: async (address, amount) =>
+        instancePool['mint(address,uint256)'](address, amount),
+      burnERC20: async (address, amount) =>
+        instancePool['burn(address,uint256)'](address, amount),
+      mintERC1155: undefined as any,
+      burnERC1155: undefined as any,
     },
     ['::ERC1155Enumerable', '#transfer', '#transferFrom'],
   );
