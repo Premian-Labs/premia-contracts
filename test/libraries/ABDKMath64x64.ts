@@ -207,7 +207,12 @@ describe('ABDKMath64x64', function () {
       for (let i = 0; i < inputs.length; i++) {
         const bn = await instance.callStatic.fromInt(inputs[i]);
         const bn2 = await instance.callStatic.fromInt(inputs2[i]);
-        const answer = bn.mul(bn2);
+        let answer = bn.mul(bn2);
+        if (answer.gt(0)) {
+          answer = answer.shr(64);
+        } else {
+          answer = answer.mul(-1).shr(64).mul(-1);
+        }
         expect(await instance.callStatic.mul(bn, bn2)).to.equal(answer);
       }
     });
@@ -233,7 +238,13 @@ describe('ABDKMath64x64', function () {
 
       for (let i = 0; i < inputs.length; i++) {
         const bn = await instance.callStatic.fromInt(inputs[i]);
-        const answer = bn.mul(BigNumber.from(7));
+        let answer = bn.mul(BigNumber.from(7));
+        if (answer.gt(0)) {
+          answer = answer.shr(64);
+        } else {
+          answer = answer.mul(-1).shr(64).mul(-1);
+        }
+
         expect(await instance.callStatic.muli(bn, BigNumber.from(7))).to.equal(
           answer,
         );
@@ -274,14 +285,12 @@ describe('ABDKMath64x64', function () {
 
   describe('#mulu', function () {
     it('multiplies a 64x64 with an unsigned int', async function () {
-      const inputs = [
-        Math.floor(Math.random() * 1e6),
-        -Math.floor(Math.random() * 1e6),
-      ].map(BigNumber.from);
+      const inputs = [Math.floor(Math.random() * 1e6)].map(BigNumber.from);
 
       for (let i = 0; i < inputs.length; i++) {
         const bn = await instance.callStatic.fromInt(inputs[i]);
-        const answer = bn.mul(7);
+        const answer = bn.mul(7).shr(64);
+
         expect(await instance.callStatic.mulu(bn, BigNumber.from(7))).to.equal(
           answer,
         );
