@@ -8,8 +8,8 @@ import 'hardhat-gas-reporter';
 import 'hardhat-spdx-license-identifier';
 import 'solidity-coverage';
 
-import './tasks/deploy.js';
-import './tasks/accounts.js';
+import './tasks/deploy';
+import './tasks/accounts';
 
 export default {
   solidity: {

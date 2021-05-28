@@ -9,6 +9,9 @@ import {
   Pair__factory,
   ManagedProxyOwnable__factory,
   ManagedProxyOwnable,
+  Pool__factory,
+  ProxyManager__factory,
+  Median__factory,
 } from '../../typechain';
 
 const factory = require('../../lib/factory.js');
@@ -26,10 +29,12 @@ describe('PairProxy', function () {
   before(async function () {
     [owner] = await ethers.getSigners();
 
-    const pair = await factory.Pair({ deployer: owner });
-    const pool = await factory.Pool({ deployer: owner });
+    const pair = await new Pair__factory(owner).deploy();
+    const pool = await new Pool__factory(owner).deploy(
+      ethers.constants.AddressZero,
+    );
 
-    const facetCuts = [await factory.ProxyManager({ deployer: owner })].map(
+    const facetCuts = [await new ProxyManager__factory(owner).deploy()].map(
       function (f) {
         return {
           target: f.address,
@@ -41,12 +46,12 @@ describe('PairProxy', function () {
       },
     );
 
-    median = await factory.Median({
-      deployer: owner,
-      facetCuts,
-      pairImplementation: pair.address,
-      poolImplementation: pool.address,
-    });
+    median = await new Median__factory(owner).deploy(
+      pair.address,
+      pool.address,
+    );
+
+    await median.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
   });
 
   beforeEach(async function () {
