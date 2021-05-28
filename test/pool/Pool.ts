@@ -57,10 +57,10 @@ describe('Pool', function () {
         );
         const strikePrice = fixedFromFloat(Math.random() * 1000);
         const tokenId = ethers.utils.hexConcat([
-          ethers.utils.hexZeroPad(tokenType.toString(), 1),
-          ethers.utils.hexZeroPad('0', 7),
-          ethers.utils.hexZeroPad(maturity.toString(), 8),
-          ethers.utils.hexZeroPad(strikePrice.toString(), 16),
+          ethers.utils.hexZeroPad(tokenType.toHexString(), 1),
+          ethers.utils.hexZeroPad('0x0', 7),
+          ethers.utils.hexZeroPad(maturity.toHexString(), 8),
+          ethers.utils.hexZeroPad(strikePrice.toHexString(), 16),
         ]);
 
         expect(
@@ -81,10 +81,10 @@ describe('Pool', function () {
         );
         const strikePrice = fixedFromFloat(Math.random() * 1000);
         const tokenId = ethers.utils.hexConcat([
-          ethers.utils.hexZeroPad(tokenType.toString(), 1),
-          ethers.utils.hexZeroPad('0', 7),
-          ethers.utils.hexZeroPad(maturity.toString(), 8),
-          ethers.utils.hexZeroPad(strikePrice.toString(), 16),
+          ethers.utils.hexZeroPad(tokenType.toHexString(), 1),
+          ethers.utils.hexZeroPad('0x0', 7),
+          ethers.utils.hexZeroPad(maturity.toHexString(), 8),
+          ethers.utils.hexZeroPad(strikePrice.toHexString(), 16),
         ]);
 
         expect(
