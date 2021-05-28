@@ -8,7 +8,6 @@ import {
   ProxyManager__factory,
 } from '../../typechain';
 import { ethers } from 'hardhat';
-import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { describeBehaviorOfProxyManager } from './ProxyManager.behavior';
@@ -49,6 +48,12 @@ describe('Median', function () {
       pool.address,
     );
 
+    await instance.diamondCut(
+      facetCuts.slice(1),
+      ethers.constants.AddressZero,
+      '0x',
+    );
+
     facetCuts[0] = {
       target: instance.address,
       action: 0,
@@ -72,7 +77,8 @@ describe('Median', function () {
 
   describeBehaviorOfProxyManager(
     {
-      deploy: () => instance,
+      deploy: async () =>
+        ProxyManager__factory.connect(instance.address, owner),
       getPairImplementationAddress: () => pair.address,
       getPoolImplementationAddress: () => pool.address,
     },

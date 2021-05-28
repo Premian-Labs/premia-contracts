@@ -1,9 +1,8 @@
-import { ProxyManager, ProxyManager__factory } from '../../typechain';
+import { ProxyManager } from '../../typechain';
 import { expect } from 'chai';
-import { ethers } from 'hardhat';
 
 interface ProxyBehaviorArgs {
-  deploy: any;
+  deploy: () => Promise<ProxyManager>;
   getPairImplementationAddress: () => string;
   getPoolImplementationAddress: () => string;
 }
@@ -14,14 +13,13 @@ export function describeBehaviorOfProxyManager(
     getPairImplementationAddress,
     getPoolImplementationAddress,
   }: ProxyBehaviorArgs,
-  skips: any[],
+  skips?: string[],
 ) {
   describe('::ProxyManager', function () {
     let instance: ProxyManager;
 
     beforeEach(async function () {
-      const [deployer] = await ethers.getSigners();
-      instance = await new ProxyManager__factory(deployer).deploy();
+      instance = await deploy();
     });
 
     describe('#getPair', function () {
@@ -38,10 +36,6 @@ export function describeBehaviorOfProxyManager(
 
     describe('#getPairImplementation', function () {
       it('returns address of pair implementation', async function () {
-        console.log(
-          await instance.callStatic.getPairImplementation(),
-          getPairImplementationAddress(),
-        );
         expect(await instance.callStatic.getPairImplementation()).to.equal(
           getPairImplementationAddress(),
         );
@@ -50,10 +44,6 @@ export function describeBehaviorOfProxyManager(
 
     describe('#getPoolImplementation', function () {
       it('returns address of pool implementation', async function () {
-        console.log(
-          await instance.callStatic.getPoolImplementation(),
-          getPoolImplementationAddress(),
-        );
         expect(await instance.callStatic.getPoolImplementation()).to.equal(
           getPoolImplementationAddress(),
         );
