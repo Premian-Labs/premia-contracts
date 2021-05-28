@@ -14,8 +14,6 @@ import {
   Median__factory,
 } from '../../typechain';
 
-const factory = require('../../lib/factory.js');
-
 const SYMBOL_BASE = 'SYMBOL_BASE';
 const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 
