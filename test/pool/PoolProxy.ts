@@ -289,7 +289,25 @@ describe('PoolProxy', function () {
       );
     });
 
-    it('should revert if excessive slippage', async () => {});
+    it('should revert if cost is above max cost', async () => {
+      await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
+      const maturity = poolUtil.getMaturity(10);
+      const strikePrice = fixedFromFloat(12);
+
+      await underlying.mint(buyer.address, parseEther('100'));
+      await underlying
+        .connect(buyer)
+        .approve(pool.address, ethers.constants.MaxUint256);
+
+      // ToDo : Fix test which fails because of division by 0 in bsPrice when getting quote
+      await expect(
+        pool
+          .connect(buyer)
+          .purchase(maturity, strikePrice, parseEther('1'), parseEther('5')),
+      ).to.be.revertedWith(
+        'Pool: strike price must be at least one half spot price',
+      );
+    });
 
     it('should successfully purchase an option', async () => {});
   });
