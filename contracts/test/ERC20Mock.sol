@@ -8,8 +8,10 @@ contract ERC20Mock is ERC20 {
   constructor (
     string memory symbol
   ) {
-    _mint(msg.sender, 1 ether);
-
     ERC20MetadataStorage.layout().symbol = symbol;
+  }
+
+  function mint(address _account, uint256 _amount) public {
+    _mint(_account, _amount);
   }
 }
