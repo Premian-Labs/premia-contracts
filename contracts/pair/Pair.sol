@@ -94,6 +94,10 @@ contract Pair is IPair, OwnableInternal {
       l.setPriceUpdate(block.timestamp, newPrice64x64);
     }
 
+    if (oldPrice64x64 == 0) {
+      oldPrice64x64 = l.getPriceUpdate(block.timestamp);
+    }
+
     int128 logReturns64x64 = newPrice64x64.div(oldPrice64x64).ln();
     int128 oldEmaLogReturns64x64 = l.emaLogReturns64x64;
 
