@@ -22,12 +22,27 @@ import { expect } from 'chai';
 import { resetHardhat, setTimestamp } from '../evm';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { deployMockContract } from 'ethereum-waffle';
+import { parseEther } from 'ethers/lib/utils';
+import { PoolUtil } from './PoolUtil';
 
 const SYMBOL_BASE = 'SYMBOL_BASE';
 const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 
+const fixedFromBigNumber = function (bn: BigNumber) {
+  return bn.abs().shl(64).mul(bn.abs().div(bn));
+};
+
+const fixedFromFloat = function (float: number) {
+  const [integer = '', decimal = ''] = float.toString().split('.');
+  return fixedFromBigNumber(ethers.BigNumber.from(`${integer}${decimal}`)).div(
+    ethers.BigNumber.from(`1${'0'.repeat(decimal.length)}`),
+  );
+};
+
 describe('PoolProxy', function () {
   let owner: SignerWithAddress;
+  let lp: SignerWithAddress;
+  let buyer: SignerWithAddress;
 
   let median: Median;
   let proxy: ManagedProxyOwnable;
@@ -35,10 +50,12 @@ describe('PoolProxy', function () {
   let pair: Pair;
   let asset0: ERC20Mock;
   let asset1: ERC20Mock;
+  let underlying: ERC20Mock;
+  let poolUtil: PoolUtil;
 
   beforeEach(async function () {
     await resetHardhat();
-    [owner] = await ethers.getSigners();
+    [owner, lp, buyer] = await ethers.getSigners();
 
     //
 
@@ -87,6 +104,8 @@ describe('PoolProxy', function () {
 
     await oracle0.mock.decimals.returns(8);
     await oracle1.mock.decimals.returns(8);
+    await oracle0.mock.latestRoundData.returns(1, parseEther('10'), 1, 5, 1);
+    await oracle1.mock.latestRoundData.returns(1, parseEther('1'), 1, 5, 1);
 
     const tx = await manager.deployPair(
       token0.address,
@@ -103,6 +122,8 @@ describe('PoolProxy', function () {
 
     proxy = ManagedProxyOwnable__factory.connect(pools[0], owner);
     pool = PoolMock__factory.connect(pools[0], owner);
+    underlying = ERC20Mock__factory.connect(await pool.getUnderlying(), owner);
+    poolUtil = new PoolUtil({ pool });
   });
 
   describeBehaviorOfManagedProxyOwnable({
@@ -159,10 +180,10 @@ describe('PoolProxy', function () {
 
   describe('#deposit', function () {
     it('returns share tokens granted to sender', async () => {
-      await asset1.mint(owner.address, 100);
-      await asset1.approve(pool.address, ethers.constants.MaxUint256);
+      await underlying.mint(owner.address, 100);
+      await underlying.approve(pool.address, ethers.constants.MaxUint256);
       await expect(() => pool.deposit('100')).to.changeTokenBalance(
-        asset1,
+        underlying,
         owner,
         -100,
       );
@@ -174,9 +195,7 @@ describe('PoolProxy', function () {
 
   describe('#withdraw', function () {
     it('should fail withdrawing if < 1 day after deposit', async () => {
-      await asset1.mint(owner.address, 100);
-      await asset1.approve(pool.address, ethers.constants.MaxUint256);
-      await pool.deposit('100');
+      await poolUtil.depositLiquidity(owner, underlying, 100);
 
       await expect(pool.withdraw('100')).to.be.revertedWith(
         'Pool: liquidity must remain locked for 1 day',
@@ -189,14 +208,12 @@ describe('PoolProxy', function () {
     });
 
     it('should return underlying tokens withdrawn by sender', async () => {
-      await asset1.mint(owner.address, 100);
-      await asset1.approve(pool.address, ethers.constants.MaxUint256);
-      await pool.deposit('100');
-      expect(await asset1.balanceOf(owner.address)).to.eq(0);
+      await poolUtil.depositLiquidity(owner, underlying, 100);
+      expect(await underlying.balanceOf(owner.address)).to.eq(0);
 
       await setTimestamp(getCurrentTimestamp() + 24 * 3600 + 60);
       await pool.withdraw('100');
-      expect(await asset1.balanceOf(owner.address)).to.eq(100);
+      expect(await underlying.balanceOf(owner.address)).to.eq(100);
       expect(await pool['balanceOf(address)'](owner.address)).to.eq(0);
     });
 
@@ -204,7 +221,77 @@ describe('PoolProxy', function () {
   });
 
   describe('#purchase', function () {
-    it('purchase an option', async () => {});
+    it('should revert if using a maturity less than 1 day in the future', async () => {
+      await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
+      const maturity = getCurrentTimestamp() + 10 * 3600;
+      const strikePrice = fixedFromFloat(1.5);
+
+      await expect(
+        pool
+          .connect(buyer)
+          .purchase(maturity, strikePrice, parseEther('1'), parseEther('100')),
+      ).to.be.revertedWith(
+        'Pool: maturity must be at least 1 day in the future',
+      );
+    });
+
+    it('should revert if using a maturity more than 28 days in the future', async () => {
+      await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
+      const maturity = poolUtil.getMaturity(30);
+      const strikePrice = fixedFromFloat(1.5);
+
+      await expect(
+        pool
+          .connect(buyer)
+          .purchase(maturity, strikePrice, parseEther('1'), parseEther('100')),
+      ).to.be.revertedWith(
+        'Pool: maturity must be at most 28 days in the future',
+      );
+    });
+
+    it('should revert if using a maturity not corresponding to end of UTC day', async () => {
+      await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
+      const maturity = poolUtil.getMaturity(10).add(3600);
+      const strikePrice = fixedFromFloat(1.5);
+
+      await expect(
+        pool
+          .connect(buyer)
+          .purchase(maturity, strikePrice, parseEther('1'), parseEther('100')),
+      ).to.be.revertedWith('Pool: maturity must correspond to end of UTC day');
+    });
+
+    it('should revert if using a strike > 2x spot', async () => {
+      await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
+      const maturity = poolUtil.getMaturity(10);
+      const strikePrice = fixedFromFloat(21);
+
+      await expect(
+        pool
+          .connect(buyer)
+          .purchase(maturity, strikePrice, parseEther('1'), parseEther('100')),
+      ).to.be.revertedWith(
+        'Pool: strike price must not exceed two times spot price',
+      );
+    });
+
+    it('should revert if using a strike < 0.5x spot', async () => {
+      await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
+      const maturity = poolUtil.getMaturity(10);
+      const strikePrice = fixedFromFloat(4);
+
+      await expect(
+        pool
+          .connect(buyer)
+          .purchase(maturity, strikePrice, parseEther('1'), parseEther('100')),
+      ).to.be.revertedWith(
+        'Pool: strike price must be at least one half spot price',
+      );
+    });
+
+    it('should revert if excessive slippage', async () => {});
+
+    it('should successfully purchase an option', async () => {});
   });
 
   describe('#exercise', function () {
