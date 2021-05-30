@@ -9,6 +9,7 @@ contract ERC20Mock is ERC20 {
     string memory symbol
   ) {
     ERC20MetadataStorage.layout().symbol = symbol;
+    ERC20MetadataStorage.layout().decimals = 18;
   }
 
   function mint(address _account, uint256 _amount) public {
