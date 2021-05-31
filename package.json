@@ -9,7 +9,6 @@
   "scripts": {
     "compile": "hardhat compile",
     "compile:force": "hardhat compile --force",
-    "typechain": "typechain --target ethers-v5 --out-dir typechain \"./abi/*.json\"",
     "test": "hardhat test",
     "contract-size": "yarn run hardhat size-contracts"
   },
@@ -25,7 +24,6 @@
     "@types/chai-almost": "^1.0.1",
     "@types/mocha": "^8.2.2",
     "@types/node": "^15.6.1",
-    "@types/rimraf": "^3.0.0",
     "@types/utf8": "^3.0.0",
     "chai": "^4.3.4",
     "chai-almost": "^1.0.1",
@@ -36,7 +34,6 @@
     "hardhat-contract-sizer": "^2.0.3",
     "prettier": "^2.3.0",
     "prettier-plugin-solidity": "^1.0.0-beta.10",
-    "rimraf": "^3.0.2",
     "solc": "^0.8.4",
     "solhint": "^3.3.4",
     "solhint-plugin-prettier": "0.0.5",
