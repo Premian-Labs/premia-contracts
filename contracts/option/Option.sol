@@ -1,119 +1,38 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/token/ERC1155/ERC1155.sol';
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import '@openzeppelin/contracts/access/Ownable.sol';
-import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
-import '@openzeppelin/contracts/utils/math/SafeCast.sol';
 
-import "./interface/IERC20Extended.sol";
-import "./interface/IFeeCalculator.sol";
-import "./interface/IFlashLoanReceiver.sol";
+import '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
+import '@solidstate/contracts/access/Ownable.sol';
+import '@solidstate/contracts/utils/ReentrancyGuard.sol';
 
-import "./uniswapV2/interfaces/IUniswapV2Router02.sol";
+import "../interface/IERC20Extended.sol";
+import "../interface/IFeeCalculator.sol";
+import "../interface/IFlashLoanReceiver.sol";
+import './OptionStorage.sol';
+
+import "../uniswapV2/interfaces/IUniswapV2Router02.sol";
 
 
 /// @author Premia
 /// @title An option contract
-contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
+contract Option is Ownable, ERC1155Base, ReentrancyGuard {
+    using OptionStorage for OptionStorage.Layout;
     using SafeERC20 for IERC20;
-
-    struct OptionWriteArgs {
-        address token;                  // Token address
-        uint256 amount;                 // Amount of tokens to write option for
-        uint256 strikePrice;            // Strike price (Must follow strikePriceIncrement of token)
-        uint256 expiration;             // Expiration timestamp of the option (Must follow expirationIncrement)
-        bool isCall;                    // If true : Call option | If false : Put option
-    }
-
-    struct OptionData {
-        address token;                  // Token address
-        uint256 strikePrice;            // Strike price (Must follow strikePriceIncrement of token)
-        uint256 expiration;             // Expiration timestamp of the option (Must follow expirationIncrement)
-        bool isCall;                    // If true : Call option | If false : Put option
-        uint8 decimals;                 // Token decimals
-        uint256 claimsPreExp;           // Amount of options from which the funds have been withdrawn pre expiration
-        uint256 claimsPostExp;          // Amount of options from which the funds have been withdrawn post expiration
-        uint256 exercised;              // Amount of options which have been exercised
-        uint256 supply;                 // Total circulating supply
-    }
-
-    // Total write cost = collateral + fee
-    struct QuoteWrite {
-        address collateralToken;        // The token to deposit as collateral
-        uint256 collateral;             // The amount of collateral to deposit
-        uint8 collateralDecimals;       // Decimals of collateral token
-        uint256 fee;                    // The amount of collateralToken needed to be paid as protocol fee
-    }
-
-    // Total exercise cost = input + fee
-    struct QuoteExercise {
-        address inputToken;             // Input token for exercise
-        uint256 input;                  // Amount of input token to pay to exercise
-        uint8 inputDecimals;            // Decimals of input token
-        address outputToken;            // Output token from the exercise
-        uint256 output;                 // Amount of output tokens which will be received on exercise
-        uint8 outputDecimals;           // Decimals of output token
-        uint256 fee;                    // The amount of inputToken needed to be paid as protocol fee
-    }
-
-    struct Pool {
-        uint256 tokenAmount;            // The amount of tokens in the option pool
-        uint256 denominatorAmount;      // The amounts of denominator in the option pool
-    }
-
-    IERC20 public denominator;
-    uint8 public denominatorDecimals;
-
-    //////////////////////////////////////////////////
-
-    // Address receiving protocol fees (PremiaMaker)
-    address public feeRecipient;
-
-    // FeeCalculator contract
-    IFeeCalculator public feeCalculator;
-
-    //////////////////////////////////////////////////
-
-    // Whitelisted tokens for which options can be written (Each token must also have a non 0 strike price increment to be enabled)
-    address[] public tokens;
-    // Strike price increment mapping of each token
-    mapping (address => uint256) public tokenStrikeIncrement;
-
-    //////////////////////////////////////////////////
-
-    // The option id of next option type which will be created
-    uint256 public nextOptionId = 1;
 
     // Offset to add to Unix timestamp to make it Fri 23:59:59 UTC
     uint256 private constant _baseExpiration = 172799;
     // Expiration increment
     uint256 private constant _expirationIncrement = 1 weeks;
-    // Max expiration time from now
-    uint256 public maxExpiration = 365 days;
 
-    // Uniswap routers allowed to be used for swap from flashExercise
-    address[] public whitelistedUniswapRouters;
-
-    // token => expiration => strikePrice => isCall (1 for call, 0 for put) => optionId
-    mapping (address => mapping(uint256 => mapping(uint256 => mapping (bool => uint256)))) public options;
-
-    // optionId => OptionData
-    mapping (uint256 => OptionData) public optionData;
-
-    // optionId => Pool
-    mapping (uint256 => Pool) public pools;
-
-    // account => optionId => amount of options written
-    mapping (address => mapping (uint256 => uint256)) public nbWritten;
 
     ////////////
     // Events //
     ////////////
 
-    event SetToken(address indexed token, uint256 strikePriceIncrement);
+    event TokenWhitelisted(address indexed token, bool whitelisted);
     event OptionIdCreated(uint256 indexed optionId, address indexed token);
     event OptionWritten(address indexed owner, uint256 indexed optionId, address indexed token, uint256 amount);
     event OptionCancelled(address indexed owner, uint256 indexed optionId, address indexed token, uint256 amount);
@@ -125,32 +44,17 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    /// @param _uri URI of ERC1155 metadata
-    /// @param _denominator The token used as denominator
-    /// @param _feeCalculator FeeCalculator contract
-    /// @param _feeRecipient Recipient of protocol fees (PremiaMaker)
-    constructor(string memory _uri, IERC20 _denominator, IFeeCalculator _feeCalculator, address _feeRecipient) ERC1155(_uri) {
-        denominator = _denominator;
-        feeCalculator = _feeCalculator;
-        feeRecipient = _feeRecipient;
-        denominatorDecimals = IERC20Extended(address(_denominator)).decimals();
-    }
-
-    //////////////////////////////////////////////////
-    //////////////////////////////////////////////////
-    //////////////////////////////////////////////////
-
     ///////////////
     // Modifiers //
     ///////////////
 
     modifier notExpired(uint256 _optionId) {
-        require(block.timestamp < optionData[_optionId].expiration, "Expired");
+        require(block.timestamp < OptionStorage.layout().optionData[_optionId].expiration, "Expired");
         _;
     }
 
     modifier expired(uint256 _optionId) {
-        require(block.timestamp >= optionData[_optionId].expiration, "Not expired");
+        require(block.timestamp >= OptionStorage.layout().optionData[_optionId].expiration, "Not expired");
         _;
     }
 
@@ -165,53 +69,48 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @notice Set new URI for ERC1155 metadata
     /// @param _newUri The new URI
     function setURI(string memory _newUri) external onlyOwner {
-        _setURI(_newUri);
+        OptionStorage.layout().uri = _newUri;
     }
 
     /// @notice Set new protocol fee recipient
     /// @param _feeRecipient The new protocol fee recipient
     function setFeeRecipient(address _feeRecipient) external onlyOwner {
-        feeRecipient = _feeRecipient;
+        OptionStorage.layout().feeRecipient = _feeRecipient;
     }
 
     /// @notice Set a new max expiration date for options writing (By default, 1 year from current date)
     /// @param _max The max amount of seconds in the future for which an option expiration can be set
     function setMaxExpiration(uint256 _max) external onlyOwner {
-        maxExpiration = _max;
+        OptionStorage.layout().maxExpiration = _max;
     }
 
     /// @notice Set a new FeeCalculator contract
     /// @param _feeCalculator The new FeeCalculator Contract
-    function setFeeCalculator(IFeeCalculator _feeCalculator) external onlyOwner {
-        feeCalculator = _feeCalculator;
+    function setFeeCalculator(address _feeCalculator) external onlyOwner {
+        OptionStorage.layout().feeCalculator = _feeCalculator;
     }
 
-    /// @notice Set settings for tokens to support writing of options paired to denominator
-    /// @dev A value of 0 means this token is disabled and options cannot be written for it
+    /// @notice Set whitelisting for token
     /// @param _tokens The list of tokens for which to set strike price increment
-    /// @param _strikePriceIncrement The new strike price increment to set for each token
-    function setTokens(address[] memory _tokens, uint256[] memory _strikePriceIncrement) external onlyOwner {
-        require(_tokens.length == _strikePriceIncrement.length);
+    /// @param _whitelist Whether each token is to be added to the whitelist or removed
+    function setTokensWhitelisted(address[] memory _tokens, bool _whitelist) external onlyOwner {
+        OptionStorage.Layout storage l = OptionStorage.layout();
 
         for (uint256 i=0; i < _tokens.length; i++) {
-            if (!_isInArray(_tokens[i], tokens)) {
-                tokens.push(_tokens[i]);
-            }
-
-            require(_tokens[i] != address(denominator), "Cant add denominator");
-            tokenStrikeIncrement[_tokens[i]] = _strikePriceIncrement[i];
-
-            emit SetToken(_tokens[i], _strikePriceIncrement[i]);
+            l.whitelistedTokens[_tokens[i]] = _whitelist;
+            emit TokenWhitelisted(_tokens[i], _whitelist);
         }
     }
 
     /// @notice Set a new list of whitelisted UniswapRouter contracts allowed to be used for flashExercise
     /// @param _addrList The new list of whitelisted routers
     function setWhitelistedUniswapRouters(address[] memory _addrList) external onlyOwner {
-        delete whitelistedUniswapRouters;
+        OptionStorage.Layout storage l = OptionStorage.layout();
+
+        delete l.whitelistedUniswapRouters;
 
         for (uint256 i=0; i < _addrList.length; i++) {
-            whitelistedUniswapRouters.push(_addrList[i]);
+            l.whitelistedUniswapRouters.push(_addrList[i]);
         }
     }
 
@@ -221,6 +120,22 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     // View //
     //////////
 
+    function uri(uint256) public view returns (string memory) {
+        return OptionStorage.layout().uri;
+    }
+
+    function whitelistedTokens(address _token) external view returns(bool) {
+        return OptionStorage.layout().whitelistedTokens[_token];
+    }
+
+    function nbWritten(address _user, uint256 _optionId) external view returns(uint256) {
+        return OptionStorage.layout().nbWritten[_user][_optionId];
+    }
+
+    function optionData(uint256 _optionId) external view returns(OptionStorage.OptionData memory) {
+        return OptionStorage.layout().optionData[_optionId];
+    }
+
     /// @notice Get the id of an option
     /// @param _token Token for which the option is for
     /// @param _expiration Expiration timestamp of the option
@@ -228,13 +143,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _isCall Whether the option is a call or a put
     /// @return The option id
     function getOptionId(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public view returns(uint256) {
-        return options[_token][_expiration][_strikePrice][_isCall];
-    }
-
-    /// @notice Get the amount of whitelisted tokens
-    /// @return The amount of whitelisted tokens
-    function tokensLength() external view returns(uint256) {
-        return tokens.length;
+        return OptionStorage.layout().options[_token][_expiration][_strikePrice][_isCall];
     }
 
     /// @notice Get a quote to write an option
@@ -242,20 +151,21 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _option The option to write
     /// @param _decimals The option token decimals
     /// @return The quote
-    function getWriteQuote(address _from, OptionWriteArgs memory _option, uint8 _decimals) public view returns(QuoteWrite memory) {
-        QuoteWrite memory quote;
+    function getWriteQuote(address _from, OptionStorage.OptionWriteArgs memory _option, uint8 _decimals) public view returns(OptionStorage.QuoteWrite memory) {
+        OptionStorage.Layout storage l = OptionStorage.layout();
+        OptionStorage.QuoteWrite memory quote;
 
         if (_option.isCall) {
             quote.collateralToken = _option.token;
             quote.collateral = _option.amount;
             quote.collateralDecimals = _decimals;
         } else {
-            quote.collateralToken = address(denominator);
+            quote.collateralToken = l.denominator;
             quote.collateral = _option.amount * _option.strikePrice / (10**_decimals);
-            quote.collateralDecimals = denominatorDecimals;
+            quote.collateralDecimals = l.denominatorDecimals;
         }
 
-        quote.fee = feeCalculator.getFeeAmount(_from, quote.collateral, IFeeCalculator.FeeType.Write);
+        quote.fee = IFeeCalculator(l.feeCalculator).getFeeAmount(_from, quote.collateral, IFeeCalculator.FeeType.Write);
 
         return quote;
     }
@@ -265,16 +175,17 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _option The option to exercise
     /// @param _decimals The option token decimals
     /// @return The quote
-    function getExerciseQuote(address _from, OptionData memory _option, uint256 _amount, uint8 _decimals) public view returns(QuoteExercise memory) {
-        QuoteExercise memory quote;
+    function getExerciseQuote(address _from, OptionStorage.OptionData memory _option, uint256 _amount, uint8 _decimals) public view returns(OptionStorage.QuoteExercise memory) {
+        OptionStorage.Layout storage l = OptionStorage.layout();
+        OptionStorage.QuoteExercise memory quote;
 
         uint256 tokenAmount = _amount;
         uint256 denominatorAmount = _amount * _option.strikePrice / (10**_decimals);
 
         if (_option.isCall) {
-            quote.inputToken = address(denominator);
+            quote.inputToken = l.denominator;
             quote.input = denominatorAmount;
-            quote.inputDecimals = denominatorDecimals;
+            quote.inputDecimals = l.denominatorDecimals;
             quote.outputToken = _option.token;
             quote.output = tokenAmount;
             quote.outputDecimals = _option.decimals;
@@ -282,12 +193,12 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             quote.inputToken = _option.token;
             quote.input = tokenAmount;
             quote.inputDecimals = _option.decimals;
-            quote.outputToken = address(denominator);
+            quote.outputToken = l.denominator;
             quote.output = denominatorAmount;
-            quote.outputDecimals = denominatorDecimals;
+            quote.outputDecimals = l.denominatorDecimals;
         }
 
-        quote.fee = feeCalculator.getFeeAmount(_from, quote.input, IFeeCalculator.FeeType.Exercise);
+        quote.fee = IFeeCalculator(l.feeCalculator).getFeeAmount(_from, quote.input, IFeeCalculator.FeeType.Exercise);
 
         return quote;
     }
@@ -305,25 +216,27 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _isCall Whether the option is a call or a put
     /// @return The option id
     function getOptionIdOrCreate(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public returns(uint256) {
+        OptionStorage.Layout storage l = OptionStorage.layout();
+
         uint256 optionId = getOptionId(_token, _expiration, _strikePrice, _isCall);
 
         if (optionId == 0) {
             _preCheckOptionIdCreate(_token, _strikePrice, _expiration);
 
-            optionId = nextOptionId;
-            options[_token][_expiration][_strikePrice][_isCall] = optionId;
+            optionId = l.nextOptionId;
+            l.options[_token][_expiration][_strikePrice][_isCall] = optionId;
             uint8 decimals = IERC20Extended(_token).decimals();
             require(decimals <= 18, "Too many decimals");
 
-            optionData[optionId].token = _token;
-            optionData[optionId].expiration = _expiration;
-            optionData[optionId].strikePrice = _strikePrice;
-            optionData[optionId].isCall = _isCall;
-            optionData[optionId].decimals = decimals;
+            l.optionData[optionId].token = _token;
+            l.optionData[optionId].expiration = _expiration;
+            l.optionData[optionId].strikePrice = _strikePrice;
+            l.optionData[optionId].isCall = _isCall;
+            l.optionData[optionId].decimals = decimals;
 
             emit OptionIdCreated(optionId, _token);
 
-            nextOptionId += 1;
+            l.nextOptionId += 1;
         }
 
         return optionId;
@@ -340,13 +253,13 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     function writeOptionWithIdFrom(address _from, uint256 _optionId, uint256 _amount) external returns(uint256) {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
 
-        OptionData memory data = optionData[_optionId];
-        OptionWriteArgs memory writeArgs = OptionWriteArgs({
-        token: data.token,
-        amount: _amount,
-        strikePrice: data.strikePrice,
-        expiration: data.expiration,
-        isCall: data.isCall
+        OptionStorage.OptionData memory data = OptionStorage.layout().optionData[_optionId];
+        OptionStorage.OptionWriteArgs memory writeArgs = OptionStorage.OptionWriteArgs({
+            token: data.token,
+            amount: _amount,
+            strikePrice: data.strikePrice,
+            expiration: data.expiration,
+            isCall: data.isCall
         });
 
         return _writeOption(_from, writeArgs);
@@ -357,7 +270,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _from Address on behalf of which the option is written
     /// @param _option The option to write
     /// @return The option id
-    function writeOptionFrom(address _from, OptionWriteArgs memory _option) external returns(uint256) {
+    function writeOptionFrom(address _from, OptionStorage.OptionWriteArgs memory _option) external returns(uint256) {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
         return _writeOption(_from, _option);
     }
@@ -365,7 +278,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @notice Write an option
     /// @param _option The option to write
     /// @return The option id
-    function writeOption(OptionWriteArgs memory _option) public returns(uint256) {
+    function writeOption(OptionStorage.OptionWriteArgs memory _option) public returns(uint256) {
         return _writeOption(msg.sender, _option);
     }
 
@@ -373,23 +286,25 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _from Address on behalf of which the option is written
     /// @param _option The option to write
     /// @return The option id
-    function _writeOption(address _from, OptionWriteArgs memory _option) internal nonReentrant returns(uint256) {
+    function _writeOption(address _from, OptionStorage.OptionWriteArgs memory _option) internal nonReentrant returns(uint256) {
         require(_option.amount > 0, "Amount <= 0");
+
+        OptionStorage.Layout storage l = OptionStorage.layout();
 
         uint256 optionId = getOptionIdOrCreate(_option.token, _option.expiration, _option.strikePrice, _option.isCall);
 
-        QuoteWrite memory quote = getWriteQuote(_from, _option, optionData[optionId].decimals);
+        OptionStorage.QuoteWrite memory quote = getWriteQuote(_from, _option, l.optionData[optionId].decimals);
 
         IERC20(quote.collateralToken).safeTransferFrom(_from, address(this), quote.collateral);
         _payFees(_from, IERC20(quote.collateralToken), quote.fee);
 
         if (_option.isCall) {
-            pools[optionId].tokenAmount += quote.collateral;
+            l.pools[optionId].tokenAmount += quote.collateral;
         } else {
-            pools[optionId].denominatorAmount += quote.collateral;
+            l.pools[optionId].denominatorAmount += quote.collateral;
         }
 
-        nbWritten[_from][optionId] += _option.amount;
+        l.nbWritten[_from][optionId] += _option.amount;
 
         mint(_from, optionId, _option.amount);
 
@@ -428,22 +343,24 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _optionId The id of the option to cancel
     /// @param _amount Amount to cancel
     function _cancelOption(address _from, uint256 _optionId, uint256 _amount) internal nonReentrant {
+        OptionStorage.Layout storage l = OptionStorage.layout();
+
         require(_amount > 0, "Amount <= 0");
-        require(nbWritten[_from][_optionId] >= _amount, "Not enough written");
+        require(l.nbWritten[_from][_optionId] >= _amount, "Not enough written");
 
         burn(_from, _optionId, _amount);
-        nbWritten[_from][_optionId] -= _amount;
+        l.nbWritten[_from][_optionId] -= _amount;
 
-        if (optionData[_optionId].isCall) {
-            pools[_optionId].tokenAmount -= _amount;
-            IERC20(optionData[_optionId].token).safeTransfer(_from, _amount);
+        if (l.optionData[_optionId].isCall) {
+            l.pools[_optionId].tokenAmount -= _amount;
+            IERC20(l.optionData[_optionId].token).safeTransfer(_from, _amount);
         } else {
-            uint256 amount = _amount * optionData[_optionId].strikePrice / (10**optionData[_optionId].decimals);
-            pools[_optionId].denominatorAmount -= amount;
-            denominator.safeTransfer(_from, amount);
+            uint256 amount = _amount * l.optionData[_optionId].strikePrice / (10 ** l.optionData[_optionId].decimals);
+            l.pools[_optionId].denominatorAmount -= amount;
+            IERC20(l.denominator).safeTransfer(_from, amount);
         }
 
-        emit OptionCancelled(_from, _optionId, optionData[_optionId].token, _amount);
+        emit OptionCancelled(_from, _optionId, l.optionData[_optionId].token, _amount);
     }
 
     //////////////////////////////////////////////////
@@ -472,21 +389,23 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     function _exerciseOption(address _from, uint256 _optionId, uint256 _amount) internal nonReentrant {
         require(_amount > 0, "Amount <= 0");
 
-        OptionData storage data = optionData[_optionId];
+        OptionStorage.Layout storage l = OptionStorage.layout();
+
+        OptionStorage.OptionData storage data = l.optionData[_optionId];
 
         burn(_from, _optionId, _amount);
         data.exercised += _amount;
 
-        QuoteExercise memory quote = getExerciseQuote(_from, data, _amount, data.decimals);
+        OptionStorage.QuoteExercise memory quote = getExerciseQuote(_from, data, _amount, data.decimals);
         IERC20(quote.inputToken).safeTransferFrom(_from, address(this), quote.input);
         _payFees(_from, IERC20(quote.inputToken), quote.fee);
 
         if (data.isCall) {
-            pools[_optionId].tokenAmount -= quote.output;
-            pools[_optionId].denominatorAmount += quote.input;
+            l.pools[_optionId].tokenAmount -= quote.output;
+            l.pools[_optionId].denominatorAmount += quote.input;
         } else {
-            pools[_optionId].denominatorAmount -= quote.output;
-            pools[_optionId].tokenAmount += quote.input;
+            l.pools[_optionId].denominatorAmount -= quote.output;
+            l.pools[_optionId].tokenAmount += quote.input;
         }
 
         IERC20(quote.outputToken).safeTransfer(_from, quote.output);
@@ -529,29 +448,31 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _from Address on behalf of which the withdraw call is made (Which will receive the withdrawn funds)
     /// @param _optionId The id of the option to withdraw funds from
     function _withdraw(address _from, uint256 _optionId) internal nonReentrant expired(_optionId) {
+        OptionStorage.Layout storage l = OptionStorage.layout();
+
         // Amount of options user still has to claim funds from
-        uint256 claimsUser = nbWritten[_from][_optionId];
+        uint256 claimsUser = l.nbWritten[_from][_optionId];
         require(claimsUser > 0, "No option to claim");
 
-        OptionData storage data = optionData[_optionId];
+        OptionStorage.OptionData storage data = l.optionData[_optionId];
 
         uint256 nbTotal = data.supply + data.exercised - data.claimsPreExp;
         //
 
-        uint256 denominatorAmount = pools[_optionId].denominatorAmount * claimsUser / nbTotal;
-        uint256 tokenAmount = pools[_optionId].tokenAmount * claimsUser / nbTotal;
+        uint256 denominatorAmount = l.pools[_optionId].denominatorAmount * claimsUser / nbTotal;
+        uint256 tokenAmount = l.pools[_optionId].tokenAmount * claimsUser / nbTotal;
 
         //
 
         data.claimsPostExp += claimsUser;
-        delete nbWritten[_from][_optionId];
+        delete l.nbWritten[_from][_optionId];
 
         if (denominatorAmount > 0) {
-            denominator.safeTransfer(_from, denominatorAmount);
+            IERC20(l.denominator).safeTransfer(_from, denominatorAmount);
         }
 
         if (tokenAmount > 0) {
-            IERC20(optionData[_optionId].token).safeTransfer(_from, tokenAmount);
+            IERC20(l.optionData[_optionId].token).safeTransfer(_from, tokenAmount);
         }
 
         emit Withdraw(_from, _optionId, data.token, claimsUser);
@@ -625,26 +546,28 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     function _withdrawPreExpiration(address _from, uint256 _optionId, uint256 _amount) internal nonReentrant notExpired(_optionId) {
         require(_amount > 0, "Amount <= 0");
 
+        OptionStorage.Layout storage l = OptionStorage.layout();
+
         // Amount of options user still has to claim funds from
-        uint256 claimsUser = nbWritten[_from][_optionId];
+        uint256 claimsUser = l.nbWritten[_from][_optionId];
         require(claimsUser >= _amount, "Not enough claims");
 
-        OptionData storage data = optionData[_optionId];
+        OptionStorage.OptionData storage data = l.optionData[_optionId];
 
         uint256 nbClaimable = data.exercised - data.claimsPreExp;
         require(nbClaimable >= _amount, "Not enough claimable");
 
         //
 
-        nbWritten[_from][_optionId] -= _amount;
+        l.nbWritten[_from][_optionId] -= _amount;
         data.claimsPreExp += _amount;
 
         if (data.isCall) {
             uint256 amount = _amount * data.strikePrice / (10**data.decimals);
-            pools[_optionId].denominatorAmount -= amount;
-            denominator.safeTransfer(_from, amount);
+            l.pools[_optionId].denominatorAmount -= amount;
+            IERC20(l.denominator).safeTransfer(_from, amount);
         } else {
-            pools[_optionId].tokenAmount -= _amount;
+            l.pools[_optionId].tokenAmount -= _amount;
             IERC20(data.token).safeTransfer(_from, _amount);
         }
     }
@@ -698,21 +621,23 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         require(_amount > 0, "Amount <= 0");
 
         burn(_from, _optionId, _amount);
-        optionData[_optionId].exercised += _amount;
 
-        QuoteExercise memory quote = getExerciseQuote(_from, optionData[_optionId], _amount, optionData[_optionId].decimals);
+        OptionStorage.Layout storage l = OptionStorage.layout();
+        l.optionData[_optionId].exercised += _amount;
 
-        IERC20 tokenErc20 = IERC20(optionData[_optionId].token);
+        OptionStorage.QuoteExercise memory quote = getExerciseQuote(_from, l.optionData[_optionId], _amount, l.optionData[_optionId].decimals);
+
+        IERC20 tokenErc20 = IERC20(l.optionData[_optionId].token);
 
         uint256 tokenAmountRequired = tokenErc20.balanceOf(address(this));
-        uint256 denominatorAmountRequired = denominator.balanceOf(address(this));
+        uint256 denominatorAmountRequired = IERC20(l.denominator).balanceOf(address(this));
 
-        if (optionData[_optionId].isCall) {
-            pools[_optionId].tokenAmount -= quote.output;
-            pools[_optionId].denominatorAmount += quote.input;
+        if (l.optionData[_optionId].isCall) {
+            l.pools[_optionId].tokenAmount -= quote.output;
+            l.pools[_optionId].denominatorAmount += quote.input;
         } else {
-            pools[_optionId].denominatorAmount -= quote.output;
-            pools[_optionId].tokenAmount += quote.input;
+            l.pools[_optionId].denominatorAmount -= quote.output;
+            l.pools[_optionId].tokenAmount += quote.input;
         }
 
         //
@@ -734,7 +659,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
 
         //
 
-        if (optionData[_optionId].isCall) {
+        if (l.optionData[_optionId].isCall) {
             denominatorAmountRequired += quote.input;
             tokenAmountRequired -= quote.output;
         } else {
@@ -742,10 +667,10 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
             tokenAmountRequired += quote.input;
         }
 
-        require(denominator.balanceOf(address(this)) >= denominatorAmountRequired, "Wrong denom bal");
+        require(IERC20(l.denominator).balanceOf(address(this)) >= denominatorAmountRequired, "Wrong denom bal");
         require(tokenErc20.balanceOf(address(this)) >= tokenAmountRequired, "Wrong token bal");
 
-        emit OptionExercised(_from, _optionId, optionData[_optionId].token, _amount);
+        emit OptionExercised(_from, _optionId, l.optionData[_optionId].token, _amount);
     }
 
     //////////////////////////////////////////////////
@@ -756,11 +681,14 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _amount Amount to flashLoan
     /// @param _receiver Receiver of the flashLoan
     function flashLoan(address _tokenAddress, uint256 _amount, IFlashLoanReceiver _receiver) public nonReentrant {
+        OptionStorage.Layout storage l = OptionStorage.layout();
+
         IERC20 _token = IERC20(_tokenAddress);
         uint256 startBalance = _token.balanceOf(address(this));
         _token.safeTransfer(address(_receiver), _amount);
 
-        uint256 fee = feeCalculator.getFeeAmount(msg.sender, _amount, IFeeCalculator.FeeType.FlashLoan);
+
+        uint256 fee = IFeeCalculator(l.feeCalculator).getFeeAmount(msg.sender, _amount, IFeeCalculator.FeeType.FlashLoan);
 
         _receiver.execute(_tokenAddress, _amount, _amount + fee);
 
@@ -769,7 +697,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
         uint256 endBalanceRequired = startBalance + fee;
 
         require(endBalance >= endBalanceRequired, "Failed to pay back");
-        _token.safeTransfer(feeRecipient, endBalance - startBalance);
+        _token.safeTransfer(l.feeRecipient, endBalance - startBalance);
 
         endBalance = _token.balanceOf(address(this));
         require(endBalance >= startBalance, "Failed to pay back");
@@ -786,7 +714,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _account Address for which ERC1155 is minted
     /// @param _amount Amount minted
     function mint(address _account, uint256 _id, uint256 _amount) internal notExpired(_id) {
-        OptionData storage data = optionData[_id];
+        OptionStorage.OptionData storage data = OptionStorage.layout().optionData[_id];
 
         _mint(_account, _id, _amount, "");
         data.supply += _amount;
@@ -796,7 +724,7 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _account Address from which ERC1155 is burnt
     /// @param _amount Amount burnt
     function burn(address _account, uint256 _id, uint256 _amount) internal notExpired(_id) {
-        OptionData storage data = optionData[_id];
+        OptionStorage.OptionData storage data = OptionStorage.layout().optionData[_id];
 
         data.supply -= _amount;
         _burn(_account, _id, _amount);
@@ -822,12 +750,14 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _token The token in which protocol fees are paid
     /// @param _fee Protocol fee to pay to feeRecipient
     function _payFees(address _from, IERC20 _token, uint256 _fee) internal {
+        OptionStorage.Layout storage l = OptionStorage.layout();
+
         if (_fee > 0) {
             // For flash exercise
             if (_from == address(this)) {
-                _token.safeTransfer(feeRecipient, _fee);
+                _token.safeTransfer(l.feeRecipient, _fee);
             } else {
-                _token.safeTransferFrom(_from, feeRecipient, _fee);
+                _token.safeTransferFrom(_from, l.feeRecipient, _fee);
             }
 
         }
@@ -843,7 +773,9 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _path Path used for the routing of the swap
     /// @return Swap amounts
     function _swap(IUniswapV2Router02 _router, address _from, uint256 _amount, uint256 _amountInMax, address[] memory _path) internal returns (uint256[] memory) {
-        require(_isInArray(address(_router), whitelistedUniswapRouters), "Router not whitelisted");
+        OptionStorage.Layout storage l = OptionStorage.layout();
+
+        require(_isInArray(address(_router), l.whitelistedUniswapRouters), "Router not whitelisted");
 
         IERC20(_from).approve(address(_router), _amountInMax);
 
@@ -865,11 +797,12 @@ contract PremiaOption is Ownable, ERC1155, ReentrancyGuard {
     /// @param _strikePrice Strike price of the option
     /// @param _expiration timestamp of the option
     function _preCheckOptionIdCreate(address _token, uint256 _strikePrice, uint256 _expiration) internal view {
-        require(tokenStrikeIncrement[_token] != 0, "Token not supported");
+        OptionStorage.Layout storage l = OptionStorage.layout();
+
+        require(l.whitelistedTokens[_token] == true, "Token not supported");
         require(_strikePrice > 0, "Strike <= 0");
-        require(_strikePrice % tokenStrikeIncrement[_token] == 0, "Wrong strike incr");
         require(_expiration > block.timestamp, "Exp passed");
-        require(_expiration - block.timestamp <= maxExpiration, "Exp > 1 yr");
+        require(_expiration - block.timestamp <= l.maxExpiration, "Exp > 1 yr");
         require(_expiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");
     }
 }

@@ -12,10 +12,6 @@ fs.copyFileSync(
   './abi/FeeCalculator.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaBondingCurve.sol/PremiaBondingCurve.json',
-  './abi/PremiaBondingCurve.json',
-);
-fs.copyFileSync(
   './artifacts/contracts/PremiaDevFund.sol/PremiaDevFund.json',
   './abi/PremiaDevFund.json',
 );
@@ -28,20 +24,8 @@ fs.copyFileSync(
   './abi/PremiaFeeDiscount.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaPBC.sol/PremiaPBC.json',
-  './abi/PremiaPBC.json',
-);
-fs.copyFileSync(
   './artifacts/contracts/PremiaMaker.sol/PremiaMaker.json',
   './abi/PremiaMaker.json',
-);
-fs.copyFileSync(
-  './artifacts/contracts/PremiaMarket.sol/PremiaMarket.json',
-  './abi/PremiaMarket.json',
-);
-fs.copyFileSync(
-  './artifacts/contracts/PremiaOption.sol/PremiaOption.json',
-  './abi/PremiaOption.json',
 );
 fs.copyFileSync(
   './artifacts/contracts/PremiaOptionBatch.sol/PremiaOptionBatch.json',
@@ -52,11 +36,11 @@ fs.copyFileSync(
   './abi/PremiaStaking.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaVesting.sol/PremiaVesting.json',
+  './artifacts/contracts/vesting/PremiaVesting.sol/PremiaVesting.json',
   './abi/PremiaVesting.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaVestingCancellable.sol/PremiaVestingCancellable.json',
+  './artifacts/contracts/vesting/PremiaVestingCancellable.sol/PremiaVestingCancellable.json',
   './abi/PremiaVestingCancellable.json',
 );
 fs.copyFileSync(
@@ -64,7 +48,7 @@ fs.copyFileSync(
   './abi/PremiaVoteProxy.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/PremiaMultiVesting.sol/PremiaMultiVesting.json',
+  './artifacts/contracts/vesting/PremiaMultiVesting.sol/PremiaMultiVesting.json',
   './abi/PremiaMultiVesting.json',
 );
 
@@ -101,10 +85,6 @@ fs.copyFileSync(
   './abi/TestErc20.json',
 );
 fs.copyFileSync(
-  './artifacts/contracts/test/TestPremiaBondingCurveUpgrade.sol/TestPremiaBondingCurveUpgrade.json',
-  './abi/TestPremiaBondingCurveUpgrade.json',
-);
-fs.copyFileSync(
   './artifacts/contracts/test/TestPremiaFeeDiscount.sol/TestPremiaFeeDiscount.json',
   './abi/TestPremiaFeeDiscount.json',
 );
@@ -135,4 +115,27 @@ fs.copyFileSync(
   './abi/WETH9.json',
 );
 
-rimraf.sync('./contractsTyped');
+fs.copyFileSync(
+  './artifacts/@openzeppelin/contracts/token/ERC20/ERC20.sol/ERC20.json',
+  './abi/ERC20.json',
+);
+
+// Diamond
+fs.copyFileSync(
+  './artifacts/contracts/core/Premia.sol/Premia.json',
+  './abi/Premia.json',
+);
+fs.copyFileSync(
+  './artifacts/contracts/core/ProxyManager.sol/ProxyManager.json',
+  './abi/ProxyManager.json',
+);
+fs.copyFileSync(
+  './artifacts/contracts/option/Option.sol/Option.json',
+  './abi/Option.json',
+);
+fs.copyFileSync(
+  './artifacts/contracts/market/Market.sol/Market.json',
+  './abi/Market.json',
+);
+
+rimraf.sync('./typechain');
