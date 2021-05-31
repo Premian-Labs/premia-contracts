@@ -22,6 +22,8 @@ library PoolStorage {
 
     mapping (address => uint256) depositedAt;
 
+    mapping (address => uint256) divestmentTimestamps;
+
     // doubly linked list of free liquidity intervals
     mapping (address => address) liquidityQueueAscending;
     mapping (address => address) liquidityQueueDescending;
@@ -38,6 +40,14 @@ library PoolStorage {
     return ABDKMath64x64Token.fromDecimals(
       ERC20BaseStorage.layout().totalSupply, l.underlyingDecimals
     );
+  }
+
+  function getReinvestmentStatus (
+    Layout storage l,
+    address account
+  ) internal view returns (bool) {
+    uint256 timestamp = l.divestmentTimestamps[account];
+    return timestamp == 0 || timestamp > block.timestamp;
   }
 
   function addUnderwriter (
