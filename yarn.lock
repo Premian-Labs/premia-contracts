@@ -704,6 +704,11 @@
   resolved "https://registry.yarnpkg.com/@typechain/ethers-v5/-/ethers-v5-7.0.0.tgz#cadb5262b3827d1616c21f4ba86a36a71269bd7e"
   integrity sha512-ykNaqYcQ1yC928x8bogL9LECUg0osfqqHCKBhP7qbGlNfvC/bvTiIfnjQUgXUYWEJRx5r0Y78vcKMo8F3sJTBA==
 
+"@typechain/hardhat@^2.0.1":
+  version "2.0.1"
+  resolved "https://registry.yarnpkg.com/@typechain/hardhat/-/hardhat-2.0.1.tgz#93ddf1ff3a03ca2112c5f20aac598d3faae4d54b"
+  integrity sha512-R5q9M9IDYIs9fgqz9zEJrAVKE5N9HOMhhvrr81oSEZvoHkI8NZrr6pLWsqdifYqHnT00ww6ZxllPIrBjW1qnxA==
+
 "@types/abstract-leveldown@*":
   version "5.0.1"
   resolved "https://registry.yarnpkg.com/@types/abstract-leveldown/-/abstract-leveldown-5.0.1.tgz#3c7750d0186b954c7f2d2f6acc8c3c7ba0c3412e"

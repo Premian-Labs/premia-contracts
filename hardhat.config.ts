@@ -2,6 +2,7 @@ import { task } from 'hardhat/config';
 import Dotenv from 'dotenv';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
+import '@typechain/hardhat';
 import 'hardhat-contract-sizer';
 import fs from 'fs';
 
@@ -96,6 +97,9 @@ export default {
       //gasPrice: 10,
       timeout: 300000,
     },
+  },
+  typechain: {
+    alwaysGenerateOverloads: true,
   },
   ...(ETHERSCAN_KEY
     ? {
