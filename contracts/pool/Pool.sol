@@ -29,6 +29,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
   address private immutable WETH_ADDRESS;
 
+  event UpdateCLevel (int128 cLevel64x64);
+
   constructor (
     address weth
   ) {
@@ -187,6 +189,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       totalSupply64x64,
       OptionMath.ONE_64x64
     ));
+
+    emit UpdateCLevel(l.cLevel64x64);
   }
 
   /**
@@ -245,6 +249,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     int128 newLiquidity64x64 = l.totalSupply64x64();
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
+
+    emit UpdateCLevel(l.cLevel64x64);
   }
 
   /**
@@ -266,6 +272,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     int128 newLiquidity64x64 = l.totalSupply64x64();
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
+
+    emit UpdateCLevel(l.cLevel64x64);
   }
 
   /**
@@ -290,6 +298,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     _push(l.underlying, amount);
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
+
+    emit UpdateCLevel(l.cLevel64x64);
   }
 
   /**
@@ -339,6 +349,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
         totalSupply64x64.add(cost64x64),
         OptionMath.ONE_64x64
       ));
+
+      emit UpdateCLevel(l.cLevel64x64);
 
       // mint free liquidity tokens for treasury (ERC20)
       _mint(l.treasury, fee);

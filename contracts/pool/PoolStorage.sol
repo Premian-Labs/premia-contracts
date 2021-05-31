@@ -29,8 +29,6 @@ library PoolStorage {
     mapping (address => address) liquidityQueueDescending;
   }
 
-  event UpdateCLevel (int128 cLevel64x64);
-
   function layout () internal pure returns (Layout storage l) {
     bytes32 slot = STORAGE_SLOT;
     assembly { l.slot := slot }
@@ -81,6 +79,5 @@ library PoolStorage {
     int128 cLevel64x64
   ) internal {
     l.cLevel64x64 = cLevel64x64;
-    emit UpdateCLevel(cLevel64x64);
   }
 }
