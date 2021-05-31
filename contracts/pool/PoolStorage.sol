@@ -8,6 +8,8 @@ import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
 
 library PoolStorage {
+  using PoolStorage for Layout;
+
   bytes32 internal constant STORAGE_SLOT = keccak256(
     'median.contracts.storage.Pool'
   );
@@ -26,6 +28,8 @@ library PoolStorage {
     mapping (address => address) liquidityQueueAscending;
     mapping (address => address) liquidityQueueDescending;
   }
+
+  event UpdateCLevel (int128 cLevel64x64);
 
   function layout () internal pure returns (Layout storage l) {
     bytes32 slot = STORAGE_SLOT;
@@ -64,11 +68,19 @@ library PoolStorage {
     int128 oldLiquidity64x64,
     int128 newLiquidity64x64
   ) internal {
-    l.cLevel64x64 = OptionMath.calculateCLevel(
+    l.setCLevel(OptionMath.calculateCLevel(
       l.cLevel64x64,
       oldLiquidity64x64,
       newLiquidity64x64,
       OptionMath.ONE_64x64
-    );
+    ));
+  }
+
+  function setCLevel (
+    Layout storage l,
+    int128 cLevel64x64
+  ) internal {
+    l.cLevel64x64 = cLevel64x64;
+    emit UpdateCLevel(cLevel64x64);
   }
 }
