@@ -80,7 +80,6 @@ describe('PoolProxy', function () {
     );
 
     await premia.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
-  });
 
     //
 
