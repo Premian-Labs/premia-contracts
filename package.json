@@ -45,12 +45,19 @@
   },
   "scripts": {
     "chain": "hardhat node --hostname 0.0.0.0",
-    "compile": "hardhat compile",
+    "copyAbi": "node \"./copyAbi.js\"",
+    "compile": "rimraf \"./docgen\" && hardhat compile",
+    "postinstall": "npm run compile && npm run copyAbi",
     "deploy": "hardhat deploy",
+    "deploy:rinkeby": "hardhat --network rinkeby deploy",
     "accounts": "hardhat accounts",
     "test": "hardhat test",
     "docgen": "hardhat docgen",
     "coverage": "hardhat coverage",
     "clean": "hardhat clean"
+  },
+  "dependencies": {
+    "@nomiclabs/hardhat-ethers": "^2.0.2",
+    "@nomiclabs/hardhat-waffle": "^2.0.1"
   }
 }
