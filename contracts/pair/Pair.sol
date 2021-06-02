@@ -20,6 +20,22 @@ contract Pair is IPair, OwnableInternal {
   using PairStorage for PairStorage.Layout;
 
   /**
+   * @notice get address of asset0
+   * @return asset0 address
+   */
+  function asset0 () external view returns (address) {
+    return PairStorage.layout().asset0;
+  }
+
+  /**
+   * @notice get address of asset1
+   * @return asset1 address
+   */
+  function asset1 () external view returns (address) {
+    return PairStorage.layout().asset1;
+  }
+
+  /**
    * @notice get addresses of PoolProxy contracts
    * @return pool addresses
    */
