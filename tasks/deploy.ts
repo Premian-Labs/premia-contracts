@@ -1,12 +1,13 @@
 import { task } from 'hardhat/config';
-import {
-  Median__factory,
-  Pair__factory,
-  Pool__factory,
-  ProxyManager__factory,
-} from '../typechain';
 
 task('deploy').setAction(async function (args, hre) {
+  const {
+    Median__factory,
+    Pair__factory,
+    Pool__factory,
+    ProxyManager__factory,
+  } = require('../typechain');
+
   const [deployer] = await hre.ethers.getSigners();
 
   const pair = await new Pair__factory(deployer).deploy();
