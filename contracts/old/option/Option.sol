@@ -8,12 +8,12 @@ import '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
 import '@solidstate/contracts/access/Ownable.sol';
 import '@solidstate/contracts/utils/ReentrancyGuard.sol';
 
-import "../interface/IERC20Extended.sol";
-import "../interface/IFeeCalculator.sol";
-import "../interface/IFlashLoanReceiver.sol";
+import "../../interface/IERC20Extended.sol";
+import "../../interface/IFeeCalculator.sol";
+import "../../interface/IFlashLoanReceiver.sol";
 import './OptionStorage.sol';
 
-import "../uniswapV2/interfaces/IUniswapV2Router02.sol";
+import "../../uniswapV2/interfaces/IUniswapV2Router02.sol";
 
 
 /// @author Premia

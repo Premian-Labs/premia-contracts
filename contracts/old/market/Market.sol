@@ -8,9 +8,9 @@ import '@solidstate/contracts/utils/EnumerableSet.sol';
 import '@solidstate/contracts/access/Ownable.sol';
 import '@solidstate/contracts/utils/ReentrancyGuard.sol';
 
-import "../interface/IERC20Extended.sol";
-import "../interface/IPremiaOption.sol";
-import "../interface/IFeeCalculator.sol";
+import "../../interface/IERC20Extended.sol";
+import "../../interface/IPremiaOption.sol";
+import "../../interface/IFeeCalculator.sol";
 import "./MarketStorage.sol";
 
 /// @author Premia
