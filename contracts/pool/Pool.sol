@@ -2,14 +2,14 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/access/OwnableInternal.sol';
-import '@solidstate/contracts/token/ERC20/ERC20.sol';
-import '@solidstate/contracts/token/ERC20/IERC20.sol';
-import '@solidstate/contracts/token/ERC1155/ERC1155Enumerable.sol';
-import '@solidstate/contracts/utils/IWETH.sol';
+import {OwnableInternal} from '@solidstate/contracts/access/OwnableInternal.sol';
+import {ERC20} from '@solidstate/contracts/token/ERC20/ERC20.sol';
+import {IERC20} from '@solidstate/contracts/token/ERC20/IERC20.sol';
+import {ERC1155Enumerable, EnumerableSet, ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155Enumerable.sol';
+import {IWETH} from '@solidstate/contracts/utils/IWETH.sol';
 
-import '../pair/IPair.sol';
-import './PoolStorage.sol';
+import {IPair} from '../pair/IPair.sol';
+import {PoolStorage} from './PoolStorage.sol';
 
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
