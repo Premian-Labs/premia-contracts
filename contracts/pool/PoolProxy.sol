@@ -43,14 +43,14 @@ contract PoolProxy is ManagedProxyOwnable {
       string memory symbolUnderlying = IERC20Metadata(underlying).symbol();
 
       l.name = string(abi.encodePacked(
-        'Median Liquidity: ',
+        'Premia Liquidity: ',
         symbolUnderlying,
         '/',
         symbolBase
       ));
 
       l.symbol = string(abi.encodePacked(
-        'MED-',
+        'PREMIA-',
         symbolUnderlying,
         symbolBase
       ));

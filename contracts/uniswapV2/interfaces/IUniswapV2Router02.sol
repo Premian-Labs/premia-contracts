@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+
 pragma solidity >=0.6.2;
 
 import './IUniswapV2Router01.sol';

@@ -9,7 +9,7 @@ import { OptionMath } from '../libraries/OptionMath.sol';
 
 library PoolStorage {
   bytes32 internal constant STORAGE_SLOT = keccak256(
-    'median.contracts.storage.Pool'
+    'premia.contracts.storage.Pool'
   );
 
   struct Layout {

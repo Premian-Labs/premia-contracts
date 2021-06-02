@@ -5,9 +5,9 @@ pragma solidity ^0.8.0;
 import '@solidstate/contracts/multisig/ECDSAMultisigWallet.sol';
 
 /**
- * @title Median team wallet
+ * @title Premia team wallet
  */
-contract MedianMultisigWallet is ECDSAMultisigWallet {
+contract PremiaMultisigWallet is ECDSAMultisigWallet {
   using ECDSAMultisigWalletStorage for ECDSAMultisigWalletStorage.Layout;
 
   constructor (

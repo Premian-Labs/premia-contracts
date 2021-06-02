@@ -4,8 +4,8 @@ import { signData } from '@solidstate/library';
 import { describeBehaviorOfECDSAMultisigWallet } from '@solidstate/spec';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
-  MedianMultisigWallet,
-  MedianMultisigWallet__factory,
+  PremiaMultisigWallet,
+  PremiaultisigWallet__factory,
 } from '../../typechain';
 import { BigNumberish } from 'ethers';
 
@@ -30,19 +30,19 @@ const signAuthorization = async function (
   });
 };
 
-describe('MedianMultisigWallet', function () {
+describe('PremiaMultisigWallet', function () {
   let owner: SignerWithAddress;
   let nonSigner: SignerWithAddress;
   let signers: SignerWithAddress[];
 
-  let instance: MedianMultisigWallet;
+  let instance: PremiaMultisigWallet;
 
   before(async function () {
     [owner, nonSigner, ...signers] = (await ethers.getSigners()).slice(0, 4);
   });
 
   beforeEach(async function () {
-    instance = await new MedianMultisigWallet__factory(owner).deploy(
+    instance = await new PremiaMultisigWallet__factory(owner).deploy(
       signers.map((s) => s.address),
       quorum,
     );
@@ -60,7 +60,7 @@ describe('MedianMultisigWallet', function () {
     describe('reverts if', function () {
       it('quorum exceeds signer count', async function () {
         await expect(
-          new MedianMultisigWallet__factory(owner).deploy(
+          new PremiaMultisigWallet__factory(owner).deploy(
             [],
             ethers.constants.One,
           ),

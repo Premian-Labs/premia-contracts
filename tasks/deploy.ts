@@ -2,7 +2,7 @@ import { task } from 'hardhat/config';
 
 task('deploy').setAction(async function (args, hre) {
   const {
-    Median__factory,
+    Premia__factory,
     Pair__factory,
     Pool__factory,
     ProxyManager__factory,
@@ -27,7 +27,7 @@ task('deploy').setAction(async function (args, hre) {
     },
   );
 
-  const instance = await new Median__factory(deployer).deploy(
+  const instance = await new Premia__factory(deployer).deploy(
     pair.address,
     pool.address,
   );

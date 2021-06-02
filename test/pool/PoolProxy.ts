@@ -6,8 +6,8 @@ import {
   ERC20Mock__factory,
   ManagedProxyOwnable,
   ManagedProxyOwnable__factory,
-  Median,
-  Median__factory,
+  Premia,
+  Premia__factory,
   Pair__factory,
   PoolMock,
   PoolMock__factory,
@@ -24,7 +24,7 @@ const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 describe('PoolProxy', function () {
   let owner: SignerWithAddress;
 
-  let median: Median;
+  let premia: Premia;
   let instanceProxy: ManagedProxyOwnable;
   let instancePool: PoolMock;
 
@@ -46,16 +46,16 @@ describe('PoolProxy', function () {
       },
     );
 
-    median = await new Median__factory(owner).deploy(
+    premia = await new Premia__factory(owner).deploy(
       pair.address,
       pool.address,
     );
 
-    await median.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
+    await premia.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
   });
 
   beforeEach(async function () {
-    const manager = ProxyManager__factory.connect(median.address, owner);
+    const manager = ProxyManager__factory.connect(premia.address, owner);
 
     const erc20Factory = new ERC20Mock__factory(owner);
 
@@ -102,8 +102,8 @@ describe('PoolProxy', function () {
     {
       deploy: async () => instancePool,
       supply: BigNumber.from(0),
-      name: `Median Liquidity: ${SYMBOL_UNDERLYING}/${SYMBOL_BASE}`,
-      symbol: `MED-${SYMBOL_UNDERLYING}${SYMBOL_BASE}`,
+      name: `Premia Liquidity: ${SYMBOL_UNDERLYING}/${SYMBOL_BASE}`,
+      symbol: `PREMIA-${SYMBOL_UNDERLYING}${SYMBOL_BASE}`,
       decimals: 18,
       mintERC20: async (address, amount) =>
         instancePool['mint(address,uint256)'](address, amount),

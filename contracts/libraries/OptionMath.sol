@@ -151,7 +151,7 @@ library OptionMath {
   }
 
   /**
-   * @notice calculate the price of an option using the Median Finance model
+   * @notice calculate the price of an option using the Premia Finance model
    * @param emaVarianceAnnualized64x64 64x64 fixed point representation of annualized EMA of variance
    * @param strike64x64 64x64 fixed point representation of strike price
    * @param spot64x64 64x64 fixed point representation of spot price
@@ -161,7 +161,7 @@ library OptionMath {
    * @param newPoolState 64x64 fixed point representation of state of the pool after trade
    * @param steepness64x64 64x64 fixed point representation of Pool state delta multiplier
    * @param isCall whether to price "call" or "put" option
-   * @return medianPrice64x64 64x64 fixed point representation of Median option price
+   * @return premiaPrice64x64 64x64 fixed point representation of Premia option price
    * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
    */
   function quotePrice (
@@ -174,14 +174,14 @@ library OptionMath {
     int128 newPoolState,
     int128 steepness64x64,
     bool isCall
-  ) internal pure returns (int128 medianPrice64x64, int128 cLevel64x64) {
+  ) internal pure returns (int128 premiaPrice64x64, int128 cLevel64x64) {
     int128 deltaPoolState64x64 = newPoolState.sub(oldPoolState).div(oldPoolState).mul(steepness64x64);
     int128 tradingDelta64x64 = deltaPoolState64x64.neg().exp();
 
     int128 bsPrice64x64 = bsPrice(emaVarianceAnnualized64x64, strike64x64, spot64x64, timeToMaturity64x64, isCall);
     cLevel64x64 = tradingDelta64x64.mul(oldCLevel64x64);
 
-    medianPrice64x64 = bsPrice64x64.mul(cLevel64x64).mul(
+    premiaPrice64x64 = bsPrice64x64.mul(cLevel64x64).mul(
       // slippage coefficient
       ONE_64x64.sub(tradingDelta64x64).div(deltaPoolState64x64)
     );

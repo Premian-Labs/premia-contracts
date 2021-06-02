@@ -12,7 +12,7 @@ import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
 
 /**
- * @title Median options pair
+ * @title Premia options pair
  * @dev deployed standalone and referenced by PairProxy
  */
 contract Pair is IPair, OwnableInternal {

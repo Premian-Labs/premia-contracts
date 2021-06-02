@@ -4,14 +4,14 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ethers } from 'hardhat';
 import { describeBehaviorOfPair } from './Pair.behavior';
 import {
-  Median,
+  Premia,
   Pair,
   Pair__factory,
   ManagedProxyOwnable__factory,
   ManagedProxyOwnable,
   Pool__factory,
   ProxyManager__factory,
-  Median__factory,
+  Premia__factory,
 } from '../../typechain';
 
 const SYMBOL_BASE = 'SYMBOL_BASE';
@@ -20,7 +20,7 @@ const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 describe('PairProxy', function () {
   let owner: SignerWithAddress;
 
-  let median: Median;
+  let premia: Premia;
   let instanceProxy: ManagedProxyOwnable;
   let instancePair: Pair;
 
@@ -44,16 +44,16 @@ describe('PairProxy', function () {
       },
     );
 
-    median = await new Median__factory(owner).deploy(
+    premia = await new Premia__factory(owner).deploy(
       pair.address,
       pool.address,
     );
 
-    await median.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
+    await premia.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
   });
 
   beforeEach(async function () {
-    const manager = await ethers.getContractAt('ProxyManager', median.address);
+    const manager = await ethers.getContractAt('ProxyManager', premia.address);
 
     const erc20Factory = await ethers.getContractFactory('ERC20Mock', owner);
 

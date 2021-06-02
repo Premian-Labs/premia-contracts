@@ -1,6 +1,6 @@
 import {
-  Median,
-  Median__factory,
+  Premia,
+  Premia__factory,
   Pair,
   Pair__factory,
   Pool,
@@ -13,7 +13,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { describeBehaviorOfProxyManager } from './ProxyManager.behavior';
 import { describeBehaviorOfDiamond } from '@solidstate/spec';
 
-describe('Median', function () {
+describe('Premia', function () {
   let nobody: SignerWithAddress;
   let owner: SignerWithAddress;
   let nomineeOwner: SignerWithAddress;
@@ -23,7 +23,7 @@ describe('Median', function () {
 
   let facetCuts: any[] = [,];
 
-  let instance: Median;
+  let instance: Premia;
 
   before(async function () {
     [nobody, owner, nomineeOwner] = await ethers.getSigners();
@@ -43,7 +43,7 @@ describe('Median', function () {
   });
 
   beforeEach(async function () {
-    instance = await new Median__factory(owner).deploy(
+    instance = await new Premia__factory(owner).deploy(
       pair.address,
       pool.address,
     );

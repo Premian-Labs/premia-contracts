@@ -6,7 +6,7 @@ import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 
 library PairStorage {
   bytes32 internal constant STORAGE_SLOT = keccak256(
-    'median.contracts.storage.Pair'
+    'premia.contracts.storage.Pair'
   );
 
   struct Layout {

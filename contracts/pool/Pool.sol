@@ -16,7 +16,7 @@ import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
 
 /**
- * @title Median option pool
+ * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
 contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
