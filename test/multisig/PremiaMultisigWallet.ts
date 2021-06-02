@@ -5,7 +5,7 @@ import { describeBehaviorOfECDSAMultisigWallet } from '@solidstate/spec';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   PremiaMultisigWallet,
-  PremiaultisigWallet__factory,
+  PremiaMultisigWallet__factory,
 } from '../../typechain';
 import { BigNumberish } from 'ethers';
 
