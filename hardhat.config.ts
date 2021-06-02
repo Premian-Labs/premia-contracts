@@ -1,15 +1,17 @@
-require('dotenv').config();
+import Dotenv from 'dotenv';
+Dotenv.config();
 
-require('@nomiclabs/hardhat-waffle');
-require('hardhat-docgen');
-require('hardhat-gas-reporter');
-require('hardhat-spdx-license-identifier');
-require('solidity-coverage');
+import '@nomiclabs/hardhat-waffle';
+import '@typechain/hardhat';
+import 'hardhat-docgen';
+import 'hardhat-gas-reporter';
+import 'hardhat-spdx-license-identifier';
+import 'solidity-coverage';
 
-require('./tasks/deploy.js');
-require('./tasks/accounts.js');
+import './tasks/deploy';
+import './tasks/accounts';
 
-module.exports = {
+export default {
   solidity: {
     version: '0.8.4',
     settings: {
@@ -22,7 +24,7 @@ module.exports = {
 
   networks: {
     kovan: {
-      url: `${ process.env.KOVAN_URL }`,
+      url: `${process.env.KOVAN_URL}`,
       accounts: {
         mnemonic: process.env.MNEMONIC,
       },
@@ -41,5 +43,9 @@ module.exports = {
   spdxLicenseIdentifier: {
     overwrite: false,
     runOnCompile: true,
+  },
+
+  typechain: {
+    alwaysGenerateOverloads: true,
   },
 };
