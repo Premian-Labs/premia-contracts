@@ -25,7 +25,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   using EnumerableSet for EnumerableSet.AddressSet;
   using PoolStorage for PoolStorage.Layout;
 
-  enum TokenType { LONG_CALL, SHORT_CALL }
+  enum TokenType { RESERVED_LIQUIDITY, LONG_CALL, SHORT_CALL }
 
   address private immutable WETH_ADDRESS;
 
@@ -103,6 +103,17 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   }
 
   /**
+   * @notice set timestamp after which reinvestment is disabled
+   * @param timestamp timestamp to begin divestment
+   */
+  function setDivestmentTimestamp (
+    uint64 timestamp
+  ) external {
+    PoolStorage.Layout storage l = PoolStorage.layout();
+    l.divestmentTimestamps[msg.sender] = timestamp;
+  }
+
+  /**
    * @notice purchase call option
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
@@ -162,8 +173,16 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     while (amount > 0) {
       underwriter = l.liquidityQueueAscending[underwriter];
 
+      uint256 liquidity = balanceOf(underwriter);
+
+      if (!l.getReinvestmentStatus(underwriter)) {
+        _burn(underwriter, liquidity);
+        _mint(underwriter, _tokenIdFor(TokenType.RESERVED_LIQUIDITY, 0, 0), liquidity, '');
+        continue;
+      }
+
       // amount of liquidity provided by underwriter, accounting for reinvested premium
-      uint256 intervalAmount = balanceOf(underwriter) * (amount + costRemaining) / amount;
+      uint256 intervalAmount = liquidity * (amount + costRemaining) / amount;
       if (amount < intervalAmount) intervalAmount = amount;
       amount -= intervalAmount;
 
@@ -237,7 +256,11 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       amountRemaining -= freedAmount;
 
       // mint free liquidity tokens for underwriter (ERC20)
-      _mint(underwriter, freedAmount);
+      if (l.getReinvestmentStatus(underwriter)) {
+        _mint(underwriter, freedAmount);
+      } else {
+        _mint(underwriter, _tokenIdFor(TokenType.RESERVED_LIQUIDITY, 0, 0), freedAmount, '');
+      }
       // burn short option tokens from underwriter (ERC1155)
       _burn(underwriter, shortTokenId, intervalAmount);
     }
@@ -281,6 +304,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       l.depositedAt[msg.sender] + (1 days) < block.timestamp,
       'Pool: liquidity must remain locked for 1 day'
     );
+
+    // TODO: account for RESERVED_LIQUIDITY tokens
 
     int128 oldLiquidity64x64 = l.totalSupply64x64();
     // burn free liquidity tokens from sender (ERC20)
@@ -352,8 +377,16 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     while (amount > 0) {
       underwriter = l.liquidityQueueAscending[underwriter];
 
+      uint liquidity = balanceOf(underwriter);
+
+      if (!l.getReinvestmentStatus(underwriter)) {
+        _burn(underwriter, liquidity);
+        _mint(underwriter, _tokenIdFor(TokenType.RESERVED_LIQUIDITY, 0, 0), liquidity, '');
+        continue;
+      }
+
       // amount of liquidity provided by underwriter, accounting for reinvested premium
-      uint256 intervalAmount = balanceOf(underwriter) * (amount + costRemaining) / amount;
+      uint256 intervalAmount = liquidity * (amount + costRemaining) / amount;
       if (amount < intervalAmount) intervalAmount = amount;
       amount -= intervalAmount;
 
