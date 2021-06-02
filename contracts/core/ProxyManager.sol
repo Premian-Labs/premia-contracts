@@ -16,7 +16,7 @@ import './ProxyManagerStorage.sol';
 contract ProxyManager is IProxyManager, OwnableInternal {
   using ProxyManagerStorage for ProxyManagerStorage.Layout;
 
-  event PairDeployment (address pair);
+  event DeployPair (address indexed base, address indexed underlying, address indexed pair, address baseOracle, address underlyingOracle);
 
   /**
    * @notice get address of Pair implementation contract for forwarding via PairProxy
@@ -68,9 +68,10 @@ contract ProxyManager is IProxyManager, OwnableInternal {
       oracle0,
       oracle1
     );
+    address pairAddress = address(pair);
 
-    ProxyManagerStorage.layout().setPair(asset0, asset1, address(pair));
-    emit PairDeployment(address(pair));
-    return address(pair);
+    ProxyManagerStorage.layout().setPair(asset0, asset1, address(pairAddress));
+    emit DeployPair(asset0, asset1, address(pairAddress), oracle0, oracle1);
+    return address(pairAddress);
   }
 }

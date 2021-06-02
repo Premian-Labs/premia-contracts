@@ -34,11 +34,15 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   event Deposit (address account, uint256 amount);
   event Withdrawal (address account, uint256 amount);
   event UpdateCLevel (int128 cLevel64x64);
+  event CreatePool (address indexed base, address indexed underlying, address indexed treasury, int128 initialCLevel);
 
   constructor (
     address weth
   ) {
     WETH_ADDRESS = weth;
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    emit CreatePool(l.base, l.underlying, l.treasury, l.cLevel64x64);
   }
 
   /**
