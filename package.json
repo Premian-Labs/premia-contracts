@@ -32,6 +32,7 @@
     "@openzeppelin/contracts": "4.1.0",
     "@solidstate/contracts": "^0.0.14",
     "@solidstate/library": "^0.0.14",
+    "@solidstate/spec": "^0.0.14",
     "@typechain/ethers-v5": "^7.0.0",
     "@typechain/hardhat": "^2.0.1",
     "@types/chai": "^4.2.18",
