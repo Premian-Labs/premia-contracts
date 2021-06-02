@@ -29,6 +29,12 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
   address private immutable WETH_ADDRESS;
 
+  event Purchase (address account, uint256 amount);
+  event Exercise (address account, uint256 amount);
+  event Deposit (address account, uint256 amount);
+  event Withdrawal (address account, uint256 amount);
+  event UpdateCLevel (int128 cLevel64x64);
+
   constructor (
     address weth
   ) {
@@ -146,6 +152,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     require(cost <= maxCost, 'Pool: excessive slippage');
     _pull(l.underlying, cost);
+    emit Purchase(msg.sender, cost);
 
     // mint free liquidity tokens for treasury (ERC20)
     _mint(l.treasury, fee);
@@ -181,12 +188,14 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     int128 totalSupply64x64 = l.totalSupply64x64();
 
-    l.cLevel64x64 = OptionMath.calculateCLevel(
+    l.setCLevel(OptionMath.calculateCLevel(
       cLevel64x64, // C-Level after liquidity is reserved
       totalSupply64x64.sub(cost64x64),
       totalSupply64x64,
       OptionMath.ONE_64x64
-    );
+    ));
+
+    emit UpdateCLevel(l.cLevel64x64);
   }
 
   /**
@@ -217,6 +226,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       // option has a non-zero exercise value
       exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
       _push(l.underlying, exerciseValue);
+      emit Exercise(msg.sender, exerciseValue);
       amountRemaining -= exerciseValue;
     }
 
@@ -245,6 +255,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     int128 newLiquidity64x64 = l.totalSupply64x64();
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
+
+    emit UpdateCLevel(l.cLevel64x64);
   }
 
   /**
@@ -259,6 +271,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     l.depositedAt[msg.sender] = block.timestamp;
 
     _pull(l.underlying, amount);
+    emit Deposit(msg.sender, amount);
 
     int128 oldLiquidity64x64 = l.totalSupply64x64();
     // mint free liquidity tokens for sender (ERC20)
@@ -266,6 +279,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     int128 newLiquidity64x64 = l.totalSupply64x64();
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
+
+    emit UpdateCLevel(l.cLevel64x64);
   }
 
   /**
@@ -288,8 +303,11 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     int128 newLiquidity64x64 = l.totalSupply64x64();
 
     _push(l.underlying, amount);
+    emit Withdrawal(msg.sender, amount);
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
+
+    emit UpdateCLevel(l.cLevel64x64);
   }
 
   /**
@@ -328,17 +346,20 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       ).toDecimals(l.underlyingDecimals);
 
       _push(l.underlying, amount - cost - fee);
+      // TODO: reassignment event
 
       // update C-Level, accounting for slippage and reinvested premia separately
 
       int128 totalSupply64x64 = l.totalSupply64x64();
 
-      l.cLevel64x64 = OptionMath.calculateCLevel(
+      l.setCLevel(OptionMath.calculateCLevel(
         cLevel64x64, // C-Level after liquidity is reserved
         totalSupply64x64,
         totalSupply64x64.add(cost64x64),
         OptionMath.ONE_64x64
-      );
+      ));
+
+      emit UpdateCLevel(l.cLevel64x64);
 
       // mint free liquidity tokens for treasury (ERC20)
       _mint(l.treasury, fee);
