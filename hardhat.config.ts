@@ -3,22 +3,19 @@ import Dotenv from 'dotenv';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
 import '@typechain/hardhat';
+import 'hardhat-docgen';
+import 'hardhat-gas-reporter';
+import 'hardhat-spdx-license-identifier';
+import 'solidity-coverage';
 import 'hardhat-contract-sizer';
 import fs from 'fs';
 import path from 'path';
 import { TASK_COMPILE } from 'hardhat/builtin-tasks/task-names';
 
+import './tasks/deploy';
+import './tasks/accounts';
+
 Dotenv.config();
-
-// This is a sample Hardhat task. To learn how to create your own go to
-// https://hardhat.org/guides/create-task.html
-task('accounts', 'Prints the list of accounts', async (args, hre) => {
-  const accounts = await hre.ethers.getSigners();
-
-  for (const account of accounts) {
-    console.log(await account.address);
-  }
-});
 
 function replaceBytecode(filePath: string, bytecode: string) {
   let data = fs.readFileSync(filePath, 'utf8');
@@ -132,6 +129,21 @@ export default {
       timeout: 300000,
     },
   },
+
+  docgen: {
+    runOnCompile: true,
+    clear: true,
+  },
+
+  gasReporter: {
+    enabled: process.env.REPORT_GAS === 'true',
+  },
+
+  spdxLicenseIdentifier: {
+    overwrite: false,
+    runOnCompile: true,
+  },
+
   typechain: {
     alwaysGenerateOverloads: true,
   },

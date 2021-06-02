@@ -6,6 +6,10 @@ todoList.txt
 .env
 .env.local
 
+coverage/
+coverage.json
+docgen/
+
 #Hardhat files
 cache
 artifacts
