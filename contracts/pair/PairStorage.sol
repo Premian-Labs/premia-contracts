@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
+import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 
 library PairStorage {
   bytes32 internal constant STORAGE_SLOT = keccak256(
