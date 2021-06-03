@@ -44,8 +44,6 @@ describe('PoolProxy', function () {
       },
     );
 
-    console.log(facetCuts);
-
     premia = await new Premia__factory(owner).deploy(pool.address);
 
     const tx = await premia.diamondCut(

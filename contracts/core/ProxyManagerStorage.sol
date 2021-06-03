@@ -9,6 +9,7 @@ library ProxyManagerStorage {
 
   struct Layout {
     address poolImplementation;
+    // base => underlying => Pool
     mapping (address => mapping (address => address)) pools;
   }
 
