@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import "@solidstate/contracts/token/ERC20/ERC20.sol";
-import "@solidstate/contracts/token/ERC20/ERC20Permit.sol";
+import '@solidstate/contracts/token/ERC20/ERC20.sol';
+import '@solidstate/contracts/token/ERC20/ERC20Permit.sol';
 
 /// @author Premia
 /// @title The Premia token

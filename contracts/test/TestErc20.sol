@@ -2,8 +2,8 @@
 
 pragma solidity >=0.6.0;
 
-import "@solidstate/contracts/token/ERC20/ERC20.sol";
-import "@solidstate/contracts/token/ERC20/ERC20Permit.sol";
+import '@solidstate/contracts/token/ERC20/ERC20.sol';
+import '@solidstate/contracts/token/ERC20/ERC20Permit.sol';
 
 // Only used for unit tests
 contract TestErc20 is ERC20, ERC20Permit {

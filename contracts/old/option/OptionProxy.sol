@@ -8,7 +8,7 @@ import '@solidstate/contracts/token/ERC20/IERC20Metadata.sol';
 import '../core/IProxyManagerOld.sol';
 import '../manager/ManagedProxyWithManager.sol';
 
-import "./OptionStorage.sol";
+import './OptionStorage.sol';
 
 contract OptionProxy is ManagedProxyWithManager {
     constructor(address _owner, string memory _uri, address _denominator, address _feeCalculator, address _feeRecipient) ManagedProxy(IProxyManagerOld.getOptionImplementation.selector) {

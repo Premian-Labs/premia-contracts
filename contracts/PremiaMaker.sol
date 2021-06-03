@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/access/Ownable.sol';
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
-import "./uniswapV2/interfaces/IUniswapV2Router02.sol";
-import "./uniswapV2/interfaces/IWETH.sol";
+import '@solidstate/contracts/access/Ownable.sol';
+import '@solidstate/contracts/utils/EnumerableSet.sol';
+
+import './uniswapV2/interfaces/IUniswapV2Router02.sol';
+import './uniswapV2/interfaces/IWETH.sol';
 
 /// @author Premia
 /// @title A contract receiving all protocol fees, swapping them for premia
@@ -48,6 +48,8 @@ contract PremiaMaker is Ownable {
     // @param _premiaStaking The premia staking contract (xPremia)
     // @param _treasury The treasury address which will receive a portion of the protocol fees
     constructor(IERC20 _premia, address _premiaStaking, address _treasury) {
+        OwnableStorage.layout().owner = msg.sender;
+
         premia = _premia;
         premiaStaking = _premiaStaking;
         treasury = _treasury;
