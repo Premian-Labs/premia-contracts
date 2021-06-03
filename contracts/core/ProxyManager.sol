@@ -4,10 +4,9 @@ pragma solidity ^0.8.0;
 
 import {OwnableInternal} from '@solidstate/contracts/access/OwnableInternal.sol';
 
-import {Pair} from '../pair/Pair.sol';
-import {PairProxy} from '../pair/PairProxy.sol';
 import {IProxyManager} from './IProxyManager.sol';
 import {ProxyManagerStorage} from './ProxyManagerStorage.sol';
+import '../pool/PoolProxy.sol';
 
 /**
  * @title Options pair management contract
@@ -16,15 +15,7 @@ import {ProxyManagerStorage} from './ProxyManagerStorage.sol';
 contract ProxyManager is IProxyManager, OwnableInternal {
   using ProxyManagerStorage for ProxyManagerStorage.Layout;
 
-  event PairDeployment (address pair);
-
-  /**
-   * @notice get address of Pair implementation contract for forwarding via PairProxy
-   * @return implementation address
-   */
-  function getPairImplementation () override external view returns (address) {
-    return ProxyManagerStorage.layout().pairImplementation;
-  }
+  event PoolsDeployment (address asset0, address asset1, address oracle0, address oracle1, address pool0, address pool1);
 
   /**
    * @notice get address of Pool implementation contract for forwarding via PoolProxy
@@ -35,20 +26,20 @@ contract ProxyManager is IProxyManager, OwnableInternal {
   }
 
   /**
-   * @notice get address of Pair contract for given assets
-   * @param asset0 asset in pair
-   * @param asset1 asset in pair
-   * @return pair address (zero address if pair does not exist)
+   * @notice get address of Pool contract for given assets
+   * @param asset0 asset in pool
+   * @param asset1 asset in pool
+   * @return pair address (zero address if pool does not exist)
    */
-  function getPair (
+  function getPool (
     address asset0,
     address asset1
   ) external view returns (address) {
-    return ProxyManagerStorage.layout().getPair(asset0, asset1);
+    return ProxyManagerStorage.layout().getPool(asset0, asset1);
   }
 
   /**
-   * @notice deploy PairProxy contract
+   * @notice deploy 2 PoolProxy contracts for the pair
    * @param asset0 asset in pair
    * @param asset1 asset in pair
    * @param oracle0 Chainlink price aggregator for asset0
@@ -56,21 +47,20 @@ contract ProxyManager is IProxyManager, OwnableInternal {
    * TODO: unrestrict
    * @return deployment address
    */
-  function deployPair (
+  function deployPools (
     address asset0,
     address asset1,
     address oracle0,
     address oracle1
-  ) external onlyOwner returns (address) {
-    PairProxy pair = new PairProxy(
-      asset0,
-      asset1,
-      oracle0,
-      oracle1
-    );
+  ) external onlyOwner returns (address, address) {
+    address pool0 = address(new PoolProxy(msg.sender, asset0, asset1, oracle0, oracle1));
+    address pool1 = address(new PoolProxy(msg.sender, asset1, asset0, oracle1, oracle0));
 
-    ProxyManagerStorage.layout().setPair(asset0, asset1, address(pair));
-    emit PairDeployment(address(pair));
-    return address(pair);
+    ProxyManagerStorage.layout().setPool(asset0, asset1, pool0);
+    ProxyManagerStorage.layout().setPool(asset1, asset0, pool1);
+
+    emit PoolsDeployment(asset0, asset1, oracle0, oracle1, pool0, pool1);
+
+    return (pool0, pool1);
   }
 }

@@ -24,15 +24,22 @@ contract PoolProxy is ManagedProxyOwnable {
   constructor (
     address owner,
     address base,
-    address underlying
+    address underlying,
+    address baseOracle,
+    address underlyingOracle
   ) ManagedProxy(IProxyManager.getPoolImplementation.selector) {
     OwnableStorage.layout().owner = owner;
 
     {
       PoolStorage.Layout storage l = PoolStorage.layout();
       l.treasury = owner;
-      l.pair = msg.sender;
+
+      l.base = base;
       l.underlying = underlying;
+
+      l.baseOracle = baseOracle;
+      l.underlyingOracle = underlyingOracle;
+
       l.underlyingDecimals = IERC20Metadata(underlying).decimals();
       l.cLevel64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
     }

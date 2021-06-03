@@ -8,9 +8,8 @@ library ProxyManagerStorage {
   );
 
   struct Layout {
-    address pairImplementation;
     address poolImplementation;
-    mapping (address => mapping (address => address)) pairs;
+    mapping (address => mapping (address => address)) pools;
   }
 
   function layout () internal pure returns (Layout storage l) {
@@ -18,28 +17,20 @@ library ProxyManagerStorage {
     assembly { l.slot := slot }
   }
 
-  function getPair (
+  function getPool (
     Layout storage l,
     address asset0,
     address asset1
   ) internal view returns (address) {
-    if (asset0 > asset1) {
-      (asset0, asset1) = (asset1, asset0);
-    }
-
-    return l.pairs[asset0][asset1];
+    return l.pools[asset0][asset1];
   }
 
-  function setPair (
+  function setPool (
     Layout storage l,
     address asset0,
     address asset1,
-    address pair
+    address pool
   ) internal {
-    if (asset0 > asset1) {
-      (asset0, asset1) = (asset1, asset0);
-    }
-
-    l.pairs[asset0][asset1] = pair;
+    l.pools[asset0][asset1] = pool;
   }
 }
