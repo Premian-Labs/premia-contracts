@@ -32,6 +32,7 @@ contract PoolProxy is ManagedProxyOwnable {
       l.treasury = owner;
       l.pair = msg.sender;
       l.underlying = underlying;
+      l.base = base;
       l.underlyingDecimals = IERC20Metadata(underlying).decimals();
       l.cLevel64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
     }

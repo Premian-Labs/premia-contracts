@@ -27,6 +27,8 @@ library PoolStorage {
     // doubly linked list of free liquidity intervals
     mapping (address => address) liquidityQueueAscending;
     mapping (address => address) liquidityQueueDescending;
+
+    address base;
   }
 
   function layout () internal pure returns (Layout storage l) {

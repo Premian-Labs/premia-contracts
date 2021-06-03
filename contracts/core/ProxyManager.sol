@@ -6,6 +6,7 @@ import '@solidstate/contracts/access/OwnableInternal.sol';
 
 import '../pair/Pair.sol';
 import '../pair/PairProxy.sol';
+import '../libraries/OptionMath.sol';
 import './IProxyManager.sol';
 import './ProxyManagerStorage.sol';
 
@@ -16,7 +17,7 @@ import './ProxyManagerStorage.sol';
 contract ProxyManager is IProxyManager, OwnableInternal {
   using ProxyManagerStorage for ProxyManagerStorage.Layout;
 
-  event PairDeployment (address pair);
+  event DeployPair (address indexed base, address indexed underlying, int128 indexed initialCLevel64x64, address baseOracle, address underlyingOracle);
 
   /**
    * @notice get address of Pair implementation contract for forwarding via PairProxy
@@ -68,9 +69,10 @@ contract ProxyManager is IProxyManager, OwnableInternal {
       oracle0,
       oracle1
     );
+    address pairAddress = address(pair);
 
-    ProxyManagerStorage.layout().setPair(asset0, asset1, address(pair));
-    emit PairDeployment(address(pair));
-    return address(pair);
+    ProxyManagerStorage.layout().setPair(asset0, asset1, address(pairAddress));
+    emit DeployPair(asset0, asset1, OptionMath.INITIAL_C_LEVEL_64x64, oracle0, oracle1);
+    return address(pairAddress);
   }
 }
