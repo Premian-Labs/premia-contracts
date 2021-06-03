@@ -3,14 +3,12 @@ import { task } from 'hardhat/config';
 task('deploy').setAction(async function (args, hre) {
   const {
     Premia__factory,
-    Pair__factory,
     Pool__factory,
     ProxyManager__factory,
   } = require('../typechain');
 
   const [deployer] = await hre.ethers.getSigners();
 
-  const pair = await new Pair__factory(deployer).deploy();
   const pool = await new Pool__factory(deployer).deploy(
     hre.ethers.constants.AddressZero,
   );
@@ -27,10 +25,7 @@ task('deploy').setAction(async function (args, hre) {
     },
   );
 
-  const instance = await new Premia__factory(deployer).deploy(
-    pair.address,
-    pool.address,
-  );
+  const instance = await new Premia__factory(deployer).deploy(pool.address);
 
   await instance.diamondCut(facetCuts, hre.ethers.constants.AddressZero, '0x');
 });

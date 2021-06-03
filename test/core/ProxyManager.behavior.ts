@@ -3,16 +3,11 @@ import { expect } from 'chai';
 
 interface ProxyBehaviorArgs {
   deploy: () => Promise<ProxyManager>;
-  getPairImplementationAddress: () => string;
   getPoolImplementationAddress: () => string;
 }
 
 export function describeBehaviorOfProxyManager(
-  {
-    deploy,
-    getPairImplementationAddress,
-    getPoolImplementationAddress,
-  }: ProxyBehaviorArgs,
+  { deploy, getPoolImplementationAddress }: ProxyBehaviorArgs,
   skips?: string[],
 ) {
   describe('::ProxyManager', function () {
@@ -31,14 +26,6 @@ export function describeBehaviorOfProxyManager(
 
       describe('reverts if', function () {
         it('todo');
-      });
-    });
-
-    describe('#getPairImplementation', function () {
-      it('returns address of pair implementation', async function () {
-        expect(await instance.callStatic.getPairImplementation()).to.equal(
-          getPairImplementationAddress(),
-        );
       });
     });
 
