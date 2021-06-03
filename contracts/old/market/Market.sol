@@ -7,11 +7,11 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import '@solidstate/contracts/utils/EnumerableSet.sol';
 import '@solidstate/contracts/access/Ownable.sol';
 import '@solidstate/contracts/utils/ReentrancyGuard.sol';
+import '@solidstate/contracts/token/ERC20/IERC20Metadata.sol';
 
-import "../../interface/IERC20Extended.sol";
-import "../../interface/IPremiaOption.sol";
-import "../../interface/IFeeCalculator.sol";
-import "./MarketStorage.sol";
+import '../../interface/IPremiaOption.sol';
+import '../../interface/IFeeCalculator.sol';
+import './MarketStorage.sol';
 
 /// @author Premia
 /// @title An option market contract
@@ -108,7 +108,7 @@ contract Market is Ownable, ReentrancyGuard {
         MarketStorage.Layout storage l = MarketStorage.layout();
 
         for (uint256 i=0; i < _addr.length; i++) {
-            uint8 decimals = IERC20Extended(_addr[i]).decimals();
+            uint8 decimals = IERC20Metadata(_addr[i]).decimals();
             require(decimals <= 18, "Too many decimals");
             l.whitelistedPaymentTokens.add(_addr[i]);
             l.paymentTokenDecimals[_addr[i]] = decimals;

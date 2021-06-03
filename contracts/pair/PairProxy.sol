@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/access/OwnableStorage.sol';
-import '@solidstate/contracts/proxy/managed/ManagedProxyOwnable.sol';
+import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
+import {ManagedProxyOwnable, ManagedProxy} from '@solidstate/contracts/proxy/managed/ManagedProxyOwnable.sol';
 
-import '../core/IProxyManager.sol';
-import '../pool/PoolProxy.sol';
-import './PairStorage.sol';
+import {IProxyManager} from '../core/IProxyManager.sol';
+import {PoolProxy} from '../pool/PoolProxy.sol';
+import {PairStorage} from './PairStorage.sol';
 
 /**
  * @title Upgradeable proxy with centrally controlled Pair implementation

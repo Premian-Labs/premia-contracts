@@ -3,7 +3,8 @@
 pragma solidity ^0.8.0;
 
 import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import '@openzeppelin/contracts/access/Ownable.sol';
+
+import '@solidstate/contracts/access/Ownable.sol';
 
 /// @author Premia
 /// @title A vesting contract allowing to set multiple deposits for multiple users, with 1 year vesting
@@ -31,6 +32,8 @@ contract PremiaMultiVesting is Ownable {
     event DepositClaimed(address indexed user, uint256 depositId, uint256 amount);
 
     constructor(IERC20 _premia) {
+        OwnableStorage.layout().owner = msg.sender;
+
         premia = _premia;
     }
 

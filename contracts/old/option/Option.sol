@@ -6,14 +6,14 @@ import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 import '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
 import '@solidstate/contracts/access/Ownable.sol';
+import '@solidstate/contracts/token/ERC20/IERC20Metadata.sol';
 import '@solidstate/contracts/utils/ReentrancyGuard.sol';
 
-import "../../interface/IERC20Extended.sol";
-import "../../interface/IFeeCalculator.sol";
-import "../../interface/IFlashLoanReceiver.sol";
+import '../../interface/IFeeCalculator.sol';
+import '../../interface/IFlashLoanReceiver.sol';
 import './OptionStorage.sol';
 
-import "../../uniswapV2/interfaces/IUniswapV2Router02.sol";
+import '../../uniswapV2/interfaces/IUniswapV2Router02.sol';
 
 
 /// @author Premia
@@ -225,7 +225,7 @@ contract Option is Ownable, ERC1155Base, ReentrancyGuard {
 
             optionId = l.nextOptionId;
             l.options[_token][_expiration][_strikePrice][_isCall] = optionId;
-            uint8 decimals = IERC20Extended(_token).decimals();
+            uint8 decimals = IERC20Metadata(_token).decimals();
             require(decimals <= 18, "Too many decimals");
 
             l.optionData[optionId].token = _token;

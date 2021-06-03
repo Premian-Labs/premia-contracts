@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import '@openzeppelin/contracts/access/Ownable.sol';
+import '@solidstate/contracts/access/Ownable.sol';
+
+import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 
 /// @author Premia
 /// @title 3 days timelock contract for dev fund
@@ -38,6 +38,7 @@ contract PremiaDevFund is Ownable {
 
     /// @param _premia The premia token
     constructor(IERC20 _premia) {
+        OwnableStorage.layout().owner = msg.sender;
         premia = _premia;
     }
 

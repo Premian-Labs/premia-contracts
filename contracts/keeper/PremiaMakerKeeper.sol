@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/access/Ownable.sol';
+import '@solidstate/contracts/access/Ownable.sol';
+import '@solidstate/contracts/token/ERC20/IERC20.sol';
 
-import "../interface/IKeeperCompatible.sol";
-import "../interface/IERC20Extended.sol";
-import "../interface/IPremiaMaker.sol";
-import "../interface/IPremiaOption.sol";
+import '../interface/IKeeperCompatible.sol';
+import '../interface/IPremiaMaker.sol';
+import '../interface/IPremiaOption.sol';
 
 contract PremiaMakerKeeper is IKeeperCompatible, Ownable {
   IPremiaMaker public premiaMaker = IPremiaMaker(0xcb81dB76Ae0a46c6e1E378E3Ade61DaB275ff96E);

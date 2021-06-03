@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
-import '@solidstate/contracts/access/OwnableInternal.sol';
+import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
+import {OwnableInternal} from '@solidstate/contracts/access/OwnableInternal.sol';
 
-import './IPair.sol';
-import './PairStorage.sol';
+import {IPair} from './IPair.sol';
+import {PairStorage} from './PairStorage.sol';
 
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
