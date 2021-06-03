@@ -22,17 +22,16 @@ contract PoolProxy is ManagedProxyOwnable {
   using ERC165Storage for ERC165Storage.Layout;
 
   constructor (
-    address owner,
     address base,
     address underlying,
     address baseOracle,
     address underlyingOracle
   ) ManagedProxy(IProxyManager.getPoolImplementation.selector) {
-    OwnableStorage.layout().owner = owner;
+    OwnableStorage.layout().owner = msg.sender;
 
     {
       PoolStorage.Layout storage l = PoolStorage.layout();
-      l.treasury = owner;
+      l.treasury = msg.sender;
 
       l.base = base;
       l.underlying = underlying;

@@ -53,8 +53,8 @@ contract ProxyManager is IProxyManager, OwnableInternal {
     address oracle0,
     address oracle1
   ) external onlyOwner returns (address, address) {
-    address pool0 = address(new PoolProxy(msg.sender, asset0, asset1, oracle0, oracle1));
-    address pool1 = address(new PoolProxy(msg.sender, asset1, asset0, oracle1, oracle0));
+    address pool0 = address(new PoolProxy(asset0, asset1, oracle0, oracle1));
+    address pool1 = address(new PoolProxy(asset1, asset0, oracle1, oracle0));
 
     ProxyManagerStorage.layout().setPool(asset0, asset1, pool0);
     ProxyManagerStorage.layout().setPool(asset1, asset0, pool1);
