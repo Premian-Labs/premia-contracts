@@ -919,7 +919,7 @@ describe('Market', () => {
           market
             .connect(taker)
             .fillOrder(order.order, parseTestToken('1'), false),
-        ).to.be.revertedWith('ERC1155: insufficient balance for transfer');
+        ).to.be.revertedWith('ERC1155: insufficient balances for transfer');
       });
 
       it('should fail filling sell order if taker does not have enough tokens', async () => {
@@ -1039,7 +1039,7 @@ describe('Market', () => {
           market
             .connect(taker)
             .fillOrder(order.order, parseTestToken('1'), false),
-        ).to.be.revertedWith('ERC1155: insufficient balance for transfer');
+        ).to.be.revertedWith('ERC1155: insufficient balances for transfer');
       });
 
       it('should fill buy order for 1/2 if only 1 left to buy', async () => {

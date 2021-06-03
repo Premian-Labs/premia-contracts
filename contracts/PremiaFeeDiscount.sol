@@ -8,8 +8,9 @@ import '@openzeppelin/contracts/utils/math/SafeCast.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 import '@openzeppelin/contracts/security/ReentrancyGuard.sol';
 
+import "@solidstate/contracts/token/ERC20/IERC2612.sol";
+
 import "./interface/INewPremiaFeeDiscount.sol";
-import "./interface/IERC2612Permit.sol";
 
 /// @author Premia
 /// @title A contract allowing you to lock xPremia to get Premia protocol fee discounts
@@ -137,7 +138,7 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
     /// @param _r R
     /// @param _s S
     function stakeWithPermit(uint256 _amount, uint256 _period, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) external {
-        IERC2612Permit(address(xPremia)).permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
+        IERC2612(address(xPremia)).permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
         stake(_amount, _period);
     }
 
