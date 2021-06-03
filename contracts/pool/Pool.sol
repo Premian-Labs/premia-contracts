@@ -53,6 +53,64 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   }
 
   /**
+   * @notice get address of base oracle contract
+   * @return base oracle address
+   */
+  function getBaseOracle () external view returns (address) {
+    return PoolStorage.layout().baseOracle;
+  }
+
+  /**
+   * @notice get address of underlying oracle contract
+   * @return underlying oracle address
+   */
+  function getUnderlyingOracle () external view returns (address) {
+    return PoolStorage.layout().underlyingOracle;
+  }
+
+  /**
+   * @notice get C Level
+   * @return 64x64 fixed point representation of C-Level of Pool after purchase
+   */
+  function getCLevel64x64 () external view returns (int128) {
+    return PoolStorage.layout().cLevel64x64;
+  }
+
+  /**
+   * @notice get fees
+   * @return 64x64 fixed point representation of fees
+   */
+  function getFee64x64 () external view returns (int128) {
+    return PoolStorage.layout().fee64x64;
+  }
+
+  /**
+   * @notice get ema log returns
+   * @return 64x64 fixed point representation of natural log of rate of return for current period
+   */
+  function getEmaLogReturns64x64 () external view returns (int128) {
+    return PoolStorage.layout().emaLogReturns64x64;
+  }
+
+
+  /**
+   * @notice get ema variance annualized
+   * @return 64x64 fixed point representation of ema variance annualized
+   */
+  function getEmaVarianceAnnualized64x64 () external view returns (int128) {
+    return PoolStorage.layout().emaVarianceAnnualized64x64;
+  }
+
+  /**
+   * @notice get price at timestamp
+   * @return price at timestamp
+   */
+  function getPrice (uint256 timestamp) external view returns (int128) {
+    return PoolStorage.layout().getPriceUpdate(timestamp);
+  }
+
+
+  /**
    * @notice calculate price of option contract
    * @param variance64x64 64x64 fixed point representation of variance
    * @param maturity timestamp of option maturity
