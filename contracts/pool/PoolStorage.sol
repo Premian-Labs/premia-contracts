@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/token/ERC20/ERC20BaseStorage.sol';
+import {ERC20BaseStorage} from '@solidstate/contracts/token/ERC20/ERC20BaseStorage.sol';
 
 import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';

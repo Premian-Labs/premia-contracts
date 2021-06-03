@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/multisig/ECDSAMultisigWallet.sol';
+import {ECDSAMultisigWallet, ECDSAMultisigWalletStorage} from '@solidstate/contracts/multisig/ECDSAMultisigWallet.sol';
 
 /**
  * @title Premia team wallet
