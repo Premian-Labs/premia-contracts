@@ -45,8 +45,7 @@ describe('PoolProxy', function () {
   let premia: Premia;
   let proxy: ManagedProxyOwnable;
   let pool: PoolMock;
-  let asset0: ERC20Mock;
-  let asset1: ERC20Mock;
+  let base: ERC20Mock;
   let underlying: ERC20Mock;
   let poolUtil: PoolUtil;
 
@@ -72,13 +71,7 @@ describe('PoolProxy', function () {
 
     premia = await new Premia__factory(owner).deploy(poolImp.address);
 
-    const tx = await premia.diamondCut(
-      facetCuts,
-      ethers.constants.AddressZero,
-      '0x',
-    );
-    await tx.wait(1);
-  });
+    await premia.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
 
     //
 
@@ -86,10 +79,10 @@ describe('PoolProxy', function () {
 
     const erc20Factory = new ERC20Mock__factory(owner);
 
-    const token0 = await erc20Factory.deploy(SYMBOL_BASE);
-    await token0.deployed();
-    const token1 = await erc20Factory.deploy(SYMBOL_UNDERLYING);
-    await token1.deployed();
+    base = await erc20Factory.deploy(SYMBOL_BASE);
+    await base.deployed();
+    underlying = await erc20Factory.deploy(SYMBOL_UNDERLYING);
+    await underlying.deployed();
 
     const oracle0 = await deployMockContract(owner, [
       'function latestRoundData () external view returns (uint80, int, uint, uint, uint80)',
@@ -107,8 +100,8 @@ describe('PoolProxy', function () {
     await oracle1.mock.latestRoundData.returns(1, parseEther('1'), 1, 5, 1);
 
     const tx = await manager.deployPool(
-      token0.address,
-      token1.address,
+      base.address,
+      underlying.address,
       oracle0.address,
       oracle1.address,
     );
@@ -144,28 +137,9 @@ describe('PoolProxy', function () {
     ['::ERC1155Enumerable', '#transfer', '#transferFrom'],
   );
 
-  describe('#getPair', function () {
-    it('returns pair address', async () => {
-      const pairAddr = await pool.getPair();
-      expect(pairAddr).to.eq(pair.address);
-
-      const pools = await pair.getPools();
-      expect(pools[0]).to.eq(pool.address);
-    });
-  });
-
   describe('#getUnderlying', function () {
     it('returns underlying address', async () => {
-      const pools = await pair.getPools();
-
-      const callPool = Pool__factory.connect(pools[0], owner);
-      const putPool = Pool__factory.connect(pools[1], owner);
-
-      const callUnderlying = await callPool.getUnderlying();
-      const putUnderlying = await putPool.getUnderlying();
-
-      expect(callUnderlying).to.eq(asset1.address);
-      expect(putUnderlying).to.eq(asset0.address);
+      expect(await pool.getUnderlying()).to.eq(underlying.address);
     });
   });
 

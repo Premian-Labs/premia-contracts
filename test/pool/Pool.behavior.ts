@@ -6,8 +6,6 @@ import {
 import {
   ERC20Mock,
   ERC20Mock__factory,
-  Pair,
-  Pair__factory,
   Pool,
   Pool__factory,
 } from '../../typechain';
@@ -58,9 +56,6 @@ export function describeBehaviorOfPool(
   describe('::Pool', function () {
     let deployer: SignerWithAddress;
     let instance: Pool;
-    let pair: Pair;
-    let asset0: ERC20Mock;
-    let asset1: ERC20Mock;
 
     before(async () => {
       [deployer] = await ethers.getSigners();
@@ -68,9 +63,6 @@ export function describeBehaviorOfPool(
 
     beforeEach(async function () {
       instance = await deploy();
-      pair = Pair__factory.connect(await instance.getPair(), deployer);
-      asset0 = ERC20Mock__factory.connect(await pair.asset0(), deployer);
-      asset1 = ERC20Mock__factory.connect(await pair.asset1(), deployer);
     });
 
     describeBehaviorOfERC20(
