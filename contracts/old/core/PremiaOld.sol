@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/proxy/diamond/Diamond.sol';
+import {Diamond} from '@solidstate/contracts/proxy/diamond/Diamond.sol';
 
-import './ProxyManagerOldStorage.sol';
+import {ProxyManagerOldStorage} from './ProxyManagerOldStorage.sol';
 
 /**
  * @title Premia core contract

@@ -2,14 +2,16 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import '@openzeppelin/contracts/utils/math/SafeCast.sol';
+import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {SafeCast} from '@openzeppelin/contracts/utils/math/SafeCast.sol';
 
-import '@solidstate/contracts/access/Ownable.sol';
-import '@solidstate/contracts/utils/ReentrancyGuard.sol';
-import '@solidstate/contracts/token/ERC20/IERC2612.sol';
+import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
+import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
+import {ReentrancyGuard} from '@solidstate/contracts/utils/ReentrancyGuard.sol';
+import {IERC2612} from '@solidstate/contracts/token/ERC20/IERC2612.sol';
 
-import './interface/INewPremiaFeeDiscount.sol';
+import {INewPremiaFeeDiscount} from './interface/INewPremiaFeeDiscount.sol';
 
 /// @author Premia
 /// @title A contract allowing you to lock xPremia to get Premia protocol fee discounts

@@ -5,10 +5,8 @@ import {
   ERC20Mock__factory,
   ManagedProxyOwnable,
   ManagedProxyOwnable__factory,
-  Pair,
   Premia,
   Premia__factory,
-  Pair__factory,
   Pool__factory,
   PoolMock,
   PoolMock__factory,
@@ -47,7 +45,6 @@ describe('PoolProxy', function () {
   let premia: Premia;
   let proxy: ManagedProxyOwnable;
   let pool: PoolMock;
-  let pair: Pair;
   let asset0: ERC20Mock;
   let asset1: ERC20Mock;
   let underlying: ERC20Mock;
@@ -59,7 +56,6 @@ describe('PoolProxy', function () {
 
     //
 
-    const pairImpl = await new Pair__factory(owner).deploy();
     const poolImp = await new PoolMock__factory(owner).deploy();
 
     const facetCuts = [await new ProxyManager__factory(owner).deploy()].map(
@@ -74,12 +70,15 @@ describe('PoolProxy', function () {
       },
     );
 
-    premia = await new Premia__factory(owner).deploy(
-      pairImpl.address,
-      poolImp.address,
-    );
+    premia = await new Premia__factory(owner).deploy(poolImp.address);
 
-    await premia.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
+    const tx = await premia.diamondCut(
+      facetCuts,
+      ethers.constants.AddressZero,
+      '0x',
+    );
+    await tx.wait(1);
+  });
 
     //
 
@@ -107,28 +106,24 @@ describe('PoolProxy', function () {
     await oracle0.mock.latestRoundData.returns(1, parseEther('10'), 1, 5, 1);
     await oracle1.mock.latestRoundData.returns(1, parseEther('1'), 1, 5, 1);
 
-    const tx = await manager.deployPair(
+    const tx = await manager.deployPool(
       token0.address,
       token1.address,
       oracle0.address,
       oracle1.address,
     );
 
-    const pairAddress = (await tx.wait()).events![0].args!.pair;
-    pair = Pair__factory.connect(pairAddress, owner);
-    asset0 = ERC20Mock__factory.connect(await pair.asset0(), owner);
-    asset1 = ERC20Mock__factory.connect(await pair.asset1(), owner);
-    const pools = await pair.callStatic.getPools();
+    const poolAddress = (await tx.wait()).events![0].args!.pool;
 
-    proxy = ManagedProxyOwnable__factory.connect(pools[0], owner);
-    pool = PoolMock__factory.connect(pools[0], owner);
+    proxy = ManagedProxyOwnable__factory.connect(poolAddress, owner);
+    pool = PoolMock__factory.connect(poolAddress, owner);
     underlying = ERC20Mock__factory.connect(await pool.getUnderlying(), owner);
     poolUtil = new PoolUtil({ pool });
   });
 
   describeBehaviorOfManagedProxyOwnable({
     deploy: async () => proxy,
-    implementationFunction: 'getPair()',
+    implementationFunction: 'getBase()',
     implementationFunctionArgs: [],
   });
 

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import './IPremiaOption.sol';
+import {IPremiaOption} from './IPremiaOption.sol';
 
 /// @author Premia
 interface IPremiaOptionBatch {

@@ -2,16 +2,18 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-import '@solidstate/contracts/utils/EnumerableSet.sol';
-import '@solidstate/contracts/access/Ownable.sol';
-import '@solidstate/contracts/utils/ReentrancyGuard.sol';
-import '@solidstate/contracts/token/ERC20/IERC20Metadata.sol';
+import {EnumerableSet} from '@solidstate/contracts/utils/EnumerableSet.sol';
+import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
+import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
+import {ReentrancyGuard} from '@solidstate/contracts/utils/ReentrancyGuard.sol';
+import {IERC20Metadata} from '@solidstate/contracts/token/ERC20/IERC20Metadata.sol';
 
-import '../../interface/IPremiaOption.sol';
-import '../../interface/IFeeCalculator.sol';
-import './MarketStorage.sol';
+import {IPremiaOption} from '../../interface/IPremiaOption.sol';
+import {IFeeCalculator} from '../../interface/IFeeCalculator.sol';
+import {MarketStorage} from './MarketStorage.sol';
 
 /// @author Premia
 /// @title An option market contract
