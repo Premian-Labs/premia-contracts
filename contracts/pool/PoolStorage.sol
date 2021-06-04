@@ -15,8 +15,6 @@ library PoolStorage {
   );
 
   struct Layout {
-    address treasury;
-
     // Base token
     address base;
     // Underlying token
