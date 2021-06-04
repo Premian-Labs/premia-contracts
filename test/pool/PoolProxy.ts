@@ -7,10 +7,11 @@ import {
   ManagedProxyOwnable__factory,
   Premia,
   Premia__factory,
-  Pool__factory,
   PoolMock,
   PoolMock__factory,
   ProxyManager__factory,
+  WETH9__factory,
+  WETH9,
 } from '../../typechain';
 
 import { describeBehaviorOfManagedProxyOwnable } from '@solidstate/spec';
@@ -45,8 +46,10 @@ describe('PoolProxy', function () {
   let premia: Premia;
   let proxy: ManagedProxyOwnable;
   let pool: PoolMock;
+  let poolWeth: PoolMock;
   let base: ERC20Mock;
   let underlying: ERC20Mock;
+  let underlyingWeth: WETH9;
   let poolUtil: PoolUtil;
 
   beforeEach(async function () {
@@ -55,7 +58,19 @@ describe('PoolProxy', function () {
 
     //
 
-    const poolImp = await new PoolMock__factory(owner).deploy();
+    const erc20Factory = new ERC20Mock__factory(owner);
+
+    base = await erc20Factory.deploy(SYMBOL_BASE);
+    await base.deployed();
+    underlying = await erc20Factory.deploy(SYMBOL_UNDERLYING);
+    await underlying.deployed();
+    underlyingWeth = await new WETH9__factory(owner).deploy();
+
+    //
+
+    const poolImp = await new PoolMock__factory(owner).deploy(
+      underlyingWeth.address,
+    );
 
     const facetCuts = [await new ProxyManager__factory(owner).deploy()].map(
       function (f) {
@@ -77,13 +92,6 @@ describe('PoolProxy', function () {
 
     const manager = ProxyManager__factory.connect(premia.address, owner);
 
-    const erc20Factory = new ERC20Mock__factory(owner);
-
-    base = await erc20Factory.deploy(SYMBOL_BASE);
-    await base.deployed();
-    underlying = await erc20Factory.deploy(SYMBOL_UNDERLYING);
-    await underlying.deployed();
-
     const oracle0 = await deployMockContract(owner, [
       'function latestRoundData () external view returns (uint80, int, uint, uint, uint80)',
       'function decimals () external view returns (uint8)',
@@ -99,17 +107,31 @@ describe('PoolProxy', function () {
     await oracle0.mock.latestRoundData.returns(1, parseEther('10'), 1, 5, 1);
     await oracle1.mock.latestRoundData.returns(1, parseEther('1'), 1, 5, 1);
 
-    const tx = await manager.deployPool(
+    let tx = await manager.deployPool(
       base.address,
       underlying.address,
       oracle0.address,
       oracle1.address,
     );
 
-    const poolAddress = (await tx.wait()).events![0].args!.pool;
-
+    let poolAddress = (await tx.wait()).events![0].args!.pool;
     proxy = ManagedProxyOwnable__factory.connect(poolAddress, owner);
     pool = PoolMock__factory.connect(poolAddress, owner);
+
+    //
+
+    tx = await manager.deployPool(
+      base.address,
+      underlyingWeth.address,
+      oracle0.address,
+      oracle1.address,
+    );
+
+    poolAddress = (await tx.wait()).events![0].args!.pool;
+    poolWeth = PoolMock__factory.connect(poolAddress, owner);
+
+    //
+
     underlying = ERC20Mock__factory.connect(await pool.getUnderlying(), owner);
     poolUtil = new PoolUtil({ pool });
   });
@@ -148,7 +170,7 @@ describe('PoolProxy', function () {
   });
 
   describe('#deposit', function () {
-    it('returns share tokens granted to sender', async () => {
+    it('returns share tokens granted to sender with ERC20 deposit', async () => {
       await underlying.mint(owner.address, 100);
       await underlying.approve(pool.address, ethers.constants.MaxUint256);
       await expect(() => pool.deposit('100')).to.changeTokenBalance(
@@ -159,7 +181,46 @@ describe('PoolProxy', function () {
       expect(await pool['balanceOf(address)'](owner.address)).to.eq(100);
     });
 
-    it('todo');
+    it('returns share tokens granted to sender with WETH deposit', async () => {
+      // Use WETH tokens
+      await underlyingWeth.deposit({ value: 100 });
+      await underlyingWeth.approve(
+        poolWeth.address,
+        ethers.constants.MaxUint256,
+      );
+      await expect(() => poolWeth.deposit('50')).to.changeTokenBalance(
+        underlyingWeth,
+        owner,
+        -50,
+      );
+
+      // Use ETH
+      await expect(() =>
+        poolWeth.deposit('200', { value: 200 }),
+      ).to.changeEtherBalance(owner, -200);
+
+      // Use both ETH and WETH tokens
+      await expect(() =>
+        poolWeth.deposit('100', { value: 50 }),
+      ).to.changeEtherBalance(owner, -50);
+
+      expect(await underlyingWeth.balanceOf(owner.address)).to.eq(0);
+      expect(await poolWeth['balanceOf(address)'](owner.address)).to.eq(350);
+    });
+
+    it('should revert if user send ETH with a token deposit', async () => {
+      await underlying.mint(owner.address, 100);
+      await underlying.approve(pool.address, ethers.constants.MaxUint256);
+      await expect(pool.deposit('100', { value: 1 })).to.be.revertedWith(
+        'Pool: function is payable only if deposit token is WETH',
+      );
+    });
+
+    it('should revert if user send too much ETH with a WETH deposit', async () => {
+      await expect(poolWeth.deposit('200', { value: 201 })).to.be.revertedWith(
+        'Pool: too much ETH sent',
+      );
+    });
   });
 
   describe('#withdraw', function () {

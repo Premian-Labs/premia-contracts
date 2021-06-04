@@ -569,8 +569,15 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     uint256 amount
   ) internal {
     if (token == WETH_ADDRESS) {
-      amount -= msg.value;
-      IWETH(WETH_ADDRESS).deposit{ value: msg.value }();
+      if (msg.value > 0) {
+        require(msg.value <= amount, "Pool: too much ETH sent");
+
+        unchecked {
+          amount -= msg.value;
+        }
+
+        IWETH(WETH_ADDRESS).deposit{ value: msg.value }();
+      }
     } else {
       require(
         msg.value == 0,
