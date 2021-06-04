@@ -31,7 +31,6 @@ contract PoolProxy is ManagedProxyOwnable {
 
     {
       PoolStorage.Layout storage l = PoolStorage.layout();
-      l.treasury = msg.sender;
 
       l.base = base;
       l.underlying = underlying;
