@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/access/Ownable.sol';
-import '@solidstate/contracts/access/OwnableStorage.sol';
-import '@solidstate/contracts/utils/EnumerableSet.sol';
+import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
+import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
+import {EnumerableSet} from '@solidstate/contracts/utils/EnumerableSet.sol';
 
-import './interface/IPremiaFeeDiscount.sol';
+import {IPremiaFeeDiscount} from './interface/IPremiaFeeDiscount.sol';
 
 /// @author Premia
 /// @title Calculate protocol fees, including discount from xPremia locking

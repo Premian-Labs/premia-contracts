@@ -2,13 +2,15 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-import '@solidstate/contracts/access/Ownable.sol';
-import '@solidstate/contracts/utils/EnumerableSet.sol';
+import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
+import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
+import {EnumerableSet} from '@solidstate/contracts/utils/EnumerableSet.sol';
 
-import './uniswapV2/interfaces/IUniswapV2Router02.sol';
-import './uniswapV2/interfaces/IWETH.sol';
+import {IUniswapV2Router02} from './uniswapV2/interfaces/IUniswapV2Router02.sol';
+import {IWETH} from './uniswapV2/interfaces/IWETH.sol';
 
 /// @author Premia
 /// @title A contract receiving all protocol fees, swapping them for premia

@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/token/ERC20/IERC20.sol';
+import {IERC20} from '@solidstate/contracts/token/ERC20/IERC20.sol';
 
-import './interface/IPremiaFeeDiscount.sol';
+import {IPremiaFeeDiscount} from './interface/IPremiaFeeDiscount.sol';
 
 contract PremiaVoteProxy {
     IERC20 public premia;

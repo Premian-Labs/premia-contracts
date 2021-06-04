@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/proxy/managed/ManagedProxy.sol';
-import './ManagerStorage.sol';
+import {ManagedProxy} from '@solidstate/contracts/proxy/managed/ManagedProxy.sol';
+import {ManagerStorage} from './ManagerStorage.sol';
 
 /**
  * @title Proxy with implementation controlled by manager

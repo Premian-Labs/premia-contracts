@@ -2,11 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/access/OwnableStorage.sol';
+import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
+import {ManagedProxy} from '@solidstate/contracts/proxy/managed/ManagedProxy.sol';
 
-import '../core/IProxyManagerOld.sol';
-import './MarketStorage.sol';
-import '../manager/ManagedProxyWithManager.sol';
+import {IProxyManagerOld} from '../core/IProxyManagerOld.sol';
+import {MarketStorage} from './MarketStorage.sol';
+import {ManagedProxyWithManager, ManagerStorage} from '../manager/ManagedProxyWithManager.sol';
 
 contract MarketProxy is ManagedProxyWithManager {
     using MarketStorage for MarketStorage.Layout;

@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/access/OwnableInternal.sol';
+import {OwnableInternal} from '@solidstate/contracts/access/OwnableInternal.sol';
 
-import './IProxyManagerOld.sol';
-import './ProxyManagerOldStorage.sol';
+import {IProxyManagerOld} from './IProxyManagerOld.sol';
+import {ProxyManagerOldStorage} from './ProxyManagerOldStorage.sol';
 
-import '../market/MarketProxy.sol';
-import '../option/OptionProxy.sol';
+import {MarketProxy} from '../market/MarketProxy.sol';
+import {OptionProxy} from '../option/OptionProxy.sol';
 
 /**
  * @title Options pair management contract
