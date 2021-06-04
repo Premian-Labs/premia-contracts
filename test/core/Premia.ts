@@ -1,8 +1,6 @@
 import {
   Premia,
   Premia__factory,
-  Pair,
-  Pair__factory,
   Pool,
   Pool__factory,
   ProxyManager__factory,
@@ -18,7 +16,6 @@ describe('Premia', function () {
   let owner: SignerWithAddress;
   let nomineeOwner: SignerWithAddress;
 
-  let pair: Pair;
   let pool: Pool;
 
   let facetCuts: any[] = [,];
@@ -28,7 +25,6 @@ describe('Premia', function () {
   before(async function () {
     [nobody, owner, nomineeOwner] = await ethers.getSigners();
 
-    pair = await new Pair__factory(owner).deploy();
     pool = await new Pool__factory(owner).deploy(ethers.constants.AddressZero);
 
     [await new ProxyManager__factory(owner).deploy()].forEach(function (f) {
@@ -43,10 +39,7 @@ describe('Premia', function () {
   });
 
   beforeEach(async function () {
-    instance = await new Premia__factory(owner).deploy(
-      pair.address,
-      pool.address,
-    );
+    instance = await new Premia__factory(owner).deploy(pool.address);
 
     await instance.diamondCut(
       facetCuts.slice(1),
@@ -79,7 +72,6 @@ describe('Premia', function () {
     {
       deploy: async () =>
         ProxyManager__factory.connect(instance.address, owner),
-      getPairImplementationAddress: () => pair.address,
       getPoolImplementationAddress: () => pool.address,
     },
     [],

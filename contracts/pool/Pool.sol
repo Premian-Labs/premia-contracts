@@ -2,13 +2,14 @@
 
 pragma solidity ^0.8.0;
 
+import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
+
 import {OwnableInternal} from '@solidstate/contracts/access/OwnableInternal.sol';
 import {ERC20} from '@solidstate/contracts/token/ERC20/ERC20.sol';
 import {IERC20} from '@solidstate/contracts/token/ERC20/IERC20.sol';
 import {ERC1155Enumerable, EnumerableSet, ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155Enumerable.sol';
 import {IWETH} from '@solidstate/contracts/utils/IWETH.sol';
 
-import {IPair} from '../pair/IPair.sol';
 import {PoolStorage} from './PoolStorage.sol';
 
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
@@ -36,11 +37,11 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   }
 
   /**
-   * @notice get address of PairProxy contract
-   * @return pair address
-   */
-  function getPair () external view returns (address) {
-    return PoolStorage.layout().pair;
+ * @notice get address of base token contract
+ * @return base address
+ */
+  function getBase () external view returns (address) {
+    return PoolStorage.layout().base;
   }
 
   /**
@@ -50,6 +51,64 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   function getUnderlying () external view returns (address) {
     return PoolStorage.layout().underlying;
   }
+
+  /**
+   * @notice get address of base oracle contract
+   * @return base oracle address
+   */
+  function getBaseOracle () external view returns (address) {
+    return PoolStorage.layout().baseOracle;
+  }
+
+  /**
+   * @notice get address of underlying oracle contract
+   * @return underlying oracle address
+   */
+  function getUnderlyingOracle () external view returns (address) {
+    return PoolStorage.layout().underlyingOracle;
+  }
+
+  /**
+   * @notice get C Level
+   * @return 64x64 fixed point representation of C-Level of Pool after purchase
+   */
+  function getCLevel64x64 () external view returns (int128) {
+    return PoolStorage.layout().cLevel64x64;
+  }
+
+  /**
+   * @notice get fees
+   * @return 64x64 fixed point representation of fees
+   */
+  function getFee64x64 () external view returns (int128) {
+    return PoolStorage.layout().fee64x64;
+  }
+
+  /**
+   * @notice get ema log returns
+   * @return 64x64 fixed point representation of natural log of rate of return for current period
+   */
+  function getEmaLogReturns64x64 () external view returns (int128) {
+    return PoolStorage.layout().emaLogReturns64x64;
+  }
+
+
+  /**
+   * @notice get ema variance annualized
+   * @return 64x64 fixed point representation of ema variance annualized
+   */
+  function getEmaVarianceAnnualized64x64 () external view returns (int128) {
+    return PoolStorage.layout().emaVarianceAnnualized64x64;
+  }
+
+  /**
+   * @notice get price at timestamp
+   * @return price at timestamp
+   */
+  function getPrice (uint256 timestamp) external view returns (int128) {
+    return PoolStorage.layout().getPriceUpdate(timestamp);
+  }
+
 
   /**
    * @notice calculate price of option contract
@@ -126,7 +185,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
+    (int128 spot64x64, int128 variance64x64) = _updateAndGetLatestData();
 
     require(strike64x64 <= spot64x64 << 1, 'Pool: strike price must not exceed two times spot price');
     require(strike64x64 >= spot64x64 >> 1, 'Pool: strike price must be at least one half spot price');
@@ -203,7 +262,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    int128 spot64x64 = IPair(l.pair).updateAndGetHistoricalPrice(
+    int128 spot64x64 = _updateAndGetHistoricalPrice(
       maturity < block.timestamp ? maturity : block.timestamp
     );
 
@@ -313,7 +372,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     uint256 costRemaining;
 
     {
-      (int128 spot64x64, int128 variance64x64) = IPair(l.pair).updateAndGetLatestData();
+      (int128 spot64x64, int128 variance64x64) = _updateAndGetLatestData();
       (int128 cost64x64, int128 cLevel64x64) = quote(
         variance64x64,
         maturity,
@@ -366,6 +425,89 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       // transfer short option token (ERC1155)
       _transfer(msg.sender, msg.sender, underwriter, tokenId, intervalAmount, '');
     }
+  }
+
+  /**
+   * @notice Update pool data
+   */
+  function update () public {
+    _update();
+  }
+
+  /**
+   * TODO: define base and underlying
+   * @notice update cache and get price for given timestamp
+   * @param timestamp timestamp of price to query
+   * @return price64x64 64x64 fixed point representation of price
+   */
+  function _updateAndGetHistoricalPrice (
+    uint256 timestamp
+  ) internal returns (int128 price64x64) {
+    _update();
+    price64x64 = PoolStorage.layout().getPriceUpdateAfter(timestamp);
+  }
+
+  /**
+  * TODO: define base and underlying
+   * @notice update cache and get most recent price and variance
+   * @return price64x64 64x64 fixed point representation of price
+   * @return variance64x64 64x64 fixed point representation of EMA of annualized variance
+   */
+  function _updateAndGetLatestData () internal returns (int128 price64x64, int128 variance64x64) {
+    _update();
+    PoolStorage.Layout storage l = PoolStorage.layout();
+    price64x64 = l.getPriceUpdate(block.timestamp);
+    variance64x64 = l.emaVarianceAnnualized64x64;
+  }
+
+  /**
+   * @notice fetch latest price from given oracle
+   * @param oracle Chainlink price aggregator address
+   * @return price latest price
+   */
+  function _fetchLatestPrice (
+    address oracle
+  ) internal view returns (int256 price) {
+    (, price, , ,) = AggregatorV3Interface(oracle).latestRoundData();
+  }
+
+  /**
+   * @notice TODO
+   */
+  function _update () internal {
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    uint256 updatedAt = l.updatedAt;
+
+    int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
+    int128 newPrice64x64 = ABDKMath64x64.divi(
+      _fetchLatestPrice(l.baseOracle),
+      _fetchLatestPrice(l.underlyingOracle)
+    );
+
+    if (l.getPriceUpdate(block.timestamp) == 0) {
+      l.setPriceUpdate(block.timestamp, newPrice64x64);
+    }
+
+    int128 logReturns64x64 = newPrice64x64.div(oldPrice64x64).ln();
+    int128 oldEmaLogReturns64x64 = l.emaLogReturns64x64;
+
+    l.emaLogReturns64x64 = OptionMath.unevenRollingEma(
+      oldEmaLogReturns64x64,
+      logReturns64x64,
+      updatedAt,
+      block.timestamp
+    );
+
+    l.emaVarianceAnnualized64x64 = OptionMath.unevenRollingEmaVariance(
+      oldEmaLogReturns64x64,
+      l.emaVarianceAnnualized64x64 / 365,
+      logReturns64x64,
+      updatedAt,
+      block.timestamp
+    ) * 365;
+
+    l.updatedAt = block.timestamp;
   }
 
   /**

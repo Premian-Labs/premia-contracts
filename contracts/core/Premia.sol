@@ -15,18 +15,15 @@ contract Premia is Diamond {
 
     /**
      * @notice deploy contract and connect given diamond facets
-     * @param pairImplementation implementaion Pair contract
      * @param poolImplementation implementaion Pool contract
      */
     constructor (
-        address pairImplementation,
         address poolImplementation
     ) {
         OwnableStorage.layout().owner = msg.sender;
 
         {
             ProxyManagerStorage.Layout storage l = ProxyManagerStorage.layout();
-            l.pairImplementation = pairImplementation;
             l.poolImplementation = poolImplementation;
         }
     }
