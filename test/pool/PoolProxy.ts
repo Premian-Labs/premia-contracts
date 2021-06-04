@@ -77,22 +77,14 @@ describe('PoolProxy', function () {
     await oracle0.mock.decimals.returns(8);
     await oracle1.mock.decimals.returns(8);
 
-    const tx = await manager.deployPools(
+    const tx = await manager.deployPool(
       token0.address,
       token1.address,
       oracle0.address,
       oracle1.address,
     );
 
-    const poolAddress = (await tx.wait()).events![0].args!.pool0;
-
-    console.log('Premia', premia.address);
-    console.log('Premia', premia.address);
-    console.log(poolAddress);
-    console.log(await PoolMock__factory.connect(poolAddress, owner).getBase());
-    console.log(
-      await PoolMock__factory.connect(poolAddress, owner).getUnderlying(),
-    );
+    const poolAddress = (await tx.wait()).events![0].args!.pool;
 
     instanceProxy = ManagedProxyOwnable__factory.connect(poolAddress, owner);
     instancePool = PoolMock__factory.connect(poolAddress, owner);

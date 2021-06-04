@@ -15,7 +15,7 @@ import {PoolProxy} from '../pool/PoolProxy.sol';
 contract ProxyManager is IProxyManager, OwnableInternal {
   using ProxyManagerStorage for ProxyManagerStorage.Layout;
 
-  event PoolsDeployment (address asset0, address asset1, address oracle0, address oracle1, address pool0, address pool1);
+  event PoolDeployment (address base, address underlying, address baseOracle, address underlyingOracle, address pool);
 
   /**
    * @notice get address of Pool implementation contract for forwarding via PoolProxy
@@ -27,40 +27,39 @@ contract ProxyManager is IProxyManager, OwnableInternal {
 
   /**
    * @notice get address of Pool contract for given assets
-   * @param asset0 asset in pool
-   * @param asset1 asset in pool
-   * @return pair address (zero address if pool does not exist)
+   * @param base base token
+   * @param underlying underlying token
+   * @return pool address (zero address if pool does not exist)
    */
   function getPool (
-    address asset0,
-    address asset1
+    address base,
+    address underlying
   ) external view returns (address) {
-    return ProxyManagerStorage.layout().getPool(asset0, asset1);
+    return ProxyManagerStorage.layout().getPool(base, underlying);
   }
 
   /**
-   * @notice deploy 2 PoolProxy contracts for the pair
-   * @param asset0 asset in pair
-   * @param asset1 asset in pair
-   * @param oracle0 Chainlink price aggregator for asset0
-   * @param oracle1 Chainlink price aggregator for asset1
+   * @notice deploy PoolProxy contracts for the pair
+   * @param base base token
+   * @param underlying underlying token
+   * @param baseOracle Chainlink price aggregator for base
+   * @param underlyingOracle Chainlink price aggregator for underlying
    * TODO: unrestrict
    * @return deployment address
    */
-  function deployPools (
-    address asset0,
-    address asset1,
-    address oracle0,
-    address oracle1
-  ) external onlyOwner returns (address, address) {
-    address pool0 = address(new PoolProxy(asset0, asset1, oracle0, oracle1));
-    address pool1 = address(new PoolProxy(asset1, asset0, oracle1, oracle0));
+  function deployPool (
+    address base,
+    address underlying,
+    address baseOracle,
+    address underlyingOracle
+  ) external onlyOwner returns (address) {
+    require(ProxyManagerStorage.layout().getPool(base, underlying) == address(0), "ProxyManager: Pool already exists");
 
-    ProxyManagerStorage.layout().setPool(asset0, asset1, pool0);
-    ProxyManagerStorage.layout().setPool(asset1, asset0, pool1);
+    address pool = address(new PoolProxy(base, underlying, baseOracle, underlyingOracle));
+    ProxyManagerStorage.layout().setPool(base, underlying, underlyingOracle);
 
-    emit PoolsDeployment(asset0, asset1, oracle0, oracle1, pool0, pool1);
+    emit PoolDeployment(base, underlying, baseOracle, underlyingOracle, pool);
 
-    return (pool0, pool1);
+    return pool;
   }
 }

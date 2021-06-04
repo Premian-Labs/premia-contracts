@@ -20,18 +20,18 @@ library ProxyManagerStorage {
 
   function getPool (
     Layout storage l,
-    address asset0,
-    address asset1
+    address base,
+    address underlying
   ) internal view returns (address) {
-    return l.pools[asset0][asset1];
+    return l.pools[base][underlying];
   }
 
   function setPool (
     Layout storage l,
-    address asset0,
-    address asset1,
+    address base,
+    address underlying,
     address pool
   ) internal {
-    l.pools[asset0][asset1] = pool;
+    l.pools[base][underlying] = pool;
   }
 }
