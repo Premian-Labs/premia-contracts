@@ -257,45 +257,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, totalSupply64x64.sub(cost64x64), totalSupply64x64);
   }
 
-  // function _updateLiquidityPostExercise(
-  //   PoolStorage.Layout storage l,
-  //   uint64 maturity,
-  //   int128 strike64x64,
-  //   int128 spot64x64,
-  //   uint256 amount,
-  //   uint256 exerciseValue,
-  //   uint256 amountRemaining
-  // ) internal {
-  //   int128 oldLiquidity64x64 = l.totalSupply64x64();
-  //
-  //   uint256 shortTokenId = _tokenIdFor(TokenType.SHORT_CALL, maturity, strike64x64);
-  //   EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
-  //
-  //   while (amount > 0) {
-  //     address underwriter = underwriters.at(underwriters.length() - 1);
-  //
-  //     // amount of liquidity provided by underwriter
-  //     uint256 intervalAmount = balanceOf(underwriter, shortTokenId);
-  //     if (amountRemaining < intervalAmount) intervalAmount = amountRemaining;
-  //
-  //     // amount of liquidity returned to underwriter, accounting for premium earned by buyer
-  //     uint256 freedAmount = intervalAmount * (amount - exerciseValue) / amount;
-  //     amountRemaining -= freedAmount;
-  //
-  //     // mint free liquidity tokens for underwriter (ERC20)
-  //     _mint(underwriter, freedAmount);
-  //     // burn short option tokens from underwriter (ERC1155)
-  //     _burn(underwriter, shortTokenId, intervalAmount);
-  //   }
-  //
-  //   int128 newLiquidity64x64 = l.totalSupply64x64();
-  //
-  //   l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
-  //
-  //   emit Exercise(msg.sender, l.base, l.underlying, spot64x64, strike64x64, maturity, amount, newLiquidity64x64 - oldLiquidity64x64, exerciseValue);
-  //   emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
-  // }
-
   /**
    * @notice exercise call option
    * @param tokenId ERC1155 token id
@@ -329,45 +290,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
 
     _updateLiquidityPostExercise(l, maturity, strike64x64, spot64x64, amount, exerciseValue, amountRemaining);
-  }
-
-  function _updateLiquidityPostExercise (
-    PoolStorage.Layout storage l,
-    uint64 maturity,
-    int128 strike64x64,
-    int128 spot64x64,
-    uint256 amount,
-    uint256 exerciseValue,
-    uint256 amountRemaining
-  ) internal {
-    int128 oldLiquidity64x64 = l.totalSupply64x64();
-
-    uint256 shortTokenId = PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64);
-    EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
-
-    while (amount > 0) {
-      address underwriter = underwriters.at(underwriters.length() - 1);
-
-      // amount of liquidity provided by underwriter
-      uint256 intervalAmount = balanceOf(underwriter, shortTokenId);
-      if (amountRemaining < intervalAmount) intervalAmount = amountRemaining;
-
-      // amount of liquidity returned to underwriter, accounting for premium earned by buyer
-      uint256 freedAmount = intervalAmount * (amount - exerciseValue) / amount;
-      amountRemaining -= freedAmount;
-
-      // mint free liquidity tokens for underwriter
-      _mint(underwriter, FREE_LIQUIDITY_TOKEN_ID, freedAmount, '');
-      // burn short option tokens from underwriter
-      _burn(underwriter, shortTokenId, intervalAmount);
-    }
-
-    int128 newLiquidity64x64 = l.totalSupply64x64();
-
-    l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
-
-    emit Exercise(msg.sender, l.base, l.underlying, spot64x64, strike64x64, maturity, amount, newLiquidity64x64 - oldLiquidity64x64, exerciseValue);
-    emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
@@ -513,6 +435,33 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
   }
 
+  function _exerciseLoop (
+    PoolStorage.Layout storage l,
+    uint256 amount,
+    uint256 amountRemaining,
+    uint256 exerciseValue,
+    uint256 shortTokenId
+  ) private {
+    EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
+
+    while (amount > 0) {
+      address underwriter = underwriters.at(underwriters.length() - 1);
+
+      // amount of liquidity provided by underwriter
+      uint256 intervalAmount = balanceOf(underwriter, shortTokenId);
+      if (amountRemaining < intervalAmount) intervalAmount = amountRemaining;
+
+      // amount of liquidity returned to underwriter, accounting for premium earned by buyer
+      uint256 freedAmount = intervalAmount * (amount - exerciseValue) / amount;
+      amountRemaining -= freedAmount;
+
+      // mint free liquidity tokens for underwriter
+      _mint(underwriter, FREE_LIQUIDITY_TOKEN_ID, freedAmount, '');
+      // burn short option tokens from underwriter
+      _burn(underwriter, shortTokenId, intervalAmount);
+    }
+  }
+
   /**
    * @notice fetch latest price from given oracle
    * @param oracle Chainlink price aggregator address
@@ -561,6 +510,35 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     ) * 365;
 
     l.updatedAt = block.timestamp;
+  }
+
+  function _updateLiquidityPostExercise (
+    PoolStorage.Layout storage l,
+    uint64 maturity,
+    int128 strike64x64,
+    int128 spot64x64,
+    uint256 amount,
+    uint256 exerciseValue,
+    uint256 amountRemaining
+  ) internal {
+    int128 oldLiquidity64x64 = l.totalSupply64x64();
+
+    uint256 shortTokenId = PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64);
+
+    _exerciseLoop(
+      l,
+      amount,
+      amountRemaining,
+      exerciseValue,
+      shortTokenId
+    );
+
+    int128 newLiquidity64x64 = l.totalSupply64x64();
+
+    l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
+
+    emit Exercise(msg.sender, l.base, l.underlying, spot64x64, strike64x64, maturity, amount, newLiquidity64x64 - oldLiquidity64x64, exerciseValue);
+    emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
