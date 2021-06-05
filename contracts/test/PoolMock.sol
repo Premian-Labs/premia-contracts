@@ -2,17 +2,17 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/access/OwnableStorage.sol';
-import '@solidstate/contracts/introspection/ERC165Storage.sol';
-import '@solidstate/contracts/token/ERC20/ERC20.sol';
-import '@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol';
+import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
+import {ERC165Storage} from '@solidstate/contracts/introspection/ERC165Storage.sol';
+import {ERC20} from '@solidstate/contracts/token/ERC20/ERC20.sol';
+import {ERC20MetadataStorage} from '@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol';
 
-import '../pool/Pool.sol';
+import {Pool} from '../pool/Pool.sol';
 
 contract PoolMock is Pool {
   using ERC165Storage for ERC165Storage.Layout;
 
-  constructor () Pool(address(0)) {}
+  constructor () Pool(address(0), address(1)) {}
 
   function tokenIdFor (
     TokenType tokenType,
@@ -32,14 +32,16 @@ contract PoolMock is Pool {
     address account,
     uint amount
   ) external {
-    _mint(account, amount);
+    // TODO: remove
+    _mint(account, FREE_LIQUIDITY_TOKEN_ID, amount, '');
   }
 
   function burn (
     address account,
     uint amount
   ) external {
-    _burn(account, amount);
+    // TODO: remove
+    _burn(account, FREE_LIQUIDITY_TOKEN_ID, amount);
   }
 
   function mint (

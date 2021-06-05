@@ -2,18 +2,20 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-import '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
-import '@solidstate/contracts/access/Ownable.sol';
-import '@solidstate/contracts/utils/ReentrancyGuard.sol';
 
-import "../../interface/IERC20Extended.sol";
-import "../../interface/IFeeCalculator.sol";
-import "../../interface/IFlashLoanReceiver.sol";
-import './OptionStorage.sol';
+import {ERC1155Base} from '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
+import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
+import {IERC20Metadata} from '@solidstate/contracts/token/ERC20/IERC20Metadata.sol';
+import {ReentrancyGuard} from '@solidstate/contracts/utils/ReentrancyGuard.sol';
 
-import "../../uniswapV2/interfaces/IUniswapV2Router02.sol";
+import {IFeeCalculator} from '../../interface/IFeeCalculator.sol';
+import {IFlashLoanReceiver} from '../../interface/IFlashLoanReceiver.sol';
+import {OptionStorage} from './OptionStorage.sol';
+
+import {IUniswapV2Router02} from '../../uniswapV2/interfaces/IUniswapV2Router02.sol';
 
 
 /// @author Premia
@@ -225,7 +227,7 @@ contract Option is Ownable, ERC1155Base, ReentrancyGuard {
 
             optionId = l.nextOptionId;
             l.options[_token][_expiration][_strikePrice][_isCall] = optionId;
-            uint8 decimals = IERC20Extended(_token).decimals();
+            uint8 decimals = IERC20Metadata(_token).decimals();
             require(decimals <= 18, "Too many decimals");
 
             l.optionData[optionId].token = _token;

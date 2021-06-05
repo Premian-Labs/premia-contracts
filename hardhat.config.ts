@@ -131,7 +131,7 @@ export default {
   },
 
   docgen: {
-    runOnCompile: true,
+    runOnCompile: false,
     clear: true,
   },
 

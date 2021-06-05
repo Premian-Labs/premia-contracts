@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "./interface/IPremiaOption.sol";
+import {IPremiaOption} from './interface/IPremiaOption.sol';
 
 /// @author Premia
 /// @title Batch functions to interact with PremiaOption

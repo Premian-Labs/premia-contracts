@@ -2,9 +2,10 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/token/ERC1155/IERC1155.sol';
-import "../interface/IFlashLoanReceiver.sol";
-import "../uniswapV2/interfaces/IUniswapV2Router02.sol";
+import {IERC1155} from '@solidstate/contracts/token/ERC1155/IERC1155.sol';
+
+import {IFlashLoanReceiver} from '../interface/IFlashLoanReceiver.sol';
+import {IUniswapV2Router02} from '../uniswapV2/interfaces/IUniswapV2Router02.sol';
 
 interface IPremiaOption is IERC1155 {
     struct OptionWriteArgs {
