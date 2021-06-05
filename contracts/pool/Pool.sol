@@ -222,25 +222,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 costRemaining = cost - fee;
 
     uint256 shortTokenId = _tokenIdFor(TokenType.SHORT_CALL, maturity, strike64x64);
-    address underwriter;
 
-    while (amount > 0) {
-      underwriter = l.liquidityQueueAscending[underwriter];
-
-      // amount of liquidity provided by underwriter, accounting for reinvested premium
-      uint256 intervalAmount = balanceOf(underwriter, FREE_LIQUIDITY_TOKEN_ID) * (amount + costRemaining) / amount;
-      if (amount < intervalAmount) intervalAmount = amount;
-      amount -= intervalAmount;
-
-      // amount of premium paid to underwriter
-      uint256 intervalCost = costRemaining * intervalAmount / amount;
-      costRemaining -= intervalCost;
-
-      // burn free liquidity tokens from underwriter
-      _burn(underwriter, FREE_LIQUIDITY_TOKEN_ID, intervalAmount - intervalCost);
-      // mint short option token for underwriter
-      _mint(underwriter, shortTokenId, intervalAmount, '');
-    }
+    _writeLoop(l, amount, costRemaining, shortTokenId);
 
     // update C-Level, accounting for slippage and reinvested premia separately
 
@@ -359,15 +342,15 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   /**
    * @notice reassign short position to new liquidity provider
-   * @param tokenId ERC1155 token id
+   * @param shortTokenId ERC1155 short token id
    * @param amount quantity of option contract tokens to reassign
    * @return cost quantity of tokens required to reassign short position
    */
   function reassign (
-    uint256 tokenId,
+    uint256 shortTokenId,
     uint256 amount
   ) external returns (uint256 cost) {
-    (TokenType tokenType, uint64 maturity, int128 strike64x64) = _parametersFor(tokenId);
+    (TokenType tokenType, uint64 maturity, int128 strike64x64) = _parametersFor(shortTokenId);
     require(tokenType == TokenType.SHORT_CALL, 'Pool: invalid token type');
     require(maturity > block.timestamp, 'Pool: option must not be expired');
 
@@ -412,6 +395,25 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       costRemaining = cost - fee;
     }
 
+    // burn short option tokens from underwriter
+    _burn(msg.sender, shortTokenId, amount);
+
+    _writeLoop(l, amount, costRemaining, shortTokenId);
+  }
+
+  /**
+   * @notice Update pool data
+   */
+  function update () public {
+    _update();
+  }
+
+  function _writeLoop (
+    PoolStorage.Layout storage l,
+    uint256 amount,
+    uint256 costRemaining,
+    uint256 shortTokenId
+  ) private {
     address underwriter;
 
     while (amount > 0) {
@@ -428,16 +430,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       // burn free liquidity tokens from underwriter
       _burn(underwriter, FREE_LIQUIDITY_TOKEN_ID, intervalAmount - intervalCost);
-      // transfer short option token
-      _transfer(msg.sender, msg.sender, underwriter, tokenId, intervalAmount, '');
+      // mint short option tokens for underwriter
+      _mint(underwriter, shortTokenId, intervalAmount, '');
     }
-  }
-
-  /**
-   * @notice Update pool data
-   */
-  function update () public {
-    _update();
   }
 
   /**
@@ -611,6 +606,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) override internal {
     super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
 
+    // TODO: use linked list for ERC1155Enumerable
     // TODO: enforce minimum balance
 
     for (uint i; i < ids.length; i++) {
