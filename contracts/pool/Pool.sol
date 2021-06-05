@@ -207,7 +207,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     ).toDecimals(l.underlyingDecimals);
 
     require(cost <= maxCost, 'Pool: excessive slippage');
-    _pull(l.underlying, cost);
+    _pullFrom(msg.sender, l.underlying, cost);
 
     // mint free liquidity tokens for treasury (ERC20)
     _mint(FEE_RECEIVER_ADDRESS, fee);
@@ -310,6 +310,81 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   }
 
   /**
+   * @notice write call option without using liquidity from the pool
+   * @param longCallReceiver address who will receive the long call token (Can be the underwriter)
+   * @param maturity timestamp of option maturity
+   * @param strike64x64 64x64 fixed point representation of strike price
+   * @notice write call option without using pool liquidity
+   * @param amount quantity of option contract tokens to exercise
+   */
+  function write (
+    address longCallReceiver,
+    uint64 maturity,
+    int128 strike64x64,
+    uint256 amount
+  ) external returns(uint256 longCallTokenId, uint256 shortCallTokenId) {
+    (longCallTokenId, shortCallTokenId) = _write(msg.sender, longCallReceiver, maturity, strike64x64, amount);
+  }
+
+  /**
+   * @notice write call option without using liquidity from the pool on behalf of another address
+   * @param underwriter underwriter of the option from who collateral will be deposited
+   * @param longCallReceiver address who will receive the long call token (Can be the underwriter)
+   * @param maturity timestamp of option maturity
+   * @param strike64x64 64x64 fixed point representation of strike price
+   * @notice write call option without using pool liquidity
+   * @param amount quantity of option contract tokens to exercise
+   */
+  function writeFrom (
+    address underwriter,
+    address longCallReceiver,
+    uint64 maturity,
+    int128 strike64x64,
+    uint256 amount
+  ) external returns(uint256 longCallTokenId, uint256 shortCallTokenId) {
+    // ToDo : Should the permission to write option be separated from the approval for transfers ?
+    require(isApprovedForAll(underwriter, msg.sender), 'Pool: Not approved');
+    (longCallTokenId, shortCallTokenId) = _write(underwriter, longCallReceiver, maturity, strike64x64, amount);
+  }
+
+  /**
+   * @notice write call option without using liquidity from the pool on behalf of another address
+   * @param underwriter underwriter of the option from who collateral will be deposited
+   * @param longCallReceiver address who will receive the long call token (Can be the underwriter)
+   * @param maturity timestamp of option maturity
+   * @param strike64x64 64x64 fixed point representation of strike price
+   * @notice write call option without using pool liquidity
+   * @param amount quantity of option contract tokens to exercise
+   */
+  function _write (
+    address underwriter,
+    address longCallReceiver,
+    uint64 maturity,
+    int128 strike64x64,
+    uint256 amount
+  ) internal returns(uint256 longCallTokenId, uint256 shortCallTokenId) {
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    _pullFrom(underwriter, l.underlying, amount);
+
+    // ToDo : Pay fee
+
+    longCallTokenId = _tokenIdFor(TokenType.LONG_CALL, maturity, strike64x64);
+    shortCallTokenId = _tokenIdFor(TokenType.SHORT_CALL, maturity, strike64x64);
+
+    // mint long option token for underwriter (ERC1155)
+    _mint(underwriter, longCallTokenId, amount, '');
+    // mint short option token for underwriter (ERC1155)
+    _mint(longCallReceiver, shortCallTokenId, amount, '');
+
+    // ToDo : Ensure manually written option cannot be reassigned
+    // ToDo : Allow underwriter to burn both LONG and SHORT tokens to withdraw collateral
+    // ToDo : Prevent auto reinvestment of funds from exercise into the AMM liquidity, for manually written options
+
+    // ToDo : Add event
+  }
+
+  /**
    * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
    * @param amount quantity of underlying currency to deposit
    */
@@ -320,7 +395,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     l.depositedAt[msg.sender] = block.timestamp;
 
-    _pull(l.underlying, amount);
+    _pullFrom(msg.sender, l.underlying, amount);
 
     int128 oldLiquidity64x64 = l.totalSupply64x64();
     // mint free liquidity tokens for sender (ERC20)
@@ -564,10 +639,12 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
   /**
    * @notice transfer ERC20 tokens from message sender
+   * @param underwriter underwriter of the option from which collateral is pulled from
    * @param token ERC20 token address
    * @param amount quantity of token to transfer
    */
-  function _pull (
+  function _pullFrom (
+    address underwriter,
     address token,
     uint256 amount
   ) internal {
@@ -590,7 +667,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
 
     if (amount > 0) {
       require(
-        IERC20(token).transferFrom(msg.sender, address(this), amount),
+        IERC20(token).transferFrom(underwriter, address(this), amount),
         'Pool: ERC20 transfer failed'
       );
     }
