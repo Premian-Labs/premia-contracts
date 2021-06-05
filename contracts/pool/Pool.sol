@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 
 import {OwnableInternal} from '@solidstate/contracts/access/OwnableInternal.sol';
-import {ERC20} from '@solidstate/contracts/token/ERC20/ERC20.sol';
 import {IERC20} from '@solidstate/contracts/token/ERC20/IERC20.sol';
 import {ERC1155Enumerable, EnumerableSet, ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155Enumerable.sol';
 import {IWETH} from '@solidstate/contracts/utils/IWETH.sol';
@@ -20,16 +19,19 @@ import { OptionMath } from '../libraries/OptionMath.sol';
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
+contract Pool is OwnableInternal, ERC1155Enumerable {
   using ABDKMath64x64 for int128;
   using ABDKMath64x64Token for int128;
   using EnumerableSet for EnumerableSet.AddressSet;
   using PoolStorage for PoolStorage.Layout;
 
-  enum TokenType { LONG_CALL, SHORT_CALL }
+  enum TokenType { FREE_LIQUIDITY, LONG_CALL, SHORT_CALL }
 
   address private immutable WETH_ADDRESS;
   address private immutable FEE_RECEIVER_ADDRESS;
+
+  // TODO: make private
+  uint internal immutable FREE_LIQUIDITY_TOKEN_ID;
 
   constructor (
     address weth,
@@ -37,6 +39,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   ) {
     WETH_ADDRESS = weth;
     FEE_RECEIVER_ADDRESS = feeReceiver;
+    FREE_LIQUIDITY_TOKEN_ID = _tokenIdFor(TokenType.FREE_LIQUIDITY, 0, 0);
   }
 
   /**
@@ -180,7 +183,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   ) external payable returns (uint256 cost) {
     // TODO: specify payment currency
 
-    require(amount <= totalSupply(), 'Pool: insufficient liquidity');
+    require(amount <= totalSupply(FREE_LIQUIDITY_TOKEN_ID), 'Pool: insufficient liquidity');
 
     require(maturity >= block.timestamp + (1 days), 'Pool: maturity must be at least 1 day in the future');
     require(maturity < block.timestamp + (29 days), 'Pool: maturity must be at most 28 days in the future');
@@ -209,10 +212,10 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     require(cost <= maxCost, 'Pool: excessive slippage');
     _pull(l.underlying, cost);
 
-    // mint free liquidity tokens for treasury (ERC20)
-    _mint(FEE_RECEIVER_ADDRESS, fee);
+    // mint free liquidity tokens for treasury
+    _mint(FEE_RECEIVER_ADDRESS, FREE_LIQUIDITY_TOKEN_ID, fee, '');
 
-    // mint long option token for buyer (ERC1155)
+    // mint long option token for buyer
     _mint(msg.sender, _tokenIdFor(TokenType.LONG_CALL, maturity, strike64x64), amount, '');
 
     // remaining premia to be distributed to underwriters
@@ -225,7 +228,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       underwriter = l.liquidityQueueAscending[underwriter];
 
       // amount of liquidity provided by underwriter, accounting for reinvested premium
-      uint256 intervalAmount = balanceOf(underwriter) * (amount + costRemaining) / amount;
+      uint256 intervalAmount = balanceOf(underwriter, FREE_LIQUIDITY_TOKEN_ID) * (amount + costRemaining) / amount;
       if (amount < intervalAmount) intervalAmount = amount;
       amount -= intervalAmount;
 
@@ -233,9 +236,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       uint256 intervalCost = costRemaining * intervalAmount / amount;
       costRemaining -= intervalCost;
 
-      // burn free liquidity tokens from underwriter (ERC20)
-      _burn(underwriter, intervalAmount - intervalCost);
-      // mint short option token for underwriter (ERC1155)
+      // burn free liquidity tokens from underwriter
+      _burn(underwriter, FREE_LIQUIDITY_TOKEN_ID, intervalAmount - intervalCost);
+      // mint short option token for underwriter
       _mint(underwriter, shortTokenId, intervalAmount, '');
     }
 
@@ -269,7 +272,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       maturity < block.timestamp ? maturity : block.timestamp
     );
 
-    // burn long option tokens from sender (ERC1155)
+    // burn long option tokens from sender
     _burn(msg.sender, tokenId, amount);
 
     uint256 exerciseValue;
@@ -298,9 +301,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       uint256 freedAmount = intervalAmount * (amount - exerciseValue) / amount;
       amountRemaining -= freedAmount;
 
-      // mint free liquidity tokens for underwriter (ERC20)
-      _mint(underwriter, freedAmount);
-      // burn short option tokens from underwriter (ERC1155)
+      // mint free liquidity tokens for underwriter
+      _mint(underwriter, FREE_LIQUIDITY_TOKEN_ID, freedAmount, '');
+      // burn short option tokens from underwriter
       _burn(underwriter, shortTokenId, intervalAmount);
     }
 
@@ -323,8 +326,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     _pull(l.underlying, amount);
 
     int128 oldLiquidity64x64 = l.totalSupply64x64();
-    // mint free liquidity tokens for sender (ERC20)
-    _mint(msg.sender, amount);
+    // mint free liquidity tokens for sender
+    _mint(msg.sender, FREE_LIQUIDITY_TOKEN_ID, amount, '');
     int128 newLiquidity64x64 = l.totalSupply64x64();
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
@@ -345,8 +348,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     );
 
     int128 oldLiquidity64x64 = l.totalSupply64x64();
-    // burn free liquidity tokens from sender (ERC20)
-    _burn(msg.sender, amount);
+    // burn free liquidity tokens from sender
+    _burn(msg.sender, FREE_LIQUIDITY_TOKEN_ID, amount);
     int128 newLiquidity64x64 = l.totalSupply64x64();
 
     _push(l.underlying, amount);
@@ -402,8 +405,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
         OptionMath.ONE_64x64
       );
 
-      // mint free liquidity tokens for treasury (ERC20)
-      _mint(FEE_RECEIVER_ADDRESS, fee);
+      // mint free liquidity tokens for treasury
+      _mint(FEE_RECEIVER_ADDRESS, FREE_LIQUIDITY_TOKEN_ID, fee, '');
 
       // remaining premia to be distributed to underwriters
       costRemaining = cost - fee;
@@ -415,7 +418,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       underwriter = l.liquidityQueueAscending[underwriter];
 
       // amount of liquidity provided by underwriter, accounting for reinvested premium
-      uint256 intervalAmount = balanceOf(underwriter) * (amount + costRemaining) / amount;
+      uint256 intervalAmount = balanceOf(underwriter, FREE_LIQUIDITY_TOKEN_ID) * (amount + costRemaining) / amount;
       if (amount < intervalAmount) intervalAmount = amount;
       amount -= intervalAmount;
 
@@ -423,9 +426,9 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       uint256 intervalCost = costRemaining * intervalAmount / amount;
       costRemaining -= intervalCost;
 
-      // burn free liquidity tokens from underwriter (ERC20)
-      _burn(underwriter, intervalAmount - intervalCost);
-      // transfer short option token (ERC1155)
+      // burn free liquidity tokens from underwriter
+      _burn(underwriter, FREE_LIQUIDITY_TOKEN_ID, intervalAmount - intervalCost);
+      // transfer short option token
       _transfer(msg.sender, msg.sender, underwriter, tokenId, intervalAmount, '');
     }
   }
@@ -590,29 +593,39 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   }
 
   /**
-   * @notice ERC20 hook: track eligible underwriters
+   * @notice ERC1155 hook: track eligible underwriters
+   * @param operator transaction sender
    * @param from token sender
    * @param to token receiver
-   * @param amount token quantity transferred
+   * @param ids token ids transferred
+   * @param amounts token quantities transferred
+   * @param data data payload
    */
   function _beforeTokenTransfer (
+    address operator,
     address from,
     address to,
-    uint256 amount
+    uint[] memory ids,
+    uint[] memory amounts,
+    bytes memory data
   ) override internal {
-    super._beforeTokenTransfer(from, to, amount);
+    super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
 
     // TODO: enforce minimum balance
 
-    if (amount > 0) {
-      PoolStorage.Layout storage l = PoolStorage.layout();
+    for (uint i; i < ids.length; i++) {
+      if (ids[i] == FREE_LIQUIDITY_TOKEN_ID) {
+        if (amounts[i] > 0) {
+          PoolStorage.Layout storage l = PoolStorage.layout();
 
-      if (from != address(0) && balanceOf(from) == amount) {
-        l.removeUnderwriter(from);
-      }
+          if (from != address(0) && balanceOf(from, FREE_LIQUIDITY_TOKEN_ID) == amounts[i]) {
+            l.removeUnderwriter(from);
+          }
 
-      if (to != address(0) && balanceOf(to) == 0) {
-        l.addUnderwriter(to);
+          if (to != address(0) && balanceOf(to, FREE_LIQUIDITY_TOKEN_ID) == 0) {
+            l.addUnderwriter(to);
+          }
+        }
       }
     }
   }
