@@ -118,7 +118,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   /**
    * @notice calculate price of option contract
-   * @param variance64x64 64x64 fixed point representation of variance
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
    * @param spot64x64 64x64 fixed point representation of spot price
@@ -127,7 +126,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
    */
   function quote (
-    int128 variance64x64,
     uint64 maturity,
     int128 strike64x64,
     int128 spot64x64,
@@ -151,7 +149,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 price64x64;
 
     (price64x64, cLevel64x64) = OptionMath.quotePrice(
-      variance64x64,
+      l.emaVarianceAnnualized64x64,
       strike64x64,
       spot64x64,
       timeToMaturity64x64,
@@ -190,14 +188,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     require(maturity % (1 days) == 0, 'Pool: maturity must correspond to end of UTC day');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
+    _update(l);
 
-    (int128 spot64x64, int128 variance64x64) = _updateAndGetLatestData();
+    int128 spot64x64 = l.getPriceUpdate(block.timestamp);
 
     require(strike64x64 <= spot64x64 << 1, 'Pool: strike price must not exceed two times spot price');
     require(strike64x64 >= spot64x64 >> 1, 'Pool: strike price must be at least one half spot price');
 
     (int128 cost64x64, int128 cLevel64x64) = quote(
-      variance64x64,
       maturity,
       strike64x64,
       spot64x64,
@@ -250,8 +248,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     require(tokenType == TokenType.LONG_CALL, 'Pool: invalid token type');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
+    _update(l);
 
-    int128 spot64x64 = _updateAndGetHistoricalPrice(
+    int128 spot64x64 = l.getPriceUpdateAfter(
       maturity < block.timestamp ? maturity : block.timestamp
     );
 
@@ -357,55 +356,49 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     // TODO: allow exit of expired position
 
     PoolStorage.Layout storage l = PoolStorage.layout();
+    _update(l);
 
-    uint256 costRemaining;
+    int128 spot64x64 = l.getPriceUpdate(block.timestamp);
 
-    {
-      (int128 spot64x64, int128 variance64x64) = _updateAndGetLatestData();
-      (int128 cost64x64, int128 cLevel64x64) = quote(
-        variance64x64,
-        maturity,
-        strike64x64,
-        spot64x64,
-        amount
-      );
+    (int128 cost64x64, int128 cLevel64x64) = quote(
+      maturity,
+      strike64x64,
+      spot64x64,
+      amount
+    );
 
-      cost = cost64x64.toDecimals(l.underlyingDecimals);
-      uint256 fee = cost64x64.mul(l.fee64x64).div(
-        OptionMath.ONE_64x64.add(l.fee64x64)
-      ).toDecimals(l.underlyingDecimals);
+    cost = cost64x64.toDecimals(l.underlyingDecimals);
+    uint256 fee = cost64x64.mul(l.fee64x64).div(
+      OptionMath.ONE_64x64.add(l.fee64x64)
+    ).toDecimals(l.underlyingDecimals);
 
-      _push(l.underlying, amount - cost - fee);
+    _push(l.underlying, amount - cost - fee);
 
-      // update C-Level, accounting for slippage and reinvested premia separately
+    // update C-Level, accounting for slippage and reinvested premia separately
 
-      int128 totalSupply64x64 = l.totalSupply64x64();
+    int128 totalSupply64x64 = l.totalSupply64x64();
 
-      l.cLevel64x64 = OptionMath.calculateCLevel(
-        cLevel64x64, // C-Level after liquidity is reserved
-        totalSupply64x64,
-        totalSupply64x64.add(cost64x64),
-        OptionMath.ONE_64x64
-      );
+    l.cLevel64x64 = OptionMath.calculateCLevel(
+      cLevel64x64, // C-Level after liquidity is reserved
+      totalSupply64x64,
+      totalSupply64x64.add(cost64x64),
+      OptionMath.ONE_64x64
+    );
 
-      // mint free liquidity tokens for treasury
-      _mint(FEE_RECEIVER_ADDRESS, FREE_LIQUIDITY_TOKEN_ID, fee, '');
-
-      // remaining premia to be distributed to underwriters
-      costRemaining = cost - fee;
-    }
+    // mint free liquidity tokens for treasury
+    _mint(FEE_RECEIVER_ADDRESS, FREE_LIQUIDITY_TOKEN_ID, fee, '');
 
     // burn short option tokens from underwriter
     _burn(msg.sender, shortTokenId, amount);
 
-    _writeLoop(l, amount, costRemaining, shortTokenId);
+    _writeLoop(l, amount, cost - fee, shortTokenId);
   }
 
   /**
    * @notice Update pool data
    */
   function update () public {
-    _update();
+    _update(PoolStorage.layout());
   }
 
   function _writeLoop (
@@ -436,32 +429,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   }
 
   /**
-   * TODO: define base and underlying
-   * @notice update cache and get price for given timestamp
-   * @param timestamp timestamp of price to query
-   * @return price64x64 64x64 fixed point representation of price
-   */
-  function _updateAndGetHistoricalPrice (
-    uint256 timestamp
-  ) internal returns (int128 price64x64) {
-    _update();
-    price64x64 = PoolStorage.layout().getPriceUpdateAfter(timestamp);
-  }
-
-  /**
-  * TODO: define base and underlying
-   * @notice update cache and get most recent price and variance
-   * @return price64x64 64x64 fixed point representation of price
-   * @return variance64x64 64x64 fixed point representation of EMA of annualized variance
-   */
-  function _updateAndGetLatestData () internal returns (int128 price64x64, int128 variance64x64) {
-    _update();
-    PoolStorage.Layout storage l = PoolStorage.layout();
-    price64x64 = l.getPriceUpdate(block.timestamp);
-    variance64x64 = l.emaVarianceAnnualized64x64;
-  }
-
-  /**
    * @notice fetch latest price from given oracle
    * @param oracle Chainlink price aggregator address
    * @return price latest price
@@ -475,9 +442,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   /**
    * @notice TODO
    */
-  function _update () internal {
-    PoolStorage.Layout storage l = PoolStorage.layout();
-
+  function _update (
+    PoolStorage.Layout storage l
+  ) internal {
     uint256 updatedAt = l.updatedAt;
 
     int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
