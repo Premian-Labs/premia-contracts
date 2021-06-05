@@ -316,6 +316,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
    * @param strike64x64 64x64 fixed point representation of strike price
    * @notice write call option without using pool liquidity
    * @param amount quantity of option contract tokens to exercise
+   * @return longCallTokenId token id of the long call
+   * @return shortCallTokenId token id of the short call
    */
   function write (
     address longCallReceiver,
@@ -334,6 +336,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
    * @param strike64x64 64x64 fixed point representation of strike price
    * @notice write call option without using pool liquidity
    * @param amount quantity of option contract tokens to exercise
+   * @return longCallTokenId token id of the long call
+   * @return shortCallTokenId token id of the short call
    */
   function writeFrom (
     address underwriter,
@@ -355,6 +359,8 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
    * @param strike64x64 64x64 fixed point representation of strike price
    * @notice write call option without using pool liquidity
    * @param amount quantity of option contract tokens to exercise
+   * @return longCallTokenId token id of the long call
+   * @return shortCallTokenId token id of the short call
    */
   function _write (
     address underwriter,
