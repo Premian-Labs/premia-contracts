@@ -8,7 +8,6 @@ import {
   ManagedProxyOwnable__factory,
   Premia,
   Premia__factory,
-  Pair__factory,
   PoolMock,
   PoolMock__factory,
   ProxyManager__factory,
@@ -31,7 +30,6 @@ describe('PoolProxy', function () {
   before(async function () {
     [owner] = await ethers.getSigners();
 
-    const pair = await new Pair__factory(owner).deploy();
     const pool = await new PoolMock__factory(owner).deploy();
 
     const facetCuts = [await new ProxyManager__factory(owner).deploy()].map(
@@ -46,12 +44,14 @@ describe('PoolProxy', function () {
       },
     );
 
-    premia = await new Premia__factory(owner).deploy(
-      pair.address,
-      pool.address,
-    );
+    premia = await new Premia__factory(owner).deploy(pool.address);
 
-    await premia.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
+    const tx = await premia.diamondCut(
+      facetCuts,
+      ethers.constants.AddressZero,
+      '0x',
+    );
+    await tx.wait(1);
   });
 
   beforeEach(async function () {
@@ -77,24 +77,22 @@ describe('PoolProxy', function () {
     await oracle0.mock.decimals.returns(8);
     await oracle1.mock.decimals.returns(8);
 
-    const tx = await manager.deployPair(
+    const tx = await manager.deployPool(
       token0.address,
       token1.address,
       oracle0.address,
       oracle1.address,
     );
 
-    const pairAddress = (await tx.wait()).events![0].args!.pair;
-    const pair = Pair__factory.connect(pairAddress, owner);
-    const pools = await pair.callStatic.getPools();
+    const poolAddress = (await tx.wait()).events![0].args!.pool;
 
-    instanceProxy = ManagedProxyOwnable__factory.connect(pools[0], owner);
-    instancePool = PoolMock__factory.connect(pools[0], owner);
+    instanceProxy = ManagedProxyOwnable__factory.connect(poolAddress, owner);
+    instancePool = PoolMock__factory.connect(poolAddress, owner);
   });
 
   describeBehaviorOfManagedProxyOwnable({
     deploy: async () => instanceProxy,
-    implementationFunction: 'getPair()',
+    implementationFunction: 'getBase()',
     implementationFunctionArgs: [],
   });
 

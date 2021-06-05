@@ -8,7 +8,6 @@ const RINKEBY_ETH_PRICE_ORACLE = '0x8A753747A1Fa494EC906cE90E9f37563A8AF630e';
 task('deploy').setAction(async function (args, hre) {
   const {
     Premia__factory,
-    Pair__factory,
     Pool__factory,
     ProxyManager__factory,
   } = require('../typechain');
@@ -20,7 +19,6 @@ task('deploy').setAction(async function (args, hre) {
 
   const [deployer] = await hre.ethers.getSigners();
 
-  const pair = await new Pair__factory(deployer).deploy();
   const pool = await new Pool__factory(deployer).deploy(weth);
 
   const facetCuts = [await new ProxyManager__factory(deployer).deploy()].map(
@@ -35,12 +33,9 @@ task('deploy').setAction(async function (args, hre) {
     },
   );
 
-  const premiaInstancee = await new Premia__factory(deployer).deploy(
-    pair.address,
-    pool.address,
-  );
+  const instance = await new Premia__factory(deployer).deploy(pool.address);
 
-  const tx = await premiaInstancee.diamondCut(
+  const tx = await instance.diamondCut(
     facetCuts,
     hre.ethers.constants.AddressZero,
     '0x',
@@ -49,7 +44,7 @@ task('deploy').setAction(async function (args, hre) {
   if (hre.network.name === 'rinkeby') {
     await tx.wait(1);
     await ProxyManager__factory.connect(
-      premiaInstancee.address,
+      instance.address,
       deployer,
     ).deployPair(
       RINKEBY_DAI,
@@ -61,5 +56,5 @@ task('deploy').setAction(async function (args, hre) {
 
   console.log('Deployer: ', deployer.address);
   console.log('Pool: ', pool.address);
-  console.log('PremiaInstance: ', premiaInstancee.address);
+  console.log('PremiaInstance: ', instance.address);
 });

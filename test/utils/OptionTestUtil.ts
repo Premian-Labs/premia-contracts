@@ -108,9 +108,9 @@ export class OptionTestUtil {
         .increaseAllowance(this.option.address, amountWithFee);
     }
 
-    // await this.writeOption(user, { amount, isCall, referrer });
-    const tx = await this.writeOption(user, { amount, isCall, referrer });
-    console.log(tx.gasLimit.toString());
+    await this.writeOption(user, { amount, isCall, referrer });
+    // const tx = await this.writeOption(user, { amount, isCall, referrer });
+    // console.log(tx.gasLimit.toString());
   }
 
   async addTestTokenAndWriteOptions(

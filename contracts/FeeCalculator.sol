@@ -2,10 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/utils/structs/EnumerableSet.sol';
-import '@openzeppelin/contracts/access/Ownable.sol';
+import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
+import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
+import {EnumerableSet} from '@solidstate/contracts/utils/EnumerableSet.sol';
 
-import "./interface/IPremiaFeeDiscount.sol";
+import {IPremiaFeeDiscount} from './interface/IPremiaFeeDiscount.sol';
 
 /// @author Premia
 /// @title Calculate protocol fees, including discount from xPremia locking
@@ -37,6 +38,8 @@ contract FeeCalculator is Ownable {
 
     /// @param _premiaFeeDiscount Address of PremiaFeeDiscount contract
     constructor(IPremiaFeeDiscount _premiaFeeDiscount) {
+        OwnableStorage.layout().owner = msg.sender;
+
         premiaFeeDiscount = _premiaFeeDiscount;
     }
 

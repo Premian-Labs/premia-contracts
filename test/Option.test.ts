@@ -409,6 +409,9 @@ describe('Option', () => {
     it('should fail exercising call option if not enough dai', async () => {
       await optionTestUtil.addTestTokenAndWriteOptions(parseTestToken('2'));
       await optionTestUtil.transferOptionToUser1(writer1);
+      await dai
+        .connect(user1)
+        .approve(option.address, ethers.constants.MaxUint256);
       await expect(
         option.connect(user1).exerciseOption(1, parseTestToken('1')),
       ).to.revertedWith('ERC20: transfer amount exceeds balance');

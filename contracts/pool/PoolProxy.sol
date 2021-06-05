@@ -2,15 +2,16 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/access/OwnableStorage.sol';
-import '@solidstate/contracts/introspection/ERC165Storage.sol';
-import '@solidstate/contracts/proxy/managed/ManagedProxyOwnable.sol';
-import '@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol';
-import '@solidstate/contracts/token/ERC20/IERC20Metadata.sol';
-import '@solidstate/contracts/token/ERC1155/IERC1155.sol';
+import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
+import {ERC165Storage} from '@solidstate/contracts/introspection/ERC165Storage.sol';
+import {ManagedProxyOwnable, ManagedProxy} from '@solidstate/contracts/proxy/managed/ManagedProxyOwnable.sol';
+import {ERC20MetadataStorage} from '@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol';
+import {IERC20Metadata} from '@solidstate/contracts/token/ERC20/IERC20Metadata.sol';
+import {IERC1155} from '@solidstate/contracts/token/ERC1155/IERC1155.sol';
+import {IERC165} from '@solidstate/contracts/introspection/IERC165.sol';
 
-import '../core/IProxyManager.sol';
-import './PoolStorage.sol';
+import {IProxyManager} from '../core/IProxyManager.sol';
+import {PoolStorage} from './PoolStorage.sol';
 
 import { OptionMath } from '../libraries/OptionMath.sol';
 
@@ -21,18 +22,22 @@ contract PoolProxy is ManagedProxyOwnable {
   using ERC165Storage for ERC165Storage.Layout;
 
   constructor (
-    address owner,
     address base,
-    address underlying
+    address underlying,
+    address baseOracle,
+    address underlyingOracle
   ) ManagedProxy(IProxyManager.getPoolImplementation.selector) {
-    OwnableStorage.layout().owner = owner;
+    OwnableStorage.layout().owner = msg.sender;
 
     {
       PoolStorage.Layout storage l = PoolStorage.layout();
-      l.treasury = owner;
-      l.pair = msg.sender;
-      l.underlying = underlying;
+
       l.base = base;
+      l.underlying = underlying;
+
+      l.baseOracle = baseOracle;
+      l.underlyingOracle = underlyingOracle;
+
       l.underlyingDecimals = IERC20Metadata(underlying).decimals();
       l.cLevel64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
     }
