@@ -25,8 +25,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   using EnumerableSet for EnumerableSet.AddressSet;
   using PoolStorage for PoolStorage.Layout;
 
-  enum TokenType { FREE_LIQUIDITY, LONG_CALL, SHORT_CALL }
-
   address private immutable WETH_ADDRESS;
   address private immutable FEE_RECEIVER_ADDRESS;
 
@@ -39,7 +37,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) {
     WETH_ADDRESS = weth;
     FEE_RECEIVER_ADDRESS = feeReceiver;
-    FREE_LIQUIDITY_TOKEN_ID = _tokenIdFor(TokenType.FREE_LIQUIDITY, 0, 0);
+    FREE_LIQUIDITY_TOKEN_ID = PoolStorage.formatTokenId(PoolStorage.TokenType.FREE_LIQUIDITY, 0, 0);
   }
 
   /**
@@ -214,12 +212,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _mint(FEE_RECEIVER_ADDRESS, FREE_LIQUIDITY_TOKEN_ID, fee, '');
 
     // mint long option token for buyer
-    _mint(msg.sender, _tokenIdFor(TokenType.LONG_CALL, maturity, strike64x64), amount, '');
+    _mint(msg.sender, PoolStorage.formatTokenId(PoolStorage.TokenType.LONG_CALL, maturity, strike64x64), amount, '');
 
     // remaining premia to be distributed to underwriters
     uint256 costRemaining = cost - fee;
 
-    uint256 shortTokenId = _tokenIdFor(TokenType.SHORT_CALL, maturity, strike64x64);
+    uint256 shortTokenId = PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64);
 
     _writeLoop(l, amount, costRemaining, shortTokenId);
 
@@ -244,8 +242,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 tokenId,
     uint256 amount
   ) public {
-    (TokenType tokenType, uint64 maturity, int128 strike64x64) = _parametersFor(tokenId);
-    require(tokenType == TokenType.LONG_CALL, 'Pool: invalid token type');
+    (PoolStorage.TokenType tokenType, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(tokenId);
+    require(tokenType == PoolStorage.TokenType.LONG_CALL, 'Pool: invalid token type');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
     _update(l);
@@ -269,7 +267,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     int128 oldLiquidity64x64 = l.totalSupply64x64();
 
-    uint256 shortTokenId = _tokenIdFor(TokenType.SHORT_CALL, maturity, strike64x64);
+    uint256 shortTokenId = PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64);
     EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
 
     while (amount > 0) {
@@ -349,8 +347,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 shortTokenId,
     uint256 amount
   ) external returns (uint256 cost) {
-    (TokenType tokenType, uint64 maturity, int128 strike64x64) = _parametersFor(shortTokenId);
-    require(tokenType == TokenType.SHORT_CALL, 'Pool: invalid token type');
+    (PoolStorage.TokenType tokenType, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
+    require(tokenType == PoolStorage.TokenType.SHORT_CALL, 'Pool: invalid token type');
     require(maturity > block.timestamp, 'Pool: option must not be expired');
 
     // TODO: allow exit of expired position
@@ -476,40 +474,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     ) * 365;
 
     l.updatedAt = block.timestamp;
-  }
-
-  /**
-   * @notice calculate ERC1155 token id for given option parameters
-   * @param tokenType TokenType enum
-   * @param maturity timestamp of option maturity
-   * @param strike64x64 64x64 fixed point representation of strike price
-   * @return tokenId token id
-   */
-  function _tokenIdFor (
-    TokenType tokenType,
-    uint64 maturity,
-    int128 strike64x64
-  ) internal pure returns (uint256 tokenId) {
-    assembly {
-      tokenId := add(strike64x64, add(shl(128, maturity), shl(248, tokenType)))
-    }
-  }
-
-  /**
-   * @notice derive option maturity and strike price from ERC1155 token id
-   * @param tokenId token id
-   * @return tokenType TokenType enum
-   * @return maturity timestamp of option maturity
-   * @return strike64x64 option strike price
-   */
-  function _parametersFor (
-    uint256 tokenId
-  ) internal pure returns (TokenType tokenType, uint64 maturity, int128 strike64x64) {
-    assembly {
-      tokenType := shr(248, tokenId)
-      maturity := shr(128, tokenId)
-      strike64x64 := tokenId
-    }
   }
 
   /**
