@@ -25,7 +25,11 @@ describe('Premia', function () {
   before(async function () {
     [nobody, owner, nomineeOwner] = await ethers.getSigners();
 
-    pool = await new Pool__factory(owner).deploy(ethers.constants.AddressZero);
+    // TODO: pass PremiaMaker proxy address instead of zero address
+    pool = await new Pool__factory(owner).deploy(
+      ethers.constants.AddressZero,
+      ethers.constants.AddressZero
+    );
 
     [await new ProxyManager__factory(owner).deploy()].forEach(function (f) {
       facetCuts.push({

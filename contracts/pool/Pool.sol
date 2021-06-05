@@ -29,11 +29,14 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
   enum TokenType { LONG_CALL, SHORT_CALL }
 
   address private immutable WETH_ADDRESS;
+  address private immutable FEE_RECEIVER_ADDRESS;
 
   constructor (
-    address weth
+    address weth,
+    address feeReceiver
   ) {
     WETH_ADDRESS = weth;
+    FEE_RECEIVER_ADDRESS = feeReceiver;
   }
 
   /**
@@ -207,7 +210,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
     _pull(l.underlying, cost);
 
     // mint free liquidity tokens for treasury (ERC20)
-    _mint(l.treasury, fee);
+    _mint(FEE_RECEIVER_ADDRESS, fee);
 
     // mint long option token for buyer (ERC1155)
     _mint(msg.sender, _tokenIdFor(TokenType.LONG_CALL, maturity, strike64x64), amount, '');
@@ -400,7 +403,7 @@ contract Pool is OwnableInternal, ERC20, ERC1155Enumerable {
       );
 
       // mint free liquidity tokens for treasury (ERC20)
-      _mint(l.treasury, fee);
+      _mint(FEE_RECEIVER_ADDRESS, fee);
 
       // remaining premia to be distributed to underwriters
       costRemaining = cost - fee;
