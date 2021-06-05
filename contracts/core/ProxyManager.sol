@@ -7,6 +7,7 @@ import {OwnableInternal} from '@solidstate/contracts/access/OwnableInternal.sol'
 import {IProxyManager} from './IProxyManager.sol';
 import {ProxyManagerStorage} from './ProxyManagerStorage.sol';
 import {PoolProxy} from '../pool/PoolProxy.sol';
+import {OptionMath} from '../libraries/OptionMath.sol';
 
 /**
  * @title Options pair management contract

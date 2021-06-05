@@ -92,6 +92,13 @@ library PoolStorage {
     );
   }
 
+  function setCLevel (
+    Layout storage l,
+    int128 cLevel64x64
+  ) internal {
+    l.cLevel64x64 = cLevel64x64;
+  }
+
   function setOracles(
     Layout storage l,
     address baseOracle,
