@@ -1,20 +1,11 @@
 import {
-  describeBehaviorOfERC1155Enumerable,
-  describeBehaviorOfERC20,
+  describeBehaviorOfERC1155Enumerable
 } from '@solidstate/spec';
 import { Pool } from '../../typechain';
 import { BigNumber, ContractTransaction } from 'ethers';
 
 interface PoolBehaviorArgs {
   deploy: () => Promise<Pool>;
-  mintERC20: (
-    address: string,
-    amount: BigNumber,
-  ) => Promise<ContractTransaction>;
-  burnERC20: (
-    address: string,
-    amount: BigNumber,
-  ) => Promise<ContractTransaction>;
   mintERC1155: (
     address: string,
     id: BigNumber,
@@ -34,8 +25,6 @@ interface PoolBehaviorArgs {
 export function describeBehaviorOfPool(
   {
     deploy,
-    mintERC20,
-    burnERC20,
     mintERC1155,
     burnERC1155,
     name,
@@ -51,19 +40,6 @@ export function describeBehaviorOfPool(
     beforeEach(async function () {
       instance = await deploy();
     });
-
-    describeBehaviorOfERC20(
-      {
-        deploy: async () => instance,
-        mint: mintERC20,
-        burn: burnERC20,
-        name,
-        symbol,
-        decimals,
-        supply,
-      },
-      skips,
-    );
 
     describeBehaviorOfERC1155Enumerable(
       {

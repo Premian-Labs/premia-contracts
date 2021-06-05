@@ -32,14 +32,16 @@ contract PoolMock is Pool {
     address account,
     uint amount
   ) external {
-    _mint(account, amount);
+    // TODO: remove
+    _mint(account, FREE_LIQUIDITY_TOKEN_ID, amount, '');
   }
 
   function burn (
     address account,
     uint amount
   ) external {
-    _burn(account, amount);
+    // TODO: remove
+    _burn(account, FREE_LIQUIDITY_TOKEN_ID, amount);
   }
 
   function mint (

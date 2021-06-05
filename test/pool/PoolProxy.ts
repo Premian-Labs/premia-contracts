@@ -103,10 +103,6 @@ describe('PoolProxy', function () {
       name: `Premia Liquidity: ${SYMBOL_UNDERLYING}/${SYMBOL_BASE}`,
       symbol: `PREMIA-${SYMBOL_UNDERLYING}${SYMBOL_BASE}`,
       decimals: 18,
-      mintERC20: async (address, amount) =>
-        instancePool['mint(address,uint256)'](address, amount),
-      burnERC20: async (address, amount) =>
-        instancePool['burn(address,uint256)'](address, amount),
       mintERC1155: undefined as any,
       burnERC1155: undefined as any,
     },
