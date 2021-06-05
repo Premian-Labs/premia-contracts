@@ -22,7 +22,7 @@
     "chain": "hardhat node --hostname 0.0.0.0",
     "compile": "hardhat compile",
     "compile:force": "hardhat compile --force",
-    "postinstall": "npm run compile",
+    "postinstall": "yarn compile",
     "deploy": "hardhat deploy",
     "deploy:rinkeby": "hardhat --network rinkeby deploy",
     "test": "hardhat test",
