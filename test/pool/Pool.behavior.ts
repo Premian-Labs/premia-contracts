@@ -16,10 +16,6 @@ interface PoolBehaviorArgs {
     id: BigNumber,
     amount: BigNumber,
   ) => Promise<ContractTransaction>;
-  name: string;
-  symbol: string;
-  decimals: number;
-  supply: BigNumber;
 }
 
 export function describeBehaviorOfPool(
@@ -27,10 +23,6 @@ export function describeBehaviorOfPool(
     deploy,
     mintERC1155,
     burnERC1155,
-    name,
-    symbol,
-    decimals,
-    supply,
   }: PoolBehaviorArgs,
   skips?: string[],
 ) {

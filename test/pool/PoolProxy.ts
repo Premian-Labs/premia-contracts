@@ -99,10 +99,6 @@ describe('PoolProxy', function () {
   describeBehaviorOfPool(
     {
       deploy: async () => instancePool,
-      supply: BigNumber.from(0),
-      name: `Premia Liquidity: ${SYMBOL_UNDERLYING}/${SYMBOL_BASE}`,
-      symbol: `PREMIA-${SYMBOL_UNDERLYING}${SYMBOL_BASE}`,
-      decimals: 18,
       mintERC1155: undefined as any,
       burnERC1155: undefined as any,
     },

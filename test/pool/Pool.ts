@@ -36,10 +36,6 @@ describe('Pool', function () {
         instance['mint(address,uint256,uint256)'](recipient, tokenId, amount),
       burnERC1155: (recipient, tokenId, amount) =>
         instance['burn(address,uint256,uint256)'](recipient, tokenId, amount),
-      supply: BigNumber.from(0),
-      name: '',
-      symbol: '',
-      decimals: 0,
     },
     ['#supportsInterface'],
   );
