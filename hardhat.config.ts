@@ -3,6 +3,7 @@ import Dotenv from 'dotenv';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
 import '@typechain/hardhat';
+import 'hardhat-abi-exporter';
 import 'hardhat-docgen';
 import 'hardhat-gas-reporter';
 import 'hardhat-spdx-license-identifier';
@@ -131,7 +132,7 @@ export default {
   },
 
   docgen: {
-    runOnCompile: true,
+    runOnCompile: false,
     clear: true,
   },
 
@@ -144,9 +145,16 @@ export default {
     runOnCompile: true,
   },
 
+  abiExporter: {
+    path: './abi',
+    clear: true,
+    flat: true,
+  },
+
   typechain: {
     alwaysGenerateOverloads: true,
   },
+
   ...(ETHERSCAN_KEY
     ? {
         etherscan: {
