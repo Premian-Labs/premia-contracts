@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
 import {ERC165Storage} from '@solidstate/contracts/introspection/ERC165Storage.sol';
 import {ManagedProxyOwnable, ManagedProxy} from '@solidstate/contracts/proxy/managed/ManagedProxyOwnable.sol';
-import {ERC20MetadataStorage} from '@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol';
 import {IERC20Metadata} from '@solidstate/contracts/token/ERC20/IERC20Metadata.sol';
 import {IERC1155} from '@solidstate/contracts/token/ERC1155/IERC1155.sol';
 import {IERC165} from '@solidstate/contracts/introspection/IERC165.sol';
@@ -25,7 +24,9 @@ contract PoolProxy is ManagedProxyOwnable {
     address base,
     address underlying,
     address baseOracle,
-    address underlyingOracle
+    address underlyingOracle,
+    int128 price64x64,
+    int128 emaLogReturns64x64
   ) ManagedProxy(IProxyManager.getPoolImplementation.selector) {
     OwnableStorage.layout().owner = msg.sender;
 
@@ -40,28 +41,13 @@ contract PoolProxy is ManagedProxyOwnable {
 
       l.underlyingDecimals = IERC20Metadata(underlying).decimals();
       l.cLevel64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
-    }
 
-    {
-      ERC20MetadataStorage.Layout storage l = ERC20MetadataStorage.layout();
+      // Initialize price
+      uint bucket = timestamp / (1 hours);
+      l.bucketPrices64x64[bucket] = price64x64;
+      l.priceUpdateSequences[bucket >> 8] += 1 << 256 - (bucket & 255);
 
-      string memory symbolBase = IERC20Metadata(base).symbol();
-      string memory symbolUnderlying = IERC20Metadata(underlying).symbol();
-
-      l.name = string(abi.encodePacked(
-        'Premia Liquidity: ',
-        symbolUnderlying,
-        '/',
-        symbolBase
-      ));
-
-      l.symbol = string(abi.encodePacked(
-        'PREMIA-',
-        symbolUnderlying,
-        symbolBase
-      ));
-
-      l.decimals = 18;
+      l.emaLogReturns64x64 = emaLogReturns64x64;
     }
 
     {

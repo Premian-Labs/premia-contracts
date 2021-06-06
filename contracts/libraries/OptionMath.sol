@@ -121,6 +121,7 @@ library OptionMath {
     int128 cumulativeVariance64x64 = timeToMaturity64x64.mul(emaVarianceAnnualized64x64);
     int128 cumulativeVarianceSqrt64x64 = cumulativeVariance64x64.sqrt();
 
+    // ToDo : Ensure we never have division by 0 / price of 0
     int128 d1_64x64 = spot64x64.div(strike64x64).ln().add(cumulativeVariance64x64 >> 1).div(cumulativeVarianceSqrt64x64);
     int128 d2_64x64 = d1_64x64.sub(cumulativeVarianceSqrt64x64);
 
