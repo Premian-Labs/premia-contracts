@@ -43,7 +43,7 @@ contract PoolProxy is ManagedProxyOwnable {
       l.cLevel64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
 
       // Initialize price
-      uint bucket = timestamp / (1 hours);
+      uint bucket = block.timestamp / (1 hours);
       l.bucketPrices64x64[bucket] = price64x64;
       l.priceUpdateSequences[bucket >> 8] += 1 << 256 - (bucket & 255);
 
