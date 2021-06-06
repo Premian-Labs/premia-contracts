@@ -155,7 +155,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 timeToMaturity64x64 = ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
 
     int128 amount64x64 = ABDKMath64x64Token.fromDecimals(amount, l.underlyingDecimals);
-    int128 oldLiquidity64x64 = l.totalSupply64x64();
+    int128 oldLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
     int128 newLiquidity64x64 = oldLiquidity64x64.sub(amount64x64);
 
     // TODO: validate values without spending gas
@@ -245,7 +245,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     // update C-Level, accounting for slippage and reinvested premia separately
 
-    int128 totalSupply64x64 = l.totalSupply64x64();
+    int128 totalSupply64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
 
     l.setCLevel(OptionMath.calculateCLevel(
       cLevel64x64, // C-Level after liquidity is reserved
@@ -306,10 +306,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _pull(l.underlying, amount);
     emit Deposit(msg.sender, l.base, l.underlying, amount);
 
-    int128 oldLiquidity64x64 = l.totalSupply64x64();
+    int128 oldLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
     // mint free liquidity tokens for sender
     _mint(msg.sender, FREE_LIQUIDITY_TOKEN_ID, amount, '');
-    int128 newLiquidity64x64 = l.totalSupply64x64();
+    int128 newLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
 
@@ -330,10 +330,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       'Pool: liquidity must remain locked for 1 day'
     );
 
-    int128 oldLiquidity64x64 = l.totalSupply64x64();
+    int128 oldLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
     // burn free liquidity tokens from sender
     _burn(msg.sender, FREE_LIQUIDITY_TOKEN_ID, amount);
-    int128 newLiquidity64x64 = l.totalSupply64x64();
+    int128 newLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
 
     _push(l.underlying, amount);
     emit Withdrawal(msg.sender, l.base, l.underlying, l.depositedAt[msg.sender], amount);
@@ -381,7 +381,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     // update C-Level, accounting for slippage and reinvested premia separately
 
-    int128 totalSupply64x64 = l.totalSupply64x64();
+    int128 totalSupply64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
 
     l.cLevel64x64 = OptionMath.calculateCLevel(
       cLevel64x64, // C-Level after liquidity is reserved
@@ -521,7 +521,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 exerciseValue,
     uint256 amountRemaining
   ) internal {
-    int128 oldLiquidity64x64 = l.totalSupply64x64();
+    int128 oldLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
 
     uint256 shortTokenId = PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64);
 
@@ -533,7 +533,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       shortTokenId
     );
 
-    int128 newLiquidity64x64 = l.totalSupply64x64();
+    int128 newLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
 

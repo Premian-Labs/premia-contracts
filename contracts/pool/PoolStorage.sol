@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
-import {ERC20BaseStorage} from '@solidstate/contracts/token/ERC20/ERC20BaseStorage.sol';
+import {ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155EnumerableStorage.sol';
 
 import {ABDKMath64x64Token} from '../libraries/ABDKMath64x64Token.sol';
 import {OptionMath} from '../libraries/OptionMath.sol';
@@ -89,10 +89,11 @@ library PoolStorage {
   }
 
   function totalSupply64x64 (
-    Layout storage l
+    Layout storage l,
+    uint256 tokenId
   ) internal view returns (int128) {
     return ABDKMath64x64Token.fromDecimals(
-      ERC20BaseStorage.layout().totalSupply, l.underlyingDecimals
+      ERC1155EnumerableStorage.layout().totalSupply[tokenId], l.underlyingDecimals
     );
   }
 
