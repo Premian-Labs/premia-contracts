@@ -266,8 +266,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 tokenId,
     uint256 amount
   ) public {
-    (PoolStorage.TokenType tokenType, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(tokenId);
-    require(tokenType == PoolStorage.TokenType.LONG_CALL, 'Pool: invalid token type');
+    uint64 maturity;
+    int128 strike64x64;
+
+    {
+      PoolStorage.TokenType tokenType;
+      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(tokenId);
+      require(tokenType == PoolStorage.TokenType.LONG_CALL, 'Pool: invalid token type');
+    }
 
     PoolStorage.Layout storage l = PoolStorage.layout();
     _update(l);
@@ -289,7 +295,22 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       amountRemaining -= exerciseValue;
     }
 
-    _updateLiquidityPostExercise(l, maturity, strike64x64, spot64x64, amount, exerciseValue, amountRemaining);
+    int128 oldLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
+
+    _exerciseLoop(
+      l,
+      amount,
+      amountRemaining,
+      exerciseValue,
+      PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64)
+    );
+
+    int128 newLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
+
+    l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
+
+    emit Exercise(msg.sender, l.base, l.underlying, spot64x64, strike64x64, maturity, amount, newLiquidity64x64 - oldLiquidity64x64, exerciseValue);
+    emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
@@ -510,35 +531,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     ) * 365;
 
     l.updatedAt = block.timestamp;
-  }
-
-  function _updateLiquidityPostExercise (
-    PoolStorage.Layout storage l,
-    uint64 maturity,
-    int128 strike64x64,
-    int128 spot64x64,
-    uint256 amount,
-    uint256 exerciseValue,
-    uint256 amountRemaining
-  ) internal {
-    int128 oldLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
-
-    uint256 shortTokenId = PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64);
-
-    _exerciseLoop(
-      l,
-      amount,
-      amountRemaining,
-      exerciseValue,
-      shortTokenId
-    );
-
-    int128 newLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
-
-    l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
-
-    emit Exercise(msg.sender, l.base, l.underlying, spot64x64, strike64x64, maturity, amount, newLiquidity64x64 - oldLiquidity64x64, exerciseValue);
-    emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
