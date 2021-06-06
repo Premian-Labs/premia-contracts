@@ -48,6 +48,8 @@ contract PoolProxy is ManagedProxyOwnable {
       l.priceUpdateSequences[bucket >> 8] += 1 << 256 - (bucket & 255);
 
       l.emaLogReturns64x64 = emaLogReturns64x64;
+
+      l.updatedAt = block.timestamp;
     }
 
     {

@@ -5,18 +5,18 @@ import {
   ERC20Mock__factory,
   ManagedProxyOwnable,
   ManagedProxyOwnable__factory,
-  Premia,
-  Premia__factory,
   PoolMock,
   PoolMock__factory,
+  Premia,
+  Premia__factory,
   ProxyManager__factory,
-  WETH9__factory,
   WETH9,
+  WETH9__factory,
 } from '../../typechain';
 
 import { describeBehaviorOfManagedProxyOwnable } from '@solidstate/spec';
 import { describeBehaviorOfPool } from './Pool.behavior';
-import { BigNumber } from 'ethers';
+import { BigNumber, BigNumberish } from 'ethers';
 import { expect } from 'chai';
 import { resetHardhat, setTimestamp } from '../evm';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
@@ -31,7 +31,7 @@ const fixedFromBigNumber = function (bn: BigNumber) {
   return bn.abs().shl(64).mul(bn.abs().div(bn));
 };
 
-const fixedFromFloat = function (float: number) {
+const fixedFromFloat = function (float: BigNumberish) {
   const [integer = '', decimal = ''] = float.toString().split('.');
   return fixedFromBigNumber(ethers.BigNumber.from(`${integer}${decimal}`)).div(
     ethers.BigNumber.from(`1${'0'.repeat(decimal.length)}`),
@@ -113,6 +113,8 @@ describe('PoolProxy', function () {
       underlying.address,
       oracle0.address,
       oracle1.address,
+      fixedFromFloat(20),
+      fixedFromFloat(0.1),
     );
 
     let poolAddress = (await tx.wait()).events![0].args!.pool;
@@ -126,6 +128,8 @@ describe('PoolProxy', function () {
       underlyingWeth.address,
       oracle0.address,
       oracle1.address,
+      fixedFromFloat(20),
+      fixedFromFloat(0.1),
     );
 
     poolAddress = (await tx.wait()).events![0].args!.pool;
@@ -289,15 +293,13 @@ describe('PoolProxy', function () {
     it('should revert if using a strike > 2x spot', async () => {
       await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
       const maturity = poolUtil.getMaturity(10);
-      const strikePrice = fixedFromFloat(21);
+      const strikePrice = fixedFromFloat(41);
 
       await expect(
         pool
           .connect(buyer)
           .purchase(maturity, strikePrice, parseEther('1'), parseEther('100')),
-      ).to.be.revertedWith(
-        'Pool: strike price must not exceed two times spot price',
-      );
+      ).to.be.revertedWith('Pool: strike > 2x spot');
     });
 
     it('should revert if using a strike < 0.5x spot', async () => {
@@ -309,9 +311,7 @@ describe('PoolProxy', function () {
         pool
           .connect(buyer)
           .purchase(maturity, strikePrice, parseEther('1'), parseEther('100')),
-      ).to.be.revertedWith(
-        'Pool: strike price must be at least one half spot price',
-      );
+      ).to.be.revertedWith('Pool: strike < 0.5x spot');
     });
 
     it('should revert if cost is above max cost', async () => {
@@ -324,14 +324,11 @@ describe('PoolProxy', function () {
         .connect(buyer)
         .approve(pool.address, ethers.constants.MaxUint256);
 
-      // ToDo : Fix test which fails because of division by 0 in bsPrice when getting quote
       await expect(
         pool
           .connect(buyer)
           .purchase(maturity, strikePrice, parseEther('1'), parseEther('5')),
-      ).to.be.revertedWith(
-        'Pool: strike price must be at least one half spot price',
-      );
+      ).to.be.revertedWith('Pool: excessive slippage');
     });
 
     it('should successfully purchase an option', async () => {});
