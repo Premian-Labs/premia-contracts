@@ -185,6 +185,17 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   }
 
   /**
+   * @notice set timestamp after which reinvestment is disabled
+   * @param timestamp timestamp to begin divestment
+   */
+  function setDivestmentTimestamp (
+    uint64 timestamp
+  ) external {
+    PoolStorage.Layout storage l = PoolStorage.layout();
+    l.divestmentTimestamps[msg.sender] = timestamp;
+  }
+
+  /**
    * @notice purchase call option
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
@@ -432,6 +443,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       'Pool: liq must be locked 1 day'
     );
 
+    // TODO: account for RESERVED_LIQUIDITY tokens
     int128 oldLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
     // burn free liquidity tokens from sender
     _burn(msg.sender, FREE_LIQUIDITY_TOKEN_ID, amount);
@@ -521,8 +533,16 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     while (amount > 0) {
       underwriter = l.liquidityQueueAscending[underwriter];
 
+      uint liquidity = balanceOf(underwriter, FREE_LIQUIDITY_TOKEN_ID);
+
+      if (!l.getReinvestmentStatus(underwriter)) {
+        _burn(underwriter, FREE_LIQUIDITY_TOKEN_ID, liquidity);
+        _mint(underwriter, PoolStorage.formatTokenId(PoolStorage.TokenType.RESERVED_LIQUIDITY, 0, 0), liquidity, '');
+        continue;
+      }
+
       // amount of liquidity provided by underwriter, accounting for reinvested premium
-      uint256 intervalAmount = balanceOf(underwriter, FREE_LIQUIDITY_TOKEN_ID) * (amount + costRemaining) / amount;
+      uint256 intervalAmount = liquidity * (amount + costRemaining) / amount;
       if (amount < intervalAmount) intervalAmount = amount;
       amount -= intervalAmount;
 
@@ -558,7 +578,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       amountRemaining -= freedAmount;
 
       // mint free liquidity tokens for underwriter
-      _mint(underwriter, FREE_LIQUIDITY_TOKEN_ID, freedAmount, '');
+      if (l.getReinvestmentStatus(underwriter)) {
+        _mint(underwriter, FREE_LIQUIDITY_TOKEN_ID, freedAmount, '');
+      } else {
+        _mint(underwriter, PoolStorage.formatTokenId(PoolStorage.TokenType.RESERVED_LIQUIDITY, 0, 0), freedAmount, '');
+      }
+
       // burn short option tokens from underwriter
       _burn(underwriter, shortTokenId, intervalAmount);
     }

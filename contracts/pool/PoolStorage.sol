@@ -10,7 +10,7 @@ import {OptionMath} from '../libraries/OptionMath.sol';
 import {Pool} from './Pool.sol';
 
 library PoolStorage {
-  enum TokenType { FREE_LIQUIDITY, LONG_CALL, SHORT_CALL }
+  enum TokenType { FREE_LIQUIDITY, RESERVED_LIQUIDITY, LONG_CALL, SHORT_CALL }
 
   bytes32 internal constant STORAGE_SLOT = keccak256(
     'premia.contracts.storage.Pool'
@@ -35,6 +35,8 @@ library PoolStorage {
     int128 emaVarianceAnnualized64x64;
 
     mapping (address => uint256) depositedAt;
+
+    mapping (address => uint256) divestmentTimestamps;
 
     // doubly linked list of free liquidity intervals
     mapping (address => address) liquidityQueueAscending;
@@ -95,6 +97,14 @@ library PoolStorage {
     return ABDKMath64x64Token.fromDecimals(
       ERC1155EnumerableStorage.layout().totalSupply[tokenId], l.underlyingDecimals
     );
+  }
+
+  function getReinvestmentStatus (
+    Layout storage l,
+    address account
+  ) internal view returns (bool) {
+    uint256 timestamp = l.divestmentTimestamps[account];
+    return timestamp == 0 || timestamp > block.timestamp;
   }
 
   function addUnderwriter (
