@@ -1,5 +1,10 @@
 import { task } from 'hardhat/config';
 
+const RINKEBY_DAI = '0x5592ec0cfb4dbc12d3ab100b257153436a1f0fea';
+const RINKEBY_WETH = '0xc778417e063141139fce010982780140aa0cd5ab';
+const RINKEBY_DAI_PRICE_ORACLE = '0x2bA49Aaa16E6afD2a993473cfB70Fa8559B523cF';
+const RINKEBY_ETH_PRICE_ORACLE = '0x8A753747A1Fa494EC906cE90E9f37563A8AF630e';
+
 task('deploy').setAction(async function (args, hre) {
   const {
     Premia__factory,
@@ -7,11 +12,14 @@ task('deploy').setAction(async function (args, hre) {
     ProxyManager__factory,
   } = require('../typechain');
 
+  const weth =
+    hre.network.name === 'rinkeby'
+      ? RINKEBY_WETH
+      : hre.ethers.constants.AddressZero;
+
   const [deployer] = await hre.ethers.getSigners();
 
-  const pool = await new Pool__factory(deployer).deploy(
-    hre.ethers.constants.AddressZero,
-  );
+  const pool = await new Pool__factory(deployer).deploy(weth);
 
   const facetCuts = [await new ProxyManager__factory(deployer).deploy()].map(
     function (f) {
@@ -27,5 +35,26 @@ task('deploy').setAction(async function (args, hre) {
 
   const instance = await new Premia__factory(deployer).deploy(pool.address);
 
-  await instance.diamondCut(facetCuts, hre.ethers.constants.AddressZero, '0x');
+  const tx = await instance.diamondCut(
+    facetCuts,
+    hre.ethers.constants.AddressZero,
+    '0x',
+  );
+
+  if (hre.network.name === 'rinkeby') {
+    await tx.wait(1);
+    await ProxyManager__factory.connect(
+      instance.address,
+      deployer,
+    ).deployPair(
+      RINKEBY_DAI,
+      RINKEBY_WETH,
+      RINKEBY_DAI_PRICE_ORACLE,
+      RINKEBY_ETH_PRICE_ORACLE,
+    );
+  }
+
+  console.log('Deployer: ', deployer.address);
+  console.log('Pool: ', pool.address);
+  console.log('PremiaInstance: ', instance.address);
 });

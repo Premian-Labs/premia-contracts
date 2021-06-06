@@ -7,6 +7,7 @@ import {OwnableInternal} from '@solidstate/contracts/access/OwnableInternal.sol'
 import {IProxyManager} from './IProxyManager.sol';
 import {ProxyManagerStorage} from './ProxyManagerStorage.sol';
 import {PoolProxy} from '../pool/PoolProxy.sol';
+import {OptionMath} from '../libraries/OptionMath.sol';
 
 /**
  * @title Options pair management contract
@@ -15,7 +16,14 @@ import {PoolProxy} from '../pool/PoolProxy.sol';
 contract ProxyManager is IProxyManager, OwnableInternal {
   using ProxyManagerStorage for ProxyManagerStorage.Layout;
 
-  event PoolDeployment (address base, address underlying, address baseOracle, address underlyingOracle, address pool);
+  event DeployPool (
+    address indexed base,
+    address indexed underlying,
+    int128 indexed initialCLevel64x64,
+    address baseOracle,
+    address underlyingOracle,
+    address pool
+  );
 
   /**
    * @notice get address of Pool implementation contract for forwarding via PoolProxy
@@ -58,7 +66,7 @@ contract ProxyManager is IProxyManager, OwnableInternal {
     address pool = address(new PoolProxy(base, underlying, baseOracle, underlyingOracle));
     ProxyManagerStorage.layout().setPool(base, underlying, underlyingOracle);
 
-    emit PoolDeployment(base, underlying, baseOracle, underlyingOracle, pool);
+    emit DeployPool(base, underlying, OptionMath.INITIAL_C_LEVEL_64x64, baseOracle, underlyingOracle, pool);
 
     return pool;
   }

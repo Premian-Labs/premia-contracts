@@ -3,13 +3,15 @@
 pragma solidity ^0.8.0;
 
 import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
+import {ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155EnumerableStorage.sol';
 
-import {ERC20BaseStorage} from '@solidstate/contracts/token/ERC20/ERC20BaseStorage.sol';
-
-import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
-import { OptionMath } from '../libraries/OptionMath.sol';
+import {ABDKMath64x64Token} from '../libraries/ABDKMath64x64Token.sol';
+import {OptionMath} from '../libraries/OptionMath.sol';
+import {Pool} from './Pool.sol';
 
 library PoolStorage {
+  enum TokenType { FREE_LIQUIDITY, LONG_CALL, SHORT_CALL }
+
   bytes32 internal constant STORAGE_SLOT = keccak256(
     'premia.contracts.storage.Pool'
   );
@@ -54,11 +56,46 @@ library PoolStorage {
     assembly { l.slot := slot }
   }
 
+  /**
+   * @notice calculate ERC1155 token id for given option parameters
+   * @param tokenType TokenType enum
+   * @param maturity timestamp of option maturity
+   * @param strike64x64 64x64 fixed point representation of strike price
+   * @return tokenId token id
+   */
+  function formatTokenId (
+    TokenType tokenType,
+    uint64 maturity,
+    int128 strike64x64
+  ) internal pure returns (uint256 tokenId) {
+    assembly {
+      tokenId := add(strike64x64, add(shl(128, maturity), shl(248, tokenType)))
+    }
+  }
+
+  /**
+   * @notice derive option maturity and strike price from ERC1155 token id
+   * @param tokenId token id
+   * @return tokenType TokenType enum
+   * @return maturity timestamp of option maturity
+   * @return strike64x64 option strike price
+   */
+  function parseTokenId (
+    uint256 tokenId
+  ) internal pure returns (TokenType tokenType, uint64 maturity, int128 strike64x64) {
+    assembly {
+      tokenType := shr(248, tokenId)
+      maturity := shr(128, tokenId)
+      strike64x64 := tokenId
+    }
+  }
+
   function totalSupply64x64 (
-    Layout storage l
+    Layout storage l,
+    uint256 tokenId
   ) internal view returns (int128) {
     return ABDKMath64x64Token.fromDecimals(
-      ERC20BaseStorage.layout().totalSupply, l.underlyingDecimals
+      ERC1155EnumerableStorage.layout().totalSupply[tokenId], l.underlyingDecimals
     );
   }
 
@@ -100,6 +137,13 @@ library PoolStorage {
       newLiquidity64x64,
       OptionMath.ONE_64x64
     );
+  }
+
+  function setCLevel (
+    Layout storage l,
+    int128 cLevel64x64
+  ) internal {
+    l.cLevel64x64 = cLevel64x64;
   }
 
   function setOracles(
