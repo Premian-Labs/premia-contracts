@@ -51,6 +51,7 @@ describe('PoolProxy', function () {
   let underlying: ERC20Mock;
   let underlyingWeth: WETH9;
   let poolUtil: PoolUtil;
+  const freeLiquidityTokenId = 0;
 
   beforeEach(async function () {
     await resetHardhat();
@@ -144,7 +145,7 @@ describe('PoolProxy', function () {
 
   describeBehaviorOfPool(
     {
-      deploy: async () => instancePool,
+      deploy: async () => pool,
       mintERC1155: undefined as any,
       burnERC1155: undefined as any,
     },
@@ -170,7 +171,9 @@ describe('PoolProxy', function () {
         owner,
         -100,
       );
-      expect(await pool['balanceOf(address)'](owner.address)).to.eq(100);
+      expect(await pool.balanceOf(owner.address, freeLiquidityTokenId)).to.eq(
+        100,
+      );
     });
 
     it('returns share tokens granted to sender with WETH deposit', async () => {
@@ -197,14 +200,16 @@ describe('PoolProxy', function () {
       ).to.changeEtherBalance(owner, -50);
 
       expect(await underlyingWeth.balanceOf(owner.address)).to.eq(0);
-      expect(await poolWeth['balanceOf(address)'](owner.address)).to.eq(350);
+      expect(
+        await poolWeth.balanceOf(owner.address, freeLiquidityTokenId),
+      ).to.eq(350);
     });
 
     it('should revert if user send ETH with a token deposit', async () => {
       await underlying.mint(owner.address, 100);
       await underlying.approve(pool.address, ethers.constants.MaxUint256);
       await expect(pool.deposit('100', { value: 1 })).to.be.revertedWith(
-        'Pool: function is payable only if deposit token is WETH',
+        'Pool: not WETH deposit',
       );
     });
 
@@ -220,12 +225,12 @@ describe('PoolProxy', function () {
       await poolUtil.depositLiquidity(owner, underlying, 100);
 
       await expect(pool.withdraw('100')).to.be.revertedWith(
-        'Pool: liquidity must remain locked for 1 day',
+        'Pool: liq must be locked 1 day',
       );
 
       await setTimestamp(getCurrentTimestamp() + 23 * 3600);
       await expect(pool.withdraw('100')).to.be.revertedWith(
-        'Pool: liquidity must remain locked for 1 day',
+        'Pool: liq must be locked 1 day',
       );
     });
 
@@ -236,7 +241,9 @@ describe('PoolProxy', function () {
       await setTimestamp(getCurrentTimestamp() + 24 * 3600 + 60);
       await pool.withdraw('100');
       expect(await underlying.balanceOf(owner.address)).to.eq(100);
-      expect(await pool['balanceOf(address)'](owner.address)).to.eq(0);
+      expect(await pool.balanceOf(owner.address, freeLiquidityTokenId)).to.eq(
+        0,
+      );
     });
 
     it('todo');
@@ -252,9 +259,7 @@ describe('PoolProxy', function () {
         pool
           .connect(buyer)
           .purchase(maturity, strikePrice, parseEther('1'), parseEther('100')),
-      ).to.be.revertedWith(
-        'Pool: maturity must be at least 1 day in the future',
-      );
+      ).to.be.revertedWith('Pool: maturity < 1 day');
     });
 
     it('should revert if using a maturity more than 28 days in the future', async () => {
@@ -266,9 +271,7 @@ describe('PoolProxy', function () {
         pool
           .connect(buyer)
           .purchase(maturity, strikePrice, parseEther('1'), parseEther('100')),
-      ).to.be.revertedWith(
-        'Pool: maturity must be at most 28 days in the future',
-      );
+      ).to.be.revertedWith('Pool: maturity > 28 days');
     });
 
     it('should revert if using a maturity not corresponding to end of UTC day', async () => {
@@ -280,7 +283,7 @@ describe('PoolProxy', function () {
         pool
           .connect(buyer)
           .purchase(maturity, strikePrice, parseEther('1'), parseEther('100')),
-      ).to.be.revertedWith('Pool: maturity must correspond to end of UTC day');
+      ).to.be.revertedWith('Pool: maturity not end UTC day');
     });
 
     it('should revert if using a strike > 2x spot', async () => {
