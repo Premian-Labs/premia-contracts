@@ -32,18 +32,10 @@ describe('Pool', function () {
   describeBehaviorOfPool(
     {
       deploy: async () => instance,
-      mintERC20: (recipient, amount) =>
-        instance['mint(address,uint256)'](recipient, amount),
-      burnERC20: (recipient, amount) =>
-        instance['burn(address,uint256)'](recipient, amount),
       mintERC1155: (recipient, tokenId, amount) =>
         instance['mint(address,uint256,uint256)'](recipient, tokenId, amount),
       burnERC1155: (recipient, tokenId, amount) =>
         instance['burn(address,uint256,uint256)'](recipient, tokenId, amount),
-      supply: BigNumber.from(0),
-      name: '',
-      symbol: '',
-      decimals: 0,
     },
     ['#supportsInterface'],
   );
