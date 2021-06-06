@@ -19,8 +19,12 @@
   "repository": "https://github.com/PremiaFinance/premia-contracts.git",
   "author": "Premia",
   "scripts": {
+    "chain": "hardhat node --hostname 0.0.0.0",
     "compile": "hardhat compile",
     "compile:force": "hardhat compile --force",
+    "postinstall": "yarn compile",
+    "deploy": "hardhat deploy",
+    "deploy:rinkeby": "hardhat --network rinkeby deploy",
     "test": "hardhat test",
     "contract-size": "yarn run hardhat size-contracts"
   },
@@ -47,6 +51,7 @@
     "ethereum-waffle": "^3.3.0",
     "ethers": "^5.3.0",
     "hardhat": "^2.3.0",
+    "hardhat-abi-exporter": "^2.2.1",
     "hardhat-contract-sizer": "^2.0.3",
     "hardhat-docgen": "^1.1.1",
     "hardhat-gas-reporter": "^1.0.4",

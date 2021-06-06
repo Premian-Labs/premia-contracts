@@ -31,6 +31,27 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   // TODO: make private
   uint internal immutable FREE_LIQUIDITY_TOKEN_ID;
 
+  event Purchase (address indexed user,
+                  address indexed base,
+                  address indexed underlying,
+                  int128 strike64x64,
+                  uint64 maturity,
+                  int128 cLevel64x64,
+                  uint256 amount,
+                  uint256 cost);
+  event Exercise (address indexed user,
+                  address indexed base,
+                  address indexed underlying,
+                  int128 spot64x64,
+                  int128 strike64x64,
+                  uint64 maturity,
+                  uint256 amount,
+                  int128 amountFreed64x64,
+                  uint256 exerciseValue);
+  event Deposit (address indexed user, address indexed base, address indexed underlying, uint256 amount);
+  event Withdrawal (address indexed user, address indexed base, address indexed underlying, uint256 depositedAt, uint256 amount);
+  event UpdateCLevel (address indexed base, address indexed underlying, int128 indexed cLevel64x64, int128 oldLiquidity64x64, int128 newLiquidity64x64);
+
   constructor (
     address weth,
     address feeReceiver
@@ -207,6 +228,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     require(cost <= maxCost, 'Pool: excessive slippage');
     _pull(l.underlying, cost);
+    emit Purchase(msg.sender, l.base, l.underlying, strike64x64, maturity, cLevel64x64, amount, cost);
 
     // mint free liquidity tokens for treasury
     _mint(FEE_RECEIVER_ADDRESS, FREE_LIQUIDITY_TOKEN_ID, fee, '');
@@ -225,12 +247,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     int128 totalSupply64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
 
-    l.cLevel64x64 = OptionMath.calculateCLevel(
+    l.setCLevel(OptionMath.calculateCLevel(
       cLevel64x64, // C-Level after liquidity is reserved
       totalSupply64x64.sub(cost64x64),
       totalSupply64x64,
       OptionMath.ONE_64x64
-    );
+    ));
+
+    emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, totalSupply64x64.sub(cost64x64), totalSupply64x64);
   }
 
   /**
@@ -242,8 +266,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 tokenId,
     uint256 amount
   ) public {
-    (PoolStorage.TokenType tokenType, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(tokenId);
-    require(tokenType == PoolStorage.TokenType.LONG_CALL, 'Pool: invalid token type');
+    uint64 maturity;
+    int128 strike64x64;
+
+    {
+      PoolStorage.TokenType tokenType;
+      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(tokenId);
+      require(tokenType == PoolStorage.TokenType.LONG_CALL, 'Pool: invalid token type');
+    }
 
     PoolStorage.Layout storage l = PoolStorage.layout();
     _update(l);
@@ -267,29 +297,20 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     int128 oldLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
 
-    uint256 shortTokenId = PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64);
-    EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
-
-    while (amount > 0) {
-      address underwriter = underwriters.at(underwriters.length() - 1);
-
-      // amount of liquidity provided by underwriter
-      uint256 intervalAmount = balanceOf(underwriter, shortTokenId);
-      if (amountRemaining < intervalAmount) intervalAmount = amountRemaining;
-
-      // amount of liquidity returned to underwriter, accounting for premium earned by buyer
-      uint256 freedAmount = intervalAmount * (amount - exerciseValue) / amount;
-      amountRemaining -= freedAmount;
-
-      // mint free liquidity tokens for underwriter
-      _mint(underwriter, FREE_LIQUIDITY_TOKEN_ID, freedAmount, '');
-      // burn short option tokens from underwriter
-      _burn(underwriter, shortTokenId, intervalAmount);
-    }
+    _exerciseLoop(
+      l,
+      amount,
+      amountRemaining,
+      exerciseValue,
+      PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64)
+    );
 
     int128 newLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
+
+    emit Exercise(msg.sender, l.base, l.underlying, spot64x64, strike64x64, maturity, amount, newLiquidity64x64 - oldLiquidity64x64, exerciseValue);
+    emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
@@ -304,6 +325,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     l.depositedAt[msg.sender] = block.timestamp;
 
     _pull(l.underlying, amount);
+    emit Deposit(msg.sender, l.base, l.underlying, amount);
 
     int128 oldLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
     // mint free liquidity tokens for sender
@@ -311,6 +333,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 newLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
+
+    emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
@@ -333,8 +357,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 newLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
 
     _push(l.underlying, amount);
+    emit Withdrawal(msg.sender, l.base, l.underlying, l.depositedAt[msg.sender], amount);
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
+
+    emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
@@ -371,6 +398,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     ).toDecimals(l.underlyingDecimals);
 
     _push(l.underlying, amount - cost - fee);
+    // TODO: reassignment event
 
     // update C-Level, accounting for slippage and reinvested premia separately
 
@@ -382,6 +410,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       totalSupply64x64.add(cost64x64),
       OptionMath.ONE_64x64
     );
+
+    emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, totalSupply64x64, totalSupply64x64.add(cost64x64));
 
     // mint free liquidity tokens for treasury
     _mint(FEE_RECEIVER_ADDRESS, FREE_LIQUIDITY_TOKEN_ID, fee, '');
@@ -423,6 +453,33 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       _burn(underwriter, FREE_LIQUIDITY_TOKEN_ID, intervalAmount - intervalCost);
       // mint short option tokens for underwriter
       _mint(underwriter, shortTokenId, intervalAmount, '');
+    }
+  }
+
+  function _exerciseLoop (
+    PoolStorage.Layout storage l,
+    uint256 amount,
+    uint256 amountRemaining,
+    uint256 exerciseValue,
+    uint256 shortTokenId
+  ) private {
+    EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
+
+    while (amount > 0) {
+      address underwriter = underwriters.at(underwriters.length() - 1);
+
+      // amount of liquidity provided by underwriter
+      uint256 intervalAmount = balanceOf(underwriter, shortTokenId);
+      if (amountRemaining < intervalAmount) intervalAmount = amountRemaining;
+
+      // amount of liquidity returned to underwriter, accounting for premium earned by buyer
+      uint256 freedAmount = intervalAmount * (amount - exerciseValue) / amount;
+      amountRemaining -= freedAmount;
+
+      // mint free liquidity tokens for underwriter
+      _mint(underwriter, FREE_LIQUIDITY_TOKEN_ID, freedAmount, '');
+      // burn short option tokens from underwriter
+      _burn(underwriter, shortTokenId, intervalAmount);
     }
   }
 
