@@ -200,19 +200,19 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) external payable returns (uint256 cost) {
     // TODO: specify payment currency
 
-    require(amount <= totalSupply(FREE_LIQUIDITY_TOKEN_ID), 'Pool: insufficient liquidity');
+    require(amount <= totalSupply(FREE_LIQUIDITY_TOKEN_ID), 'Pool: insufficient liq');
 
-    require(maturity >= block.timestamp + (1 days), 'Pool: maturity must be at least 1 day in the future');
-    require(maturity < block.timestamp + (29 days), 'Pool: maturity must be at most 28 days in the future');
-    require(maturity % (1 days) == 0, 'Pool: maturity must correspond to end of UTC day');
+    require(maturity >= block.timestamp + (1 days), 'Pool: maturity < 1 day');
+    require(maturity < block.timestamp + (29 days), 'Pool: maturity > 28 days');
+    require(maturity % (1 days) == 0, 'Pool: maturity not end UTC day');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
     _update(l);
 
     int128 spot64x64 = l.getPriceUpdate(block.timestamp);
 
-    require(strike64x64 <= spot64x64 << 1, 'Pool: strike price must not exceed two times spot price');
-    require(strike64x64 >= spot64x64 >> 1, 'Pool: strike price must be at least one half spot price');
+    require(strike64x64 <= spot64x64 << 1, 'Pool: strike > 2x spot');
+    require(strike64x64 >= spot64x64 >> 1, 'Pool: strike < 0.5x spot');
 
     (int128 cost64x64, int128 cLevel64x64) = quote(
       maturity,
@@ -348,7 +348,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     require(
       l.depositedAt[msg.sender] + (1 days) < block.timestamp,
-      'Pool: liquidity must remain locked for 1 day'
+      'Pool: liq must be locked 1 day'
     );
 
     int128 oldLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
@@ -376,7 +376,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) external returns (uint256 cost) {
     (PoolStorage.TokenType tokenType, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
     require(tokenType == PoolStorage.TokenType.SHORT_CALL, 'Pool: invalid token type');
-    require(maturity > block.timestamp, 'Pool: option must not be expired');
+    require(maturity > block.timestamp, 'Pool: option expired');
 
     // TODO: allow exit of expired position
 
@@ -563,7 +563,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     } else {
       require(
         msg.value == 0,
-        'Pool: function is payable only if deposit token is WETH'
+        'Pool: not WETH deposit'
       );
     }
 
