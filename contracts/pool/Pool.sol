@@ -25,8 +25,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   using EnumerableSet for EnumerableSet.AddressSet;
   using PoolStorage for PoolStorage.Layout;
 
-  enum TokenType { FREE_LIQUIDITY, RESERVED_LIQUIDITY, LONG_CALL, SHORT_CALL }
-
   address private immutable WETH_ADDRESS;
   address private immutable FEE_RECEIVER_ADDRESS;
 
@@ -318,16 +316,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64)
     );
 
-      // mint free liquidity tokens for underwriter
-      if (l.getReinvestmentStatus(underwriter)) {
-        _mint(underwriter, FREE_LIQUIDITY_TOKEN_ID, freedAmount, '');
-      } else {
-        _mint(underwriter, _tokenIdFor(TokenType.RESERVED_LIQUIDITY, 0, 0), freedAmount, '');
-      }
-      // burn short option tokens from underwriter
-      _burn(underwriter, shortTokenId, intervalAmount);
-    }
-
     int128 newLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64);
@@ -468,7 +456,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       if (!l.getReinvestmentStatus(underwriter)) {
         _burn(underwriter, FREE_LIQUIDITY_TOKEN_ID, liquidity);
-        _mint(underwriter, _tokenIdFor(TokenType.RESERVED_LIQUIDITY, 0, 0), liquidity, '');
+        _mint(underwriter, PoolStorage.formatTokenId(PoolStorage.TokenType.RESERVED_LIQUIDITY, 0, 0), liquidity, '');
         continue;
       }
 
@@ -509,7 +497,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       amountRemaining -= freedAmount;
 
       // mint free liquidity tokens for underwriter
-      _mint(underwriter, FREE_LIQUIDITY_TOKEN_ID, freedAmount, '');
+      if (l.getReinvestmentStatus(underwriter)) {
+        _mint(underwriter, FREE_LIQUIDITY_TOKEN_ID, freedAmount, '');
+      } else {
+        _mint(underwriter, PoolStorage.formatTokenId(PoolStorage.TokenType.RESERVED_LIQUIDITY, 0, 0), freedAmount, '');
+      }
+
       // burn short option tokens from underwriter
       _burn(underwriter, shortTokenId, intervalAmount);
     }

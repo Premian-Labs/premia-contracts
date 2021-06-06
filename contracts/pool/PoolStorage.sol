@@ -10,7 +10,7 @@ import {OptionMath} from '../libraries/OptionMath.sol';
 import {Pool} from './Pool.sol';
 
 library PoolStorage {
-  enum TokenType { FREE_LIQUIDITY, LONG_CALL, SHORT_CALL }
+  enum TokenType { FREE_LIQUIDITY, RESERVED_LIQUIDITY, LONG_CALL, SHORT_CALL }
 
   bytes32 internal constant STORAGE_SLOT = keccak256(
     'premia.contracts.storage.Pool'
