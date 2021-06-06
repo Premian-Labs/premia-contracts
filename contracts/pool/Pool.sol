@@ -390,8 +390,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     // ToDo : Pay fee
 
-    longCallTokenId = _tokenIdFor(TokenType.LONG_CALL, maturity, strike64x64);
-    shortCallTokenId = _tokenIdFor(TokenType.SHORT_CALL, maturity, strike64x64);
+    longCallTokenId = PoolStorage.formatTokenId(PoolStorage.TokenType.LONG_CALL, maturity, strike64x64);
+    shortCallTokenId = PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64);
 
     // mint long option token for underwriter (ERC1155)
     _mint(underwriter, longCallTokenId, amount, '');
