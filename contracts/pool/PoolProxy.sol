@@ -18,6 +18,7 @@ import { OptionMath } from '../libraries/OptionMath.sol';
  * @title Upgradeable proxy with centrally controlled Pool implementation
  */
 contract PoolProxy is ManagedProxyOwnable {
+  using PoolStorage for PoolStorage.Layout;
   using ERC165Storage for ERC165Storage.Layout;
 
   constructor (
@@ -43,10 +44,7 @@ contract PoolProxy is ManagedProxyOwnable {
       l.underlyingDecimals = IERC20Metadata(underlying).decimals();
       l.cLevel64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
 
-      // Initialize price
-      uint bucket = block.timestamp / (1 hours);
-      l.bucketPrices64x64[bucket] = price64x64;
-      l.priceUpdateSequences[bucket >> 8] += 1 << 256 - (bucket & 255);
+      l.setPriceUpdate(block.timestamp, price64x64);
 
       l.emaLogReturns64x64 = emaLogReturns64x64;
       l.emaVarianceAnnualized64x64 = emaVarianceAnnualized64x64;
