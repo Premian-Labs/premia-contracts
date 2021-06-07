@@ -16,27 +16,19 @@ import {
 
 import { describeBehaviorOfManagedProxyOwnable } from '@solidstate/spec';
 import { describeBehaviorOfPool } from './Pool.behavior';
-import { BigNumber, BigNumberish } from 'ethers';
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
 import { resetHardhat, setTimestamp } from '../evm';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { deployMockContract } from 'ethereum-waffle';
 import { parseEther } from 'ethers/lib/utils';
 import { PoolUtil } from './PoolUtil';
+import { fixedFromFloat, fixedToNumber } from '../utils/math';
+import chaiAlmost from 'chai-almost';
+
+chai.use(chaiAlmost(0.01));
 
 const SYMBOL_BASE = 'SYMBOL_BASE';
 const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
-
-const fixedFromBigNumber = function (bn: BigNumber) {
-  return bn.abs().shl(64).mul(bn.abs().div(bn));
-};
-
-const fixedFromFloat = function (float: BigNumberish) {
-  const [integer = '', decimal = ''] = float.toString().split('.');
-  return fixedFromBigNumber(ethers.BigNumber.from(`${integer}${decimal}`)).div(
-    ethers.BigNumber.from(`1${'0'.repeat(decimal.length)}`),
-  );
-};
 
 describe('PoolProxy', function () {
   let owner: SignerWithAddress;
@@ -115,6 +107,7 @@ describe('PoolProxy', function () {
       oracle1.address,
       fixedFromFloat(20),
       fixedFromFloat(0.1),
+      fixedFromFloat(0.2),
     );
 
     let poolAddress = (await tx.wait()).events![0].args!.pool;
@@ -130,6 +123,7 @@ describe('PoolProxy', function () {
       oracle1.address,
       fixedFromFloat(20),
       fixedFromFloat(0.1),
+      fixedFromFloat(0.2),
     );
 
     poolAddress = (await tx.wait()).events![0].args!.pool;
@@ -163,7 +157,23 @@ describe('PoolProxy', function () {
   });
 
   describe('#quote', function () {
-    it('returns price for given option parameters');
+    it('returns price for given option parameters', async () => {
+      await poolUtil.depositLiquidity(owner, underlying, parseEther('10'));
+
+      const maturity = poolUtil.getMaturity(10);
+      const strikePrice = fixedFromFloat(12);
+      const spotPrice = fixedFromFloat(10);
+
+      const quote = await pool.quote(
+        maturity,
+        strikePrice,
+        spotPrice,
+        parseEther('1'),
+      );
+
+      expect(fixedToNumber(quote.cost64x64)).to.almost(0.0314);
+      expect(fixedToNumber(quote.cLevel64x64)).to.almost(2.21);
+    });
   });
 
   describe('#deposit', function () {
