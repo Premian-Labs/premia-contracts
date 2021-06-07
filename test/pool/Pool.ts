@@ -26,7 +26,7 @@ describe('Pool', function () {
   });
 
   beforeEach(async function () {
-    instance = await new PoolMock__factory(owner).deploy();
+    instance = await new PoolMock__factory(owner).deploy(ethers.constants.AddressZero);
   });
 
   describeBehaviorOfPool(
