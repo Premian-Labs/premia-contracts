@@ -181,7 +181,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     cost64x64 = price64x64.mul(amount64x64).mul(
       OptionMath.ONE_64x64.add(l.fee64x64)
-    ).mul(spot64x64);
+    ).div(spot64x64);
   }
 
   /**
@@ -236,12 +236,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     // mint long option token for buyer
     _mint(msg.sender, PoolStorage.formatTokenId(PoolStorage.TokenType.LONG_CALL, maturity, strike64x64), amount, '');
 
-    // remaining premia to be distributed to underwriters
-    uint256 costRemaining = cost - fee;
-
     uint256 shortTokenId = PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64);
 
-    _writeLoop(l, amount, costRemaining, shortTokenId);
+    _writeLoop(l, amount, cost - fee, shortTokenId);
 
     // update C-Level, accounting for slippage and reinvested premia separately
 
@@ -432,7 +429,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   function _writeLoop (
     PoolStorage.Layout storage l,
     uint256 amount,
-    uint256 costRemaining,
+    uint256 premium,
     uint256 shortTokenId
   ) private {
     address underwriter;
@@ -441,16 +438,16 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       underwriter = l.liquidityQueueAscending[underwriter];
 
       // amount of liquidity provided by underwriter, accounting for reinvested premium
-      uint256 intervalAmount = balanceOf(underwriter, FREE_LIQUIDITY_TOKEN_ID) * (amount + costRemaining) / amount;
+      uint256 intervalAmount = balanceOf(underwriter, FREE_LIQUIDITY_TOKEN_ID) * (amount + premium) / amount;
       if (amount < intervalAmount) intervalAmount = amount;
-      amount -= intervalAmount;
 
       // amount of premium paid to underwriter
-      uint256 intervalCost = costRemaining * intervalAmount / amount;
-      costRemaining -= intervalCost;
+      uint256 intervalPremium = premium * intervalAmount / amount;
+      premium -= intervalPremium;
+      amount -= intervalAmount;
 
       // burn free liquidity tokens from underwriter
-      _burn(underwriter, FREE_LIQUIDITY_TOKEN_ID, intervalAmount - intervalCost);
+      _burn(underwriter, FREE_LIQUIDITY_TOKEN_ID, intervalAmount - intervalPremium);
       // mint short option tokens for underwriter
       _mint(underwriter, shortTokenId, intervalAmount, '');
     }
