@@ -141,7 +141,7 @@ describe('PoolProxy', function () {
     //
 
     underlying = ERC20Mock__factory.connect(await pool.getUnderlying(), owner);
-    poolUtil = new PoolUtil({ pool });
+    poolUtil = new PoolUtil({ pool, underlying });
   });
 
   describeBehaviorOfManagedProxyOwnable({
@@ -167,7 +167,7 @@ describe('PoolProxy', function () {
 
   describe('#quote', function () {
     it('returns price for given option parameters', async () => {
-      await poolUtil.depositLiquidity(owner, underlying, parseEther('10'));
+      await poolUtil.depositLiquidity(owner, parseEther('10'));
 
       const maturity = poolUtil.getMaturity(17);
       const strikePrice = fixedFromFloat(spotPrice * 1.25);
@@ -256,7 +256,7 @@ describe('PoolProxy', function () {
 
   describe('#withdraw', function () {
     it('should fail withdrawing if < 1 day after deposit', async () => {
-      await poolUtil.depositLiquidity(owner, underlying, 100);
+      await poolUtil.depositLiquidity(owner, 100);
 
       await expect(pool.withdraw('100')).to.be.revertedWith(
         'Pool: liq must be locked 1 day',
@@ -269,7 +269,7 @@ describe('PoolProxy', function () {
     });
 
     it('should return underlying tokens withdrawn by sender', async () => {
-      await poolUtil.depositLiquidity(owner, underlying, 100);
+      await poolUtil.depositLiquidity(owner, 100);
       expect(await underlying.balanceOf(owner.address)).to.eq(0);
 
       await setTimestamp(getCurrentTimestamp() + 24 * 3600 + 60);
@@ -285,7 +285,7 @@ describe('PoolProxy', function () {
 
   describe('#purchase', function () {
     it('should revert if using a maturity less than 1 day in the future', async () => {
-      await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
+      await poolUtil.depositLiquidity(owner, parseEther('100'));
       const maturity = getCurrentTimestamp() + 10 * 3600;
       const strikePrice = fixedFromFloat(1.5);
 
@@ -297,7 +297,7 @@ describe('PoolProxy', function () {
     });
 
     it('should revert if using a maturity more than 28 days in the future', async () => {
-      await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
+      await poolUtil.depositLiquidity(owner, parseEther('100'));
       const maturity = poolUtil.getMaturity(30);
       const strikePrice = fixedFromFloat(1.5);
 
@@ -309,7 +309,7 @@ describe('PoolProxy', function () {
     });
 
     it('should revert if using a maturity not corresponding to end of UTC day', async () => {
-      await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
+      await poolUtil.depositLiquidity(owner, parseEther('100'));
       const maturity = poolUtil.getMaturity(10).add(3600);
       const strikePrice = fixedFromFloat(1.5);
 
@@ -321,7 +321,7 @@ describe('PoolProxy', function () {
     });
 
     it('should revert if using a strike > 2x spot', async () => {
-      await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
+      await poolUtil.depositLiquidity(owner, parseEther('100'));
       const maturity = poolUtil.getMaturity(10);
       const strikePrice = fixedFromFloat(spotPrice * 2.01);
 
@@ -333,7 +333,7 @@ describe('PoolProxy', function () {
     });
 
     it('should revert if using a strike < 0.5x spot', async () => {
-      await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
+      await poolUtil.depositLiquidity(owner, parseEther('100'));
       const maturity = poolUtil.getMaturity(10);
       const strikePrice = fixedFromFloat(spotPrice * 0.49);
 
@@ -345,7 +345,7 @@ describe('PoolProxy', function () {
     });
 
     it('should revert if cost is above max cost', async () => {
-      await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
+      await poolUtil.depositLiquidity(owner, parseEther('100'));
       const maturity = poolUtil.getMaturity(10);
       const strikePrice = fixedFromFloat(spotPrice * 1.25);
 
@@ -362,7 +362,7 @@ describe('PoolProxy', function () {
     });
 
     it('should successfully purchase an option', async () => {
-      await poolUtil.depositLiquidity(lp, underlying, parseEther('100'));
+      await poolUtil.depositLiquidity(lp, parseEther('100'));
 
       const maturity = poolUtil.getMaturity(10);
       const strikePrice = fixedFromFloat(spotPrice * 1.25);
@@ -428,7 +428,7 @@ describe('PoolProxy', function () {
       for (const signer of signers) {
         if (signer.address == buyer.address) continue;
 
-        await poolUtil.depositLiquidity(signer, underlying, parseEther('1'));
+        await poolUtil.depositLiquidity(signer, parseEther('1'));
 
         amountInPool = amountInPool.add(parseEther('1'));
       }
@@ -471,8 +471,6 @@ describe('PoolProxy', function () {
         purchaseAmount,
       );
 
-      console.log(fixedToNumber(quote.baseCost64x64));
-
       let i = 0;
       for (const s of signers) {
         if (s.address === buyer.address) continue;
@@ -504,12 +502,70 @@ describe('PoolProxy', function () {
   });
 
   describe('#exercise', function () {
-    describe('(uint256,uint192,uint64)', function () {
-      it('todo');
+    it('should fail exercising if token is a SHORT_CALL', async () => {
+      const maturity = poolUtil.getMaturity(10);
+      const strikePrice = fixedFromFloat(spotPrice * 1.25);
+
+      await poolUtil.purchaseOption(
+        lp,
+        buyer,
+        parseEther('1'),
+        maturity,
+        strikePrice,
+      );
+
+      const shortTokenId = await pool.tokenIdFor(
+        TokenType.ShortCall,
+        maturity,
+        strikePrice,
+      );
+
+      await expect(
+        pool.connect(lp).exercise(shortTokenId, parseEther('1')),
+      ).to.be.revertedWith('Pool: invalid token type');
     });
 
-    describe('(uint256,uint256)', function () {
-      it('todo');
+    it('should successfully exercise', async () => {
+      const maturity = poolUtil.getMaturity(10);
+      const strikePrice = fixedFromFloat(spotPrice * 1.25);
+
+      await poolUtil.purchaseOption(
+        lp,
+        buyer,
+        parseEther('1'),
+        maturity,
+        strikePrice,
+      );
+
+      const longTokenId = await pool.tokenIdFor(
+        TokenType.LongCall,
+        maturity,
+        strikePrice,
+      );
+
+      const shortTokenId = await pool.tokenIdFor(
+        TokenType.ShortCall,
+        maturity,
+        strikePrice,
+      );
+      console.log(shortTokenId.toString());
+
+      console.log(
+        TokenType.ShortCall,
+        maturity.toString(),
+        fixedToNumber(strikePrice),
+      );
+
+      const r = await pool.parametersFor(shortTokenId);
+      console.log(r[0], r[1].toString(), fixedToNumber(r[2]));
+
+      // console.log(shortTokenId.shl(1).toString());
+      //
+      // console.log(buyer.address);
+      //
+      // console.log((await pool.balanceOf(lp.address, shortTokenId)).toString());
+
+      await pool.connect(buyer).exercise(longTokenId, parseEther('1'));
     });
   });
 });
