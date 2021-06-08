@@ -103,6 +103,7 @@ library PoolStorage {
     address account
   ) internal {
     l.liquidityQueueAscending[l.liquidityQueueDescending[address(0)]] = account;
+    l.liquidityQueueDescending[address(0)] = account;
   }
 
   function removeUnderwriter (
