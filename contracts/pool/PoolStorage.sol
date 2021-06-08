@@ -165,11 +165,10 @@ library PoolStorage {
 
   function setPriceUpdate (
     Layout storage l,
-    uint timestamp,
     int128 price64x64
   ) internal {
     // TODO: check for off-by-one errors
-    uint bucket = timestamp / (1 hours);
+    uint bucket = block.timestamp / (1 hours);
     l.bucketPrices64x64[bucket] = price64x64;
     l.priceUpdateSequences[bucket >> 8] += 1 << 256 - (bucket & 255);
   }
