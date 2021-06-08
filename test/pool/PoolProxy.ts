@@ -45,6 +45,8 @@ describe('PoolProxy', function () {
   let poolUtil: PoolUtil;
   const freeLiquidityTokenId = 0;
 
+  const spotPrice = 2500;
+
   beforeEach(async function () {
     await resetHardhat();
     [owner, lp, buyer] = await ethers.getSigners();
@@ -100,7 +102,7 @@ describe('PoolProxy', function () {
     await baseOracle.mock.latestRoundData.returns(1, parseEther('1'), 1, 5, 1);
     await underlyingOracle.mock.latestRoundData.returns(
       1,
-      parseEther('10'),
+      parseEther(spotPrice.toString()),
       1,
       5,
       1,
@@ -111,9 +113,9 @@ describe('PoolProxy', function () {
       underlying.address,
       baseOracle.address,
       underlyingOracle.address,
-      fixedFromFloat(20),
+      fixedFromFloat(spotPrice * 0.999),
       fixedFromFloat(0.1),
-      fixedFromFloat(0.2),
+      fixedFromFloat(1.1),
     );
 
     let poolAddress = (await tx.wait()).events![0].args!.pool;
@@ -127,9 +129,9 @@ describe('PoolProxy', function () {
       underlyingWeth.address,
       baseOracle.address,
       underlyingOracle.address,
-      fixedFromFloat(20),
+      fixedFromFloat(spotPrice * 0.999),
       fixedFromFloat(0.1),
-      fixedFromFloat(0.2),
+      fixedFromFloat(1.1),
     );
 
     poolAddress = (await tx.wait()).events![0].args!.pool;
@@ -166,18 +168,29 @@ describe('PoolProxy', function () {
     it('returns price for given option parameters', async () => {
       await poolUtil.depositLiquidity(owner, underlying, parseEther('10'));
 
-      const maturity = poolUtil.getMaturity(10);
-      const strikePrice = fixedFromFloat(12);
-      const spotPrice = fixedFromFloat(10);
+      const maturity = poolUtil.getMaturity(17);
+      const strikePrice = fixedFromFloat(spotPrice * 1.25);
+      const spotPriceFixed = fixedFromFloat(spotPrice);
 
       const quote = await pool.quote(
         maturity,
         strikePrice,
-        spotPrice,
+        spotPriceFixed,
         parseEther('1'),
       );
 
-      expect(fixedToNumber(quote.cost64x64)).to.almost(0.0314);
+      // console.log(
+      //   fixedToNumber(quote.baseCost64x64),
+      //   fixedToNumber(quote.baseCost64x64) * 2500,
+      // );
+      // console.log(
+      //   fixedToNumber(quote.feeCost64x64),
+      //   fixedToNumber(quote.feeCost64x64) * 2500,
+      // );
+      // console.log(fixedToNumber(quote.cLevel64x64));
+
+      expect(fixedToNumber(quote.baseCost64x64)).to.almost(0.0488);
+      expect(fixedToNumber(quote.feeCost64x64)).to.eq(0);
       expect(fixedToNumber(quote.cLevel64x64)).to.almost(2.21);
     });
   });
@@ -309,7 +322,7 @@ describe('PoolProxy', function () {
     it('should revert if using a strike > 2x spot', async () => {
       await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
       const maturity = poolUtil.getMaturity(10);
-      const strikePrice = fixedFromFloat(41);
+      const strikePrice = fixedFromFloat(spotPrice * 2.01);
 
       await expect(
         pool
@@ -321,7 +334,7 @@ describe('PoolProxy', function () {
     it('should revert if using a strike < 0.5x spot', async () => {
       await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
       const maturity = poolUtil.getMaturity(10);
-      const strikePrice = fixedFromFloat(4);
+      const strikePrice = fixedFromFloat(spotPrice * 0.49);
 
       await expect(
         pool
@@ -333,7 +346,7 @@ describe('PoolProxy', function () {
     it('should revert if cost is above max cost', async () => {
       await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
       const maturity = poolUtil.getMaturity(10);
-      const strikePrice = fixedFromFloat(12);
+      const strikePrice = fixedFromFloat(spotPrice * 1.25);
 
       await underlying.mint(buyer.address, parseEther('100'));
       await underlying
@@ -343,23 +356,21 @@ describe('PoolProxy', function () {
       await expect(
         pool
           .connect(buyer)
-          .purchase(maturity, strikePrice, parseEther('1'), parseEther('5')),
+          .purchase(maturity, strikePrice, parseEther('1'), parseEther('0.01')),
       ).to.be.revertedWith('Pool: excessive slippage');
     });
 
     it('should successfully purchase an option', async () => {
-      console.log(fixedFromFloat(2500));
       await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
       const maturity = poolUtil.getMaturity(10);
-      const spotPrice = fixedFromFloat(20);
-      const strikePrice = fixedFromFloat(12);
+      const strikePrice = fixedFromFloat(spotPrice * 1.25);
 
-      const quote = await pool.quote(
-        maturity,
-        strikePrice,
-        spotPrice,
-        parseEther('1'),
-      );
+      // const quote = await pool.quote(
+      //   maturity,
+      //   strikePrice,
+      //   fixedFromFloat(spotPrice),
+      //   parseEther('1'),
+      // );
 
       await underlying.mint(buyer.address, parseEther('500'));
       await underlying
