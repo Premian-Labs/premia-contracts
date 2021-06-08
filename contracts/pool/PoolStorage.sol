@@ -67,9 +67,12 @@ library PoolStorage {
     uint64 maturity,
     int128 strike64x64
   ) internal pure returns (uint256 tokenId) {
-    assembly {
-      tokenId := add(strike64x64, add(shl(128, maturity), shl(248, tokenType)))
-    }
+    // TODO: fix probably Hardhat issue related to usage of assembly
+    // assembly {
+    //   tokenId := add(shl(248, tokenType), add(shl(128, maturity), strike64x64))
+    // }
+
+    tokenId = (uint256(tokenType) << 248) + (uint256(maturity) << 128) + uint256(int256(strike64x64));
   }
 
   /**
