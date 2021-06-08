@@ -24,6 +24,7 @@ import { parseEther } from 'ethers/lib/utils';
 import { PoolUtil, TokenType } from './PoolUtil';
 import { bnToNumber, fixedFromFloat, fixedToNumber } from '../utils/math';
 import chaiAlmost from 'chai-almost';
+import { BigNumber } from 'ethers';
 
 chai.use(chaiAlmost(0.01));
 
@@ -376,6 +377,8 @@ describe('PoolProxy', function () {
         purchaseAmount,
       );
 
+      console.log(fixedToNumber(quote.baseCost64x64));
+
       const mintAmount = parseEther('10');
       await underlying.mint(buyer.address, mintAmount);
       await underlying
@@ -416,6 +419,87 @@ describe('PoolProxy', function () {
         purchaseAmount,
       );
       expect(await pool.balanceOf(buyer.address, shortTokenId)).to.eq(0);
+    });
+
+    it('should successfully purchase an option from multiple LP intervals', async () => {
+      const signers = await ethers.getSigners();
+
+      let amountInPool = BigNumber.from(0);
+      for (const signer of signers) {
+        if (signer.address == buyer.address) continue;
+
+        await poolUtil.depositLiquidity(signer, underlying, parseEther('1'));
+
+        amountInPool = amountInPool.add(parseEther('1'));
+      }
+
+      const maturity = poolUtil.getMaturity(10);
+      const strikePrice = fixedFromFloat(spotPrice * 1.25);
+
+      // 10 intervals used
+      const purchaseAmountNb = 10;
+      const purchaseAmount = parseEther(purchaseAmountNb.toString());
+
+      const quote = await pool.quote(
+        maturity,
+        strikePrice,
+        fixedFromFloat(spotPrice),
+        purchaseAmount,
+      );
+
+      await underlying.mint(buyer.address, parseEther('10'));
+      await underlying
+        .connect(buyer)
+        .approve(pool.address, ethers.constants.MaxUint256);
+
+      const shortTokenId = await pool.tokenIdFor(
+        TokenType.ShortCall,
+        maturity,
+        strikePrice,
+      );
+      const longTokenId = await pool.tokenIdFor(
+        TokenType.LongCall,
+        maturity,
+        strikePrice,
+      );
+
+      const tx = await pool
+        .connect(buyer)
+        .purchase(maturity, strikePrice, purchaseAmount, parseEther('0.2'));
+
+      expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(
+        purchaseAmount,
+      );
+
+      console.log(fixedToNumber(quote.baseCost64x64));
+
+      let i = 0;
+      for (const s of signers) {
+        if (s.address === buyer.address) continue;
+
+        let expectedAmount = 0;
+
+        if (i < purchaseAmountNb) {
+          if (i < purchaseAmountNb - 1) {
+            // For all underwriter before last intervals, we add premium which is automatically reinvested
+            expectedAmount =
+              1 + fixedToNumber(quote.baseCost64x64) / purchaseAmountNb;
+          } else {
+            // For underwriter of the last interval, we subtract baseCost,
+            // as previous intervals were > 1 because of reinvested premium
+            expectedAmount = 1 - fixedToNumber(quote.baseCost64x64);
+          }
+        }
+
+        expect(
+          bnToNumber(await pool.balanceOf(s.address, shortTokenId)),
+        ).to.almost(expectedAmount);
+
+        i++;
+      }
+
+      const r = await tx.wait(1);
+      console.log('GAS', r.gasUsed.toString());
     });
   });
 

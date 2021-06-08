@@ -1,6 +1,6 @@
 import { BigNumber, BigNumberish } from 'ethers';
 import { ethers } from 'hardhat';
-import { formatEther } from 'ethers/lib/utils';
+import { formatEther, parseEther } from 'ethers/lib/utils';
 
 export function fixedFromBigNumber(bn: BigNumber) {
   return bn.abs().shl(64).mul(bn.abs().div(bn));
@@ -24,4 +24,8 @@ export function fixedToNumber(fixed: BigNumber) {
   const decimalsNumber = decimals.mul(1e10).div(BigNumber.from(1).shl(64));
 
   return Number(integer) + Number(decimalsNumber) / 1e10;
+}
+
+export function fixedToBn(fixed: BigNumber) {
+  return parseEther(fixedToNumber(fixed).toString());
 }
