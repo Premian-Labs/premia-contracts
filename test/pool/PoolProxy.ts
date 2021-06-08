@@ -98,7 +98,13 @@ describe('PoolProxy', function () {
     await baseOracle.mock.decimals.returns(8);
     await underlyingOracle.mock.decimals.returns(8);
     await baseOracle.mock.latestRoundData.returns(1, parseEther('1'), 1, 5, 1);
-    await underlyingOracle.mock.latestRoundData.returns(1, parseEther('10'), 1, 5, 1);
+    await underlyingOracle.mock.latestRoundData.returns(
+      1,
+      parseEther('10'),
+      1,
+      5,
+      1,
+    );
 
     let tx = await manager.deployPool(
       base.address,
@@ -342,6 +348,7 @@ describe('PoolProxy', function () {
     });
 
     it('should successfully purchase an option', async () => {
+      console.log(fixedFromFloat(2500));
       await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
       const maturity = poolUtil.getMaturity(10);
       const spotPrice = fixedFromFloat(20);
