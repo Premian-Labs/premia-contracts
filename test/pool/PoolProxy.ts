@@ -85,26 +85,26 @@ describe('PoolProxy', function () {
 
     const manager = ProxyManager__factory.connect(premia.address, owner);
 
-    const oracle0 = await deployMockContract(owner, [
+    const baseOracle = await deployMockContract(owner, [
       'function latestRoundData () external view returns (uint80, int, uint, uint, uint80)',
       'function decimals () external view returns (uint8)',
     ]);
 
-    const oracle1 = await deployMockContract(owner, [
+    const underlyingOracle = await deployMockContract(owner, [
       'function latestRoundData () external view returns (uint80, int, uint, uint, uint80)',
       'function decimals () external view returns (uint8)',
     ]);
 
-    await oracle0.mock.decimals.returns(8);
-    await oracle1.mock.decimals.returns(8);
-    await oracle0.mock.latestRoundData.returns(1, parseEther('10'), 1, 5, 1);
-    await oracle1.mock.latestRoundData.returns(1, parseEther('1'), 1, 5, 1);
+    await baseOracle.mock.decimals.returns(8);
+    await underlyingOracle.mock.decimals.returns(8);
+    await baseOracle.mock.latestRoundData.returns(1, parseEther('1'), 1, 5, 1);
+    await underlyingOracle.mock.latestRoundData.returns(1, parseEther('10'), 1, 5, 1);
 
     let tx = await manager.deployPool(
       base.address,
       underlying.address,
-      oracle0.address,
-      oracle1.address,
+      baseOracle.address,
+      underlyingOracle.address,
       fixedFromFloat(20),
       fixedFromFloat(0.1),
       fixedFromFloat(0.2),
@@ -119,8 +119,8 @@ describe('PoolProxy', function () {
     tx = await manager.deployPool(
       base.address,
       underlyingWeth.address,
-      oracle0.address,
-      oracle1.address,
+      baseOracle.address,
+      underlyingOracle.address,
       fixedFromFloat(20),
       fixedFromFloat(0.1),
       fixedFromFloat(0.2),
@@ -341,7 +341,28 @@ describe('PoolProxy', function () {
       ).to.be.revertedWith('Pool: excessive slippage');
     });
 
-    it('should successfully purchase an option', async () => {});
+    it('should successfully purchase an option', async () => {
+      await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
+      const maturity = poolUtil.getMaturity(10);
+      const spotPrice = fixedFromFloat(20);
+      const strikePrice = fixedFromFloat(12);
+
+      const quote = await pool.quote(
+        maturity,
+        strikePrice,
+        spotPrice,
+        parseEther('1'),
+      );
+
+      await underlying.mint(buyer.address, parseEther('500'));
+      await underlying
+        .connect(buyer)
+        .approve(pool.address, ethers.constants.MaxUint256);
+
+      await pool
+        .connect(buyer)
+        .purchase(maturity, strikePrice, parseEther('1'), parseEther('500'));
+    });
   });
 
   describe('#exercise', function () {

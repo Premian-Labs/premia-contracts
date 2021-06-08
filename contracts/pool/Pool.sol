@@ -181,7 +181,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     cost64x64 = price64x64.mul(amount64x64).mul(
       OptionMath.ONE_64x64.add(l.fee64x64)
-    ).div(spot64x64);
+    ).mul(spot64x64);
   }
 
   /**
@@ -481,17 +481,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   }
 
   /**
-   * @notice fetch latest price from given oracle
-   * @param oracle Chainlink price aggregator address
-   * @return price latest price
-   */
-  function _fetchLatestPrice (
-    address oracle
-  ) internal view returns (int256 price) {
-    (, price, , ,) = AggregatorV3Interface(oracle).latestRoundData();
-  }
-
-  /**
    * @notice TODO
    */
   function _update (
@@ -500,10 +489,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 updatedAt = l.updatedAt;
 
     int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
-    int128 newPrice64x64 = ABDKMath64x64.divi(
-      _fetchLatestPrice(l.baseOracle),
-      _fetchLatestPrice(l.underlyingOracle)
-    );
+    int128 newPrice64x64 = l.fetchPriceUpdate();
 
     if (l.getPriceUpdate(block.timestamp) == 0) {
       l.setPriceUpdate(block.timestamp, newPrice64x64);

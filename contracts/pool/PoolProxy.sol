@@ -44,7 +44,8 @@ contract PoolProxy is ManagedProxyOwnable {
       l.underlyingDecimals = IERC20Metadata(underlying).decimals();
       l.cLevel64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
 
-      l.setPriceUpdate(block.timestamp, price64x64);
+      int128 newPrice64x64 = l.fetchPriceUpdate();
+      l.setPriceUpdate(block.timestamp, newPrice64x64);
 
       l.emaLogReturns64x64 = emaLogReturns64x64;
       l.emaVarianceAnnualized64x64 = emaVarianceAnnualized64x64;

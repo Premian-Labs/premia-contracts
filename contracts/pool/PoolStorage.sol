@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 import {ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155EnumerableStorage.sol';
 
+import {ABDKMath64x64} from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import {ABDKMath64x64Token} from '../libraries/ABDKMath64x64Token.sol';
 import {OptionMath} from '../libraries/OptionMath.sol';
 import {Pool} from './Pool.sol';
@@ -148,6 +149,18 @@ library PoolStorage {
 
     l.baseOracle = baseOracle;
     l.underlyingOracle = underlyingOracle;
+  }
+
+  function fetchPriceUpdate (
+    Layout storage l
+  ) internal returns (int128 price64x64) {
+    (, int256 priceUnderlying, , ,) = AggregatorV3Interface(l.underlyingOracle).latestRoundData();
+    (, int256 priceBase, , ,) = AggregatorV3Interface(l.baseOracle).latestRoundData();
+
+    return ABDKMath64x64.divi(
+      priceUnderlying,
+      priceBase
+    );
   }
 
   function setPriceUpdate (
