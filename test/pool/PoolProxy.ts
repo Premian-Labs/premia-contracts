@@ -21,8 +21,8 @@ import { resetHardhat, setTimestamp } from '../evm';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { deployMockContract } from 'ethereum-waffle';
 import { parseEther } from 'ethers/lib/utils';
-import { PoolUtil } from './PoolUtil';
-import { fixedFromFloat, fixedToNumber } from '../utils/math';
+import { PoolUtil, TokenType } from './PoolUtil';
+import { bnToNumber, fixedFromFloat, fixedToNumber } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 
 chai.use(chaiAlmost(0.01));
@@ -361,25 +361,61 @@ describe('PoolProxy', function () {
     });
 
     it('should successfully purchase an option', async () => {
-      await poolUtil.depositLiquidity(owner, underlying, parseEther('100'));
+      await poolUtil.depositLiquidity(lp, underlying, parseEther('100'));
+
       const maturity = poolUtil.getMaturity(10);
       const strikePrice = fixedFromFloat(spotPrice * 1.25);
 
-      // const quote = await pool.quote(
-      //   maturity,
-      //   strikePrice,
-      //   fixedFromFloat(spotPrice),
-      //   parseEther('1'),
-      // );
+      const purchaseAmountNb = 10;
+      const purchaseAmount = parseEther(purchaseAmountNb.toString());
 
-      await underlying.mint(buyer.address, parseEther('500'));
+      const quote = await pool.quote(
+        maturity,
+        strikePrice,
+        fixedFromFloat(spotPrice),
+        purchaseAmount,
+      );
+
+      const mintAmount = parseEther('10');
+      await underlying.mint(buyer.address, mintAmount);
       await underlying
         .connect(buyer)
         .approve(pool.address, ethers.constants.MaxUint256);
 
       await pool
         .connect(buyer)
-        .purchase(maturity, strikePrice, parseEther('1'), parseEther('500'));
+        .purchase(maturity, strikePrice, purchaseAmount, parseEther('0.2'));
+
+      const newBalance = await underlying.balanceOf(buyer.address);
+
+      expect(bnToNumber(newBalance)).to.almost(
+        bnToNumber(mintAmount) - fixedToNumber(quote.baseCost64x64),
+      );
+
+      const shortTokenId = await pool.tokenIdFor(
+        TokenType.ShortCall,
+        maturity,
+        strikePrice,
+      );
+      const longTokenId = await pool.tokenIdFor(
+        TokenType.LongCall,
+        maturity,
+        strikePrice,
+      );
+
+      expect(bnToNumber(await pool.balanceOf(lp.address, 0))).to.almost(
+        100 - purchaseAmountNb + fixedToNumber(quote.baseCost64x64),
+      );
+
+      expect(await pool.balanceOf(lp.address, longTokenId)).to.eq(0);
+      expect(await pool.balanceOf(lp.address, shortTokenId)).to.eq(
+        purchaseAmount,
+      );
+
+      expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(
+        purchaseAmount,
+      );
+      expect(await pool.balanceOf(buyer.address, shortTokenId)).to.eq(0);
     });
   });
 

@@ -8,6 +8,12 @@ interface PoolUtilArgs {
   pool: Pool;
 }
 
+export enum TokenType {
+  FreeLiquidity = 0,
+  LongCall = 1,
+  ShortCall = 2,
+}
+
 const ONE_DAY = 3600 * 24;
 
 export class PoolUtil {
