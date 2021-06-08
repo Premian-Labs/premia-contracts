@@ -257,11 +257,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   /**
    * @notice exercise call option
-   * @param tokenId ERC1155 token id
+   * @param longTokenId ERC1155 long token id
    * @param amount quantity of option contract tokens to exercise
    */
   function exercise (
-    uint256 tokenId,
+    uint256 longTokenId,
     uint256 amount
   ) public {
     uint64 maturity;
@@ -269,7 +269,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     {
       PoolStorage.TokenType tokenType;
-      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(tokenId);
+      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(longTokenId);
       require(tokenType == PoolStorage.TokenType.LONG_CALL, 'Pool: invalid token type');
     }
 
@@ -281,7 +281,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     );
 
     // burn long option tokens from sender
-    _burn(msg.sender, tokenId, amount);
+    _burn(msg.sender, longTokenId, amount);
 
     uint256 exerciseValue;
     uint256 amountRemaining = amount;
