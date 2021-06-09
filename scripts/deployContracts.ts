@@ -8,18 +8,18 @@ import {
   Option,
   Option__factory,
   Premia,
-  Premia__factory,
   PremiaErc20,
   PremiaErc20__factory,
   PremiaFeeDiscount,
   PremiaFeeDiscount__factory,
   PremiaMaker,
   PremiaMaker__factory,
+  PremiaOld__factory,
   PremiaOptionBatch,
   PremiaOptionBatch__factory,
   PremiaStaking,
   PremiaStaking__factory,
-  ProxyManager__factory,
+  ProxyManagerOld__factory,
   TestErc20,
   TestErc20__factory,
 } from '../typechain';
@@ -118,12 +118,12 @@ export async function deployContracts(
   const optionImpl = await new Option__factory(deployer).deploy();
   const marketImpl = await new Market__factory(deployer).deploy();
 
-  const premiaDiamond = await new Premia__factory(deployer).deploy(
+  const premiaDiamond = await new PremiaOld__factory(deployer).deploy(
     optionImpl.address,
     marketImpl.address,
   );
 
-  const facetCuts = [await new ProxyManager__factory(deployer).deploy()].map(
+  const facetCuts = [await new ProxyManagerOld__factory(deployer).deploy()].map(
     (f) => {
       return {
         target: f.address,
@@ -141,7 +141,7 @@ export async function deployContracts(
   );
 
   await premiaDiamond.diamondCut(facetCuts, ZERO_ADDRESS, '0x');
-  const proxyManager = ProxyManager__factory.connect(
+  const proxyManager = ProxyManagerOld__factory.connect(
     premiaDiamond.address,
     deployer,
   );

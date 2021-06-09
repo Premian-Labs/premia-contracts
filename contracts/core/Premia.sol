@@ -2,9 +2,10 @@
 
 pragma solidity ^0.8.0;
 
-import '@solidstate/contracts/proxy/diamond/Diamond.sol';
+import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
+import {Diamond} from '@solidstate/contracts/proxy/diamond/Diamond.sol';
 
-import './ProxyManagerStorage.sol';
+import {ProxyManagerStorage} from './ProxyManagerStorage.sol';
 
 /**
  * @title Premia core contract
@@ -12,9 +13,18 @@ import './ProxyManagerStorage.sol';
  */
 contract Premia is Diamond {
 
-    constructor (address _optionImplementation, address _marketImplementation) {
-        ProxyManagerStorage.Layout storage l = ProxyManagerStorage.layout();
-        l.optionImplementation = _optionImplementation;
-        l.marketImplementation = _marketImplementation;
+    /**
+     * @notice deploy contract and connect given diamond facets
+     * @param poolImplementation implementaion Pool contract
+     */
+    constructor (
+        address poolImplementation
+    ) {
+        OwnableStorage.layout().owner = msg.sender;
+
+        {
+            ProxyManagerStorage.Layout storage l = ProxyManagerStorage.layout();
+            l.poolImplementation = poolImplementation;
+        }
     }
 }

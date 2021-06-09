@@ -2,21 +2,30 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import "./ERC20Permit.sol";
+import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-import "./interface/IERC2612Permit.sol";
+import {ERC20} from '@solidstate/contracts/token/ERC20/ERC20.sol';
+import {ERC20Permit} from '@solidstate/contracts/token/ERC20/ERC20Permit.sol';
+import {ERC20MetadataStorage} from '@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol';
+
+import {IERC2612} from '@solidstate/contracts/token/ERC20/IERC2612.sol';
 
 /// @author SushiSwap
 /// @notice This contract handles swapping to and from xPremia, PremiaSwap's staking token.
-contract PremiaStaking is ERC20Permit {
+contract PremiaStaking is ERC20, ERC20Permit {
+    using ERC20MetadataStorage for ERC20MetadataStorage.Layout;
     using SafeERC20 for IERC20;
     IERC20 public premia;
 
     /// @param _premia The premia token
-    constructor(IERC20 _premia) ERC20("PremiaStaking", "xPREMIA") {
+    constructor(IERC20 _premia) {
+        ERC20MetadataStorage.Layout storage l = ERC20MetadataStorage.layout();
+
+        l.setName("PremiaStaking");
+        l.setSymbol("xPremia");
+        l.setDecimals(18);
+
         premia = _premia;
     }
 
@@ -27,7 +36,7 @@ contract PremiaStaking is ERC20Permit {
     /// @param _r R
     /// @param _s S
     function enterWithPermit(uint256 _amount, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
-        IERC2612Permit(address(premia)).permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
+        IERC2612(address(premia)).permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
         enter(_amount);
     }
 

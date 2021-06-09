@@ -2,9 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import '@openzeppelin/contracts/access/Ownable.sol';
+import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+
+import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
+import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
 
 /// @author Premia
 /// @title Vesting contract releasing premia over the course of 2 years, and cancellable by a third party
@@ -33,6 +35,8 @@ contract PremiaVestingCancellable is Ownable {
 
     // @param _premia The premia token
     constructor(IERC20 _premia, address _treasury, address _thirdParty) {
+        OwnableStorage.layout().owner = msg.sender;
+
         premia = _premia;
         treasury = _treasury;
         thirdParty = _thirdParty;

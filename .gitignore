@@ -1,10 +1,15 @@
 node_modules
+package-lock.json
 flattened
 typechain
 .nyc_output
 todoList.txt
 .env
 .env.local
+
+coverage/
+coverage.json
+docgen/
 
 #Hardhat files
 cache

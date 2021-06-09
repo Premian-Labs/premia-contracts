@@ -2,16 +2,16 @@
 
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC20} from '@solidstate/contracts/token/ERC20/IERC20.sol';
 
-import "./interface/IPremiaFeeDiscount.sol";
+import {IPremiaFeeDiscount} from './interface/IPremiaFeeDiscount.sol';
 
 contract PremiaVoteProxy {
     IERC20 public premia;
     IERC20 public xPremia;
     IPremiaFeeDiscount public premiaFeeDiscount;
 
-    constructor(ERC20 _premia, ERC20 _xPremia, IPremiaFeeDiscount _premiaFeeDiscount) {
+    constructor(IERC20 _premia, IERC20 _xPremia, IPremiaFeeDiscount _premiaFeeDiscount) {
         premia = _premia;
         xPremia = _xPremia;
         premiaFeeDiscount = _premiaFeeDiscount;
