@@ -41,8 +41,10 @@ contract PoolProxy is ManagedProxyOwnable {
       l.baseOracle = baseOracle;
       l.underlyingOracle = underlyingOracle;
 
+      l.baseDecimals = IERC20Metadata(base).decimals();
       l.underlyingDecimals = IERC20Metadata(underlying).decimals();
-      l.cLevel64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
+      l.cLevelBase64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
+      l.cLevelUnderlying64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
 
       // TODO: remove price64x64 from arguments
       int128 newPrice64x64 = l.fetchPriceUpdate();

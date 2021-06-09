@@ -11,7 +11,7 @@ import {OptionMath} from '../libraries/OptionMath.sol';
 import {Pool} from './Pool.sol';
 
 library PoolStorage {
-  enum TokenType { FREE_LIQUIDITY, LONG_CALL, SHORT_CALL }
+  enum TokenType { UNDERLYING_FREE_LIQ, BASE_FREE_LIQ, LONG_CALL, SHORT_CALL, LONG_PUT, SHORT_PUT }
 
   bytes32 internal constant STORAGE_SLOT = keccak256(
     'premia.contracts.storage.Pool'
@@ -27,19 +27,26 @@ library PoolStorage {
     address underlyingOracle;
 
     uint8 underlyingDecimals;
-    int128 cLevel64x64;
+    uint8 baseDecimals;
+
+    int128 cLevelUnderlying64x64;
+    int128 cLevelBase64x64;
+
     int128 fee64x64;
 
     uint256 updatedAt;
-
     int128 emaLogReturns64x64;
     int128 emaVarianceAnnualized64x64;
 
-    mapping (address => uint256) depositedAt;
+    mapping (address => uint256) underlyingDepositedAt;
+    mapping (address => uint256) baseDepositedAt;
 
     // doubly linked list of free liquidity intervals
-    mapping (address => address) liquidityQueueAscending;
-    mapping (address => address) liquidityQueueDescending;
+    mapping (address => address) underlyingLiquidityQueueAscending;
+    mapping (address => address) underlyingLiquidityQueueDescending;
+
+    mapping (address => address) baseLiquidityQueueAscending;
+    mapping (address => address) baseLiquidityQueueDescending;
 
     // TODO: enforced interval size for maturity (maturity % interval == 0)
     // updatable by owner
@@ -49,6 +56,35 @@ library PoolStorage {
     // sequence id (minimum resolution price bucket / 256) => price update sequence
     mapping (uint256 => uint256) priceUpdateSequences;
   }
+
+  ////////////////////////////////////////////
+  ////////////////////////////////////////////
+  // To avoid stack too deep error
+
+  struct QuoteArgs {
+    uint64 maturity; // timestamp of option maturity
+    int128 strike64x64; // 64x64 fixed point representation of strike price
+    int128 spot64x64; // 64x64 fixed point representation of spot price
+    uint256 amount; // size of option contract
+    bool isCall; // true for call, false for put
+  }
+
+  struct PurchaseArgs {
+    uint64 maturity; // timestamp of option maturity
+    int128 strike64x64; // 64x64 fixed point representation of strike price
+    uint256 amount; // size of option contract
+    uint256 maxCost; // maximum acceptable cost after accounting for slippage
+    bool isCall; // true for call, false for put
+  }
+
+  struct ExerciseArgs {
+    uint256 longTokenId; // amount quantity of option contract tokens to exercise
+    uint256 amount; // quantity of option contract tokens to exercise
+    bool isCall; // true for call, false for put
+  }
+
+  ////////////////////////////////////////////
+  ////////////////////////////////////////////
 
   function layout () internal pure returns (Layout storage l) {
     bytes32 slot = STORAGE_SLOT;
@@ -103,42 +139,80 @@ library PoolStorage {
 
   function addUnderwriter (
     Layout storage l,
-    address account
+    address account,
+    bool isCallPool
   ) internal {
-    l.liquidityQueueAscending[l.liquidityQueueDescending[address(0)]] = account;
-    l.liquidityQueueDescending[address(0)] = account;
+    if (isCallPool) {
+      l.underlyingLiquidityQueueAscending[l.underlyingLiquidityQueueAscending[address(0)]] = account;
+      l.underlyingLiquidityQueueDescending[address(0)] = account;
+    } else {
+      l.baseLiquidityQueueAscending[l.baseLiquidityQueueAscending[address(0)]] = account;
+      l.baseLiquidityQueueDescending[address(0)] = account;
+    }
   }
 
   function removeUnderwriter (
     Layout storage l,
-    address account
+    address account,
+    bool isCallPool
   ) internal {
-    address prev = l.liquidityQueueDescending[account];
-    address next = l.liquidityQueueAscending[account];
-    l.liquidityQueueAscending[prev] = next;
-    l.liquidityQueueDescending[next] = prev;
-    delete l.liquidityQueueAscending[account];
-    delete l.liquidityQueueDescending[account];
+    if (isCallPool) {
+      address prev = l.underlyingLiquidityQueueDescending[account];
+      address next = l.underlyingLiquidityQueueAscending[account];
+      l.underlyingLiquidityQueueAscending[prev] = next;
+      l.underlyingLiquidityQueueDescending[next] = prev;
+      delete l.underlyingLiquidityQueueAscending[account];
+      delete l.underlyingLiquidityQueueDescending[account];
+    } else {
+      address prev = l.baseLiquidityQueueDescending[account];
+      address next = l.baseLiquidityQueueAscending[account];
+      l.baseLiquidityQueueAscending[prev] = next;
+      l.baseLiquidityQueueDescending[next] = prev;
+      delete l.baseLiquidityQueueAscending[account];
+      delete l.baseLiquidityQueueDescending[account];
+    }
+  }
+
+  function getCLevel (
+    Layout storage l,
+    bool isCall
+  ) internal view returns (int128 cLevel64x64) {
+    cLevel64x64 = isCall ? l.cLevelUnderlying64x64 : l.cLevelBase64x64;
   }
 
   function setCLevel (
     Layout storage l,
     int128 oldLiquidity64x64,
-    int128 newLiquidity64x64
+    int128 newLiquidity64x64,
+    bool isCallPool
   ) internal {
-    l.cLevel64x64 = OptionMath.calculateCLevel(
-      l.cLevel64x64,
-      oldLiquidity64x64,
-      newLiquidity64x64,
-      OptionMath.ONE_64x64
-    );
+    if (isCallPool) {
+      l.cLevelUnderlying64x64 = OptionMath.calculateCLevel(
+        l.cLevelUnderlying64x64,
+        oldLiquidity64x64,
+        newLiquidity64x64,
+        OptionMath.ONE_64x64
+      );
+    } else {
+      l.cLevelBase64x64 = OptionMath.calculateCLevel(
+        l.cLevelBase64x64,
+        oldLiquidity64x64,
+        newLiquidity64x64,
+        OptionMath.ONE_64x64
+      );
+    }
   }
 
   function setCLevel (
     Layout storage l,
-    int128 cLevel64x64
+    int128 cLevel64x64,
+    bool isCallPool
   ) internal {
-    l.cLevel64x64 = cLevel64x64;
+    if (isCallPool) {
+      l.cLevelUnderlying64x64 = cLevel64x64;
+    } else {
+      l.cLevelBase64x64 = cLevel64x64;
+    }
   }
 
   function setOracles(
