@@ -27,12 +27,16 @@ export class PoolUtil {
     this.underlying = props.underlying;
   }
 
-  async depositLiquidity(lp: SignerWithAddress, amount: BigNumberish) {
+  async depositLiquidity(
+    lp: SignerWithAddress,
+    amount: BigNumberish,
+    isCall: boolean,
+  ) {
     await this.underlying.mint(lp.address, amount);
     await this.underlying
       .connect(lp)
       .approve(this.pool.address, ethers.constants.MaxUint256);
-    await this.pool.connect(lp).deposit(amount);
+    await this.pool.connect(lp).deposit(amount, isCall);
   }
 
   async purchaseOption(
@@ -40,18 +44,23 @@ export class PoolUtil {
     buyer: SignerWithAddress,
     amount: BigNumber,
     maturity: BigNumber,
-    strikePrice: BigNumber,
+    strike64x64: BigNumber,
+    isCall: boolean,
   ) {
-    await this.depositLiquidity(lp, amount);
+    await this.depositLiquidity(lp, amount, isCall);
 
     await this.underlying.mint(buyer.address, parseEther('100'));
     await this.underlying
       .connect(buyer)
       .approve(this.pool.address, ethers.constants.MaxUint256);
 
-    await this.pool
-      .connect(buyer)
-      .purchase(maturity, strikePrice, amount, ethers.constants.MaxUint256);
+    await this.pool.connect(buyer).purchase({
+      maturity,
+      strike64x64,
+      amount,
+      maxCost: ethers.constants.MaxUint256,
+      isCall,
+    });
   }
 
   getMaturity(days: number) {
