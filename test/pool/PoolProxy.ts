@@ -22,12 +22,7 @@ import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/u
 import { deployMockContract, MockContract } from 'ethereum-waffle';
 import { parseEther } from 'ethers/lib/utils';
 import { PoolUtil, TokenType } from './PoolUtil';
-import {
-  bnToNumber,
-  fixedFromFloat,
-  fixedToNumber,
-  getTokenIdFor,
-} from '../utils/math';
+import { fixedFromFloat, fixedToNumber, getTokenIdFor } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
 import { describeBehaviorOfPoolProxyPurchase } from './PoolProxy.behavior';
@@ -242,7 +237,7 @@ describe('PoolProxy', function () {
           isCall: false,
         });
 
-        expect(fixedToNumber(quote.baseCost64x64)).to.almost(51.05);
+        expect(fixedToNumber(quote.baseCost64x64)).to.almost(50.29);
         expect(fixedToNumber(quote.feeCost64x64)).to.eq(0);
         expect(fixedToNumber(quote.cLevel64x64)).to.almost(2.21);
       });

@@ -70,6 +70,22 @@ export function describeBehaviorOfPoolProxyPurchase(
     return isCall ? parseEther('0.21') : parseEther('147');
   };
 
+  const getFreeLiqTokenId = () => {
+    if (isCall) {
+      return getTokenIdFor({
+        tokenType: TokenType.UnderlyingFreeLiq,
+        maturity: BigNumber.from(0),
+        strike64x64: BigNumber.from(0),
+      });
+    } else {
+      return getTokenIdFor({
+        tokenType: TokenType.BaseFreeLiq,
+        maturity: BigNumber.from(0),
+        strike64x64: BigNumber.from(0),
+      });
+    }
+  };
+
   describe(args.isCall ? 'call' : 'put', () => {
     it('should revert if using a maturity less than 1 day in the future', async () => {
       await poolUtil.depositLiquidity(owner, parseEther('100'), isCall);
@@ -173,7 +189,11 @@ export function describeBehaviorOfPoolProxyPurchase(
     });
 
     it('should successfully purchase an option', async () => {
-      await poolUtil.depositLiquidity(lp, parseEther('100'), isCall);
+      await poolUtil.depositLiquidity(
+        lp,
+        isCall ? parseEther('100') : parseEther('100000'),
+        isCall,
+      );
 
       const maturity = poolUtil.getMaturity(10);
       const strike64x64 = fixedFromFloat(getStrike());
@@ -188,8 +208,6 @@ export function describeBehaviorOfPoolProxyPurchase(
         amount: purchaseAmount,
         isCall,
       });
-
-      console.log(fixedToNumber(quote.baseCost64x64));
 
       const mintAmount = parseEther('1000');
       await getToken().mint(buyer.address, mintAmount);
@@ -222,9 +240,21 @@ export function describeBehaviorOfPoolProxyPurchase(
         strike64x64,
       });
 
-      expect(bnToNumber(await pool.balanceOf(lp.address, 0))).to.almost(
-        100 - purchaseAmountNb + fixedToNumber(quote.baseCost64x64),
-      );
+      if (isCall) {
+        expect(
+          bnToNumber(await pool.balanceOf(lp.address, getFreeLiqTokenId())),
+        ).to.almost(
+          100 - purchaseAmountNb + fixedToNumber(quote.baseCost64x64),
+        );
+      } else {
+        expect(
+          bnToNumber(await pool.balanceOf(lp.address, getFreeLiqTokenId())),
+        ).to.almost(
+          100000 -
+            purchaseAmountNb * getStrike() +
+            fixedToNumber(quote.baseCost64x64),
+        );
+      }
 
       expect(await pool.balanceOf(lp.address, longTokenId)).to.eq(0);
       expect(await pool.balanceOf(lp.address, shortTokenId)).to.eq(
@@ -241,11 +271,13 @@ export function describeBehaviorOfPoolProxyPurchase(
       const signers = await ethers.getSigners();
 
       let amountInPool = BigNumber.from(0);
+      let depositAmountNb = isCall ? 1 : 2000;
+      let depositAmount = parseEther(depositAmountNb.toString());
       for (const signer of signers) {
         if (signer.address == buyer.address) continue;
 
-        await poolUtil.depositLiquidity(signer, parseEther('1'), isCall);
-        amountInPool = amountInPool.add(parseEther('1'));
+        await poolUtil.depositLiquidity(signer, depositAmount, isCall);
+        amountInPool = amountInPool.add(depositAmount);
       }
 
       const maturity = poolUtil.getMaturity(10);
@@ -291,21 +323,40 @@ export function describeBehaviorOfPoolProxyPurchase(
         purchaseAmount,
       );
 
+      let amount = purchaseAmountNb;
+
       let i = 0;
       for (const s of signers) {
         if (s.address === buyer.address) continue;
 
         let expectedAmount = 0;
 
-        if (i < purchaseAmountNb) {
-          if (i < purchaseAmountNb - 1) {
-            // For all underwriter before last intervals, we add premium which is automatically reinvested
-            expectedAmount =
-              1 + fixedToNumber(quote.baseCost64x64) / purchaseAmountNb;
+        if (isCall) {
+          if (i < purchaseAmountNb) {
+            if (i < purchaseAmountNb - 1) {
+              // For all underwriter before last intervals, we add premium which is automatically reinvested
+              expectedAmount =
+                1 + fixedToNumber(quote.baseCost64x64) / purchaseAmountNb;
+            } else {
+              // For underwriter of the last interval, we subtract baseCost,
+              // as previous intervals were > 1 because of reinvested premium
+              expectedAmount = 1 - fixedToNumber(quote.baseCost64x64);
+            }
+          }
+        } else {
+          const totalToPay = purchaseAmountNb * getStrike();
+          const intervalAmount =
+            (depositAmountNb *
+              (totalToPay + fixedToNumber(quote.baseCost64x64))) /
+            totalToPay /
+            getStrike();
+
+          if (intervalAmount < amount) {
+            expectedAmount = intervalAmount;
+            amount -= intervalAmount;
           } else {
-            // For underwriter of the last interval, we subtract baseCost,
-            // as previous intervals were > 1 because of reinvested premium
-            expectedAmount = 1 - fixedToNumber(quote.baseCost64x64);
+            expectedAmount = amount;
+            amount = 0;
           }
         }
 
