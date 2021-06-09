@@ -19,7 +19,7 @@ import { describeBehaviorOfPool } from './Pool.behavior';
 import chai, { expect } from 'chai';
 import { resetHardhat, setTimestamp } from '../evm';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
-import { deployMockContract } from 'ethereum-waffle';
+import { deployMockContract, MockContract } from 'ethereum-waffle';
 import { parseEther } from 'ethers/lib/utils';
 import { PoolUtil, TokenType } from './PoolUtil';
 import {
@@ -50,9 +50,15 @@ describe('PoolProxy', function () {
   let underlying: ERC20Mock;
   let underlyingWeth: WETH9;
   let poolUtil: PoolUtil;
+  let baseOracle: MockContract;
+  let underlyingOracle: MockContract;
   const freeLiquidityTokenId = 0;
 
   const spotPrice = 2500;
+
+  const setUnderlyingPrice = async (price: BigNumber) => {
+    await underlyingOracle.mock.latestRoundData.returns(1, price, 1, 5, 1);
+  };
 
   beforeEach(async function () {
     await resetHardhat();
@@ -94,12 +100,12 @@ describe('PoolProxy', function () {
 
     const manager = ProxyManager__factory.connect(premia.address, owner);
 
-    const baseOracle = await deployMockContract(owner, [
+    baseOracle = await deployMockContract(owner, [
       'function latestRoundData () external view returns (uint80, int, uint, uint, uint80)',
       'function decimals () external view returns (uint8)',
     ]);
 
-    const underlyingOracle = await deployMockContract(owner, [
+    underlyingOracle = await deployMockContract(owner, [
       'function latestRoundData () external view returns (uint80, int, uint, uint, uint80)',
       'function decimals () external view returns (uint8)',
     ]);
@@ -107,13 +113,7 @@ describe('PoolProxy', function () {
     await baseOracle.mock.decimals.returns(8);
     await underlyingOracle.mock.decimals.returns(8);
     await baseOracle.mock.latestRoundData.returns(1, parseEther('1'), 1, 5, 1);
-    await underlyingOracle.mock.latestRoundData.returns(
-      1,
-      parseEther(spotPrice.toString()),
-      1,
-      5,
-      1,
-    );
+    await setUnderlyingPrice(parseEther(spotPrice.toString()));
 
     let tx = await manager.deployPool(
       base.address,
@@ -508,7 +508,7 @@ describe('PoolProxy', function () {
   });
 
   describe('#exercise', function () {
-    it('should fail exercising if token is a SHORT_CALL', async () => {
+    it('should revert if token is a SHORT_CALL', async () => {
       const maturity = poolUtil.getMaturity(10);
       const strikePrice = fixedFromFloat(spotPrice * 1.25);
 
@@ -531,6 +531,29 @@ describe('PoolProxy', function () {
       ).to.be.revertedWith('Pool: invalid token type');
     });
 
+    it('should revert if option is not ITM', async () => {
+      const maturity = poolUtil.getMaturity(10);
+      const strikePrice = fixedFromFloat(spotPrice * 1.25);
+
+      await poolUtil.purchaseOption(
+        lp,
+        buyer,
+        parseEther('1'),
+        maturity,
+        strikePrice,
+      );
+
+      const longTokenId = getTokenIdFor({
+        tokenType: TokenType.LongCall,
+        maturity,
+        strikePrice,
+      });
+
+      await expect(
+        pool.connect(buyer).exercise(longTokenId, parseEther('1')),
+      ).to.be.revertedWith('Pool: not ITM');
+    });
+
     it('should successfully exercise', async () => {
       const maturity = poolUtil.getMaturity(10);
       const strikePrice = fixedFromFloat(spotPrice * 1.25);
@@ -549,33 +572,10 @@ describe('PoolProxy', function () {
         strikePrice,
       });
 
-      const shortTokenId = getTokenIdFor({
-        tokenType: TokenType.ShortCall,
-        maturity,
-        strikePrice,
-      });
-      console.log(shortTokenId.toString());
-
-      console.log(
-        TokenType.ShortCall,
-        maturity.toString(),
-        fixedToNumber(strikePrice),
-      );
-
-      const r = getParametersFor(shortTokenId);
-      console.log(
-        r.tokenType,
-        r.maturity.toString(),
-        fixedToNumber(r.strikePrice),
-      );
-
-      // console.log(shortTokenId.shl(1).toString());
-      //
-      // console.log(buyer.address);
-      //
-      // console.log((await pool.balanceOf(lp.address, shortTokenId)).toString());
-
+      await setUnderlyingPrice(parseEther((spotPrice * 1.3).toString()));
       await pool.connect(buyer).exercise(longTokenId, parseEther('1'));
+
+      // ToDo : Finish to write test
     });
   });
 });

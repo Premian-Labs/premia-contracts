@@ -285,11 +285,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     uint256 exerciseValue;
 
-    if (spot64x64 > strike64x64) {
-      // option has a non-zero exercise value
-      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
-      _push(l.underlying, exerciseValue);
-    }
+    require(spot64x64 > strike64x64, 'Pool: not ITM');
+
+    // option has a non-zero exercise value
+    exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
+    _push(l.underlying, exerciseValue);
 
     int128 oldLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
 
