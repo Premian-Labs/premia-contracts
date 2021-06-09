@@ -49,6 +49,27 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
                   uint256 amount,
                   int128 amountFreed64x64,
                   uint256 exerciseValue);
+  event Underwrite (address indexed underwriter,
+                    address indexed base,
+                    address indexed underlying,
+                    uint256 shortTokenId,
+                    uint256 intervalAmount,
+                    uint256 intervalPremium);
+  event AssignExercise (address indexed underwriter,
+                        address indexed base,
+                        address indexed underlying,
+                        uint256 shortTokenId,
+                        uint256 freedAmount,
+                        uint256 intervalAmount);
+  event Reassign (address indexed underwriter,
+                  address indexed base,
+                  address indexed underlying,
+                  uint256 shortTokenId,
+                  uint256 amount,
+                  uint256 baseCost,
+                  uint256 feeCost,
+                  int128 cLevel64x64,
+                  int128 spot64x64);
   event Deposit (address indexed user, address indexed base, address indexed underlying, uint256 amount);
   event Withdrawal (address indexed user, address indexed base, address indexed underlying, uint256 depositedAt, uint256 amount);
   event UpdateCLevel (address indexed base, address indexed underlying, int128 indexed cLevel64x64, int128 oldLiquidity64x64, int128 newLiquidity64x64);
@@ -416,6 +437,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _burn(msg.sender, shortTokenId, amount);
 
     _writeLoop(l, amount, baseCost, shortTokenId);
+
+    emit Reassign(msg.sender, l.base, l.underlying, shortTokenId, amount, baseCost, feeCost, cLevel64x64, spot64x64);
   }
 
   /**
@@ -449,6 +472,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       _burn(underwriter, FREE_LIQUIDITY_TOKEN_ID, intervalAmount - intervalPremium);
       // mint short option tokens for underwriter
       _mint(underwriter, shortTokenId, intervalAmount, '');
+
+      emit Underwrite(underwriter, l.base, l.underlying, shortTokenId, intervalAmount, intervalPremium);
     }
   }
 
@@ -477,6 +502,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       _mint(underwriter, FREE_LIQUIDITY_TOKEN_ID, freedAmount, '');
       // burn short option tokens from underwriter
       _burn(underwriter, shortTokenId, intervalAmount);
+
+      emit AssignExercise(underwriter, l.base, l.underlying, shortTokenId, freedAmount, intervalAmount);
     }
   }
 
