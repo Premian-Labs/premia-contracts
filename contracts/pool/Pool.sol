@@ -32,51 +32,86 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   uint256 internal immutable UNDERLYING_FREE_LIQ_TOKEN_ID;
   uint256 internal immutable BASE_FREE_LIQ_TOKEN_ID;
 
-  event Purchase (address indexed user,
-                  address indexed base,
-                  address indexed underlying,
-                  bool isCall,
-                  int128 strike64x64,
-                  uint64 maturity,
-                  int128 cLevel64x64,
-                  uint256 amount,
-                  uint256 baseCost,
-                  uint256 feeCost);
+  event Purchase (
+    address indexed user,
+    address indexed base,
+    address indexed underlying,
+    bool isCall,
+    int128 strike64x64,
+    uint64 maturity,
+    int128 cLevel64x64,
+    uint256 amount,
+    uint256 baseCost,
+    uint256 feeCost
+  );
 
-  event Exercise (address indexed user,
-                  address indexed base,
-                  address indexed underlying,
-                  bool isCall,
-                  int128 spot64x64,
-                  int128 strike64x64,
-                  uint64 maturity,
-                  uint256 amount,
-                  int128 amountFreed64x64,
-                  uint256 exerciseValue);
-  event Underwrite (address indexed underwriter,
-                    address indexed base,
-                    address indexed underlying,
-                    uint256 shortTokenId,
-                    uint256 intervalAmount,
-                    uint256 intervalPremium);
-  event AssignExercise (address indexed underwriter,
-                        address indexed base,
-                        address indexed underlying,
-                        uint256 shortTokenId,
-                        uint256 freedAmount,
-                        uint256 intervalAmount);
-  event Reassign (address indexed underwriter,
-                  address indexed base,
-                  address indexed underlying,
-                  uint256 shortTokenId,
-                  uint256 amount,
-                  uint256 baseCost,
-                  uint256 feeCost,
-                  int128 cLevel64x64,
-                  int128 spot64x64);
-  event Deposit (address indexed user, address indexed base, address indexed underlying, bool isCallPool, uint256 amount);
-  event Withdrawal (address indexed user, address indexed base, address indexed underlying, uint256 depositedAt, uint256 amount);
-  event UpdateCLevel (address indexed base, address indexed underlying, bool isCall, int128 indexed cLevel64x64, int128 oldLiquidity64x64, int128 newLiquidity64x64);
+  event Exercise (
+    address indexed user,
+    address indexed base,
+    address indexed underlying,
+    bool isCall,
+    int128 spot64x64,
+    int128 strike64x64,
+    uint64 maturity,
+    uint256 amount,
+    int128 amountFreed64x64,
+    uint256 exerciseValue
+  );
+
+  event Underwrite (
+    address indexed underwriter,
+    address indexed base,
+    address indexed underlying,
+    uint256 shortTokenId,
+    uint256 intervalAmount,
+    uint256 intervalPremium
+  );
+
+  event AssignExercise (
+    address indexed underwriter,
+    address indexed base,
+    address indexed underlying,
+    uint256 shortTokenId,
+    uint256 freedAmount,
+    uint256 intervalAmount
+  );
+
+  event Reassign (
+    address indexed underwriter,
+    address indexed base,
+    address indexed underlying,
+    uint256 shortTokenId,
+    uint256 amount,
+    uint256 baseCost,
+    uint256 feeCost,
+    int128 cLevel64x64,
+    int128 spot64x64
+  );
+
+  event Deposit (
+    address indexed user,
+    address indexed base,
+    address indexed underlying,
+    bool isCallPool,
+    uint256 amount
+  );
+
+  event Withdrawal (
+    address indexed user,
+    address indexed base,
+    address indexed underlying,
+    uint256 depositedAt,
+    uint256 amount
+  );
+
+  event UpdateCLevel (
+    address indexed base,
+    address indexed underlying,
+    bool isCall,
+    int128 indexed cLevel64x64,
+    int128 oldLiquidity64x64,
+    int128 newLiquidity64x64
+  );
 
   constructor (
     address weth,
@@ -461,7 +496,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     _writeLoop(l, amount, baseCost, shortTokenId, isCall);
 
-    emit Reassign(msg.sender, l.base, l.underlying, shortTokenId, amount, baseCost, feeCost, cLevel64x64, spot64x64);
+    emit Reassign(msg.sender, l.base, l.underlying, shortTokenId, amount, baseCost, feeCost, cLevel64x64, l.getPriceUpdate(block.timestamp));
   }
 
   /**
