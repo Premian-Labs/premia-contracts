@@ -297,9 +297,13 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     PoolStorage.Layout storage l = PoolStorage.layout();
     _update(l);
 
-    int128 spot64x64 = l.getPriceUpdateAfter(
-      maturity < block.timestamp ? maturity : block.timestamp
-    );
+    int128 spot64x64;
+
+    if (maturity < block.timestamp) {
+      spot64x64 = l.getPriceUpdateAfter(maturity);
+    } else {
+      spot64x64 = l.getPriceUpdate(block.timestamp);
+    }
 
     // burn long option tokens from sender
     _burn(msg.sender, longTokenId, amount);
@@ -485,25 +489,24 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) private {
     EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
 
-    uint256 amountRemaining = amount - exerciseValue;
-
-    while (amountRemaining > 0) {
+    while (amount > 0) {
       address underwriter = underwriters.at(underwriters.length() - 1);
 
       // amount of liquidity provided by underwriter
       uint256 intervalAmount = balanceOf(underwriter, shortTokenId);
-      if (intervalAmount > amountRemaining) intervalAmount = amountRemaining;
+      if (intervalAmount > amount) intervalAmount = amount;
 
-      // amount of liquidity returned to underwriter, accounting for premium earned by buyer
-      uint256 freedAmount = intervalAmount * (amount - exerciseValue) / amount;
-      amountRemaining -= freedAmount;
+      // amount of value claimed by buyer
+      uint256 intervalExerciseValue = exerciseValue * intervalAmount / amount;
+      exerciseValue -= intervalExerciseValue;
+      amount -= intervalAmount;
 
       // mint free liquidity tokens for underwriter
-      _mint(underwriter, FREE_LIQUIDITY_TOKEN_ID, freedAmount, '');
+      _mint(underwriter, FREE_LIQUIDITY_TOKEN_ID, intervalAmount - intervalExerciseValue, '');
       // burn short option tokens from underwriter
       _burn(underwriter, shortTokenId, intervalAmount);
 
-      emit AssignExercise(underwriter, l.base, l.underlying, shortTokenId, freedAmount, intervalAmount);
+      emit AssignExercise(underwriter, l.base, l.underlying, shortTokenId, intervalAmount - intervalExerciseValue, intervalAmount);
     }
   }
 
