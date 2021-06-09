@@ -22,7 +22,13 @@ import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/u
 import { deployMockContract } from 'ethereum-waffle';
 import { parseEther } from 'ethers/lib/utils';
 import { PoolUtil, TokenType } from './PoolUtil';
-import { bnToNumber, fixedFromFloat, fixedToNumber } from '../utils/math';
+import {
+  bnToNumber,
+  fixedFromFloat,
+  fixedToNumber,
+  getParametersFor,
+  getTokenIdFor,
+} from '../utils/math';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
 
@@ -387,7 +393,7 @@ describe('PoolProxy', function () {
 
       await pool
         .connect(buyer)
-        .purchase(maturity, strikePrice, purchaseAmount, parseEther('0.2'));
+        .purchase(maturity, strikePrice, purchaseAmount, parseEther('0.21'));
 
       const newBalance = await underlying.balanceOf(buyer.address);
 
@@ -395,16 +401,16 @@ describe('PoolProxy', function () {
         bnToNumber(mintAmount) - fixedToNumber(quote.baseCost64x64),
       );
 
-      const shortTokenId = await pool.tokenIdFor(
-        TokenType.ShortCall,
+      const shortTokenId = getTokenIdFor({
+        tokenType: TokenType.ShortCall,
         maturity,
         strikePrice,
-      );
-      const longTokenId = await pool.tokenIdFor(
-        TokenType.LongCall,
+      });
+      const longTokenId = getTokenIdFor({
+        tokenType: TokenType.LongCall,
         maturity,
         strikePrice,
-      );
+      });
 
       expect(bnToNumber(await pool.balanceOf(lp.address, 0))).to.almost(
         100 - purchaseAmountNb + fixedToNumber(quote.baseCost64x64),
@@ -452,16 +458,16 @@ describe('PoolProxy', function () {
         .connect(buyer)
         .approve(pool.address, ethers.constants.MaxUint256);
 
-      const shortTokenId = await pool.tokenIdFor(
-        TokenType.ShortCall,
+      const shortTokenId = getTokenIdFor({
+        tokenType: TokenType.ShortCall,
         maturity,
         strikePrice,
-      );
-      const longTokenId = await pool.tokenIdFor(
-        TokenType.LongCall,
+      });
+      const longTokenId = getTokenIdFor({
+        tokenType: TokenType.LongCall,
         maturity,
         strikePrice,
-      );
+      });
 
       const tx = await pool
         .connect(buyer)
@@ -514,11 +520,11 @@ describe('PoolProxy', function () {
         strikePrice,
       );
 
-      const shortTokenId = await pool.tokenIdFor(
-        TokenType.ShortCall,
+      const shortTokenId = getTokenIdFor({
+        tokenType: TokenType.ShortCall,
         maturity,
         strikePrice,
-      );
+      });
 
       await expect(
         pool.connect(lp).exercise(shortTokenId, parseEther('1')),
@@ -537,17 +543,17 @@ describe('PoolProxy', function () {
         strikePrice,
       );
 
-      const longTokenId = await pool.tokenIdFor(
-        TokenType.LongCall,
+      const longTokenId = getTokenIdFor({
+        tokenType: TokenType.LongCall,
         maturity,
         strikePrice,
-      );
+      });
 
-      const shortTokenId = await pool.tokenIdFor(
-        TokenType.ShortCall,
+      const shortTokenId = getTokenIdFor({
+        tokenType: TokenType.ShortCall,
         maturity,
         strikePrice,
-      );
+      });
       console.log(shortTokenId.toString());
 
       console.log(
@@ -556,8 +562,12 @@ describe('PoolProxy', function () {
         fixedToNumber(strikePrice),
       );
 
-      const r = await pool.parametersFor(shortTokenId);
-      console.log(r[0], r[1].toString(), fixedToNumber(r[2]));
+      const r = getParametersFor(shortTokenId);
+      console.log(
+        r.tokenType,
+        r.maturity.toString(),
+        fixedToNumber(r.strikePrice),
+      );
 
       // console.log(shortTokenId.shl(1).toString());
       //

@@ -1,6 +1,20 @@
 import { BigNumber, BigNumberish } from 'ethers';
 import { ethers } from 'hardhat';
-import { formatEther, parseEther } from 'ethers/lib/utils';
+import {
+  formatEther,
+  hexConcat,
+  hexDataSlice,
+  hexZeroPad,
+  parseEther,
+} from 'ethers/lib/utils';
+import { BytesLike } from '@ethersproject/bytes';
+import { TokenType } from '../pool/PoolUtil';
+
+export interface TokenIdParams {
+  tokenType: TokenType;
+  maturity: BigNumber;
+  strikePrice: BigNumber;
+}
 
 export function fixedFromBigNumber(bn: BigNumber) {
   return bn.abs().shl(64).mul(bn.abs().div(bn));
@@ -28,4 +42,25 @@ export function fixedToNumber(fixed: BigNumber) {
 
 export function fixedToBn(fixed: BigNumber) {
   return parseEther(fixedToNumber(fixed).toString());
+}
+
+export function getTokenIdFor({
+  tokenType,
+  maturity,
+  strikePrice,
+}: TokenIdParams) {
+  return hexConcat([
+    hexZeroPad(BigNumber.from(tokenType).toHexString(), 1),
+    hexZeroPad('0x0', 7),
+    hexZeroPad(maturity.toHexString(), 8),
+    hexZeroPad(strikePrice.toHexString(), 16),
+  ]);
+}
+
+export function getParametersFor(tokenId: BytesLike): TokenIdParams {
+  return {
+    tokenType: Number(hexDataSlice(tokenId, 0, 1)),
+    maturity: BigNumber.from(hexDataSlice(tokenId, 8, 16)),
+    strikePrice: BigNumber.from(hexDataSlice(tokenId, 16, 32)),
+  };
 }
