@@ -147,7 +147,7 @@ describe('PoolProxy', function () {
     //
 
     underlying = ERC20Mock__factory.connect(await pool.getUnderlying(), owner);
-    poolUtil = new PoolUtil({ pool, underlying });
+    poolUtil = new PoolUtil({ pool, underlying, base });
   });
 
   describeBehaviorOfManagedProxyOwnable({
@@ -172,7 +172,23 @@ describe('PoolProxy', function () {
   });
 
   describe('#quote', function () {
-    it('returns price for given option parameters', async () => {
+    it('should revert if no liquidity', async () => {
+      const maturity = poolUtil.getMaturity(17);
+      const strike64x64 = fixedFromFloat(spotPrice * 1.25);
+      const spot64x64 = fixedFromFloat(spotPrice);
+
+      await expect(
+        pool.quote({
+          maturity,
+          strike64x64,
+          spot64x64,
+          amount: parseEther('1'),
+          isCall: true,
+        }),
+      ).to.be.revertedWith('Pool: No liq');
+    });
+
+    it('should return price for given call option parameters', async () => {
       await poolUtil.depositLiquidity(owner, parseEther('10'), true);
 
       const maturity = poolUtil.getMaturity(17);
@@ -187,17 +203,31 @@ describe('PoolProxy', function () {
         isCall: true,
       });
 
-      // console.log(
-      //   fixedToNumber(quote.baseCost64x64),
-      //   fixedToNumber(quote.baseCost64x64) * 2500,
-      // );
-      // console.log(
-      //   fixedToNumber(quote.feeCost64x64),
-      //   fixedToNumber(quote.feeCost64x64) * 2500,
-      // );
-      // console.log(fixedToNumber(quote.cLevel64x64));
-
       expect(fixedToNumber(quote.baseCost64x64)).to.almost(0.0488);
+      expect(fixedToNumber(quote.feeCost64x64)).to.eq(0);
+      expect(fixedToNumber(quote.cLevel64x64)).to.almost(2.21);
+    });
+
+    it('should return price for given put option parameters', async () => {
+      await poolUtil.depositLiquidity(owner, parseEther('10'), false);
+
+      const maturity = poolUtil.getMaturity(17);
+      const strike64x64 = fixedFromFloat(spotPrice * 0.75);
+      const spot64x64 = fixedFromFloat(spotPrice);
+
+      const quote = await pool.quote({
+        maturity,
+        strike64x64,
+        spot64x64,
+        amount: parseEther('1'),
+        isCall: false,
+      });
+
+      console.log(fixedToNumber(quote.baseCost64x64));
+      console.log(fixedToNumber(quote.feeCost64x64));
+      console.log(fixedToNumber(quote.cLevel64x64));
+
+      expect(fixedToNumber(quote.baseCost64x64)).to.almost(51.05);
       expect(fixedToNumber(quote.feeCost64x64)).to.eq(0);
       expect(fixedToNumber(quote.cLevel64x64)).to.almost(2.21);
     });

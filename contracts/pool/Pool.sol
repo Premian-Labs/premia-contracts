@@ -202,7 +202,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    * @notice calculate price of option contract
    * @param args arguments of the quote
    * @return baseCost64x64 64x64 fixed point representation of option cost denominated in underlying currency (without fee)
-   * @return feeCost64x64 64x64 fixed point representation of option fee cost denominated in underlying currency
+   * @return feeCost64x64 64x64 fixed point representation of option fee cost denominated in underlying currency for call, or base currency for put
    * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
    */
   function quote (
@@ -213,6 +213,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 amount64x64 = ABDKMath64x64Token.fromDecimals(args.amount, l.underlyingDecimals);
 
     int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(args.isCall));
+
+    require(oldLiquidity64x64 > 0, "Pool: No liq");
 
     // TODO: validate values without spending gas
     // assert(oldLiquidity64x64 >= newLiquidity64x64);
@@ -251,7 +253,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
 
 
-    baseCost64x64 = price64x64.mul(amount64x64).div(args.spot64x64);
+    baseCost64x64 = price64x64.mul(amount64x64);
+
+    if (args.isCall) {
+      baseCost64x64 = baseCost64x64.div(args.spot64x64);
+    }
+
     feeCost64x64 = baseCost64x64.mul(l.fee64x64);
   }
 
