@@ -26,7 +26,6 @@ import {
   bnToNumber,
   fixedFromFloat,
   fixedToNumber,
-  getParametersFor,
   getTokenIdFor,
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';

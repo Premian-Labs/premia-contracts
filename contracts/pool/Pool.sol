@@ -302,7 +302,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     if (maturity < block.timestamp) {
       spot64x64 = l.getPriceUpdateAfter(maturity);
     } else {
-      spot64x64 = l.getPriceUpdate(block.timestamp);
+      spot64x64 = l.fetchPriceUpdate();
     }
 
     // burn long option tokens from sender
