@@ -385,13 +385,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) external payable {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    if (isCallPool) {
-      l.underlyingDepositedAt[msg.sender] = block.timestamp;
-      _pull(l.underlying, amount);
-    } else {
-      l.baseDepositedAt[msg.sender] = block.timestamp;
-      _pull(l.base, amount);
-    }
+    l.depositedAt[msg.sender][isCallPool] = block.timestamp;
+    _pull(isCallPool ? l.underlying : l.base, amount);
 
     emit Deposit(msg.sender, l.base, l.underlying, isCallPool, amount);
 
@@ -419,7 +414,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCallPool);
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    uint256 depositedAt = isCallPool ? l.underlyingDepositedAt[msg.sender] : l.baseDepositedAt[msg.sender];
+    uint256 depositedAt = l.depositedAt[msg.sender][isCallPool];
 
     require(depositedAt + (1 days) < block.timestamp, 'Pool: liq must be locked 1 day');
 
@@ -517,8 +512,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCall);
 
     while (amount > 0) {
-
-      underwriter = isCall ? l.underlyingLiquidityQueueAscending[underwriter] : l.baseLiquidityQueueAscending[underwriter];
+      underwriter = l.liquidityQueueAscending[underwriter][isCall];
 
       // amount of liquidity provided by underwriter, accounting for reinvested premium
       uint256 intervalAmount = balanceOf(underwriter, freeLiqTokenId) * (amount + premium) / amount;

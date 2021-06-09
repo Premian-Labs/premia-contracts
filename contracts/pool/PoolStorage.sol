@@ -38,15 +38,13 @@ library PoolStorage {
     int128 emaLogReturns64x64;
     int128 emaVarianceAnnualized64x64;
 
-    mapping (address => uint256) underlyingDepositedAt;
-    mapping (address => uint256) baseDepositedAt;
+    // User -> isCall -> depositedAt
+    mapping (address => mapping(bool => uint256)) depositedAt;
 
     // doubly linked list of free liquidity intervals
-    mapping (address => address) underlyingLiquidityQueueAscending;
-    mapping (address => address) underlyingLiquidityQueueDescending;
-
-    mapping (address => address) baseLiquidityQueueAscending;
-    mapping (address => address) baseLiquidityQueueDescending;
+    // User -> isCall -> User
+    mapping (address => mapping(bool => address)) liquidityQueueAscending;
+    mapping (address => mapping(bool => address)) liquidityQueueDescending;
 
     // TODO: enforced interval size for maturity (maturity % interval == 0)
     // updatable by owner
@@ -142,13 +140,8 @@ library PoolStorage {
     address account,
     bool isCallPool
   ) internal {
-    if (isCallPool) {
-      l.underlyingLiquidityQueueAscending[l.underlyingLiquidityQueueDescending[address(0)]] = account;
-      l.underlyingLiquidityQueueDescending[address(0)] = account;
-    } else {
-      l.baseLiquidityQueueAscending[l.baseLiquidityQueueDescending[address(0)]] = account;
-      l.baseLiquidityQueueDescending[address(0)] = account;
-    }
+    l.liquidityQueueAscending[l.liquidityQueueDescending[address(0)][isCallPool]][isCallPool] = account;
+    l.liquidityQueueDescending[address(0)][isCallPool] = account;
   }
 
   function removeUnderwriter (
@@ -156,21 +149,12 @@ library PoolStorage {
     address account,
     bool isCallPool
   ) internal {
-    if (isCallPool) {
-      address prev = l.underlyingLiquidityQueueDescending[account];
-      address next = l.underlyingLiquidityQueueAscending[account];
-      l.underlyingLiquidityQueueAscending[prev] = next;
-      l.underlyingLiquidityQueueDescending[next] = prev;
-      delete l.underlyingLiquidityQueueAscending[account];
-      delete l.underlyingLiquidityQueueDescending[account];
-    } else {
-      address prev = l.baseLiquidityQueueDescending[account];
-      address next = l.baseLiquidityQueueAscending[account];
-      l.baseLiquidityQueueAscending[prev] = next;
-      l.baseLiquidityQueueDescending[next] = prev;
-      delete l.baseLiquidityQueueAscending[account];
-      delete l.baseLiquidityQueueDescending[account];
-    }
+    address prev = l.liquidityQueueDescending[account][isCallPool];
+    address next = l.liquidityQueueAscending[account][isCallPool];
+    l.liquidityQueueAscending[prev][isCallPool] = next;
+    l.liquidityQueueDescending[next][isCallPool] = prev;
+    delete l.liquidityQueueAscending[account][isCallPool];
+    delete l.liquidityQueueDescending[account][isCallPool];
   }
 
   function getCLevel (
