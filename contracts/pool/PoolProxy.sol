@@ -18,6 +18,7 @@ import { OptionMath } from '../libraries/OptionMath.sol';
  * @title Upgradeable proxy with centrally controlled Pool implementation
  */
 contract PoolProxy is ManagedProxyOwnable {
+  using PoolStorage for PoolStorage.Layout;
   using ERC165Storage for ERC165Storage.Layout;
 
   constructor (
@@ -26,7 +27,8 @@ contract PoolProxy is ManagedProxyOwnable {
     address baseOracle,
     address underlyingOracle,
     int128 price64x64,
-    int128 emaLogReturns64x64
+    int128 emaLogReturns64x64,
+    int128 emaVarianceAnnualized64x64
   ) ManagedProxy(IProxyManager.getPoolImplementation.selector) {
     OwnableStorage.layout().owner = msg.sender;
 
@@ -42,12 +44,14 @@ contract PoolProxy is ManagedProxyOwnable {
       l.underlyingDecimals = IERC20Metadata(underlying).decimals();
       l.cLevel64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
 
-      // Initialize price
-      uint bucket = block.timestamp / (1 hours);
-      l.bucketPrices64x64[bucket] = price64x64;
-      l.priceUpdateSequences[bucket >> 8] += 1 << 256 - (bucket & 255);
+      // TODO: remove price64x64 from arguments
+      int128 newPrice64x64 = l.fetchPriceUpdate();
+      l.setPriceUpdate(newPrice64x64);
 
       l.emaLogReturns64x64 = emaLogReturns64x64;
+      l.emaVarianceAnnualized64x64 = emaVarianceAnnualized64x64;
+
+      l.updatedAt = block.timestamp;
     }
 
     {

@@ -38,7 +38,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
                   uint64 maturity,
                   int128 cLevel64x64,
                   uint256 amount,
-                  uint256 cost);
+                  uint256 baseCost,
+                  uint256 feeCost);
   event Exercise (address indexed user,
                   address indexed base,
                   address indexed underlying,
@@ -141,7 +142,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    * @param strike64x64 64x64 fixed point representation of strike price
    * @param spot64x64 64x64 fixed point representation of spot price
    * @param amount size of option contract
-   * @return cost64x64 64x64 fixed point representation of option cost denominated in underlying currency
+   * @return baseCost64x64 64x64 fixed point representation of option cost denominated in underlying currency (without fee)
+   * @return feeCost64x64 64x64 fixed point representation of option fee cost denominated in underlying currency
    * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
    */
   function quote (
@@ -149,7 +151,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 strike64x64,
     int128 spot64x64,
     uint256 amount
-  ) public view returns (int128 cost64x64, int128 cLevel64x64) {
+  ) public view returns (int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64) {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     int128 timeToMaturity64x64 = ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
@@ -179,9 +181,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       true
     );
 
-    cost64x64 = price64x64.mul(amount64x64).mul(
-      OptionMath.ONE_64x64.add(l.fee64x64)
-    ).mul(spot64x64);
+    baseCost64x64 = price64x64.mul(amount64x64).div(spot64x64);
+    feeCost64x64 = baseCost64x64.mul(l.fee64x64);
   }
 
   /**
@@ -190,14 +191,15 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    * @param strike64x64 64x64 fixed point representation of strike price
    * @param amount size of option contract
    * @param maxCost maximum acceptable cost after accounting for slippage
-   * @return cost quantity of tokens required to purchase long position
+   * @return baseCost quantity of tokens required to purchase long position
+   * @return feeCost quantity of tokens required to pay fees
    */
   function purchase (
     uint64 maturity,
     int128 strike64x64,
     uint256 amount,
     uint256 maxCost
-  ) external payable returns (uint256 cost) {
+  ) external payable returns (uint256 baseCost, uint256 feeCost) {
     // TODO: specify payment currency
 
     require(amount <= totalSupply(FREE_LIQUIDITY_TOKEN_ID), 'Pool: insufficient liq');
@@ -214,56 +216,52 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     require(strike64x64 <= spot64x64 << 1, 'Pool: strike > 2x spot');
     require(strike64x64 >= spot64x64 >> 1, 'Pool: strike < 0.5x spot');
 
-    (int128 cost64x64, int128 cLevel64x64) = quote(
+    (int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64) = quote(
       maturity,
       strike64x64,
       spot64x64,
       amount
     );
 
-    cost = cost64x64.toDecimals(l.underlyingDecimals);
-    uint256 fee = cost64x64.mul(l.fee64x64).div(
-      OptionMath.ONE_64x64.add(l.fee64x64)
-    ).toDecimals(l.underlyingDecimals);
+    baseCost = baseCost64x64.toDecimals(l.underlyingDecimals);
+    feeCost = feeCost64x64.toDecimals(l.underlyingDecimals);
 
-    require(cost <= maxCost, 'Pool: excessive slippage');
-    _pull(l.underlying, cost);
-    emit Purchase(msg.sender, l.base, l.underlying, strike64x64, maturity, cLevel64x64, amount, cost);
+    require(baseCost + feeCost <= maxCost, 'Pool: excessive slippage');
+    _pull(l.underlying, baseCost + feeCost);
+    emit Purchase(msg.sender, l.base, l.underlying, strike64x64, maturity, cLevel64x64, amount, baseCost, feeCost);
 
     // mint free liquidity tokens for treasury
-    _mint(FEE_RECEIVER_ADDRESS, FREE_LIQUIDITY_TOKEN_ID, fee, '');
+    _mint(FEE_RECEIVER_ADDRESS, FREE_LIQUIDITY_TOKEN_ID, feeCost, '');
 
     // mint long option token for buyer
     _mint(msg.sender, PoolStorage.formatTokenId(PoolStorage.TokenType.LONG_CALL, maturity, strike64x64), amount, '');
 
-    // remaining premia to be distributed to underwriters
-    uint256 costRemaining = cost - fee;
-
     uint256 shortTokenId = PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64);
 
-    _writeLoop(l, amount, costRemaining, shortTokenId);
+    _writeLoop(l, amount, baseCost, shortTokenId);
 
     // update C-Level, accounting for slippage and reinvested premia separately
 
     int128 totalSupply64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
+    int128 oldTotalSupply64x64 = totalSupply64x64.sub(baseCost64x64).sub(feeCost64x64);
 
     l.setCLevel(OptionMath.calculateCLevel(
       cLevel64x64, // C-Level after liquidity is reserved
-      totalSupply64x64.sub(cost64x64),
+      totalSupply64x64.sub(baseCost64x64).sub(feeCost64x64),
       totalSupply64x64,
       OptionMath.ONE_64x64
     ));
 
-    emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, totalSupply64x64.sub(cost64x64), totalSupply64x64);
+    emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, oldTotalSupply64x64, totalSupply64x64);
   }
 
   /**
    * @notice exercise call option
-   * @param tokenId ERC1155 token id
+   * @param longTokenId ERC1155 long token id
    * @param amount quantity of option contract tokens to exercise
    */
   function exercise (
-    uint256 tokenId,
+    uint256 longTokenId,
     uint256 amount
   ) public {
     uint64 maturity;
@@ -271,7 +269,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     {
       PoolStorage.TokenType tokenType;
-      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(tokenId);
+      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(longTokenId);
       require(tokenType == PoolStorage.TokenType.LONG_CALL, 'Pool: invalid token type');
     }
 
@@ -283,24 +281,21 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     );
 
     // burn long option tokens from sender
-    _burn(msg.sender, tokenId, amount);
+    _burn(msg.sender, longTokenId, amount);
 
     uint256 exerciseValue;
-    uint256 amountRemaining = amount;
 
-    if (spot64x64 > strike64x64) {
-      // option has a non-zero exercise value
-      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
-      _push(l.underlying, exerciseValue);
-      amountRemaining -= exerciseValue;
-    }
+    require(spot64x64 > strike64x64, 'Pool: not ITM');
+
+    // option has a non-zero exercise value
+    exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
+    _push(l.underlying, exerciseValue);
 
     int128 oldLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
 
     _exerciseLoop(
       l,
       amount,
-      amountRemaining,
       exerciseValue,
       PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64)
     );
@@ -368,12 +363,13 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    * @notice reassign short position to new liquidity provider
    * @param shortTokenId ERC1155 short token id
    * @param amount quantity of option contract tokens to reassign
-   * @return cost quantity of tokens required to reassign short position
+   * @return baseCost quantity of tokens required to reassign short position
+   * @return feeCost quantity of tokens required to pay fees
    */
   function reassign (
     uint256 shortTokenId,
     uint256 amount
-  ) external returns (uint256 cost) {
+  ) external returns (uint256 baseCost, uint256 feeCost) {
     (PoolStorage.TokenType tokenType, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
     require(tokenType == PoolStorage.TokenType.SHORT_CALL, 'Pool: invalid token type');
     require(maturity > block.timestamp, 'Pool: option expired');
@@ -385,41 +381,41 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     int128 spot64x64 = l.getPriceUpdate(block.timestamp);
 
-    (int128 cost64x64, int128 cLevel64x64) = quote(
+    (int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64) = quote(
       maturity,
       strike64x64,
       spot64x64,
       amount
     );
 
-    cost = cost64x64.toDecimals(l.underlyingDecimals);
-    uint256 fee = cost64x64.mul(l.fee64x64).div(
-      OptionMath.ONE_64x64.add(l.fee64x64)
-    ).toDecimals(l.underlyingDecimals);
-
-    _push(l.underlying, amount - cost - fee);
+    baseCost = baseCost64x64.toDecimals(l.underlyingDecimals);
+    feeCost = feeCost64x64.toDecimals(l.underlyingDecimals);
+    _push(l.underlying, amount - baseCost - feeCost);
     // TODO: reassignment event
 
     // update C-Level, accounting for slippage and reinvested premia separately
 
-    int128 totalSupply64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
+    { // To avoid stack too deep error
+      int128 totalSupply64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
+      int128 newTotalSupply64x64 = totalSupply64x64.add(baseCost64x64).add(feeCost64x64);
 
-    l.cLevel64x64 = OptionMath.calculateCLevel(
-      cLevel64x64, // C-Level after liquidity is reserved
-      totalSupply64x64,
-      totalSupply64x64.add(cost64x64),
-      OptionMath.ONE_64x64
-    );
+      l.cLevel64x64 = OptionMath.calculateCLevel(
+        cLevel64x64, // C-Level after liquidity is reserved
+        totalSupply64x64,
+        newTotalSupply64x64,
+        OptionMath.ONE_64x64
+      );
 
-    emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, totalSupply64x64, totalSupply64x64.add(cost64x64));
+      emit UpdateCLevel(l.base, l.underlying, l.cLevel64x64, totalSupply64x64, newTotalSupply64x64);
+    }
 
     // mint free liquidity tokens for treasury
-    _mint(FEE_RECEIVER_ADDRESS, FREE_LIQUIDITY_TOKEN_ID, fee, '');
+    _mint(FEE_RECEIVER_ADDRESS, FREE_LIQUIDITY_TOKEN_ID, feeCost, '');
 
     // burn short option tokens from underwriter
     _burn(msg.sender, shortTokenId, amount);
 
-    _writeLoop(l, amount, cost - fee, shortTokenId);
+    _writeLoop(l, amount, baseCost, shortTokenId);
   }
 
   /**
@@ -432,7 +428,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   function _writeLoop (
     PoolStorage.Layout storage l,
     uint256 amount,
-    uint256 costRemaining,
+    uint256 premium,
     uint256 shortTokenId
   ) private {
     address underwriter;
@@ -441,16 +437,16 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       underwriter = l.liquidityQueueAscending[underwriter];
 
       // amount of liquidity provided by underwriter, accounting for reinvested premium
-      uint256 intervalAmount = balanceOf(underwriter, FREE_LIQUIDITY_TOKEN_ID) * (amount + costRemaining) / amount;
-      if (amount < intervalAmount) intervalAmount = amount;
-      amount -= intervalAmount;
+      uint256 intervalAmount = balanceOf(underwriter, FREE_LIQUIDITY_TOKEN_ID) * (amount + premium) / amount;
+      if (intervalAmount > amount) intervalAmount = amount;
 
       // amount of premium paid to underwriter
-      uint256 intervalCost = costRemaining * intervalAmount / amount;
-      costRemaining -= intervalCost;
+      uint256 intervalPremium = premium * intervalAmount / amount;
+      premium -= intervalPremium;
+      amount -= intervalAmount;
 
       // burn free liquidity tokens from underwriter
-      _burn(underwriter, FREE_LIQUIDITY_TOKEN_ID, intervalAmount - intervalCost);
+      _burn(underwriter, FREE_LIQUIDITY_TOKEN_ID, intervalAmount - intervalPremium);
       // mint short option tokens for underwriter
       _mint(underwriter, shortTokenId, intervalAmount, '');
     }
@@ -459,18 +455,19 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   function _exerciseLoop (
     PoolStorage.Layout storage l,
     uint256 amount,
-    uint256 amountRemaining,
     uint256 exerciseValue,
     uint256 shortTokenId
   ) private {
     EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
 
-    while (amount > 0) {
+    uint256 amountRemaining = amount - exerciseValue;
+
+    while (amountRemaining > 0) {
       address underwriter = underwriters.at(underwriters.length() - 1);
 
       // amount of liquidity provided by underwriter
       uint256 intervalAmount = balanceOf(underwriter, shortTokenId);
-      if (amountRemaining < intervalAmount) intervalAmount = amountRemaining;
+      if (intervalAmount > amountRemaining) intervalAmount = amountRemaining;
 
       // amount of liquidity returned to underwriter, accounting for premium earned by buyer
       uint256 freedAmount = intervalAmount * (amount - exerciseValue) / amount;
@@ -484,17 +481,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   }
 
   /**
-   * @notice fetch latest price from given oracle
-   * @param oracle Chainlink price aggregator address
-   * @return price latest price
-   */
-  function _fetchLatestPrice (
-    address oracle
-  ) internal view returns (int256 price) {
-    (, price, , ,) = AggregatorV3Interface(oracle).latestRoundData();
-  }
-
-  /**
    * @notice TODO
    */
   function _update (
@@ -503,13 +489,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 updatedAt = l.updatedAt;
 
     int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
-    int128 newPrice64x64 = ABDKMath64x64.divi(
-      _fetchLatestPrice(l.baseOracle),
-      _fetchLatestPrice(l.underlyingOracle)
-    );
+    int128 newPrice64x64 = l.fetchPriceUpdate();
 
     if (l.getPriceUpdate(block.timestamp) == 0) {
-      l.setPriceUpdate(block.timestamp, newPrice64x64);
+      l.setPriceUpdate(newPrice64x64);
     }
 
     int128 logReturns64x64 = newPrice64x64.div(oldPrice64x64).ln();
@@ -558,8 +541,15 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 amount
   ) internal {
     if (token == WETH_ADDRESS) {
-      amount -= msg.value;
-      IWETH(WETH_ADDRESS).deposit{ value: msg.value }();
+      if (msg.value > 0) {
+        require(msg.value <= amount, "Pool: too much ETH sent");
+
+        unchecked {
+          amount -= msg.value;
+        }
+
+        IWETH(WETH_ADDRESS).deposit{ value: msg.value }();
+      }
     } else {
       require(
         msg.value == 0,

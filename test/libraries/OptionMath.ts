@@ -1,23 +1,7 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { BigNumber } from 'ethers';
 import { OptionMathMock, OptionMathMock__factory } from '../../typechain';
-import { formatEther } from 'ethers/lib/utils';
-
-const fixedFromBigNumber = function (bn: BigNumber) {
-  return bn.abs().shl(64).mul(bn.abs().div(bn));
-};
-
-const fixedFromFloat = function (float: number) {
-  const [integer = '', decimal = ''] = float.toString().split('.');
-  return fixedFromBigNumber(ethers.BigNumber.from(`${integer}${decimal}`)).div(
-    ethers.BigNumber.from(`1${'0'.repeat(decimal.length)}`),
-  );
-};
-
-const bnToNumber = function (bn: BigNumber) {
-  return Number(formatEther(bn));
-};
+import { bnToNumber, fixedFromFloat, fixedToNumber } from '../utils/math';
 
 /*
   Pricing feed mock:

@@ -4,6 +4,8 @@ import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { Pool, PoolMock, PoolMock__factory } from '../../typechain';
+import { getTokenIdFor } from '../utils/math';
+import { TokenType } from './PoolUtil';
 
 const fixedFromBigNumber = function (bn: BigNumber) {
   return bn.abs().shl(64).mul(bn.abs().div(bn));
@@ -26,7 +28,9 @@ describe('Pool', function () {
   });
 
   beforeEach(async function () {
-    instance = await new PoolMock__factory(owner).deploy();
+    instance = await new PoolMock__factory(owner).deploy(
+      ethers.constants.AddressZero,
+    );
   });
 
   describeBehaviorOfPool(
@@ -43,17 +47,12 @@ describe('Pool', function () {
   describe('__internal', function () {
     describe('#_tokenIdFor', function () {
       it('returns concatenation of maturity and strikePrice', async function () {
-        const tokenType = ethers.constants.One;
+        const tokenType = TokenType.LongCall;
         const maturity = ethers.BigNumber.from(
           Math.floor(new Date().getTime() / 1000),
         );
         const strikePrice = fixedFromFloat(Math.random() * 1000);
-        const tokenId = ethers.utils.hexConcat([
-          ethers.utils.hexZeroPad(tokenType.toHexString(), 1),
-          ethers.utils.hexZeroPad('0x0', 7),
-          ethers.utils.hexZeroPad(maturity.toHexString(), 8),
-          ethers.utils.hexZeroPad(strikePrice.toHexString(), 16),
-        ]);
+        const tokenId = getTokenIdFor({ tokenType, maturity, strikePrice });
 
         expect(
           await instance.callStatic['tokenIdFor(uint8,uint64,int128)'](
@@ -67,21 +66,16 @@ describe('Pool', function () {
 
     describe('#_parametersFor', function () {
       it('returns parameters derived from tokenId', async function () {
-        const tokenType = ethers.constants.One;
+        const tokenType = TokenType.LongCall;
         const maturity = ethers.BigNumber.from(
           Math.floor(new Date().getTime() / 1000),
         );
         const strikePrice = fixedFromFloat(Math.random() * 1000);
-        const tokenId = ethers.utils.hexConcat([
-          ethers.utils.hexZeroPad(tokenType.toHexString(), 1),
-          ethers.utils.hexZeroPad('0x0', 7),
-          ethers.utils.hexZeroPad(maturity.toHexString(), 8),
-          ethers.utils.hexZeroPad(strikePrice.toHexString(), 16),
-        ]);
+        const tokenId = getTokenIdFor({ tokenType, maturity, strikePrice });
 
         expect(
           await instance.callStatic['parametersFor(uint256)'](tokenId),
-        ).to.deep.equal([tokenType.toNumber(), maturity, strikePrice]);
+        ).to.deep.equal([tokenType, maturity, strikePrice]);
       });
     });
   });

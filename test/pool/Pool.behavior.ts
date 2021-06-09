@@ -1,8 +1,16 @@
+import { expect } from 'chai';
 import {
   describeBehaviorOfERC1155Enumerable
 } from '@solidstate/spec';
-import { Pool } from '../../typechain';
+import {
+  ERC20Mock,
+  ERC20Mock__factory,
+  Pool,
+  Pool__factory,
+} from '../../typechain';
 import { BigNumber, ContractTransaction } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { ethers } from 'hardhat';
 
 interface PoolBehaviorArgs {
   deploy: () => Promise<Pool>;
@@ -27,7 +35,12 @@ export function describeBehaviorOfPool(
   skips?: string[],
 ) {
   describe('::Pool', function () {
+    let deployer: SignerWithAddress;
     let instance: Pool;
+
+    before(async () => {
+      [deployer] = await ethers.getSigners();
+    });
 
     beforeEach(async function () {
       instance = await deploy();
@@ -41,43 +54,5 @@ export function describeBehaviorOfPool(
       },
       skips,
     );
-
-    describe('#getPair', function () {
-      it('returns pair address');
-    });
-
-    describe('#getUnderlying', function () {
-      it('todo');
-    });
-
-    describe('#quote', function () {
-      it('returns price for given option parameters');
-    });
-
-    describe('#deposit', function () {
-      it('returns share tokens granted to sender');
-
-      it('todo');
-    });
-
-    describe('#withdraw', function () {
-      it('returns underlying tokens withdrawn by sender');
-
-      it('todo');
-    });
-
-    describe('#purchase', function () {
-      it('todo');
-    });
-
-    describe('#exercise', function () {
-      describe('(uint256,uint192,uint64)', function () {
-        it('todo');
-      });
-
-      describe('(uint256,uint256)', function () {
-        it('todo');
-      });
-    });
   });
 }
