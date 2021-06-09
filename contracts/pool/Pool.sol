@@ -300,10 +300,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(args.isCall), feeCost, '');
 
     // mint long option token for buyer
-    _mint(msg.sender, PoolStorage.formatTokenId(PoolStorage.TokenType.LONG_CALL, args.maturity, args.strike64x64), args.amount, '');
+    _mint(msg.sender, PoolStorage.formatTokenId(_getTokenType(args.isCall, true), args.maturity, args.strike64x64), args.amount, '');
 
     {
-      uint256 shortTokenId = PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, args.maturity, args.strike64x64);
+      uint256 shortTokenId = PoolStorage.formatTokenId(_getTokenType(args.isCall, false), args.maturity, args.strike64x64);
       _writeLoop(l, args.amount, baseCost, shortTokenId, args.isCall);
     }
 
@@ -335,7 +335,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     {
       PoolStorage.TokenType tokenType;
       (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(args.longTokenId);
-      require(tokenType == PoolStorage.TokenType.LONG_CALL, 'Pool: invalid token type');
+      require(tokenType == PoolStorage.TokenType.LONG_CALL || tokenType == PoolStorage.TokenType.LONG_PUT, 'Pool: invalid token type');
     }
 
     PoolStorage.Layout storage l = PoolStorage.layout();
@@ -362,7 +362,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       l,
       args.amount,
       exerciseValue,
-      PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64),
+      PoolStorage.formatTokenId(_getTokenType(args.isCall, false), maturity, strike64x64),
       args.isCall
     );
 
@@ -451,7 +451,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) external returns (uint256 baseCost, uint256 feeCost) {
 
     (PoolStorage.TokenType tokenType, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
-    require(tokenType == PoolStorage.TokenType.SHORT_CALL, 'Pool: invalid token type');
+    require(tokenType == PoolStorage.TokenType.SHORT_CALL || tokenType == PoolStorage.TokenType.SHORT_PUT, 'Pool: invalid token type');
     require(maturity > block.timestamp, 'Pool: option expired');
 
     // TODO: allow exit of expired position
@@ -554,6 +554,17 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     bool isCall
   ) private view returns (uint8 decimals) {
     decimals = isCall ? PoolStorage.layout().underlyingDecimals : PoolStorage.layout().baseDecimals;
+  }
+
+  function _getTokenType (
+    bool isCall,
+    bool isLong
+  ) private view returns (PoolStorage.TokenType tokenType) {
+    if (isCall) {
+      tokenType = isLong ? PoolStorage.TokenType.LONG_CALL : PoolStorage.TokenType.SHORT_CALL;
+    } else {
+      tokenType = isLong ? PoolStorage.TokenType.LONG_PUT : PoolStorage.TokenType.SHORT_PUT;
+    }
   }
 
   function _exerciseLoop (
