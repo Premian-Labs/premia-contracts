@@ -284,13 +284,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _burn(msg.sender, longTokenId, amount);
 
     uint256 exerciseValue;
-    uint256 amountRemaining = amount;
 
     if (spot64x64 > strike64x64) {
       // option has a non-zero exercise value
       exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
       _push(l.underlying, exerciseValue);
-      amountRemaining -= exerciseValue;
     }
 
     int128 oldLiquidity64x64 = l.totalSupply64x64(FREE_LIQUIDITY_TOKEN_ID);
@@ -298,7 +296,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _exerciseLoop(
       l,
       amount,
-      amountRemaining,
       exerciseValue,
       PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64)
     );
@@ -441,7 +438,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       // amount of liquidity provided by underwriter, accounting for reinvested premium
       uint256 intervalAmount = balanceOf(underwriter, FREE_LIQUIDITY_TOKEN_ID) * (amount + premium) / amount;
-      if (amount < intervalAmount) intervalAmount = amount;
+      if (intervalAmount > amount) intervalAmount = amount;
 
       // amount of premium paid to underwriter
       uint256 intervalPremium = premium * intervalAmount / amount;
@@ -458,18 +455,19 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   function _exerciseLoop (
     PoolStorage.Layout storage l,
     uint256 amount,
-    uint256 amountRemaining,
     uint256 exerciseValue,
     uint256 shortTokenId
   ) private {
     EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
 
-    while (amount > 0) {
+    uint256 amountRemaining = amount - exerciseValue;
+
+    while (amountRemaining > 0) {
       address underwriter = underwriters.at(underwriters.length() - 1);
 
       // amount of liquidity provided by underwriter
       uint256 intervalAmount = balanceOf(underwriter, shortTokenId);
-      if (amountRemaining < intervalAmount) intervalAmount = amountRemaining;
+      if (intervalAmount > amountRemaining) intervalAmount = amountRemaining;
 
       // amount of liquidity returned to underwriter, accounting for premium earned by buyer
       uint256 freedAmount = intervalAmount * (amount - exerciseValue) / amount;
