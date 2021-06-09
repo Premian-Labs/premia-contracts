@@ -143,10 +143,10 @@ library PoolStorage {
     bool isCallPool
   ) internal {
     if (isCallPool) {
-      l.underlyingLiquidityQueueAscending[l.underlyingLiquidityQueueAscending[address(0)]] = account;
+      l.underlyingLiquidityQueueAscending[l.underlyingLiquidityQueueDescending[address(0)]] = account;
       l.underlyingLiquidityQueueDescending[address(0)] = account;
     } else {
-      l.baseLiquidityQueueAscending[l.baseLiquidityQueueAscending[address(0)]] = account;
+      l.baseLiquidityQueueAscending[l.baseLiquidityQueueDescending[address(0)]] = account;
       l.baseLiquidityQueueDescending[address(0)] = account;
     }
   }
