@@ -30,6 +30,7 @@ import {
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
+import { describeBehaviorOfPoolProxyPurchase } from './PoolProxy.behavior';
 
 chai.use(chaiAlmost(0.01));
 
@@ -52,7 +53,16 @@ describe('PoolProxy', function () {
   let baseOracle: MockContract;
   let underlyingOracle: MockContract;
 
-  const freeLiquidityTokenId = 0;
+  const underlyingFreeLiqToken = getTokenIdFor({
+    tokenType: TokenType.UnderlyingFreeLiq,
+    maturity: BigNumber.from(0),
+    strike64x64: BigNumber.from(0),
+  });
+  const baseFreeLiqToken = getTokenIdFor({
+    tokenType: TokenType.BaseFreeLiq,
+    maturity: BigNumber.from(0),
+    strike64x64: BigNumber.from(0),
+  });
 
   const spotPrice = 2500;
 
@@ -171,6 +181,12 @@ describe('PoolProxy', function () {
     });
   });
 
+  describe('#getBase', function () {
+    it('returns base address', async () => {
+      expect(await pool.getBase()).to.eq(base.address);
+    });
+  });
+
   describe('#quote', function () {
     it('should revert if no liquidity', async () => {
       const maturity = poolUtil.getMaturity(17);
@@ -188,387 +204,205 @@ describe('PoolProxy', function () {
       ).to.be.revertedWith('Pool: No liq');
     });
 
-    it('should return price for given call option parameters', async () => {
-      await poolUtil.depositLiquidity(owner, parseEther('10'), true);
+    describe('call', () => {
+      it('should return price for given call option parameters', async () => {
+        await poolUtil.depositLiquidity(owner, parseEther('10'), true);
 
-      const maturity = poolUtil.getMaturity(17);
-      const strike64x64 = fixedFromFloat(spotPrice * 1.25);
-      const spot64x64 = fixedFromFloat(spotPrice);
+        const maturity = poolUtil.getMaturity(17);
+        const strike64x64 = fixedFromFloat(spotPrice * 1.25);
+        const spot64x64 = fixedFromFloat(spotPrice);
 
-      const quote = await pool.quote({
-        maturity,
-        strike64x64,
-        spot64x64,
-        amount: parseEther('1'),
-        isCall: true,
+        const quote = await pool.quote({
+          maturity,
+          strike64x64,
+          spot64x64,
+          amount: parseEther('1'),
+          isCall: true,
+        });
+
+        expect(fixedToNumber(quote.baseCost64x64)).to.almost(0.0488);
+        expect(fixedToNumber(quote.feeCost64x64)).to.eq(0);
+        expect(fixedToNumber(quote.cLevel64x64)).to.almost(2.21);
       });
-
-      expect(fixedToNumber(quote.baseCost64x64)).to.almost(0.0488);
-      expect(fixedToNumber(quote.feeCost64x64)).to.eq(0);
-      expect(fixedToNumber(quote.cLevel64x64)).to.almost(2.21);
     });
 
-    it('should return price for given put option parameters', async () => {
-      await poolUtil.depositLiquidity(owner, parseEther('10'), false);
+    describe('put', () => {
+      it('should return price for given put option parameters', async () => {
+        await poolUtil.depositLiquidity(owner, parseEther('10'), false);
 
-      const maturity = poolUtil.getMaturity(17);
-      const strike64x64 = fixedFromFloat(spotPrice * 0.75);
-      const spot64x64 = fixedFromFloat(spotPrice);
+        const maturity = poolUtil.getMaturity(17);
+        const strike64x64 = fixedFromFloat(spotPrice * 0.75);
+        const spot64x64 = fixedFromFloat(spotPrice);
 
-      const quote = await pool.quote({
-        maturity,
-        strike64x64,
-        spot64x64,
-        amount: parseEther('1'),
-        isCall: false,
+        const quote = await pool.quote({
+          maturity,
+          strike64x64,
+          spot64x64,
+          amount: parseEther('1'),
+          isCall: false,
+        });
+
+        expect(fixedToNumber(quote.baseCost64x64)).to.almost(51.05);
+        expect(fixedToNumber(quote.feeCost64x64)).to.eq(0);
+        expect(fixedToNumber(quote.cLevel64x64)).to.almost(2.21);
       });
-
-      console.log(fixedToNumber(quote.baseCost64x64));
-      console.log(fixedToNumber(quote.feeCost64x64));
-      console.log(fixedToNumber(quote.cLevel64x64));
-
-      expect(fixedToNumber(quote.baseCost64x64)).to.almost(51.05);
-      expect(fixedToNumber(quote.feeCost64x64)).to.eq(0);
-      expect(fixedToNumber(quote.cLevel64x64)).to.almost(2.21);
     });
   });
 
   describe('#deposit', function () {
-    it('returns share tokens granted to sender with ERC20 deposit', async () => {
-      await underlying.mint(owner.address, 100);
-      await underlying.approve(pool.address, ethers.constants.MaxUint256);
-      await expect(() => pool.deposit('100', true)).to.changeTokenBalance(
-        underlying,
-        owner,
-        -100,
-      );
-      expect(await pool.balanceOf(owner.address, freeLiquidityTokenId)).to.eq(
-        100,
-      );
+    describe('call', () => {
+      it('should grant sender share tokens with ERC20 deposit (call)', async () => {
+        await underlying.mint(owner.address, 100);
+        await underlying.approve(pool.address, ethers.constants.MaxUint256);
+        await expect(() => pool.deposit('100', true)).to.changeTokenBalance(
+          underlying,
+          owner,
+          -100,
+        );
+        expect(
+          await pool.balanceOf(owner.address, underlyingFreeLiqToken),
+        ).to.eq(100);
+      });
+
+      it('should grand sender share tokens with WETH deposit', async () => {
+        // Use WETH tokens
+        await underlyingWeth.deposit({ value: 100 });
+        await underlyingWeth.approve(
+          poolWeth.address,
+          ethers.constants.MaxUint256,
+        );
+        await expect(() => poolWeth.deposit('50', true)).to.changeTokenBalance(
+          underlyingWeth,
+          owner,
+          -50,
+        );
+
+        // Use ETH
+        await expect(() =>
+          poolWeth.deposit('200', true, { value: 200 }),
+        ).to.changeEtherBalance(owner, -200);
+
+        // Use both ETH and WETH tokens
+        await expect(() =>
+          poolWeth.deposit('100', true, { value: 50 }),
+        ).to.changeEtherBalance(owner, -50);
+
+        expect(await underlyingWeth.balanceOf(owner.address)).to.eq(0);
+        expect(
+          await poolWeth.balanceOf(owner.address, underlyingFreeLiqToken),
+        ).to.eq(350);
+      });
+
+      it('should revert if user send ETH with a token deposit', async () => {
+        await underlying.mint(owner.address, 100);
+        await underlying.approve(pool.address, ethers.constants.MaxUint256);
+        await expect(
+          pool.deposit('100', true, { value: 1 }),
+        ).to.be.revertedWith('Pool: not WETH deposit');
+      });
+
+      it('should revert if user send too much ETH with a WETH deposit', async () => {
+        await expect(
+          poolWeth.deposit('200', true, { value: 201 }),
+        ).to.be.revertedWith('Pool: too much ETH sent');
+      });
     });
 
-    it('returns share tokens granted to sender with WETH deposit', async () => {
-      // Use WETH tokens
-      await underlyingWeth.deposit({ value: 100 });
-      await underlyingWeth.approve(
-        poolWeth.address,
-        ethers.constants.MaxUint256,
-      );
-      await expect(() => poolWeth.deposit('50', true)).to.changeTokenBalance(
-        underlyingWeth,
-        owner,
-        -50,
-      );
-
-      // Use ETH
-      await expect(() =>
-        poolWeth.deposit('200', true, { value: 200 }),
-      ).to.changeEtherBalance(owner, -200);
-
-      // Use both ETH and WETH tokens
-      await expect(() =>
-        poolWeth.deposit('100', true, { value: 50 }),
-      ).to.changeEtherBalance(owner, -50);
-
-      expect(await underlyingWeth.balanceOf(owner.address)).to.eq(0);
-      expect(
-        await poolWeth.balanceOf(owner.address, freeLiquidityTokenId),
-      ).to.eq(350);
-    });
-
-    it('should revert if user send ETH with a token deposit', async () => {
-      await underlying.mint(owner.address, 100);
-      await underlying.approve(pool.address, ethers.constants.MaxUint256);
-      await expect(pool.deposit('100', true, { value: 1 })).to.be.revertedWith(
-        'Pool: not WETH deposit',
-      );
-    });
-
-    it('should revert if user send too much ETH with a WETH deposit', async () => {
-      await expect(
-        poolWeth.deposit('200', true, { value: 201 }),
-      ).to.be.revertedWith('Pool: too much ETH sent');
+    describe('put', () => {
+      it('should grant sender share tokens with ERC20 deposit (put)', async () => {
+        await base.mint(owner.address, 100);
+        await base.approve(pool.address, ethers.constants.MaxUint256);
+        await expect(() => pool.deposit('100', false)).to.changeTokenBalance(
+          base,
+          owner,
+          -100,
+        );
+        expect(await pool.balanceOf(owner.address, baseFreeLiqToken)).to.eq(
+          100,
+        );
+      });
     });
   });
 
   describe('#withdraw', function () {
-    it('should fail withdrawing if < 1 day after deposit', async () => {
-      await poolUtil.depositLiquidity(owner, 100, true);
+    describe('call', () => {
+      it('should fail withdrawing if < 1 day after deposit', async () => {
+        await poolUtil.depositLiquidity(owner, 100, true);
 
-      await expect(pool.withdraw('100', true)).to.be.revertedWith(
-        'Pool: liq must be locked 1 day',
-      );
+        await expect(pool.withdraw('100', true)).to.be.revertedWith(
+          'Pool: liq must be locked 1 day',
+        );
 
-      await setTimestamp(getCurrentTimestamp() + 23 * 3600);
-      await expect(pool.withdraw('100', true)).to.be.revertedWith(
-        'Pool: liq must be locked 1 day',
-      );
+        await setTimestamp(getCurrentTimestamp() + 23 * 3600);
+        await expect(pool.withdraw('100', true)).to.be.revertedWith(
+          'Pool: liq must be locked 1 day',
+        );
+      });
+
+      it('should return underlying tokens withdrawn by sender', async () => {
+        await poolUtil.depositLiquidity(owner, 100, true);
+        expect(await underlying.balanceOf(owner.address)).to.eq(0);
+
+        await setTimestamp(getCurrentTimestamp() + 24 * 3600 + 60);
+        await pool.withdraw('100', true);
+        expect(await underlying.balanceOf(owner.address)).to.eq(100);
+        expect(
+          await pool.balanceOf(owner.address, underlyingFreeLiqToken),
+        ).to.eq(0);
+      });
     });
 
-    it('should return underlying tokens withdrawn by sender', async () => {
-      await poolUtil.depositLiquidity(owner, 100, true);
-      expect(await underlying.balanceOf(owner.address)).to.eq(0);
+    describe('put', () => {
+      it('should fail withdrawing if < 1 day after deposit', async () => {
+        await poolUtil.depositLiquidity(owner, 100, false);
 
-      await setTimestamp(getCurrentTimestamp() + 24 * 3600 + 60);
-      await pool.withdraw('100', true);
-      expect(await underlying.balanceOf(owner.address)).to.eq(100);
-      expect(await pool.balanceOf(owner.address, freeLiquidityTokenId)).to.eq(
-        0,
-      );
+        await expect(pool.withdraw('100', false)).to.be.revertedWith(
+          'Pool: liq must be locked 1 day',
+        );
+
+        await setTimestamp(getCurrentTimestamp() + 23 * 3600);
+        await expect(pool.withdraw('100', false)).to.be.revertedWith(
+          'Pool: liq must be locked 1 day',
+        );
+      });
+
+      it('should return underlying tokens withdrawn by sender', async () => {
+        await poolUtil.depositLiquidity(owner, 100, false);
+        expect(await base.balanceOf(owner.address)).to.eq(0);
+
+        await setTimestamp(getCurrentTimestamp() + 24 * 3600 + 60);
+        await pool.withdraw('100', false);
+        expect(await base.balanceOf(owner.address)).to.eq(100);
+        expect(
+          await pool.balanceOf(owner.address, underlyingFreeLiqToken),
+        ).to.eq(0);
+      });
     });
-
-    it('todo');
   });
 
   describe('#purchase', function () {
-    it('should revert if using a maturity less than 1 day in the future', async () => {
-      await poolUtil.depositLiquidity(owner, parseEther('100'), true);
-      const maturity = getCurrentTimestamp() + 10 * 3600;
-      const strike64x64 = fixedFromFloat(1.5);
-
-      await expect(
-        pool.connect(buyer).purchase({
-          maturity,
-          strike64x64,
-          amount: parseEther('1'),
-          maxCost: parseEther('100'),
-          isCall: true,
-        }),
-      ).to.be.revertedWith('Pool: maturity < 1 day');
+    describeBehaviorOfPoolProxyPurchase({
+      pool: () => pool,
+      poolUtil: () => poolUtil,
+      owner: () => owner,
+      buyer: () => buyer,
+      lp: () => lp,
+      spotPrice,
+      underlying: () => underlying,
+      base: () => base,
+      isCall: true,
     });
 
-    it('should revert if using a maturity more than 28 days in the future', async () => {
-      await poolUtil.depositLiquidity(owner, parseEther('100'), true);
-      const maturity = poolUtil.getMaturity(30);
-      const strike64x64 = fixedFromFloat(1.5);
-
-      await expect(
-        pool.connect(buyer).purchase({
-          maturity,
-          strike64x64,
-          amount: parseEther('1'),
-          maxCost: parseEther('100'),
-          isCall: true,
-        }),
-      ).to.be.revertedWith('Pool: maturity > 28 days');
-    });
-
-    it('should revert if using a maturity not corresponding to end of UTC day', async () => {
-      await poolUtil.depositLiquidity(owner, parseEther('100'), true);
-      const maturity = poolUtil.getMaturity(10).add(3600);
-      const strike64x64 = fixedFromFloat(1.5);
-
-      await expect(
-        pool.connect(buyer).purchase({
-          maturity,
-          strike64x64,
-          amount: parseEther('1'),
-          maxCost: parseEther('100'),
-          isCall: true,
-        }),
-      ).to.be.revertedWith('Pool: maturity not end UTC day');
-    });
-
-    it('should revert if using a strike > 2x spot', async () => {
-      await poolUtil.depositLiquidity(owner, parseEther('100'), true);
-      const maturity = poolUtil.getMaturity(10);
-      const strike64x64 = fixedFromFloat(spotPrice * 2.01);
-
-      await expect(
-        pool.connect(buyer).purchase({
-          maturity,
-          strike64x64,
-          amount: parseEther('1'),
-          maxCost: parseEther('100'),
-          isCall: true,
-        }),
-      ).to.be.revertedWith('Pool: strike > 2x spot');
-    });
-
-    it('should revert if using a strike < 0.5x spot', async () => {
-      await poolUtil.depositLiquidity(owner, parseEther('100'), true);
-      const maturity = poolUtil.getMaturity(10);
-      const strike64x64 = fixedFromFloat(spotPrice * 0.49);
-
-      await expect(
-        pool.connect(buyer).purchase({
-          maturity,
-          strike64x64,
-          amount: parseEther('1'),
-          maxCost: parseEther('100'),
-          isCall: true,
-        }),
-      ).to.be.revertedWith('Pool: strike < 0.5x spot');
-    });
-
-    it('should revert if cost is above max cost', async () => {
-      await poolUtil.depositLiquidity(owner, parseEther('100'), true);
-      const maturity = poolUtil.getMaturity(10);
-      const strike64x64 = fixedFromFloat(spotPrice * 1.25);
-
-      await underlying.mint(buyer.address, parseEther('100'));
-      await underlying
-        .connect(buyer)
-        .approve(pool.address, ethers.constants.MaxUint256);
-
-      await expect(
-        pool.connect(buyer).purchase({
-          maturity,
-          strike64x64,
-          amount: parseEther('1'),
-          maxCost: parseEther('0.01'),
-          isCall: true,
-        }),
-      ).to.be.revertedWith('Pool: excessive slippage');
-    });
-
-    it('should successfully purchase an option', async () => {
-      await poolUtil.depositLiquidity(lp, parseEther('100'), true);
-
-      const maturity = poolUtil.getMaturity(10);
-      const strike64x64 = fixedFromFloat(spotPrice * 1.25);
-
-      const purchaseAmountNb = 10;
-      const purchaseAmount = parseEther(purchaseAmountNb.toString());
-
-      const quote = await pool.quote({
-        maturity,
-        strike64x64,
-        spot64x64: fixedFromFloat(spotPrice),
-        amount: purchaseAmount,
-        isCall: true,
-      });
-
-      console.log(fixedToNumber(quote.baseCost64x64));
-
-      const mintAmount = parseEther('10');
-      await underlying.mint(buyer.address, mintAmount);
-      await underlying
-        .connect(buyer)
-        .approve(pool.address, ethers.constants.MaxUint256);
-
-      await pool.connect(buyer).purchase({
-        maturity,
-        strike64x64,
-        amount: purchaseAmount,
-        maxCost: parseEther('0.21'),
-        isCall: true,
-      });
-
-      const newBalance = await underlying.balanceOf(buyer.address);
-
-      expect(bnToNumber(newBalance)).to.almost(
-        bnToNumber(mintAmount) - fixedToNumber(quote.baseCost64x64),
-      );
-
-      const shortTokenId = getTokenIdFor({
-        tokenType: TokenType.ShortCall,
-        maturity,
-        strike64x64,
-      });
-      const longTokenId = getTokenIdFor({
-        tokenType: TokenType.LongCall,
-        maturity,
-        strike64x64,
-      });
-
-      expect(bnToNumber(await pool.balanceOf(lp.address, 0))).to.almost(
-        100 - purchaseAmountNb + fixedToNumber(quote.baseCost64x64),
-      );
-
-      expect(await pool.balanceOf(lp.address, longTokenId)).to.eq(0);
-      expect(await pool.balanceOf(lp.address, shortTokenId)).to.eq(
-        purchaseAmount,
-      );
-
-      expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(
-        purchaseAmount,
-      );
-      expect(await pool.balanceOf(buyer.address, shortTokenId)).to.eq(0);
-    });
-
-    it('should successfully purchase an option from multiple LP intervals', async () => {
-      const signers = await ethers.getSigners();
-
-      let amountInPool = BigNumber.from(0);
-      for (const signer of signers) {
-        if (signer.address == buyer.address) continue;
-
-        await poolUtil.depositLiquidity(signer, parseEther('1'), true);
-
-        amountInPool = amountInPool.add(parseEther('1'));
-      }
-
-      const maturity = poolUtil.getMaturity(10);
-      const strike64x64 = fixedFromFloat(spotPrice * 1.25);
-
-      // 10 intervals used
-      const purchaseAmountNb = 10;
-      const purchaseAmount = parseEther(purchaseAmountNb.toString());
-
-      const quote = await pool.quote({
-        maturity,
-        strike64x64,
-        spot64x64: fixedFromFloat(spotPrice),
-        amount: purchaseAmount,
-        isCall: true,
-      });
-
-      await underlying.mint(buyer.address, parseEther('10'));
-      await underlying
-        .connect(buyer)
-        .approve(pool.address, ethers.constants.MaxUint256);
-
-      const shortTokenId = getTokenIdFor({
-        tokenType: TokenType.ShortCall,
-        maturity,
-        strike64x64,
-      });
-      const longTokenId = getTokenIdFor({
-        tokenType: TokenType.LongCall,
-        maturity,
-        strike64x64,
-      });
-
-      const tx = await pool.connect(buyer).purchase({
-        maturity,
-        strike64x64,
-        amount: purchaseAmount,
-        maxCost: parseEther('0.2'),
-        isCall: true,
-      });
-
-      expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(
-        purchaseAmount,
-      );
-
-      let i = 0;
-      for (const s of signers) {
-        if (s.address === buyer.address) continue;
-
-        let expectedAmount = 0;
-
-        if (i < purchaseAmountNb) {
-          if (i < purchaseAmountNb - 1) {
-            // For all underwriter before last intervals, we add premium which is automatically reinvested
-            expectedAmount =
-              1 + fixedToNumber(quote.baseCost64x64) / purchaseAmountNb;
-          } else {
-            // For underwriter of the last interval, we subtract baseCost,
-            // as previous intervals were > 1 because of reinvested premium
-            expectedAmount = 1 - fixedToNumber(quote.baseCost64x64);
-          }
-        }
-
-        expect(
-          bnToNumber(await pool.balanceOf(s.address, shortTokenId)),
-        ).to.almost(expectedAmount);
-
-        i++;
-      }
-
-      const r = await tx.wait(1);
-      console.log('GAS', r.gasUsed.toString());
+    describeBehaviorOfPoolProxyPurchase({
+      pool: () => pool,
+      poolUtil: () => poolUtil,
+      owner: () => owner,
+      buyer: () => buyer,
+      lp: () => lp,
+      spotPrice,
+      underlying: () => underlying,
+      base: () => base,
+      isCall: false,
     });
   });
 

@@ -393,7 +393,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     l.depositedAt[msg.sender][isCallPool] = block.timestamp;
-    _pull(isCallPool ? l.underlying : l.base, amount);
+    _pull(_getPoolToken(isCallPool), amount);
 
     emit Deposit(msg.sender, l.base, l.underlying, isCallPool, amount);
 

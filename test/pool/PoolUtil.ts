@@ -63,10 +63,17 @@ export class PoolUtil {
   ) {
     await this.depositLiquidity(lp, amount, isCall);
 
-    await this.underlying.mint(buyer.address, parseEther('100'));
-    await this.underlying
-      .connect(buyer)
-      .approve(this.pool.address, ethers.constants.MaxUint256);
+    if (isCall) {
+      await this.underlying.mint(buyer.address, parseEther('100'));
+      await this.underlying
+        .connect(buyer)
+        .approve(this.pool.address, ethers.constants.MaxUint256);
+    } else {
+      await this.base.mint(buyer.address, parseEther('1000'));
+      await this.base
+        .connect(buyer)
+        .approve(this.pool.address, ethers.constants.MaxUint256);
+    }
 
     await this.pool.connect(buyer).purchase({
       maturity,
