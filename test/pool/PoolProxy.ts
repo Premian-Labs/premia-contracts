@@ -20,7 +20,7 @@ import chai, { expect } from 'chai';
 import { resetHardhat, setTimestamp } from '../evm';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { deployMockContract, MockContract } from 'ethereum-waffle';
-import { parseEther } from 'ethers/lib/utils';
+import { formatEther, parseEther } from 'ethers/lib/utils';
 import { PoolUtil, TokenType } from './PoolUtil';
 import {
   bnToNumber,
@@ -277,7 +277,9 @@ describe('PoolProxy', function () {
           isCall: false,
         });
 
-        expect(fixedToNumber(quote.baseCost64x64)).to.almost(50.29);
+        const baseCost = fixedToNumber(quote.baseCost64x64);
+        // Setting a small range, as baseCost will fluctuate a bit based on current time
+        expect(49 < baseCost && baseCost < 51).to.be.true;
         expect(fixedToNumber(quote.feeCost64x64)).to.eq(0);
         expect(fixedToNumber(quote.cLevel64x64)).to.almost(2.21);
       });
@@ -770,11 +772,13 @@ describe('PoolProxy', function () {
           const maturity = poolUtil.getMaturity(10);
           const strike = getStrike(isCall);
           const strike64x64 = fixedFromFloat(strike);
+          const amountNb = 10;
+          const amount = parseEther(amountNb.toString());
 
           await poolUtil.purchaseOption(
             lp,
             buyer,
-            parseEther('1'),
+            amount,
             maturity,
             strike64x64,
             isCall,
@@ -786,17 +790,31 @@ describe('PoolProxy', function () {
             strike64x64,
           });
 
-          console.log((await underlying.balanceOf(buyer.address)).toString());
+          const price = isCall ? strike * 1.4 : strike * 0.7;
+          await setUnderlyingPrice(parseEther(price.toString()));
 
-          await setUnderlyingPrice(
-            parseEther((isCall ? strike * 1.4 : strike * 0.7).toString()),
-          );
-          await pool
-            .connect(buyer)
-            .exercise({ longTokenId, amount: parseEther('1'), isCall });
+          const underlyingBalance = await underlying.balanceOf(buyer.address);
+          const baseBalance = await base.balanceOf(buyer.address);
 
-          // ToDo : Finish to write test
-          console.log((await underlying.balanceOf(buyer.address)).toString());
+          await pool.connect(buyer).exercise({ longTokenId, amount, isCall });
+
+          if (isCall) {
+            const expectedReturn = ((price - strike) * amountNb) / price;
+            const premium = (await underlying.balanceOf(buyer.address)).sub(
+              underlyingBalance,
+            );
+
+            expect(Number(formatEther(premium))).to.eq(expectedReturn);
+          } else {
+            const expectedReturn = (strike - price) * amountNb;
+            const premium = (await base.balanceOf(buyer.address)).sub(
+              baseBalance,
+            );
+
+            expect(Number(formatEther(premium))).to.eq(expectedReturn);
+          }
+
+          expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
         });
       });
     }
