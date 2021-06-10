@@ -442,21 +442,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     emit UpdateCLevel(l.base, l.underlying, isCallPool, l.getCLevel(isCallPool), oldLiquidity64x64, newLiquidity64x64);
   }
 
-  // To avoid stack too deep error
-  function updateCLevelReassign (PoolStorage.Layout storage l, bool isCall, int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64) internal {
-    int128 totalSupply64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
-    int128 newTotalSupply64x64 = totalSupply64x64.add(baseCost64x64).add(feeCost64x64);
-
-    l.setCLevel(OptionMath.calculateCLevel(
-        cLevel64x64, // C-Level after liquidity is reserved
-        totalSupply64x64,
-        newTotalSupply64x64,
-        OptionMath.ONE_64x64
-      ), isCall);
-
-    emit UpdateCLevel(l.base, l.underlying, isCall, l.getCLevel(isCall), totalSupply64x64, newTotalSupply64x64);
-  }
-
   /**
    * @notice reassign short position to new liquidity provider
    * @param shortTokenId ERC1155 short token id
@@ -501,10 +486,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     baseCost = baseCost64x64.toDecimals(_getTokenDecimals(isCall));
     feeCost = feeCost64x64.toDecimals(_getTokenDecimals(isCall));
     _push(_getPoolToken(isCall), amount - baseCost - feeCost);
-    // TODO: reassignment event
 
     // update C-Level, accounting for slippage and reinvested premia separately
-    updateCLevelReassign(l, isCall, baseCost64x64, feeCost64x64, cLevel64x64);
+    _updateCLevelReassign(l, isCall, baseCost64x64, feeCost64x64, cLevel64x64);
 
     // mint free liquidity tokens for treasury
     _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost, '');
@@ -522,6 +506,28 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    */
   function update () public {
     _update(PoolStorage.layout());
+  }
+
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+
+  //////////////
+  // Internal //
+  //////////////
+
+  function _updateCLevelReassign (PoolStorage.Layout storage l, bool isCall, int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64) internal {
+    int128 totalSupply64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
+    int128 newTotalSupply64x64 = totalSupply64x64.add(baseCost64x64).add(feeCost64x64);
+
+    l.setCLevel(OptionMath.calculateCLevel(
+        cLevel64x64, // C-Level after liquidity is reserved
+        totalSupply64x64,
+        newTotalSupply64x64,
+        OptionMath.ONE_64x64
+      ), isCall);
+
+    emit UpdateCLevel(l.base, l.underlying, isCall, l.getCLevel(isCall), totalSupply64x64, newTotalSupply64x64);
   }
 
   function _writeLoop (
