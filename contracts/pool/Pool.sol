@@ -283,18 +283,17 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     require(args.maturity % (1 days) == 0, 'Pool: maturity not end UTC day');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
-    _update(l, l.fetchPriceUpdate());
+    int128 newPrice64x64 = l.fetchPriceUpdate();
+    _update(l, newPrice64x64);
 
-    int128 spot64x64 = l.getPriceUpdate(block.timestamp);
-
-    require(args.strike64x64 <= spot64x64 << 1, 'Pool: strike > 2x spot');
-    require(args.strike64x64 >= spot64x64 >> 1, 'Pool: strike < 0.5x spot');
+    require(args.strike64x64 <= newPrice64x64 << 1, 'Pool: strike > 2x spot');
+    require(args.strike64x64 >= newPrice64x64 >> 1, 'Pool: strike < 0.5x spot');
 
     (int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64, int128 slippageCoefficient64x64) = quote(
       PoolStorage.QuoteArgs(
       args.maturity,
       args.strike64x64,
-      spot64x64,
+      newPrice64x64,
       args.amount,
       args.isCall
     ));
@@ -350,14 +349,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
 
     PoolStorage.Layout storage l = PoolStorage.layout();
-    _update(l, l.fetchPriceUpdate());
-
-    int128 spot64x64;
+    int128 spot64x64 = l.fetchPriceUpdate();
+    _update(l, spot64x64);
 
     if (maturity < block.timestamp) {
       spot64x64 = l.getPriceUpdateAfter(maturity);
-    } else {
-      spot64x64 = l.getPriceUpdate(block.timestamp);
     }
 
     // burn long option tokens from sender
@@ -473,26 +469,30 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     // TODO: allow exit of expired position
 
     PoolStorage.Layout storage l = PoolStorage.layout();
-    _update(l, l.fetchPriceUpdate());
+    int128 newPrice64x64 = l.fetchPriceUpdate();
+    _update(l, newPrice64x64);
 
-    int128 baseCost64x64;
-    int128 feeCost64x64;
     int128 cLevel64x64;
 
-    (baseCost64x64, feeCost64x64, cLevel64x64, strike64x64) = quote(
-      PoolStorage.QuoteArgs(maturity,
-      strike64x64,
-      l.getPriceUpdate(block.timestamp),
-      amount,
-      isCall
-    ));
+    { // To avoid stack too deep
+      int128 baseCost64x64;
+      int128 feeCost64x64;
 
-    baseCost = baseCost64x64.toDecimals(_getTokenDecimals(isCall));
-    feeCost = feeCost64x64.toDecimals(_getTokenDecimals(isCall));
-    _push(_getPoolToken(isCall), amount - baseCost - feeCost);
+      (baseCost64x64, feeCost64x64, cLevel64x64, strike64x64) = quote(
+        PoolStorage.QuoteArgs(maturity,
+        strike64x64,
+        newPrice64x64,
+        amount,
+        isCall
+      ));
 
-    // update C-Level, accounting for slippage and reinvested premia separately
-    _updateCLevelReassign(l, isCall, baseCost64x64, feeCost64x64, cLevel64x64);
+      baseCost = baseCost64x64.toDecimals(_getTokenDecimals(isCall));
+      feeCost = feeCost64x64.toDecimals(_getTokenDecimals(isCall));
+      _push(_getPoolToken(isCall), amount - baseCost - feeCost);
+
+      // update C-Level, accounting for slippage and reinvested premia separately
+      _updateCLevelReassign(l, isCall, baseCost64x64, feeCost64x64, cLevel64x64);
+    }
 
     // mint free liquidity tokens for treasury
     _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost, '');
@@ -502,7 +502,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     _writeLoop(l, amount, baseCost, shortTokenId, isCall);
 
-    emit Reassign(msg.sender, l.base, l.underlying, isCall, shortTokenId, amount, baseCost, feeCost, cLevel64x64, l.getPriceUpdate(block.timestamp));
+    emit Reassign(msg.sender, l.base, l.underlying, isCall, shortTokenId, amount, baseCost, feeCost, cLevel64x64, newPrice64x64);
   }
 
   /**
