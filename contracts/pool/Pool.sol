@@ -39,10 +39,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     bool isCall,
     int128 strike64x64,
     uint64 maturity,
-    int128 cLevel64x64,
     uint256 amount,
     uint256 baseCost,
-    uint256 feeCost
+    uint256 feeCost,
+    int128 slippageCoefficient64x64
   );
 
   event Exercise (
@@ -211,7 +211,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    */
   function quote (
     PoolStorage.QuoteArgs memory args
-  ) public view returns (int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64) {
+  ) public view returns (int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64, int128 slippageCoefficient64x64) {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     int128 amount64x64 = ABDKMath64x64Token.fromDecimals(args.amount, l.underlyingDecimals);
@@ -231,7 +231,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     // Keep as is, to avoid stack too deep error
     if (args.isCall) {
-      (price64x64, cLevel64x64) = OptionMath.quotePrice(
+      (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath.quotePrice(
         l.emaVarianceAnnualized64x64,
         args.strike64x64,
         args.spot64x64,
@@ -243,7 +243,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         true
       );
     } else {
-      (price64x64, cLevel64x64) = OptionMath.quotePrice(
+      (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath.quotePrice(
         l.emaVarianceAnnualized64x64,
         args.strike64x64,
         args.spot64x64,
@@ -255,7 +255,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         false
       );
     }
-
 
     baseCost64x64 = price64x64.mul(amount64x64);
 
@@ -291,7 +290,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     require(args.strike64x64 <= spot64x64 << 1, 'Pool: strike > 2x spot');
     require(args.strike64x64 >= spot64x64 >> 1, 'Pool: strike < 0.5x spot');
 
-    (int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64) = quote(
+    (int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64, int128 slippageCoefficient64x64) = quote(
       PoolStorage.QuoteArgs(
       args.maturity,
       args.strike64x64,
@@ -305,7 +304,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     require(baseCost + feeCost <= args.maxCost, 'Pool: excessive slippage');
     _pull(_getPoolToken(args.isCall), baseCost + feeCost);
-    emit Purchase(msg.sender, l.base, l.underlying, args.isCall, args.strike64x64, args.maturity, cLevel64x64, args.amount, baseCost, feeCost);
+
+    emit Purchase(msg.sender, l.base, l.underlying, args.isCall, args.strike64x64, args.maturity, args.amount, baseCost, feeCost, slippageCoefficient64x64);
 
     // mint free liquidity tokens for treasury
     _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(args.isCall), feeCost, '');
@@ -471,7 +471,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     PoolStorage.Layout storage l = PoolStorage.layout();
     _update(l);
 
-    (int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64) = quote(
+    int128 baseCost64x64;
+    int128 feeCost64x64;
+    int128 cLevel64x64;
+
+    (baseCost64x64, feeCost64x64, cLevel64x64, strike64x64) = quote(
       PoolStorage.QuoteArgs(maturity,
       strike64x64,
       l.getPriceUpdate(block.timestamp),
@@ -482,23 +486,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     baseCost = baseCost64x64.toDecimals(_getTokenDecimals(isCall));
     feeCost = feeCost64x64.toDecimals(_getTokenDecimals(isCall));
     _push(_getPoolToken(isCall), amount - baseCost - feeCost);
-    // TODO: reassignment event
 
     // update C-Level, accounting for slippage and reinvested premia separately
-
-    { // To avoid stack too deep error
-      int128 totalSupply64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
-      int128 newTotalSupply64x64 = totalSupply64x64.add(baseCost64x64).add(feeCost64x64);
-
-      l.setCLevel(OptionMath.calculateCLevel(
-          cLevel64x64, // C-Level after liquidity is reserved
-          totalSupply64x64,
-          newTotalSupply64x64,
-          OptionMath.ONE_64x64
-        ), isCall);
-
-      emit UpdateCLevel(l.base, l.underlying, isCall, l.getCLevel(isCall), totalSupply64x64, newTotalSupply64x64);
-    }
+    _updateCLevelReassign(l, isCall, baseCost64x64, feeCost64x64, cLevel64x64);
 
     // mint free liquidity tokens for treasury
     _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost, '');
@@ -516,6 +506,28 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    */
   function update () public {
     _update(PoolStorage.layout());
+  }
+
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+
+  //////////////
+  // Internal //
+  //////////////
+
+  function _updateCLevelReassign (PoolStorage.Layout storage l, bool isCall, int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64) internal {
+    int128 totalSupply64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
+    int128 newTotalSupply64x64 = totalSupply64x64.add(baseCost64x64).add(feeCost64x64);
+
+    l.setCLevel(OptionMath.calculateCLevel(
+        cLevel64x64, // C-Level after liquidity is reserved
+        totalSupply64x64,
+        newTotalSupply64x64,
+        OptionMath.ONE_64x64
+      ), isCall);
+
+    emit UpdateCLevel(l.base, l.underlying, isCall, l.getCLevel(isCall), totalSupply64x64, newTotalSupply64x64);
   }
 
   function _writeLoop (

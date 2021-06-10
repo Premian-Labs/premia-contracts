@@ -65,16 +65,6 @@ task('deploy').setAction(async function (args, hre) {
       fixedFromFloat(0.1),
       fixedFromFloat(0.2),
     );
-
-    await ProxyManager__factory.connect(instance.address, deployer).deployPool(
-      RINKEBY_WETH,
-      RINKEBY_DAI,
-      RINKEBY_ETH_PRICE_ORACLE,
-      RINKEBY_DAI_PRICE_ORACLE,
-      fixedFromFloat(2800),
-      fixedFromFloat(0.1),
-      fixedFromFloat(0.2),
-    );
   }
 
   console.log('Deployer: ', deployer.address);
