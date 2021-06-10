@@ -768,8 +768,8 @@ describe('PoolProxy', function () {
 
         it('should successfully exercise', async () => {
           const maturity = poolUtil.getMaturity(10);
-          // const strike64x64 = fixedFromFloat(getStrike(isCall));
-          const strike64x64 = fixedFromFloat(4000);
+          const strike = getStrike(isCall);
+          const strike64x64 = fixedFromFloat(strike);
 
           await poolUtil.purchaseOption(
             lp,
@@ -788,7 +788,6 @@ describe('PoolProxy', function () {
 
           console.log((await underlying.balanceOf(buyer.address)).toString());
 
-          const strike = getStrike(isCall);
           await setUnderlyingPrice(
             parseEther((isCall ? strike * 1.4 : strike * 0.7).toString()),
           );
