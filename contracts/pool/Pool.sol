@@ -230,7 +230,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     require(maturity % (1 days) == 0, 'Pool: maturity not end UTC day');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
-    _update(l);
+    _update(l, l.fetchPriceUpdate());
 
     int128 spot64x64 = l.getPriceUpdate(block.timestamp);
 
@@ -295,14 +295,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
 
     PoolStorage.Layout storage l = PoolStorage.layout();
-    _update(l);
+    _update(l, l.fetchPriceUpdate());
 
     int128 spot64x64;
 
     if (maturity < block.timestamp) {
       spot64x64 = l.getPriceUpdateAfter(maturity);
     } else {
-      spot64x64 = l.fetchPriceUpdate();
+      spot64x64 = l.getPriceUpdate(block.timestamp);
     }
 
     // burn long option tokens from sender
@@ -402,7 +402,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     // TODO: allow exit of expired position
 
     PoolStorage.Layout storage l = PoolStorage.layout();
-    _update(l);
+    _update(l, l.fetchPriceUpdate());
 
     int128 spot64x64 = l.getPriceUpdate(block.timestamp);
 
@@ -449,7 +449,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    * @notice Update pool data
    */
   function update () public {
-    _update(PoolStorage.layout());
+    PoolStorage.Layout storage l = PoolStorage.layout();
+    _update(l, l.fetchPriceUpdate());
   }
 
   function _writeLoop (
@@ -514,12 +515,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    * @notice TODO
    */
   function _update (
-    PoolStorage.Layout storage l
+    PoolStorage.Layout storage l,
+    int128 newPrice64x64
   ) internal {
     uint256 updatedAt = l.updatedAt;
 
     int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
-    int128 newPrice64x64 = l.fetchPriceUpdate();
 
     if (l.getPriceUpdate(block.timestamp) == 0) {
       l.setPriceUpdate(newPrice64x64);
