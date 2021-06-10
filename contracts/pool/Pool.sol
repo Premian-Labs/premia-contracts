@@ -571,11 +571,13 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       }
 
       // mint short option tokens for underwriter
+      // toPay == 0 ? amount : intervalAmount : To prevent minting less than amount,
+      // because of rounding (Can happen for put, because of fixed point precision)
       _mint(underwriter, shortTokenId, toPay == 0 ? amount : intervalAmount, '');
-      // To prevent minting less than amount, because of rounding (Can happen for put, because of fixed point precision)
-      amount -= intervalAmount;
 
       emit Underwrite(underwriter, l.base, l.underlying, isCall, shortTokenId, toPay == 0 ? amount : intervalAmount, intervalPremium);
+
+      amount -= intervalAmount;
     }
   }
 

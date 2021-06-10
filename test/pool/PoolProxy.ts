@@ -22,13 +22,7 @@ import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/u
 import { deployMockContract, MockContract } from 'ethereum-waffle';
 import { parseEther } from 'ethers/lib/utils';
 import { PoolUtil, TokenType } from './PoolUtil';
-import {
-  bnToNumber,
-  fixedFromFloat,
-  fixedToNumber,
-  getParametersFor,
-  getTokenIdFor,
-} from '../utils/math';
+import { fixedFromFloat, fixedToNumber, getTokenIdFor } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
 import { describeBehaviorOfPoolProxyPurchase } from './PoolProxy.behavior';
