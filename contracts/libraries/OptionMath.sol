@@ -175,16 +175,13 @@ library OptionMath {
     int128 newPoolState,
     int128 steepness64x64,
     bool isCall
-  ) internal pure returns (int128 premiaPrice64x64, int128 cLevel64x64) {
+  ) internal pure returns (int128 premiaPrice64x64, int128 cLevel64x64, int128 slippageCoefficient64x64) {
     int128 deltaPoolState64x64 = newPoolState.sub(oldPoolState).div(oldPoolState).mul(steepness64x64);
     int128 tradingDelta64x64 = deltaPoolState64x64.neg().exp();
 
     int128 bsPrice64x64 = bsPrice(emaVarianceAnnualized64x64, strike64x64, spot64x64, timeToMaturity64x64, isCall);
     cLevel64x64 = tradingDelta64x64.mul(oldCLevel64x64);
-
-    premiaPrice64x64 = bsPrice64x64.mul(cLevel64x64).mul(
-      // slippage coefficient
-      ONE_64x64.sub(tradingDelta64x64).div(deltaPoolState64x64)
-    );
+    slippageCoefficient64x64 = ONE_64x64.sub(tradingDelta64x64).div(deltaPoolState64x64);
+    premiaPrice64x64 = bsPrice64x64.mul(cLevel64x64).mul(slippageCoefficient64x64);
   }
 }

@@ -77,7 +77,7 @@ contract OptionMathMock {
     int128 newPoolState,
     int128 steepness,
     bool isCall
-  ) external pure returns (int128, int128) {
+  ) external pure returns (int128, int128, int128) {
     return OptionMath.quotePrice(
       variance,
       strike,
