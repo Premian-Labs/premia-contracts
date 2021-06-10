@@ -4,6 +4,7 @@ import { BigNumber, BigNumberish } from 'ethers';
 import { ethers } from 'hardhat';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { parseEther } from 'ethers/lib/utils';
+import { fixedToNumber } from '../utils/math';
 
 interface PoolUtilArgs {
   pool: Pool;
@@ -61,7 +62,11 @@ export class PoolUtil {
     strike64x64: BigNumber,
     isCall: boolean,
   ) {
-    await this.depositLiquidity(lp, amount, isCall);
+    await this.depositLiquidity(
+      lp,
+      amount.mul(fixedToNumber(strike64x64)),
+      isCall,
+    );
 
     if (isCall) {
       await this.underlying.mint(buyer.address, parseEther('100'));
@@ -69,7 +74,7 @@ export class PoolUtil {
         .connect(buyer)
         .approve(this.pool.address, ethers.constants.MaxUint256);
     } else {
-      await this.base.mint(buyer.address, parseEther('1000'));
+      await this.base.mint(buyer.address, parseEther('10000'));
       await this.base
         .connect(buyer)
         .approve(this.pool.address, ethers.constants.MaxUint256);

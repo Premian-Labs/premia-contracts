@@ -361,10 +361,15 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     uint256 exerciseValue;
 
-    require(spot64x64 > strike64x64, 'Pool: not ITM');
+    require((args.isCall && spot64x64 > strike64x64) || (!args.isCall && spot64x64 < strike64x64), 'Pool: not ITM');
 
     // option has a non-zero exercise value
-    exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(args.amount);
+    if (args.isCall) {
+      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(args.amount);
+    } else {
+      exerciseValue = strike64x64.sub(spot64x64).mulu(args.amount);
+    }
+
     _push(_getPoolToken(args.isCall), exerciseValue);
 
     int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(args.isCall));
@@ -372,7 +377,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _exerciseLoop(
       l,
       args.amount,
-      exerciseValue,
+      args.isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
       PoolStorage.formatTokenId(_getTokenType(args.isCall, false), maturity, strike64x64),
       args.isCall
     );
@@ -619,6 +624,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     bool isCall
   ) private {
     EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
+    (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
     while (amount > 0) {
       address underwriter = underwriters.at(underwriters.length() - 1);
@@ -632,12 +638,17 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       exerciseValue -= intervalExerciseValue;
       amount -= intervalAmount;
 
+      uint256 freeLiq = intervalAmount - intervalExerciseValue;
+      if (!isCall) {
+        freeLiq = strike64x64.mulu(freeLiq);
+      }
+
       // mint free liquidity tokens for underwriter
-      _mint(underwriter, _getFreeLiquidityTokenId(isCall), intervalAmount - intervalExerciseValue, '');
+      _mint(underwriter, _getFreeLiquidityTokenId(isCall), freeLiq, '');
       // burn short option tokens from underwriter
       _burn(underwriter, shortTokenId, intervalAmount);
 
-      emit AssignExercise(underwriter, l.base, l.underlying, isCall, shortTokenId, intervalAmount - intervalExerciseValue, intervalAmount);
+      emit AssignExercise(underwriter, l.base, l.underlying, isCall, shortTokenId, freeLiq, intervalAmount);
     }
   }
 
