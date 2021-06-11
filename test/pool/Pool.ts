@@ -51,14 +51,14 @@ describe('Pool', function () {
         const maturity = ethers.BigNumber.from(
           Math.floor(new Date().getTime() / 1000),
         );
-        const strikePrice = fixedFromFloat(Math.random() * 1000);
-        const tokenId = getTokenIdFor({ tokenType, maturity, strikePrice });
+        const strike64x64 = fixedFromFloat(Math.random() * 1000);
+        const tokenId = getTokenIdFor({ tokenType, maturity, strike64x64 });
 
         expect(
           await instance.callStatic['tokenIdFor(uint8,uint64,int128)'](
             tokenType,
             maturity,
-            strikePrice,
+            strike64x64,
           ),
         ).to.equal(tokenId);
       });
@@ -70,12 +70,12 @@ describe('Pool', function () {
         const maturity = ethers.BigNumber.from(
           Math.floor(new Date().getTime() / 1000),
         );
-        const strikePrice = fixedFromFloat(Math.random() * 1000);
-        const tokenId = getTokenIdFor({ tokenType, maturity, strikePrice });
+        const strike64x64 = fixedFromFloat(Math.random() * 1000);
+        const tokenId = getTokenIdFor({ tokenType, maturity, strike64x64 });
 
         expect(
           await instance.callStatic['parametersFor(uint256)'](tokenId),
-        ).to.deep.equal([tokenType, maturity, strikePrice]);
+        ).to.deep.equal([tokenType, maturity, strike64x64]);
       });
     });
   });
