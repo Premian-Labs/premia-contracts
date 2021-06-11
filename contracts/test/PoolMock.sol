@@ -13,7 +13,7 @@ import {PoolStorage} from '../pool/PoolStorage.sol';
 contract PoolMock is Pool {
   using ERC165Storage for ERC165Storage.Layout;
 
-  constructor (address weth) Pool(address(weth), address(1)) {}
+  constructor (address weth) Pool(address(weth), address(1), 0) {}
 
   function tokenIdFor (
     PoolStorage.TokenType tokenType,

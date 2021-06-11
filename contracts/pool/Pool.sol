@@ -28,6 +28,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   address private immutable WETH_ADDRESS;
   address private immutable FEE_RECEIVER_ADDRESS;
 
+  int128 private immutable FEE_64x64;
+
   // TODO: make private
   uint internal immutable FREE_LIQUIDITY_TOKEN_ID;
 
@@ -76,10 +78,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   constructor (
     address weth,
-    address feeReceiver
+    address feeReceiver,
+    int128 fee64x64
   ) {
     WETH_ADDRESS = weth;
     FEE_RECEIVER_ADDRESS = feeReceiver;
+    FEE_64x64 = fee64x64;
     FREE_LIQUIDITY_TOKEN_ID = PoolStorage.formatTokenId(PoolStorage.TokenType.FREE_LIQUIDITY, 0, 0);
   }
 
@@ -121,14 +125,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    */
   function getCLevel64x64 () external view returns (int128) {
     return PoolStorage.layout().cLevel64x64;
-  }
-
-  /**
-   * @notice get fees
-   * @return 64x64 fixed point representation of fees
-   */
-  function getFee64x64 () external view returns (int128) {
-    return PoolStorage.layout().fee64x64;
   }
 
   /**
@@ -203,7 +199,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     );
 
     baseCost64x64 = price64x64.mul(amount64x64).div(spot64x64);
-    feeCost64x64 = baseCost64x64.mul(l.fee64x64);
+    feeCost64x64 = baseCost64x64.mul(FEE_64x64);
   }
 
   /**
