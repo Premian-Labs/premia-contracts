@@ -79,8 +79,13 @@ describe('PoolProxy', function () {
     return isCall ? spotPrice * 1.25 : spotPrice * 0.75;
   };
 
-  const getMaxCost = (isCall: boolean) => {
-    return isCall ? parseEther('0.21') : parseEther('147');
+  const getMaxCost = (baseCost64x64: BigNumber, feeCost64x64: BigNumber) => {
+    return parseEther(
+      (
+        (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
+        1.02
+      ).toString(),
+    );
   };
 
   const getFreeLiqTokenId = (isCall: boolean) => {
@@ -279,7 +284,7 @@ describe('PoolProxy', function () {
 
         const baseCost = fixedToNumber(quote.baseCost64x64);
         // Setting a small range, as baseCost will fluctuate a bit based on current time
-        expect(49 < baseCost && baseCost < 51).to.be.true;
+        expect(49 < baseCost && baseCost < 55).to.be.true;
         expect(fixedToNumber(quote.feeCost64x64)).to.eq(0);
         expect(fixedToNumber(quote.cLevel64x64)).to.almost(2.21);
       });
@@ -552,7 +557,7 @@ describe('PoolProxy', function () {
             maturity,
             strike64x64,
             amount: purchaseAmount,
-            maxCost: getMaxCost(isCall),
+            maxCost: getMaxCost(quote.baseCost64x64, quote.feeCost64x64),
             isCall,
           });
 
@@ -652,7 +657,7 @@ describe('PoolProxy', function () {
             maturity,
             strike64x64,
             amount: purchaseAmount,
-            maxCost: getMaxCost(isCall),
+            maxCost: getMaxCost(quote.baseCost64x64, quote.feeCost64x64),
             isCall,
           });
 
