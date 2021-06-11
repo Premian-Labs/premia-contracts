@@ -38,7 +38,8 @@ const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 
 describe('PoolProxy', function () {
   let owner: SignerWithAddress;
-  let lp: SignerWithAddress;
+  let lp1: SignerWithAddress;
+  let lp2: SignerWithAddress;
   let buyer: SignerWithAddress;
 
   let premia: Premia;
@@ -112,7 +113,7 @@ describe('PoolProxy', function () {
 
   beforeEach(async function () {
     await resetHardhat();
-    [owner, lp, buyer] = await ethers.getSigners();
+    [owner, lp1, lp2, buyer] = await ethers.getSigners();
 
     //
 
@@ -528,7 +529,7 @@ describe('PoolProxy', function () {
 
         it('should successfully purchase an option', async () => {
           await poolUtil.depositLiquidity(
-            lp,
+            lp1,
             isCall ? parseEther('100') : parseEther('100000'),
             isCall,
           );
@@ -581,7 +582,7 @@ describe('PoolProxy', function () {
           if (isCall) {
             expect(
               bnToNumber(
-                await pool.balanceOf(lp.address, getFreeLiqTokenId(isCall)),
+                await pool.balanceOf(lp1.address, getFreeLiqTokenId(isCall)),
               ),
             ).to.almost(
               100 - purchaseAmountNb + fixedToNumber(quote.baseCost64x64),
@@ -589,7 +590,7 @@ describe('PoolProxy', function () {
           } else {
             expect(
               bnToNumber(
-                await pool.balanceOf(lp.address, getFreeLiqTokenId(isCall)),
+                await pool.balanceOf(lp1.address, getFreeLiqTokenId(isCall)),
               ),
             ).to.almost(
               100000 -
@@ -598,8 +599,8 @@ describe('PoolProxy', function () {
             );
           }
 
-          expect(await pool.balanceOf(lp.address, longTokenId)).to.eq(0);
-          expect(await pool.balanceOf(lp.address, shortTokenId)).to.eq(
+          expect(await pool.balanceOf(lp1.address, longTokenId)).to.eq(0);
+          expect(await pool.balanceOf(lp1.address, shortTokenId)).to.eq(
             purchaseAmount,
           );
 
@@ -724,7 +725,7 @@ describe('PoolProxy', function () {
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           await poolUtil.purchaseOption(
-            lp,
+            lp1,
             buyer,
             parseEther('1'),
             maturity,
@@ -739,7 +740,7 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            pool.connect(lp).exercise({
+            pool.connect(buyer).exercise({
               longTokenId: shortTokenId,
               amount: parseEther('1'),
               isCall,
@@ -752,7 +753,7 @@ describe('PoolProxy', function () {
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           await poolUtil.purchaseOption(
-            lp,
+            lp1,
             buyer,
             parseEther('1'),
             maturity,
@@ -781,7 +782,7 @@ describe('PoolProxy', function () {
           const amount = parseEther(amountNb.toString());
 
           await poolUtil.purchaseOption(
-            lp,
+            lp1,
             buyer,
             amount,
             maturity,
@@ -820,6 +821,114 @@ describe('PoolProxy', function () {
           }
 
           expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
+        });
+      });
+    }
+  });
+
+  describe('#reassign', function () {
+    for (const isCall of [true, false]) {
+      describe(isCall ? 'call' : 'put', () => {
+        it('should revert if token is a LONG token', async () => {
+          const maturity = poolUtil.getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(isCall));
+
+          await poolUtil.purchaseOption(
+            lp1,
+            buyer,
+            parseEther('1'),
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          await poolUtil.depositLiquidity(lp2, parseEther('2'), isCall);
+
+          const longTokenId = getTokenIdFor({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await expect(
+            pool.connect(lp1).reassign(longTokenId, parseEther('1'), isCall),
+          ).to.be.revertedWith('Pool: invalid token type');
+        });
+
+        it('should revert if option is expired', async () => {
+          const maturity = poolUtil.getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(isCall));
+
+          await poolUtil.purchaseOption(
+            lp1,
+            buyer,
+            parseEther('1'),
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          const shortTokenId = getTokenIdFor({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenBalance = await pool.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+
+          console.log(shortTokenBalance.toString());
+
+          await setTimestamp(getCurrentTimestamp() + 11 * 24 * 3600);
+
+          await expect(
+            pool.connect(lp1).reassign(shortTokenId, shortTokenBalance, isCall),
+          ).to.be.revertedWith('Pool: option expired');
+        });
+
+        it('should successfully reassign option to another LP', async () => {
+          const maturity = poolUtil.getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(isCall));
+          const amount = parseEther('1');
+
+          await poolUtil.purchaseOption(
+            lp1,
+            buyer,
+            amount,
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          await poolUtil.depositLiquidity(
+            lp2,
+            isCall
+              ? amount.mul(2)
+              : amount.mul(fixedToNumber(strike64x64)).mul(2),
+            isCall,
+          );
+
+          const shortTokenId = getTokenIdFor({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenBalance = await pool.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+
+          await pool
+            .connect(lp1)
+            .reassign(shortTokenId, shortTokenBalance, isCall);
+
+          expect(await pool.balanceOf(lp1.address, shortTokenId)).to.eq(0);
+          expect(await pool.balanceOf(lp2.address, shortTokenId)).to.eq(
+            shortTokenBalance,
+          );
         });
       });
     }

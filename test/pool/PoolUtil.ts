@@ -64,7 +64,7 @@ export class PoolUtil {
   ) {
     await this.depositLiquidity(
       lp,
-      amount.mul(fixedToNumber(strike64x64)),
+      isCall ? amount : amount.mul(fixedToNumber(strike64x64)),
       isCall,
     );
 
