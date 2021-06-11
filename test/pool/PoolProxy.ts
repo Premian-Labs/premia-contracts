@@ -197,7 +197,10 @@ describe('PoolProxy', function () {
 
     //
 
-    underlying = ERC20Mock__factory.connect(await pool.getUnderlying(), owner);
+    underlying = ERC20Mock__factory.connect(
+      (await pool.getPoolSettings()).underlying,
+      owner,
+    );
     poolUtil = new PoolUtil({ pool, underlying, base });
   });
 
@@ -218,13 +221,15 @@ describe('PoolProxy', function () {
 
   describe('#getUnderlying', function () {
     it('returns underlying address', async () => {
-      expect(await pool.getUnderlying()).to.eq(underlying.address);
+      expect((await pool.getPoolSettings()).underlying).to.eq(
+        underlying.address,
+      );
     });
   });
 
   describe('#getBase', function () {
     it('returns base address', async () => {
-      expect(await pool.getBase()).to.eq(base.address);
+      expect((await pool.getPoolSettings()).base).to.eq(base.address);
     });
   });
 
