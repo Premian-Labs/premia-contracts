@@ -218,7 +218,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(args.isCall));
 
-    require(oldLiquidity64x64 > 0, "Pool: No liq");
+    require(oldLiquidity64x64 > 0, "no liq");
 
     // TODO: validate values without spending gas
     // assert(oldLiquidity64x64 >= newLiquidity64x64);
@@ -276,18 +276,18 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) external payable returns (uint256 baseCost, uint256 feeCost) {
     // TODO: specify payment currency
 
-    require(args.amount <= totalSupply(_getFreeLiquidityTokenId(args.isCall)), 'Pool: insufficient liq');
+    require(args.amount <= totalSupply(_getFreeLiquidityTokenId(args.isCall)), 'insuf liq');
 
-    require(args.maturity >= block.timestamp + (1 days), 'Pool: maturity < 1 day');
-    require(args.maturity < block.timestamp + (29 days), 'Pool: maturity > 28 days');
-    require(args.maturity % (1 days) == 0, 'Pool: maturity not end UTC day');
+    require(args.maturity >= block.timestamp + (1 days), 'exp < 1 day');
+    require(args.maturity < block.timestamp + (29 days), 'exp > 28 days');
+    require(args.maturity % (1 days) == 0, 'exp not end UTC day');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
     int128 newPrice64x64 = l.fetchPriceUpdate();
     _update(l, newPrice64x64);
 
-    require(args.strike64x64 <= newPrice64x64 << 1, 'Pool: strike > 2x spot');
-    require(args.strike64x64 >= newPrice64x64 >> 1, 'Pool: strike < 0.5x spot');
+    require(args.strike64x64 <= newPrice64x64 << 1, 'strike > 2x spot');
+    require(args.strike64x64 >= newPrice64x64 >> 1, 'strike < 0.5x spot');
 
     (int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64, int128 slippageCoefficient64x64) = quote(
       PoolStorage.QuoteArgs(
@@ -301,7 +301,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     baseCost = baseCost64x64.toDecimals(_getTokenDecimals(args.isCall));
     feeCost = feeCost64x64.toDecimals(_getTokenDecimals(args.isCall));
 
-    require(baseCost + feeCost <= args.maxCost, 'Pool: excessive slippage');
+    require(baseCost + feeCost <= args.maxCost, 'excess slipp');
     _pull(_getPoolToken(args.isCall), baseCost + feeCost);
 
     emit Purchase(msg.sender, l.base, l.underlying, args.isCall, args.strike64x64, args.maturity, args.amount, baseCost, feeCost, slippageCoefficient64x64);
@@ -345,7 +345,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     {
       PoolStorage.TokenType tokenType;
       (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(args.longTokenId);
-      require(tokenType == PoolStorage.TokenType.LONG_CALL || tokenType == PoolStorage.TokenType.LONG_PUT, 'Pool: invalid token type');
+      require(tokenType == PoolStorage.TokenType.LONG_CALL || tokenType == PoolStorage.TokenType.LONG_PUT, 'invalid type');
     }
 
     PoolStorage.Layout storage l = PoolStorage.layout();
@@ -361,7 +361,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     uint256 exerciseValue;
 
-    require((args.isCall && spot64x64 > strike64x64) || (!args.isCall && spot64x64 < strike64x64), 'Pool: not ITM');
+    require((args.isCall && spot64x64 > strike64x64) || (!args.isCall && spot64x64 < strike64x64), 'not ITM');
 
     // option has a non-zero exercise value
     if (args.isCall) {
@@ -432,7 +432,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     uint256 depositedAt = l.depositedAt[msg.sender][isCallPool];
 
-    require(depositedAt + (1 days) < block.timestamp, 'Pool: liq must be locked 1 day');
+    require(depositedAt + (1 days) < block.timestamp, 'liq lock 1d');
 
     int128 oldLiquidity64x64 = l.totalSupply64x64(freeLiqTokenId);
     // burn free liquidity tokens from sender
@@ -467,8 +467,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     {
       PoolStorage.TokenType tokenType;
       (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(shortTokenId);
-      require(tokenType == PoolStorage.TokenType.SHORT_CALL || tokenType == PoolStorage.TokenType.SHORT_PUT, 'Pool: invalid token type');
-      require(maturity > block.timestamp, 'Pool: option expired');
+      require(tokenType == PoolStorage.TokenType.SHORT_CALL || tokenType == PoolStorage.TokenType.SHORT_PUT, 'invalid type');
+      require(maturity > block.timestamp, 'expired');
     }
 
     // TODO: allow exit of expired position
@@ -708,7 +708,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) internal {
     require(
       IERC20(token).transfer(msg.sender, amount),
-      'Pool: ERC20 transfer failed'
+      'ERC20 transfer failed'
     );
   }
 
@@ -723,7 +723,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) internal {
     if (token == WETH_ADDRESS) {
       if (msg.value > 0) {
-        require(msg.value <= amount, "Pool: too much ETH sent");
+        require(msg.value <= amount, "too much ETH sent");
 
         unchecked {
           amount -= msg.value;
@@ -734,14 +734,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     } else {
       require(
         msg.value == 0,
-        'Pool: not WETH deposit'
+        'not WETH deposit'
       );
     }
 
     if (amount > 0) {
       require(
         IERC20(token).transferFrom(msg.sender, address(this), amount),
-        'Pool: ERC20 transfer failed'
+        'ERC20 transfer failed'
       );
     }
   }

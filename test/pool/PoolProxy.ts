@@ -242,7 +242,7 @@ describe('PoolProxy', function () {
           amount: parseEther('1'),
           isCall: true,
         }),
-      ).to.be.revertedWith('Pool: No liq');
+      ).to.be.revertedWith('no liq');
     });
 
     describe('call', () => {
@@ -341,13 +341,13 @@ describe('PoolProxy', function () {
         await underlying.approve(pool.address, ethers.constants.MaxUint256);
         await expect(
           pool.deposit('100', true, { value: 1 }),
-        ).to.be.revertedWith('Pool: not WETH deposit');
+        ).to.be.revertedWith('not WETH deposit');
       });
 
       it('should revert if user send too much ETH with a WETH deposit', async () => {
         await expect(
           poolWeth.deposit('200', true, { value: 201 }),
-        ).to.be.revertedWith('Pool: too much ETH sent');
+        ).to.be.revertedWith('too much ETH sent');
       });
     });
 
@@ -373,12 +373,12 @@ describe('PoolProxy', function () {
         await poolUtil.depositLiquidity(owner, 100, true);
 
         await expect(pool.withdraw('100', true)).to.be.revertedWith(
-          'Pool: liq must be locked 1 day',
+          'liq lock 1d',
         );
 
         await setTimestamp(getCurrentTimestamp() + 23 * 3600);
         await expect(pool.withdraw('100', true)).to.be.revertedWith(
-          'Pool: liq must be locked 1 day',
+          'liq lock 1d',
         );
       });
 
@@ -400,12 +400,12 @@ describe('PoolProxy', function () {
         await poolUtil.depositLiquidity(owner, 100, false);
 
         await expect(pool.withdraw('100', false)).to.be.revertedWith(
-          'Pool: liq must be locked 1 day',
+          'liq lock 1d',
         );
 
         await setTimestamp(getCurrentTimestamp() + 23 * 3600);
         await expect(pool.withdraw('100', false)).to.be.revertedWith(
-          'Pool: liq must be locked 1 day',
+          'liq lock 1d',
         );
       });
 
@@ -439,7 +439,7 @@ describe('PoolProxy', function () {
               maxCost: parseEther('100'),
               isCall,
             }),
-          ).to.be.revertedWith('Pool: maturity < 1 day');
+          ).to.be.revertedWith('exp < 1 day');
         });
 
         it('should revert if using a maturity more than 28 days in the future', async () => {
@@ -455,7 +455,7 @@ describe('PoolProxy', function () {
               maxCost: parseEther('100'),
               isCall,
             }),
-          ).to.be.revertedWith('Pool: maturity > 28 days');
+          ).to.be.revertedWith('exp > 28 days');
         });
 
         it('should revert if using a maturity not corresponding to end of UTC day', async () => {
@@ -471,7 +471,7 @@ describe('PoolProxy', function () {
               maxCost: parseEther('100'),
               isCall,
             }),
-          ).to.be.revertedWith('Pool: maturity not end UTC day');
+          ).to.be.revertedWith('exp not end UTC day');
         });
 
         it('should revert if using a strike > 2x spot', async () => {
@@ -487,7 +487,7 @@ describe('PoolProxy', function () {
               maxCost: parseEther('100'),
               isCall,
             }),
-          ).to.be.revertedWith('Pool: strike > 2x spot');
+          ).to.be.revertedWith('strike > 2x spot');
         });
 
         it('should revert if using a strike < 0.5x spot', async () => {
@@ -503,7 +503,7 @@ describe('PoolProxy', function () {
               maxCost: parseEther('100'),
               isCall,
             }),
-          ).to.be.revertedWith('Pool: strike < 0.5x spot');
+          ).to.be.revertedWith('strike < 0.5x spot');
         });
 
         it('should revert if cost is above max cost', async () => {
@@ -524,7 +524,7 @@ describe('PoolProxy', function () {
               maxCost: parseEther('0.01'),
               isCall,
             }),
-          ).to.be.revertedWith('Pool: excessive slippage');
+          ).to.be.revertedWith('excess slip');
         });
 
         it('should successfully purchase an option', async () => {
@@ -745,7 +745,7 @@ describe('PoolProxy', function () {
               amount: parseEther('1'),
               isCall,
             }),
-          ).to.be.revertedWith('Pool: invalid token type');
+          ).to.be.revertedWith('invalid type');
         });
 
         it('should revert if option is not ITM', async () => {
@@ -771,7 +771,7 @@ describe('PoolProxy', function () {
             pool
               .connect(buyer)
               .exercise({ longTokenId, amount: parseEther('1'), isCall }),
-          ).to.be.revertedWith('Pool: not ITM');
+          ).to.be.revertedWith('not ITM');
         });
 
         it('should successfully exercise', async () => {
@@ -852,7 +852,7 @@ describe('PoolProxy', function () {
 
           await expect(
             pool.connect(lp1).reassign(longTokenId, parseEther('1'), isCall),
-          ).to.be.revertedWith('Pool: invalid token type');
+          ).to.be.revertedWith('invalid type');
         });
 
         it('should revert if option is expired', async () => {
@@ -885,7 +885,7 @@ describe('PoolProxy', function () {
 
           await expect(
             pool.connect(lp1).reassign(shortTokenId, shortTokenBalance, isCall),
-          ).to.be.revertedWith('Pool: option expired');
+          ).to.be.revertedWith('expired');
         });
 
         it('should successfully reassign option to another LP', async () => {
