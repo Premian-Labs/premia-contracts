@@ -2,14 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
+import { OwnableInternal } from '@solidstate/contracts/access/OwnableInternal.sol';
+import { IERC20 } from '@solidstate/contracts/token/ERC20/IERC20.sol';
+import { ERC1155Enumerable, EnumerableSet, ERC1155EnumerableStorage } from '@solidstate/contracts/token/ERC1155/ERC1155Enumerable.sol';
+import { IWETH } from '@solidstate/contracts/utils/IWETH.sol';
 
-import {OwnableInternal} from '@solidstate/contracts/access/OwnableInternal.sol';
-import {IERC20} from '@solidstate/contracts/token/ERC20/IERC20.sol';
-import {ERC1155Enumerable, EnumerableSet, ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155Enumerable.sol';
-import {IWETH} from '@solidstate/contracts/utils/IWETH.sol';
-
-import {PoolStorage} from './PoolStorage.sol';
+import { PoolStorage } from './PoolStorage.sol';
 
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
@@ -128,35 +126,17 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   }
 
   /**
- * @notice get address of base token contract
- * @return base address
- */
-  function getBase () external view returns (address) {
-    return PoolStorage.layout().base;
-  }
-
-  /**
-   * @notice get address of underlying token contract
-   * @return underlying address
-   */
-  function getUnderlying () external view returns (address) {
-    return PoolStorage.layout().underlying;
-  }
-
-  /**
-   * @notice get address of base oracle contract
-   * @return base oracle address
-   */
-  function getBaseOracle () external view returns (address) {
-    return PoolStorage.layout().baseOracle;
-  }
-
-  /**
-   * @notice get address of underlying oracle contract
-   * @return underlying oracle address
-   */
-  function getUnderlyingOracle () external view returns (address) {
-    return PoolStorage.layout().underlyingOracle;
+    * @notice get pool settings
+    * @return pool settings
+    */
+  function getPoolSettings () external view returns (PoolStorage.PoolSettings memory) {
+    PoolStorage.Layout storage l = PoolStorage.layout();
+    return PoolStorage.PoolSettings(
+      l.underlying,
+      l.base,
+      l.underlyingOracle,
+      l.baseOracle
+    );
   }
 
   /**
@@ -184,7 +164,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     return PoolStorage.layout().emaLogReturns64x64;
   }
 
-
   /**
    * @notice get ema variance annualized
    * @return 64x64 fixed point representation of ema variance annualized
@@ -200,7 +179,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   function getPrice (uint256 timestamp) external view returns (int128) {
     return PoolStorage.layout().getPriceUpdate(timestamp);
   }
-
 
   /**
    * @notice calculate price of option contract

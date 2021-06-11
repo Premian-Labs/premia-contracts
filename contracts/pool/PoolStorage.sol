@@ -59,6 +59,13 @@ library PoolStorage {
   ////////////////////////////////////////////
   // To avoid stack too deep error
 
+  struct PoolSettings {
+    address underlying;
+    address base;
+    address underlyingOracle;
+    address baseOracle;
+  }
+
   struct QuoteArgs {
     uint64 maturity; // timestamp of option maturity
     int128 strike64x64; // 64x64 fixed point representation of strike price
