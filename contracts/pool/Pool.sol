@@ -483,7 +483,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       int128 baseCost64x64;
       int128 feeCost64x64;
 
-      (baseCost64x64, feeCost64x64, cLevel64x64, strike64x64) = quote(
+      (baseCost64x64, feeCost64x64, cLevel64x64,) = quote(
         PoolStorage.QuoteArgs(maturity,
         strike64x64,
         newPrice64x64,
@@ -493,7 +493,13 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       baseCost = baseCost64x64.toDecimals(_getTokenDecimals(isCall));
       feeCost = feeCost64x64.toDecimals(_getTokenDecimals(isCall));
-      _push(_getPoolToken(isCall), amount - baseCost - feeCost);
+
+      _push(
+        _getPoolToken(isCall),
+        isCall
+          ? amount - baseCost - feeCost
+          : strike64x64.mulu(amount) - baseCost - feeCost
+      );
 
       // update C-Level, accounting for slippage and reinvested premia separately
       _updateCLevelReassign(l, isCall, baseCost64x64, feeCost64x64, cLevel64x64);
@@ -559,6 +565,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     while (toPay > 0) {
       underwriter = l.liquidityQueueAscending[underwriter][isCall];
+
+      // ToDo : Do we keep this ?
+      if (underwriter == msg.sender) continue;
 
       // amount of liquidity provided by underwriter, accounting for reinvested premium
       uint256 intervalAmount = balanceOf(underwriter, freeLiqTokenId) * (toPay + premium) / toPay;
