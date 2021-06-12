@@ -26,9 +26,11 @@ describe('Premia', function () {
     [nobody, owner, nomineeOwner] = await ethers.getSigners();
 
     // TODO: pass PremiaMaker proxy address instead of zero address
+    // TODO: pass non-zero fee
     pool = await new Pool__factory(owner).deploy(
       ethers.constants.AddressZero,
-      ethers.constants.AddressZero
+      ethers.constants.AddressZero,
+      ethers.constants.Zero
     );
 
     [await new ProxyManager__factory(owner).deploy()].forEach(function (f) {

@@ -32,8 +32,6 @@ library PoolStorage {
     int128 cLevelUnderlying64x64;
     int128 cLevelBase64x64;
 
-    int128 fee64x64;
-
     uint256 updatedAt;
     int128 emaLogReturns64x64;
     int128 emaVarianceAnnualized64x64;
