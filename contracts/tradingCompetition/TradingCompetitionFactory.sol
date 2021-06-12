@@ -24,9 +24,10 @@ contract TradingCompetitionFactory is Ownable {
         OwnableStorage.layout().owner = msg.sender;
     }
 
-    function deployToken(string memory symbol) public {
+    function deployToken(string memory symbol) public returns(address) {
         TradingCompetitionERC20 token = new TradingCompetitionERC20(symbol);
         emit TokenDeployed(address(token), symbol);
+        return address(token);
     }
 
     //
