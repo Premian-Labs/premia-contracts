@@ -334,12 +334,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       spot64x64 = l.getPriceUpdateAfter(maturity);
     }
 
+    require((args.isCall && spot64x64 > strike64x64) || (!args.isCall && spot64x64 < strike64x64), 'not ITM');
+
     // burn long option tokens from sender
     _burn(msg.sender, args.longTokenId, args.amount);
 
     uint256 exerciseValue;
-
-    require((args.isCall && spot64x64 > strike64x64) || (!args.isCall && spot64x64 < strike64x64), 'not ITM');
 
     // option has a non-zero exercise value
     if (args.isCall) {
@@ -352,7 +352,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(args.isCall));
 
-    _exerciseLoop(
+    _burnShortTokenLoop(
       l,
       args.amount,
       args.isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
@@ -494,6 +494,60 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     emit Reassign(msg.sender, l.base, l.underlying, isCall, shortTokenId, amount, baseCost, feeCost, cLevel64x64, newPrice64x64);
   }
 
+  function processExpired (
+    uint256 longTokenId,
+    uint256 amount
+  ) external {
+    uint64 maturity;
+    int128 strike64x64;
+
+    bool isCall;
+
+    {
+      PoolStorage.TokenType tokenType;
+      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(longTokenId);
+      require(tokenType == PoolStorage.TokenType.LONG_CALL || tokenType == PoolStorage.TokenType.LONG_PUT, 'invalid type');
+      require(maturity < block.timestamp, 'TODO');
+      isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
+    }
+
+    PoolStorage.Layout storage l = PoolStorage.layout();
+    _update(l, l.fetchPriceUpdate());
+    int128 spot64x64 = l.getPriceUpdateAfter(maturity);
+
+    // total exercise value shared by all long token holders
+    uint256 exerciseValue;
+
+    // option has a non-zero exercise value
+    if (isCall) {
+      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
+    } else {
+      exerciseValue = strike64x64.sub(spot64x64).mulu(amount);
+    }
+
+    int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
+
+    _burnShortTokenLoop(
+      l,
+      amount,
+      exerciseValue,
+      PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
+      isCall
+    );
+
+    int128 newLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
+
+    l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCall);
+    emit UpdateCLevel(l.base, l.underlying, isCall, l.getCLevel(isCall), oldLiquidity64x64, newLiquidity64x64);
+
+    _burnLongTokenLoop(
+      amount,
+      exerciseValue,
+      longTokenId,
+      isCall
+    );
+  }
+
   /**
    * @notice Update pool data
    */
@@ -522,6 +576,37 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       ), isCall);
 
     emit UpdateCLevel(l.base, l.underlying, isCall, l.getCLevel(isCall), totalSupply64x64, newTotalSupply64x64);
+  }
+
+  function _burnLongTokenLoop (
+    uint256 amount,
+    uint256 exerciseValue,
+    uint256 longTokenId,
+    bool isCall
+  ) internal {
+    EnumerableSet.AddressSet storage longTokenHolders = ERC1155EnumerableStorage.layout().accountsByToken[longTokenId];
+
+    uint256 supply = totalSupply(longTokenId);
+
+    for (uint256 i; i < longTokenHolders.length(); i++) {
+      address longTokenHolder = longTokenHolders.at(0);
+
+      uint256 balance = balanceOf(longTokenHolder, longTokenId);
+
+      if (exerciseValue > 0) {
+        // TODO: merge with _push function
+        // TODO: store balance until manual withdrawal
+        require(
+          IERC20(_getPoolToken(isCall)).transfer(longTokenHolder, exerciseValue * balance / supply),
+          'ERC20 transfer failed'
+        );
+
+        // TODO: event?
+        // emit Exercise(msg.sender, l.base, l.underlying, isCall, spot64x64, strike64x64, maturity, balance, newLiquidity64x64 - oldLiquidity64x64, exerciseValue);
+      }
+
+      _burn(longTokenHolder, longTokenId, balance);
+    }
   }
 
   function _writeLoop (
@@ -603,7 +688,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
   }
 
-  function _exerciseLoop (
+  function _burnShortTokenLoop (
     PoolStorage.Layout storage l,
     uint256 amount,
     uint256 exerciseValue,
