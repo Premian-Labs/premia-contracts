@@ -108,7 +108,7 @@ describe('PoolProxy', function () {
   const spotPrice = 2500;
 
   const setUnderlyingPrice = async (price: BigNumber) => {
-    await underlyingOracle.mock.latestRoundData.returns(1, price, 1, 5, 1);
+    await underlyingOracle.mock.latestAnswer.returns(price);
   };
 
   beforeEach(async function () {
@@ -152,18 +152,18 @@ describe('PoolProxy', function () {
     const manager = ProxyManager__factory.connect(premia.address, owner);
 
     baseOracle = await deployMockContract(owner, [
-      'function latestRoundData () external view returns (uint80, int, uint, uint, uint80)',
+      'function latestAnswer () external view returns (int)',
       'function decimals () external view returns (uint8)',
     ]);
 
     underlyingOracle = await deployMockContract(owner, [
-      'function latestRoundData () external view returns (uint80, int, uint, uint, uint80)',
+      'function latestAnswer () external view returns (int)',
       'function decimals () external view returns (uint8)',
     ]);
 
     await baseOracle.mock.decimals.returns(8);
     await underlyingOracle.mock.decimals.returns(8);
-    await baseOracle.mock.latestRoundData.returns(1, parseEther('1'), 1, 5, 1);
+    await baseOracle.mock.latestAnswer.returns(parseEther('1'));
     await setUnderlyingPrice(parseEther(spotPrice.toString()));
 
     let tx = await manager.deployPool(
