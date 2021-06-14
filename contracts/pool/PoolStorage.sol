@@ -2,6 +2,7 @@
 
 pragma solidity ^0.8.0;
 
+import {AggregatorInterface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorInterface.sol';
 import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 import {ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155EnumerableStorage.sol';
 
@@ -157,8 +158,8 @@ library PoolStorage {
   function fetchPriceUpdate (
     Layout storage l
   ) internal returns (int128 price64x64) {
-    (, int256 priceUnderlying, , ,) = AggregatorV3Interface(l.underlyingOracle).latestRoundData();
-    (, int256 priceBase, , ,) = AggregatorV3Interface(l.baseOracle).latestRoundData();
+    int256 priceUnderlying = AggregatorInterface(l.underlyingOracle).latestAnswer();
+    int256 priceBase = AggregatorInterface(l.baseOracle).latestAnswer();
 
     return ABDKMath64x64.divi(
       priceUnderlying,
