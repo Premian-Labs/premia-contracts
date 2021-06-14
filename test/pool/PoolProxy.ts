@@ -119,9 +119,9 @@ describe('PoolProxy', function () {
 
     const erc20Factory = new ERC20Mock__factory(owner);
 
-    base = await erc20Factory.deploy(SYMBOL_BASE);
+    base = await erc20Factory.deploy(SYMBOL_BASE, 18);
     await base.deployed();
-    underlying = await erc20Factory.deploy(SYMBOL_UNDERLYING);
+    underlying = await erc20Factory.deploy(SYMBOL_UNDERLYING, 18);
     await underlying.deployed();
     underlyingWeth = await new WETH9__factory(owner).deploy();
 
@@ -206,7 +206,7 @@ describe('PoolProxy', function () {
 
   describeBehaviorOfManagedProxyOwnable({
     deploy: async () => proxy,
-    implementationFunction: 'getBase()',
+    implementationFunction: 'getPoolSettings()',
     implementationFunctionArgs: [],
   });
 

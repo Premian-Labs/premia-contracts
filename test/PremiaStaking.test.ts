@@ -2,8 +2,8 @@ import { expect } from 'chai';
 import {
   PremiaStaking,
   PremiaStaking__factory,
-  TestErc20,
-  TestErc20__factory,
+  ERC20Mock,
+  ERC20Mock__factory,
 } from '../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -13,18 +13,17 @@ let admin: SignerWithAddress;
 let alice: SignerWithAddress;
 let bob: SignerWithAddress;
 let carol: SignerWithAddress;
-let premia: TestErc20;
+let premia: ERC20Mock;
 let premiaStaking: PremiaStaking;
 
 describe('PremiaStaking', () => {
   beforeEach(async () => {
     [admin, alice, bob, carol] = await ethers.getSigners();
 
-    const premiaFactory = new TestErc20__factory(admin);
-    const premiStakingFactory = new PremiaStaking__factory(admin);
-
-    premia = await premiaFactory.deploy(18);
-    premiaStaking = await premiStakingFactory.deploy(premia.address);
+    premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
+    premiaStaking = await new PremiaStaking__factory(admin).deploy(
+      premia.address,
+    );
 
     await premia.mint(alice.address, '100');
     await premia.mint(bob.address, '100');
