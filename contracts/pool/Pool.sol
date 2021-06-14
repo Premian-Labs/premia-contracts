@@ -34,8 +34,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   event Purchase (
     address indexed user,
-    address indexed base,
-    address indexed underlying,
     bool isCall,
     int128 strike64x64,
     uint64 maturity,
@@ -47,8 +45,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   event Exercise (
     address indexed user,
-    address indexed base,
-    address indexed underlying,
     bool isCall,
     int128 spot64x64,
     int128 strike64x64,
@@ -60,8 +56,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   event Underwrite (
     address indexed underwriter,
-    address indexed base,
-    address indexed underlying,
     bool isCall,
     uint256 shortTokenId,
     uint256 intervalAmount,
@@ -70,8 +64,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   event AssignExercise (
     address indexed underwriter,
-    address indexed base,
-    address indexed underlying,
     bool isCall,
     uint256 shortTokenId,
     uint256 freedAmount,
@@ -80,8 +72,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   event Reassign (
     address indexed underwriter,
-    address indexed base,
-    address indexed underlying,
     bool isCall,
     uint256 shortTokenId,
     uint256 amount,
@@ -93,24 +83,18 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   event Deposit (
     address indexed user,
-    address indexed base,
-    address indexed underlying,
     bool isCallPool,
     uint256 amount
   );
 
   event Withdrawal (
     address indexed user,
-    address indexed base,
-    address indexed underlying,
     bool isCallPool,
     uint256 depositedAt,
     uint256 amount
   );
 
   event UpdateCLevel (
-    address indexed base,
-    address indexed underlying,
     bool indexed isCall,
     int128 cLevel64x64,
     int128 oldLiquidity64x64,
@@ -278,7 +262,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     require(baseCost + feeCost <= args.maxCost, 'excess slipp');
     _pull(_getPoolToken(args.isCall), baseCost + feeCost);
 
-    emit Purchase(msg.sender, l.base, l.underlying, args.isCall, args.strike64x64, args.maturity, args.amount, baseCost, feeCost, slippageCoefficient64x64);
+    emit Purchase(msg.sender, args.isCall, args.strike64x64, args.maturity, args.amount, baseCost, feeCost, slippageCoefficient64x64);
 
     // mint free liquidity tokens for treasury
     _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(args.isCall), feeCost, '');
@@ -303,7 +287,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       OptionMath.ONE_64x64
     ), args.isCall);
 
-    emit UpdateCLevel(l.base, l.underlying, args.isCall, l.getCLevel(args.isCall), oldTotalSupply64x64, totalSupply64x64);
+    emit UpdateCLevel(args.isCall, l.getCLevel(args.isCall), oldTotalSupply64x64, totalSupply64x64);
   }
 
   /**
@@ -360,8 +344,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64, args.isCall);
 
-    emit Exercise(msg.sender, l.base, l.underlying, args.isCall, spot64x64, strike64x64, maturity, args.amount, newLiquidity64x64 - oldLiquidity64x64, exerciseValue);
-    emit UpdateCLevel(l.base, l.underlying, args.isCall, l.getCLevel(args.isCall), oldLiquidity64x64, newLiquidity64x64);
+    emit Exercise(msg.sender, args.isCall, spot64x64, strike64x64, maturity, args.amount, newLiquidity64x64 - oldLiquidity64x64, exerciseValue);
+    emit UpdateCLevel(args.isCall, l.getCLevel(args.isCall), oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
@@ -378,7 +362,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     l.depositedAt[msg.sender][isCallPool] = block.timestamp;
     _pull(_getPoolToken(isCallPool), amount);
 
-    emit Deposit(msg.sender, l.base, l.underlying, isCallPool, amount);
+    emit Deposit(msg.sender, isCallPool, amount);
 
     uint256 tokenId = _getFreeLiquidityTokenId(isCallPool);
 
@@ -389,7 +373,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCallPool);
 
-    emit UpdateCLevel(l.base, l.underlying, isCallPool, l.getCLevel(isCallPool), oldLiquidity64x64, newLiquidity64x64);
+    emit UpdateCLevel(isCallPool, l.getCLevel(isCallPool), oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
@@ -414,11 +398,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 newLiquidity64x64 = l.totalSupply64x64(freeLiqTokenId);
 
     _push(_getPoolToken(isCallPool), amount);
-    emit Withdrawal(msg.sender, l.base, l.underlying, isCallPool, depositedAt, amount);
+    emit Withdrawal(msg.sender, isCallPool, depositedAt, amount);
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCallPool);
 
-    emit UpdateCLevel(l.base, l.underlying, isCallPool, l.getCLevel(isCallPool), oldLiquidity64x64, newLiquidity64x64);
+    emit UpdateCLevel(isCallPool, l.getCLevel(isCallPool), oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
@@ -487,7 +471,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     _writeLoop(l, amount, baseCost, shortTokenId, isCall);
 
-    emit Reassign(msg.sender, l.base, l.underlying, isCall, shortTokenId, amount, baseCost, feeCost, cLevel64x64, newPrice64x64);
+    emit Reassign(msg.sender, isCall, shortTokenId, amount, baseCost, feeCost, cLevel64x64, newPrice64x64);
   }
 
   /**
@@ -517,7 +501,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         OptionMath.ONE_64x64
       ), isCall);
 
-    emit UpdateCLevel(l.base, l.underlying, isCall, l.getCLevel(isCall), totalSupply64x64, newTotalSupply64x64);
+    emit UpdateCLevel(isCall, l.getCLevel(isCall), totalSupply64x64, newTotalSupply64x64);
   }
 
   function _writeLoop (
@@ -561,7 +545,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       // because of rounding (Can happen for put, because of fixed point precision)
       _mint(underwriter, shortTokenId, toPay == 0 ? amount : intervalAmount, '');
 
-      emit Underwrite(underwriter, l.base, l.underlying, isCall, shortTokenId, toPay == 0 ? amount : intervalAmount, intervalPremium);
+      emit Underwrite(underwriter, isCall, shortTokenId, toPay == 0 ? amount : intervalAmount, intervalPremium);
 
       amount -= intervalAmount;
     }
@@ -628,7 +612,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       // burn short option tokens from underwriter
       _burn(underwriter, shortTokenId, intervalAmount);
 
-      emit AssignExercise(underwriter, l.base, l.underlying, isCall, shortTokenId, freeLiq, intervalAmount);
+      emit AssignExercise(underwriter, isCall, shortTokenId, freeLiq, intervalAmount);
     }
   }
 
