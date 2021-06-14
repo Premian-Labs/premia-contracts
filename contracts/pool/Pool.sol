@@ -736,7 +736,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint[] memory ids,
     uint[] memory amounts,
     bytes memory data
-  ) override internal {
+  ) virtual override internal {
     super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
 
     // TODO: use linked list for ERC1155Enumerable
