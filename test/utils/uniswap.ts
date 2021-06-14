@@ -1,7 +1,7 @@
 import {
   PremiaErc20,
-  TestErc20,
-  TestErc20__factory,
+  ERC20Mock,
+  ERC20Mock__factory,
   UniswapV2Factory,
   UniswapV2Factory__factory,
   UniswapV2Pair,
@@ -15,7 +15,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 
 export interface IUniswap {
   weth: WETH9;
-  dai: TestErc20;
+  dai: ERC20Mock;
   factory: UniswapV2Factory;
   router: UniswapV2Router02;
   daiWeth: UniswapV2Pair;
@@ -25,11 +25,11 @@ export interface IUniswap {
 export async function createUniswap(
   admin: SignerWithAddress,
   premia: PremiaErc20,
-  dai?: TestErc20,
+  dai?: ERC20Mock,
   weth?: WETH9,
 ) {
   if (!dai) {
-    dai = await new TestErc20__factory(admin).deploy(18);
+    dai = await new ERC20Mock__factory(admin).deploy('DAI', 18);
   }
 
   if (!weth) {

@@ -1,4 +1,4 @@
-import { Market, Option, TestErc20, WETH9 } from '../../typechain';
+import { Market, Option, ERC20Mock, WETH9 } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber } from 'ethers';
 import { IOrder, IOrderCreated, IOrderCreateProps } from '../../types';
@@ -8,8 +8,8 @@ import { parseTestToken } from './token';
 import { TEST_TOKEN_DECIMALS } from './constants';
 
 interface MarketTestUtilProps {
-  testToken: WETH9 | TestErc20;
-  dai: TestErc20;
+  testToken: WETH9 | ERC20Mock;
+  dai: ERC20Mock;
   option: Option;
   market: Market;
   admin: SignerWithAddress;
@@ -31,8 +31,8 @@ interface OrderOptions {
 }
 
 export class MarketTestUtil {
-  testToken: WETH9 | TestErc20;
-  dai: TestErc20;
+  testToken: WETH9 | ERC20Mock;
+  dai: ERC20Mock;
   option: Option;
   market: Market;
   admin: SignerWithAddress;
