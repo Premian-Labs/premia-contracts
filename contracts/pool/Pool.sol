@@ -120,6 +120,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 newLiquidity64x64
   );
 
+  event UpdateVariance (
+    int128 oldEmaLogReturns64x64,
+    int128 oldEmaVariance64x64,
+    int128 logReturns64x64,
+    uint256 oldTimestamp,
+    int128 emaVarianceAnnualized64x64
+  );
+
   constructor (
     address weth,
     address feeReceiver,
@@ -663,6 +671,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       block.timestamp
     );
 
+    int128 oldEmaVarianceAnnualized64x64 = l.emaVarianceAnnualized64x64;
     l.emaVarianceAnnualized64x64 = OptionMath.unevenRollingEmaVariance(
       oldEmaLogReturns64x64,
       l.emaVarianceAnnualized64x64 / 365,
@@ -670,6 +679,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       updatedAt,
       block.timestamp
     ) * 365;
+
+    emit UpdateVariance(
+      oldEmaLogReturns64x64,
+      l.emaVarianceAnnualized64x64 / 365,
+      logReturns64x64,
+      updatedAt,
+      l.emaVarianceAnnualized64x64
+    );
 
     l.updatedAt = block.timestamp;
   }
