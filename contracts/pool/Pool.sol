@@ -532,10 +532,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCall);
     (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
-    uint256 toPay = amount;
-    if (isCall == false) {
-      toPay = strike64x64.mulu(amount);
-    }
+    uint256 toPay = isCall ? amount : strike64x64.mulu(amount);
 
     while (toPay > 0) {
       underwriter = l.liquidityQueueAscending[underwriter][isCall];
