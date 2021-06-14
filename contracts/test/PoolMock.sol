@@ -38,8 +38,7 @@ contract PoolMock is Pool {
     bool isCall
   ) external {
     // TODO: remove
-    uint256 freeLiqTokenId = isCall ? UNDERLYING_FREE_LIQ_TOKEN_ID : BASE_FREE_LIQ_TOKEN_ID;
-    _mint(account, freeLiqTokenId, amount, '');
+    _mint(account, isCall ? 0 : 1, amount, '');
   }
 
   function burn (
@@ -48,8 +47,7 @@ contract PoolMock is Pool {
     bool isCall
   ) external {
     // TODO: remove
-    uint256 freeLiqTokenId = isCall ? UNDERLYING_FREE_LIQ_TOKEN_ID : BASE_FREE_LIQ_TOKEN_ID;
-    _burn(account, freeLiqTokenId, amount);
+    _burn(account, isCall ? 0 : 1, amount);
   }
 
   function mint (

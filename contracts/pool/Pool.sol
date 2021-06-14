@@ -28,9 +28,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   int128 private immutable FEE_64x64;
 
-  // TODO: make private
-  uint256 internal immutable UNDERLYING_FREE_LIQ_TOKEN_ID;
-  uint256 internal immutable BASE_FREE_LIQ_TOKEN_ID;
+  uint256 private immutable UNDERLYING_FREE_LIQ_TOKEN_ID;
+  uint256 private immutable BASE_FREE_LIQ_TOKEN_ID;
 
   event Purchase (
     address indexed user,
