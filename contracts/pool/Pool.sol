@@ -42,7 +42,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 amount,
     uint256 baseCost,
     uint256 feeCost,
-    int128 slippageCoefficient64x64
+    int128 spot64x64,
+    int128 emaVarianceAnnualized64x64
   );
 
   event Exercise (
@@ -55,7 +56,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint64 maturity,
     uint256 amount,
     int128 amountFreed64x64,
-    uint256 exerciseValue
+    uint256 exerciseValue,
+    int128 emaVarianceAnnualized64x64
   );
 
   event Underwrite (
@@ -88,7 +90,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 baseCost,
     uint256 feeCost,
     int128 cLevel64x64,
-    int128 spot64x64
+    int128 spot64x64,
+    int128 emaVarianceAnnualized64x64
   );
 
   event Deposit (
@@ -115,6 +118,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 cLevel64x64,
     int128 oldLiquidity64x64,
     int128 newLiquidity64x64
+  );
+
+  event UpdateVariance (
+    int128 oldEmaLogReturns64x64,
+    int128 oldEmaVariance64x64,
+    int128 logReturns64x64,
+    uint256 oldTimestamp,
+    int128 emaVarianceAnnualized64x64
   );
 
   constructor (
@@ -263,7 +274,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     require(args.strike64x64 <= newPrice64x64 << 1, 'strike > 2x spot');
     require(args.strike64x64 >= newPrice64x64 >> 1, 'strike < 0.5x spot');
 
-    (int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64, int128 slippageCoefficient64x64) = quote(
+    (int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64,) = quote(
       PoolStorage.QuoteArgs(
       args.maturity,
       args.strike64x64,
@@ -278,7 +289,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     require(baseCost + feeCost <= args.maxCost, 'excess slipp');
     _pull(_getPoolToken(args.isCall), baseCost + feeCost);
 
-    emit Purchase(msg.sender, l.base, l.underlying, args.isCall, args.strike64x64, args.maturity, args.amount, baseCost, feeCost, slippageCoefficient64x64);
+    emit Purchase(msg.sender, l.base, l.underlying, args.isCall, args.strike64x64, args.maturity, args.amount, baseCost, feeCost, newPrice64x64, l.emaVarianceAnnualized64x64);
 
     // mint free liquidity tokens for treasury
     _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(args.isCall), feeCost, '');
@@ -360,7 +371,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64, args.isCall);
 
-    emit Exercise(msg.sender, l.base, l.underlying, args.isCall, spot64x64, strike64x64, maturity, args.amount, newLiquidity64x64 - oldLiquidity64x64, exerciseValue);
+    emit Exercise(msg.sender, l.base, l.underlying, args.isCall, spot64x64, strike64x64, maturity, args.amount, newLiquidity64x64 - oldLiquidity64x64, exerciseValue, l.emaVarianceAnnualized64x64);
     emit UpdateCLevel(l.base, l.underlying, args.isCall, l.getCLevel(args.isCall), oldLiquidity64x64, newLiquidity64x64);
   }
 
@@ -487,7 +498,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     _writeLoop(l, amount, baseCost, shortTokenId, isCall);
 
-    emit Reassign(msg.sender, l.base, l.underlying, isCall, shortTokenId, amount, baseCost, feeCost, cLevel64x64, newPrice64x64);
+    emit Reassign(msg.sender, l.base, l.underlying, isCall, shortTokenId, amount, baseCost, feeCost, cLevel64x64, newPrice64x64, l.emaVarianceAnnualized64x64);
   }
 
   /**
@@ -657,6 +668,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       block.timestamp
     );
 
+    int128 oldEmaVarianceAnnualized64x64 = l.emaVarianceAnnualized64x64;
     l.emaVarianceAnnualized64x64 = OptionMath.unevenRollingEmaVariance(
       oldEmaLogReturns64x64,
       l.emaVarianceAnnualized64x64 / 365,
@@ -664,6 +676,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       updatedAt,
       block.timestamp
     ) * 365;
+
+    emit UpdateVariance(
+      oldEmaLogReturns64x64,
+      l.emaVarianceAnnualized64x64 / 365,
+      logReturns64x64,
+      updatedAt,
+      l.emaVarianceAnnualized64x64
+    );
 
     l.updatedAt = block.timestamp;
   }
