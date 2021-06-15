@@ -289,14 +289,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
 
     // update C-Level, accounting for slippage and reinvested premia separately
-    l.setCLevel(OptionMath.calculateCLevel(
+    _setCLevel(l, OptionMath.calculateCLevel(
       cLevel64x64, // C-Level after liquidity is reserved
       oldTotalSupply64x64,
       totalSupply64x64,
       OptionMath.ONE_64x64
-    ), args.isCall);
-
-    emit UpdateCLevel(args.isCall, l.getCLevel(args.isCall), oldTotalSupply64x64, totalSupply64x64);
+    ), oldTotalSupply64x64, totalSupply64x64, args.isCall);
   }
 
   /**
@@ -354,10 +352,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     int128 newLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
 
-    l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCall);
+    _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
 
     emit Exercise(msg.sender, args.longTokenId, args.amount, spot64x64, newLiquidity64x64 - oldLiquidity64x64, exerciseValue, l.emaVarianceAnnualized64x64);
-    emit UpdateCLevel(isCall, l.getCLevel(isCall), oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
@@ -383,9 +380,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _mint(msg.sender, tokenId, amount, '');
     int128 newLiquidity64x64 = l.totalSupply64x64(tokenId);
 
-    l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCallPool);
-
-    emit UpdateCLevel(isCallPool, l.getCLevel(isCallPool), oldLiquidity64x64, newLiquidity64x64);
+    _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
   }
 
   /**
@@ -412,9 +407,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _push(_getPoolToken(isCallPool), amount);
     emit Withdrawal(msg.sender, isCallPool, depositedAt, amount);
 
-    l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCallPool);
-
-    emit UpdateCLevel(isCallPool, l.getCLevel(isCallPool), oldLiquidity64x64, newLiquidity64x64);
+    _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
   }
 
 
@@ -508,14 +501,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 totalSupply64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
     int128 newTotalSupply64x64 = totalSupply64x64.add(baseCost64x64).add(feeCost64x64);
 
-    l.setCLevel(OptionMath.calculateCLevel(
-        cLevel64x64, // C-Level after liquidity is reserved
-        totalSupply64x64,
-        newTotalSupply64x64,
-        OptionMath.ONE_64x64
-      ), isCall);
+    int128 newCLevel64x64 = OptionMath.calculateCLevel(
+      cLevel64x64, // C-Level after liquidity is reserved
+      totalSupply64x64,
+      newTotalSupply64x64,
+      OptionMath.ONE_64x64
+    );
 
-    emit UpdateCLevel(isCall, l.getCLevel(isCall), totalSupply64x64, newTotalSupply64x64);
+    _setCLevel(l, newCLevel64x64, totalSupply64x64, newTotalSupply64x64, isCall);
   }
 
   function _writeLoop (
@@ -592,6 +585,27 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     } else {
       tokenType = isLong ? PoolStorage.TokenType.LONG_PUT : PoolStorage.TokenType.SHORT_PUT;
     }
+  }
+
+  function _setCLevel (
+    PoolStorage.Layout storage l,
+    int128 oldLiquidity64x64,
+    int128 newLiquidity64x64,
+    bool isCallPool
+  ) internal {
+    l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCallPool);
+    emit UpdateCLevel(isCallPool, l.getCLevel(isCallPool), oldLiquidity64x64, newLiquidity64x64);
+  }
+
+  function _setCLevel (
+    PoolStorage.Layout storage l,
+    int128 cLevel64x64,
+    int128 oldLiquidity64x64,
+    int128 newLiquidity64x64,
+    bool isCallPool
+  ) internal {
+    l.setCLevel(cLevel64x64, isCallPool);
+    emit UpdateCLevel(isCallPool, cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
   }
 
   function _exerciseLoop (
