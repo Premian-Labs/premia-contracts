@@ -327,7 +327,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     if(msg.sender != args.holder) {
       require(isApprovedForAll(args.holder, msg.sender), "not approved");
     }
-    _exercise(args.holder, args);
+    _exercise(args);
   }
 
   /**
@@ -603,7 +603,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    * @param args arguments for the exercise function
    */
   function _exercise (
-    address holder,
     PoolStorage.ExerciseArgs memory args
   ) internal {
     uint64 maturity;
@@ -624,7 +623,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
 
     // burn long option tokens from sender
-    _burn(holder, args.longTokenId, args.amount);
+    _burn(args.holder, args.longTokenId, args.amount);
 
     uint256 exerciseValue;
 
@@ -653,7 +652,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64, args.isCall);
 
-    emit Exercise(holder, l.base, l.underlying, args.isCall, spot64x64, strike64x64, maturity, args.amount, newLiquidity64x64 - oldLiquidity64x64, exerciseValue, l.emaVarianceAnnualized64x64);
+    emit Exercise(args.holder, l.base, l.underlying, args.isCall, spot64x64, strike64x64, maturity, args.amount, newLiquidity64x64 - oldLiquidity64x64, exerciseValue, l.emaVarianceAnnualized64x64);
     emit UpdateCLevel(l.base, l.underlying, args.isCall, l.getCLevel(args.isCall), oldLiquidity64x64, newLiquidity64x64);
   }
 
