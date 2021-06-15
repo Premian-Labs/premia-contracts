@@ -26,7 +26,7 @@ import {
   bnToNumber,
   fixedFromFloat,
   fixedToNumber,
-  getTokenIdFor,
+  formatTokenId,
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
@@ -53,12 +53,12 @@ describe('PoolProxy', function () {
   let baseOracle: MockContract;
   let underlyingOracle: MockContract;
 
-  const underlyingFreeLiqToken = getTokenIdFor({
+  const underlyingFreeLiqToken = formatTokenId({
     tokenType: TokenType.UnderlyingFreeLiq,
     maturity: BigNumber.from(0),
     strike64x64: BigNumber.from(0),
   });
-  const baseFreeLiqToken = getTokenIdFor({
+  const baseFreeLiqToken = formatTokenId({
     tokenType: TokenType.BaseFreeLiq,
     maturity: BigNumber.from(0),
     strike64x64: BigNumber.from(0),
@@ -91,13 +91,13 @@ describe('PoolProxy', function () {
 
   const getFreeLiqTokenId = (isCall: boolean) => {
     if (isCall) {
-      return getTokenIdFor({
+      return formatTokenId({
         tokenType: TokenType.UnderlyingFreeLiq,
         maturity: BigNumber.from(0),
         strike64x64: BigNumber.from(0),
       });
     } else {
-      return getTokenIdFor({
+      return formatTokenId({
         tokenType: TokenType.BaseFreeLiq,
         maturity: BigNumber.from(0),
         strike64x64: BigNumber.from(0),
@@ -108,7 +108,7 @@ describe('PoolProxy', function () {
   const spotPrice = 2500;
 
   const setUnderlyingPrice = async (price: BigNumber) => {
-    await underlyingOracle.mock.latestRoundData.returns(1, price, 1, 5, 1);
+    await underlyingOracle.mock.latestAnswer.returns(price);
   };
 
   beforeEach(async function () {
@@ -152,18 +152,18 @@ describe('PoolProxy', function () {
     const manager = ProxyManager__factory.connect(premia.address, owner);
 
     baseOracle = await deployMockContract(owner, [
-      'function latestRoundData () external view returns (uint80, int, uint, uint, uint80)',
+      'function latestAnswer () external view returns (int)',
       'function decimals () external view returns (uint8)',
     ]);
 
     underlyingOracle = await deployMockContract(owner, [
-      'function latestRoundData () external view returns (uint80, int, uint, uint, uint80)',
+      'function latestAnswer () external view returns (int)',
       'function decimals () external view returns (uint8)',
     ]);
 
     await baseOracle.mock.decimals.returns(8);
     await underlyingOracle.mock.decimals.returns(8);
-    await baseOracle.mock.latestRoundData.returns(1, parseEther('1'), 1, 5, 1);
+    await baseOracle.mock.latestAnswer.returns(parseEther('1'));
     await setUnderlyingPrice(parseEther(spotPrice.toString()));
 
     let tx = await manager.deployPool(
@@ -573,12 +573,12 @@ describe('PoolProxy', function () {
             bnToNumber(mintAmount) - fixedToNumber(quote.baseCost64x64),
           );
 
-          const shortTokenId = getTokenIdFor({
+          const shortTokenId = formatTokenId({
             tokenType: getShort(isCall),
             maturity,
             strike64x64,
           });
-          const longTokenId = getTokenIdFor({
+          const longTokenId = formatTokenId({
             tokenType: getLong(isCall),
             maturity,
             strike64x64,
@@ -648,12 +648,12 @@ describe('PoolProxy', function () {
             .connect(buyer)
             .approve(pool.address, ethers.constants.MaxUint256);
 
-          const shortTokenId = getTokenIdFor({
+          const shortTokenId = formatTokenId({
             tokenType: getShort(isCall),
             maturity,
             strike64x64,
           });
-          const longTokenId = getTokenIdFor({
+          const longTokenId = formatTokenId({
             tokenType: getLong(isCall),
             maturity,
             strike64x64,
@@ -738,7 +738,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const shortTokenId = getTokenIdFor({
+          const shortTokenId = formatTokenId({
             tokenType: getShort(isCall),
             maturity,
             strike64x64,
@@ -766,7 +766,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const longTokenId = getTokenIdFor({
+          const longTokenId = formatTokenId({
             tokenType: getLong(isCall),
             maturity,
             strike64x64,
@@ -795,7 +795,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const longTokenId = getTokenIdFor({
+          const longTokenId = formatTokenId({
             tokenType: getLong(isCall),
             maturity,
             strike64x64,
@@ -849,7 +849,7 @@ describe('PoolProxy', function () {
 
           await poolUtil.depositLiquidity(lp2, parseEther('2'), isCall);
 
-          const longTokenId = getTokenIdFor({
+          const longTokenId = formatTokenId({
             tokenType: getLong(isCall),
             maturity,
             strike64x64,
@@ -873,7 +873,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const shortTokenId = getTokenIdFor({
+          const shortTokenId = formatTokenId({
             tokenType: getShort(isCall),
             maturity,
             strike64x64,
@@ -915,7 +915,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const shortTokenId = getTokenIdFor({
+          const shortTokenId = formatTokenId({
             tokenType: getShort(isCall),
             maturity,
             strike64x64,
