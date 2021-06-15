@@ -532,7 +532,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 newLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
 
     l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCall);
-    emit UpdateCLevel(l.base, l.underlying, isCall, l.getCLevel(isCall), oldLiquidity64x64, newLiquidity64x64);
+    emit UpdateCLevel(isCall, l.getCLevel(isCall), oldLiquidity64x64, newLiquidity64x64);
 
     _burnLongTokenLoop(
       amount,
