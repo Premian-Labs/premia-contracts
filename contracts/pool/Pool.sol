@@ -164,6 +164,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   }
 
   /**
+   * @notice get parameters for token id
+   * @return parameters for token id
+   */
+  function getParametersForTokenId (uint256 tokenId) external pure returns (PoolStorage.TokenType, uint64, int128) {
+    return PoolStorage.parseTokenId(tokenId);
+  }
+
+  /**
    * @notice calculate price of option contract
    * @param args arguments of the quote
    * @return baseCost64x64 64x64 fixed point representation of option cost denominated in underlying currency (without fee)
