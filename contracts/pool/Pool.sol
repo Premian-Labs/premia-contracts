@@ -318,25 +318,16 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   }
 
   /**
-   * @notice exercise call option
-   * @param args arguments for the exercise function
-   */
-  function exercise (
-    PoolStorage.ExerciseArgs memory args
-  ) public {
-    _exercise(msg.sender, args);
-  }
-
-  /**
    * @notice exercise call option on behalf of holder
-   * @param holder holder of option to be exercised
    * @param args arguments for the exercise function
    */
   function exerciseFrom (
-    address holder,
     PoolStorage.ExerciseArgs memory args
   ) public {
-    _exercise(holder, args);
+    if(msg.sender != args.holder) {
+      require(isApprovedForAll(args.holder, msg.sender), "not approved");
+    }
+    _exercise(args.holder, args);
   }
 
   /**
