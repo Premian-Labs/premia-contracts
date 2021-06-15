@@ -38,8 +38,7 @@ contract PoolProxy is ManagedProxyOwnable {
       l.base = base;
       l.underlying = underlying;
 
-      l.baseOracle = baseOracle;
-      l.underlyingOracle = underlyingOracle;
+      l.setOracles(baseOracle, underlyingOracle);
 
       l.baseDecimals = IERC20Metadata(base).decimals();
       l.underlyingDecimals = IERC20Metadata(underlying).decimals();
