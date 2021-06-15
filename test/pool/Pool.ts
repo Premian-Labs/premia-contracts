@@ -4,7 +4,7 @@ import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { Pool, PoolMock, PoolMock__factory } from '../../typechain';
-import { getTokenIdFor } from '../utils/math';
+import { formatTokenId } from '../utils/math';
 import { TokenType } from './PoolUtil';
 
 const fixedFromBigNumber = function (bn: BigNumber) {
@@ -52,7 +52,7 @@ describe('Pool', function () {
           Math.floor(new Date().getTime() / 1000),
         );
         const strike64x64 = fixedFromFloat(Math.random() * 1000);
-        const tokenId = getTokenIdFor({ tokenType, maturity, strike64x64 });
+        const tokenId = formatTokenId({ tokenType, maturity, strike64x64 });
 
         expect(
           await instance.callStatic['tokenIdFor(uint8,uint64,int128)'](
@@ -71,7 +71,7 @@ describe('Pool', function () {
           Math.floor(new Date().getTime() / 1000),
         );
         const strike64x64 = fixedFromFloat(Math.random() * 1000);
-        const tokenId = getTokenIdFor({ tokenType, maturity, strike64x64 });
+        const tokenId = formatTokenId({ tokenType, maturity, strike64x64 });
 
         expect(
           await instance.callStatic['parametersFor(uint256)'](tokenId),
