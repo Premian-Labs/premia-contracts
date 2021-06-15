@@ -34,37 +34,17 @@ contract PoolMock is Pool {
 
   function mint (
     address account,
-    uint256 amount,
-    bool isCall
+    uint256 tokenId,
+    uint256 amount
   ) external {
-    // TODO: remove
-    uint256 freeLiqTokenId = isCall ? UNDERLYING_FREE_LIQ_TOKEN_ID : BASE_FREE_LIQ_TOKEN_ID;
-    _mint(account, freeLiqTokenId, amount, '');
+    _mint(account, tokenId, amount, '');
   }
 
   function burn (
     address account,
-    uint256 amount,
-    bool isCall
-  ) external {
-    // TODO: remove
-    uint256 freeLiqTokenId = isCall ? UNDERLYING_FREE_LIQ_TOKEN_ID : BASE_FREE_LIQ_TOKEN_ID;
-    _burn(account, freeLiqTokenId, amount);
-  }
-
-  function mint (
-    address account,
-    uint256 id,
+    uint256 tokenId,
     uint256 amount
   ) external {
-    _mint(account, id, amount, '');
-  }
-
-  function burn (
-    address account,
-    uint256 id,
-    uint256 amount
-  ) external {
-    _burn(account, id, amount);
+    _burn(account, tokenId, amount);
   }
 }
