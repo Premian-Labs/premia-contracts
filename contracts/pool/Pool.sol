@@ -250,17 +250,29 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     require(args.strike64x64 <= newPrice64x64 << 1, 'strike > 2x spot');
     require(args.strike64x64 >= newPrice64x64 >> 1, 'strike < 0.5x spot');
 
-    (int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64,) = quote(
-      PoolStorage.QuoteArgs(
-      args.maturity,
-      args.strike64x64,
-      newPrice64x64,
-      args.amount,
-      args.isCall
-    ));
+    int128 cLevel64x64;
+    int128 totalSupply64x64;
+    int128 oldTotalSupply64x64;
 
-    baseCost = baseCost64x64.toDecimals(_getTokenDecimals(args.isCall));
-    feeCost = feeCost64x64.toDecimals(_getTokenDecimals(args.isCall));
+    {
+      int128 baseCost64x64;
+      int128 feeCost64x64;
+
+      (baseCost64x64, feeCost64x64, cLevel64x64,) = quote(
+        PoolStorage.QuoteArgs(
+        args.maturity,
+        args.strike64x64,
+        newPrice64x64,
+        args.amount,
+        args.isCall
+      ));
+
+      baseCost = baseCost64x64.toDecimals(_getTokenDecimals(args.isCall));
+      feeCost = feeCost64x64.toDecimals(_getTokenDecimals(args.isCall));
+
+      totalSupply64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(args.isCall));
+      oldTotalSupply64x64 = totalSupply64x64.sub(baseCost64x64).sub(feeCost64x64);
+    }
 
     require(baseCost + feeCost <= args.maxCost, 'excess slipp');
     _pull(_getPoolToken(args.isCall), baseCost + feeCost);
@@ -282,13 +294,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
 
     // update C-Level, accounting for slippage and reinvested premia separately
-
-    int128 totalSupply64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(args.isCall));
-    int128 oldTotalSupply64x64 = totalSupply64x64.sub(baseCost64x64).sub(feeCost64x64);
-
     l.setCLevel(OptionMath.calculateCLevel(
       cLevel64x64, // C-Level after liquidity is reserved
-      totalSupply64x64.sub(baseCost64x64).sub(feeCost64x64),
+      oldTotalSupply64x64,
       totalSupply64x64,
       OptionMath.ONE_64x64
     ), args.isCall);
