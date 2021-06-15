@@ -217,12 +217,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       );
     }
 
-    baseCost64x64 = price64x64.mul(amount64x64);
-
-    if (args.isCall) {
-      baseCost64x64 = baseCost64x64.div(args.spot64x64);
-    }
-
+    baseCost64x64 = args.isCall ? baseCost64x64.div(args.spot64x64) : price64x64.mul(amount64x64);
     feeCost64x64 = baseCost64x64.mul(FEE_64x64);
   }
 
