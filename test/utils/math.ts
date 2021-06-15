@@ -44,7 +44,7 @@ export function fixedToBn(fixed: BigNumber) {
   return parseEther(fixedToNumber(fixed).toString());
 }
 
-export function getTokenIdFor({
+export function formatTokenId({
   tokenType,
   maturity,
   strikePrice,
@@ -57,7 +57,7 @@ export function getTokenIdFor({
   ]);
 }
 
-export function getParametersFor(tokenId: BytesLike): TokenIdParams {
+export function parseTokenId(tokenId: BytesLike): TokenIdParams {
   return {
     tokenType: Number(hexDataSlice(tokenId, 0, 1)),
     maturity: BigNumber.from(hexDataSlice(tokenId, 8, 16)),

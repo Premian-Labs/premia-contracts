@@ -26,7 +26,7 @@ import {
   bnToNumber,
   fixedFromFloat,
   fixedToNumber,
-  getTokenIdFor,
+  formatTokenId,
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
@@ -400,12 +400,12 @@ describe('PoolProxy', function () {
         bnToNumber(mintAmount) - fixedToNumber(quote.baseCost64x64),
       );
 
-      const shortTokenId = getTokenIdFor({
+      const shortTokenId = formatTokenId({
         tokenType: TokenType.ShortCall,
         maturity,
         strikePrice,
       });
-      const longTokenId = getTokenIdFor({
+      const longTokenId = formatTokenId({
         tokenType: TokenType.LongCall,
         maturity,
         strikePrice,
@@ -457,12 +457,12 @@ describe('PoolProxy', function () {
         .connect(buyer)
         .approve(pool.address, ethers.constants.MaxUint256);
 
-      const shortTokenId = getTokenIdFor({
+      const shortTokenId = formatTokenId({
         tokenType: TokenType.ShortCall,
         maturity,
         strikePrice,
       });
-      const longTokenId = getTokenIdFor({
+      const longTokenId = formatTokenId({
         tokenType: TokenType.LongCall,
         maturity,
         strikePrice,
@@ -519,7 +519,7 @@ describe('PoolProxy', function () {
         strikePrice,
       );
 
-      const shortTokenId = getTokenIdFor({
+      const shortTokenId = formatTokenId({
         tokenType: TokenType.ShortCall,
         maturity,
         strikePrice,
@@ -542,7 +542,7 @@ describe('PoolProxy', function () {
         strikePrice,
       );
 
-      const longTokenId = getTokenIdFor({
+      const longTokenId = formatTokenId({
         tokenType: TokenType.LongCall,
         maturity,
         strikePrice,
@@ -565,7 +565,7 @@ describe('PoolProxy', function () {
         strikePrice,
       );
 
-      const longTokenId = getTokenIdFor({
+      const longTokenId = formatTokenId({
         tokenType: TokenType.LongCall,
         maturity,
         strikePrice,
