@@ -1,5 +1,13 @@
 import { task } from 'hardhat/config';
 import { BigNumber, BigNumberish } from 'ethers';
+import {
+  TradingCompetitionERC20__factory,
+  TradingCompetitionFactory__factory,
+  TradingCompetitionMerkle__factory,
+  Premia__factory,
+  Pool__factory,
+  ProxyManager__factory,
+} from '../typechain';
 
 export const RINKEBY_DAI = '0x5592ec0cfb4dbc12d3ab100b257153436a1f0fea';
 export const RINKEBY_WETH = '0xc778417e063141139fce010982780140aa0cd5ab';
@@ -24,12 +32,14 @@ const fixedFromFloat = function (float: BigNumberish) {
 };
 
 task('deploy').setAction(async function (args, hre) {
-  const {
-    ERC20Mock__factory,
-    Premia__factory,
-    Pool__factory,
-    ProxyManager__factory,
-  } = require('../typechain');
+  // const {
+  //   TradingCompetitionERC20__factory,
+  //   TradingCompetitionFactory__factory,
+  //   TradingCompetitionMerkle__factory,
+  //   Premia__factory,
+  //   Pool__factory,
+  //   ProxyManager__factory,
+  // } = require('../typechain');
 
   const [deployer] = await hre.ethers.getSigners();
 
@@ -67,18 +77,55 @@ task('deploy').setAction(async function (args, hre) {
   if (hre.network.name === 'rinkeby') {
     await tx.wait(1);
 
-    const daiToken = await new ERC20Mock__factory(deployer).deploy('DAI', 18);
-    const wbtcToken = await new ERC20Mock__factory(deployer).deploy('wBTC', 8);
-    const linkToken = await new ERC20Mock__factory(deployer).deploy('LINK', 18);
-    const yfiToken = await new ERC20Mock__factory(deployer).deploy('YFI', 18);
-    const uniToken = await new ERC20Mock__factory(deployer).deploy('UNI', 18);
+    const tradingCompetition = await new TradingCompetitionFactory__factory(
+      deployer,
+    ).deploy();
+
+    const daiToken = await tradingCompetition.callStatic.deployToken('DAI');
+    await (await tradingCompetition.deployToken('DAI')).wait(1);
+
+    const wbtcToken = await tradingCompetition.callStatic.deployToken('wBTC');
+    await (await tradingCompetition.deployToken('wBTC')).wait(1);
+
+    const linkToken = await tradingCompetition.callStatic.deployToken('LINK');
+    await (await tradingCompetition.deployToken('LINK')).wait(1);
+
+    const yfiToken = await tradingCompetition.callStatic.deployToken('YFI');
+    await (await tradingCompetition.deployToken('YFI')).wait(1);
+
+    const uniToken = await tradingCompetition.callStatic.deployToken('UNI');
+    await (await tradingCompetition.deployToken('UNI')).wait(1);
+
+    console.log('daiToken', daiToken);
+    console.log('wbtcToken', wbtcToken);
+    console.log('linkToken', linkToken);
+    console.log('yfiToken', yfiToken);
+    console.log('uniToken', uniToken);
+
+    const tradingCompetitionMerkle =
+      await new TradingCompetitionMerkle__factory(deployer).deploy(
+        [daiToken, wbtcToken, linkToken, yfiToken, uniToken],
+        [1000000, 10000, 50000, 100000, 100000],
+      );
+
+    await tradingCompetitionMerkle.addMerkleRoot(
+      0,
+      '0x19da299c03aeaabaa21526488c840300881cdfde45f445989e542f2123d8d520',
+    );
 
     await [daiToken, wbtcToken, linkToken, yfiToken, uniToken].reduce(
       async (promise, token) => {
         await promise;
 
-        const nextPromise = ERC20Mock__factory.connect(
-          token.address,
+        const tx = await tradingCompetition.addMinters([
+          '0x42014C88ccd07f1dA0E22A5095aAA06D2200b2Ea',
+          deployer.address,
+        ]);
+
+        await tx.wait(1);
+
+        const nextPromise = TradingCompetitionERC20__factory.connect(
+          token,
           deployer,
         ).mint(
           '0x42014C88ccd07f1dA0E22A5095aAA06D2200b2Ea',
@@ -91,7 +138,7 @@ task('deploy').setAction(async function (args, hre) {
     );
 
     await ProxyManager__factory.connect(instance.address, deployer).deployPool(
-      daiToken.address,
+      daiToken,
       weth,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_ETH_PRICE_ORACLE,
@@ -101,8 +148,8 @@ task('deploy').setAction(async function (args, hre) {
     );
 
     await ProxyManager__factory.connect(instance.address, deployer).deployPool(
-      daiToken.address,
-      wbtcToken.address,
+      daiToken,
+      wbtcToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_WBTC_PRICE_ORACLE,
       fixedFromFloat(37000),
@@ -111,8 +158,8 @@ task('deploy').setAction(async function (args, hre) {
     );
 
     await ProxyManager__factory.connect(instance.address, deployer).deployPool(
-      daiToken.address,
-      linkToken.address,
+      daiToken,
+      linkToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_LINK_PRICE_ORACLE,
       fixedFromFloat(24.5),
@@ -121,8 +168,8 @@ task('deploy').setAction(async function (args, hre) {
     );
 
     await ProxyManager__factory.connect(instance.address, deployer).deployPool(
-      daiToken.address,
-      yfiToken.address,
+      daiToken,
+      yfiToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_WBTC_PRICE_ORACLE,
       fixedFromFloat(39000),
@@ -131,14 +178,16 @@ task('deploy').setAction(async function (args, hre) {
     );
 
     await ProxyManager__factory.connect(instance.address, deployer).deployPool(
-      daiToken.address,
-      uniToken.address,
+      daiToken,
+      uniToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_LINK_PRICE_ORACLE,
       fixedFromFloat(10),
       fixedFromFloat(0.1),
       fixedFromFloat(0.2),
     );
+
+    console.log('TradingCompetitionMerkle: ', tradingCompetitionMerkle.address);
   }
 
   console.log('Deployer: ', deployer.address);
