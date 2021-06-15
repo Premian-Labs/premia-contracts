@@ -748,7 +748,6 @@ describe('PoolProxy', function () {
             pool.connect(buyer).exercise({
               longTokenId: shortTokenId,
               amount: parseEther('1'),
-              isCall,
             }),
           ).to.be.revertedWith('invalid type');
         });
@@ -775,7 +774,7 @@ describe('PoolProxy', function () {
           await expect(
             pool
               .connect(buyer)
-              .exercise({ longTokenId, amount: parseEther('1'), isCall }),
+              .exercise({ longTokenId, amount: parseEther('1') }),
           ).to.be.revertedWith('not ITM');
         });
 
@@ -807,7 +806,7 @@ describe('PoolProxy', function () {
           const underlyingBalance = await underlying.balanceOf(buyer.address);
           const baseBalance = await base.balanceOf(buyer.address);
 
-          await pool.connect(buyer).exercise({ longTokenId, amount, isCall });
+          await pool.connect(buyer).exercise({ longTokenId, amount });
 
           if (isCall) {
             const expectedReturn = ((price - strike) * amountNb) / price;
@@ -856,7 +855,7 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            pool.connect(lp1).reassign(longTokenId, parseEther('1'), isCall),
+            pool.connect(lp1).reassign(longTokenId, parseEther('1')),
           ).to.be.revertedWith('invalid type');
         });
 
@@ -889,7 +888,7 @@ describe('PoolProxy', function () {
           await setTimestamp(getCurrentTimestamp() + 11 * 24 * 3600);
 
           await expect(
-            pool.connect(lp1).reassign(shortTokenId, shortTokenBalance, isCall),
+            pool.connect(lp1).reassign(shortTokenId, shortTokenBalance),
           ).to.be.revertedWith('expired');
         });
 
@@ -926,9 +925,7 @@ describe('PoolProxy', function () {
             shortTokenId,
           );
 
-          await pool
-            .connect(lp1)
-            .reassign(shortTokenId, shortTokenBalance, isCall);
+          await pool.connect(lp1).reassign(shortTokenId, shortTokenBalance);
 
           expect(await pool.balanceOf(lp1.address, shortTokenId)).to.eq(0);
           expect(await pool.balanceOf(lp2.address, shortTokenId)).to.eq(

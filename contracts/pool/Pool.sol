@@ -217,7 +217,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       );
     }
 
-    baseCost64x64 = args.isCall ? baseCost64x64.div(args.spot64x64) : price64x64.mul(amount64x64);
+    baseCost64x64 = args.isCall ? price64x64.mul(amount64x64).div(args.spot64x64) : price64x64.mul(amount64x64);
     feeCost64x64 = baseCost64x64.mul(FEE_64x64);
   }
 
@@ -273,7 +273,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _pull(_getPoolToken(args.isCall), baseCost + feeCost);
 
     {
-      uint256 longTokenId = PoolStorage.formatTokenId(_getTokenType(args.isCall, false), args.maturity, args.strike64x64);
+      uint256 longTokenId = PoolStorage.formatTokenId(_getTokenType(args.isCall, true), args.maturity, args.strike64x64);
       emit Purchase(msg.sender, longTokenId, args.amount, baseCost, feeCost, newPrice64x64, l.emaVarianceAnnualized64x64);
 
       // mint free liquidity tokens for treasury
@@ -440,7 +440,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       require(tokenType == PoolStorage.TokenType.SHORT_CALL || tokenType == PoolStorage.TokenType.SHORT_PUT, 'invalid type');
       require(maturity > block.timestamp, 'expired');
 
-      isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
+      isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
     }
 
     // TODO: allow exit of expired position
