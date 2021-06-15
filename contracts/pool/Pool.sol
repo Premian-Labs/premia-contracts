@@ -305,11 +305,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) public {
     uint64 maturity;
     int128 strike64x64;
+    bool isCall;
 
     {
       PoolStorage.TokenType tokenType;
       (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(args.longTokenId);
       require(tokenType == PoolStorage.TokenType.LONG_CALL || tokenType == PoolStorage.TokenType.LONG_PUT, 'invalid type');
+
+      isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
     }
 
     PoolStorage.Layout storage l = PoolStorage.layout();
@@ -325,33 +328,33 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     uint256 exerciseValue;
 
-    require((args.isCall && spot64x64 > strike64x64) || (!args.isCall && spot64x64 < strike64x64), 'not ITM');
+    require((isCall && spot64x64 > strike64x64) || (!isCall && spot64x64 < strike64x64), 'not ITM');
 
     // option has a non-zero exercise value
-    if (args.isCall) {
+    if (isCall) {
       exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(args.amount);
     } else {
       exerciseValue = strike64x64.sub(spot64x64).mulu(args.amount);
     }
 
-    _push(_getPoolToken(args.isCall), exerciseValue);
+    _push(_getPoolToken(isCall), exerciseValue);
 
-    int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(args.isCall));
+    int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
 
     _exerciseLoop(
       l,
       args.amount,
-      args.isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
-      PoolStorage.formatTokenId(_getTokenType(args.isCall, false), maturity, strike64x64),
-      args.isCall
+      isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
+      PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
+      isCall
     );
 
-    int128 newLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(args.isCall));
+    int128 newLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
 
-    l.setCLevel(oldLiquidity64x64, newLiquidity64x64, args.isCall);
+    l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCall);
 
     emit Exercise(msg.sender, args.longTokenId, args.amount, spot64x64, newLiquidity64x64 - oldLiquidity64x64, exerciseValue, l.emaVarianceAnnualized64x64);
-    emit UpdateCLevel(args.isCall, l.getCLevel(args.isCall), oldLiquidity64x64, newLiquidity64x64);
+    emit UpdateCLevel(isCall, l.getCLevel(isCall), oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
@@ -411,28 +414,30 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     emit UpdateCLevel(isCallPool, l.getCLevel(isCallPool), oldLiquidity64x64, newLiquidity64x64);
   }
 
+
   /**
    * @notice reassign short position to new liquidity provider
    * @param shortTokenId ERC1155 short token id
    * @param amount quantity of option contract tokens to reassign
-   * @param isCall true for call, false for put
    * @return baseCost quantity of tokens required to reassign short position
    * @return feeCost quantity of tokens required to pay fees
    */
   function reassign (
     uint256 shortTokenId,
-    uint256 amount,
-    bool isCall
+    uint256 amount
   ) external returns (uint256 baseCost, uint256 feeCost) {
 
     uint64 maturity;
     int128 strike64x64;
+    bool isCall;
 
     {
       PoolStorage.TokenType tokenType;
       (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(shortTokenId);
       require(tokenType == PoolStorage.TokenType.SHORT_CALL || tokenType == PoolStorage.TokenType.SHORT_PUT, 'invalid type');
       require(maturity > block.timestamp, 'expired');
+
+      isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
     }
 
     // TODO: allow exit of expired position

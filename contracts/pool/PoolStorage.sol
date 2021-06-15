@@ -83,7 +83,6 @@ library PoolStorage {
   struct ExerciseArgs {
     uint256 longTokenId; // amount quantity of option contract tokens to exercise
     uint256 amount; // quantity of option contract tokens to exercise
-    bool isCall; // true for call, false for put
   }
 
   ////////////////////////////////////////////
