@@ -26,7 +26,7 @@ import {
   bnToNumber,
   fixedFromFloat,
   fixedToNumber,
-  getTokenIdFor,
+  formatTokenId,
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
@@ -53,12 +53,12 @@ describe('PoolProxy', function () {
   let baseOracle: MockContract;
   let underlyingOracle: MockContract;
 
-  const underlyingFreeLiqToken = getTokenIdFor({
+  const underlyingFreeLiqToken = formatTokenId({
     tokenType: TokenType.UnderlyingFreeLiq,
     maturity: BigNumber.from(0),
     strike64x64: BigNumber.from(0),
   });
-  const baseFreeLiqToken = getTokenIdFor({
+  const baseFreeLiqToken = formatTokenId({
     tokenType: TokenType.BaseFreeLiq,
     maturity: BigNumber.from(0),
     strike64x64: BigNumber.from(0),
@@ -91,13 +91,13 @@ describe('PoolProxy', function () {
 
   const getFreeLiqTokenId = (isCall: boolean) => {
     if (isCall) {
-      return getTokenIdFor({
+      return formatTokenId({
         tokenType: TokenType.UnderlyingFreeLiq,
         maturity: BigNumber.from(0),
         strike64x64: BigNumber.from(0),
       });
     } else {
-      return getTokenIdFor({
+      return formatTokenId({
         tokenType: TokenType.BaseFreeLiq,
         maturity: BigNumber.from(0),
         strike64x64: BigNumber.from(0),
@@ -573,12 +573,12 @@ describe('PoolProxy', function () {
             bnToNumber(mintAmount) - fixedToNumber(quote.baseCost64x64),
           );
 
-          const shortTokenId = getTokenIdFor({
+          const shortTokenId = formatTokenId({
             tokenType: getShort(isCall),
             maturity,
             strike64x64,
           });
-          const longTokenId = getTokenIdFor({
+          const longTokenId = formatTokenId({
             tokenType: getLong(isCall),
             maturity,
             strike64x64,
@@ -648,12 +648,12 @@ describe('PoolProxy', function () {
             .connect(buyer)
             .approve(pool.address, ethers.constants.MaxUint256);
 
-          const shortTokenId = getTokenIdFor({
+          const shortTokenId = formatTokenId({
             tokenType: getShort(isCall),
             maturity,
             strike64x64,
           });
-          const longTokenId = getTokenIdFor({
+          const longTokenId = formatTokenId({
             tokenType: getLong(isCall),
             maturity,
             strike64x64,
@@ -738,7 +738,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const shortTokenId = getTokenIdFor({
+          const shortTokenId = formatTokenId({
             tokenType: getShort(isCall),
             maturity,
             strike64x64,
@@ -748,7 +748,6 @@ describe('PoolProxy', function () {
             pool.connect(buyer).exercise({
               longTokenId: shortTokenId,
               amount: parseEther('1'),
-              isCall,
             }),
           ).to.be.revertedWith('invalid type');
         });
@@ -766,7 +765,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const longTokenId = getTokenIdFor({
+          const longTokenId = formatTokenId({
             tokenType: getLong(isCall),
             maturity,
             strike64x64,
@@ -775,7 +774,7 @@ describe('PoolProxy', function () {
           await expect(
             pool
               .connect(buyer)
-              .exercise({ longTokenId, amount: parseEther('1'), isCall }),
+              .exercise({ longTokenId, amount: parseEther('1') }),
           ).to.be.revertedWith('not ITM');
         });
 
@@ -795,7 +794,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const longTokenId = getTokenIdFor({
+          const longTokenId = formatTokenId({
             tokenType: getLong(isCall),
             maturity,
             strike64x64,
@@ -807,7 +806,7 @@ describe('PoolProxy', function () {
           const underlyingBalance = await underlying.balanceOf(buyer.address);
           const baseBalance = await base.balanceOf(buyer.address);
 
-          await pool.connect(buyer).exercise({ longTokenId, amount, isCall });
+          await pool.connect(buyer).exercise({ longTokenId, amount });
 
           if (isCall) {
             const expectedReturn = ((price - strike) * amountNb) / price;
@@ -849,14 +848,14 @@ describe('PoolProxy', function () {
 
           await poolUtil.depositLiquidity(lp2, parseEther('2'), isCall);
 
-          const longTokenId = getTokenIdFor({
+          const longTokenId = formatTokenId({
             tokenType: getLong(isCall),
             maturity,
             strike64x64,
           });
 
           await expect(
-            pool.connect(lp1).reassign(longTokenId, parseEther('1'), isCall),
+            pool.connect(lp1).reassign(longTokenId, parseEther('1')),
           ).to.be.revertedWith('invalid type');
         });
 
@@ -873,7 +872,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const shortTokenId = getTokenIdFor({
+          const shortTokenId = formatTokenId({
             tokenType: getShort(isCall),
             maturity,
             strike64x64,
@@ -889,7 +888,7 @@ describe('PoolProxy', function () {
           await setTimestamp(getCurrentTimestamp() + 11 * 24 * 3600);
 
           await expect(
-            pool.connect(lp1).reassign(shortTokenId, shortTokenBalance, isCall),
+            pool.connect(lp1).reassign(shortTokenId, shortTokenBalance),
           ).to.be.revertedWith('expired');
         });
 
@@ -915,7 +914,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const shortTokenId = getTokenIdFor({
+          const shortTokenId = formatTokenId({
             tokenType: getShort(isCall),
             maturity,
             strike64x64,
@@ -926,9 +925,7 @@ describe('PoolProxy', function () {
             shortTokenId,
           );
 
-          await pool
-            .connect(lp1)
-            .reassign(shortTokenId, shortTokenBalance, isCall);
+          await pool.connect(lp1).reassign(shortTokenId, shortTokenBalance);
 
           expect(await pool.balanceOf(lp1.address, shortTokenId)).to.eq(0);
           expect(await pool.balanceOf(lp2.address, shortTokenId)).to.eq(
