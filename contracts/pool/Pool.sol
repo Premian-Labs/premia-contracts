@@ -688,7 +688,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     emit UpdateVariance(
       oldEmaLogReturns64x64,
-      l.emaVarianceAnnualized64x64 / 365,
+      oldEmaVarianceAnnualized64x64 / 365,
       logReturns64x64,
       updatedAt,
       l.emaVarianceAnnualized64x64
