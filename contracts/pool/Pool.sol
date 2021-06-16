@@ -521,7 +521,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
 
     _burnShortTokenLoop(
-      l,
       amount,
       exerciseValue,
       PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
