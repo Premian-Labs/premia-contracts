@@ -1,13 +1,5 @@
 import { task } from 'hardhat/config';
-import { BigNumber, BigNumberish } from 'ethers';
-import {
-  TradingCompetitionERC20__factory,
-  TradingCompetitionFactory__factory,
-  TradingCompetitionMerkle__factory,
-  Premia__factory,
-  Pool__factory,
-  ProxyManager__factory,
-} from '../typechain';
+import { fixedFromFloat } from '../test/utils/math';
 
 export const RINKEBY_DAI = '0x5592ec0cfb4dbc12d3ab100b257153436a1f0fea';
 export const RINKEBY_WETH = '0xc778417e063141139fce010982780140aa0cd5ab';
@@ -20,26 +12,15 @@ export const RINKEBY_WBTC_PRICE_ORACLE =
 export const RINKEBY_LINK_PRICE_ORACLE =
   '0xd8bD0a1cB028a31AA859A21A3758685a95dE4623';
 
-const fixedFromBigNumber = function (bn: BigNumber) {
-  return bn.abs().shl(64).mul(bn.abs().div(bn));
-};
-
-const fixedFromFloat = function (float: BigNumberish) {
-  const [integer = '', decimal = ''] = float.toString().split('.');
-  return fixedFromBigNumber(BigNumber.from(`${integer}${decimal}`)).div(
-    BigNumber.from(`1${'0'.repeat(decimal.length)}`),
-  );
-};
-
 task('deploy').setAction(async function (args, hre) {
-  // const {
-  //   TradingCompetitionERC20__factory,
-  //   TradingCompetitionFactory__factory,
-  //   TradingCompetitionMerkle__factory,
-  //   Premia__factory,
-  //   Pool__factory,
-  //   ProxyManager__factory,
-  // } = require('../typechain');
+  const {
+    TradingCompetitionERC20__factory,
+    TradingCompetitionFactory__factory,
+    TradingCompetitionMerkle__factory,
+    Premia__factory,
+    Pool__factory,
+    ProxyManager__factory,
+  } = require('../typechain');
 
   const [deployer] = await hre.ethers.getSigners();
 
@@ -142,7 +123,6 @@ task('deploy').setAction(async function (args, hre) {
       weth,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_ETH_PRICE_ORACLE,
-      fixedFromFloat(2600),
       fixedFromFloat(0.1),
       fixedFromFloat(0.2),
     );
@@ -152,7 +132,6 @@ task('deploy').setAction(async function (args, hre) {
       wbtcToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_WBTC_PRICE_ORACLE,
-      fixedFromFloat(37000),
       fixedFromFloat(0.1),
       fixedFromFloat(0.2),
     );
@@ -162,7 +141,6 @@ task('deploy').setAction(async function (args, hre) {
       linkToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_LINK_PRICE_ORACLE,
-      fixedFromFloat(24.5),
       fixedFromFloat(0.1),
       fixedFromFloat(0.2),
     );
@@ -172,7 +150,6 @@ task('deploy').setAction(async function (args, hre) {
       yfiToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_WBTC_PRICE_ORACLE,
-      fixedFromFloat(39000),
       fixedFromFloat(0.1),
       fixedFromFloat(0.2),
     );
@@ -182,7 +159,6 @@ task('deploy').setAction(async function (args, hre) {
       uniToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_LINK_PRICE_ORACLE,
-      fixedFromFloat(10),
       fixedFromFloat(0.1),
       fixedFromFloat(0.2),
     );
