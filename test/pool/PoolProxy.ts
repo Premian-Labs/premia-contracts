@@ -722,7 +722,7 @@ describe('PoolProxy', function () {
     }
   });
 
-  describe('#exercise', function () {
+  describe('#exerciseFrom', function () {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
         it('should revert if token is a SHORT token', async () => {
@@ -745,7 +745,8 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            pool.connect(buyer).exercise({
+            pool.connect(buyer).exerciseFrom({
+              holder: buyer.address,
               longTokenId: shortTokenId,
               amount: parseEther('1'),
             }),
@@ -774,7 +775,7 @@ describe('PoolProxy', function () {
           await expect(
             pool
               .connect(buyer)
-              .exercise({ longTokenId, amount: parseEther('1') }),
+              .exerciseFrom({ holder: buyer.address, longTokenId, amount: parseEther('1') }),
           ).to.be.revertedWith('not ITM');
         });
 
@@ -806,7 +807,7 @@ describe('PoolProxy', function () {
           const underlyingBalance = await underlying.balanceOf(buyer.address);
           const baseBalance = await base.balanceOf(buyer.address);
 
-          await pool.connect(buyer).exercise({ longTokenId, amount });
+          await pool.connect(buyer).exerciseFrom({ holder: buyer.address, longTokenId, amount });
 
           if (isCall) {
             const expectedReturn = ((price - strike) * amountNb) / price;
@@ -823,6 +824,9 @@ describe('PoolProxy', function () {
 
             expect(Number(formatEther(premium))).to.eq(expectedReturn);
           }
+
+          it('TODO: should revert when exercising on behalf of user not approved');
+          it('TODO: should succeed when exercising on behalf of user approved');
 
           expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
         });

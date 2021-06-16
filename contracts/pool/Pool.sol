@@ -304,10 +304,62 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   function exerciseFrom (
     PoolStorage.ExerciseArgs memory args
   ) public {
-    if(msg.sender != args.holder) {
+    if (msg.sender != args.holder) {
       require(isApprovedForAll(args.holder, msg.sender), "not approved");
     }
-    _exercise(args);
+
+    uint64 maturity;
+    int128 strike64x64;
+    bool isCall;
+
+    {
+      PoolStorage.TokenType tokenType;
+      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(args.longTokenId);
+      require(tokenType == PoolStorage.TokenType.LONG_CALL || tokenType == PoolStorage.TokenType.LONG_PUT, 'invalid type');
+
+      isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
+    }
+
+    PoolStorage.Layout storage l = PoolStorage.layout();
+    int128 spot64x64 = l.fetchPriceUpdate();
+    _update(l, spot64x64);
+
+    if (maturity < block.timestamp) {
+      spot64x64 = l.getPriceUpdateAfter(maturity);
+    }
+
+    // burn long option tokens from sender
+    _burn(msg.sender, args.longTokenId, args.amount);
+
+    uint256 exerciseValue;
+
+    require((isCall && spot64x64 > strike64x64) || (!isCall && spot64x64 < strike64x64), 'not ITM');
+
+    // option has a non-zero exercise value
+    if (isCall) {
+      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(args.amount);
+    } else {
+      exerciseValue = strike64x64.sub(spot64x64).mulu(args.amount);
+    }
+
+    _push(_getPoolToken(isCall), exerciseValue);
+
+    int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
+
+    _exerciseLoop(
+      l,
+      args.amount,
+      isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
+      PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
+      isCall
+    );
+
+    int128 newLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
+
+    _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
+
+    emit Exercise(msg.sender, args.longTokenId, args.amount, spot64x64, newLiquidity64x64 - oldLiquidity64x64, exerciseValue, l.emaVarianceAnnualized64x64);
+
   }
 
   /**
@@ -595,66 +647,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       emit AssignExercise(underwriter, shortTokenId, freeLiq, intervalAmount);
     }
-  }
-
-  /**
-   * @notice exercise call option
-   * @param args arguments for the exercise function
-   */
-  function _exercise (
-    PoolStorage.ExerciseArgs memory args
-  ) internal {
-    uint64 maturity;
-    int128 strike64x64;
-    bool isCall;
-
-    {
-      PoolStorage.TokenType tokenType;
-      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(args.longTokenId);
-      require(tokenType == PoolStorage.TokenType.LONG_CALL || tokenType == PoolStorage.TokenType.LONG_PUT, 'invalid type');
-
-      isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
-    }
-
-    PoolStorage.Layout storage l = PoolStorage.layout();
-    int128 spot64x64 = l.fetchPriceUpdate();
-    _update(l, spot64x64);
-
-    if (maturity < block.timestamp) {
-      spot64x64 = l.getPriceUpdateAfter(maturity);
-    }
-
-    // burn long option tokens from sender
-    _burn(msg.sender, args.longTokenId, args.amount);
-
-    uint256 exerciseValue;
-
-    require((isCall && spot64x64 > strike64x64) || (!isCall && spot64x64 < strike64x64), 'not ITM');
-
-    // option has a non-zero exercise value
-    if (isCall) {
-      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(args.amount);
-    } else {
-      exerciseValue = strike64x64.sub(spot64x64).mulu(args.amount);
-    }
-
-    _push(_getPoolToken(isCall), exerciseValue);
-
-    int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
-
-    _exerciseLoop(
-      l,
-      args.amount,
-      isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
-      PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
-      isCall
-    );
-
-    int128 newLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
-
-    _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
-
-    emit Exercise(msg.sender, args.longTokenId, args.amount, spot64x64, newLiquidity64x64 - oldLiquidity64x64, exerciseValue, l.emaVarianceAnnualized64x64);
   }
 
   /**

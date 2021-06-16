@@ -82,7 +82,7 @@ library PoolStorage {
   }
 
   struct ExerciseArgs {
-    address holder;
+    address holder; // holder address of option contract tokens to exercise
     uint256 longTokenId; // amount quantity of option contract tokens to exercise
     uint256 amount; // quantity of option contract tokens to exercise
   }
