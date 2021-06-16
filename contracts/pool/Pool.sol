@@ -351,7 +351,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
 
     _exerciseLoop(
-      l,
       args.amount,
       isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
       PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
@@ -492,7 +491,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   /**
    * @notice Update pool data
    */
-  function update () public {
+  function update () external {
     PoolStorage.Layout storage l = PoolStorage.layout();
     _update(l, l.fetchPriceUpdate());
   }
@@ -587,7 +586,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   function _getTokenType (
     bool isCall,
     bool isLong
-  ) private view returns (PoolStorage.TokenType tokenType) {
+  ) private pure returns (PoolStorage.TokenType tokenType) {
     if (isCall) {
       tokenType = isLong ? PoolStorage.TokenType.LONG_CALL : PoolStorage.TokenType.SHORT_CALL;
     } else {
@@ -617,7 +616,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   }
 
   function _exerciseLoop (
-    PoolStorage.Layout storage l,
     uint256 amount,
     uint256 exerciseValue,
     uint256 shortTokenId,

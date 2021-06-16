@@ -220,7 +220,7 @@ library PoolStorage {
 
   function fetchPriceUpdate (
     Layout storage l
-  ) internal returns (int128 price64x64) {
+  ) internal view returns (int128 price64x64) {
     int256 priceUnderlying = AggregatorInterface(l.underlyingOracle).latestAnswer();
     int256 priceBase = AggregatorInterface(l.baseOracle).latestAnswer();
 

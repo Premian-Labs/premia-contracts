@@ -1,5 +1,5 @@
 import { BigNumber, BigNumberish } from 'ethers';
-import { ethers } from 'hardhat';
+import { ethers } from 'ethers';
 import {
   formatEther,
   hexConcat,

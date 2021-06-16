@@ -13,6 +13,7 @@ export const RINKEBY_LINK_PRICE_ORACLE =
   '0xd8bD0a1cB028a31AA859A21A3758685a95dE4623';
 
 task('deploy').setAction(async function (args, hre) {
+  // Leave imports here so that we can run hardhat compile even if typechain folder has not been generated  yet
   const {
     TradingCompetitionERC20__factory,
     TradingCompetitionFactory__factory,
