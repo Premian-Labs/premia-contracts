@@ -24,7 +24,7 @@ contract TradingCompetitionERC20 is ERC20 {
         _mint(_account, _amount);
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 amount) override internal {
+    function _beforeTokenTransfer(address from, address to, uint256) override view internal {
         require(factory.isWhitelisted(from, to), 'Not whitelisted');
     }
 }

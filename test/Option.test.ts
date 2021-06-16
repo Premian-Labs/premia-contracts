@@ -4,8 +4,8 @@ import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
   Option,
-  TestErc20,
-  TestErc20__factory,
+  ERC20Mock,
+  ERC20Mock__factory,
   TestFlashLoan__factory,
   TestPremiaFeeDiscount,
   TestPremiaFeeDiscount__factory,
@@ -32,8 +32,8 @@ import {
 let p: IPremiaContracts;
 let uniswap: IUniswap;
 let weth: WETH9;
-let wbtc: TestErc20;
-let dai: TestErc20;
+let wbtc: ERC20Mock;
+let dai: ERC20Mock;
 let option: Option;
 let premiaFeeDiscount: TestPremiaFeeDiscount;
 let admin: SignerWithAddress;
@@ -41,7 +41,7 @@ let writer1: SignerWithAddress;
 let writer2: SignerWithAddress;
 let user1: SignerWithAddress;
 let feeRecipient: SignerWithAddress;
-let testToken: WETH9 | TestErc20;
+let testToken: WETH9 | ERC20Mock;
 const tax = 100;
 
 let optionTestUtil: OptionTestUtil;
@@ -52,12 +52,15 @@ describe('Option', () => {
 
     [admin, writer1, writer2, user1, feeRecipient] = await ethers.getSigners();
     weth = await new WETH9__factory(admin).deploy();
-    wbtc = await new TestErc20__factory(admin).deploy(TEST_TOKEN_DECIMALS);
+    wbtc = await new ERC20Mock__factory(admin).deploy(
+      'wBTC',
+      TEST_TOKEN_DECIMALS,
+    );
 
     testToken = getToken(weth, wbtc);
 
     p = await deployContracts(admin, feeRecipient.address, true);
-    dai = p.dai as TestErc20;
+    dai = p.dai as ERC20Mock;
     option = p.option;
 
     premiaFeeDiscount = await new TestPremiaFeeDiscount__factory(

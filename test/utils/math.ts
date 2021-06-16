@@ -1,5 +1,5 @@
 import { BigNumber, BigNumberish } from 'ethers';
-import { ethers } from 'hardhat';
+import { ethers } from 'ethers';
 import {
   formatEther,
   hexConcat,
@@ -13,7 +13,7 @@ import { TokenType } from '../pool/PoolUtil';
 export interface TokenIdParams {
   tokenType: TokenType;
   maturity: BigNumber;
-  strikePrice: BigNumber;
+  strike64x64: BigNumber;
 }
 
 export function fixedFromBigNumber(bn: BigNumber) {
@@ -47,13 +47,13 @@ export function fixedToBn(fixed: BigNumber) {
 export function formatTokenId({
   tokenType,
   maturity,
-  strikePrice,
+  strike64x64,
 }: TokenIdParams) {
   return hexConcat([
     hexZeroPad(BigNumber.from(tokenType).toHexString(), 1),
     hexZeroPad('0x0', 7),
     hexZeroPad(maturity.toHexString(), 8),
-    hexZeroPad(strikePrice.toHexString(), 16),
+    hexZeroPad(strike64x64.toHexString(), 16),
   ]);
 }
 
@@ -61,6 +61,6 @@ export function parseTokenId(tokenId: BytesLike): TokenIdParams {
   return {
     tokenType: Number(hexDataSlice(tokenId, 0, 1)),
     maturity: BigNumber.from(hexDataSlice(tokenId, 8, 16)),
-    strikePrice: BigNumber.from(hexDataSlice(tokenId, 16, 32)),
+    strike64x64: BigNumber.from(hexDataSlice(tokenId, 16, 32)),
   };
 }

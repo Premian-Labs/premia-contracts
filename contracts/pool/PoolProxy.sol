@@ -26,7 +26,6 @@ contract PoolProxy is ManagedProxyOwnable {
     address underlying,
     address baseOracle,
     address underlyingOracle,
-    int128 price64x64,
     int128 emaLogReturns64x64,
     int128 emaVarianceAnnualized64x64
   ) ManagedProxy(IProxyManager.getPoolImplementation.selector) {
@@ -40,10 +39,11 @@ contract PoolProxy is ManagedProxyOwnable {
 
       l.setOracles(baseOracle, underlyingOracle);
 
+      l.baseDecimals = IERC20Metadata(base).decimals();
       l.underlyingDecimals = IERC20Metadata(underlying).decimals();
-      l.cLevel64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
+      l.cLevelBase64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
+      l.cLevelUnderlying64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
 
-      // TODO: remove price64x64 from arguments
       int128 newPrice64x64 = l.fetchPriceUpdate();
       l.setPriceUpdate(newPrice64x64);
 

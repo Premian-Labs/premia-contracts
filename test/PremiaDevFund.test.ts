@@ -2,8 +2,8 @@ import { expect } from 'chai';
 import {
   PremiaDevFund,
   PremiaDevFund__factory,
-  TestErc20,
-  TestErc20__factory,
+  ERC20Mock,
+  ERC20Mock__factory,
 } from '../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -12,7 +12,7 @@ import { parseEther } from 'ethers/lib/utils';
 import { ZERO_ADDRESS } from './utils/constants';
 
 let admin: SignerWithAddress;
-let premia: TestErc20;
+let premia: ERC20Mock;
 let premiaDevFund: PremiaDevFund;
 
 describe('PremiaDevFund', () => {
@@ -21,7 +21,7 @@ describe('PremiaDevFund', () => {
 
     [admin] = await ethers.getSigners();
 
-    premia = await new TestErc20__factory(admin).deploy(18);
+    premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
     premiaDevFund = await new PremiaDevFund__factory(admin).deploy(
       premia.address,
     );

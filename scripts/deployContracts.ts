@@ -1,6 +1,8 @@
 import {
   ERC20,
   ERC20__factory,
+  ERC20Mock,
+  ERC20Mock__factory,
   FeeCalculator,
   FeeCalculator__factory,
   Market,
@@ -20,8 +22,6 @@ import {
   PremiaStaking,
   PremiaStaking__factory,
   ProxyManagerOld__factory,
-  TestErc20,
-  TestErc20__factory,
 } from '../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { ZERO_ADDRESS } from '../test/utils/constants';
@@ -34,18 +34,18 @@ export async function deployContracts(
   premiaAddress?: string,
   daiAddress?: string,
 ): Promise<IPremiaContracts> {
-  let premia: PremiaErc20 | TestErc20;
-  let dai: ERC20 | TestErc20;
+  let premia: PremiaErc20 | ERC20Mock;
+  let dai: ERC20 | ERC20Mock;
 
   if (isTest) {
     if (!premiaAddress) {
-      premia = await new TestErc20__factory(deployer).deploy(18);
+      premia = await new ERC20Mock__factory(deployer).deploy('PREMIA', 18);
     } else {
       premia = PremiaErc20__factory.connect(premiaAddress, deployer);
     }
 
     if (!daiAddress) {
-      dai = await new TestErc20__factory(deployer).deploy(18);
+      dai = await new ERC20Mock__factory(deployer).deploy('DAI', 18);
     } else {
       dai = ERC20__factory.connect(daiAddress, deployer);
     }
@@ -187,8 +187,8 @@ export interface IPremiaContracts {
   premiaDiamond: Premia;
   option: Option;
   market: Market;
-  premia: PremiaErc20 | TestErc20;
-  dai: ERC20 | TestErc20;
+  premia: PremiaErc20 | ERC20Mock;
+  dai: ERC20 | ERC20Mock;
   xPremia: PremiaStaking;
   premiaFeeDiscount: PremiaFeeDiscount;
   premiaMaker: PremiaMaker;

@@ -34,7 +34,7 @@ contract AutoExerciseKeeper is IKeeperCompatible {
     // bytes32 hash => AutoExerciseOrder
     mapping(bytes32 => AutoExerciseOrder) orders;
 
-    function getHash(AutoExerciseOrder memory order) public returns (bytes32) {
+    function getHash(AutoExerciseOrder memory order) public pure returns (bytes32) {
         return keccak256(abi.encode(order));
     }
 
