@@ -164,6 +164,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   }
 
   /**
+   * @notice get parameters for token id
+   * @return parameters for token id
+   */
+  function getParametersForTokenId (uint256 tokenId) external pure returns (PoolStorage.TokenType, uint64, int128) {
+    return PoolStorage.parseTokenId(tokenId);
+  }
+
+  /**
    * @notice calculate price of option contract
    * @param args arguments of the quote
    * @return baseCost64x64 64x64 fixed point representation of option cost denominated in underlying currency (without fee)
@@ -343,7 +351,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
 
     _burnShortTokenLoop(
-      l,
       args.amount,
       isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
       PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
@@ -537,7 +544,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   /**
    * @notice Update pool data
    */
-  function update () public {
+  function update () external {
     PoolStorage.Layout storage l = PoolStorage.layout();
     _update(l, l.fetchPriceUpdate());
   }
@@ -562,35 +569,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     );
 
     _setCLevel(l, newCLevel64x64, totalSupply64x64, newTotalSupply64x64, isCall);
-  }
-
-  function _getFreeLiquidityTokenId (
-    bool isCall
-  ) private view returns (uint256 freeLiqTokenId) {
-    freeLiqTokenId = isCall ? UNDERLYING_FREE_LIQ_TOKEN_ID : BASE_FREE_LIQ_TOKEN_ID;
-  }
-
-  function _getPoolToken (
-    bool isCall
-  ) private view returns (address token) {
-    token = isCall ? PoolStorage.layout().underlying : PoolStorage.layout().base;
-  }
-
-  function _getTokenDecimals (
-    bool isCall
-  ) private view returns (uint8 decimals) {
-    decimals = isCall ? PoolStorage.layout().underlyingDecimals : PoolStorage.layout().baseDecimals;
-  }
-
-  function _getTokenType (
-    bool isCall,
-    bool isLong
-  ) private view returns (PoolStorage.TokenType tokenType) {
-    if (isCall) {
-      tokenType = isLong ? PoolStorage.TokenType.LONG_CALL : PoolStorage.TokenType.SHORT_CALL;
-    } else {
-      tokenType = isLong ? PoolStorage.TokenType.LONG_PUT : PoolStorage.TokenType.SHORT_PUT;
-    }
   }
 
   function _mintShortTokenLoop (
@@ -670,8 +648,57 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
   }
 
-  function _burnShortTokenLoop (
+  function _getFreeLiquidityTokenId (
+    bool isCall
+  ) private view returns (uint256 freeLiqTokenId) {
+    freeLiqTokenId = isCall ? UNDERLYING_FREE_LIQ_TOKEN_ID : BASE_FREE_LIQ_TOKEN_ID;
+  }
+
+  function _getPoolToken (
+    bool isCall
+  ) private view returns (address token) {
+    token = isCall ? PoolStorage.layout().underlying : PoolStorage.layout().base;
+  }
+
+  function _getTokenDecimals (
+    bool isCall
+  ) private view returns (uint8 decimals) {
+    decimals = isCall ? PoolStorage.layout().underlyingDecimals : PoolStorage.layout().baseDecimals;
+  }
+
+  function _getTokenType (
+    bool isCall,
+    bool isLong
+  ) private pure returns (PoolStorage.TokenType tokenType) {
+    if (isCall) {
+      tokenType = isLong ? PoolStorage.TokenType.LONG_CALL : PoolStorage.TokenType.SHORT_CALL;
+    } else {
+      tokenType = isLong ? PoolStorage.TokenType.LONG_PUT : PoolStorage.TokenType.SHORT_PUT;
+    }
+  }
+
+  function _setCLevel (
     PoolStorage.Layout storage l,
+    int128 oldLiquidity64x64,
+    int128 newLiquidity64x64,
+    bool isCallPool
+  ) internal {
+    l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCallPool);
+    emit UpdateCLevel(isCallPool, l.getCLevel(isCallPool), oldLiquidity64x64, newLiquidity64x64);
+  }
+
+  function _setCLevel (
+    PoolStorage.Layout storage l,
+    int128 cLevel64x64,
+    int128 oldLiquidity64x64,
+    int128 newLiquidity64x64,
+    bool isCallPool
+  ) internal {
+    l.setCLevel(cLevel64x64, isCallPool);
+    emit UpdateCLevel(isCallPool, cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
+  }
+
+  function _burnShortTokenLoop (
     uint256 amount,
     uint256 exerciseValue,
     uint256 shortTokenId,
@@ -704,27 +731,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       emit AssignExercise(underwriter, shortTokenId, freeLiq, intervalAmount);
     }
-  }
-
-  function _setCLevel (
-    PoolStorage.Layout storage l,
-    int128 oldLiquidity64x64,
-    int128 newLiquidity64x64,
-    bool isCallPool
-  ) internal {
-    l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCallPool);
-    emit UpdateCLevel(isCallPool, l.getCLevel(isCallPool), oldLiquidity64x64, newLiquidity64x64);
-  }
-
-  function _setCLevel (
-    PoolStorage.Layout storage l,
-    int128 cLevel64x64,
-    int128 oldLiquidity64x64,
-    int128 newLiquidity64x64,
-    bool isCallPool
-  ) internal {
-    l.setCLevel(cLevel64x64, isCallPool);
-    emit UpdateCLevel(isCallPool, cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
@@ -763,7 +769,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     emit UpdateVariance(
       oldEmaLogReturns64x64,
-      l.emaVarianceAnnualized64x64 / 365,
+      oldEmaVarianceAnnualized64x64 / 365,
       logReturns64x64,
       updatedAt,
       l.emaVarianceAnnualized64x64

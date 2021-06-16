@@ -171,7 +171,6 @@ describe('PoolProxy', function () {
       underlying.address,
       baseOracle.address,
       underlyingOracle.address,
-      fixedFromFloat(spotPrice * 0.999),
       fixedFromFloat(0.1),
       fixedFromFloat(1.1),
     );
@@ -187,7 +186,6 @@ describe('PoolProxy', function () {
       underlyingWeth.address,
       baseOracle.address,
       underlyingOracle.address,
-      fixedFromFloat(spotPrice * 0.999),
       fixedFromFloat(0.1),
       fixedFromFloat(1.1),
     );
