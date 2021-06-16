@@ -7,6 +7,8 @@ import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
 import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 import '@openzeppelin/contracts/access/Ownable.sol';
 
+import {ITradingCompetitionERC20} from './ITradingCompetitionERC20.sol';
+
 interface ITradingCompetitionMerkle {
     // Returns the merkle root of the merkle tree containing account balances available to claim.
     function merkleRoots(uint256 airdropId) external view returns (bytes32);
@@ -89,7 +91,7 @@ contract TradingCompetitionMerkle is ITradingCompetitionMerkle, Ownable {
         _setClaimed(airdropId, index);
 
         for (uint256 i=0; i < tokens.length; i++) {
-            require(tokens[i].transfer(account, amount * weights[address(tokens[i])] / _inverseBasisPoint), 'Transfer failed');
+            ITradingCompetitionERC20(address(tokens[i])).mint(account, amount * weights[address(tokens[i])] / _inverseBasisPoint);
         }
 
         emit Claimed(airdropId, index, account, amount);
