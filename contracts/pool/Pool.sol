@@ -500,7 +500,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       PoolStorage.TokenType tokenType;
       (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(longTokenId);
       require(tokenType == PoolStorage.TokenType.LONG_CALL || tokenType == PoolStorage.TokenType.LONG_PUT, 'invalid type');
-      require(maturity < block.timestamp, 'TODO');
+      require(maturity < block.timestamp, 'not expired');
       isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
     }
 
@@ -529,8 +529,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     int128 newLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
 
-    l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCall);
-    emit UpdateCLevel(isCall, l.getCLevel(isCall), oldLiquidity64x64, newLiquidity64x64);
+    _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
 
     _burnLongTokenLoop(
       amount,
@@ -647,6 +646,41 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
   }
 
+  function _burnShortTokenLoop (
+    uint256 amount,
+    uint256 exerciseValue,
+    uint256 shortTokenId,
+    bool isCall
+  ) private {
+    EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
+    (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
+
+    while (amount > 0) {
+      address underwriter = underwriters.at(underwriters.length() - 1);
+
+      // amount of liquidity provided by underwriter
+      uint256 intervalAmount = balanceOf(underwriter, shortTokenId);
+      if (intervalAmount > amount) intervalAmount = amount;
+
+      // amount of value claimed by buyer
+      uint256 intervalExerciseValue = exerciseValue * intervalAmount / amount;
+      exerciseValue -= intervalExerciseValue;
+      amount -= intervalAmount;
+
+      uint256 freeLiq = intervalAmount - intervalExerciseValue;
+      if (!isCall) {
+        freeLiq = strike64x64.mulu(freeLiq);
+      }
+
+      // mint free liquidity tokens for underwriter
+      _mint(underwriter, _getFreeLiquidityTokenId(isCall), freeLiq, '');
+      // burn short option tokens from underwriter
+      _burn(underwriter, shortTokenId, intervalAmount);
+
+      emit AssignExercise(underwriter, shortTokenId, freeLiq, intervalAmount);
+    }
+  }
+
   function _getFreeLiquidityTokenId (
     bool isCall
   ) private view returns (uint256 freeLiqTokenId) {
@@ -695,41 +729,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) internal {
     l.setCLevel(cLevel64x64, isCallPool);
     emit UpdateCLevel(isCallPool, cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
-  }
-
-  function _burnShortTokenLoop (
-    uint256 amount,
-    uint256 exerciseValue,
-    uint256 shortTokenId,
-    bool isCall
-  ) private {
-    EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
-    (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
-
-    while (amount > 0) {
-      address underwriter = underwriters.at(underwriters.length() - 1);
-
-      // amount of liquidity provided by underwriter
-      uint256 intervalAmount = balanceOf(underwriter, shortTokenId);
-      if (intervalAmount > amount) intervalAmount = amount;
-
-      // amount of value claimed by buyer
-      uint256 intervalExerciseValue = exerciseValue * intervalAmount / amount;
-      exerciseValue -= intervalExerciseValue;
-      amount -= intervalAmount;
-
-      uint256 freeLiq = intervalAmount - intervalExerciseValue;
-      if (!isCall) {
-        freeLiq = strike64x64.mulu(freeLiq);
-      }
-
-      // mint free liquidity tokens for underwriter
-      _mint(underwriter, _getFreeLiquidityTokenId(isCall), freeLiq, '');
-      // burn short option tokens from underwriter
-      _burn(underwriter, shortTokenId, intervalAmount);
-
-      emit AssignExercise(underwriter, shortTokenId, freeLiq, intervalAmount);
-    }
   }
 
   /**
