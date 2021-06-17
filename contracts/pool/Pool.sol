@@ -46,7 +46,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 longTokenId,
     uint256 amount,
     int128 spot64x64,
-    int128 amountFreed64x64,
     uint256 exerciseValue
   );
 
@@ -365,7 +364,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       args.longTokenId,
       args.amount,
       spot64x64,
-      newLiquidity64x64 - oldLiquidity64x64,
       exerciseValue
     );
   }
@@ -541,7 +539,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       amount,
       exerciseValue,
       longTokenId,
-      isCall
+      isCall,
+      spot64x64
     );
   }
 
@@ -625,8 +624,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 amount,
     uint256 exerciseValue,
     uint256 longTokenId,
-    bool isCall
+    bool isCall,
+    int128 spot64x64
   ) internal {
+    // TODO: only burn up to passed amount
+
     EnumerableSet.AddressSet storage longTokenHolders = ERC1155EnumerableStorage.layout().accountsByToken[longTokenId];
 
     uint256 supply = totalSupply(longTokenId);
@@ -636,17 +638,25 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       uint256 balance = balanceOf(longTokenHolder, longTokenId);
 
+      uint256 intervalExerciseValue;
+
       if (exerciseValue > 0) {
+        intervalExerciseValue = exerciseValue * balance / supply;
         // TODO: merge with _push function
         // TODO: store balance until manual withdrawal
         require(
-          IERC20(_getPoolToken(isCall)).transfer(longTokenHolder, exerciseValue * balance / supply),
+          IERC20(_getPoolToken(isCall)).transfer(longTokenHolder, intervalExerciseValue),
           'ERC20 transfer failed'
         );
-
-        // TODO: event?
-        // emit Exercise(msg.sender, l.base, l.underlying, isCall, spot64x64, strike64x64, maturity, balance, newLiquidity64x64 - oldLiquidity64x64, exerciseValue);
       }
+
+      emit Exercise (
+        longTokenHolder,
+        longTokenId,
+        balance,
+        spot64x64,
+        intervalExerciseValue
+      );
 
       _burn(longTokenHolder, longTokenId, balance);
     }
