@@ -47,8 +47,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 amount,
     int128 spot64x64,
     int128 amountFreed64x64,
-    uint256 exerciseValue,
-    int128 emaVarianceAnnualized64x64
+    uint256 exerciseValue
   );
 
   event Underwrite (
@@ -354,7 +353,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
 
-    emit Exercise(msg.sender, args.longTokenId, args.amount, spot64x64, newLiquidity64x64 - oldLiquidity64x64, exerciseValue, l.emaVarianceAnnualized64x64);
+    emit Exercise(
+      msg.sender,
+      args.longTokenId,
+      args.amount,
+      spot64x64,
+      newLiquidity64x64 - oldLiquidity64x64,
+      exerciseValue
+    );
   }
 
   /**
