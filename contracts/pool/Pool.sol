@@ -446,15 +446,13 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
     }
 
-    // TODO: allow exit of expired position
-
     PoolStorage.Layout storage l = PoolStorage.layout();
     int128 newPrice64x64 = l.fetchPriceUpdate();
     _update(l, newPrice64x64);
 
     int128 cLevel64x64;
 
-    { // To avoid stack too deep
+    {
       int128 baseCost64x64;
       int128 feeCost64x64;
 
@@ -497,7 +495,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) external {
     uint64 maturity;
     int128 strike64x64;
-
     bool isCall;
 
     {
@@ -627,21 +624,20 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     bool isCall,
     int128 spot64x64
   ) internal {
-    // TODO: only burn up to passed amount
+    EnumerableSet.AddressSet storage holders = ERC1155EnumerableStorage.layout().accountsByToken[longTokenId];
 
-    EnumerableSet.AddressSet storage longTokenHolders = ERC1155EnumerableStorage.layout().accountsByToken[longTokenId];
+    while (amount > 0) {
+      address longTokenHolder = holders.at(holders.length() - 1);
 
-    uint256 supply = totalSupply(longTokenId);
-
-    for (uint256 i; i < longTokenHolders.length(); i++) {
-      address longTokenHolder = longTokenHolders.at(0);
-
-      uint256 balance = balanceOf(longTokenHolder, longTokenId);
+      uint256 intervalAmount = balanceOf(longTokenHolder, longTokenId);
+      if (intervalAmount > amount) intervalAmount = amount;
 
       uint256 intervalExerciseValue;
 
       if (exerciseValue > 0) {
-        intervalExerciseValue = exerciseValue * balance / supply;
+        intervalExerciseValue = exerciseValue * intervalAmount / amount;
+        exerciseValue -= intervalExerciseValue;
+
         // TODO: merge with _push function
         // TODO: store balance until manual withdrawal
         require(
@@ -650,15 +646,17 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         );
       }
 
+      amount -= intervalAmount;
+
       emit Exercise (
         longTokenHolder,
         longTokenId,
-        balance,
+        intervalAmount,
         spot64x64,
         intervalExerciseValue
       );
 
-      _burn(longTokenHolder, longTokenId, balance);
+      _burn(longTokenHolder, longTokenId, intervalAmount);
     }
   }
 
