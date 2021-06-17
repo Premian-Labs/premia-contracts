@@ -329,7 +329,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
 
     // burn long option tokens from sender
-    _burn(msg.sender, args.longTokenId, args.amount);
+    _burn(args.holder, args.longTokenId, args.amount);
 
     uint256 exerciseValue;
 
@@ -342,7 +342,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       exerciseValue = strike64x64.sub(spot64x64).mulu(args.amount);
     }
 
-    _push(_getPoolToken(isCall), exerciseValue);
+    _pushTo(args.holder, _getPoolToken(isCall), exerciseValue);
 
     int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
 
@@ -358,7 +358,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
 
-    emit Exercise(msg.sender, args.longTokenId, args.amount, spot64x64, newLiquidity64x64 - oldLiquidity64x64, exerciseValue, l.emaVarianceAnnualized64x64);
+    emit Exercise(args.holder, args.longTokenId, args.amount, spot64x64, newLiquidity64x64 - oldLiquidity64x64, exerciseValue, l.emaVarianceAnnualized64x64);
 
   }
 
@@ -409,7 +409,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _burn(msg.sender, freeLiqTokenId, amount);
     int128 newLiquidity64x64 = l.totalSupply64x64(freeLiqTokenId);
 
-    _push(_getPoolToken(isCallPool), amount);
+    _pushTo(msg.sender, _getPoolToken(isCallPool), amount);
     emit Withdrawal(msg.sender, isCallPool, depositedAt, amount);
 
     _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
@@ -443,9 +443,13 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     // TODO: allow exit of expired position
 
-    PoolStorage.Layout storage l = PoolStorage.layout();
-    int128 newPrice64x64 = l.fetchPriceUpdate();
-    _update(l, newPrice64x64);
+    int128 newPrice64x64;
+
+    { // To avoid stack too deep
+      PoolStorage.Layout storage l = PoolStorage.layout();
+      newPrice64x64 = l.fetchPriceUpdate();
+      _update(l, newPrice64x64);
+    }
 
     int128 cLevel64x64;
 
@@ -464,7 +468,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       baseCost = baseCost64x64.toDecimals(_getTokenDecimals(isCall));
       feeCost = feeCost64x64.toDecimals(_getTokenDecimals(isCall));
 
-      _push(
+      _pushTo(
+        msg.sender,
         _getPoolToken(isCall),
         isCall
           ? amount - baseCost - feeCost
@@ -472,8 +477,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       );
 
       // update C-Level, accounting for slippage and reinvested premia separately
-      _updateCLevelReassign(l, isCall, baseCost64x64, feeCost64x64, cLevel64x64);
+      _updateCLevelReassign(isCall, baseCost64x64, feeCost64x64, cLevel64x64);
     }
+
+    PoolStorage.Layout storage l = PoolStorage.layout();
 
     // mint free liquidity tokens for treasury
     _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost, '');
@@ -502,7 +509,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   // Internal //
   //////////////
 
-  function _updateCLevelReassign (PoolStorage.Layout storage l, bool isCall, int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64) internal {
+  function _updateCLevelReassign (bool isCall, int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64) internal {
+    PoolStorage.Layout storage l = PoolStorage.layout();
     int128 totalSupply64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
     int128 newTotalSupply64x64 = totalSupply64x64.add(baseCost64x64).add(feeCost64x64);
 
@@ -699,12 +707,13 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    * @param token ERC20 token address
    * @param amount quantity of token to transfer
    */
-  function _push (
+  function _pushTo (
+    address to,
     address token,
     uint256 amount
   ) internal {
     require(
-      IERC20(token).transfer(msg.sender, amount),
+      IERC20(token).transfer(to, amount),
       'ERC20 transfer failed'
     );
   }
