@@ -326,8 +326,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
 
     PoolStorage.Layout storage l = PoolStorage.layout();
-    _update(l, l.fetchPriceUpdate());
-    int128 spot64x64 = maturity < block.timestamp ? l.getPriceUpdateAfter(maturity) : l.fetchPriceUpdate();
+    int128 spot64x64 = l.fetchPriceUpdate();
+    _update(l, spot64x64);
+
+    if (maturity < block.timestamp) {
+      spot64x64 = l.getPriceUpdateAfter(maturity);
+    }
 
     require(args.onlyExpired || (isCall && spot64x64 > strike64x64) || (!isCall && spot64x64 < strike64x64), 'not ITM');
 
