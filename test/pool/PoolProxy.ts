@@ -41,6 +41,7 @@ describe('PoolProxy', function () {
   let lp1: SignerWithAddress;
   let lp2: SignerWithAddress;
   let buyer: SignerWithAddress;
+  let thirdParty: SignerWithAddress;
 
   let premia: Premia;
   let proxy: ManagedProxyOwnable;
@@ -113,7 +114,7 @@ describe('PoolProxy', function () {
 
   beforeEach(async function () {
     await resetHardhat();
-    [owner, lp1, lp2, buyer] = await ethers.getSigners();
+    [owner, lp1, lp2, buyer, thirdParty] = await ethers.getSigners();
 
     //
 
@@ -720,7 +721,7 @@ describe('PoolProxy', function () {
     }
   });
 
-  describe('#exercise', function () {
+  describe('#exerciseFrom', function () {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
         it('should revert if token is a SHORT token', async () => {
@@ -743,7 +744,8 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            pool.connect(buyer).exercise({
+            pool.connect(buyer).exerciseFrom({
+              holder: buyer.address,
               longTokenId: shortTokenId,
               amount: parseEther('1'),
             }),
@@ -770,9 +772,11 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            pool
-              .connect(buyer)
-              .exercise({ longTokenId, amount: parseEther('1') }),
+            pool.connect(buyer).exerciseFrom({
+              holder: buyer.address,
+              longTokenId,
+              amount: parseEther('1'),
+            }),
           ).to.be.revertedWith('not ITM');
         });
 
@@ -804,7 +808,91 @@ describe('PoolProxy', function () {
           const underlyingBalance = await underlying.balanceOf(buyer.address);
           const baseBalance = await base.balanceOf(buyer.address);
 
-          await pool.connect(buyer).exercise({ longTokenId, amount });
+          await pool
+            .connect(buyer)
+            .exerciseFrom({ holder: buyer.address, longTokenId, amount });
+
+          if (isCall) {
+            const expectedReturn = ((price - strike) * amountNb) / price;
+            const premium = (await underlying.balanceOf(buyer.address)).sub(
+              underlyingBalance,
+            );
+
+            expect(Number(formatEther(premium))).to.eq(expectedReturn);
+          } else {
+            const expectedReturn = (strike - price) * amountNb;
+            const premium = (await base.balanceOf(buyer.address)).sub(
+              baseBalance,
+            );
+
+            expect(Number(formatEther(premium))).to.eq(expectedReturn);
+          }
+
+          expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
+        });
+
+        it('should revert when exercising on behalf of user not approved', async () => {
+          const maturity = poolUtil.getMaturity(10);
+          const strike = getStrike(isCall);
+          const strike64x64 = fixedFromFloat(strike);
+          const amountNb = 10;
+          const amount = parseEther(amountNb.toString());
+
+          await poolUtil.purchaseOption(
+            lp1,
+            buyer,
+            amount,
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await expect(
+            pool
+              .connect(thirdParty)
+              .exerciseFrom({ holder: buyer.address, longTokenId, amount }),
+          ).to.be.revertedWith('not approved');
+        });
+
+        it('should succeed when exercising on behalf of user approved', async () => {
+          const maturity = poolUtil.getMaturity(10);
+          const strike = getStrike(isCall);
+          const strike64x64 = fixedFromFloat(strike);
+          const amountNb = 10;
+          const amount = parseEther(amountNb.toString());
+
+          await poolUtil.purchaseOption(
+            lp1,
+            buyer,
+            amount,
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const price = isCall ? strike * 1.4 : strike * 0.7;
+          await setUnderlyingPrice(parseEther(price.toString()));
+
+          const underlyingBalance = await underlying.balanceOf(buyer.address);
+          const baseBalance = await base.balanceOf(buyer.address);
+
+          await pool.connect(buyer).setApprovalForAll(thirdParty.address, true);
+
+          await pool
+            .connect(thirdParty)
+            .exerciseFrom({ holder: buyer.address, longTokenId, amount });
 
           if (isCall) {
             const expectedReturn = ((price - strike) * amountNb) / price;
