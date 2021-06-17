@@ -353,6 +353,13 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       if (exerciseValue > 0) {
         _pushTo(args.holder, _getPoolToken(isCall), exerciseValue);
+
+        emit Exercise(
+          args.holder,
+          args.longTokenId,
+          args.amount,
+          exerciseValue
+        );
       }
     }
 
