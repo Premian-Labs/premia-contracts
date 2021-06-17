@@ -42,7 +42,7 @@ contract TradingCompetitionMerkle is ITradingCompetitionMerkle, Ownable {
 
     uint256 private constant _inverseBasisPoint = 1e4;
 
-    constructor(IERC20[] memory _tokens, uint256[] memory _weights) public {
+    constructor(IERC20[] memory _tokens, uint256[] memory _weights) {
         tokens = _tokens;
 
         for (uint256 i=0; i < _tokens.length; i++) {
