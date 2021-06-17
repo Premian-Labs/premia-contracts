@@ -45,7 +45,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     address indexed user,
     uint256 longTokenId,
     uint256 amount,
-    int128 spot64x64,
     uint256 exerciseValue
   );
 
@@ -367,7 +366,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       args.holder,
       args.longTokenId,
       args.amount,
-      spot64x64,
       exerciseValue
     );
   }
@@ -547,8 +545,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       amount,
       exerciseValue,
       longTokenId,
-      isCall,
-      spot64x64
+      isCall
     );
   }
 
@@ -633,8 +630,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 amount,
     uint256 exerciseValue,
     uint256 longTokenId,
-    bool isCall,
-    int128 spot64x64
+    bool isCall
   ) internal {
     EnumerableSet.AddressSet storage holders = ERC1155EnumerableStorage.layout().accountsByToken[longTokenId];
 
@@ -658,7 +654,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         longTokenHolder,
         longTokenId,
         intervalAmount,
-        spot64x64,
         intervalExerciseValue
       );
 
