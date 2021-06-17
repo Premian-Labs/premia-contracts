@@ -649,13 +649,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       if (exerciseValue > 0) {
         intervalExerciseValue = exerciseValue * intervalAmount / amount;
         exerciseValue -= intervalExerciseValue;
-
-        // TODO: merge with _push function
-        // TODO: store balance until manual withdrawal
-        require(
-          IERC20(_getPoolToken(isCall)).transfer(longTokenHolder, intervalExerciseValue),
-          'ERC20 transfer failed'
-        );
+        _pushTo(longTokenHolder, _getPoolToken(isCall), intervalExerciseValue);
       }
 
       amount -= intervalAmount;
