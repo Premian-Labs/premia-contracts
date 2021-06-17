@@ -748,6 +748,7 @@ describe('PoolProxy', function () {
               holder: buyer.address,
               longTokenId: shortTokenId,
               amount: parseEther('1'),
+              onlyExpired: false,
             }),
           ).to.be.revertedWith('invalid type');
         });
@@ -776,6 +777,7 @@ describe('PoolProxy', function () {
               holder: buyer.address,
               longTokenId,
               amount: parseEther('1'),
+              onlyExpired: false,
             }),
           ).to.be.revertedWith('not ITM');
         });
@@ -810,7 +812,12 @@ describe('PoolProxy', function () {
 
           await pool
             .connect(buyer)
-            .exerciseFrom({ holder: buyer.address, longTokenId, amount });
+            .exerciseFrom({
+              holder: buyer.address,
+              longTokenId,
+              amount,
+              onlyExpired: false,
+            });
 
           if (isCall) {
             const expectedReturn = ((price - strike) * amountNb) / price;
@@ -856,7 +863,12 @@ describe('PoolProxy', function () {
           await expect(
             pool
               .connect(thirdParty)
-              .exerciseFrom({ holder: buyer.address, longTokenId, amount }),
+              .exerciseFrom({
+                holder: buyer.address,
+                longTokenId,
+                amount,
+                onlyExpired: false,
+              }),
           ).to.be.revertedWith('not approved');
         });
 
@@ -892,7 +904,12 @@ describe('PoolProxy', function () {
 
           await pool
             .connect(thirdParty)
-            .exerciseFrom({ holder: buyer.address, longTokenId, amount });
+            .exerciseFrom({
+              holder: buyer.address,
+              longTokenId,
+              amount,
+              onlyExpired: false,
+            });
 
           if (isCall) {
             const expectedReturn = ((price - strike) * amountNb) / price;
