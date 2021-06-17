@@ -6,8 +6,8 @@ import {
   PremiaVesting__factory,
   PremiaVestingCancellable,
   PremiaVestingCancellable__factory,
-  TestErc20,
-  TestErc20__factory,
+  ERC20Mock,
+  ERC20Mock__factory,
 } from '../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -17,7 +17,7 @@ import { parseEther } from 'ethers/lib/utils';
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
 let user2: SignerWithAddress;
-let premia: TestErc20;
+let premia: ERC20Mock;
 let premiaVesting: PremiaVesting;
 let premiaVestingCancellable: PremiaVestingCancellable;
 let premiaMultiVesting: PremiaMultiVesting;
@@ -30,10 +30,10 @@ describe('PremiaVesting', () => {
 
     [admin, user1] = await ethers.getSigners();
 
-    const premiaFactory = new TestErc20__factory(admin);
+    const premiaFactory = new ERC20Mock__factory(admin);
     const premiaVestingFactory = new PremiaVesting__factory(admin);
 
-    premia = await premiaFactory.deploy(18);
+    premia = await premiaFactory.deploy('PREMIA', 18);
     premiaVesting = await premiaVestingFactory.deploy(premia.address);
 
     const amount = parseEther('730');
@@ -87,9 +87,9 @@ describe('PremiaVestingCancellable', () => {
 
     [admin, user1] = await ethers.getSigners();
 
-    const premiaFactory = new TestErc20__factory(admin);
+    const premiaFactory = new ERC20Mock__factory(admin);
 
-    premia = await premiaFactory.deploy(18);
+    premia = await premiaFactory.deploy('PREMIA', 18);
     premiaVestingCancellable = await new PremiaVestingCancellable__factory(
       admin,
     ).deploy(premia.address, admin.address, admin.address);
@@ -182,7 +182,7 @@ describe('PremiaMultiVesting', () => {
 
     [admin, user1, user2] = await ethers.getSigners();
 
-    premia = await new TestErc20__factory(admin).deploy(18);
+    premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
     premiaMultiVesting = await new PremiaMultiVesting__factory(admin).deploy(
       premia.address,
     );

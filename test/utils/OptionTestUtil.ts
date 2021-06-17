@@ -1,4 +1,4 @@
-import { Option, TestErc20, WETH9 } from '../../typechain';
+import { Option, ERC20Mock, WETH9 } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumber, BigNumberish } from 'ethers';
 import { ONE_WEEK, TEST_TOKEN_DECIMALS } from './constants';
@@ -15,8 +15,8 @@ interface WriteOptionArgs {
 }
 
 interface OptionTestUtilProps {
-  testToken: WETH9 | TestErc20;
-  dai: TestErc20;
+  testToken: WETH9 | ERC20Mock;
+  dai: ERC20Mock;
   option: Option;
   admin: SignerWithAddress;
   writer1: SignerWithAddress;
@@ -27,8 +27,8 @@ interface OptionTestUtilProps {
 }
 
 export class OptionTestUtil {
-  testToken: WETH9 | TestErc20;
-  dai: TestErc20;
+  testToken: WETH9 | ERC20Mock;
+  dai: ERC20Mock;
   option: Option;
   admin: SignerWithAddress;
   writer1: SignerWithAddress;

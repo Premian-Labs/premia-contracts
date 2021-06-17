@@ -4,8 +4,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import {
   Market,
   Option,
-  TestErc20,
-  TestErc20__factory,
+  ERC20Mock,
+  ERC20Mock__factory,
   WETH9,
   WETH9__factory,
 } from '../typechain';
@@ -20,8 +20,8 @@ import { getToken, mintTestToken, parseTestToken } from './utils/token';
 
 let p: IPremiaContracts;
 let weth: WETH9;
-let wbtc: TestErc20;
-let dai: TestErc20;
+let wbtc: ERC20Mock;
+let dai: ERC20Mock;
 let option: Option;
 let market: Market;
 let admin: SignerWithAddress;
@@ -30,7 +30,7 @@ let user2: SignerWithAddress;
 let user3: SignerWithAddress;
 let feeRecipient: SignerWithAddress;
 const tax = 100;
-let testToken: WETH9 | TestErc20;
+let testToken: WETH9 | ERC20Mock;
 
 let optionTestUtil: OptionTestUtil;
 let marketTestUtil: MarketTestUtil;
@@ -41,11 +41,14 @@ describe('Market', () => {
 
     [admin, user1, user2, user3, feeRecipient] = await ethers.getSigners();
     weth = await new WETH9__factory(admin).deploy();
-    wbtc = await new TestErc20__factory(admin).deploy(TEST_TOKEN_DECIMALS);
+    wbtc = await new ERC20Mock__factory(admin).deploy(
+      'wBTC',
+      TEST_TOKEN_DECIMALS,
+    );
 
     p = await deployContracts(admin, feeRecipient.address, true);
     await p.feeCalculator.setPremiaFeeDiscount(ZERO_ADDRESS);
-    dai = p.dai as TestErc20;
+    dai = p.dai as ERC20Mock;
 
     option = p.option;
     market = p.market;
