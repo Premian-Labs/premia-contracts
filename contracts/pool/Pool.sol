@@ -646,7 +646,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       uint liquidity = balanceOf(underwriter, freeLiqTokenId);
 
       if (!l.getReinvestmentStatus(underwriter)) {
-        _burn(underwriter, FREE_LIQUIDITY_TOKEN_ID, liquidity);
+        _burn(underwriter, freeLiqTokenId, liquidity);
         _mint(underwriter, PoolStorage.formatTokenId(PoolStorage.TokenType.RESERVED_LIQUIDITY, 0, 0), liquidity, '');
         continue;
       }
@@ -755,7 +755,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       }
 
       // mint free liquidity tokens for underwriter
-      if (l.getReinvestmentStatus(underwriter)) {
+      if (PoolStorage.layout().getReinvestmentStatus(underwriter)) {
         _mint(underwriter, _getFreeLiquidityTokenId(isCall), freeLiq, '');
       } else {
         // ToDo : Different  tokens for put/call

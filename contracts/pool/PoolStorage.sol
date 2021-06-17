@@ -12,6 +12,7 @@ import {OptionMath} from '../libraries/OptionMath.sol';
 import {Pool} from './Pool.sol';
 
 library PoolStorage {
+  // ToDo : Handle both  put and call for reserved liq
   enum TokenType { UNDERLYING_FREE_LIQ, BASE_FREE_LIQ, LONG_CALL, SHORT_CALL, LONG_PUT, SHORT_PUT, RESERVED_LIQUIDITY }
 
   bytes32 internal constant STORAGE_SLOT = keccak256(
