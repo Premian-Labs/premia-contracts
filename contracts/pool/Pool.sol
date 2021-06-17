@@ -343,7 +343,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     if (args.onlyExpired) {
       _burnLongTokenLoop(
         args.amount,
-        exerciseValue,
+        isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
         args.longTokenId,
         isCall
       );
