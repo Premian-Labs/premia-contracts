@@ -678,7 +678,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 oldEmaVarianceAnnualized64x64 = l.emaVarianceAnnualized64x64;
     int128 newEmaVarianceAnnualized64x64 = OptionMath.unevenRollingEmaVariance(
       oldEmaLogReturns64x64,
-      l.emaVarianceAnnualized64x64 / 365,
+      oldEmaVarianceAnnualized64x64 / 365,
       logReturns64x64,
       updatedAt,
       block.timestamp
