@@ -3,8 +3,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber, BigNumberish } from 'ethers';
 import { ethers } from 'hardhat';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
-import { parseEther } from 'ethers/lib/utils';
 import { fixedToNumber } from '../utils/math';
+import { parseBase, parseUnderlying } from './PoolProxy';
 
 interface PoolUtilArgs {
   pool: Pool;
@@ -69,12 +69,12 @@ export class PoolUtil {
     );
 
     if (isCall) {
-      await this.underlying.mint(buyer.address, parseEther('100'));
+      await this.underlying.mint(buyer.address, parseUnderlying('100'));
       await this.underlying
         .connect(buyer)
         .approve(this.pool.address, ethers.constants.MaxUint256);
     } else {
-      await this.base.mint(buyer.address, parseEther('10000'));
+      await this.base.mint(buyer.address, parseBase('10000'));
       await this.base
         .connect(buyer)
         .approve(this.pool.address, ethers.constants.MaxUint256);

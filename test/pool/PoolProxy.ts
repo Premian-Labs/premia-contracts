@@ -20,7 +20,7 @@ import chai, { expect } from 'chai';
 import { resetHardhat, setTimestamp } from '../evm';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { deployMockContract, MockContract } from 'ethereum-waffle';
-import { formatEther, parseEther } from 'ethers/lib/utils';
+import { formatUnits, parseUnits } from 'ethers/lib/utils';
 import { PoolUtil, TokenType } from './PoolUtil';
 import {
   bnToNumber,
@@ -29,12 +29,38 @@ import {
   formatTokenId,
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
-import { BigNumber } from 'ethers';
+import { BigNumber, BigNumberish } from 'ethers';
 
 chai.use(chaiAlmost(0.01));
 
 const SYMBOL_BASE = 'SYMBOL_BASE';
 const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
+const DECIMALS_BASE = 18;
+const DECIMALS_UNDERLYING = 8;
+
+export function parseOption(amount: string, isCall: boolean) {
+  if (isCall) {
+    return parseUnderlying(amount);
+  } else {
+    return parseBase(amount);
+  }
+}
+
+export function parseUnderlying(amount: string) {
+  return parseUnits(amount, DECIMALS_UNDERLYING);
+}
+
+export function parseBase(amount: string) {
+  return parseUnits(amount, DECIMALS_BASE);
+}
+
+export function formatUnderlying(amount: BigNumberish) {
+  return formatUnits(amount, DECIMALS_UNDERLYING);
+}
+
+export function formatBase(amount: BigNumberish) {
+  return formatUnits(amount, DECIMALS_BASE);
+}
 
 describe('PoolProxy', function () {
   let owner: SignerWithAddress;
@@ -81,13 +107,26 @@ describe('PoolProxy', function () {
     return isCall ? spotPrice * 1.25 : spotPrice * 0.75;
   };
 
-  const getMaxCost = (baseCost64x64: BigNumber, feeCost64x64: BigNumber) => {
-    return parseEther(
-      (
-        (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
-        1.02
-      ).toString(),
-    );
+  const getMaxCost = (
+    baseCost64x64: BigNumber,
+    feeCost64x64: BigNumber,
+    isCall: boolean,
+  ) => {
+    if (isCall) {
+      return parseUnderlying(
+        (
+          (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
+          1.02
+        ).toString(),
+      );
+    } else {
+      return parseBase(
+        (
+          (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
+          1.02
+        ).toString(),
+      );
+    }
   };
 
   const getFreeLiqTokenId = (isCall: boolean) => {
@@ -120,9 +159,12 @@ describe('PoolProxy', function () {
 
     const erc20Factory = new ERC20Mock__factory(owner);
 
-    base = await erc20Factory.deploy(SYMBOL_BASE, 18);
+    base = await erc20Factory.deploy(SYMBOL_BASE, DECIMALS_BASE);
     await base.deployed();
-    underlying = await erc20Factory.deploy(SYMBOL_UNDERLYING, 18);
+    underlying = await erc20Factory.deploy(
+      SYMBOL_UNDERLYING,
+      DECIMALS_UNDERLYING,
+    );
     await underlying.deployed();
     underlyingWeth = await new WETH9__factory(owner).deploy();
 
@@ -164,8 +206,8 @@ describe('PoolProxy', function () {
 
     await baseOracle.mock.decimals.returns(8);
     await underlyingOracle.mock.decimals.returns(8);
-    await baseOracle.mock.latestAnswer.returns(parseEther('1'));
-    await setUnderlyingPrice(parseEther(spotPrice.toString()));
+    await baseOracle.mock.latestAnswer.returns(parseUnits('1', 8));
+    await setUnderlyingPrice(parseUnits(spotPrice.toString(), 8));
 
     let tx = await manager.deployPool(
       base.address,
@@ -243,7 +285,7 @@ describe('PoolProxy', function () {
           maturity,
           strike64x64,
           spot64x64,
-          amount: parseEther('1'),
+          amount: parseUnderlying('1'),
           isCall: true,
         }),
       ).to.be.revertedWith('no liq');
@@ -251,7 +293,7 @@ describe('PoolProxy', function () {
 
     describe('call', () => {
       it('should return price for given call option parameters', async () => {
-        await poolUtil.depositLiquidity(owner, parseEther('10'), true);
+        await poolUtil.depositLiquidity(owner, parseUnderlying('10'), true);
 
         const maturity = poolUtil.getMaturity(17);
         const strike64x64 = fixedFromFloat(spotPrice * 1.25);
@@ -261,7 +303,7 @@ describe('PoolProxy', function () {
           maturity,
           strike64x64,
           spot64x64,
-          amount: parseEther('1'),
+          amount: parseUnderlying('1'),
           isCall: true,
         });
 
@@ -273,7 +315,7 @@ describe('PoolProxy', function () {
 
     describe('put', () => {
       it('should return price for given put option parameters', async () => {
-        await poolUtil.depositLiquidity(owner, parseEther('10'), false);
+        await poolUtil.depositLiquidity(owner, parseBase('10'), false);
 
         const maturity = poolUtil.getMaturity(17);
         const strike64x64 = fixedFromFloat(spotPrice * 0.75);
@@ -283,12 +325,13 @@ describe('PoolProxy', function () {
           maturity,
           strike64x64,
           spot64x64,
-          amount: parseEther('1'),
+          amount: parseUnderlying('1'),
           isCall: false,
         });
 
         const baseCost = fixedToNumber(quote.baseCost64x64);
         // Setting a small range, as baseCost will fluctuate a bit based on current time
+        console.log(baseCost);
         expect(49 < baseCost && baseCost < 55).to.be.true;
         expect(fixedToNumber(quote.feeCost64x64)).to.eq(0);
         expect(fixedToNumber(quote.cLevel64x64)).to.almost(2.21);
@@ -431,7 +474,11 @@ describe('PoolProxy', function () {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
         it('should revert if using a maturity less than 1 day in the future', async () => {
-          await poolUtil.depositLiquidity(owner, parseEther('100'), isCall);
+          await poolUtil.depositLiquidity(
+            owner,
+            parseOption('100', isCall),
+            isCall,
+          );
           const maturity = getCurrentTimestamp() + 10 * 3600;
           const strike64x64 = fixedFromFloat(1.5);
 
@@ -439,15 +486,19 @@ describe('PoolProxy', function () {
             pool.connect(buyer).purchase({
               maturity,
               strike64x64,
-              amount: parseEther('1'),
-              maxCost: parseEther('100'),
+              amount: parseUnderlying('1'),
+              maxCost: parseOption('100', isCall),
               isCall,
             }),
           ).to.be.revertedWith('exp < 1 day');
         });
 
         it('should revert if using a maturity more than 28 days in the future', async () => {
-          await poolUtil.depositLiquidity(owner, parseEther('100'), isCall);
+          await poolUtil.depositLiquidity(
+            owner,
+            parseOption('100', isCall),
+            isCall,
+          );
           const maturity = poolUtil.getMaturity(30);
           const strike64x64 = fixedFromFloat(1.5);
 
@@ -455,15 +506,19 @@ describe('PoolProxy', function () {
             pool.connect(buyer).purchase({
               maturity,
               strike64x64,
-              amount: parseEther('1'),
-              maxCost: parseEther('100'),
+              amount: parseUnderlying('1'),
+              maxCost: parseOption('100', isCall),
               isCall,
             }),
           ).to.be.revertedWith('exp > 28 days');
         });
 
         it('should revert if using a maturity not corresponding to end of UTC day', async () => {
-          await poolUtil.depositLiquidity(owner, parseEther('100'), isCall);
+          await poolUtil.depositLiquidity(
+            owner,
+            parseOption('100', isCall),
+            isCall,
+          );
           const maturity = poolUtil.getMaturity(10).add(3600);
           const strike64x64 = fixedFromFloat(1.5);
 
@@ -471,15 +526,19 @@ describe('PoolProxy', function () {
             pool.connect(buyer).purchase({
               maturity,
               strike64x64,
-              amount: parseEther('1'),
-              maxCost: parseEther('100'),
+              amount: parseUnderlying('1'),
+              maxCost: parseOption('100', isCall),
               isCall,
             }),
           ).to.be.revertedWith('exp not end UTC day');
         });
 
         it('should revert if using a strike > 2x spot', async () => {
-          await poolUtil.depositLiquidity(owner, parseEther('100'), isCall);
+          await poolUtil.depositLiquidity(
+            owner,
+            parseOption('100', isCall),
+            isCall,
+          );
           const maturity = poolUtil.getMaturity(10);
           const strike64x64 = fixedFromFloat(spotPrice * 2.01);
 
@@ -487,15 +546,19 @@ describe('PoolProxy', function () {
             pool.connect(buyer).purchase({
               maturity,
               strike64x64,
-              amount: parseEther('1'),
-              maxCost: parseEther('100'),
+              amount: parseUnderlying('1'),
+              maxCost: parseOption('100', isCall),
               isCall,
             }),
           ).to.be.revertedWith('strike > 2x spot');
         });
 
         it('should revert if using a strike < 0.5x spot', async () => {
-          await poolUtil.depositLiquidity(owner, parseEther('100'), isCall);
+          await poolUtil.depositLiquidity(
+            owner,
+            parseOption('100', isCall),
+            isCall,
+          );
           const maturity = poolUtil.getMaturity(10);
           const strike64x64 = fixedFromFloat(spotPrice * 0.49);
 
@@ -503,19 +566,26 @@ describe('PoolProxy', function () {
             pool.connect(buyer).purchase({
               maturity,
               strike64x64,
-              amount: parseEther('1'),
-              maxCost: parseEther('100'),
+              amount: parseUnderlying('1'),
+              maxCost: parseOption('100', isCall),
               isCall,
             }),
           ).to.be.revertedWith('strike < 0.5x spot');
         });
 
         it('should revert if cost is above max cost', async () => {
-          await poolUtil.depositLiquidity(owner, parseEther('100'), isCall);
+          await poolUtil.depositLiquidity(
+            owner,
+            parseOption('100', isCall),
+            isCall,
+          );
           const maturity = poolUtil.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
-          await getToken(isCall).mint(buyer.address, parseEther('100'));
+          await getToken(isCall).mint(
+            buyer.address,
+            parseOption('100', isCall),
+          );
           await getToken(isCall)
             .connect(buyer)
             .approve(pool.address, ethers.constants.MaxUint256);
@@ -524,8 +594,8 @@ describe('PoolProxy', function () {
             pool.connect(buyer).purchase({
               maturity,
               strike64x64,
-              amount: parseEther('1'),
-              maxCost: parseEther('0.01'),
+              amount: parseUnderlying('1'),
+              maxCost: parseOption('0.01', isCall),
               isCall,
             }),
           ).to.be.revertedWith('excess slip');
@@ -534,7 +604,7 @@ describe('PoolProxy', function () {
         it('should successfully purchase an option', async () => {
           await poolUtil.depositLiquidity(
             lp1,
-            isCall ? parseEther('100') : parseEther('100000'),
+            parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
 
@@ -542,7 +612,7 @@ describe('PoolProxy', function () {
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           const purchaseAmountNb = 10;
-          const purchaseAmount = parseEther(purchaseAmountNb.toString());
+          const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
           const quote = await pool.quote({
             maturity,
@@ -552,7 +622,7 @@ describe('PoolProxy', function () {
             isCall,
           });
 
-          const mintAmount = parseEther('1000');
+          const mintAmount = parseOption('1000', isCall);
           await getToken(isCall).mint(buyer.address, mintAmount);
           await getToken(isCall)
             .connect(buyer)
@@ -562,7 +632,11 @@ describe('PoolProxy', function () {
             maturity,
             strike64x64,
             amount: purchaseAmount,
-            maxCost: getMaxCost(quote.baseCost64x64, quote.feeCost64x64),
+            maxCost: getMaxCost(
+              quote.baseCost64x64,
+              quote.feeCost64x64,
+              isCall,
+            ),
             isCall,
           });
 
@@ -619,7 +693,7 @@ describe('PoolProxy', function () {
 
           let amountInPool = BigNumber.from(0);
           let depositAmountNb = isCall ? 1 : 2000;
-          let depositAmount = parseEther(depositAmountNb.toString());
+          let depositAmount = parseOption(depositAmountNb.toString(), isCall);
           for (const signer of signers) {
             if (signer.address == buyer.address) continue;
 
@@ -632,7 +706,7 @@ describe('PoolProxy', function () {
 
           // 10 intervals used
           const purchaseAmountNb = 10;
-          const purchaseAmount = parseEther(purchaseAmountNb.toString());
+          const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
           const quote = await pool.quote({
             maturity,
@@ -642,7 +716,10 @@ describe('PoolProxy', function () {
             isCall,
           });
 
-          await getToken(isCall).mint(buyer.address, parseEther('1000'));
+          await getToken(isCall).mint(
+            buyer.address,
+            parseOption('1000', isCall),
+          );
           await getToken(isCall)
             .connect(buyer)
             .approve(pool.address, ethers.constants.MaxUint256);
@@ -662,7 +739,11 @@ describe('PoolProxy', function () {
             maturity,
             strike64x64,
             amount: purchaseAmount,
-            maxCost: getMaxCost(quote.baseCost64x64, quote.feeCost64x64),
+            maxCost: getMaxCost(
+              quote.baseCost64x64,
+              quote.feeCost64x64,
+              isCall,
+            ),
             isCall,
           });
 
@@ -731,7 +812,7 @@ describe('PoolProxy', function () {
           await poolUtil.purchaseOption(
             lp1,
             buyer,
-            parseEther('1'),
+            parseUnderlying('1'),
             maturity,
             strike64x64,
             isCall,
@@ -747,7 +828,7 @@ describe('PoolProxy', function () {
             pool.connect(buyer).exerciseFrom({
               holder: buyer.address,
               longTokenId: shortTokenId,
-              amount: parseEther('1'),
+              amount: parseUnderlying('1'),
             }),
           ).to.be.revertedWith('invalid type');
         });
@@ -759,7 +840,7 @@ describe('PoolProxy', function () {
           await poolUtil.purchaseOption(
             lp1,
             buyer,
-            parseEther('1'),
+            parseUnderlying('1'),
             maturity,
             strike64x64,
             isCall,
@@ -775,7 +856,7 @@ describe('PoolProxy', function () {
             pool.connect(buyer).exerciseFrom({
               holder: buyer.address,
               longTokenId,
-              amount: parseEther('1'),
+              amount: parseUnderlying('1'),
             }),
           ).to.be.revertedWith('not ITM');
         });
@@ -785,7 +866,7 @@ describe('PoolProxy', function () {
           const strike = getStrike(isCall);
           const strike64x64 = fixedFromFloat(strike);
           const amountNb = 10;
-          const amount = parseEther(amountNb.toString());
+          const amount = parseUnderlying(amountNb.toString());
 
           await poolUtil.purchaseOption(
             lp1,
@@ -803,7 +884,7 @@ describe('PoolProxy', function () {
           });
 
           const price = isCall ? strike * 1.4 : strike * 0.7;
-          await setUnderlyingPrice(parseEther(price.toString()));
+          await setUnderlyingPrice(parseUnits(price.toString(), 8));
 
           const underlyingBalance = await underlying.balanceOf(buyer.address);
           const baseBalance = await base.balanceOf(buyer.address);
@@ -818,14 +899,14 @@ describe('PoolProxy', function () {
               underlyingBalance,
             );
 
-            expect(Number(formatEther(premium))).to.eq(expectedReturn);
+            expect(Number(formatUnderlying(premium))).to.almost(expectedReturn);
           } else {
             const expectedReturn = (strike - price) * amountNb;
             const premium = (await base.balanceOf(buyer.address)).sub(
               baseBalance,
             );
 
-            expect(Number(formatEther(premium))).to.eq(expectedReturn);
+            expect(Number(formatBase(premium))).to.eq(expectedReturn);
           }
 
           expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
@@ -836,7 +917,7 @@ describe('PoolProxy', function () {
           const strike = getStrike(isCall);
           const strike64x64 = fixedFromFloat(strike);
           const amountNb = 10;
-          const amount = parseEther(amountNb.toString());
+          const amount = parseUnderlying(amountNb.toString());
 
           await poolUtil.purchaseOption(
             lp1,
@@ -865,7 +946,7 @@ describe('PoolProxy', function () {
           const strike = getStrike(isCall);
           const strike64x64 = fixedFromFloat(strike);
           const amountNb = 10;
-          const amount = parseEther(amountNb.toString());
+          const amount = parseUnderlying(amountNb.toString());
 
           await poolUtil.purchaseOption(
             lp1,
@@ -883,7 +964,7 @@ describe('PoolProxy', function () {
           });
 
           const price = isCall ? strike * 1.4 : strike * 0.7;
-          await setUnderlyingPrice(parseEther(price.toString()));
+          await setUnderlyingPrice(parseUnits(price.toString(), 8));
 
           const underlyingBalance = await underlying.balanceOf(buyer.address);
           const baseBalance = await base.balanceOf(buyer.address);
@@ -900,14 +981,14 @@ describe('PoolProxy', function () {
               underlyingBalance,
             );
 
-            expect(Number(formatEther(premium))).to.eq(expectedReturn);
+            expect(Number(formatUnderlying(premium))).to.almost(expectedReturn);
           } else {
             const expectedReturn = (strike - price) * amountNb;
             const premium = (await base.balanceOf(buyer.address)).sub(
               baseBalance,
             );
 
-            expect(Number(formatEther(premium))).to.eq(expectedReturn);
+            expect(Number(formatBase(premium))).to.eq(expectedReturn);
           }
 
           expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
@@ -926,13 +1007,17 @@ describe('PoolProxy', function () {
           await poolUtil.purchaseOption(
             lp1,
             buyer,
-            parseEther('1'),
+            parseUnderlying('1'),
             maturity,
             strike64x64,
             isCall,
           );
 
-          await poolUtil.depositLiquidity(lp2, parseEther('2'), isCall);
+          await poolUtil.depositLiquidity(
+            lp2,
+            parseOption('2', isCall),
+            isCall,
+          );
 
           const longTokenId = formatTokenId({
             tokenType: getLong(isCall),
@@ -941,7 +1026,7 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            pool.connect(lp1).reassign(longTokenId, parseEther('1')),
+            pool.connect(lp1).reassign(longTokenId, parseUnderlying('1')),
           ).to.be.revertedWith('invalid type');
         });
 
@@ -952,7 +1037,7 @@ describe('PoolProxy', function () {
           await poolUtil.purchaseOption(
             lp1,
             buyer,
-            parseEther('1'),
+            parseUnderlying('1'),
             maturity,
             strike64x64,
             isCall,
@@ -981,7 +1066,7 @@ describe('PoolProxy', function () {
         it('should successfully reassign option to another LP', async () => {
           const maturity = poolUtil.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
-          const amount = parseEther('1');
+          const amount = parseUnderlying('1');
 
           await poolUtil.purchaseOption(
             lp1,
@@ -995,8 +1080,8 @@ describe('PoolProxy', function () {
           await poolUtil.depositLiquidity(
             lp2,
             isCall
-              ? amount.mul(2)
-              : amount.mul(fixedToNumber(strike64x64)).mul(2),
+              ? parseUnderlying('1').mul(2)
+              : parseBase('1').mul(fixedToNumber(strike64x64)).mul(2),
             isCall,
           );
 
