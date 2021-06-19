@@ -174,6 +174,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    * @return baseCost64x64 64x64 fixed point representation of option cost denominated in underlying currency (without fee)
    * @return feeCost64x64 64x64 fixed point representation of option fee cost denominated in underlying currency for call, or base currency for put
    * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
+   * @return slippageCoefficient64x64 64x64 fixed point representation of slippage coefficient for given order size
    */
   function quote (
     PoolStorage.QuoteArgs memory args
@@ -195,32 +196,19 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     int128 price64x64;
 
-    // Keep as is, to avoid stack too deep error
-    if (args.isCall) {
-      (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath.quotePrice(
-        l.emaVarianceAnnualized64x64,
-        args.strike64x64,
-        args.spot64x64,
-        ABDKMath64x64.divu(args.maturity - block.timestamp, 365 days),
-        l.cLevelUnderlying64x64,
-        oldLiquidity64x64,
-        oldLiquidity64x64.sub(amount64x64),
-        OptionMath.ONE_64x64,
-        true
-      );
-    } else {
-      (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath.quotePrice(
-        l.emaVarianceAnnualized64x64,
-        args.strike64x64,
-        args.spot64x64,
-        ABDKMath64x64.divu(args.maturity - block.timestamp, 365 days),
-        l.cLevelBase64x64,
-        oldLiquidity64x64,
-        oldLiquidity64x64.sub(amount64x64),
-        OptionMath.ONE_64x64,
-        false
-      );
-    }
+    bool isCall = args.isCall;
+
+    (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath.quotePrice(
+      l.emaVarianceAnnualized64x64,
+      args.strike64x64,
+      args.spot64x64,
+      ABDKMath64x64.divu(args.maturity - block.timestamp, 365 days),
+      isCall ? l.cLevelUnderlying64x64 : l.cLevelBase64x64,
+      oldLiquidity64x64,
+      oldLiquidity64x64.sub(amount64x64),
+      OptionMath.ONE_64x64,
+      isCall
+    );
 
     baseCost64x64 = args.isCall ? price64x64.mul(amount64x64).div(args.spot64x64) : price64x64.mul(amount64x64);
     feeCost64x64 = baseCost64x64.mul(FEE_64x64);
