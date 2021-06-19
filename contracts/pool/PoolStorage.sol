@@ -136,8 +136,10 @@ library PoolStorage {
     Layout storage l,
     uint256 tokenId
   ) internal view returns (int128) {
+    (TokenType tokenType,,) = parseTokenId(tokenId);
     return ABDKMath64x64Token.fromDecimals(
-      ERC1155EnumerableStorage.layout().totalSupply[tokenId], l.underlyingDecimals
+      ERC1155EnumerableStorage.layout().totalSupply[tokenId],
+      tokenType == TokenType.BASE_FREE_LIQ ? l.baseDecimals : l.underlyingDecimals
     );
   }
 

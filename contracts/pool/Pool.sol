@@ -241,13 +241,20 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) external payable returns (uint256 baseCost, uint256 feeCost) {
     // TODO: specify payment currency
 
-    require(args.amount <= totalSupply(_getFreeLiquidityTokenId(args.isCall)), 'insuf liq');
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    {
+      uint256 amount = args.isCall
+        ? args.amount
+        : args.strike64x64.mulu(args.amount).fromDecimals(l.underlyingDecimals).toDecimals(l.baseDecimals);
+
+      require(amount <= totalSupply(_getFreeLiquidityTokenId(args.isCall)), 'insuf liq');
+    }
 
     require(args.maturity >= block.timestamp + (1 days), 'exp < 1 day');
     require(args.maturity < block.timestamp + (29 days), 'exp > 28 days');
     require(args.maturity % (1 days) == 0, 'exp not end UTC day');
 
-    PoolStorage.Layout storage l = PoolStorage.layout();
     int128 newPrice64x64 = l.fetchPriceUpdate();
     _update(l, newPrice64x64);
 

@@ -483,7 +483,7 @@ describe('PoolProxy', function () {
         it('should revert if using a maturity less than 1 day in the future', async () => {
           await poolUtil.depositLiquidity(
             owner,
-            parseOption('100', isCall),
+            parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
           const maturity = getCurrentTimestamp() + 10 * 3600;
@@ -503,7 +503,7 @@ describe('PoolProxy', function () {
         it('should revert if using a maturity more than 28 days in the future', async () => {
           await poolUtil.depositLiquidity(
             owner,
-            parseOption('100', isCall),
+            parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
           const maturity = poolUtil.getMaturity(30);
@@ -523,7 +523,7 @@ describe('PoolProxy', function () {
         it('should revert if using a maturity not corresponding to end of UTC day', async () => {
           await poolUtil.depositLiquidity(
             owner,
-            parseOption('100', isCall),
+            parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
           const maturity = poolUtil.getMaturity(10).add(3600);
@@ -543,7 +543,7 @@ describe('PoolProxy', function () {
         it('should revert if using a strike > 2x spot', async () => {
           await poolUtil.depositLiquidity(
             owner,
-            parseOption('100', isCall),
+            parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
           const maturity = poolUtil.getMaturity(10);
@@ -563,7 +563,7 @@ describe('PoolProxy', function () {
         it('should revert if using a strike < 0.5x spot', async () => {
           await poolUtil.depositLiquidity(
             owner,
-            parseOption('100', isCall),
+            parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
           const maturity = poolUtil.getMaturity(10);
@@ -583,7 +583,7 @@ describe('PoolProxy', function () {
         it('should revert if cost is above max cost', async () => {
           await poolUtil.depositLiquidity(
             owner,
-            parseOption('100', isCall),
+            parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
           const maturity = poolUtil.getMaturity(10);
