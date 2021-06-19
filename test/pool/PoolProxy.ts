@@ -38,6 +38,10 @@ const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 const DECIMALS_BASE = 18;
 const DECIMALS_UNDERLYING = 8;
 
+export function getTokenDecimals(isCall: boolean) {
+  return isCall ? DECIMALS_UNDERLYING : DECIMALS_BASE;
+}
+
 export function parseOption(amount: string, isCall: boolean) {
   if (isCall) {
     return parseUnderlying(amount);
@@ -47,11 +51,14 @@ export function parseOption(amount: string, isCall: boolean) {
 }
 
 export function parseUnderlying(amount: string) {
-  return parseUnits(amount, DECIMALS_UNDERLYING);
+  return parseUnits(
+    Number(amount).toFixed(DECIMALS_UNDERLYING),
+    DECIMALS_UNDERLYING,
+  );
 }
 
 export function parseBase(amount: string) {
-  return parseUnits(amount, DECIMALS_BASE);
+  return parseUnits(Number(amount).toFixed(DECIMALS_BASE), DECIMALS_BASE);
 }
 
 export function formatUnderlying(amount: BigNumberish) {
@@ -642,8 +649,9 @@ describe('PoolProxy', function () {
 
           const newBalance = await getToken(isCall).balanceOf(buyer.address);
 
-          expect(bnToNumber(newBalance)).to.almost(
-            bnToNumber(mintAmount) - fixedToNumber(quote.baseCost64x64),
+          expect(bnToNumber(newBalance, getTokenDecimals(isCall))).to.almost(
+            bnToNumber(mintAmount, getTokenDecimals(isCall)) -
+              fixedToNumber(quote.baseCost64x64),
           );
 
           const shortTokenId = formatTokenId({
@@ -661,6 +669,7 @@ describe('PoolProxy', function () {
             expect(
               bnToNumber(
                 await pool.balanceOf(lp1.address, getFreeLiqTokenId(isCall)),
+                DECIMALS_UNDERLYING,
               ),
             ).to.almost(
               100 - purchaseAmountNb + fixedToNumber(quote.baseCost64x64),
@@ -669,6 +678,7 @@ describe('PoolProxy', function () {
             expect(
               bnToNumber(
                 await pool.balanceOf(lp1.address, getFreeLiqTokenId(isCall)),
+                DECIMALS_UNDERLYING,
               ),
             ).to.almost(
               100000 -
@@ -789,7 +799,10 @@ describe('PoolProxy', function () {
             }
 
             expect(
-              bnToNumber(await pool.balanceOf(s.address, shortTokenId)),
+              bnToNumber(
+                await pool.balanceOf(s.address, shortTokenId),
+                DECIMALS_UNDERLYING,
+              ),
             ).to.almost(expectedAmount);
 
             i++;
