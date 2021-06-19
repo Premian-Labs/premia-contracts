@@ -838,11 +838,9 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            pool.connect(buyer).exerciseFrom(
-              buyer.address,
-              shortTokenId,
-              parseUnderlying('1'),
-            ),
+            pool
+              .connect(buyer)
+              .exerciseFrom(buyer.address, shortTokenId, parseUnderlying('1')),
           ).to.be.revertedWith('invalid type');
         });
 
@@ -866,11 +864,9 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            pool.connect(buyer).exerciseFrom(
-              buyer.address,
-              longTokenId,
-              parseUnderlying('1'),
-            ),
+            pool
+              .connect(buyer)
+              .exerciseFrom(buyer.address, longTokenId, parseUnderlying('1')),
           ).to.be.revertedWith('not ITM');
         });
 
@@ -904,11 +900,7 @@ describe('PoolProxy', function () {
 
           await pool
             .connect(buyer)
-            .exerciseFrom(
-              buyer.address,
-              longTokenId,
-              amount
-            );
+            .exerciseFrom(buyer.address, longTokenId, amount);
 
           if (isCall) {
             const expectedReturn = ((price - strike) * amountNb) / price;
@@ -954,11 +946,7 @@ describe('PoolProxy', function () {
           await expect(
             pool
               .connect(thirdParty)
-              .exerciseFrom(
-                buyer.address,
-                longTokenId,
-                amount,
-              ),
+              .exerciseFrom(buyer.address, longTokenId, amount),
           ).to.be.revertedWith('not approved');
         });
 
@@ -994,11 +982,7 @@ describe('PoolProxy', function () {
 
           await pool
             .connect(thirdParty)
-            .exerciseFrom(
-              buyer.address,
-              longTokenId,
-              amount,
-            );
+            .exerciseFrom(buyer.address, longTokenId, amount);
 
           if (isCall) {
             const expectedReturn = ((price - strike) * amountNb) / price;
