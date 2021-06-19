@@ -348,7 +348,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     if (isCall) {
       exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(args.amount);
     } else {
-      exerciseValue = strike64x64.sub(spot64x64).mulu(args.amount);
+      exerciseValue = strike64x64.sub(spot64x64).mulu(args.amount).fromDecimals(l.underlyingDecimals).toDecimals(l.baseDecimals);
     }
 
     _pushTo(args.holder, _getPoolToken(isCall), exerciseValue);
@@ -635,6 +635,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 shortTokenId,
     bool isCall
   ) private {
+    PoolStorage.Layout storage l = PoolStorage.layout();
     EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
     (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
@@ -650,10 +651,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       exerciseValue -= intervalExerciseValue;
       amount -= intervalAmount;
 
-      uint256 freeLiq = intervalAmount - intervalExerciseValue;
-      if (!isCall) {
-        freeLiq = strike64x64.mulu(freeLiq);
-      }
+      uint256 freeLiq = isCall
+        ? intervalAmount - intervalExerciseValue
+        : strike64x64.mulu(intervalAmount).fromDecimals(l.underlyingDecimals).toDecimals(l.baseDecimals) - intervalExerciseValue;
 
       // mint free liquidity tokens for underwriter
       _mint(underwriter, _getFreeLiquidityTokenId(isCall), freeLiq, '');
