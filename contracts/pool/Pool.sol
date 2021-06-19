@@ -476,12 +476,18 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       baseCost = baseCost64x64.toDecimals(_getTokenDecimals(isCall));
       feeCost = feeCost64x64.toDecimals(_getTokenDecimals(isCall));
 
+      // Non optimal, but necessary to avoid stack too deep
+      uint256 amountPut;
+      if (!isCall) {
+        amountPut = strike64x64.mulu(amount).fromDecimals(PoolStorage.layout().underlyingDecimals).toDecimals(PoolStorage.layout().baseDecimals);
+      }
+
       _pushTo(
         msg.sender,
         _getPoolToken(isCall),
         isCall
           ? amount - baseCost - feeCost
-          : strike64x64.mulu(amount) - baseCost - feeCost
+          : amountPut - baseCost - feeCost
       );
 
       // update C-Level, accounting for slippage and reinvested premia separately
