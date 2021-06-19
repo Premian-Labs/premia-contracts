@@ -46,10 +46,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     address indexed user,
     uint256 longTokenId,
     uint256 amount,
-    int128 spot64x64,
-    int128 amountFreed64x64,
-    uint256 exerciseValue,
-    int128 emaVarianceAnnualized64x64
+    uint256 exerciseValue
   );
 
   event Underwrite (
@@ -301,7 +298,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     {
       uint256 shortTokenId = PoolStorage.formatTokenId(_getTokenType(args.isCall, false), args.maturity, args.strike64x64);
-      _writeLoop(l, args.amount, baseCost, shortTokenId, args.isCall);
+      _mintShortTokenLoop(l, args.amount, baseCost, shortTokenId, args.isCall);
     }
 
     // update C-Level, accounting for slippage and reinvested premia separately
@@ -315,24 +312,50 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   /**
    * @notice exercise call option on behalf of holder
-   * @param args arguments for the exercise function
+   * @param holder owner of long option tokens to exercise
+   * @param longTokenId long option token id
+   * @param amount quantity of tokens to exercise
    */
   function exerciseFrom (
-    PoolStorage.ExerciseArgs memory args
-  ) public {
-    if (msg.sender != args.holder) {
-      require(isApprovedForAll(args.holder, msg.sender), "not approved");
+    address holder,
+    uint256 longTokenId,
+    uint256 amount
+  ) external {
+    if (msg.sender != holder) {
+      require(isApprovedForAll(holder, msg.sender), "not approved");
     }
 
+    _exercise(holder, longTokenId, amount);
+  }
+
+  /**
+   * @notice process expired option, freeing liquidity and distributing profits
+   * @param longTokenId long option token id
+   * @param amount quantity of tokens to process
+   */
+  function processExpired (
+    uint256 longTokenId,
+    uint256 amount
+  ) external {
+    _exercise(address(0), longTokenId, amount);
+  }
+
+  function _exercise (
+    address holder, // holder address of option contract tokens to exercise
+    uint256 longTokenId, // amount quantity of option contract tokens to exercise
+    uint256 amount // quantity of option contract tokens to exercise
+  ) internal {
     uint64 maturity;
     int128 strike64x64;
     bool isCall;
 
+    bool onlyExpired = holder == address(0);
+
     {
       PoolStorage.TokenType tokenType;
-      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(args.longTokenId);
+      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(longTokenId);
       require(tokenType == PoolStorage.TokenType.LONG_CALL || tokenType == PoolStorage.TokenType.LONG_PUT, 'invalid type');
-
+      require(!onlyExpired || maturity < block.timestamp, 'not expired');
       isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
     }
 
@@ -344,26 +367,43 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       spot64x64 = l.getPriceUpdateAfter(maturity);
     }
 
-    // burn long option tokens from sender
-    _burn(args.holder, args.longTokenId, args.amount);
+    require(onlyExpired || (isCall ? (spot64x64 > strike64x64) : (spot64x64 < strike64x64)), 'not ITM');
 
     uint256 exerciseValue;
-
-    require((isCall && spot64x64 > strike64x64) || (!isCall && spot64x64 < strike64x64), 'not ITM');
-
     // option has a non-zero exercise value
     if (isCall) {
-      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(args.amount);
+      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
     } else {
-      exerciseValue = _fromUnderlyingToBaseDecimals(strike64x64.sub(spot64x64).mulu(args.amount));
+      exerciseValue = _fromUnderlyingToBaseDecimals(strike64x64.sub(spot64x64).mulu(amount));
     }
 
-    _pushTo(args.holder, _getPoolToken(isCall), exerciseValue);
+    if (onlyExpired) {
+      _burnLongTokenLoop(
+        amount,
+        isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
+        longTokenId,
+        isCall
+      );
+    } else {
+      // burn long option tokens from sender
+      _burn(holder, longTokenId, amount);
+
+      if (exerciseValue > 0) {
+        _pushTo(holder, _getPoolToken(isCall), exerciseValue);
+
+        emit Exercise(
+          holder,
+          longTokenId,
+          amount,
+          exerciseValue
+        );
+      }
+    }
 
     int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
 
-    _exerciseLoop(
-      args.amount,
+    _burnShortTokenLoop(
+      amount,
       isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
       PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
       isCall
@@ -372,9 +412,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 newLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
 
     _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
-
-    emit Exercise(args.holder, args.longTokenId, args.amount, spot64x64, newLiquidity64x64 - oldLiquidity64x64, exerciseValue, l.emaVarianceAnnualized64x64);
-
   }
 
   /**
@@ -442,7 +479,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 shortTokenId,
     uint256 amount
   ) external returns (uint256 baseCost, uint256 feeCost) {
-
     uint64 maturity;
     int128 strike64x64;
     bool isCall;
@@ -455,8 +491,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
     }
-
-    // TODO: allow exit of expired position
 
     int128 newPrice64x64;
 
@@ -509,7 +543,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     // burn short option tokens from underwriter
     _burn(msg.sender, shortTokenId, amount);
 
-    _writeLoop(l, amount, baseCost, shortTokenId, isCall);
+    _mintShortTokenLoop(l, amount, baseCost, shortTokenId, isCall);
 
     emit Reassign(msg.sender, shortTokenId, amount, baseCost, feeCost, cLevel64x64, newPrice64x64, l.emaVarianceAnnualized64x64);
   }
@@ -545,14 +579,13 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _setCLevel(l, newCLevel64x64, totalSupply64x64, newTotalSupply64x64, isCall);
   }
 
-  function _writeLoop (
+  function _mintShortTokenLoop (
     PoolStorage.Layout storage l,
     uint256 amount,
     uint256 premium,
     uint256 shortTokenId,
     bool isCall
   ) private {
-
     address underwriter;
     uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCall);
     (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
@@ -589,6 +622,76 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       emit Underwrite(underwriter, shortTokenId, toPay == 0 ? amount : intervalAmount, intervalPremium);
 
       amount -= intervalAmount;
+    }
+  }
+
+  function _burnLongTokenLoop (
+    uint256 amount,
+    uint256 exerciseValue,
+    uint256 longTokenId,
+    bool isCall
+  ) internal {
+    EnumerableSet.AddressSet storage holders = ERC1155EnumerableStorage.layout().accountsByToken[longTokenId];
+
+    while (amount > 0) {
+      address longTokenHolder = holders.at(holders.length() - 1);
+
+      uint256 intervalAmount = balanceOf(longTokenHolder, longTokenId);
+      if (intervalAmount > amount) intervalAmount = amount;
+
+      uint256 intervalExerciseValue;
+
+      if (exerciseValue > 0) {
+        intervalExerciseValue = exerciseValue * intervalAmount / amount;
+        exerciseValue -= intervalExerciseValue;
+        _pushTo(longTokenHolder, _getPoolToken(isCall), intervalExerciseValue);
+      }
+
+      amount -= intervalAmount;
+
+      emit Exercise (
+        longTokenHolder,
+        longTokenId,
+        intervalAmount,
+        intervalExerciseValue
+      );
+
+      _burn(longTokenHolder, longTokenId, intervalAmount);
+    }
+  }
+
+  function _burnShortTokenLoop (
+    uint256 amount,
+    uint256 exerciseValue,
+    uint256 shortTokenId,
+    bool isCall
+  ) private {
+    EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
+    (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
+
+    while (amount > 0) {
+      address underwriter = underwriters.at(underwriters.length() - 1);
+
+      // amount of liquidity provided by underwriter
+      uint256 intervalAmount = balanceOf(underwriter, shortTokenId);
+      if (intervalAmount > amount) intervalAmount = amount;
+
+      // amount of value claimed by buyer
+      uint256 intervalExerciseValue = exerciseValue * intervalAmount / amount;
+      exerciseValue -= intervalExerciseValue;
+      amount -= intervalAmount;
+
+      uint256 freeLiq = isCall
+        ? intervalAmount - intervalExerciseValue
+        : _fromUnderlyingToBaseDecimals(strike64x64.mulu(intervalAmount)) - intervalExerciseValue;
+
+
+      // mint free liquidity tokens for underwriter
+      _mint(underwriter, _getFreeLiquidityTokenId(isCall), freeLiq, '');
+      // burn short option tokens from underwriter
+      _burn(underwriter, shortTokenId, intervalAmount);
+
+      emit AssignExercise(underwriter, shortTokenId, freeLiq, intervalAmount);
     }
   }
 
@@ -640,40 +743,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) internal {
     l.setCLevel(cLevel64x64, isCallPool);
     emit UpdateCLevel(isCallPool, cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
-  }
-
-  function _exerciseLoop (
-    uint256 amount,
-    uint256 exerciseValue,
-    uint256 shortTokenId,
-    bool isCall
-  ) private {
-    EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
-    (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
-
-    while (amount > 0) {
-      address underwriter = underwriters.at(underwriters.length() - 1);
-
-      // amount of liquidity provided by underwriter
-      uint256 intervalAmount = balanceOf(underwriter, shortTokenId);
-      if (intervalAmount > amount) intervalAmount = amount;
-
-      // amount of value claimed by buyer
-      uint256 intervalExerciseValue = exerciseValue * intervalAmount / amount;
-      exerciseValue -= intervalExerciseValue;
-      amount -= intervalAmount;
-
-      uint256 freeLiq = isCall
-        ? intervalAmount - intervalExerciseValue
-        : _fromUnderlyingToBaseDecimals(strike64x64.mulu(intervalAmount)) - intervalExerciseValue;
-
-      // mint free liquidity tokens for underwriter
-      _mint(underwriter, _getFreeLiquidityTokenId(isCall), freeLiq, '');
-      // burn short option tokens from underwriter
-      _burn(underwriter, shortTokenId, intervalAmount);
-
-      emit AssignExercise(underwriter, shortTokenId, freeLiq, intervalAmount);
-    }
   }
 
   /**
