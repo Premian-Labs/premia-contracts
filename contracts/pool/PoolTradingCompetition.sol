@@ -5,7 +5,12 @@ pragma solidity ^0.8.0;
 import "./Pool.sol";
 
 contract PoolTradingCompetition is Pool {
-    constructor (address weth, address feeReceiver, int128 fee64x64) Pool(weth, feeReceiver, fee64x64) { }
+    constructor (
+      address weth,
+      address feeReceiver,
+      int128 fee64x64,
+      uint256 batchingPeriod
+    ) Pool(weth, feeReceiver, fee64x64, batchingPeriod) {}
 
     function _beforeTokenTransfer (
         address operator,

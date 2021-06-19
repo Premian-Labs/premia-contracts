@@ -14,7 +14,8 @@ contract PoolMock is Pool {
   using ERC165Storage for ERC165Storage.Layout;
 
   // TODO: pass non-zero fee
-  constructor (address weth) Pool(address(weth), address(1), 0) {}
+  // TODO: confirm batching period
+  constructor (address weth) Pool(address(weth), address(1), 0, 260) {}
 
   function tokenIdFor (
     PoolStorage.TokenType tokenType,

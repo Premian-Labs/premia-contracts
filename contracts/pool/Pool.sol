@@ -27,6 +27,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   address private immutable FEE_RECEIVER_ADDRESS;
 
   int128 private immutable FEE_64x64;
+  uint256 private immutable BATCHING_PERIOD;
 
   uint256 private immutable UNDERLYING_FREE_LIQ_TOKEN_ID;
   uint256 private immutable BASE_FREE_LIQ_TOKEN_ID;
@@ -104,11 +105,13 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   constructor (
     address weth,
     address feeReceiver,
-    int128 fee64x64
+    int128 fee64x64,
+    uint256 batchingPeriod
   ) {
     WETH_ADDRESS = weth;
     FEE_RECEIVER_ADDRESS = feeReceiver;
     FEE_64x64 = fee64x64;
+    BATCHING_PERIOD = batchingPeriod;
     UNDERLYING_FREE_LIQ_TOKEN_ID = PoolStorage.formatTokenId(PoolStorage.TokenType.UNDERLYING_FREE_LIQ, 0, 0);
     BASE_FREE_LIQ_TOKEN_ID = PoolStorage.formatTokenId(PoolStorage.TokenType.BASE_FREE_LIQ, 0, 0);
   }
