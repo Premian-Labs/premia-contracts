@@ -359,8 +359,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       spot64x64 = l.getPriceUpdateAfter(maturity);
     }
 
-    uint256 exerciseValue;
+    require(onlyExpired || (isCall ? (spot64x64 > strike64x64) : (spot64x64 < strike64x64)), 'not ITM');
 
+    uint256 exerciseValue;
     // option has a non-zero exercise value
     if (isCall) {
       exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
@@ -376,8 +377,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         isCall
       );
     } else {
-      require(isCall ? (spot64x64 > strike64x64) : (spot64x64 < strike64x64), 'not ITM');
-
       // burn long option tokens from sender
       _burn(holder, longTokenId, amount);
 
