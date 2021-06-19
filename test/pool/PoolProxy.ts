@@ -678,7 +678,7 @@ describe('PoolProxy', function () {
             expect(
               bnToNumber(
                 await pool.balanceOf(lp1.address, getFreeLiqTokenId(isCall)),
-                DECIMALS_UNDERLYING,
+                DECIMALS_BASE,
               ),
             ).to.almost(
               100000 -

@@ -20,6 +20,7 @@ import { OptionMath } from '../libraries/OptionMath.sol';
 contract Pool is OwnableInternal, ERC1155Enumerable {
   using ABDKMath64x64 for int128;
   using ABDKMath64x64Token for int128;
+  using ABDKMath64x64Token for uint256;
   using EnumerableSet for EnumerableSet.AddressSet;
   using PoolStorage for PoolStorage.Layout;
 
@@ -543,7 +544,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCall);
     (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
-    uint256 toPay = isCall ? amount : strike64x64.mulu(amount);
+    uint256 toPay = isCall ? amount : strike64x64.mulu(amount).fromDecimals(l.underlyingDecimals).toDecimals(l.baseDecimals);
 
     while (toPay > 0) {
       underwriter = l.liquidityQueueAscending[underwriter][isCall];
@@ -564,7 +565,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       _burn(underwriter, freeLiqTokenId, intervalAmount - intervalPremium);
 
       if (isCall == false) {
-        intervalAmount = strike64x64.inv().mulu(intervalAmount);
+        intervalAmount = strike64x64.inv().mulu(intervalAmount).fromDecimals(l.baseDecimals).toDecimals(l.underlyingDecimals);
       }
 
       // mint short option tokens for underwriter
