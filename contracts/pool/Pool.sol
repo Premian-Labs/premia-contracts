@@ -304,24 +304,50 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   /**
    * @notice exercise call option on behalf of holder
-   * @param args arguments for the exercise function
+   * @param holder owner of long option tokens to exercise
+   * @param longTokenId long option token id
+   * @param amount quantity of tokens to exercise
    */
   function exerciseFrom (
-    PoolStorage.ExerciseArgs memory args
+    address holder,
+    uint256 longTokenId,
+    uint256 amount
   ) external {
-    if (!args.onlyExpired && msg.sender != args.holder) {
-      require(isApprovedForAll(args.holder, msg.sender), "not approved");
+    if (msg.sender != holder) {
+      require(isApprovedForAll(holder, msg.sender), "not approved");
     }
 
+    _exercise(holder, longTokenId, amount);
+  }
+
+  /**
+   * @notice process expired option, freeing liquidity and distributing profits
+   * @param longTokenId long option token id
+   * @param amount quantity of tokens to process
+   */
+  function processExpired (
+    uint256 longTokenId,
+    uint256 amount
+  ) external {
+    _exercise(address(0), longTokenId, amount);
+  }
+
+  function _exercise (
+    address holder, // holder address of option contract tokens to exercise
+    uint256 longTokenId, // amount quantity of option contract tokens to exercise
+    uint256 amount // quantity of option contract tokens to exercise
+  ) internal {
     uint64 maturity;
     int128 strike64x64;
     bool isCall;
 
+    bool onlyExpired = holder == address(0);
+
     {
       PoolStorage.TokenType tokenType;
-      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(args.longTokenId);
+      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(longTokenId);
       require(tokenType == PoolStorage.TokenType.LONG_CALL || tokenType == PoolStorage.TokenType.LONG_PUT, 'invalid type');
-      require(!args.onlyExpired || maturity < block.timestamp, 'not expired');
+      require(!onlyExpired || maturity < block.timestamp, 'not expired');
       isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
     }
 
@@ -333,35 +359,35 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       spot64x64 = l.getPriceUpdateAfter(maturity);
     }
 
-    require(args.onlyExpired || (isCall && spot64x64 > strike64x64) || (!isCall && spot64x64 < strike64x64), 'not ITM');
-
     uint256 exerciseValue;
 
     // option has a non-zero exercise value
     if (isCall) {
-      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(args.amount);
+      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
     } else {
-      exerciseValue = strike64x64.sub(spot64x64).mulu(args.amount);
+      exerciseValue = strike64x64.sub(spot64x64).mulu(amount);
     }
 
-    if (args.onlyExpired) {
+    if (onlyExpired) {
       _burnLongTokenLoop(
-        args.amount,
+        amount,
         isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
-        args.longTokenId,
+        longTokenId,
         isCall
       );
     } else {
+      require(isCall ? (spot64x64 > strike64x64) : (spot64x64 < strike64x64), 'not ITM');
+
       // burn long option tokens from sender
-      _burn(args.holder, args.longTokenId, args.amount);
+      _burn(holder, longTokenId, amount);
 
       if (exerciseValue > 0) {
-        _pushTo(args.holder, _getPoolToken(isCall), exerciseValue);
+        _pushTo(holder, _getPoolToken(isCall), exerciseValue);
 
         emit Exercise(
-          args.holder,
-          args.longTokenId,
-          args.amount,
+          holder,
+          longTokenId,
+          amount,
           exerciseValue
         );
       }
@@ -370,7 +396,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
 
     _burnShortTokenLoop(
-      args.amount,
+      amount,
       isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
       PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
       isCall
