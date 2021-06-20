@@ -236,8 +236,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     require(args.maturity < block.timestamp + (29 days), 'exp > 28 days');
     require(args.maturity % (1 days) == 0, 'exp not end UTC day');
 
-    int128 newPrice64x64 = l.fetchPriceUpdate();
-    _update(l, newPrice64x64);
+    int128 newPrice64x64 = _update(l);
 
     require(args.strike64x64 <= newPrice64x64 << 1, 'strike > 2x spot');
     require(args.strike64x64 >= newPrice64x64 >> 1, 'strike < 0.5x spot');
@@ -406,8 +405,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     { // To avoid stack too deep
       PoolStorage.Layout storage l = PoolStorage.layout();
-      newPrice64x64 = l.fetchPriceUpdate();
-      _update(l, newPrice64x64);
+      newPrice64x64 = _update(l);
     }
 
     int128 cLevel64x64;
@@ -462,8 +460,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    * @notice Update pool data
    */
   function update () external {
-    PoolStorage.Layout storage l = PoolStorage.layout();
-    _update(l, l.fetchPriceUpdate());
+    _update(PoolStorage.layout());
   }
 
   ////////////////////////////////////////////////////////
@@ -509,8 +506,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
 
     PoolStorage.Layout storage l = PoolStorage.layout();
-    int128 spot64x64 = l.fetchPriceUpdate();
-    _update(l, spot64x64);
+    int128 spot64x64 = _update(l);
 
     if (maturity < block.timestamp) {
       spot64x64 = l.getPriceUpdateAfter(maturity);
@@ -733,9 +729,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    * @notice TODO
    */
   function _update (
-    PoolStorage.Layout storage l,
-    int128 newPrice64x64
-  ) internal {
+    PoolStorage.Layout storage l
+  ) internal returns (int128 newPrice64x64) {
+    newPrice64x64 = l.fetchPriceUpdate();
+
     uint256 updatedAt = l.updatedAt;
 
     int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
