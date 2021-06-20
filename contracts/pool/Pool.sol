@@ -186,7 +186,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 amount64x64 = ABDKMath64x64Token.fromDecimals(args.amount, l.underlyingDecimals);
     bool isCall = args.isCall;
 
-    int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
+    int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
     require(oldLiquidity64x64 > 0, "no liq");
 
     // TODO: validate values without spending gas
@@ -265,7 +265,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, _getTokenDecimals(args.isCall));
       feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, _getTokenDecimals(args.isCall));
 
-      totalSupply64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(args.isCall));
+      totalSupply64x64 = l.totalFreeLiquiditySupply64x64(args.isCall);
       oldTotalSupply64x64 = totalSupply64x64.sub(baseCost64x64).sub(feeCost64x64);
     }
 
@@ -341,48 +341,36 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     l.depositedAt[msg.sender][isCallPool] = block.timestamp;
     _pull(_getPoolToken(isCallPool), amount);
 
-    // TODO: emit deposit now or when queue item is processed?
-    emit Deposit(msg.sender, isCallPool, amount);
+    _processPendingDeposits(true);
+    _processPendingDeposits(false);
 
-    l.addToDepositQueue(
-      msg.sender,
-      amount,
-      isCallPool
+    _mint(msg.sender, _getFreeLiquidityTokenId(isCallPool), amount, '');
+
+    uint256 nextBatch = (block.timestamp / BATCHING_PERIOD) * BATCHING_PERIOD + BATCHING_PERIOD;
+    l.pendingDeposits[msg.sender][nextBatch][isCallPool] += amount;
+    l.nextDeposits[isCallPool].totalPendingDeposits += amount;
+    l.nextDeposits[isCallPool].eta = nextBatch;
+
+    emit Deposit(msg.sender, isCallPool, amount);
+  }
+
+  function _processPendingDeposits(bool isCall) internal {
+    PoolStorage.Layout storage l = PoolStorage.layout();
+    PoolStorage.BatchData storage data = l.nextDeposits[isCall];
+
+    if (data.eta == 0 || block.timestamp < data.eta) return;
+
+    int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
+
+
+    _setCLevel(
+      l,
+      oldLiquidity64x64,
+      oldLiquidity64x64.add(ABDKMath64x64Token.fromDecimals(data.totalPendingDeposits, isCall ? l.underlyingDecimals : l.baseDecimals)),
+      isCall
     );
 
-    uint256 tokenId = _getFreeLiquidityTokenId(isCallPool);
-    uint256 processedAt = isCallPool ? l.depositsUnderlyingProcessedAt : l.depositsBaseProcessedAt;
-
-    EnumerableSet.AddressSet storage queue = isCallPool ? l.depositQueueUnderlying : l.depositQueueBase;
-
-    if (processedAt % BATCHING_PERIOD > block.timestamp % BATCHING_PERIOD) {
-      int128 oldLiquidity64x64 = l.totalSupply64x64(tokenId);
-
-      for (uint i = queue.length(); i > 0; i--) {
-        address underwriter = queue.at(i);
-
-        uint256 mintAmount = isCallPool ? l.depositQueueUnderlyingAmounts[underwriter] : l.depositQueueBaseAmounts[underwriter];
-
-        // mint free liquidity tokens for sender
-        _mint(
-          underwriter,
-          tokenId,
-          mintAmount,
-          ''
-        );
-
-        l.removeFromDepositQueue(underwriter, isCallPool);
-      }
-
-      if (isCallPool) {
-        l.depositsUnderlyingProcessedAt = block.timestamp;
-      } else {
-        l.depositsBaseProcessedAt = block.timestamp;
-      }
-
-      int128 newLiquidity64x64 = l.totalSupply64x64(tokenId);
-      _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
-    }
+    delete l.nextDeposits[isCall];
   }
 
   /**
@@ -394,17 +382,16 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 amount,
     bool isCallPool
   ) external {
-    uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCallPool);
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     uint256 depositedAt = l.depositedAt[msg.sender][isCallPool];
 
     require(depositedAt + (1 days) < block.timestamp, 'liq lock 1d');
 
-    int128 oldLiquidity64x64 = l.totalSupply64x64(freeLiqTokenId);
+    int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCallPool);
     // burn free liquidity tokens from sender
-    _burn(msg.sender, freeLiqTokenId, amount);
-    int128 newLiquidity64x64 = l.totalSupply64x64(freeLiqTokenId);
+    _burn(msg.sender, _getFreeLiquidityTokenId(isCallPool), amount);
+    int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCallPool);
 
     _pushTo(msg.sender, _getPoolToken(isCallPool), amount);
     emit Withdrawal(msg.sender, isCallPool, depositedAt, amount);
@@ -511,7 +498,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   function _updateCLevelReassign (bool isCall, int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64) internal {
     PoolStorage.Layout storage l = PoolStorage.layout();
-    int128 totalSupply64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
+    int128 totalSupply64x64 = l.totalFreeLiquiditySupply64x64(isCall);
     int128 newTotalSupply64x64 = totalSupply64x64.add(baseCost64x64).add(feeCost64x64);
 
     int128 newCLevel64x64 = OptionMath.calculateCLevel(
@@ -584,7 +571,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       }
     }
 
-    int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
+    int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
 
     _burnShortTokenLoop(
       amount,
@@ -593,7 +580,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       isCall
     );
 
-    int128 newLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
+    int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
 
     _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
   }
@@ -883,13 +870,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     // TODO: use linked list for ERC1155Enumerable
     // TODO: enforce minimum balance
 
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
     for (uint256 i; i < ids.length; i++) {
+      bool isCallPool = ids[i] == UNDERLYING_FREE_LIQ_TOKEN_ID;
+      require(balanceOf(from, ids[i]) - l.pendingDeposits[from][l.nextDeposits[isCallPool].eta][isCallPool] >= amounts[i], 'Insuf balance');
+
       if (ids[i] == UNDERLYING_FREE_LIQ_TOKEN_ID || ids[i] == BASE_FREE_LIQ_TOKEN_ID) {
         if (amounts[i] > 0) {
-          bool isCallPool = ids[i] == UNDERLYING_FREE_LIQ_TOKEN_ID;
-
-          PoolStorage.Layout storage l = PoolStorage.layout();
-
           if (from != address(0) && balanceOf(from, ids[i]) == amounts[i]) {
             l.removeUnderwriter(from, isCallPool);
           }

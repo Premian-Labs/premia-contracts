@@ -46,6 +46,11 @@ library PoolStorage {
     bool isCall; // true for call, false for put
   }
 
+  struct BatchData {
+    uint256 eta;
+    uint256 totalPendingDeposits;
+  }
+
   bytes32 internal constant STORAGE_SLOT = keccak256(
     'premia.contracts.storage.Pool'
   );
@@ -86,14 +91,10 @@ library PoolStorage {
     // sequence id (minimum resolution price bucket / 256) => price update sequence
     mapping (uint256 => uint256) priceUpdateSequences;
 
-    EnumerableSet.AddressSet depositQueueUnderlying;
-    EnumerableSet.AddressSet depositQueueBase;
-
-    mapping (address => uint256) depositQueueUnderlyingAmounts;
-    mapping (address => uint256) depositQueueBaseAmounts;
-
-    uint256 depositsUnderlyingProcessedAt;
-    uint256 depositsBaseProcessedAt;
+    // isCall -> batch data
+    mapping(bool => BatchData) nextDeposits;
+    // user -> batch timestamp -> isCall -> pending amount
+    mapping(address => mapping(uint256 => mapping(bool => uint256))) pendingDeposits;
   }
 
   function layout () internal pure returns (Layout storage l) {
@@ -138,44 +139,16 @@ library PoolStorage {
     }
   }
 
-  function totalSupply64x64 (
+  function totalFreeLiquiditySupply64x64 (
     Layout storage l,
-    uint256 tokenId
-  ) internal view returns (int128) {
-    (TokenType tokenType,,) = parseTokenId(tokenId);
-    return ABDKMath64x64Token.fromDecimals(
-      ERC1155EnumerableStorage.layout().totalSupply[tokenId],
-      tokenType == TokenType.BASE_FREE_LIQ ? l.baseDecimals : l.underlyingDecimals
-    );
-  }
-
-  function addToDepositQueue (
-    Layout storage l,
-    address account,
-    uint256 amount,
-    bool isCallPool
-  ) internal {
-    if (isCallPool) {
-      l.depositQueueBase.add(account);
-      l.depositQueueBaseAmounts[account] += amount;
-    } else {
-      l.depositQueueUnderlying.add(account);
-      l.depositQueueUnderlyingAmounts[account] += amount;
-    }
-  }
-
-  function removeFromDepositQueue (
-    Layout storage l,
-    address account,
     bool isCall
-  ) internal {
-    if (isCall) {
-      l.depositQueueBase.remove(account);
-      delete l.depositQueueBaseAmounts[account];
-    } else {
-      l.depositQueueUnderlying.remove(account);
-      delete l.depositQueueUnderlyingAmounts[account];
-    }
+  ) internal view returns (int128) {
+    uint256 tokenId = formatTokenId(isCall ? TokenType.UNDERLYING_FREE_LIQ : TokenType.BASE_FREE_LIQ, 0, 0);
+
+    return ABDKMath64x64Token.fromDecimals(
+      ERC1155EnumerableStorage.layout().totalSupply[tokenId] - l.nextDeposits[isCall].totalPendingDeposits,
+      isCall ? l.underlyingDecimals : l.baseDecimals
+    );
   }
 
   function addUnderwriter (
