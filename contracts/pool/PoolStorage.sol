@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import {AggregatorInterface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorInterface.sol';
 import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 import {ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155EnumerableStorage.sol';
-import {EnumerableSet} from '@solidstate/contracts/utils/EnumerableSet.sol';
 
 import {ABDKMath64x64} from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import {ABDKMath64x64Token} from '../libraries/ABDKMath64x64Token.sol';
@@ -13,8 +12,6 @@ import {OptionMath} from '../libraries/OptionMath.sol';
 import {Pool} from './Pool.sol';
 
 library PoolStorage {
-  using EnumerableSet for EnumerableSet.AddressSet;
-
   enum TokenType { UNDERLYING_FREE_LIQ, BASE_FREE_LIQ, LONG_CALL, SHORT_CALL, LONG_PUT, SHORT_PUT }
 
   struct DepositQueueItem {
