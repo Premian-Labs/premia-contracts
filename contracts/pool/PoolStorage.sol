@@ -277,4 +277,20 @@ library PoolStorage {
 
     return l.bucketPrices64x64[(sequenceId + 1 << 8) - msb];
   }
+
+  function fromBaseToUnderlyingDecimals (
+    Layout storage l,
+    uint256 value
+  ) internal view returns (uint256) {
+    int128 valueFixed64x64 = ABDKMath64x64Token.fromDecimals(value, l.baseDecimals);
+    return ABDKMath64x64Token.toDecimals(valueFixed64x64, l.underlyingDecimals);
+  }
+
+  function fromUnderlyingToBaseDecimals (
+    Layout storage l,
+    uint256 value
+  ) internal view returns (uint256) {
+    int128 valueFixed64x64 = ABDKMath64x64Token.fromDecimals(value, l.underlyingDecimals);
+    return ABDKMath64x64Token.toDecimals(valueFixed64x64, l.baseDecimals);
+  }
 }

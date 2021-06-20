@@ -20,7 +20,6 @@ import { OptionMath } from '../libraries/OptionMath.sol';
 contract Pool is OwnableInternal, ERC1155Enumerable {
   using ABDKMath64x64 for int128;
   using ABDKMath64x64Token for int128;
-  using ABDKMath64x64Token for uint256;
   using EnumerableSet for EnumerableSet.AddressSet;
   using PoolStorage for PoolStorage.Layout;
 
@@ -243,7 +242,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     {
       uint256 amount = args.isCall
         ? args.amount
-        : _fromUnderlyingToBaseDecimals(args.strike64x64.mulu(args.amount));
+        : l.fromUnderlyingToBaseDecimals(args.strike64x64.mulu(args.amount));
 
       require(amount <= totalSupply(_getFreeLiquidityTokenId(args.isCall)), 'insuf liq');
     }
@@ -374,7 +373,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     if (isCall) {
       exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
     } else {
-      exerciseValue = _fromUnderlyingToBaseDecimals(strike64x64.sub(spot64x64).mulu(amount));
+      exerciseValue = l.fromUnderlyingToBaseDecimals(strike64x64.sub(spot64x64).mulu(amount));
     }
 
     if (onlyExpired) {
@@ -520,7 +519,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       // Non optimal, but necessary to avoid stack too deep
       uint256 amountPut;
       if (!isCall) {
-        amountPut = _fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
+        amountPut = PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
       }
 
       _pushTo(
@@ -588,9 +587,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) private {
     address underwriter;
     uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCall);
+    PoolStorage.Layout storage l = PoolStorage.layout();
     (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
-    uint256 toPay = isCall ? amount : _fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
+    uint256 toPay = isCall ? amount : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
 
     while (toPay > 0) {
       underwriter = l.liquidityQueueAscending[underwriter][isCall];
@@ -611,7 +611,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       _burn(underwriter, freeLiqTokenId, intervalAmount - intervalPremium);
 
       if (isCall == false) {
-        intervalAmount = _fromBaseToUnderlyingDecimals(strike64x64.inv().mulu(intervalAmount));
+        intervalAmount = l.fromBaseToUnderlyingDecimals(strike64x64.inv().mulu(intervalAmount));
       }
 
       // mint short option tokens for underwriter
@@ -683,7 +683,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       uint256 freeLiq = isCall
         ? intervalAmount - intervalExerciseValue
-        : _fromUnderlyingToBaseDecimals(strike64x64.mulu(intervalAmount)) - intervalExerciseValue;
+        : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(intervalAmount)) - intervalExerciseValue;
 
 
       // mint free liquidity tokens for underwriter
@@ -840,20 +840,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         'ERC20 transfer failed'
       );
     }
-  }
-
-  function _fromBaseToUnderlyingDecimals (
-    uint256 value
-  ) internal view returns (uint256) {
-    PoolStorage.Layout storage l = PoolStorage.layout();
-    return value.fromDecimals(l.baseDecimals).toDecimals(l.underlyingDecimals);
-  }
-
-  function _fromUnderlyingToBaseDecimals (
-    uint256 value
-  ) internal view returns (uint256) {
-    PoolStorage.Layout storage l = PoolStorage.layout();
-    return value.fromDecimals(l.underlyingDecimals).toDecimals(l.baseDecimals);
   }
 
   /**
