@@ -3,8 +3,9 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber, BigNumberish } from 'ethers';
 import { ethers } from 'hardhat';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
-import { parseEther } from 'ethers/lib/utils';
 import { fixedToNumber } from '../utils/math';
+import { formatUnits, parseUnits } from 'ethers/lib/utils';
+import { DECIMALS_BASE, DECIMALS_UNDERLYING } from './PoolProxy';
 
 interface PoolUtilArgs {
   pool: Pool;
@@ -22,6 +23,37 @@ export enum TokenType {
 }
 
 const ONE_DAY = 3600 * 24;
+
+export function getTokenDecimals(isCall: boolean) {
+  return isCall ? DECIMALS_UNDERLYING : DECIMALS_BASE;
+}
+
+export function parseOption(amount: string, isCall: boolean) {
+  if (isCall) {
+    return parseUnderlying(amount);
+  } else {
+    return parseBase(amount);
+  }
+}
+
+export function parseUnderlying(amount: string) {
+  return parseUnits(
+    Number(amount).toFixed(DECIMALS_UNDERLYING),
+    DECIMALS_UNDERLYING,
+  );
+}
+
+export function parseBase(amount: string) {
+  return parseUnits(Number(amount).toFixed(DECIMALS_BASE), DECIMALS_BASE);
+}
+
+export function formatUnderlying(amount: BigNumberish) {
+  return formatUnits(amount, DECIMALS_UNDERLYING);
+}
+
+export function formatBase(amount: BigNumberish) {
+  return formatUnits(amount, DECIMALS_BASE);
+}
 
 export class PoolUtil {
   pool: Pool;
@@ -64,17 +96,19 @@ export class PoolUtil {
   ) {
     await this.depositLiquidity(
       lp,
-      isCall ? amount : amount.mul(fixedToNumber(strike64x64)),
+      isCall
+        ? amount
+        : parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
       isCall,
     );
 
     if (isCall) {
-      await this.underlying.mint(buyer.address, parseEther('100'));
+      await this.underlying.mint(buyer.address, parseUnderlying('100'));
       await this.underlying
         .connect(buyer)
         .approve(this.pool.address, ethers.constants.MaxUint256);
     } else {
-      await this.base.mint(buyer.address, parseEther('10000'));
+      await this.base.mint(buyer.address, parseBase('10000'));
       await this.base
         .connect(buyer)
         .approve(this.pool.address, ethers.constants.MaxUint256);
