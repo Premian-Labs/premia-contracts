@@ -353,8 +353,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     uint256 nextBatch = (block.timestamp / BATCHING_PERIOD) * BATCHING_PERIOD + BATCHING_PERIOD;
     l.pendingDeposits[msg.sender][nextBatch][isCallPool] += amount;
-    l.nextDeposits[isCallPool].totalPendingDeposits += amount;
-    l.nextDeposits[isCallPool].eta = nextBatch;
+
+    PoolStorage.BatchData storage batchData = l.nextDeposits[isCallPool];
+    batchData.totalPendingDeposits += amount;
+    batchData.eta = nextBatch;
 
     emit Deposit(msg.sender, isCallPool, amount);
   }
