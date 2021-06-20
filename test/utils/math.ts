@@ -1,7 +1,7 @@
 import { BigNumber, BigNumberish } from 'ethers';
 import { ethers } from 'ethers';
 import {
-  formatEther,
+  formatUnits,
   hexConcat,
   hexDataSlice,
   hexZeroPad,
@@ -27,8 +27,8 @@ export function fixedFromFloat(float: BigNumberish) {
   );
 }
 
-export function bnToNumber(bn: BigNumber) {
-  return Number(formatEther(bn));
+export function bnToNumber(bn: BigNumber, decimals = 18) {
+  return Number(formatUnits(bn, decimals));
 }
 
 export function fixedToNumber(fixed: BigNumber) {
