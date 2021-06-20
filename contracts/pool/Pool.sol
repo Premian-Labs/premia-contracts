@@ -19,7 +19,6 @@ import { OptionMath } from '../libraries/OptionMath.sol';
  */
 contract Pool is OwnableInternal, ERC1155Enumerable {
   using ABDKMath64x64 for int128;
-  using ABDKMath64x64Token for int128;
   using EnumerableSet for EnumerableSet.AddressSet;
   using PoolStorage for PoolStorage.Layout;
 
@@ -274,8 +273,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         args.isCall
       ));
 
-      baseCost = baseCost64x64.toDecimals(_getTokenDecimals(args.isCall));
-      feeCost = feeCost64x64.toDecimals(_getTokenDecimals(args.isCall));
+      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, _getTokenDecimals(args.isCall));
+      feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, _getTokenDecimals(args.isCall));
 
       totalSupply64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(args.isCall));
       oldTotalSupply64x64 = totalSupply64x64.sub(baseCost64x64).sub(feeCost64x64);
@@ -513,8 +512,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         isCall
       ));
 
-      baseCost = baseCost64x64.toDecimals(_getTokenDecimals(isCall));
-      feeCost = feeCost64x64.toDecimals(_getTokenDecimals(isCall));
+      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, _getTokenDecimals(isCall));
+      feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, _getTokenDecimals(isCall));
 
       // Non optimal, but necessary to avoid stack too deep
       uint256 amountPut;
