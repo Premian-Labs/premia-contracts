@@ -19,7 +19,6 @@ import { OptionMath } from '../libraries/OptionMath.sol';
  */
 contract Pool is OwnableInternal, ERC1155Enumerable {
   using ABDKMath64x64 for int128;
-  using ABDKMath64x64Token for int128;
   using EnumerableSet for EnumerableSet.AddressSet;
   using PoolStorage for PoolStorage.Layout;
 
@@ -177,6 +176,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    * @return baseCost64x64 64x64 fixed point representation of option cost denominated in underlying currency (without fee)
    * @return feeCost64x64 64x64 fixed point representation of option fee cost denominated in underlying currency for call, or base currency for put
    * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
+   * @return slippageCoefficient64x64 64x64 fixed point representation of slippage coefficient for given order size
    */
   function quote (
     PoolStorage.QuoteArgs memory args
@@ -184,9 +184,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     int128 amount64x64 = ABDKMath64x64Token.fromDecimals(args.amount, l.underlyingDecimals);
+    bool isCall = args.isCall;
 
-    int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(args.isCall));
-
+    int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
     require(oldLiquidity64x64 > 0, "no liq");
 
     // TODO: validate values without spending gas
@@ -198,34 +198,19 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     int128 price64x64;
 
-    // Keep as is, to avoid stack too deep error
-    if (args.isCall) {
-      (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath.quotePrice(
-        l.emaVarianceAnnualized64x64,
-        args.strike64x64,
-        args.spot64x64,
-        ABDKMath64x64.divu(args.maturity - block.timestamp, 365 days),
-        l.cLevelUnderlying64x64,
-        oldLiquidity64x64,
-        oldLiquidity64x64.sub(amount64x64),
-        OptionMath.ONE_64x64,
-        true
-      );
-    } else {
-      (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath.quotePrice(
-        l.emaVarianceAnnualized64x64,
-        args.strike64x64,
-        args.spot64x64,
-        ABDKMath64x64.divu(args.maturity - block.timestamp, 365 days),
-        l.cLevelBase64x64,
-        oldLiquidity64x64,
-        oldLiquidity64x64.sub(amount64x64),
-        OptionMath.ONE_64x64,
-        false
-      );
-    }
+    (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath.quotePrice(
+      l.emaVarianceAnnualized64x64,
+      args.strike64x64,
+      args.spot64x64,
+      ABDKMath64x64.divu(args.maturity - block.timestamp, 365 days),
+      isCall ? l.cLevelUnderlying64x64 : l.cLevelBase64x64,
+      oldLiquidity64x64,
+      oldLiquidity64x64.sub(amount64x64),
+      OptionMath.ONE_64x64,
+      isCall
+    );
 
-    baseCost64x64 = args.isCall ? price64x64.mul(amount64x64).div(args.spot64x64) : price64x64.mul(amount64x64);
+    baseCost64x64 = isCall ? price64x64.mul(amount64x64).div(args.spot64x64) : price64x64.mul(amount64x64);
     feeCost64x64 = baseCost64x64.mul(FEE_64x64);
   }
 
@@ -240,13 +225,20 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) external payable returns (uint256 baseCost, uint256 feeCost) {
     // TODO: specify payment currency
 
-    require(args.amount <= totalSupply(_getFreeLiquidityTokenId(args.isCall)), 'insuf liq');
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    {
+      uint256 amount = args.isCall
+        ? args.amount
+        : l.fromUnderlyingToBaseDecimals(args.strike64x64.mulu(args.amount));
+
+      require(amount <= totalSupply(_getFreeLiquidityTokenId(args.isCall)), 'insuf liq');
+    }
 
     require(args.maturity >= block.timestamp + (1 days), 'exp < 1 day');
     require(args.maturity < block.timestamp + (29 days), 'exp > 28 days');
     require(args.maturity % (1 days) == 0, 'exp not end UTC day');
 
-    PoolStorage.Layout storage l = PoolStorage.layout();
     int128 newPrice64x64 = l.fetchPriceUpdate();
     _update(l, newPrice64x64);
 
@@ -270,8 +262,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         args.isCall
       ));
 
-      baseCost = baseCost64x64.toDecimals(_getTokenDecimals(args.isCall));
-      feeCost = feeCost64x64.toDecimals(_getTokenDecimals(args.isCall));
+      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, _getTokenDecimals(args.isCall));
+      feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, _getTokenDecimals(args.isCall));
 
       totalSupply64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(args.isCall));
       oldTotalSupply64x64 = totalSupply64x64.sub(baseCost64x64).sub(feeCost64x64);
@@ -333,80 +325,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 amount
   ) external {
     _exercise(address(0), longTokenId, amount);
-  }
-
-  function _exercise (
-    address holder, // holder address of option contract tokens to exercise
-    uint256 longTokenId, // amount quantity of option contract tokens to exercise
-    uint256 amount // quantity of option contract tokens to exercise
-  ) internal {
-    uint64 maturity;
-    int128 strike64x64;
-    bool isCall;
-
-    bool onlyExpired = holder == address(0);
-
-    {
-      PoolStorage.TokenType tokenType;
-      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(longTokenId);
-      require(tokenType == PoolStorage.TokenType.LONG_CALL || tokenType == PoolStorage.TokenType.LONG_PUT, 'invalid type');
-      require(!onlyExpired || maturity < block.timestamp, 'not expired');
-      isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
-    }
-
-    PoolStorage.Layout storage l = PoolStorage.layout();
-    int128 spot64x64 = l.fetchPriceUpdate();
-    _update(l, spot64x64);
-
-    if (maturity < block.timestamp) {
-      spot64x64 = l.getPriceUpdateAfter(maturity);
-    }
-
-    require(onlyExpired || (isCall ? (spot64x64 > strike64x64) : (spot64x64 < strike64x64)), 'not ITM');
-
-    uint256 exerciseValue;
-    // option has a non-zero exercise value
-    if (isCall) {
-      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
-    } else {
-      exerciseValue = strike64x64.sub(spot64x64).mulu(amount);
-    }
-
-    if (onlyExpired) {
-      _burnLongTokenLoop(
-        amount,
-        isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
-        longTokenId,
-        isCall
-      );
-    } else {
-      // burn long option tokens from sender
-      _burn(holder, longTokenId, amount);
-
-      if (exerciseValue > 0) {
-        _pushTo(holder, _getPoolToken(isCall), exerciseValue);
-
-        emit Exercise(
-          holder,
-          longTokenId,
-          amount,
-          exerciseValue
-        );
-      }
-    }
-
-    int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
-
-    _burnShortTokenLoop(
-      amount,
-      isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
-      PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
-      isCall
-    );
-
-    int128 newLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
-
-    _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
   }
 
   /**
@@ -497,7 +415,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     int128 cLevel64x64;
 
-    {
+    { // To avoid stack too deep
       int128 baseCost64x64;
       int128 feeCost64x64;
 
@@ -509,15 +427,21 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         isCall
       ));
 
-      baseCost = baseCost64x64.toDecimals(_getTokenDecimals(isCall));
-      feeCost = feeCost64x64.toDecimals(_getTokenDecimals(isCall));
+      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, _getTokenDecimals(isCall));
+      feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, _getTokenDecimals(isCall));
+
+      // Non optimal, but necessary to avoid stack too deep
+      uint256 amountPut;
+      if (!isCall) {
+        amountPut = PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
+      }
 
       _pushTo(
         msg.sender,
         _getPoolToken(isCall),
         isCall
           ? amount - baseCost - feeCost
-          : strike64x64.mulu(amount) - baseCost - feeCost
+          : amountPut - baseCost - feeCost
       );
 
       // update C-Level, accounting for slippage and reinvested premia separately
@@ -568,6 +492,80 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _setCLevel(l, newCLevel64x64, totalSupply64x64, newTotalSupply64x64, isCall);
   }
 
+  function _exercise (
+    address holder, // holder address of option contract tokens to exercise
+    uint256 longTokenId, // amount quantity of option contract tokens to exercise
+    uint256 amount // quantity of option contract tokens to exercise
+  ) internal {
+    uint64 maturity;
+    int128 strike64x64;
+    bool isCall;
+
+    bool onlyExpired = holder == address(0);
+
+    {
+      PoolStorage.TokenType tokenType;
+      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(longTokenId);
+      require(tokenType == PoolStorage.TokenType.LONG_CALL || tokenType == PoolStorage.TokenType.LONG_PUT, 'invalid type');
+      require(!onlyExpired || maturity < block.timestamp, 'not expired');
+      isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
+    }
+
+    PoolStorage.Layout storage l = PoolStorage.layout();
+    int128 spot64x64 = l.fetchPriceUpdate();
+    _update(l, spot64x64);
+
+    if (maturity < block.timestamp) {
+      spot64x64 = l.getPriceUpdateAfter(maturity);
+    }
+
+    require(onlyExpired || (isCall ? (spot64x64 > strike64x64) : (spot64x64 < strike64x64)), 'not ITM');
+
+    uint256 exerciseValue;
+    // option has a non-zero exercise value
+    if (isCall) {
+      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
+    } else {
+      exerciseValue = l.fromUnderlyingToBaseDecimals(strike64x64.sub(spot64x64).mulu(amount));
+    }
+
+    if (onlyExpired) {
+      _burnLongTokenLoop(
+        amount,
+        isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
+        longTokenId,
+        isCall
+      );
+    } else {
+      // burn long option tokens from sender
+      _burn(holder, longTokenId, amount);
+
+      if (exerciseValue > 0) {
+        _pushTo(holder, _getPoolToken(isCall), exerciseValue);
+
+        emit Exercise(
+          holder,
+          longTokenId,
+          amount,
+          exerciseValue
+        );
+      }
+    }
+
+    int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
+
+    _burnShortTokenLoop(
+      amount,
+      isCall ? exerciseValue : strike64x64.inv().mulu(exerciseValue),
+      PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
+      isCall
+    );
+
+    int128 newLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
+
+    _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
+  }
+
   function _mintShortTokenLoop (
     PoolStorage.Layout storage l,
     uint256 amount,
@@ -579,7 +577,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCall);
     (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
-    uint256 toPay = isCall ? amount : strike64x64.mulu(amount);
+    uint256 toPay = isCall ? amount : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
 
     while (toPay > 0) {
       underwriter = l.liquidityQueueAscending[underwriter][isCall];
@@ -600,7 +598,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       _burn(underwriter, freeLiqTokenId, intervalAmount - intervalPremium);
 
       if (isCall == false) {
-        intervalAmount = strike64x64.inv().mulu(intervalAmount);
+        intervalAmount = l.fromBaseToUnderlyingDecimals(strike64x64.inv().mulu(intervalAmount));
       }
 
       // mint short option tokens for underwriter
@@ -670,10 +668,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       exerciseValue -= intervalExerciseValue;
       amount -= intervalAmount;
 
-      uint256 freeLiq = intervalAmount - intervalExerciseValue;
-      if (!isCall) {
-        freeLiq = strike64x64.mulu(freeLiq);
-      }
+      uint256 freeLiq = isCall
+        ? intervalAmount - intervalExerciseValue
+        : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(intervalAmount)) - intervalExerciseValue;
+
 
       // mint free liquidity tokens for underwriter
       _mint(underwriter, _getFreeLiquidityTokenId(isCall), freeLiq, '');
