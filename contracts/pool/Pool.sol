@@ -484,13 +484,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
     }
 
-    int128 newPrice64x64;
+    PoolStorage.Layout storage l = PoolStorage.layout();
 
-    { // To avoid stack too deep
-      PoolStorage.Layout storage l = PoolStorage.layout();
-      newPrice64x64 = l.fetchPriceUpdate();
-      _update(l, newPrice64x64);
-    }
+    int128 newPrice64x64 = l.fetchPriceUpdate();
+    _update(l, newPrice64x64);
 
     int128 cLevel64x64;
 
@@ -498,8 +495,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       int128 baseCost64x64;
       int128 feeCost64x64;
 
-      (baseCost64x64, feeCost64x64, cLevel64x64,) = quote(
-        PoolStorage.QuoteArgs(maturity,
+      (baseCost64x64, feeCost64x64, cLevel64x64,) = quote(PoolStorage.QuoteArgs(
+        maturity,
         strike64x64,
         newPrice64x64,
         amount,
@@ -509,19 +506,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       baseCost = baseCost64x64.toDecimals(_getTokenDecimals(isCall));
       feeCost = feeCost64x64.toDecimals(_getTokenDecimals(isCall));
 
-      _pushTo(
-        msg.sender,
-        _getPoolToken(isCall),
-        isCall
-          ? amount - baseCost - feeCost
-          : strike64x64.mulu(amount) - baseCost - feeCost
-      );
-
       // update C-Level, accounting for slippage and reinvested premia separately
       _updateCLevelReassign(isCall, baseCost64x64, feeCost64x64, cLevel64x64);
     }
-
-    PoolStorage.Layout storage l = PoolStorage.layout();
 
     // mint free liquidity tokens for treasury
     _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost, '');
@@ -530,6 +517,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _burn(msg.sender, shortTokenId, amount);
 
     _mintShortTokenLoop(l, amount, baseCost, shortTokenId, isCall);
+
+    _pushTo(
+      msg.sender,
+      _getPoolToken(isCall),
+      (isCall ? amount : strike64x64.mulu(amount)) - baseCost - feeCost
+    );
 
     emit Reassign(msg.sender, shortTokenId, amount, baseCost, feeCost, cLevel64x64, newPrice64x64, l.emaVarianceAnnualized64x64);
   }
