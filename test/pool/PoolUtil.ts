@@ -4,12 +4,8 @@ import { BigNumber, BigNumberish } from 'ethers';
 import { ethers } from 'hardhat';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { fixedToNumber } from '../utils/math';
-import {
-  formatBase,
-  formatUnderlying,
-  parseBase,
-  parseUnderlying,
-} from './PoolProxy';
+import { formatUnits, parseUnits } from 'ethers/lib/utils';
+import { DECIMALS_BASE, DECIMALS_UNDERLYING } from './PoolProxy';
 
 interface PoolUtilArgs {
   pool: Pool;
@@ -27,6 +23,37 @@ export enum TokenType {
 }
 
 const ONE_DAY = 3600 * 24;
+
+export function getTokenDecimals(isCall: boolean) {
+  return isCall ? DECIMALS_UNDERLYING : DECIMALS_BASE;
+}
+
+export function parseOption(amount: string, isCall: boolean) {
+  if (isCall) {
+    return parseUnderlying(amount);
+  } else {
+    return parseBase(amount);
+  }
+}
+
+export function parseUnderlying(amount: string) {
+  return parseUnits(
+    Number(amount).toFixed(DECIMALS_UNDERLYING),
+    DECIMALS_UNDERLYING,
+  );
+}
+
+export function parseBase(amount: string) {
+  return parseUnits(Number(amount).toFixed(DECIMALS_BASE), DECIMALS_BASE);
+}
+
+export function formatUnderlying(amount: BigNumberish) {
+  return formatUnits(amount, DECIMALS_UNDERLYING);
+}
+
+export function formatBase(amount: BigNumberish) {
+  return formatUnits(amount, DECIMALS_BASE);
+}
 
 export class PoolUtil {
   pool: Pool;

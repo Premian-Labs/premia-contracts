@@ -20,8 +20,17 @@ import chai, { expect } from 'chai';
 import { resetHardhat, setTimestamp } from '../evm';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { deployMockContract, MockContract } from 'ethereum-waffle';
-import { formatUnits, parseUnits } from 'ethers/lib/utils';
-import { PoolUtil, TokenType } from './PoolUtil';
+import { parseUnits } from 'ethers/lib/utils';
+import {
+  formatBase,
+  formatUnderlying,
+  getTokenDecimals,
+  parseBase,
+  parseOption,
+  parseUnderlying,
+  PoolUtil,
+  TokenType,
+} from './PoolUtil';
 import {
   bnToNumber,
   fixedFromFloat,
@@ -29,45 +38,14 @@ import {
   formatTokenId,
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
-import { BigNumber, BigNumberish } from 'ethers';
+import { BigNumber } from 'ethers';
 
 chai.use(chaiAlmost(0.01));
 
 const SYMBOL_BASE = 'SYMBOL_BASE';
 const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
-const DECIMALS_BASE = 18;
-const DECIMALS_UNDERLYING = 8;
-
-export function getTokenDecimals(isCall: boolean) {
-  return isCall ? DECIMALS_UNDERLYING : DECIMALS_BASE;
-}
-
-export function parseOption(amount: string, isCall: boolean) {
-  if (isCall) {
-    return parseUnderlying(amount);
-  } else {
-    return parseBase(amount);
-  }
-}
-
-export function parseUnderlying(amount: string) {
-  return parseUnits(
-    Number(amount).toFixed(DECIMALS_UNDERLYING),
-    DECIMALS_UNDERLYING,
-  );
-}
-
-export function parseBase(amount: string) {
-  return parseUnits(Number(amount).toFixed(DECIMALS_BASE), DECIMALS_BASE);
-}
-
-export function formatUnderlying(amount: BigNumberish) {
-  return formatUnits(amount, DECIMALS_UNDERLYING);
-}
-
-export function formatBase(amount: BigNumberish) {
-  return formatUnits(amount, DECIMALS_BASE);
-}
+export const DECIMALS_BASE = 18;
+export const DECIMALS_UNDERLYING = 8;
 
 describe('PoolProxy', function () {
   let owner: SignerWithAddress;
