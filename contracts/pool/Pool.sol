@@ -519,9 +519,13 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 exerciseValue;
     // option has a non-zero exercise value
     if (isCall) {
-      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
+      if (spot64x64 > strike64x64) {
+        exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
+      }
     } else {
-      exerciseValue = l.fromUnderlyingToBaseDecimals(strike64x64.sub(spot64x64).mulu(amount));
+      if (spot64x64 < strike64x64) {
+        exerciseValue = l.fromUnderlyingToBaseDecimals(strike64x64.sub(spot64x64).mulu(amount));
+      }
     }
 
     if (onlyExpired) {
