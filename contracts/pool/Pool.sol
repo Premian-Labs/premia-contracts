@@ -36,8 +36,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 amount,
     uint256 baseCost,
     uint256 feeCost,
-    int128 spot64x64,
-    int128 emaVarianceAnnualized64x64
+    int128 spot64x64
   );
 
   event Exercise (
@@ -68,8 +67,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 baseCost,
     uint256 feeCost,
     int128 cLevel64x64,
-    int128 spot64x64,
-    int128 emaVarianceAnnualized64x64
+    int128 spot64x64
   );
 
   event Deposit (
@@ -270,7 +268,15 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     {
       uint256 longTokenId = PoolStorage.formatTokenId(_getTokenType(args.isCall, true), args.maturity, args.strike64x64);
-      emit Purchase(msg.sender, longTokenId, args.amount, baseCost, feeCost, newPrice64x64, l.emaVarianceAnnualized64x64);
+
+      emit Purchase(
+        msg.sender,
+        longTokenId,
+        args.amount,
+        baseCost,
+        feeCost,
+        newPrice64x64
+      );
 
       // mint free liquidity tokens for treasury
       _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(args.isCall), feeCost, '');
@@ -453,7 +459,15 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     _mintShortTokenLoop(l, amount, baseCost, shortTokenId, isCall);
 
-    emit Reassign(msg.sender, shortTokenId, amount, baseCost, feeCost, cLevel64x64, newPrice64x64, l.emaVarianceAnnualized64x64);
+    emit Reassign(
+      msg.sender,
+      shortTokenId,
+      amount,
+      baseCost,
+      feeCost,
+      cLevel64x64,
+      newPrice64x64
+    );
   }
 
   /**
