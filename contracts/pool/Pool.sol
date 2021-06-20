@@ -182,9 +182,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     int128 amount64x64 = ABDKMath64x64Token.fromDecimals(args.amount, l.underlyingDecimals);
+    bool isCall = args.isCall;
 
-    int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(args.isCall));
-
+    int128 oldLiquidity64x64 = l.totalSupply64x64(_getFreeLiquidityTokenId(isCall));
     require(oldLiquidity64x64 > 0, "no liq");
 
     // TODO: validate values without spending gas
@@ -195,8 +195,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     // assert(timeToMaturity64x64 > 0);
 
     int128 price64x64;
-
-    bool isCall = args.isCall;
 
     (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath.quotePrice(
       l.emaVarianceAnnualized64x64,
@@ -210,7 +208,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       isCall
     );
 
-    baseCost64x64 = args.isCall ? price64x64.mul(amount64x64).div(args.spot64x64) : price64x64.mul(amount64x64);
+    baseCost64x64 = isCall ? price64x64.mul(amount64x64).div(args.spot64x64) : price64x64.mul(amount64x64);
     feeCost64x64 = baseCost64x64.mul(FEE_64x64);
   }
 
