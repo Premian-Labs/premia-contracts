@@ -572,7 +572,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) private {
     address underwriter;
     uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCall);
-    PoolStorage.Layout storage l = PoolStorage.layout();
     (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
     uint256 toPay = isCall ? amount : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
