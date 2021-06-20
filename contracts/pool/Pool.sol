@@ -341,16 +341,48 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     l.depositedAt[msg.sender][isCallPool] = block.timestamp;
     _pull(_getPoolToken(isCallPool), amount);
 
+    // TODO: emit deposit now or when queue item is processed?
     emit Deposit(msg.sender, isCallPool, amount);
 
+    l.addToDepositQueue(
+      msg.sender,
+      amount,
+      isCallPool
+    );
+
     uint256 tokenId = _getFreeLiquidityTokenId(isCallPool);
+    uint256 processedAt = isCallPool ? l.depositsUnderlyingProcessedAt : l.depositsBaseProcessedAt;
 
-    int128 oldLiquidity64x64 = l.totalSupply64x64(tokenId);
-    // mint free liquidity tokens for sender
-    _mint(msg.sender, tokenId, amount, '');
-    int128 newLiquidity64x64 = l.totalSupply64x64(tokenId);
+    EnumerableSet.AddressSet storage queue = isCallPool ? l.depositQueueUnderlying : l.depositQueueBase;
 
-    _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
+    if (processedAt % BATCHING_PERIOD > block.timestamp % BATCHING_PERIOD) {
+      int128 oldLiquidity64x64 = l.totalSupply64x64(tokenId);
+
+      for (uint i = queue.length(); i > 0; i--) {
+        address underwriter = queue.at(i);
+
+        uint256 mintAmount = isCallPool ? l.depositQueueUnderlyingAmounts[underwriter] : l.depositQueueBaseAmounts[underwriter];
+
+        // mint free liquidity tokens for sender
+        _mint(
+          underwriter,
+          tokenId,
+          mintAmount,
+          ''
+        );
+
+        l.removeFromDepositQueue(underwriter, isCallPool);
+      }
+
+      if (isCallPool) {
+        l.depositsUnderlyingProcessedAt = block.timestamp;
+      } else {
+        l.depositsBaseProcessedAt = block.timestamp;
+      }
+
+      int128 newLiquidity64x64 = l.totalSupply64x64(tokenId);
+      _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
+    }
   }
 
   /**

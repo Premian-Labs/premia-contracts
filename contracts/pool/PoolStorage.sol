@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import {AggregatorInterface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorInterface.sol';
 import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 import {ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155EnumerableStorage.sol';
+import {EnumerableSet} from '@solidstate/contracts/utils/EnumerableSet.sol';
 
 import {ABDKMath64x64} from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import {ABDKMath64x64Token} from '../libraries/ABDKMath64x64Token.sol';
@@ -12,21 +13,53 @@ import {OptionMath} from '../libraries/OptionMath.sol';
 import {Pool} from './Pool.sol';
 
 library PoolStorage {
+  using EnumerableSet for EnumerableSet.AddressSet;
+
   enum TokenType { UNDERLYING_FREE_LIQ, BASE_FREE_LIQ, LONG_CALL, SHORT_CALL, LONG_PUT, SHORT_PUT }
+
+  struct DepositQueueItem {
+    address account;
+    uint256 amount;
+    bool isCall;
+  }
+
+  struct PoolSettings {
+    address underlying;
+    address base;
+    address underlyingOracle;
+    address baseOracle;
+  }
+
+  struct QuoteArgs {
+    uint64 maturity; // timestamp of option maturity
+    int128 strike64x64; // 64x64 fixed point representation of strike price
+    int128 spot64x64; // 64x64 fixed point representation of spot price
+    uint256 amount; // size of option contract
+    bool isCall; // true for call, false for put
+  }
+
+  struct PurchaseArgs {
+    uint64 maturity; // timestamp of option maturity
+    int128 strike64x64; // 64x64 fixed point representation of strike price
+    uint256 amount; // size of option contract
+    uint256 maxCost; // maximum acceptable cost after accounting for slippage
+    bool isCall; // true for call, false for put
+  }
 
   bytes32 internal constant STORAGE_SLOT = keccak256(
     'premia.contracts.storage.Pool'
   );
 
   struct Layout {
-    // Base token
+    // ERC20 token addresses
     address base;
-    // Underlying token
     address underlying;
 
+    // AggregatorV3Interface oracle addresses
     address baseOracle;
     address underlyingOracle;
 
+    // token metadata
     uint8 underlyingDecimals;
     uint8 baseDecimals;
 
@@ -52,37 +85,16 @@ library PoolStorage {
     mapping (uint256 => int128) bucketPrices64x64;
     // sequence id (minimum resolution price bucket / 256) => price update sequence
     mapping (uint256 => uint256) priceUpdateSequences;
+
+    EnumerableSet.AddressSet depositQueueUnderlying;
+    EnumerableSet.AddressSet depositQueueBase;
+
+    mapping (address => uint256) depositQueueUnderlyingAmounts;
+    mapping (address => uint256) depositQueueBaseAmounts;
+
+    uint256 depositsUnderlyingProcessedAt;
+    uint256 depositsBaseProcessedAt;
   }
-
-  ////////////////////////////////////////////
-  ////////////////////////////////////////////
-  // To avoid stack too deep error
-
-  struct PoolSettings {
-    address underlying;
-    address base;
-    address underlyingOracle;
-    address baseOracle;
-  }
-
-  struct QuoteArgs {
-    uint64 maturity; // timestamp of option maturity
-    int128 strike64x64; // 64x64 fixed point representation of strike price
-    int128 spot64x64; // 64x64 fixed point representation of spot price
-    uint256 amount; // size of option contract
-    bool isCall; // true for call, false for put
-  }
-
-  struct PurchaseArgs {
-    uint64 maturity; // timestamp of option maturity
-    int128 strike64x64; // 64x64 fixed point representation of strike price
-    uint256 amount; // size of option contract
-    uint256 maxCost; // maximum acceptable cost after accounting for slippage
-    bool isCall; // true for call, false for put
-  }
-
-  ////////////////////////////////////////////
-  ////////////////////////////////////////////
 
   function layout () internal pure returns (Layout storage l) {
     bytes32 slot = STORAGE_SLOT;
@@ -135,6 +147,35 @@ library PoolStorage {
       ERC1155EnumerableStorage.layout().totalSupply[tokenId],
       tokenType == TokenType.BASE_FREE_LIQ ? l.baseDecimals : l.underlyingDecimals
     );
+  }
+
+  function addToDepositQueue (
+    Layout storage l,
+    address account,
+    uint256 amount,
+    bool isCallPool
+  ) internal {
+    if (isCallPool) {
+      l.depositQueueBase.add(account);
+      l.depositQueueBaseAmounts[account] += amount;
+    } else {
+      l.depositQueueUnderlying.add(account);
+      l.depositQueueUnderlyingAmounts[account] += amount;
+    }
+  }
+
+  function removeFromDepositQueue (
+    Layout storage l,
+    address account,
+    bool isCall
+  ) internal {
+    if (isCall) {
+      l.depositQueueBase.remove(account);
+      delete l.depositQueueBaseAmounts[account];
+    } else {
+      l.depositQueueUnderlying.remove(account);
+      delete l.depositQueueUnderlyingAmounts[account];
+    }
   }
 
   function addUnderwriter (
