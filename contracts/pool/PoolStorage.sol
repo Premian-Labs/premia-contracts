@@ -269,37 +269,14 @@ library PoolStorage {
 
     uint256 msb; // most significant bit
 
-    if (sequence >= 2**128) {
-        sequence >>= 128;
-        msb += 128;
-    }
-    if (sequence >= 2**64) {
-        sequence >>= 64;
-        msb += 64;
-    }
-    if (sequence >= 2**32) {
-        sequence >>= 32;
-        msb += 32;
-    }
-    if (sequence >= 2**16) {
-        sequence >>= 16;
-        msb += 16;
-    }
-    if (sequence >= 2**8) {
-        sequence >>= 8;
-        msb += 8;
-    }
-    if (sequence >= 2**4) {
-        sequence >>= 4;
-        msb += 4;
-    }
-    if (sequence >= 2**2) {
-        sequence >>= 2;
-        msb += 2;
-    }
-    if (sequence >= 2**1) {
-        // No need to shift x any more.
-        msb += 1;
+    uint256 i = 128;
+    while (i >= 1) {
+      if (sequence >= 2**i) {
+        sequence >>= i;
+        msb += i;
+      }
+
+      i >>= 1;
     }
 
     return l.bucketPrices64x64[(sequenceId + 1 << 8) - msb];
