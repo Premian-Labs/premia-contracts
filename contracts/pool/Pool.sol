@@ -223,6 +223,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) external payable returns (uint256 baseCost, uint256 feeCost) {
     // TODO: specify payment currency
 
+    _processPendingDeposits(args.isCall);
+
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     {
@@ -346,8 +348,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     l.depositedAt[msg.sender][isCallPool] = block.timestamp;
     _pull(_getPoolToken(isCallPool), amount);
 
-    _processPendingDeposits(true);
-    _processPendingDeposits(false);
+    _processPendingDeposits(isCallPool);
 
     _mint(msg.sender, _getFreeLiquidityTokenId(isCallPool), amount, '');
 
@@ -368,7 +369,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     if (data.eta == 0 || block.timestamp < data.eta) return;
 
     int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
-
 
     _setCLevel(
       l,
@@ -430,6 +430,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
     }
+
+    _processPendingDeposits(isCall);
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
