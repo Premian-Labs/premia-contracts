@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import {AggregatorInterface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorInterface.sol';
 import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
 import {ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155EnumerableStorage.sol';
-import {EnumerableSet} from '@solidstate/contracts/utils/EnumerableSet.sol';
 
 import {ABDKMath64x64} from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import {ABDKMath64x64Token} from '../libraries/ABDKMath64x64Token.sol';
@@ -13,8 +12,6 @@ import {OptionMath} from '../libraries/OptionMath.sol';
 import {Pool} from './Pool.sol';
 
 library PoolStorage {
-  using EnumerableSet for EnumerableSet.AddressSet;
-
   enum TokenType { UNDERLYING_FREE_LIQ, BASE_FREE_LIQ, LONG_CALL, SHORT_CALL, LONG_PUT, SHORT_PUT }
 
   struct DepositQueueItem {
@@ -44,6 +41,11 @@ library PoolStorage {
     uint256 amount; // size of option contract
     uint256 maxCost; // maximum acceptable cost after accounting for slippage
     bool isCall; // true for call, false for put
+  }
+
+  struct BatchData {
+    uint256 eta;
+    uint256 totalPendingDeposits;
   }
 
   bytes32 internal constant STORAGE_SLOT = keccak256(
@@ -86,14 +88,10 @@ library PoolStorage {
     // sequence id (minimum resolution price bucket / 256) => price update sequence
     mapping (uint256 => uint256) priceUpdateSequences;
 
-    EnumerableSet.AddressSet depositQueueUnderlying;
-    EnumerableSet.AddressSet depositQueueBase;
-
-    mapping (address => uint256) depositQueueUnderlyingAmounts;
-    mapping (address => uint256) depositQueueBaseAmounts;
-
-    uint256 depositsUnderlyingProcessedAt;
-    uint256 depositsBaseProcessedAt;
+    // isCall -> batch data
+    mapping(bool => BatchData) nextDeposits;
+    // user -> batch timestamp -> isCall -> pending amount
+    mapping(address => mapping(uint256 => mapping(bool => uint256))) pendingDeposits;
   }
 
   function layout () internal pure returns (Layout storage l) {
@@ -138,44 +136,16 @@ library PoolStorage {
     }
   }
 
-  function totalSupply64x64 (
+  function totalFreeLiquiditySupply64x64 (
     Layout storage l,
-    uint256 tokenId
-  ) internal view returns (int128) {
-    (TokenType tokenType,,) = parseTokenId(tokenId);
-    return ABDKMath64x64Token.fromDecimals(
-      ERC1155EnumerableStorage.layout().totalSupply[tokenId],
-      tokenType == TokenType.BASE_FREE_LIQ ? l.baseDecimals : l.underlyingDecimals
-    );
-  }
-
-  function addToDepositQueue (
-    Layout storage l,
-    address account,
-    uint256 amount,
-    bool isCallPool
-  ) internal {
-    if (isCallPool) {
-      l.depositQueueBase.add(account);
-      l.depositQueueBaseAmounts[account] += amount;
-    } else {
-      l.depositQueueUnderlying.add(account);
-      l.depositQueueUnderlyingAmounts[account] += amount;
-    }
-  }
-
-  function removeFromDepositQueue (
-    Layout storage l,
-    address account,
     bool isCall
-  ) internal {
-    if (isCall) {
-      l.depositQueueBase.remove(account);
-      delete l.depositQueueBaseAmounts[account];
-    } else {
-      l.depositQueueUnderlying.remove(account);
-      delete l.depositQueueUnderlyingAmounts[account];
-    }
+  ) internal view returns (int128) {
+    uint256 tokenId = formatTokenId(isCall ? TokenType.UNDERLYING_FREE_LIQ : TokenType.BASE_FREE_LIQ, 0, 0);
+
+    return ABDKMath64x64Token.fromDecimals(
+      ERC1155EnumerableStorage.layout().totalSupply[tokenId] - l.nextDeposits[isCall].totalPendingDeposits,
+      isCall ? l.underlyingDecimals : l.baseDecimals
+    );
   }
 
   function addUnderwriter (
