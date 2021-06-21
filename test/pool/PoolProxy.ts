@@ -984,6 +984,140 @@ describe('PoolProxy', function () {
     }
   });
 
+  describe('#processExpired', function () {
+    for (const isCall of [true, false]) {
+      describe(isCall ? 'call' : 'put', () => {
+        it('should revert if option is not expired', async () => {
+          const maturity = poolUtil.getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(isCall));
+
+          await poolUtil.purchaseOption(
+            lp1,
+            buyer,
+            parseUnderlying('1'),
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await expect(
+            pool
+              .connect(buyer)
+              .processExpired(longTokenId, parseUnderlying('1')),
+          ).to.be.revertedWith('not expired');
+        });
+
+        it('should successfully process expired option OTM', async () => {
+          const maturity = poolUtil.getMaturity(2);
+          const strike = getStrike(isCall);
+          const strike64x64 = fixedFromFloat(strike);
+
+          await poolUtil.purchaseOption(
+            lp1,
+            buyer,
+            parseUnderlying('1'),
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          await setTimestamp(maturity.add(100).toNumber());
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const price = isCall ? strike * 0.7 : strike * 1.4;
+          await setUnderlyingPrice(parseUnits(price.toString(), 8));
+
+          console.log(
+            (await getToken(isCall).balanceOf(buyer.address)).toString(),
+          );
+
+          await pool
+            .connect(buyer)
+            .processExpired(longTokenId, parseUnderlying('1'));
+
+          expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
+          expect(await pool.balanceOf(lp1.address, shortTokenId)).to.eq(0);
+          console.log(
+            (
+              await pool.balanceOf(lp1.address, getFreeLiqTokenId(isCall))
+            ).toString(),
+          );
+          console.log(
+            (await getToken(isCall).balanceOf(buyer.address)).toString(),
+          );
+        });
+
+        it('should successfully process expired option ITM', async () => {
+          const maturity = poolUtil.getMaturity(10);
+          const strike = getStrike(isCall);
+          const strike64x64 = fixedFromFloat(strike);
+
+          await poolUtil.purchaseOption(
+            lp1,
+            buyer,
+            parseUnderlying('1'),
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          await setTimestamp(maturity.add(100).toNumber());
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const price = isCall ? strike * 1.4 : strike * 0.7;
+          await setUnderlyingPrice(parseUnits(price.toString(), 8));
+
+          console.log(
+            (await getToken(isCall).balanceOf(buyer.address)).toString(),
+          );
+
+          await pool
+            .connect(buyer)
+            .processExpired(longTokenId, parseUnderlying('1'));
+
+          expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
+          expect(await pool.balanceOf(lp1.address, shortTokenId)).to.eq(0);
+          console.log(
+            (
+              await pool.balanceOf(lp1.address, getFreeLiqTokenId(isCall))
+            ).toString(),
+          );
+          console.log(
+            (await getToken(isCall).balanceOf(buyer.address)).toString(),
+          );
+        });
+      });
+    }
+  });
+
   describe('#reassign', function () {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
