@@ -442,21 +442,17 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
     }
 
-    int128 newPrice64x64;
+    PoolStorage.Layout storage l = PoolStorage.layout();
 
-    { // To avoid stack too deep
-      PoolStorage.Layout storage l = PoolStorage.layout();
-      newPrice64x64 = _update(l);
-    }
-
+    int128 newPrice64x64 = _update(l);
     int128 cLevel64x64;
 
     { // To avoid stack too deep
       int128 baseCost64x64;
       int128 feeCost64x64;
 
-      (baseCost64x64, feeCost64x64, cLevel64x64,) = quote(
-        PoolStorage.QuoteArgs(maturity,
+      (baseCost64x64, feeCost64x64, cLevel64x64,) = quote(PoolStorage.QuoteArgs(
+        maturity,
         strike64x64,
         newPrice64x64,
         amount,
@@ -466,25 +462,17 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, _getTokenDecimals(isCall));
       feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, _getTokenDecimals(isCall));
 
-      // Non optimal, but necessary to avoid stack too deep
-      uint256 amountPut;
-      if (!isCall) {
-        amountPut = PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
-      }
+      uint256 pushAmount = isCall ? amount : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
 
       _pushTo(
         msg.sender,
         _getPoolToken(isCall),
-        isCall
-          ? amount - baseCost - feeCost
-          : amountPut - baseCost - feeCost
+        pushAmount - baseCost - feeCost
       );
 
       // update C-Level, accounting for slippage and reinvested premia separately
       _updateCLevelReassign(isCall, baseCost64x64, feeCost64x64, cLevel64x64);
     }
-
-    PoolStorage.Layout storage l = PoolStorage.layout();
 
     // mint free liquidity tokens for treasury
     _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost, '');
@@ -566,9 +554,13 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 exerciseValue;
     // option has a non-zero exercise value
     if (isCall) {
-      exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
+      if (spot64x64 > strike64x64) {
+        exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(amount);
+      }
     } else {
-      exerciseValue = l.fromUnderlyingToBaseDecimals(strike64x64.sub(spot64x64).mulu(amount));
+      if (spot64x64 < strike64x64) {
+        exerciseValue = l.fromUnderlyingToBaseDecimals(strike64x64.sub(spot64x64).mulu(amount));
+      }
     }
 
     if (onlyExpired) {
