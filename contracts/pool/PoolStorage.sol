@@ -269,14 +269,11 @@ library PoolStorage {
 
     uint256 msb; // most significant bit
 
-    uint256 i = 128;
-    while (i >= 1) {
-      if (sequence >= 2**i) {
-        sequence >>= i;
+    for (uint256 i = 128; i > 0; i >>= 1) {
+      if (sequence >> i > 0) {
         msb += i;
+        sequence >>= i;
       }
-
-      i >>= 1;
     }
 
     return l.bucketPrices64x64[(sequenceId + 1 << 8) - msb];
