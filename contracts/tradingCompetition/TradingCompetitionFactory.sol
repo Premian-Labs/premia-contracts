@@ -6,11 +6,12 @@ import {ERC20} from '@solidstate/contracts/token/ERC20/ERC20.sol';
 import {ERC20MetadataStorage} from '@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol';
 import {Ownable, OwnableStorage} from '@solidstate/contracts/access/Ownable.sol';
 import {EnumerableSet} from '@solidstate/contracts/utils/EnumerableSet.sol';
+import {AggregatorInterface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorInterface.sol';
 
 import {TradingCompetitionERC20} from './TradingCompetitionERC20.sol';
 
 contract TradingCompetitionFactory is Ownable {
-    event TokenDeployed(address addr, string symbol);
+    event TokenDeployed(address addr, address oracle, string symbol);
 
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -20,20 +21,72 @@ contract TradingCompetitionFactory is Ownable {
     // Whitelisted addresses who can receive / send tokens
     EnumerableSet.AddressSet private _whitelisted;
 
+    // token -> oracle
+    mapping(address => address) public oracles;
+
+    //
+
+    event Swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
+
+    //
+
     constructor () {
         OwnableStorage.layout().owner = msg.sender;
     }
 
-    function deployToken(string memory symbol) public returns(address) {
-        TradingCompetitionERC20 token = new TradingCompetitionERC20(symbol);
-        emit TokenDeployed(address(token), symbol);
+    //
+
+    function deployToken(string memory _symbol, address _oracle) external returns(address) {
+        TradingCompetitionERC20 token = new TradingCompetitionERC20(_symbol);
+        oracles[address(token)] = _oracle;
+        emit TokenDeployed(address(token), _oracle, _symbol);
         return address(token);
+    }
+
+    function setOracle(address _token, address _oracle) external onlyOwner {
+        oracles[_token] = _oracle;
+    }
+
+    //
+
+    // Swap functions
+
+    function getAmountOut(address _tokenIn, address _tokenOut, uint256 _amountIn) public view returns(uint256) {
+        uint256 tokenInPrice = uint256(AggregatorInterface(oracles[_tokenIn]).latestAnswer());
+        uint256 tokenOutPrice = uint256(AggregatorInterface(oracles[_tokenOut]).latestAnswer());
+
+        return (_amountIn * tokenInPrice / tokenOutPrice) * 99 / 100; // 1% fee burnt
+    }
+
+    function getAmountIn(address _tokenIn, address _tokenOut, uint256 _amountOut) public view returns(uint256) {
+        uint256 tokenInPrice = uint256(AggregatorInterface(oracles[_tokenIn]).latestAnswer());
+        uint256 tokenOutPrice = uint256(AggregatorInterface(oracles[_tokenOut]).latestAnswer());
+
+        return (_amountOut * tokenOutPrice / tokenInPrice) * 100 / 99; // 1% fee burnt
+    }
+
+    function swapTokenFrom(address _tokenIn, address _tokenOut, uint256 _amountIn) external {
+        uint256 amountOut = getAmountOut(_tokenIn, _tokenOut, _amountIn);
+
+        TradingCompetitionERC20(_tokenIn).burn(msg.sender, _amountIn);
+        TradingCompetitionERC20(_tokenOut).mint(msg.sender, amountOut);
+
+        emit Swap(_tokenIn, _tokenOut, _amountIn, amountOut);
+    }
+
+    function swapTokenTo(address _tokenIn, address _tokenOut, uint256 _amountOut) external {
+        uint256 amountIn = getAmountOut(_tokenIn, _tokenOut, _amountOut);
+
+        TradingCompetitionERC20(_tokenIn).burn(msg.sender, amountIn);
+        TradingCompetitionERC20(_tokenOut).mint(msg.sender, _amountOut);
+
+        emit Swap(_tokenIn, _tokenOut, amountIn, _amountOut);
     }
 
     //
 
     function isMinter(address _user) external view returns(bool) {
-        return _minters.contains(_user);
+        return _user == address(this) || _minters.contains(_user);
     }
 
     function isWhitelisted(address _from, address _to) external view returns(bool) {

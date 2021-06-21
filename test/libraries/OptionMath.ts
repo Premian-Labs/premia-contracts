@@ -194,6 +194,26 @@ describe('OptionMath', function () {
 
       expect(expected / result).to.be.closeTo(1, 0.001);
     });
+    it('calculates European Call option price: 2', async function () {
+      const variance = fixedFromFloat(Math.pow(1.22, 2));
+      const price = fixedFromFloat(2000);
+      const strike = fixedFromFloat(2500);
+      const maturity = fixedFromFloat(10 / 365);
+      const expected = bnToNumber(
+          fixedFromFloat(30.69),
+      );
+      const result = bnToNumber(
+        await instance.callStatic.bsPrice(
+          variance,
+          strike,
+          price,
+          maturity,
+          true,
+        ),
+      );
+
+      expect(expected / result).to.be.closeTo(1, 0.001);
+    });
   });
 
   describe('#quotePrice', function () {

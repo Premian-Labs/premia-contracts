@@ -17,7 +17,7 @@ import {
 import { describeBehaviorOfManagedProxyOwnable } from '@solidstate/spec';
 import { describeBehaviorOfPool } from './Pool.behavior';
 import chai, { expect } from 'chai';
-import { resetHardhat, setTimestamp } from '../evm';
+import { resetHardhat, setTimestamp } from '../utils/evm';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { deployMockContract, MockContract } from 'ethereum-waffle';
 import { parseUnits } from 'ethers/lib/utils';
@@ -130,7 +130,7 @@ describe('PoolProxy', function () {
     }
   };
 
-  const spotPrice = 2500;
+  const spotPrice = 2000;
 
   const setUnderlyingPrice = async (price: BigNumber) => {
     await underlyingOracle.mock.latestAnswer.returns(price);
@@ -200,7 +200,7 @@ describe('PoolProxy', function () {
       baseOracle.address,
       underlyingOracle.address,
       fixedFromFloat(0.1),
-      fixedFromFloat(1.1),
+      fixedFromFloat(1.22 * 1.22),
     );
 
     let poolAddress = (await tx.wait()).events![0].args!.pool;
@@ -280,46 +280,53 @@ describe('PoolProxy', function () {
       it('should return price for given call option parameters', async () => {
         await poolUtil.depositLiquidity(owner, parseUnderlying('10'), true);
 
-        const maturity = poolUtil.getMaturity(17);
-        const strike64x64 = fixedFromFloat(spotPrice * 1.25);
+        const strike64x64 = fixedFromFloat(2500);
         const spot64x64 = fixedFromFloat(spotPrice);
+        const now = getCurrentTimestamp();
 
-        const quote = await pool.quote({
-          maturity,
+        const q = await pool.quote({
+          maturity: now + 10 * 24 * 3600,
           strike64x64,
           spot64x64,
           amount: parseUnderlying('1'),
           isCall: true,
         });
 
-        expect(fixedToNumber(quote.baseCost64x64)).to.almost(0.0488);
-        expect(fixedToNumber(quote.feeCost64x64)).to.eq(0);
-        expect(fixedToNumber(quote.cLevel64x64)).to.almost(2.21);
+        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(71.36);
+        expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
+        expect(fixedToNumber(q.cLevel64x64)).to.almost(2.21);
+        expect(
+          (fixedToNumber(q.baseCost64x64) * spotPrice) /
+            fixedToNumber(q.cLevel64x64) /
+            fixedToNumber(q.slippageCoefficient64x64),
+        ).to.almost(30.69);
       });
     });
 
     describe('put', () => {
       it('should return price for given put option parameters', async () => {
-        await poolUtil.depositLiquidity(owner, parseBase('10'), false);
+        await poolUtil.depositLiquidity(owner, parseBase('10000'), false);
 
-        const maturity = poolUtil.getMaturity(17);
-        const strike64x64 = fixedFromFloat(spotPrice * 0.75);
+        const strike64x64 = fixedFromFloat(1750);
         const spot64x64 = fixedFromFloat(spotPrice);
+        const now = getCurrentTimestamp();
 
-        const quote = await pool.quote({
-          maturity,
+        const q = await pool.quote({
+          maturity: now + 10 * 24 * 3600,
           strike64x64,
           spot64x64,
           amount: parseUnderlying('1'),
           isCall: false,
         });
 
-        const baseCost = fixedToNumber(quote.baseCost64x64);
-        // Setting a small range, as baseCost will fluctuate a bit based on current time
-        console.log(baseCost);
-        expect(49 < baseCost && baseCost < 55).to.be.true;
-        expect(fixedToNumber(quote.feeCost64x64)).to.eq(0);
-        expect(fixedToNumber(quote.cLevel64x64)).to.almost(2.21);
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(115.09);
+        expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
+        expect(fixedToNumber(q.cLevel64x64)).to.almost(2);
+        expect(
+          fixedToNumber(q.baseCost64x64) /
+            fixedToNumber(q.cLevel64x64) /
+            fixedToNumber(q.slippageCoefficient64x64),
+        ).to.almost(57.54);
       });
     });
   });
