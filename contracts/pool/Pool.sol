@@ -609,7 +609,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       if (underwriter == msg.sender) continue;
 
       // amount of liquidity provided by underwriter, accounting for reinvested premium
-      uint256 intervalAmount = balanceOf(underwriter, freeLiqTokenId) * (toPay + premium) / toPay;
+      uint256 intervalAmount = balanceOf(underwriter, freeLiqTokenId) * (toPay + premium) / toPay - l.nextDeposits[isCall].totalPendingDeposits;
+      if (intervalAmount == 0) continue;
       if (intervalAmount > toPay) intervalAmount = toPay;
 
       // amount of premium paid to underwriter
