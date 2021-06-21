@@ -230,7 +230,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         ? args.amount
         : l.fromUnderlyingToBaseDecimals(args.strike64x64.mulu(args.amount));
 
-      require(amount <= totalSupply(_getFreeLiquidityTokenId(args.isCall)), 'insuf liq');
+      require(amount <= totalSupply(_getFreeLiquidityTokenId(args.isCall)) - l.nextDeposits[args.isCall].totalPendingDeposits, 'insuf liq');
     }
 
     require(args.maturity >= block.timestamp + (1 days), 'exp < 1 day');
