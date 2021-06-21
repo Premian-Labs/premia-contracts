@@ -880,11 +880,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     for (uint256 i; i < ids.length; i++) {
       if (ids[i] == UNDERLYING_FREE_LIQ_TOKEN_ID || ids[i] == BASE_FREE_LIQ_TOKEN_ID) {
-        bool isCallPool = ids[i] == UNDERLYING_FREE_LIQ_TOKEN_ID;
-        require(balanceOf(from, ids[i]) - l.pendingDeposits[from][l.nextDeposits[isCallPool].eta][isCallPool] >= amounts[i], 'Insuf balance');
-
         if (amounts[i] > 0) {
+          bool isCallPool = ids[i] == UNDERLYING_FREE_LIQ_TOKEN_ID;
+
           if (from != address(0) && balanceOf(from, ids[i]) == amounts[i]) {
+            require(balanceOf(from, ids[i]) - l.pendingDeposits[from][l.nextDeposits[isCallPool].eta][isCallPool] >= amounts[i], 'Insuf balance');
             l.removeUnderwriter(from, isCallPool);
           }
 
