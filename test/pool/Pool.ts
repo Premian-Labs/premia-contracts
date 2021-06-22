@@ -4,8 +4,7 @@ import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { Pool, PoolMock, PoolMock__factory } from '../../typechain';
-import { formatTokenId } from '../utils/math';
-import { TokenType } from './PoolUtil';
+import { formatTokenId, TokenType } from '../utils/math';
 
 const fixedFromBigNumber = function (bn: BigNumber) {
   return bn.abs().shl(64).mul(bn.abs().div(bn));
