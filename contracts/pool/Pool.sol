@@ -201,7 +201,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(pendingDeposits64x64);
       require(oldLiquidity64x64 > 0, "no liq");
 
-      if (pendingDeposits64x64) {
+      if (pendingDeposits64x64 > 0) {
         cLevel64x64 = l.calculateCLevel(oldLiquidity64x64.sub(pendingDeposits64x64), oldLiquidity64x64, isCall);
       }
     }
