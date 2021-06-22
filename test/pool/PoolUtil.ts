@@ -64,6 +64,19 @@ export function formatBase(amount: BigNumberish) {
   return formatUnits(amount, DECIMALS_BASE);
 }
 
+export function getExerciseValue(
+  price: number,
+  strike: number,
+  amount: number,
+  isCall: boolean,
+) {
+  if (isCall) {
+    return ((price - strike) * amount) / price;
+  } else {
+    return (strike - price) * amount;
+  }
+}
+
 export class PoolUtil {
   pool: Pool;
   underlying: ERC20Mock;

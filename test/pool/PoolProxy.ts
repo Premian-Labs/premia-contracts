@@ -24,9 +24,9 @@ import { parseUnits } from 'ethers/lib/utils';
 import {
   DECIMALS_BASE,
   DECIMALS_UNDERLYING,
-  formatBase,
   formatOption,
   formatUnderlying,
+  getExerciseValue,
   getTokenDecimals,
   parseBase,
   parseOption,
@@ -860,29 +860,25 @@ describe('PoolProxy', function () {
           const price = isCall ? strike * 1.4 : strike * 0.7;
           await setUnderlyingPrice(parseUnits(price.toString(), 8));
 
-          const underlyingBalance = await underlying.balanceOf(buyer.address);
-          const baseBalance = await base.balanceOf(buyer.address);
+          const curBalance = await getToken(isCall).balanceOf(buyer.address);
 
           await pool
             .connect(buyer)
             .exerciseFrom(buyer.address, longTokenId, amount);
 
-          if (isCall) {
-            const expectedReturn = ((price - strike) * amountNb) / price;
-            const premium = (await underlying.balanceOf(buyer.address)).sub(
-              underlyingBalance,
-            );
+          const exerciseValue = getExerciseValue(
+            price,
+            strike,
+            amountNb,
+            isCall,
+          );
+          const premium = (await getToken(isCall).balanceOf(buyer.address)).sub(
+            curBalance,
+          );
 
-            expect(Number(formatUnderlying(premium))).to.almost(expectedReturn);
-          } else {
-            const expectedReturn = (strike - price) * amountNb;
-            const premium = (await base.balanceOf(buyer.address)).sub(
-              baseBalance,
-            );
-
-            expect(Number(formatBase(premium))).to.eq(expectedReturn);
-          }
-
+          expect(Number(formatOption(premium, isCall))).to.almost(
+            exerciseValue,
+          );
           expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
         });
 
@@ -942,8 +938,7 @@ describe('PoolProxy', function () {
           const price = isCall ? strike * 1.4 : strike * 0.7;
           await setUnderlyingPrice(parseUnits(price.toString(), 8));
 
-          const underlyingBalance = await underlying.balanceOf(buyer.address);
-          const baseBalance = await base.balanceOf(buyer.address);
+          const curBalance = await getToken(isCall).balanceOf(buyer.address);
 
           await pool.connect(buyer).setApprovalForAll(thirdParty.address, true);
 
@@ -951,21 +946,18 @@ describe('PoolProxy', function () {
             .connect(thirdParty)
             .exerciseFrom(buyer.address, longTokenId, amount);
 
-          if (isCall) {
-            const expectedReturn = ((price - strike) * amountNb) / price;
-            const premium = (await underlying.balanceOf(buyer.address)).sub(
-              underlyingBalance,
-            );
-
-            expect(Number(formatUnderlying(premium))).to.almost(expectedReturn);
-          } else {
-            const expectedReturn = (strike - price) * amountNb;
-            const premium = (await base.balanceOf(buyer.address)).sub(
-              baseBalance,
-            );
-
-            expect(Number(formatBase(premium))).to.eq(expectedReturn);
-          }
+          const exerciseValue = getExerciseValue(
+            price,
+            strike,
+            amountNb,
+            isCall,
+          );
+          const premium = (await getToken(isCall).balanceOf(buyer.address)).sub(
+            curBalance,
+          );
+          expect(Number(formatOption(premium, isCall))).to.almost(
+            exerciseValue,
+          );
 
           expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
         });
@@ -1128,12 +1120,7 @@ describe('PoolProxy', function () {
           expect(await pool.balanceOf(buyer.address, tokenId.long)).to.eq(0);
           expect(await pool.balanceOf(lp1.address, tokenId.short)).to.eq(0);
 
-          let exerciseValue: number;
-          if (isCall) {
-            exerciseValue = (price - strike) / price;
-          } else {
-            exerciseValue = strike - price;
-          }
+          const exerciseValue = getExerciseValue(price, strike, 1, isCall);
 
           console.log(
             formatOption(initialBuyerAmount, isCall),
