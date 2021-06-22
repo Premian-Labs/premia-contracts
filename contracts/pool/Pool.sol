@@ -184,8 +184,23 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 amount64x64 = ABDKMath64x64Token.fromDecimals(args.amount, l.underlyingDecimals);
     bool isCall = args.isCall;
 
-    int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
-    require(oldLiquidity64x64 > 0, "no liq");
+    int128 oldLiquidity64x64;
+
+    {
+      PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
+      int128 pendingDeposits64x64;
+
+      if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
+        pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
+          batchData.totalPendingDeposits,
+          isCall ? l.underlyingDecimals : l.baseDecimals
+        );
+      }
+
+      oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(pendingDeposits64x64);
+      require(oldLiquidity64x64 > 0, "no liq");
+    }
+
 
     // TODO: validate values without spending gas
     // assert(oldLiquidity64x64 >= newLiquidity64x64);
