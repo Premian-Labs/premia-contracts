@@ -3,6 +3,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber, BigNumberish } from 'ethers';
 import { ethers } from 'hardhat';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
+import { increaseTimestamp } from '../utils/evm';
 import { fixedToNumber } from '../utils/math';
 import { formatUnits, parseUnits } from 'ethers/lib/utils';
 import { DECIMALS_BASE, DECIMALS_UNDERLYING } from './PoolProxy';
@@ -84,6 +85,8 @@ export class PoolUtil {
     }
 
     await this.pool.connect(lp).deposit(amount, isCall);
+
+    await increaseTimestamp(300);
   }
 
   async purchaseOption(
