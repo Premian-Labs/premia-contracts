@@ -38,6 +38,11 @@ export async function setTimestamp(timestamp: number) {
   await mineBlock();
 }
 
+export async function increaseTimestamp(amount: number) {
+  await ethers.provider.send('evm_increaseTime', [amount]);
+  await mineBlock();
+}
+
 export async function setTimestampPostExpiration() {
   await setTimestamp(new Date().getTime() / 1000 + ONE_WEEK);
 }

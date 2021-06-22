@@ -2,6 +2,7 @@ import { ERC20Mock, Pool } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber, BigNumberish, ethers } from 'ethers';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
+import { increaseTimestamp } from '../utils/evm';
 import { fixedToNumber } from '../utils/math';
 import { formatUnits, parseUnits } from 'ethers/lib/utils';
 
@@ -12,15 +13,6 @@ interface PoolUtilArgs {
   pool: Pool;
   underlying: ERC20Mock;
   base: ERC20Mock;
-}
-
-export enum TokenType {
-  UnderlyingFreeLiq = 0,
-  BaseFreeLiq = 1,
-  LongCall = 2,
-  ShortCall = 3,
-  LongPut = 4,
-  ShortPut = 5,
 }
 
 const ONE_DAY = 3600 * 24;
@@ -106,6 +98,8 @@ export class PoolUtil {
     }
 
     await this.pool.connect(lp).deposit(amount, isCall);
+
+    await increaseTimestamp(300);
   }
 
   async purchaseOption(

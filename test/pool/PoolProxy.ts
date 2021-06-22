@@ -32,7 +32,6 @@ import {
   parseOption,
   parseUnderlying,
   PoolUtil,
-  TokenType,
 } from './PoolUtil';
 import {
   bnToNumber,
@@ -40,6 +39,7 @@ import {
   fixedToNumber,
   formatTokenId,
   getOptionTokenIds,
+  TokenType,
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
@@ -103,14 +103,14 @@ describe('PoolProxy', function () {
       return parseUnderlying(
         (
           (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
-          1.02
+          1.03
         ).toString(),
       );
     } else {
       return parseBase(
         (
           (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
-          1.02
+          1.03
         ).toString(),
       );
     }

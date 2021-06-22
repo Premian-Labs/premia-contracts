@@ -30,7 +30,8 @@ describe('Premia', function () {
     pool = await new Pool__factory(owner).deploy(
       ethers.constants.AddressZero,
       ethers.constants.AddressZero,
-      ethers.constants.Zero
+      ethers.constants.Zero,
+      ethers.BigNumber.from('260')
     );
 
     [await new ProxyManager__factory(owner).deploy()].forEach(function (f) {

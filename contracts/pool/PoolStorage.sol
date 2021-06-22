@@ -14,19 +14,54 @@ import {Pool} from './Pool.sol';
 library PoolStorage {
   enum TokenType { UNDERLYING_FREE_LIQ, BASE_FREE_LIQ, LONG_CALL, SHORT_CALL, LONG_PUT, SHORT_PUT }
 
+  struct DepositQueueItem {
+    address account;
+    uint256 amount;
+    bool isCall;
+  }
+
+  struct PoolSettings {
+    address underlying;
+    address base;
+    address underlyingOracle;
+    address baseOracle;
+  }
+
+  struct QuoteArgs {
+    uint64 maturity; // timestamp of option maturity
+    int128 strike64x64; // 64x64 fixed point representation of strike price
+    int128 spot64x64; // 64x64 fixed point representation of spot price
+    uint256 amount; // size of option contract
+    bool isCall; // true for call, false for put
+  }
+
+  struct PurchaseArgs {
+    uint64 maturity; // timestamp of option maturity
+    int128 strike64x64; // 64x64 fixed point representation of strike price
+    uint256 amount; // size of option contract
+    uint256 maxCost; // maximum acceptable cost after accounting for slippage
+    bool isCall; // true for call, false for put
+  }
+
+  struct BatchData {
+    uint256 eta;
+    uint256 totalPendingDeposits;
+  }
+
   bytes32 internal constant STORAGE_SLOT = keccak256(
     'premia.contracts.storage.Pool'
   );
 
   struct Layout {
-    // Base token
+    // ERC20 token addresses
     address base;
-    // Underlying token
     address underlying;
 
+    // AggregatorV3Interface oracle addresses
     address baseOracle;
     address underlyingOracle;
 
+    // token metadata
     uint8 underlyingDecimals;
     uint8 baseDecimals;
 
@@ -52,37 +87,12 @@ library PoolStorage {
     mapping (uint256 => int128) bucketPrices64x64;
     // sequence id (minimum resolution price bucket / 256) => price update sequence
     mapping (uint256 => uint256) priceUpdateSequences;
+
+    // isCall -> batch data
+    mapping(bool => BatchData) nextDeposits;
+    // user -> batch timestamp -> isCall -> pending amount
+    mapping(address => mapping(uint256 => mapping(bool => uint256))) pendingDeposits;
   }
-
-  ////////////////////////////////////////////
-  ////////////////////////////////////////////
-  // To avoid stack too deep error
-
-  struct PoolSettings {
-    address underlying;
-    address base;
-    address underlyingOracle;
-    address baseOracle;
-  }
-
-  struct QuoteArgs {
-    uint64 maturity; // timestamp of option maturity
-    int128 strike64x64; // 64x64 fixed point representation of strike price
-    int128 spot64x64; // 64x64 fixed point representation of spot price
-    uint256 amount; // size of option contract
-    bool isCall; // true for call, false for put
-  }
-
-  struct PurchaseArgs {
-    uint64 maturity; // timestamp of option maturity
-    int128 strike64x64; // 64x64 fixed point representation of strike price
-    uint256 amount; // size of option contract
-    uint256 maxCost; // maximum acceptable cost after accounting for slippage
-    bool isCall; // true for call, false for put
-  }
-
-  ////////////////////////////////////////////
-  ////////////////////////////////////////////
 
   function layout () internal pure returns (Layout storage l) {
     bytes32 slot = STORAGE_SLOT;
@@ -126,14 +136,15 @@ library PoolStorage {
     }
   }
 
-  function totalSupply64x64 (
+  function totalFreeLiquiditySupply64x64 (
     Layout storage l,
-    uint256 tokenId
+    bool isCall
   ) internal view returns (int128) {
-    (TokenType tokenType,,) = parseTokenId(tokenId);
+    uint256 tokenId = formatTokenId(isCall ? TokenType.UNDERLYING_FREE_LIQ : TokenType.BASE_FREE_LIQ, 0, 0);
+
     return ABDKMath64x64Token.fromDecimals(
-      ERC1155EnumerableStorage.layout().totalSupply[tokenId],
-      tokenType == TokenType.BASE_FREE_LIQ ? l.baseDecimals : l.underlyingDecimals
+      ERC1155EnumerableStorage.layout().totalSupply[tokenId] - l.nextDeposits[isCall].totalPendingDeposits,
+      isCall ? l.underlyingDecimals : l.baseDecimals
     );
   }
 
@@ -172,21 +183,26 @@ library PoolStorage {
     int128 newLiquidity64x64,
     bool isCallPool
   ) internal {
+    int128 cLevel = calculateCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
     if (isCallPool) {
-      l.cLevelUnderlying64x64 = OptionMath.calculateCLevel(
-        l.cLevelUnderlying64x64,
-        oldLiquidity64x64,
-        newLiquidity64x64,
-        OptionMath.ONE_64x64
-      );
+      l.cLevelUnderlying64x64 = cLevel;
     } else {
-      l.cLevelBase64x64 = OptionMath.calculateCLevel(
-        l.cLevelBase64x64,
-        oldLiquidity64x64,
-        newLiquidity64x64,
-        OptionMath.ONE_64x64
-      );
+      l.cLevelBase64x64 = cLevel;
     }
+  }
+
+  function calculateCLevel (
+    Layout storage l,
+    int128 oldLiquidity64x64,
+    int128 newLiquidity64x64,
+    bool isCallPool
+  ) internal view returns(int128) {
+    return OptionMath.calculateCLevel(
+      isCallPool ? l.cLevelUnderlying64x64 : l.cLevelBase64x64,
+      oldLiquidity64x64,
+      newLiquidity64x64,
+      OptionMath.ONE_64x64
+    );
   }
 
   function setCLevel (
