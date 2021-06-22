@@ -15,15 +15,6 @@ interface PoolUtilArgs {
   base: ERC20Mock;
 }
 
-export enum TokenType {
-  UnderlyingFreeLiq = 0,
-  BaseFreeLiq = 1,
-  LongCall = 2,
-  ShortCall = 3,
-  LongPut = 4,
-  ShortPut = 5,
-}
-
 const ONE_DAY = 3600 * 24;
 
 export function getTokenDecimals(isCall: boolean) {

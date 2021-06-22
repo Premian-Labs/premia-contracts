@@ -7,7 +7,15 @@ import {
   parseEther,
 } from 'ethers/lib/utils';
 import { BytesLike } from '@ethersproject/bytes';
-import { TokenType } from '../pool/PoolUtil';
+
+export enum TokenType {
+  UnderlyingFreeLiq = 0,
+  BaseFreeLiq = 1,
+  LongCall = 2,
+  ShortCall = 3,
+  LongPut = 4,
+  ShortPut = 5,
+}
 
 export interface TokenIdParams {
   tokenType: TokenType;

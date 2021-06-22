@@ -32,7 +32,6 @@ import {
   parseOption,
   parseUnderlying,
   PoolUtil,
-  TokenType,
 } from './PoolUtil';
 import {
   bnToNumber,
@@ -40,6 +39,7 @@ import {
   fixedToNumber,
   formatTokenId,
   getOptionTokenIds,
+  TokenType,
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
