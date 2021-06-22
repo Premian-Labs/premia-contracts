@@ -370,14 +370,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     _processPendingDeposits(isCallPool);
 
-    _mint(msg.sender, _getFreeLiquidityTokenId(isCallPool), amount, '');
-
-    uint256 nextBatch = (block.timestamp / BATCHING_PERIOD) * BATCHING_PERIOD + BATCHING_PERIOD;
-    l.pendingDeposits[msg.sender][nextBatch][isCallPool] += amount;
-
-    PoolStorage.BatchData storage batchData = l.nextDeposits[isCallPool];
-    batchData.totalPendingDeposits += amount;
-    batchData.eta = nextBatch;
+    _addToDepositQueue(msg.sender, amount, isCallPool);
 
     emit Deposit(msg.sender, isCallPool, amount);
   }
@@ -593,18 +586,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       }
     }
 
-    int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
-
     _burnShortTokenLoop(
       amount,
       exerciseValue,
       PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
       isCall
     );
-
-    int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
-
-    _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
   }
 
   function _mintShortTokenLoop (
@@ -714,14 +701,30 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         ? intervalAmount - intervalExerciseValue
         : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(intervalAmount)) - intervalExerciseValue;
 
-
       // mint free liquidity tokens for underwriter
-      _mint(underwriter, _getFreeLiquidityTokenId(isCall), freeLiq, '');
+      _addToDepositQueue(underwriter, freeLiq, isCall);
       // burn short option tokens from underwriter
       _burn(underwriter, shortTokenId, intervalAmount);
 
       emit AssignExercise(underwriter, shortTokenId, freeLiq, intervalAmount);
     }
+  }
+
+  function _addToDepositQueue (
+    address account,
+    uint256 amount,
+    bool isCallPool
+  ) internal {
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    _mint(account, _getFreeLiquidityTokenId(isCallPool), amount, '');
+
+    uint256 nextBatch = (block.timestamp / BATCHING_PERIOD) * BATCHING_PERIOD + BATCHING_PERIOD;
+    l.pendingDeposits[account][nextBatch][isCallPool] += amount;
+
+    PoolStorage.BatchData storage batchData = l.nextDeposits[isCallPool];
+    batchData.totalPendingDeposits += amount;
+    batchData.eta = nextBatch;
   }
 
   function _getFreeLiquidityTokenId (
