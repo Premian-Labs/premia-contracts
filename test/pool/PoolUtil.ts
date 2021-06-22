@@ -1,11 +1,12 @@
 import { ERC20Mock, Pool } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { BigNumber, BigNumberish } from 'ethers';
-import { ethers } from 'hardhat';
+import { BigNumber, BigNumberish, ethers } from 'ethers';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { fixedToNumber } from '../utils/math';
 import { formatUnits, parseUnits } from 'ethers/lib/utils';
-import { DECIMALS_BASE, DECIMALS_UNDERLYING } from './PoolProxy';
+
+export const DECIMALS_BASE = 18;
+export const DECIMALS_UNDERLYING = 8;
 
 interface PoolUtilArgs {
   pool: Pool;
@@ -47,12 +48,33 @@ export function parseBase(amount: string) {
   return parseUnits(Number(amount).toFixed(DECIMALS_BASE), DECIMALS_BASE);
 }
 
+export function formatOption(amount: BigNumberish, isCall: boolean) {
+  if (isCall) {
+    return formatUnderlying(amount);
+  } else {
+    return formatBase(amount);
+  }
+}
+
 export function formatUnderlying(amount: BigNumberish) {
   return formatUnits(amount, DECIMALS_UNDERLYING);
 }
 
 export function formatBase(amount: BigNumberish) {
   return formatUnits(amount, DECIMALS_BASE);
+}
+
+export function getExerciseValue(
+  price: number,
+  strike: number,
+  amount: number,
+  isCall: boolean,
+) {
+  if (isCall) {
+    return ((price - strike) * amount) / price;
+  } else {
+    return (strike - price) * amount;
+  }
 }
 
 export class PoolUtil {
@@ -91,6 +113,7 @@ export class PoolUtil {
     buyer: SignerWithAddress,
     amount: BigNumber,
     maturity: BigNumber,
+    spot64x64: BigNumber,
     strike64x64: BigNumber,
     isCall: boolean,
   ) {
@@ -114,6 +137,14 @@ export class PoolUtil {
         .approve(this.pool.address, ethers.constants.MaxUint256);
     }
 
+    const quote = await this.pool.quote({
+      maturity,
+      strike64x64,
+      spot64x64,
+      amount,
+      isCall,
+    });
+
     await this.pool.connect(buyer).purchase({
       maturity,
       strike64x64,
@@ -121,6 +152,8 @@ export class PoolUtil {
       maxCost: ethers.constants.MaxUint256,
       isCall,
     });
+
+    return quote;
   }
 
   getMaturity(days: number) {

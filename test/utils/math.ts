@@ -1,5 +1,4 @@
-import { BigNumber, BigNumberish } from 'ethers';
-import { ethers } from 'ethers';
+import { BigNumber, BigNumberish, ethers } from 'ethers';
 import {
   formatUnits,
   hexConcat,
@@ -55,6 +54,25 @@ export function formatTokenId({
     hexZeroPad(maturity.toHexString(), 8),
     hexZeroPad(strike64x64.toHexString(), 16),
   ]);
+}
+
+export function getOptionTokenIds(
+  maturity: BigNumber,
+  strike64x64: BigNumber,
+  isCall: boolean,
+) {
+  return {
+    short: formatTokenId({
+      tokenType: isCall ? TokenType.ShortCall : TokenType.ShortPut,
+      maturity,
+      strike64x64,
+    }),
+    long: formatTokenId({
+      tokenType: isCall ? TokenType.LongCall : TokenType.LongPut,
+      maturity,
+      strike64x64,
+    }),
+  };
 }
 
 export function parseTokenId(tokenId: BytesLike): TokenIdParams {
