@@ -840,8 +840,13 @@ describe('PoolProxy', function () {
           const strike64x64 = fixedFromFloat(strike);
           const amountNb = 10;
           const amount = parseUnderlying(amountNb.toString());
+          const initialFreeLiqAmount = isCall
+            ? amount
+            : parseBase(formatUnderlying(amount)).mul(
+                fixedToNumber(strike64x64),
+              );
 
-          await poolUtil.purchaseOption(
+          const quote = await poolUtil.purchaseOption(
             lp1,
             buyer,
             amount,
@@ -880,6 +885,18 @@ describe('PoolProxy', function () {
             exerciseValue,
           );
           expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
+
+          const freeLiqAfter = await pool.balanceOf(
+            lp1.address,
+            getFreeLiqTokenId(isCall),
+          );
+
+          // Free liq = initial amount + premia paid
+          expect(
+            Number(formatOption(initialFreeLiqAmount, isCall)) +
+              fixedToNumber(quote.baseCost64x64) -
+              exerciseValue,
+          ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
         });
 
         it('should revert when exercising on behalf of user not approved', async () => {
@@ -918,8 +935,13 @@ describe('PoolProxy', function () {
           const strike64x64 = fixedFromFloat(strike);
           const amountNb = 10;
           const amount = parseUnderlying(amountNb.toString());
+          const initialFreeLiqAmount = isCall
+            ? amount
+            : parseBase(formatUnderlying(amount)).mul(
+                fixedToNumber(strike64x64),
+              );
 
-          await poolUtil.purchaseOption(
+          const quote = await poolUtil.purchaseOption(
             lp1,
             buyer,
             amount,
@@ -960,6 +982,18 @@ describe('PoolProxy', function () {
           );
 
           expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
+
+          const freeLiqAfter = await pool.balanceOf(
+            lp1.address,
+            getFreeLiqTokenId(isCall),
+          );
+
+          // Free liq = initial amount + premia paid
+          expect(
+            Number(formatOption(initialFreeLiqAmount, isCall)) +
+              fixedToNumber(quote.baseCost64x64) -
+              exerciseValue,
+          ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
         });
       });
     }
