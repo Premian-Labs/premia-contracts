@@ -483,8 +483,17 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         pushAmount - baseCost - feeCost
       );
 
-      // update C-Level, accounting for slippage and reinvested premia separately
-      _updateCLevelReassign(isCall, baseCost64x64, feeCost64x64, cLevel64x64);
+      int128 totalSupply64x64 = l.totalFreeLiquiditySupply64x64(isCall);
+      int128 newTotalSupply64x64 = totalSupply64x64.add(baseCost64x64).add(feeCost64x64);
+
+      int128 newCLevel64x64 = OptionMath.calculateCLevel(
+        cLevel64x64, // C-Level after liquidity is reserved
+        totalSupply64x64,
+        newTotalSupply64x64,
+        OptionMath.ONE_64x64
+      );
+
+      _setCLevel(l, newCLevel64x64, totalSupply64x64, newTotalSupply64x64, isCall);
     }
 
     // mint free liquidity tokens for treasury
@@ -520,21 +529,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   //////////////
   // Internal //
   //////////////
-
-  function _updateCLevelReassign (bool isCall, int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64) internal {
-    PoolStorage.Layout storage l = PoolStorage.layout();
-    int128 totalSupply64x64 = l.totalFreeLiquiditySupply64x64(isCall);
-    int128 newTotalSupply64x64 = totalSupply64x64.add(baseCost64x64).add(feeCost64x64);
-
-    int128 newCLevel64x64 = OptionMath.calculateCLevel(
-      cLevel64x64, // C-Level after liquidity is reserved
-      totalSupply64x64,
-      newTotalSupply64x64,
-      OptionMath.ONE_64x64
-    );
-
-    _setCLevel(l, newCLevel64x64, totalSupply64x64, newTotalSupply64x64, isCall);
-  }
 
   function _exercise (
     address holder, // holder address of option contract tokens to exercise
