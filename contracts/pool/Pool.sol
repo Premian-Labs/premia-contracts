@@ -185,6 +185,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     bool isCall = args.isCall;
 
     int128 oldLiquidity64x64;
+    cLevel64x64 = isCall ? l.cLevelUnderlying64x64 : l.cLevelBase64x64;
 
     {
       PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
@@ -199,6 +200,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(pendingDeposits64x64);
       require(oldLiquidity64x64 > 0, "no liq");
+
+      cLevel64x64 = l.calculateCLevel(oldLiquidity64x64.sub(pendingDeposits64x64), oldLiquidity64x64, isCall);
     }
 
 
@@ -216,7 +219,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       args.strike64x64,
       args.spot64x64,
       ABDKMath64x64.divu(args.maturity - block.timestamp, 365 days),
-      isCall ? l.cLevelUnderlying64x64 : l.cLevelBase64x64,
+      cLevel64x64,
       oldLiquidity64x64,
       oldLiquidity64x64.sub(amount64x64),
       OptionMath.ONE_64x64,

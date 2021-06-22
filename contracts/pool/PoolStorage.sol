@@ -183,21 +183,26 @@ library PoolStorage {
     int128 newLiquidity64x64,
     bool isCallPool
   ) internal {
+    int128 cLevel = calculateCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
     if (isCallPool) {
-      l.cLevelUnderlying64x64 = OptionMath.calculateCLevel(
-        l.cLevelUnderlying64x64,
-        oldLiquidity64x64,
-        newLiquidity64x64,
-        OptionMath.ONE_64x64
-      );
+      l.cLevelUnderlying64x64 = cLevel;
     } else {
-      l.cLevelBase64x64 = OptionMath.calculateCLevel(
-        l.cLevelBase64x64,
-        oldLiquidity64x64,
-        newLiquidity64x64,
-        OptionMath.ONE_64x64
-      );
+      l.cLevelBase64x64 = cLevel;
     }
+  }
+
+  function calculateCLevel (
+    Layout storage l,
+    int128 oldLiquidity64x64,
+    int128 newLiquidity64x64,
+    bool isCallPool
+  ) internal view returns(int128) {
+    return OptionMath.calculateCLevel(
+      isCallPool ? l.cLevelUnderlying64x64 : l.cLevelBase64x64,
+      oldLiquidity64x64,
+      newLiquidity64x64,
+      OptionMath.ONE_64x64
+    );
   }
 
   function setCLevel (
