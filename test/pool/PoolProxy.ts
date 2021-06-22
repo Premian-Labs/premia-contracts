@@ -103,14 +103,14 @@ describe('PoolProxy', function () {
       return parseUnderlying(
         (
           (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
-          1.02
+          1.03
         ).toString(),
       );
     } else {
       return parseBase(
         (
           (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
-          1.02
+          1.03
         ).toString(),
       );
     }
