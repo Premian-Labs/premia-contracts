@@ -389,6 +389,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 amount,
     bool isCallPool
   ) external {
+    _processPendingDeposits(isCallPool);
+
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     uint256 depositedAt = l.depositedAt[msg.sender][isCallPool];
