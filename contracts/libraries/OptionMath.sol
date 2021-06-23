@@ -76,10 +76,13 @@ library OptionMath {
     int128 emaLogReturns64x64 = unevenRollingEma(oldEmaLogReturns64x64, logReturns64x64, oldTimestamp, newTimestamp);
 
     // v = (1 - decay) * var_prev + (decay * (current - m_prev) * (current - m)) / delta_t
-    return ONE_64x64.sub(omega64x64).mul(oldEmaVariance64x64).add(
-      omega64x64.mul(
-        logReturns64x64.sub(oldEmaLogReturns64x64).mul(logReturns64x64.sub(emaLogReturns64x64))
-      ).div(delta64x64)
+    return ONE_64x64.sub(omega64x64)
+    .mul(oldEmaVariance64x64)
+    .add(
+      omega64x64
+        .mul(logReturns64x64.sub(oldEmaLogReturns64x64))
+        .mul(logReturns64x64.sub(emaLogReturns64x64))
+      .div(delta64x64)
     );
   }
 
