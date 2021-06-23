@@ -100,6 +100,9 @@ export class PoolUtil {
     await this.pool.connect(lp).deposit(amount, isCall);
 
     await increaseTimestamp(300);
+
+    // ToDo : Remove this temporary fix used to update variance
+    await this.pool.update();
   }
 
   async purchaseOption(

@@ -14,12 +14,6 @@ import {Pool} from './Pool.sol';
 library PoolStorage {
   enum TokenType { UNDERLYING_FREE_LIQ, BASE_FREE_LIQ, LONG_CALL, SHORT_CALL, LONG_PUT, SHORT_PUT }
 
-  struct DepositQueueItem {
-    address account;
-    uint256 amount;
-    bool isCall;
-  }
-
   struct PoolSettings {
     address underlying;
     address base;
@@ -136,6 +130,13 @@ library PoolStorage {
     }
   }
 
+  function getTokenDecimals (
+    Layout storage l,
+    bool isCall
+  ) internal view returns (uint8 decimals) {
+    decimals = isCall ? l.underlyingDecimals : l.baseDecimals;
+  }
+
   function totalFreeLiquiditySupply64x64 (
     Layout storage l,
     bool isCall
@@ -144,7 +145,7 @@ library PoolStorage {
 
     return ABDKMath64x64Token.fromDecimals(
       ERC1155EnumerableStorage.layout().totalSupply[tokenId] - l.nextDeposits[isCall].totalPendingDeposits,
-      isCall ? l.underlyingDecimals : l.baseDecimals
+      getTokenDecimals(l, isCall)
     );
   }
 
@@ -182,12 +183,13 @@ library PoolStorage {
     int128 oldLiquidity64x64,
     int128 newLiquidity64x64,
     bool isCallPool
-  ) internal {
-    int128 cLevel = calculateCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
+  ) internal returns (int128 cLevel64x64) {
+    cLevel64x64 = calculateCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
+
     if (isCallPool) {
-      l.cLevelUnderlying64x64 = cLevel;
+      l.cLevelUnderlying64x64 = cLevel64x64;
     } else {
-      l.cLevelBase64x64 = cLevel;
+      l.cLevelBase64x64 = cLevel64x64;
     }
   }
 
@@ -203,18 +205,6 @@ library PoolStorage {
       newLiquidity64x64,
       OptionMath.ONE_64x64
     );
-  }
-
-  function setCLevel (
-    Layout storage l,
-    int128 cLevel64x64,
-    bool isCallPool
-  ) internal {
-    if (isCallPool) {
-      l.cLevelUnderlying64x64 = cLevel64x64;
-    } else {
-      l.cLevelBase64x64 = cLevel64x64;
-    }
   }
 
   function setOracles(

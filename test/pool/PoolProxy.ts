@@ -17,7 +17,7 @@ import {
 import { describeBehaviorOfManagedProxyOwnable } from '@solidstate/spec';
 import { describeBehaviorOfPool } from './Pool.behavior';
 import chai, { expect } from 'chai';
-import { resetHardhat, setTimestamp } from '../utils/evm';
+import { increaseTimestamp, resetHardhat, setTimestamp } from '../utils/evm';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { deployMockContract, MockContract } from 'ethereum-waffle';
 import { parseUnits } from 'ethers/lib/utils';
@@ -415,7 +415,7 @@ describe('PoolProxy', function () {
           'liq lock 1d',
         );
 
-        await setTimestamp(getCurrentTimestamp() + 23 * 3600);
+        await increaseTimestamp(23 * 3600);
         await expect(pool.withdraw('100', true)).to.be.revertedWith(
           'liq lock 1d',
         );
@@ -425,7 +425,7 @@ describe('PoolProxy', function () {
         await poolUtil.depositLiquidity(owner, 100, true);
         expect(await underlying.balanceOf(owner.address)).to.eq(0);
 
-        await setTimestamp(getCurrentTimestamp() + 24 * 3600 + 60);
+        await increaseTimestamp(24 * 3600 + 60);
         await pool.withdraw('100', true);
         expect(await underlying.balanceOf(owner.address)).to.eq(100);
         expect(
@@ -442,7 +442,7 @@ describe('PoolProxy', function () {
           'liq lock 1d',
         );
 
-        await setTimestamp(getCurrentTimestamp() + 23 * 3600);
+        await increaseTimestamp(23 * 3600);
         await expect(pool.withdraw('100', false)).to.be.revertedWith(
           'liq lock 1d',
         );
@@ -452,7 +452,7 @@ describe('PoolProxy', function () {
         await poolUtil.depositLiquidity(owner, 100, false);
         expect(await base.balanceOf(owner.address)).to.eq(0);
 
-        await setTimestamp(getCurrentTimestamp() + 24 * 3600 + 60);
+        await increaseTimestamp(24 * 3600 + 60);
         await pool.withdraw('100', false);
         expect(await base.balanceOf(owner.address)).to.eq(100);
         expect(
@@ -1161,12 +1161,6 @@ describe('PoolProxy', function () {
 
           const exerciseValue = getExerciseValue(price, strike, 1, isCall);
 
-          console.log(
-            formatOption(initialBuyerAmount, isCall),
-            fixedToNumber(quote.baseCost64x64),
-            exerciseValue,
-          );
-
           // Buyer balance = initial amount - premia paid + exercise value
           expect(
             Number(
@@ -1184,13 +1178,6 @@ describe('PoolProxy', function () {
           const freeLiqAfter = await pool.balanceOf(
             lp1.address,
             getFreeLiqTokenId(isCall),
-          );
-
-          console.log(
-            Number(formatOption(initialFreeLiqAmount, isCall)),
-            fixedToNumber(quote.baseCost64x64),
-            exerciseValue,
-            Number(formatOption(freeLiqAfter, isCall)),
           );
 
           // Free liq = initial amount + premia paid - exerciseValue
@@ -1263,9 +1250,7 @@ describe('PoolProxy', function () {
             shortTokenId,
           );
 
-          console.log(shortTokenBalance.toString());
-
-          await setTimestamp(getCurrentTimestamp() + 11 * 24 * 3600);
+          await increaseTimestamp(11 * 24 * 3600);
 
           await expect(
             pool.connect(lp1).reassign(shortTokenId, shortTokenBalance),
