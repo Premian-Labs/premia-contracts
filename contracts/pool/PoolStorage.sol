@@ -205,18 +205,6 @@ library PoolStorage {
     );
   }
 
-  function setCLevel (
-    Layout storage l,
-    int128 cLevel64x64,
-    bool isCallPool
-  ) internal {
-    if (isCallPool) {
-      l.cLevelUnderlying64x64 = cLevel64x64;
-    } else {
-      l.cLevelBase64x64 = cLevel64x64;
-    }
-  }
-
   function setOracles(
     Layout storage l,
     address baseOracle,
