@@ -300,9 +300,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         newPrice64x64
       );
 
-      // mint free liquidity tokens for treasury
-      _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost, '');
-
       // mint long option token for buyer
       _mint(msg.sender, longTokenId, args.amount, '');
     }
@@ -315,6 +312,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
 
     _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
+
+    // mint free liquidity tokens for treasury
+    _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost, '');
   }
 
   /**
@@ -470,9 +470,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       );
     }
 
-    // mint free liquidity tokens for treasury
-    _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost, '');
-
     // burn short option tokens from underwriter
     _burn(msg.sender, shortTokenId, amount);
 
@@ -482,6 +479,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
 
     _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
+
+    // mint free liquidity tokens for treasury
+    _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost, '');
 
     emit Reassign(
       msg.sender,
