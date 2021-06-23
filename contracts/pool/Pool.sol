@@ -510,6 +510,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
     }
 
+    _processPendingDeposits(isCall);
+
     PoolStorage.Layout storage l = PoolStorage.layout();
     int128 spot64x64 = _update(l);
 
