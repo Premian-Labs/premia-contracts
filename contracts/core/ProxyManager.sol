@@ -47,6 +47,16 @@ contract ProxyManager is IProxyManager, OwnableInternal {
   }
 
   /**
+   * @notice set address of Pool implementation contract
+   * @param poolImplementation Pool implementation address
+   */
+  function setPoolImplementation (
+    address poolImplementation
+  ) external onlyOwner {
+    ProxyManagerStorage.layout().poolImplementation = poolImplementation;
+  }
+
+  /**
    * @notice deploy PoolProxy contracts for the pair
    * @param base base token
    * @param underlying underlying token
