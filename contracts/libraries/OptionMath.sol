@@ -71,7 +71,7 @@ library OptionMath {
     uint256 oldTimestamp,
     uint256 newTimestamp
   ) internal pure returns (int128) {
-    int128 delta64x64 = ABDKMath64x64.divu(newTimestamp - oldTimestamp, 3600);
+    int128 delta64x64 = ABDKMath64x64.divu(newTimestamp - oldTimestamp, 1 hours);
     int128 omega64x64 = decay(oldTimestamp, newTimestamp);
     int128 emaLogReturns64x64 = unevenRollingEma(oldEmaLogReturns64x64, logReturns64x64, oldTimestamp, newTimestamp);
 
