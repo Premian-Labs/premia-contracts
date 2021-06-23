@@ -201,7 +201,6 @@ describe('PoolProxy', function () {
       underlying.address,
       baseOracle.address,
       underlyingOracle.address,
-      fixedFromFloat(0.1),
       fixedFromFloat(1.22 * 1.22),
     );
 
@@ -216,7 +215,6 @@ describe('PoolProxy', function () {
       underlyingWeth.address,
       baseOracle.address,
       underlyingOracle.address,
-      fixedFromFloat(0.1),
       fixedFromFloat(1.1),
     );
 
@@ -294,7 +292,7 @@ describe('PoolProxy', function () {
           isCall: true,
         });
 
-        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(71.36);
+        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(71.32);
         expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
         expect(fixedToNumber(q.cLevel64x64)).to.almost(2.21);
         expect(
@@ -321,7 +319,7 @@ describe('PoolProxy', function () {
           isCall: false,
         });
 
-        expect(fixedToNumber(q.baseCost64x64)).to.almost(115.09);
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(115.05);
         expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
         expect(fixedToNumber(q.cLevel64x64)).to.almost(2);
         expect(
