@@ -183,12 +183,13 @@ library PoolStorage {
     int128 oldLiquidity64x64,
     int128 newLiquidity64x64,
     bool isCallPool
-  ) internal {
-    int128 cLevel = calculateCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
+  ) internal returns (int128 cLevel64x64) {
+    cLevel64x64 = calculateCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
+
     if (isCallPool) {
-      l.cLevelUnderlying64x64 = cLevel;
+      l.cLevelUnderlying64x64 = cLevel64x64;
     } else {
-      l.cLevelBase64x64 = cLevel;
+      l.cLevelBase64x64 = cLevel64x64;
     }
   }
 
@@ -204,18 +205,6 @@ library PoolStorage {
       newLiquidity64x64,
       OptionMath.ONE_64x64
     );
-  }
-
-  function setCLevel (
-    Layout storage l,
-    int128 cLevel64x64,
-    bool isCallPool
-  ) internal {
-    if (isCallPool) {
-      l.cLevelUnderlying64x64 = cLevel64x64;
-    } else {
-      l.cLevelBase64x64 = cLevel64x64;
-    }
   }
 
   function setOracles(
