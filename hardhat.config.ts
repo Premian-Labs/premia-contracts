@@ -108,6 +108,15 @@ export default {
           },
         },
       },
+      'contracts/pool/PoolTradingCompetition.sol': {
+        version: '0.8.4',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 50,
+          },
+        },
+      },
     },
   },
   networks: {
