@@ -15,7 +15,7 @@ const raw = [
 ];
 
 const input = raw.map(([x, y, log_returns]) => [
-  ethers.BigNumber.from(Math.floor(x / 1000)),
+  x / 1000,
   fixedFromFloat(y),
   fixedFromFloat(log_returns),
 ]);
@@ -34,7 +34,9 @@ describe('OptionMath', function () {
     it('calculates exponential decay', async function () {
       let t = input_t[0];
       let t_1 = input_t_1[0];
-      let expected = bnToNumber(fixedFromFloat(0.1331221002));
+
+      // w = 1 - e^(-24/24)
+      let expected = bnToNumber(fixedFromFloat(0.63212));
       const result = bnToNumber(await instance.callStatic.decay(t_1, t));
 
       expect(expected / result).to.be.closeTo(1, 0.001);
@@ -48,12 +50,13 @@ describe('OptionMath', function () {
       let t_1 = input_t_3[0];
       let logReturns = input_t_2[2];
       let old_ema = input_t_3[2];
-      let expected = bnToNumber(fixedFromFloat(0.00470901265));
+
+      let expected = bnToNumber(fixedFromFloat(0.01284939101));
       const result = bnToNumber(
         await instance.callStatic.unevenRollingEma(old_ema, logReturns, t_1, t),
       );
 
-      // 0.013508 * 0.3485609425 + (1 - 0.3485609425) * 0.000001 = 0.00470901265
+      // 0.013508 * 0.9512394324 + (1 - 0.9512394324) * 0.000001 = 0.01284939101
       expect(expected / result).to.be.closeTo(1, 0.001);
     });
 
@@ -62,12 +65,13 @@ describe('OptionMath', function () {
       let t_1 = input_t_2[0];
       let logReturns = input_t_1[2];
       let old_ema = input_t_2[2];
-      let expected = bnToNumber(fixedFromFloat(0.01350209255));
+
+      let expected = bnToNumber(fixedFromFloat( 0.01346496649));
       const result = bnToNumber(
         await instance.callStatic.unevenRollingEma(old_ema, logReturns, t_1, t),
       );
 
-      // -0.005104 * 0.0003174 + (1 - 0.0003174) * 0.013508 = 0.01350209255
+      // -0.005104 * 0.002312137697 + (1 - 0.002312137697) * 0.013508 = 0.01346496649
       expect(expected / result).to.be.closeTo(1, 0.001);
     });
 
@@ -76,24 +80,26 @@ describe('OptionMath', function () {
       let t_1 = input_t_1[0];
       let logReturns = input_t[2];
       let old_ema = input_t_1[2];
-      let expected = bnToNumber(fixedFromFloat(-0.005393806812));
+
+      let expected = bnToNumber(fixedFromFloat(-0.006480126457));
       const result = bnToNumber(
         await instance.callStatic.unevenRollingEma(old_ema, logReturns, t_1, t),
       );
 
-      // -0.007281 * 0.1331221002 + (1 - 0.1331221002) * -0.005104 = -0.005393806812
+      // -0.007281 * 0.6321205588 + (1 - 0.6321205588) * -0.005104 = -0.006480126457
       expect(expected / result).to.be.closeTo(1, 0.001);
     });
   });
 
+  // Lumyo test case
   describe('#unevenRollingEmaVariance', function () {
     it('calculates exponential moving variance for uneven intervals', async function () {
-      let t = input_t_2[0];
-      let t_1 = input_t_3[0];
-      let logReturns = input_t_2[2];
-      let old_ema = input_t_3[2];
-      let old_emvar = fixedFromFloat(0.000001); // ~ 0
-      let expected = bnToNumber(fixedFromFloat(0.00004207718281));
+      let t = 1624439705000 / 1000;
+      let t_1 = 1624439400000 / 1000;
+      let logReturns = 0;
+      let old_ema = 0;
+      let old_emvar = fixedFromFloat(0.0001732); // 1.48 / 356 / 24
+      let expected = bnToNumber(fixedFromFloat(0.0001727));
       const result = bnToNumber(
         await instance.callStatic.unevenRollingEmaVariance(
           old_ema,
@@ -104,7 +110,6 @@ describe('OptionMath', function () {
         ),
       );
 
-      // (1 - 0.3485609425) * (0.000001 + 0.3485609425 * (0.013508-0.000001)^2) = 0.00004207718281
       expect(expected / result).to.be.closeTo(1, 0.001);
     });
   });
