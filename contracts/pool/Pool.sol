@@ -217,7 +217,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 price64x64;
 
     (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath.quotePrice(
-      l.emaVarianceAnnualized64x64,
+      args.emaVarianceAnnualized64x64,
       args.strike64x64,
       args.spot64x64,
       ABDKMath64x64.divu(args.maturity - block.timestamp, 365 days),
@@ -261,7 +261,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     require(args.maturity < block.timestamp + (29 days), 'exp > 28 days');
     require(args.maturity % (1 days) == 0, 'exp not end UTC day');
 
-    int128 newPrice64x64 = _update(l);
+    (int128 newPrice64x64,) = _update(l);
 
     require(args.strike64x64 <= newPrice64x64 << 1, 'strike > 2x spot');
     require(args.strike64x64 >= newPrice64x64 >> 1, 'strike < 0.5x spot');
@@ -277,6 +277,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         args.maturity,
         args.strike64x64,
         newPrice64x64,
+        l.emaVarianceAnnualized64x64,
         args.amount,
         isCall
       ));
@@ -425,7 +426,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     _processPendingDeposits(l, isCall);
 
-    int128 newPrice64x64 = _update(l);
+    (int128 newPrice64x64,) = _update(l);
     int128 cLevel64x64;
 
     { // To avoid stack too deep
@@ -436,6 +437,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         maturity,
         strike64x64,
         newPrice64x64,
+        l.emaVarianceAnnualized64x64,
         amount,
         isCall
       ));
@@ -479,8 +481,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   /**
    * @notice Update pool data
    */
-  function update () external {
-    _update(PoolStorage.layout());
+  function update () external returns(int128 newEmaVarianceAnnualized64x64) {
+    (,newEmaVarianceAnnualized64x64) = _update(PoolStorage.layout());
   }
 
   ////////////////////////////////////////////////////////
@@ -514,7 +516,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     _processPendingDeposits(l, isCall);
 
-    int128 spot64x64 = _update(l);
+    (int128 spot64x64,) = _update(l);
 
     if (maturity < block.timestamp) {
       spot64x64 = l.getPriceUpdateAfter(maturity);
@@ -756,7 +758,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
    */
   function _update (
     PoolStorage.Layout storage l
-  ) internal returns (int128 newPrice64x64) {
+  ) internal returns (int128 newPrice64x64, int128 newEmaVarianceAnnualized64x64) {
     newPrice64x64 = l.fetchPriceUpdate();
 
     uint256 updatedAt = l.updatedAt;
@@ -778,7 +780,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     );
 
     int128 oldEmaVarianceAnnualized64x64 = l.emaVarianceAnnualized64x64;
-    int128 newEmaVarianceAnnualized64x64 = OptionMath.unevenRollingEmaVariance(
+    newEmaVarianceAnnualized64x64 = OptionMath.unevenRollingEmaVariance(
       oldEmaLogReturns64x64,
       oldEmaVarianceAnnualized64x64 / (365 * 24),
       logReturns64x64,

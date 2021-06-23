@@ -25,6 +25,7 @@ library PoolStorage {
     uint64 maturity; // timestamp of option maturity
     int128 strike64x64; // 64x64 fixed point representation of strike price
     int128 spot64x64; // 64x64 fixed point representation of spot price
+    int128 emaVarianceAnnualized64x64; // 64x64 fixed point representation of annualized variance
     uint256 amount; // size of option contract
     bool isCall; // true for call, false for put
   }

@@ -272,6 +272,7 @@ describe('PoolProxy', function () {
           spot64x64,
           amount: parseUnderlying('1'),
           isCall: true,
+          emaVarianceAnnualized64x64: await pool.callStatic.update(),
         }),
       ).to.be.revertedWith('no liq');
     });
@@ -290,6 +291,7 @@ describe('PoolProxy', function () {
           spot64x64,
           amount: parseUnderlying('1'),
           isCall: true,
+          emaVarianceAnnualized64x64: await pool.callStatic.update(),
         });
 
         expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(70.92);
@@ -317,6 +319,7 @@ describe('PoolProxy', function () {
           spot64x64,
           amount: parseUnderlying('1'),
           isCall: false,
+          emaVarianceAnnualized64x64: await pool.callStatic.update(),
         });
 
         expect(fixedToNumber(q.baseCost64x64)).to.almost(114.63);
@@ -612,6 +615,7 @@ describe('PoolProxy', function () {
             spot64x64: fixedFromFloat(spotPrice),
             amount: purchaseAmount,
             isCall,
+            emaVarianceAnnualized64x64: await pool.callStatic.update(),
           });
 
           const mintAmount = parseOption('1000', isCall);
@@ -700,6 +704,7 @@ describe('PoolProxy', function () {
             spot64x64: fixedFromFloat(spotPrice),
             amount: purchaseAmount,
             isCall,
+            emaVarianceAnnualized64x64: await pool.callStatic.update(),
           });
 
           await getToken(isCall).mint(
