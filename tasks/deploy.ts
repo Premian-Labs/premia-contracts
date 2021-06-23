@@ -134,7 +134,7 @@ task('deploy').setAction(async function (args, hre) {
 
     await tradingCompetitionMerkle.addMerkleRoot(
       0,
-      '0x6a3258bdb229f742e2d30c0c1afa261804008de81dc90bf1278d3fdb32bb58d1',
+      '0x7854e4fea1b4cc79e4c13d6ccb9c31782fb2831a1b12b32b6a02289a5733648a',
     );
 
     const tx = await tradingCompetition.addMinters([
