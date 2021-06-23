@@ -243,16 +243,18 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) external payable returns (uint256 baseCost, uint256 feeCost) {
     // TODO: specify payment currency
 
-    _processPendingDeposits(args.isCall);
+    bool isCall = args.isCall;
+
+    _processPendingDeposits(isCall);
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     {
-      uint256 amount = args.isCall
+      uint256 amount = isCall
         ? args.amount
         : l.fromUnderlyingToBaseDecimals(args.strike64x64.mulu(args.amount));
 
-      require(amount <= totalSupply(_getFreeLiquidityTokenId(args.isCall)) - l.nextDeposits[args.isCall].totalPendingDeposits, 'insuf liq');
+      require(amount <= totalSupply(_getFreeLiquidityTokenId(isCall)) - l.nextDeposits[isCall].totalPendingDeposits, 'insuf liq');
     }
 
     require(args.maturity >= block.timestamp + (1 days), 'exp < 1 day');
@@ -265,8 +267,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     require(args.strike64x64 >= newPrice64x64 >> 1, 'strike < 0.5x spot');
 
     int128 cLevel64x64;
-    int128 totalSupply64x64;
-    int128 oldTotalSupply64x64;
 
     {
       int128 baseCost64x64;
@@ -278,21 +278,18 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         args.strike64x64,
         newPrice64x64,
         args.amount,
-        args.isCall
+        isCall
       ));
 
-      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, _getTokenDecimals(args.isCall));
-      feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, _getTokenDecimals(args.isCall));
-
-      totalSupply64x64 = l.totalFreeLiquiditySupply64x64(args.isCall);
-      oldTotalSupply64x64 = totalSupply64x64.sub(baseCost64x64).sub(feeCost64x64);
+      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, _getTokenDecimals(isCall));
+      feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, _getTokenDecimals(isCall));
     }
 
     require(baseCost + feeCost <= args.maxCost, 'excess slipp');
-    _pull(_getPoolToken(args.isCall), baseCost + feeCost);
+    _pull(_getPoolToken(isCall), baseCost + feeCost);
 
     {
-      uint256 longTokenId = PoolStorage.formatTokenId(_getTokenType(args.isCall, true), args.maturity, args.strike64x64);
+      uint256 longTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), args.maturity, args.strike64x64);
 
       emit Purchase(
         msg.sender,
@@ -304,24 +301,20 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       );
 
       // mint free liquidity tokens for treasury
-      _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(args.isCall), feeCost, '');
+      _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost, '');
 
       // mint long option token for buyer
       _mint(msg.sender, longTokenId, args.amount, '');
     }
 
-    {
-      uint256 shortTokenId = PoolStorage.formatTokenId(_getTokenType(args.isCall, false), args.maturity, args.strike64x64);
-      _mintShortTokenLoop(l, args.amount, baseCost, shortTokenId, args.isCall);
-    }
+    uint256 shortTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, false), args.maturity, args.strike64x64);
 
-    // update C-Level, accounting for slippage and reinvested premia separately
-    _setCLevel(l, OptionMath.calculateCLevel(
-      cLevel64x64, // C-Level after liquidity is reserved
-      oldTotalSupply64x64,
-      totalSupply64x64,
-      OptionMath.ONE_64x64
-    ), oldTotalSupply64x64, totalSupply64x64, args.isCall);
+    int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
+    // burn free liquidity tokens from other underwriters
+    _mintShortTokenLoop(l, args.amount, baseCost, shortTokenId, isCall);
+    int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
+
+    _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
   }
 
   /**
