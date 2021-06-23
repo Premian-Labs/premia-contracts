@@ -21,6 +21,9 @@ contract TradingCompetitionFactory is Ownable {
     // Whitelisted addresses who can receive / send tokens
     EnumerableSet.AddressSet private _whitelisted;
 
+    // Blacklisted addresses who cannot receive / send tokens (Higher priority than _whitelisted)
+    EnumerableSet.AddressSet private _blacklisted;
+
     // token -> oracle
     mapping(address => address) public oracles;
 
@@ -90,6 +93,7 @@ contract TradingCompetitionFactory is Ownable {
     }
 
     function isWhitelisted(address _from, address _to) external view returns(bool) {
+        if (_blacklisted.contains(_from) || _blacklisted.contains(_to)) return false;
         if (_from == address (0) || _to == address(0)) return true;
         if (_whitelisted.contains(_from) || _whitelisted.contains(_to)) return true;
 
@@ -141,6 +145,31 @@ contract TradingCompetitionFactory is Ownable {
 
         for (uint256 i=0; i < length; i++) {
             result[i] = _whitelisted.at(i);
+        }
+
+        return result;
+    }
+
+    //
+
+    function addBlacklisted(address[] memory _addr) external onlyOwner {
+        for (uint256 i=0; i < _addr.length; i++) {
+            _blacklisted.add(_addr[i]);
+        }
+    }
+
+    function removeBlacklisted(address[] memory _addr) external onlyOwner {
+        for (uint256 i=0; i < _addr.length; i++) {
+            _blacklisted.remove(_addr[i]);
+        }
+    }
+
+    function getBlacklisted() external view returns(address[] memory) {
+        uint256 length = _blacklisted.length();
+        address[] memory result = new address[](length);
+
+        for (uint256 i=0; i < length; i++) {
+            result[i] = _blacklisted.at(i);
         }
 
         return result;

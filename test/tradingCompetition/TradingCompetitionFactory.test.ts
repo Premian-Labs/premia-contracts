@@ -9,12 +9,13 @@ import {
 } from '../../typechain';
 import { ZERO_ADDRESS } from '../utils/constants';
 import { deployMockContract, MockContract } from 'ethereum-waffle';
-import { formatEther, parseEther, parseUnits } from 'ethers/lib/utils';
+import { parseEther, parseUnits } from 'ethers/lib/utils';
 
 describe('TradingCompetitionFactory', () => {
   let owner: SignerWithAddress;
   let minter: SignerWithAddress;
   let whitelisted: SignerWithAddress;
+  let blacklisted: SignerWithAddress;
   let notWhitelisted: SignerWithAddress;
 
   let ethOracle: MockContract;
@@ -28,7 +29,8 @@ describe('TradingCompetitionFactory', () => {
   const linkPrice = 20;
 
   beforeEach(async () => {
-    [owner, minter, whitelisted, notWhitelisted] = await ethers.getSigners();
+    [owner, minter, whitelisted, blacklisted, notWhitelisted] =
+      await ethers.getSigners();
 
     ethOracle = await deployMockContract(owner, [
       'function latestAnswer () external view returns (int)',
@@ -62,6 +64,7 @@ describe('TradingCompetitionFactory', () => {
     linkToken = TradingCompetitionERC20__factory.connect(linkTokenAddr, owner);
 
     await factory.addWhitelisted([whitelisted.address]);
+    await factory.addBlacklisted([blacklisted.address]);
     await factory.addMinters([minter.address]);
   });
 
@@ -103,6 +106,27 @@ describe('TradingCompetitionFactory', () => {
     expect(await ethToken.balanceOf(whitelisted.address)).to.eq(20);
     await ethToken.connect(whitelisted).transfer(minter.address, 10);
     expect(await ethToken.balanceOf(minter.address)).to.eq(10);
+  });
+
+  it('should not allow blacklisted to send/receive tokens', async () => {
+    expect(
+      await factory.isWhitelisted(ZERO_ADDRESS, blacklisted.address),
+    ).to.eq(false);
+    expect(
+      await factory.isWhitelisted(minter.address, blacklisted.address),
+    ).to.eq(false);
+    expect(
+      await factory.isWhitelisted(blacklisted.address, whitelisted.address),
+    ).to.eq(false);
+    expect(
+      await factory.isWhitelisted(blacklisted.address, notWhitelisted.address),
+    ).to.eq(false);
+
+    await ethToken.connect(minter).mint(notWhitelisted.address, 100);
+
+    await expect(
+      ethToken.connect(blacklisted).transfer(whitelisted.address, 20),
+    ).to.be.revertedWith('Not whitelisted');
   });
 
   it('should return correct swap quotes', async () => {
