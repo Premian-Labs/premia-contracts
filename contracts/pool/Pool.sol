@@ -382,24 +382,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     emit Deposit(msg.sender, isCallPool, amount);
   }
 
-  function _processPendingDeposits(bool isCall) internal {
-    PoolStorage.Layout storage l = PoolStorage.layout();
-    PoolStorage.BatchData storage data = l.nextDeposits[isCall];
-
-    if (data.eta == 0 || block.timestamp < data.eta) return;
-
-    int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
-
-    _setCLevel(
-      l,
-      oldLiquidity64x64,
-      oldLiquidity64x64.add(ABDKMath64x64Token.fromDecimals(data.totalPendingDeposits, isCall ? l.underlyingDecimals : l.baseDecimals)),
-      isCall
-    );
-
-    delete l.nextDeposits[isCall];
-  }
-
   /**
    * @notice redeem pool share tokens for underlying asset
    * @param amount quantity of share tokens to redeem
@@ -728,6 +710,24 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       emit AssignExercise(underwriter, shortTokenId, freeLiq, intervalAmount);
     }
+  }
+
+  function _processPendingDeposits(bool isCall) internal {
+    PoolStorage.Layout storage l = PoolStorage.layout();
+    PoolStorage.BatchData storage data = l.nextDeposits[isCall];
+
+    if (data.eta == 0 || block.timestamp < data.eta) return;
+
+    int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
+
+    _setCLevel(
+      l,
+      oldLiquidity64x64,
+      oldLiquidity64x64.add(ABDKMath64x64Token.fromDecimals(data.totalPendingDeposits, isCall ? l.underlyingDecimals : l.baseDecimals)),
+      isCall
+    );
+
+    delete l.nextDeposits[isCall];
   }
 
   function _getFreeLiquidityTokenId (
