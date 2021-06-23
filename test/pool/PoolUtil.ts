@@ -131,6 +131,9 @@ export class PoolUtil {
         .approve(this.pool.address, ethers.constants.MaxUint256);
     }
 
+    // ToDo : Remove this temporary fix used to update variance
+    await this.pool.update();
+
     const quote = await this.pool.quote({
       maturity,
       strike64x64,

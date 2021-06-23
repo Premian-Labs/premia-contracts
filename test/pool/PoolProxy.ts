@@ -294,7 +294,7 @@ describe('PoolProxy', function () {
           isCall: true,
         });
 
-        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(71.36);
+        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(71.32);
         expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
         expect(fixedToNumber(q.cLevel64x64)).to.almost(2.21);
         expect(
@@ -321,14 +321,14 @@ describe('PoolProxy', function () {
           isCall: false,
         });
 
-        expect(fixedToNumber(q.baseCost64x64)).to.almost(115.09);
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(115.05);
         expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
         expect(fixedToNumber(q.cLevel64x64)).to.almost(2);
         expect(
           fixedToNumber(q.baseCost64x64) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(57.54);
+        ).to.almost(57.51);
       });
     });
   });
@@ -607,6 +607,9 @@ describe('PoolProxy', function () {
 
           const purchaseAmountNb = 10;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+          // ToDo : Remove this temporary fix used to update variance
+          await pool.update();
 
           const quote = await pool.quote({
             maturity,
@@ -1163,12 +1166,6 @@ describe('PoolProxy', function () {
 
           const exerciseValue = getExerciseValue(price, strike, 1, isCall);
 
-          console.log(
-            formatOption(initialBuyerAmount, isCall),
-            fixedToNumber(quote.baseCost64x64),
-            exerciseValue,
-          );
-
           // Buyer balance = initial amount - premia paid + exercise value
           expect(
             Number(
@@ -1186,13 +1183,6 @@ describe('PoolProxy', function () {
           const freeLiqAfter = await pool.balanceOf(
             lp1.address,
             getFreeLiqTokenId(isCall),
-          );
-
-          console.log(
-            Number(formatOption(initialFreeLiqAmount, isCall)),
-            fixedToNumber(quote.baseCost64x64),
-            exerciseValue,
-            Number(formatOption(freeLiqAfter, isCall)),
           );
 
           // Free liq = initial amount + premia paid - exerciseValue
@@ -1264,8 +1254,6 @@ describe('PoolProxy', function () {
             lp1.address,
             shortTokenId,
           );
-
-          console.log(shortTokenBalance.toString());
 
           await setTimestamp(getCurrentTimestamp() + 11 * 24 * 3600);
 
