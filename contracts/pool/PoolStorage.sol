@@ -14,12 +14,6 @@ import {Pool} from './Pool.sol';
 library PoolStorage {
   enum TokenType { UNDERLYING_FREE_LIQ, BASE_FREE_LIQ, LONG_CALL, SHORT_CALL, LONG_PUT, SHORT_PUT }
 
-  struct DepositQueueItem {
-    address account;
-    uint256 amount;
-    bool isCall;
-  }
-
   struct PoolSettings {
     address underlying;
     address base;
