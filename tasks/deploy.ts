@@ -174,7 +174,6 @@ task('deploy').setAction(async function (args, hre) {
       wethToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_ETH_PRICE_ORACLE,
-      fixedFromFloat(0.1),
       fixedFromFloat(0.2),
     );
 
@@ -183,7 +182,6 @@ task('deploy').setAction(async function (args, hre) {
       wethToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_ETH_PRICE_ORACLE,
-      fixedFromFloat(0.1),
       fixedFromFloat(0.2),
     );
 
@@ -194,7 +192,6 @@ task('deploy').setAction(async function (args, hre) {
       wbtcToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_WBTC_PRICE_ORACLE,
-      fixedFromFloat(0.1),
       fixedFromFloat(0.2),
     );
 
@@ -203,7 +200,6 @@ task('deploy').setAction(async function (args, hre) {
       wbtcToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_WBTC_PRICE_ORACLE,
-      fixedFromFloat(0.1),
       fixedFromFloat(0.2),
     );
 
@@ -214,7 +210,6 @@ task('deploy').setAction(async function (args, hre) {
       linkToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_LINK_PRICE_ORACLE,
-      fixedFromFloat(0.1),
       fixedFromFloat(0.2),
     );
 
@@ -223,7 +218,6 @@ task('deploy').setAction(async function (args, hre) {
       linkToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_LINK_PRICE_ORACLE,
-      fixedFromFloat(0.1),
       fixedFromFloat(0.2),
     );
 

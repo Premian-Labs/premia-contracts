@@ -44,7 +44,7 @@ import {
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
 
-chai.use(chaiAlmost(0.01));
+chai.use(chaiAlmost(0.02));
 
 const SYMBOL_BASE = 'SYMBOL_BASE';
 const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
@@ -201,7 +201,6 @@ describe('PoolProxy', function () {
       underlying.address,
       baseOracle.address,
       underlyingOracle.address,
-      fixedFromFloat(0.1),
       fixedFromFloat(1.22 * 1.22),
     );
 
@@ -216,7 +215,6 @@ describe('PoolProxy', function () {
       underlyingWeth.address,
       baseOracle.address,
       underlyingOracle.address,
-      fixedFromFloat(0.1),
       fixedFromFloat(1.1),
     );
 
@@ -294,14 +292,14 @@ describe('PoolProxy', function () {
           isCall: true,
         });
 
-        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(71.4);
+        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(70.92);
         expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
         expect(fixedToNumber(q.cLevel64x64)).to.almost(2.21);
         expect(
           (fixedToNumber(q.baseCost64x64) * spotPrice) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(30.71);
+        ).to.almost(30.51);
       });
     });
 
@@ -321,14 +319,14 @@ describe('PoolProxy', function () {
           isCall: false,
         });
 
-        expect(fixedToNumber(q.baseCost64x64)).to.almost(115.14);
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(114.63);
         expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
         expect(fixedToNumber(q.cLevel64x64)).to.almost(2);
         expect(
           fixedToNumber(q.baseCost64x64) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(57.56);
+        ).to.almost(57.31);
       });
     });
   });

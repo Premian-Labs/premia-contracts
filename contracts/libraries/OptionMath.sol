@@ -30,7 +30,7 @@ library OptionMath {
     uint256 newTimestamp
   ) internal pure returns (int128) {
     return ONE_64x64.sub(
-      (-ABDKMath64x64.divu(newTimestamp - oldTimestamp, 7 days)).exp()
+      (-ABDKMath64x64.divu(newTimestamp - oldTimestamp, 1 days)).exp()
     );
   }
 
@@ -71,12 +71,18 @@ library OptionMath {
     uint256 oldTimestamp,
     uint256 newTimestamp
   ) internal pure returns (int128) {
-    int128 decay64x64 = decay(oldTimestamp, newTimestamp);
-    int128 difference64x64 = logReturns64x64.sub(oldEmaLogReturns64x64);
+    int128 delta64x64 = ABDKMath64x64.divu(newTimestamp - oldTimestamp, 1 hours);
+    int128 omega64x64 = decay(oldTimestamp, newTimestamp);
+    int128 emaLogReturns64x64 = unevenRollingEma(oldEmaLogReturns64x64, logReturns64x64, oldTimestamp, newTimestamp);
 
-    return ONE_64x64.sub(decay64x64).mul(
-      // squaring via mul is cheaper than via pow
-      decay64x64.mul(difference64x64).mul(difference64x64).add(oldEmaVariance64x64)
+    // v = (1 - decay) * var_prev + (decay * (current - m_prev) * (current - m)) / delta_t
+    return ONE_64x64.sub(omega64x64)
+    .mul(oldEmaVariance64x64)
+    .add(
+      omega64x64
+        .mul(logReturns64x64.sub(oldEmaLogReturns64x64))
+        .mul(logReturns64x64.sub(emaLogReturns64x64))
+      .div(delta64x64)
     );
   }
 
