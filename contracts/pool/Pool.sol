@@ -304,10 +304,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       );
 
       // mint free liquidity tokens for treasury
-      _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(args.isCall), feeCost, '');
+      _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(args.isCall), feeCost);
 
       // mint long option token for buyer
-      _mint(msg.sender, longTokenId, args.amount, '');
+      _mint(msg.sender, longTokenId, args.amount);
     }
 
     {
@@ -370,7 +370,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     _processPendingDeposits(isCallPool);
 
-    _mint(msg.sender, _getFreeLiquidityTokenId(isCallPool), amount, '');
+    _mint(msg.sender, _getFreeLiquidityTokenId(isCallPool), amount);
 
     uint256 nextBatch = (block.timestamp / BATCHING_PERIOD) * BATCHING_PERIOD + BATCHING_PERIOD;
     l.pendingDeposits[msg.sender][nextBatch][isCallPool] += amount;
@@ -470,7 +470,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     }
 
     // mint free liquidity tokens for treasury
-    _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost, '');
+    _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost);
 
     // burn short option tokens from underwriter
     _burn(msg.sender, shortTokenId, amount);
@@ -634,7 +634,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       // mint short option tokens for underwriter
       // toPay == 0 ? amount : intervalAmount : To prevent minting less than amount,
       // because of rounding (Can happen for put, because of fixed point precision)
-      _mint(underwriter, shortTokenId, toPay == 0 ? amount : intervalAmount, '');
+      _mint(underwriter, shortTokenId, toPay == 0 ? amount : intervalAmount);
 
       emit Underwrite(underwriter, shortTokenId, toPay == 0 ? amount : intervalAmount, intervalPremium);
 
@@ -704,7 +704,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
 
       // mint free liquidity tokens for underwriter
-      _mint(underwriter, _getFreeLiquidityTokenId(isCall), freeLiq, '');
+      _mint(underwriter, _getFreeLiquidityTokenId(isCall), freeLiq);
       // burn short option tokens from underwriter
       _burn(underwriter, shortTokenId, intervalAmount);
 
@@ -876,6 +876,15 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         'ERC20 transfer failed'
       );
     }
+  }
+
+  function _mint (
+    address account,
+    uint256 tokenId,
+    uint256 amount
+  ) internal {
+    // TODO: incorporate into SolidState
+    _mint(account, tokenId, amount, '');
   }
 
   /**
