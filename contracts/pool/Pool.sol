@@ -468,18 +468,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         _getPoolToken(isCall),
         pushAmount - baseCost - feeCost
       );
-
-      int128 totalSupply64x64 = l.totalFreeLiquiditySupply64x64(isCall);
-      int128 newTotalSupply64x64 = totalSupply64x64.add(baseCost64x64).add(feeCost64x64);
-
-      int128 newCLevel64x64 = OptionMath.calculateCLevel(
-        cLevel64x64, // C-Level after liquidity is reserved
-        totalSupply64x64,
-        newTotalSupply64x64,
-        OptionMath.ONE_64x64
-      );
-
-      _setCLevel(l, newCLevel64x64, totalSupply64x64, newTotalSupply64x64, isCall);
     }
 
     // mint free liquidity tokens for treasury
@@ -488,7 +476,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     // burn short option tokens from underwriter
     _burn(msg.sender, shortTokenId, amount);
 
+    int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
+    // burn free liquidity tokens from other underwriters
     _mintShortTokenLoop(l, amount, baseCost, shortTokenId, isCall);
+    int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
+
+    _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
 
     emit Reassign(
       msg.sender,
