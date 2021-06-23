@@ -245,9 +245,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     bool isCall = args.isCall;
 
-    _processPendingDeposits(isCall);
-
     PoolStorage.Layout storage l = PoolStorage.layout();
+
+    _processPendingDeposits(l, isCall);
 
     {
       uint256 amount = isCall
@@ -358,10 +358,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) external payable {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
+    _processPendingDeposits(l, isCallPool);
+
     l.depositedAt[msg.sender][isCallPool] = block.timestamp;
     _pull(_getPoolToken(isCallPool), amount);
-
-    _processPendingDeposits(isCallPool);
 
     _addToDepositQueue(msg.sender, amount, isCallPool);
 
@@ -377,9 +377,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     uint256 amount,
     bool isCallPool
   ) external {
-    _processPendingDeposits(isCallPool);
-
     PoolStorage.Layout storage l = PoolStorage.layout();
+
+    _processPendingDeposits(l, isCallPool);
 
     uint256 depositedAt = l.depositedAt[msg.sender][isCallPool];
 
@@ -421,9 +421,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
     }
 
-    _processPendingDeposits(isCall);
-
     PoolStorage.Layout storage l = PoolStorage.layout();
+
+    _processPendingDeposits(l, isCall);
 
     int128 newPrice64x64 = _update(l);
     int128 cLevel64x64;
@@ -510,9 +510,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
     }
 
-    _processPendingDeposits(isCall);
-
     PoolStorage.Layout storage l = PoolStorage.layout();
+
+    _processPendingDeposits(l, isCall);
+
     int128 spot64x64 = _update(l);
 
     if (maturity < block.timestamp) {
@@ -697,8 +698,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     batchData.eta = nextBatch;
   }
 
-  function _processPendingDeposits(bool isCall) internal {
-    PoolStorage.Layout storage l = PoolStorage.layout();
+  function _processPendingDeposits (
+    PoolStorage.Layout storage l,
+    bool isCall
+  ) internal {
     PoolStorage.BatchData storage data = l.nextDeposits[isCall];
 
     if (data.eta == 0 || block.timestamp < data.eta) return;
