@@ -30,10 +30,7 @@ interface ITradingCompetitionMerkle {
 
 contract TradingCompetitionMerkle is ITradingCompetitionMerkle, Ownable {
     IERC20[] public tokens;
-    // tokenAmount = amount * weight / _inverseBasisPoint
-    // Example :
-    // -> 1e4 = amount
-    // -> 1e5 = amount * 10
+    // tokenAmount = amount * weight
     mapping(address => uint256) weights;
 
     // Mapping of airdropIds to merkle roots
@@ -41,8 +38,6 @@ contract TradingCompetitionMerkle is ITradingCompetitionMerkle, Ownable {
 
     // Mapping of airdropIds to packed array of booleans
     mapping(uint256 => mapping(uint256 => uint256)) private claimedBitMaps;
-
-    uint256 private constant _inverseBasisPoint = 1e4;
 
     constructor(IERC20[] memory _tokens, uint256[] memory _weights) {
         tokens = _tokens;
@@ -91,7 +86,7 @@ contract TradingCompetitionMerkle is ITradingCompetitionMerkle, Ownable {
         _setClaimed(airdropId, index);
 
         for (uint256 i=0; i < tokens.length; i++) {
-            ITradingCompetitionERC20(address(tokens[i])).mint(account, amount * weights[address(tokens[i])] / _inverseBasisPoint);
+            ITradingCompetitionERC20(address(tokens[i])).mint(account, amount * weights[address(tokens[i])]);
         }
 
         emit Claimed(airdropId, index, account, amount);
