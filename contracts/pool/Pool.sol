@@ -185,7 +185,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     bool isCall = args.isCall;
 
     int128 oldLiquidity64x64;
-    cLevel64x64 = isCall ? l.cLevelUnderlying64x64 : l.cLevelBase64x64;
+    cLevel64x64 = l.getCLevel(isCall);
 
     {
       PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
@@ -194,7 +194,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
         pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
           batchData.totalPendingDeposits,
-          isCall ? l.underlyingDecimals : l.baseDecimals
+          l.getTokenDecimals(isCall)
         );
       }
 
@@ -281,8 +281,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         isCall
       ));
 
-      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, _getTokenDecimals(isCall));
-      feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, _getTokenDecimals(isCall));
+      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, l.getTokenDecimals(isCall));
+      feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, l.getTokenDecimals(isCall));
     }
 
     require(baseCost + feeCost <= args.maxCost, 'excess slipp');
@@ -301,7 +301,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       );
 
       // mint long option token for buyer
-      _mint(msg.sender, longTokenId, args.amount, '');
+      _mint(msg.sender, longTokenId, args.amount);
     }
 
     uint256 shortTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, false), args.maturity, args.strike64x64);
@@ -314,7 +314,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
 
     // mint free liquidity tokens for treasury
-    _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost, '');
+    _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost);
   }
 
   /**
@@ -366,24 +366,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _addToDepositQueue(msg.sender, amount, isCallPool);
 
     emit Deposit(msg.sender, isCallPool, amount);
-  }
-
-  function _processPendingDeposits(bool isCall) internal {
-    PoolStorage.Layout storage l = PoolStorage.layout();
-    PoolStorage.BatchData storage data = l.nextDeposits[isCall];
-
-    if (data.eta == 0 || block.timestamp < data.eta) return;
-
-    int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
-
-    _setCLevel(
-      l,
-      oldLiquidity64x64,
-      oldLiquidity64x64.add(ABDKMath64x64Token.fromDecimals(data.totalPendingDeposits, isCall ? l.underlyingDecimals : l.baseDecimals)),
-      isCall
-    );
-
-    delete l.nextDeposits[isCall];
   }
 
   /**
@@ -458,8 +440,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         isCall
       ));
 
-      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, _getTokenDecimals(isCall));
-      feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, _getTokenDecimals(isCall));
+      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, l.getTokenDecimals(isCall));
+      feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, l.getTokenDecimals(isCall));
 
       uint256 pushAmount = isCall ? amount : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
 
@@ -481,7 +463,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
 
     // mint free liquidity tokens for treasury
-    _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost, '');
+    _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost);
 
     emit Reassign(
       msg.sender,
@@ -619,7 +601,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       // mint short option tokens for underwriter
       // toPay == 0 ? amount : intervalAmount : To prevent minting less than amount,
       // because of rounding (Can happen for put, because of fixed point precision)
-      _mint(underwriter, shortTokenId, toPay == 0 ? amount : intervalAmount, '');
+      _mint(underwriter, shortTokenId, toPay == 0 ? amount : intervalAmount);
 
       emit Underwrite(underwriter, shortTokenId, toPay == 0 ? amount : intervalAmount, intervalPremium);
 
@@ -703,7 +685,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   ) internal {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    _mint(account, _getFreeLiquidityTokenId(isCallPool), amount, '');
+    _mint(account, _getFreeLiquidityTokenId(isCallPool), amount);
 
     uint256 nextBatch = (block.timestamp / BATCHING_PERIOD) * BATCHING_PERIOD + BATCHING_PERIOD;
     l.pendingDeposits[account][nextBatch][isCallPool] += amount;
@@ -711,6 +693,24 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     PoolStorage.BatchData storage batchData = l.nextDeposits[isCallPool];
     batchData.totalPendingDeposits += amount;
     batchData.eta = nextBatch;
+  }
+
+  function _processPendingDeposits(bool isCall) internal {
+    PoolStorage.Layout storage l = PoolStorage.layout();
+    PoolStorage.BatchData storage data = l.nextDeposits[isCall];
+
+    if (data.eta == 0 || block.timestamp < data.eta) return;
+
+    int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
+
+    _setCLevel(
+      l,
+      oldLiquidity64x64,
+      oldLiquidity64x64.add(ABDKMath64x64Token.fromDecimals(data.totalPendingDeposits, l.getTokenDecimals(isCall))),
+      isCall
+    );
+
+    delete l.nextDeposits[isCall];
   }
 
   function _getFreeLiquidityTokenId (
@@ -723,12 +723,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     bool isCall
   ) private view returns (address token) {
     token = isCall ? PoolStorage.layout().underlying : PoolStorage.layout().base;
-  }
-
-  function _getTokenDecimals (
-    bool isCall
-  ) private view returns (uint8 decimals) {
-    decimals = isCall ? PoolStorage.layout().underlyingDecimals : PoolStorage.layout().baseDecimals;
   }
 
   function _getTokenType (
@@ -848,6 +842,15 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         'ERC20 transfer failed'
       );
     }
+  }
+
+  function _mint (
+    address account,
+    uint256 tokenId,
+    uint256 amount
+  ) internal {
+    // TODO: incorporate into SolidState
+    _mint(account, tokenId, amount, '');
   }
 
   /**
