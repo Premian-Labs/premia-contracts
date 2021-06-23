@@ -185,7 +185,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     bool isCall = args.isCall;
 
     int128 oldLiquidity64x64;
-    cLevel64x64 = isCall ? l.cLevelUnderlying64x64 : l.cLevelBase64x64;
+    cLevel64x64 = l.getCLevel(isCall);
 
     {
       PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
@@ -194,7 +194,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
         pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
           batchData.totalPendingDeposits,
-          isCall ? l.underlyingDecimals : l.baseDecimals
+          l.getTokenDecimals(isCall)
         );
       }
 
@@ -281,8 +281,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         args.isCall
       ));
 
-      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, _getTokenDecimals(args.isCall));
-      feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, _getTokenDecimals(args.isCall));
+      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, l.getTokenDecimals(args.isCall));
+      feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, l.getTokenDecimals(args.isCall));
 
       totalSupply64x64 = l.totalFreeLiquiditySupply64x64(args.isCall);
       oldTotalSupply64x64 = totalSupply64x64.sub(baseCost64x64).sub(feeCost64x64);
@@ -454,8 +454,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         isCall
       ));
 
-      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, _getTokenDecimals(isCall));
-      feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, _getTokenDecimals(isCall));
+      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, l.getTokenDecimals(isCall));
+      feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, l.getTokenDecimals(isCall));
 
       uint256 pushAmount = isCall ? amount : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
 
@@ -723,7 +723,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     _setCLevel(
       l,
       oldLiquidity64x64,
-      oldLiquidity64x64.add(ABDKMath64x64Token.fromDecimals(data.totalPendingDeposits, isCall ? l.underlyingDecimals : l.baseDecimals)),
+      oldLiquidity64x64.add(ABDKMath64x64Token.fromDecimals(data.totalPendingDeposits, l.getTokenDecimals(isCall))),
       isCall
     );
 
@@ -740,12 +740,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     bool isCall
   ) private view returns (address token) {
     token = isCall ? PoolStorage.layout().underlying : PoolStorage.layout().base;
-  }
-
-  function _getTokenDecimals (
-    bool isCall
-  ) private view returns (uint8 decimals) {
-    decimals = isCall ? PoolStorage.layout().underlyingDecimals : PoolStorage.layout().baseDecimals;
   }
 
   function _getTokenType (

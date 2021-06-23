@@ -130,6 +130,13 @@ library PoolStorage {
     }
   }
 
+  function getTokenDecimals (
+    Layout storage l,
+    bool isCall
+  ) internal view returns (uint8 decimals) {
+    decimals = isCall ? l.underlyingDecimals : l.baseDecimals;
+  }
+
   function totalFreeLiquiditySupply64x64 (
     Layout storage l,
     bool isCall
@@ -138,7 +145,7 @@ library PoolStorage {
 
     return ABDKMath64x64Token.fromDecimals(
       ERC1155EnumerableStorage.layout().totalSupply[tokenId] - l.nextDeposits[isCall].totalPendingDeposits,
-      isCall ? l.underlyingDecimals : l.baseDecimals
+      getTokenDecimals(l, isCall)
     );
   }
 
