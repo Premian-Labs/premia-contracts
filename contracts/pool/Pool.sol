@@ -748,8 +748,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 newLiquidity64x64,
     bool isCallPool
   ) internal {
-    l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCallPool);
-    emit UpdateCLevel(isCallPool, l.getCLevel(isCallPool), oldLiquidity64x64, newLiquidity64x64);
+    int128 cLevel64x64 = l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCallPool);
+    emit UpdateCLevel(isCallPool, cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
   }
 
   /**
