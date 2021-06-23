@@ -44,7 +44,7 @@ import {
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
 
-chai.use(chaiAlmost(0.01));
+chai.use(chaiAlmost(0.02));
 
 const SYMBOL_BASE = 'SYMBOL_BASE';
 const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
@@ -292,14 +292,14 @@ describe('PoolProxy', function () {
           isCall: true,
         });
 
-        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(71.32);
+        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(70.92);
         expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
         expect(fixedToNumber(q.cLevel64x64)).to.almost(2.21);
         expect(
           (fixedToNumber(q.baseCost64x64) * spotPrice) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(30.69);
+        ).to.almost(30.51);
       });
     });
 
@@ -319,14 +319,14 @@ describe('PoolProxy', function () {
           isCall: false,
         });
 
-        expect(fixedToNumber(q.baseCost64x64)).to.almost(115.05);
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(114.63);
         expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
         expect(fixedToNumber(q.cLevel64x64)).to.almost(2);
         expect(
           fixedToNumber(q.baseCost64x64) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(57.54);
+        ).to.almost(57.31);
       });
     });
   });
