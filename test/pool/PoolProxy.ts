@@ -17,7 +17,7 @@ import {
 import { describeBehaviorOfManagedProxyOwnable } from '@solidstate/spec';
 import { describeBehaviorOfPool } from './Pool.behavior';
 import chai, { expect } from 'chai';
-import { resetHardhat, setTimestamp } from '../utils/evm';
+import { increaseTimestamp, resetHardhat, setTimestamp } from '../utils/evm';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { deployMockContract, MockContract } from 'ethereum-waffle';
 import { parseUnits } from 'ethers/lib/utils';
@@ -294,14 +294,14 @@ describe('PoolProxy', function () {
           isCall: true,
         });
 
-        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(71.32);
+        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(71.4);
         expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
         expect(fixedToNumber(q.cLevel64x64)).to.almost(2.21);
         expect(
           (fixedToNumber(q.baseCost64x64) * spotPrice) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(30.69);
+        ).to.almost(30.71);
       });
     });
 
@@ -321,14 +321,14 @@ describe('PoolProxy', function () {
           isCall: false,
         });
 
-        expect(fixedToNumber(q.baseCost64x64)).to.almost(115.05);
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(115.14);
         expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
         expect(fixedToNumber(q.cLevel64x64)).to.almost(2);
         expect(
           fixedToNumber(q.baseCost64x64) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(57.51);
+        ).to.almost(57.56);
       });
     });
   });
@@ -417,7 +417,7 @@ describe('PoolProxy', function () {
           'liq lock 1d',
         );
 
-        await setTimestamp(getCurrentTimestamp() + 23 * 3600);
+        await increaseTimestamp(23 * 3600);
         await expect(pool.withdraw('100', true)).to.be.revertedWith(
           'liq lock 1d',
         );
@@ -427,7 +427,7 @@ describe('PoolProxy', function () {
         await poolUtil.depositLiquidity(owner, 100, true);
         expect(await underlying.balanceOf(owner.address)).to.eq(0);
 
-        await setTimestamp(getCurrentTimestamp() + 24 * 3600 + 60);
+        await increaseTimestamp(24 * 3600 + 60);
         await pool.withdraw('100', true);
         expect(await underlying.balanceOf(owner.address)).to.eq(100);
         expect(
@@ -444,7 +444,7 @@ describe('PoolProxy', function () {
           'liq lock 1d',
         );
 
-        await setTimestamp(getCurrentTimestamp() + 23 * 3600);
+        await increaseTimestamp(23 * 3600);
         await expect(pool.withdraw('100', false)).to.be.revertedWith(
           'liq lock 1d',
         );
@@ -454,7 +454,7 @@ describe('PoolProxy', function () {
         await poolUtil.depositLiquidity(owner, 100, false);
         expect(await base.balanceOf(owner.address)).to.eq(0);
 
-        await setTimestamp(getCurrentTimestamp() + 24 * 3600 + 60);
+        await increaseTimestamp(24 * 3600 + 60);
         await pool.withdraw('100', false);
         expect(await base.balanceOf(owner.address)).to.eq(100);
         expect(
@@ -607,9 +607,6 @@ describe('PoolProxy', function () {
 
           const purchaseAmountNb = 10;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
-
-          // ToDo : Remove this temporary fix used to update variance
-          await pool.update();
 
           const quote = await pool.quote({
             maturity,
@@ -1255,7 +1252,7 @@ describe('PoolProxy', function () {
             shortTokenId,
           );
 
-          await setTimestamp(getCurrentTimestamp() + 11 * 24 * 3600);
+          await increaseTimestamp(11 * 24 * 3600);
 
           await expect(
             pool.connect(lp1).reassign(shortTokenId, shortTokenBalance),
