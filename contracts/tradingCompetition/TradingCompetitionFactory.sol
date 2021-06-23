@@ -50,6 +50,15 @@ contract TradingCompetitionFactory is Ownable {
         oracles[_token] = _oracle;
     }
 
+    function airdrop(address[] memory _addresses, address[] memory _tokens, uint256[] memory _amounts) external {
+        require(isMinter(msg.sender), 'Not minter');
+        for (uint256 i; i < _addresses.length; i++) {
+            for (uint256 j; j < _tokens.length; j++) {
+                TradingCompetitionERC20(_tokens[j]).mint(_addresses[i], _amounts[j]);
+            }
+        }
+    }
+
     //
 
     // Swap functions
@@ -88,7 +97,7 @@ contract TradingCompetitionFactory is Ownable {
 
     //
 
-    function isMinter(address _user) external view returns(bool) {
+    function isMinter(address _user) public view returns(bool) {
         return _user == address(this) || _minters.contains(_user);
     }
 

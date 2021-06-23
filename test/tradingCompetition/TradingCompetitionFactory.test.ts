@@ -173,4 +173,33 @@ describe('TradingCompetitionFactory', () => {
       parseEther('49'),
     );
   });
+
+  it('should airdrop tokens to users', async () => {
+    const users = [owner.address, whitelisted.address, notWhitelisted.address];
+
+    const tokens = [ethToken, linkToken];
+    const amounts = [parseEther('5'), parseEther('500')];
+
+    await expect(
+      factory.connect(whitelisted).airdrop(
+        users,
+        tokens.map((el) => el.address),
+        amounts,
+      ),
+    ).to.be.revertedWith('Not minter');
+
+    await factory.connect(minter).airdrop(
+      users,
+      tokens.map((el) => el.address),
+      amounts,
+    );
+
+    for (const user of users) {
+      let i = 0;
+      for (const token of tokens) {
+        expect(await token.balanceOf(user)).to.eq(amounts[i]);
+        i++;
+      }
+    }
+  });
 });

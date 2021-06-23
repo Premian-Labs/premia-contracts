@@ -1,5 +1,6 @@
 import { task } from 'hardhat/config';
 import { fixedFromFloat } from '../test/utils/math';
+import { parseEther } from 'ethers/lib/utils';
 
 // uncomment for type support but make sure to re-comment before committing b/c hardhat sucks
 // import {
@@ -124,10 +125,10 @@ task('deploy').setAction(async function (args, hre) {
       await new TradingCompetitionMerkle__factory(deployer).deploy(
         [wethToken, daiToken, wbtcToken, linkToken],
         [
-          '5550000000000000000',
-          '20000000000000000000',
-          '333000000000000000',
-          '500000000000000000000',
+          parseEther('5'),
+          parseEther('20000'),
+          parseEther('0.3'),
+          parseEther('500'),
         ],
       );
 
