@@ -139,6 +139,7 @@ task('deploy').setAction(async function (args, hre) {
 
     const tx = await tradingCompetition.addMinters([
       '0x42014C88ccd07f1dA0E22A5095aAA06D2200b2Ea',
+      '0xFBB8495A691232Cb819b84475F57e76aa9aBb6f1',
       deployer.address,
       tradingCompetitionMerkle.address,
     ]);
@@ -174,7 +175,7 @@ task('deploy').setAction(async function (args, hre) {
       wethToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_ETH_PRICE_ORACLE,
-      fixedFromFloat(0.2),
+      fixedFromFloat(1.92),
     );
 
     let poolTx = await proxyManager.deployPool(
@@ -182,7 +183,7 @@ task('deploy').setAction(async function (args, hre) {
       wethToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_ETH_PRICE_ORACLE,
-      fixedFromFloat(0.2),
+      fixedFromFloat(1.92),
     );
 
     await poolTx.wait(1);
@@ -192,7 +193,7 @@ task('deploy').setAction(async function (args, hre) {
       wbtcToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_WBTC_PRICE_ORACLE,
-      fixedFromFloat(0.2),
+      fixedFromFloat(1.35),
     );
 
     poolTx = await proxyManager.deployPool(
@@ -200,7 +201,7 @@ task('deploy').setAction(async function (args, hre) {
       wbtcToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_WBTC_PRICE_ORACLE,
-      fixedFromFloat(0.2),
+      fixedFromFloat(1.35),
     );
 
     await poolTx.wait(1);
@@ -210,7 +211,7 @@ task('deploy').setAction(async function (args, hre) {
       linkToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_LINK_PRICE_ORACLE,
-      fixedFromFloat(0.2),
+      fixedFromFloat(3.12),
     );
 
     poolTx = await proxyManager.deployPool(
@@ -218,7 +219,7 @@ task('deploy').setAction(async function (args, hre) {
       linkToken,
       RINKEBY_DAI_PRICE_ORACLE,
       RINKEBY_LINK_PRICE_ORACLE,
-      fixedFromFloat(0.2),
+      fixedFromFloat(3.12),
     );
 
     await poolTx.wait(1);
