@@ -187,6 +187,9 @@ library PoolStorage {
   ) internal returns (int128 cLevel64x64) {
     cLevel64x64 = calculateCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
 
+    // 0.7
+    if (cLevel64x64 < 0xb333333333333333) cLevel64x64 = 0xb333333333333333;
+
     if (isCallPool) {
       l.cLevelUnderlying64x64 = cLevel64x64;
     } else {
