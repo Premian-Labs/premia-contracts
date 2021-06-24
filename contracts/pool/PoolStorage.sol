@@ -177,6 +177,8 @@ library PoolStorage {
     bool isCall
   ) internal view returns (int128 cLevel64x64) {
     cLevel64x64 = isCall ? l.cLevelUnderlying64x64 : l.cLevelBase64x64;
+    // 0.7
+    if (cLevel64x64 < 0xb333333333333333) cLevel64x64 = 0xb333333333333333;
   }
 
   function setCLevel (
