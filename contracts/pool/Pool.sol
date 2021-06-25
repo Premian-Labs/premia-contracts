@@ -583,13 +583,21 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     mapping (address => address) storage queue = l.liquidityQueueAscending[isCall];
 
     while (toPay > 0) {
-      underwriter = queue[underwriter];
+      underwriter = queue[address(0)];
+      uint256 balance = balanceOf(underwriter, freeLiqTokenId);
+
+      // ToDo : Find better solution ?
+      // If dust left, we remove underwriter and skip to next
+      if (balance < 1e5) {
+        l.removeUnderwriter(underwriter, isCall);
+        continue;
+      }
 
       // ToDo : Do we keep this ?
-      if (underwriter == msg.sender) continue;
+      // if (underwriter == msg.sender) continue;
 
       // amount of liquidity provided by underwriter, accounting for reinvested premium
-      uint256 intervalAmount = balanceOf(underwriter, freeLiqTokenId) * (toPay + premium) / toPay - l.nextDeposits[isCall].totalPendingDeposits;
+      uint256 intervalAmount = balance * (toPay + premium) / toPay - l.nextDeposits[isCall].totalPendingDeposits;
       if (intervalAmount == 0) continue;
       if (intervalAmount > toPay) intervalAmount = toPay;
 
