@@ -20,7 +20,7 @@ import chai, { expect } from 'chai';
 import { increaseTimestamp, resetHardhat, setTimestamp } from '../utils/evm';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { deployMockContract, MockContract } from 'ethereum-waffle';
-import { parseUnits } from 'ethers/lib/utils';
+import { hexlify, hexZeroPad, parseUnits } from 'ethers/lib/utils';
 import {
   DECIMALS_BASE,
   DECIMALS_UNDERLYING,
@@ -244,6 +244,57 @@ describe('PoolProxy', function () {
     },
     ['::ERC1155Enumerable', '#transfer', '#transferFrom'],
   );
+
+  describe('liquidity queue', () => {
+    it('should add/remove from queue properly', async () => {
+      let queue: number[] = [];
+
+      const formatAddress = (value: number) => {
+        return hexZeroPad(hexlify(value), 20);
+      };
+      const removeAddress = async (value: number) => {
+        await pool.removeUnderwriter(formatAddress(value), true);
+        queue = queue.filter((el) => el !== value);
+        // console.log(queue);
+        expect(await pool.getUnderwriter()).to.eq(
+          formatAddress(queue.length ? queue[0] : 0),
+        );
+      };
+      const addAddress = async (value: number) => {
+        await pool.addUnderwriter(formatAddress(value), true);
+
+        if (!queue.includes(value)) {
+          queue.push(value);
+        }
+
+        // console.log(queue);
+        expect(await pool.getUnderwriter()).to.eq(formatAddress(queue[0]));
+      };
+
+      let i = 1;
+      while (i <= 9) {
+        await addAddress(i);
+        i++;
+      }
+
+      await removeAddress(3);
+      await removeAddress(5);
+      await addAddress(3);
+      await addAddress(3);
+      await removeAddress(1);
+      await removeAddress(6);
+      await removeAddress(9);
+      await addAddress(3);
+      await addAddress(3);
+      await addAddress(9);
+      await addAddress(5);
+
+      while (queue.length) {
+        // console.log(queue);
+        await removeAddress(queue[0]);
+      }
+    });
+  });
 
   describe('#getUnderlying', function () {
     it('returns underlying address', async () => {

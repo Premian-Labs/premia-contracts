@@ -48,4 +48,22 @@ contract PoolMock is Pool {
   ) external {
     _burn(account, tokenId, amount);
   }
+
+  function addUnderwriter (
+    address account,
+    bool isCallPool
+  ) external {
+    PoolStorage.addUnderwriter(PoolStorage.layout(), account, isCallPool);
+  }
+
+  function removeUnderwriter (
+    address account,
+    bool isCallPool
+  ) external {
+    PoolStorage.removeUnderwriter(PoolStorage.layout(), account, isCallPool);
+  }
+
+  function getUnderwriter () external view returns(address) {
+    return PoolStorage.layout().liquidityQueueAscending[true][address(0)];
+  }
 }
