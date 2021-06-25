@@ -155,6 +155,7 @@ library PoolStorage {
     address account,
     bool isCallPool
   ) internal {
+    require(account != address(0));
     mapping (address => address) storage desc = l.liquidityQueueDescending[isCallPool];
 
     address last = desc[address(0)];
@@ -169,6 +170,7 @@ library PoolStorage {
     address account,
     bool isCallPool
   ) internal {
+    require(account != address(0));
     mapping (address => address) storage asc = l.liquidityQueueAscending[isCallPool];
     mapping (address => address) storage desc = l.liquidityQueueDescending[isCallPool];
 
