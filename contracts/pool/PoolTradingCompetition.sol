@@ -30,6 +30,12 @@ contract PoolTradingCompetition is Pool {
       uint256 batchingPeriod
     ) Pool(weth, feeReceiver, fee64x64, batchingPeriod) {}
 
+    function getUnderwriter (
+      bool isCall
+    ) external view returns(address) {
+      return PoolStorage.layout().liquidityQueueAscending[isCall][address(0)];
+    }
+
     function fixLiquidityQueue () external {
       PoolTradingCompetitionStorage.Layout storage l = PoolTradingCompetitionStorage.layout();
 
