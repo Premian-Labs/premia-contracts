@@ -155,8 +155,13 @@ library PoolStorage {
     address account,
     bool isCallPool
   ) internal {
-    l.liquidityQueueAscending[isCallPool][l.liquidityQueueDescending[isCallPool][address(0)]] = account;
-    l.liquidityQueueDescending[isCallPool][address(0)] = account;
+    mapping (address => address) storage desc = l.liquidityQueueDescending[isCallPool];
+
+    address last = desc[address(0)];
+
+    l.liquidityQueueAscending[isCallPool][last] = account;
+    desc[account] = last;
+    desc[address(0)] = account;
   }
 
   function removeUnderwriter (
