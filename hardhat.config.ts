@@ -15,6 +15,7 @@ import { TASK_COMPILE } from 'hardhat/builtin-tasks/task-names';
 
 import './tasks/deploy';
 import './tasks/accounts';
+import './tasks/upgrade-pool-implementation';
 
 Dotenv.config();
 
