@@ -724,7 +724,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
   function _getFreeLiquidityTokenId (
     bool isCall
-  ) private view returns (uint256 freeLiqTokenId) {
+  ) internal view returns (uint256 freeLiqTokenId) {
     freeLiqTokenId = isCall ? UNDERLYING_FREE_LIQ_TOKEN_ID : BASE_FREE_LIQ_TOKEN_ID;
   }
 

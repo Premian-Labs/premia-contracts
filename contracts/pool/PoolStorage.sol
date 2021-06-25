@@ -155,8 +155,14 @@ library PoolStorage {
     address account,
     bool isCallPool
   ) internal {
-    l.liquidityQueueAscending[isCallPool][l.liquidityQueueDescending[isCallPool][address(0)]] = account;
-    l.liquidityQueueDescending[isCallPool][address(0)] = account;
+    require(account != address(0));
+    mapping (address => address) storage desc = l.liquidityQueueDescending[isCallPool];
+
+    address last = desc[address(0)];
+
+    l.liquidityQueueAscending[isCallPool][last] = account;
+    desc[account] = last;
+    desc[address(0)] = account;
   }
 
   function removeUnderwriter (
@@ -164,6 +170,7 @@ library PoolStorage {
     address account,
     bool isCallPool
   ) internal {
+    require(account != address(0));
     mapping (address => address) storage asc = l.liquidityQueueAscending[isCallPool];
     mapping (address => address) storage desc = l.liquidityQueueDescending[isCallPool];
 
