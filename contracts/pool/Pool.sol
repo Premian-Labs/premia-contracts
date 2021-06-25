@@ -580,8 +580,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     uint256 toPay = isCall ? amount : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
 
+    mapping (address => address) storage queue = l.liquidityQueueAscending[isCall];
+
     while (toPay > 0) {
-      underwriter = l.liquidityQueueAscending[underwriter][isCall];
+      underwriter = queue[underwriter];
 
       // ToDo : Do we keep this ?
       if (underwriter == msg.sender) continue;

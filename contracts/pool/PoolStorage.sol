@@ -71,9 +71,9 @@ library PoolStorage {
     mapping (address => mapping(bool => uint256)) depositedAt;
 
     // doubly linked list of free liquidity intervals
-    // User -> isCall -> User
-    mapping (address => mapping(bool => address)) liquidityQueueAscending;
-    mapping (address => mapping(bool => address)) liquidityQueueDescending;
+    // isCall -> User -> User
+    mapping (bool => mapping(address => address)) liquidityQueueAscending;
+    mapping (bool => mapping(address => address)) liquidityQueueDescending;
 
     // TODO: enforced interval size for maturity (maturity % interval == 0)
     // updatable by owner
@@ -155,8 +155,8 @@ library PoolStorage {
     address account,
     bool isCallPool
   ) internal {
-    l.liquidityQueueAscending[l.liquidityQueueDescending[address(0)][isCallPool]][isCallPool] = account;
-    l.liquidityQueueDescending[address(0)][isCallPool] = account;
+    l.liquidityQueueAscending[isCallPool][l.liquidityQueueDescending[isCallPool][address(0)]] = account;
+    l.liquidityQueueDescending[isCallPool][address(0)] = account;
   }
 
   function removeUnderwriter (
@@ -164,12 +164,15 @@ library PoolStorage {
     address account,
     bool isCallPool
   ) internal {
-    address prev = l.liquidityQueueDescending[account][isCallPool];
-    address next = l.liquidityQueueAscending[account][isCallPool];
-    l.liquidityQueueAscending[prev][isCallPool] = next;
-    l.liquidityQueueDescending[next][isCallPool] = prev;
-    delete l.liquidityQueueAscending[account][isCallPool];
-    delete l.liquidityQueueDescending[account][isCallPool];
+    mapping (address => address) storage asc = l.liquidityQueueAscending[isCallPool];
+    mapping (address => address) storage desc = l.liquidityQueueDescending[isCallPool];
+
+    address prev = desc[account];
+    address next = asc[account];
+    asc[prev] = next;
+    desc[next] = prev;
+    delete asc[account];
+    delete desc[account];
   }
 
   function getCLevel (
