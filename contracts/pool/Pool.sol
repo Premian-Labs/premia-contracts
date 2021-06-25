@@ -263,8 +263,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     (int128 newPrice64x64,) = _update(l);
 
-    require(args.strike64x64 <= newPrice64x64 << 1, 'strike > 2x spot');
-    require(args.strike64x64 >= newPrice64x64 >> 1, 'strike < 0.5x spot');
+    require(args.strike64x64 <= newPrice64x64 * 3 / 2, 'strike > 1.5x spot');
+    require(args.strike64x64 >= newPrice64x64 * 3 / 4, 'strike < 0.75x spot');
 
     int128 cLevel64x64;
 
