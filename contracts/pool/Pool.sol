@@ -408,7 +408,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   function reassign (
     uint256 shortTokenId,
     uint256 amount
-  ) external returns (uint256 baseCost, uint256 feeCost) {
+  ) public returns (uint256 baseCost, uint256 feeCost) {
     uint64 maturity;
     int128 strike64x64;
     bool isCall;
@@ -476,6 +476,23 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       cLevel64x64,
       newPrice64x64
     );
+  }
+
+  /**
+   * @notice TODO
+   */
+  function reassignBatch (
+    uint256[] calldata ids,
+    uint256[] calldata amounts
+  ) external returns (uint256[] memory baseCosts, uint256[] memory feeCosts) {
+    require(ids.length == amounts.length, 'TODO');
+
+    baseCosts = new uint256[](ids.length);
+    feeCosts = new uint256[](ids.length);
+
+    for (uint256 i; i < ids.length; i++) {
+      (baseCosts[i], feeCosts[i]) = reassign(ids[i], amounts[i]);
+    }
   }
 
   /**

@@ -1357,4 +1357,8 @@ describe('PoolProxy', function () {
       });
     }
   });
+
+  describe('#reassignBatch', function () {
+    it('todo');
+  });
 });
