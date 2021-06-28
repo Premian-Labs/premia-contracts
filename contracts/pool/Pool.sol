@@ -903,16 +903,17 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         if (amount > 0) {
           bool isCallPool = id == UNDERLYING_FREE_LIQ_TOKEN_ID;
 
-          uint256 balance = balanceOf(from, id);
           // ToDo : Find better solution than checking if under 1e5 to ignore dust left ?
-          if (from != address(0) && balance - amount <= 1e5) {
+          if (from != address(0) && balanceOf(from, id) - amount <= 1e5) {
             require(balanceOf(from, id) - l.pendingDeposits[from][l.nextDeposits[isCallPool].eta][isCallPool] >= amount, 'Insuf balance');
             l.removeUnderwriter(from, isCallPool);
           }
 
-          balance = balanceOf(to, id);
-          if (to != address(0) && balance <= 1e5 && balance + amount > 1e5) {
-            l.addUnderwriter(to, isCallPool);
+          if (to != address(0)) {
+            uint256 balance = balanceOf(to, id);
+            if (balance <= 1e5 && balance + amount > 1e5) {
+              l.addUnderwriter(to, isCallPool);
+            }
           }
         }
       }
