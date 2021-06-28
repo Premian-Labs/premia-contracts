@@ -150,18 +150,6 @@ library PoolStorage {
     );
   }
 
-  function isInQueue (
-    Layout storage l,
-    address account,
-    bool isCallPool
-  ) internal returns (bool) {
-    return (
-    l.liquidityQueueAscending[isCallPool][account] != address(0)
-    || l.liquidityQueueAscending[isCallPool][address(0)] == account
-    || l.liquidityQueueDescending[isCallPool][address(0)] == account
-    );
-  }
-
   function addUnderwriter (
     Layout storage l,
     address account,
