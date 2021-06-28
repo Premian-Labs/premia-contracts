@@ -87,7 +87,7 @@ contract TradingCompetitionFactory is Ownable {
     }
 
     function swapTokenTo(address _tokenIn, address _tokenOut, uint256 _amountOut) external {
-        uint256 amountIn = getAmountOut(_tokenIn, _tokenOut, _amountOut);
+        uint256 amountIn = getAmountIn(_tokenIn, _tokenOut, _amountOut);
 
         TradingCompetitionERC20(_tokenIn).burn(msg.sender, amountIn);
         TradingCompetitionERC20(_tokenOut).mint(msg.sender, _amountOut);

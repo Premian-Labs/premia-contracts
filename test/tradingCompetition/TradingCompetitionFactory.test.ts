@@ -1,4 +1,4 @@
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
@@ -10,6 +10,9 @@ import {
 import { ZERO_ADDRESS } from '../utils/constants';
 import { deployMockContract, MockContract } from 'ethereum-waffle';
 import { parseEther, parseUnits } from 'ethers/lib/utils';
+import chaiAlmost from 'chai-almost';
+
+chai.use(chaiAlmost(0.01));
 
 describe('TradingCompetitionFactory', () => {
   let owner: SignerWithAddress;
@@ -147,7 +150,7 @@ describe('TradingCompetitionFactory', () => {
     ).to.eq(inAmount);
   });
 
-  it('should correctly swap tokens', async () => {
+  it('should correctly swap tokens from', async () => {
     await ethToken
       .connect(minter)
       .mint(notWhitelisted.address, parseEther('1'));
@@ -166,6 +169,33 @@ describe('TradingCompetitionFactory', () => {
     await factory
       .connect(notWhitelisted)
       .swapTokenFrom(linkToken.address, ethToken.address, parseEther('50'));
+    expect(await ethToken.balanceOf(notWhitelisted.address)).to.eq(
+      parseEther('0.495'),
+    );
+    expect(await linkToken.balanceOf(notWhitelisted.address)).to.eq(
+      parseEther('49'),
+    );
+  });
+
+  it('should correctly swap tokens to', async () => {
+    await ethToken
+      .connect(minter)
+      .mint(notWhitelisted.address, parseEther('1'));
+    expect(await ethToken.balanceOf(notWhitelisted.address)).to.eq(
+      parseEther('1'),
+    );
+
+    await factory
+      .connect(notWhitelisted)
+      .swapTokenTo(ethToken.address, linkToken.address, parseEther('99'));
+    expect(await ethToken.balanceOf(notWhitelisted.address)).to.eq(0);
+    expect(await linkToken.balanceOf(notWhitelisted.address)).to.almost(
+      parseEther('99'),
+    );
+
+    await factory
+      .connect(notWhitelisted)
+      .swapTokenTo(linkToken.address, ethToken.address, parseEther('0.495'));
     expect(await ethToken.balanceOf(notWhitelisted.address)).to.eq(
       parseEther('0.495'),
     );
