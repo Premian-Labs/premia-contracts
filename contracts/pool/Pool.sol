@@ -908,7 +908,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
             l.removeUnderwriter(from, isCallPool);
           }
 
-          if (to != address(0) && balanceOf(to, id) == 0) {
+          if (to != address(0) && !l.isInQueue(to, isCallPool)) {
             l.addUnderwriter(to, isCallPool);
           }
         }
