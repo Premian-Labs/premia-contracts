@@ -24,11 +24,12 @@ contract PoolTradingCompetition is Pool {
     using PoolStorage for PoolStorage.Layout;
 
     constructor (
+      address optionMath,
       address weth,
       address feeReceiver,
       int128 fee64x64,
       uint256 batchingPeriod
-    ) Pool(weth, feeReceiver, fee64x64, batchingPeriod) {}
+    ) Pool(optionMath, weth, feeReceiver, fee64x64, batchingPeriod) {}
 
     function getAscending (
     bool isCall,

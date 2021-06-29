@@ -8,7 +8,7 @@ import {ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1
 
 import {ABDKMath64x64} from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import {ABDKMath64x64Token} from '../libraries/ABDKMath64x64Token.sol';
-import {OptionMath} from '../libraries/OptionMath.sol';
+import {IOptionMath} from '../libraries/IOptionMath.sol';
 import {Pool} from './Pool.sol';
 
 library PoolStorage {
@@ -191,11 +191,12 @@ library PoolStorage {
 
   function setCLevel (
     Layout storage l,
+    address optionMathAddress,
     int128 oldLiquidity64x64,
     int128 newLiquidity64x64,
     bool isCallPool
   ) internal returns (int128 cLevel64x64) {
-    cLevel64x64 = calculateCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
+    cLevel64x64 = calculateCLevel(l, optionMathAddress, oldLiquidity64x64, newLiquidity64x64, isCallPool);
 
     // 0.8
     if (cLevel64x64 < 0xcccccccccccccccd) cLevel64x64 = 0xcccccccccccccccd;
@@ -209,15 +210,16 @@ library PoolStorage {
 
   function calculateCLevel (
     Layout storage l,
+    address optionMathAddress,
     int128 oldLiquidity64x64,
     int128 newLiquidity64x64,
     bool isCallPool
   ) internal view returns(int128) {
-    return OptionMath.calculateCLevel(
+    return IOptionMath(optionMathAddress).calculateCLevel(
       isCallPool ? l.cLevelUnderlying64x64 : l.cLevelBase64x64,
       oldLiquidity64x64,
       newLiquidity64x64,
-      OptionMath.ONE_64x64
+      0x10000000000000000 // 64x64 fixed point representation of 1
     );
   }
 

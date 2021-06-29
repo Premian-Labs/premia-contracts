@@ -74,10 +74,13 @@ contract ProxyManager is IProxyManager, OwnableInternal {
   ) external onlyOwner returns (address) {
     require(ProxyManagerStorage.layout().getPool(base, underlying) == address(0), "ProxyManager: Pool already exists");
 
-    address pool = address(new PoolProxy(base, underlying, baseOracle, underlyingOracle, emaVarianceAnnualized64x64));
+    // 64x64 fixed point representation of 2e
+    int128 initialCLevel64x64 = 0x56fc2a2c515da32ea;
+
+    address pool = address(new PoolProxy(base, underlying, baseOracle, underlyingOracle, emaVarianceAnnualized64x64, initialCLevel64x64));
     ProxyManagerStorage.layout().setPool(base, underlying, underlyingOracle);
 
-    emit DeployPool(base, underlying, OptionMath.INITIAL_C_LEVEL_64x64, baseOracle, underlyingOracle, pool);
+    emit DeployPool(base, underlying, initialCLevel64x64, baseOracle, underlyingOracle, pool);
 
     return pool;
   }

@@ -15,7 +15,7 @@ contract PoolMock is Pool {
 
   // TODO: pass non-zero fee
   // TODO: confirm batching period
-  constructor (address weth) Pool(address(weth), address(1), 0, 260) {}
+  constructor (address optionMath, address weth) Pool(optionMath, address(weth), address(1), 0, 260) {}
 
   function tokenIdFor (
     PoolStorage.TokenType tokenType,
