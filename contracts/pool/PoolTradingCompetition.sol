@@ -37,12 +37,12 @@ contract PoolTradingCompetition is Pool {
         return PoolStorage.layout().liquidityQueueAscending[isCall][addr];
     }
 
-    function getDescending (
-        bool isCall,
-        address addr
-    ) external view returns(address) {
-        return PoolStorage.layout().liquidityQueueDescending[isCall][addr];
-    }
+//    function getDescending (
+//        bool isCall,
+//        address addr
+//    ) external view returns(address) {
+//        return PoolStorage.layout().liquidityQueueDescending[isCall][addr];
+//    }
 
 //    function fixLiquidityQueue (address[] memory wipeList) external {
 //      PoolTradingCompetitionStorage.Layout storage l = PoolTradingCompetitionStorage.layout();
