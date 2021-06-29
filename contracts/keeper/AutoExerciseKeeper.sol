@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import {IUniswapV2Router02} from '../uniswapV2/interfaces/IUniswapV2Router02.sol';
+import {IUniswapV2Router02} from '@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol';
+
 import {IKeeperCompatible} from '../interface/IKeeperCompatible.sol';
 import {IPriceOracleGetter} from '../interface/IPriceOracleGetter.sol';
 import {IPremiaOption} from '../interface/IPremiaOption.sol';
@@ -208,4 +209,3 @@ contract AutoExerciseKeeper is IKeeperCompatible {
     }
   }
 }
-

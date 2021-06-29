@@ -5,18 +5,16 @@ pragma solidity ^0.8.0;
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-
 import {ERC1155Base} from '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
 import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
 import {IERC20Metadata} from '@solidstate/contracts/token/ERC20/IERC20Metadata.sol';
 import {ReentrancyGuard} from '@solidstate/contracts/utils/ReentrancyGuard.sol';
 
+import {IUniswapV2Router02} from '@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol';
+
 import {IFeeCalculator} from '../../interface/IFeeCalculator.sol';
 import {IFlashLoanReceiver} from '../../interface/IFlashLoanReceiver.sol';
 import {OptionStorage} from './OptionStorage.sol';
-
-import {IUniswapV2Router02} from '../../uniswapV2/interfaces/IUniswapV2Router02.sol';
-
 
 /// @author Premia
 /// @title An option contract
