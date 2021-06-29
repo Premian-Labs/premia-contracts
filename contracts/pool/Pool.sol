@@ -903,7 +903,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         if (amount > 0) {
           bool isCallPool = id == UNDERLYING_FREE_LIQ_TOKEN_ID;
 
-          if (to != address(0)) {
+          if (from != address(0)) {
             uint256 balance = balanceOf(from, id);
           // ToDo : Find better solution than checking if under 1e5 to ignore dust left ?
             if (from != address(0) && balance <= amount + 1e5) {
