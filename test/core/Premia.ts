@@ -4,6 +4,8 @@ import {
   Pool,
   Pool__factory,
   ProxyManager__factory,
+  OptionMath,
+  OptionMath__factory,
 } from '../../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -16,6 +18,7 @@ describe('Premia', function () {
   let owner: SignerWithAddress;
   let nomineeOwner: SignerWithAddress;
 
+  let optionMath: OptionMath;
   let pool: Pool;
 
   let facetCuts: any[] = [,];
@@ -27,10 +30,12 @@ describe('Premia', function () {
 
     // TODO: pass PremiaMaker proxy address instead of zero address
     // TODO: pass non-zero fee
-    pool = await new Pool__factory(owner).deploy(
+    optionMath = await new OptionMath__factory(owner).deploy();
+    pool = await new Pool__factory({ '__$430b703ddf4d641dc7662832950ed9cf8d$__': optionMath.address }, owner).deploy(
       ethers.constants.AddressZero,
       ethers.constants.AddressZero,
-      ethers.constants.Zero
+      ethers.constants.Zero,
+      ethers.BigNumber.from('260'),
     );
 
     [await new ProxyManager__factory(owner).deploy()].forEach(function (f) {

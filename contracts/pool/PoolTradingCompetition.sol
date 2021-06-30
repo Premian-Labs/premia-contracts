@@ -4,8 +4,83 @@ pragma solidity ^0.8.0;
 
 import "./Pool.sol";
 
+library PoolTradingCompetitionStorage {
+  bytes32 internal constant STORAGE_SLOT = keccak256(
+    'premia.contracts.storage.PoolTradingCompetition'
+  );
+
+  struct Layout {
+    bool liquidityQueueFixed;
+  }
+
+  function layout () internal pure returns (Layout storage l) {
+    bytes32 slot = STORAGE_SLOT;
+    assembly { l.slot := slot }
+  }
+}
+
 contract PoolTradingCompetition is Pool {
-    constructor (address weth, address feeReceiver, int128 fee64x64) Pool(weth, feeReceiver, fee64x64) { }
+    using EnumerableSet for EnumerableSet.AddressSet;
+    using PoolStorage for PoolStorage.Layout;
+
+    constructor (
+      address weth,
+      address feeReceiver,
+      int128 fee64x64,
+      uint256 batchingPeriod
+    ) Pool(weth, feeReceiver, fee64x64, batchingPeriod) {}
+
+    function getAscending (
+    bool isCall,
+    address addr
+    ) external view returns(address) {
+        return PoolStorage.layout().liquidityQueueAscending[isCall][addr];
+    }
+
+//    function getDescending (
+//        bool isCall,
+//        address addr
+//    ) external view returns(address) {
+//        return PoolStorage.layout().liquidityQueueDescending[isCall][addr];
+//    }
+
+//    function fixLiquidityQueue (address[] memory wipeList) external {
+//      PoolTradingCompetitionStorage.Layout storage l = PoolTradingCompetitionStorage.layout();
+//
+//      require(!l.liquidityQueueFixed);
+//
+//      _fixLiquidityQueue(true, wipeList);
+//      _fixLiquidityQueue(false, wipeList);
+//
+//      l.liquidityQueueFixed = true;
+//    }
+//
+//    function _fixLiquidityQueue (
+//      bool isCall,
+//      address[] memory wipeList
+//    ) internal {
+//      PoolStorage.Layout storage l = PoolStorage.layout();
+//
+//      uint256 tokenId = _getFreeLiquidityTokenId(isCall);
+//
+//      EnumerableSet.AddressSet storage holders = ERC1155EnumerableStorage.layout().accountsByToken[tokenId];
+//
+//      for (uint i; i < holders.length(); i++) {
+//        l.removeUnderwriter(holders.at(i), isCall);
+//      }
+//
+//      delete l.liquidityQueueAscending[isCall][address(0)];
+//      delete l.liquidityQueueDescending[isCall][address(0)];
+//
+//      for (uint256 i; i < wipeList.length; i++) {
+//        delete l.liquidityQueueAscending[isCall][wipeList[i]];
+//        delete l.liquidityQueueDescending[isCall][wipeList[i]];
+//      }
+//
+//      for (uint i; i < holders.length(); i++) {
+//        l.addUnderwriter(holders.at(i), isCall);
+//      }
+//    }
 
     function _beforeTokenTransfer (
         address operator,

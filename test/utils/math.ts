@@ -1,14 +1,21 @@
-import { BigNumber, BigNumberish } from 'ethers';
-import { ethers } from 'ethers';
+import { BigNumber, BigNumberish, ethers } from 'ethers';
 import {
-  formatEther,
+  formatUnits,
   hexConcat,
   hexDataSlice,
   hexZeroPad,
   parseEther,
 } from 'ethers/lib/utils';
 import { BytesLike } from '@ethersproject/bytes';
-import { TokenType } from '../pool/PoolUtil';
+
+export enum TokenType {
+  UnderlyingFreeLiq = 0,
+  BaseFreeLiq = 1,
+  LongCall = 2,
+  ShortCall = 3,
+  LongPut = 4,
+  ShortPut = 5,
+}
 
 export interface TokenIdParams {
   tokenType: TokenType;
@@ -27,8 +34,8 @@ export function fixedFromFloat(float: BigNumberish) {
   );
 }
 
-export function bnToNumber(bn: BigNumber) {
-  return Number(formatEther(bn));
+export function bnToNumber(bn: BigNumber, decimals = 18) {
+  return Number(formatUnits(bn, decimals));
 }
 
 export function fixedToNumber(fixed: BigNumber) {
@@ -55,6 +62,25 @@ export function formatTokenId({
     hexZeroPad(maturity.toHexString(), 8),
     hexZeroPad(strike64x64.toHexString(), 16),
   ]);
+}
+
+export function getOptionTokenIds(
+  maturity: BigNumber,
+  strike64x64: BigNumber,
+  isCall: boolean,
+) {
+  return {
+    short: formatTokenId({
+      tokenType: isCall ? TokenType.ShortCall : TokenType.ShortPut,
+      maturity,
+      strike64x64,
+    }),
+    long: formatTokenId({
+      tokenType: isCall ? TokenType.LongCall : TokenType.LongPut,
+      maturity,
+      strike64x64,
+    }),
+  };
 }
 
 export function parseTokenId(tokenId: BytesLike): TokenIdParams {

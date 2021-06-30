@@ -12,8 +12,6 @@ import {IERC165} from '@solidstate/contracts/introspection/IERC165.sol';
 import {IProxyManager} from '../core/IProxyManager.sol';
 import {PoolStorage} from './PoolStorage.sol';
 
-import { OptionMath } from '../libraries/OptionMath.sol';
-
 /**
  * @title Upgradeable proxy with centrally controlled Pool implementation
  */
@@ -26,8 +24,8 @@ contract PoolProxy is ManagedProxyOwnable {
     address underlying,
     address baseOracle,
     address underlyingOracle,
-    int128 emaLogReturns64x64,
-    int128 emaVarianceAnnualized64x64
+    int128 emaVarianceAnnualized64x64,
+    int128 initialCLevel64x64
   ) ManagedProxy(IProxyManager.getPoolImplementation.selector) {
     OwnableStorage.layout().owner = msg.sender;
 
@@ -41,13 +39,12 @@ contract PoolProxy is ManagedProxyOwnable {
 
       l.baseDecimals = IERC20Metadata(base).decimals();
       l.underlyingDecimals = IERC20Metadata(underlying).decimals();
-      l.cLevelBase64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
-      l.cLevelUnderlying64x64 = OptionMath.INITIAL_C_LEVEL_64x64;
+      l.cLevelBase64x64 = initialCLevel64x64;
+      l.cLevelUnderlying64x64 = initialCLevel64x64;
 
       int128 newPrice64x64 = l.fetchPriceUpdate();
       l.setPriceUpdate(newPrice64x64);
 
-      l.emaLogReturns64x64 = emaLogReturns64x64;
       l.emaVarianceAnnualized64x64 = emaVarianceAnnualized64x64;
 
       l.updatedAt = block.timestamp;

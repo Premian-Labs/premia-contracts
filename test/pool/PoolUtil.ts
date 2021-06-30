@@ -1,10 +1,13 @@
 import { ERC20Mock, Pool } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { BigNumber, BigNumberish } from 'ethers';
-import { ethers } from 'hardhat';
+import { BigNumber, BigNumberish, ethers } from 'ethers';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
-import { parseEther } from 'ethers/lib/utils';
+import { increaseTimestamp } from '../utils/evm';
 import { fixedToNumber } from '../utils/math';
+import { formatUnits, parseUnits } from 'ethers/lib/utils';
+
+export const DECIMALS_BASE = 18;
+export const DECIMALS_UNDERLYING = 8;
 
 interface PoolUtilArgs {
   pool: Pool;
@@ -12,16 +15,59 @@ interface PoolUtilArgs {
   base: ERC20Mock;
 }
 
-export enum TokenType {
-  UnderlyingFreeLiq = 0,
-  BaseFreeLiq = 1,
-  LongCall = 2,
-  ShortCall = 3,
-  LongPut = 4,
-  ShortPut = 5,
+const ONE_DAY = 3600 * 24;
+
+export function getTokenDecimals(isCall: boolean) {
+  return isCall ? DECIMALS_UNDERLYING : DECIMALS_BASE;
 }
 
-const ONE_DAY = 3600 * 24;
+export function parseOption(amount: string, isCall: boolean) {
+  if (isCall) {
+    return parseUnderlying(amount);
+  } else {
+    return parseBase(amount);
+  }
+}
+
+export function parseUnderlying(amount: string) {
+  return parseUnits(
+    Number(amount).toFixed(DECIMALS_UNDERLYING),
+    DECIMALS_UNDERLYING,
+  );
+}
+
+export function parseBase(amount: string) {
+  return parseUnits(Number(amount).toFixed(DECIMALS_BASE), DECIMALS_BASE);
+}
+
+export function formatOption(amount: BigNumberish, isCall: boolean) {
+  if (isCall) {
+    return formatUnderlying(amount);
+  } else {
+    return formatBase(amount);
+  }
+}
+
+export function formatUnderlying(amount: BigNumberish) {
+  return formatUnits(amount, DECIMALS_UNDERLYING);
+}
+
+export function formatBase(amount: BigNumberish) {
+  return formatUnits(amount, DECIMALS_BASE);
+}
+
+export function getExerciseValue(
+  price: number,
+  strike: number,
+  amount: number,
+  isCall: boolean,
+) {
+  if (isCall) {
+    return ((price - strike) * amount) / price;
+  } else {
+    return (strike - price) * amount;
+  }
+}
 
 export class PoolUtil {
   pool: Pool;
@@ -52,6 +98,8 @@ export class PoolUtil {
     }
 
     await this.pool.connect(lp).deposit(amount, isCall);
+
+    await increaseTimestamp(300);
   }
 
   async purchaseOption(
@@ -59,26 +107,38 @@ export class PoolUtil {
     buyer: SignerWithAddress,
     amount: BigNumber,
     maturity: BigNumber,
+    spot64x64: BigNumber,
     strike64x64: BigNumber,
     isCall: boolean,
   ) {
     await this.depositLiquidity(
       lp,
-      isCall ? amount : amount.mul(fixedToNumber(strike64x64)),
+      isCall
+        ? amount
+        : parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
       isCall,
     );
 
     if (isCall) {
-      await this.underlying.mint(buyer.address, parseEther('100'));
+      await this.underlying.mint(buyer.address, parseUnderlying('100'));
       await this.underlying
         .connect(buyer)
         .approve(this.pool.address, ethers.constants.MaxUint256);
     } else {
-      await this.base.mint(buyer.address, parseEther('10000'));
+      await this.base.mint(buyer.address, parseBase('10000'));
       await this.base
         .connect(buyer)
         .approve(this.pool.address, ethers.constants.MaxUint256);
     }
+
+    const quote = await this.pool.quote({
+      maturity,
+      strike64x64,
+      spot64x64,
+      amount,
+      isCall,
+      emaVarianceAnnualized64x64: await this.pool.callStatic.update(),
+    });
 
     await this.pool.connect(buyer).purchase({
       maturity,
@@ -87,6 +147,8 @@ export class PoolUtil {
       maxCost: ethers.constants.MaxUint256,
       isCall,
     });
+
+    return quote;
   }
 
   getMaturity(days: number) {

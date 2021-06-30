@@ -14,7 +14,8 @@ contract PoolMock is Pool {
   using ERC165Storage for ERC165Storage.Layout;
 
   // TODO: pass non-zero fee
-  constructor (address weth) Pool(address(weth), address(1), 0) {}
+  // TODO: confirm batching period
+  constructor (address weth) Pool(address(weth), address(1), 0, 260) {}
 
   function tokenIdFor (
     PoolStorage.TokenType tokenType,
@@ -46,5 +47,23 @@ contract PoolMock is Pool {
     uint256 amount
   ) external {
     _burn(account, tokenId, amount);
+  }
+
+  function addUnderwriter (
+    address account,
+    bool isCallPool
+  ) external {
+    PoolStorage.addUnderwriter(PoolStorage.layout(), account, isCallPool);
+  }
+
+  function removeUnderwriter (
+    address account,
+    bool isCallPool
+  ) external {
+    PoolStorage.removeUnderwriter(PoolStorage.layout(), account, isCallPool);
+  }
+
+  function getUnderwriter () external view returns(address) {
+    return PoolStorage.layout().liquidityQueueAscending[true][address(0)];
   }
 }
