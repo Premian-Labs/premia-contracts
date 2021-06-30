@@ -4,12 +4,48 @@ pragma solidity ^0.8.0;
 
 import { OptionMath } from '../libraries/OptionMath.sol';
 
-contract OptionMathMock is OptionMath {
+contract OptionMathMock {
+  function unevenRollingEmaVariance (
+    int128 oldEmaLogReturns64x64,
+    int128 oldEmaVariance64x64,
+    int128 logReturns64x64,
+    uint256 oldTimestamp,
+    uint256 newTimestamp
+  ) external pure returns (int128 emaLogReturns64x64, int128 emaVariance64x64) {
+    return OptionMath.unevenRollingEmaVariance(
+      oldEmaLogReturns64x64,
+      oldEmaVariance64x64,
+      logReturns64x64,
+      oldTimestamp,
+      newTimestamp
+    );
+  }
+
+  function calculateCLevel (
+    int128 initialCLevel64x64,
+    int128 oldPoolState64x64,
+    int128 newPoolState64x64,
+    int128 steepness64x64
+  ) external pure returns (int128) {
+    return OptionMath.calculateCLevel(
+      initialCLevel64x64,
+      oldPoolState64x64,
+      newPoolState64x64,
+      steepness64x64
+    );
+  }
+
+  function quotePrice (
+    OptionMath.QuoteArgs memory args
+  ) external pure returns (int128 premiaPrice64x64, int128 cLevel64x64, int128 slippageCoefficient64x64) {
+    return OptionMath.quotePrice(args);
+  }
+
   function decay (
     uint256 oldTimestamp,
     uint256 newTimestamp
   ) external pure returns (int128) {
-    return _decay(oldTimestamp, newTimestamp);
+    return OptionMath._decay(oldTimestamp, newTimestamp);
   }
 
   function unevenRollingEma (
@@ -18,7 +54,7 @@ contract OptionMathMock is OptionMath {
     uint256 oldTimestamp,
     uint256 newTimestamp
   ) external pure returns (int128) {
-    return _unevenRollingEma(
+    return OptionMath._unevenRollingEma(
       oldEma64x64,
       logReturns64x64,
       oldTimestamp,
@@ -29,7 +65,7 @@ contract OptionMathMock is OptionMath {
   function N (
     int128 x
   ) external pure returns (int128) {
-    return _N(x);
+    return OptionMath._N(x);
   }
 
   function bsPrice (
@@ -39,6 +75,6 @@ contract OptionMathMock is OptionMath {
     int128 timeToMaturity,
     bool isCall
   ) external pure returns (int128) {
-    return _bsPrice(variance, strike, price, timeToMaturity, isCall);
+    return OptionMath._bsPrice(variance, strike, price, timeToMaturity, isCall);
   }
 }

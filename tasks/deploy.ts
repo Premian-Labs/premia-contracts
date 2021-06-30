@@ -36,6 +36,7 @@ task('deploy').setAction(async function (args, hre) {
     Pool__factory,
     PoolTradingCompetition,
     PoolTradingCompetition__factory,
+    OptionMath__factory,
   } = require('../typechain');
 
   const [deployer] = await hre.ethers.getSigners();
@@ -45,16 +46,18 @@ task('deploy').setAction(async function (args, hre) {
       ? RINKEBY_WETH
       : hre.ethers.constants.AddressZero;
 
+  const optionMath = await new OptionMath__factory(deployer).deploy();
+
   let pool: typeof Pool | typeof PoolTradingCompetition;
   if (hre.network.name === 'rinkeby') {
-    pool = await new PoolTradingCompetition__factory(deployer).deploy(
+    pool = await new PoolTradingCompetition__factory({ '__$430b703ddf4d641dc7662832950ed9cf8d$__': optionMath.address }, deployer).deploy(
       weth,
       deployer.address,
       0,
       260,
     );
   } else {
-    pool = await new Pool__factory(deployer).deploy(
+    pool = await new Pool__factory({ '__$430b703ddf4d641dc7662832950ed9cf8d$__': optionMath.address }, deployer).deploy(
       weth,
       deployer.address,
       '0x028f5c28f5c28f5c',

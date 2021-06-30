@@ -3,10 +3,21 @@
 pragma solidity ^0.8.0;
 
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
-import { IOptionMath } from './IOptionMath.sol';
 
-contract OptionMath {
+library OptionMath {
   using ABDKMath64x64 for int128;
+
+  struct QuoteArgs {
+    int128 emaVarianceAnnualized64x64;    // 64x64 fixed point representation of annualized EMA of variance
+    int128 strike64x64;                   // 64x64 fixed point representation of strike price
+    int128 spot64x64;                     // 64x64 fixed point representation of spot price
+    int128 timeToMaturity64x64;           // 64x64 fixed point representation of duration of option contract (in years)
+    int128 oldCLevel64x64;                // 64x64 fixed point representation of C-Level of Pool before purchase
+    int128 oldPoolState;                  // 64x64 fixed point representation of current state of the pool
+    int128 newPoolState;                  // 64x64 fixed point representation of state of the pool after trade
+    int128 steepness64x64;                // 64x64 fixed point representation of Pool state delta multiplier
+    bool isCall;                          // whether to price "call" or "put" option
+  }
 
   // 64x64 fixed point integer constants
   int128 internal constant ONE_64x64 = 0x10000000000000000;
@@ -16,6 +27,82 @@ contract OptionMath {
   int128 private constant CDF_CONST_0 = 0x09109f285df452394; // 2260 / 3989
   int128 private constant CDF_CONST_1 = 0x19abac0ea1da65036; // 6400 / 3989
   int128 private constant CDF_CONST_2 = 0x0d3c84b78b749bd6b; // 3300 / 3989
+
+  /**
+   * @notice calculate the rolling EMA variance of an uneven time series
+   * @param oldEmaLogReturns64x64 64x64 fixed point representation of previous EMA
+   * @param oldEmaVariance64x64 64x64 fixed point representation of previous variance
+   * @param logReturns64x64 64x64 fixed point representation of natural log of rate of return for current period
+   * @param oldTimestamp timestamp of previous update
+   * @param newTimestamp current timestamp
+   * @return emaLogReturns64x64 64x64 fixed point representation of EMA
+   * @return emaVariance64x64 64x64 fixed point representation of EMA of variance
+   */
+  function unevenRollingEmaVariance (
+    int128 oldEmaLogReturns64x64,
+    int128 oldEmaVariance64x64,
+    int128 logReturns64x64,
+    uint256 oldTimestamp,
+    uint256 newTimestamp
+  ) external pure returns (int128 emaLogReturns64x64, int128 emaVariance64x64) {
+    int128 delta64x64 = ABDKMath64x64.divu(newTimestamp - oldTimestamp, 1 hours);
+    int128 omega64x64 = _decay(oldTimestamp, newTimestamp);
+    emaLogReturns64x64 = _unevenRollingEma(oldEmaLogReturns64x64, logReturns64x64, oldTimestamp, newTimestamp);
+
+    // v = (1 - decay) * var_prev + (decay * (current - m_prev) * (current - m)) / delta_t
+    emaVariance64x64 = ONE_64x64.sub(omega64x64)
+    .mul(oldEmaVariance64x64)
+    .add(
+      omega64x64
+        .mul(logReturns64x64.sub(oldEmaLogReturns64x64))
+        .mul(logReturns64x64.sub(emaLogReturns64x64))
+      .div(delta64x64)
+    );
+  }
+
+  /**
+   * @notice recalculate C-Level based on change in liquidity
+   * @param initialCLevel64x64 64x64 fixed point representation of C-Level of Pool before update
+   * @param oldPoolState64x64 64x64 fixed point representation of liquidity in pool before update
+   * @param newPoolState64x64 64x64 fixed point representation of liquidity in pool after update
+   * @param steepness64x64 64x64 fixed point representation of steepness coefficient
+   * @return 64x64 fixed point representation of new C-Level
+   */
+  function calculateCLevel (
+    int128 initialCLevel64x64,
+    int128 oldPoolState64x64,
+    int128 newPoolState64x64,
+    int128 steepness64x64
+  ) external pure returns (int128) {
+    return newPoolState64x64.sub(oldPoolState64x64).div(
+      oldPoolState64x64 > newPoolState64x64 ? oldPoolState64x64 : newPoolState64x64
+    ).mul(steepness64x64).neg().exp().mul(initialCLevel64x64);
+  }
+
+  /**
+   * @notice calculate the price of an option using the Premia Finance model
+   * @param args arguments of quotePrice
+   * @return premiaPrice64x64 64x64 fixed point representation of Premia option price
+   * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
+   */
+  function quotePrice (
+    QuoteArgs memory args
+  ) external pure returns (int128 premiaPrice64x64, int128 cLevel64x64, int128 slippageCoefficient64x64) {
+    int128 deltaPoolState64x64 = args.newPoolState.sub(args.oldPoolState).div(args.oldPoolState).mul(args.steepness64x64);
+    int128 tradingDelta64x64 = deltaPoolState64x64.neg().exp();
+
+    int128 bsPrice64x64 = _bsPrice(
+        args.emaVarianceAnnualized64x64,
+        args.strike64x64,
+        args.spot64x64,
+        args.timeToMaturity64x64,
+        args.isCall
+    );
+
+    cLevel64x64 = tradingDelta64x64.mul(args.oldCLevel64x64);
+    slippageCoefficient64x64 = ONE_64x64.sub(tradingDelta64x64).div(deltaPoolState64x64);
+    premiaPrice64x64 = bsPrice64x64.mul(cLevel64x64).mul(slippageCoefficient64x64);
+  }
 
   /**
    * @notice calculate the exponential decay coefficient for a given interval
@@ -50,38 +137,6 @@ contract OptionMath {
 
     return logReturns64x64.mul(decay64x64).add(
       ONE_64x64.sub(decay64x64).mul(oldEmaLogReturns64x64)
-    );
-  }
-
-  /**
-   * @notice calculate the rolling EMA variance of an uneven time series
-   * @param oldEmaLogReturns64x64 64x64 fixed point representation of previous EMA
-   * @param oldEmaVariance64x64 64x64 fixed point representation of previous variance
-   * @param logReturns64x64 64x64 fixed point representation of natural log of rate of return for current period
-   * @param oldTimestamp timestamp of previous update
-   * @param newTimestamp current timestamp
-   * @return emaLogReturns64x64 64x64 fixed point representation of EMA
-   * @return emaVariance64x64 64x64 fixed point representation of EMA of variance
-   */
-  function unevenRollingEmaVariance (
-    int128 oldEmaLogReturns64x64,
-    int128 oldEmaVariance64x64,
-    int128 logReturns64x64,
-    uint256 oldTimestamp,
-    uint256 newTimestamp
-  ) external pure returns (int128 emaLogReturns64x64, int128 emaVariance64x64) {
-    int128 delta64x64 = ABDKMath64x64.divu(newTimestamp - oldTimestamp, 1 hours);
-    int128 omega64x64 = _decay(oldTimestamp, newTimestamp);
-    emaLogReturns64x64 = _unevenRollingEma(oldEmaLogReturns64x64, logReturns64x64, oldTimestamp, newTimestamp);
-
-    // v = (1 - decay) * var_prev + (decay * (current - m_prev) * (current - m)) / delta_t
-    emaVariance64x64 = ONE_64x64.sub(omega64x64)
-    .mul(oldEmaVariance64x64)
-    .add(
-      omega64x64
-        .mul(logReturns64x64.sub(oldEmaLogReturns64x64))
-        .mul(logReturns64x64.sub(emaLogReturns64x64))
-      .div(delta64x64)
     );
   }
 
@@ -135,49 +190,5 @@ contract OptionMath {
     } else {
       return -spot64x64.mul(_N(-d1_64x64)).sub(strike64x64.mul(_N(-d2_64x64)));
     }
-  }
-
-  /**
-   * @notice recalculate C-Level based on change in liquidity
-   * @param initialCLevel64x64 64x64 fixed point representation of C-Level of Pool before update
-   * @param oldPoolState64x64 64x64 fixed point representation of liquidity in pool before update
-   * @param newPoolState64x64 64x64 fixed point representation of liquidity in pool after update
-   * @param steepness64x64 64x64 fixed point representation of steepness coefficient
-   * @return 64x64 fixed point representation of new C-Level
-   */
-  function calculateCLevel (
-    int128 initialCLevel64x64,
-    int128 oldPoolState64x64,
-    int128 newPoolState64x64,
-    int128 steepness64x64
-  ) external pure returns (int128) {
-    return newPoolState64x64.sub(oldPoolState64x64).div(
-      oldPoolState64x64 > newPoolState64x64 ? oldPoolState64x64 : newPoolState64x64
-    ).mul(steepness64x64).neg().exp().mul(initialCLevel64x64);
-  }
-
-  /**
-   * @notice calculate the price of an option using the Premia Finance model
-   * @param args arguments of quotePrice
-   * @return premiaPrice64x64 64x64 fixed point representation of Premia option price
-   * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
-   */
-  function quotePrice (
-    IOptionMath.QuoteArgs memory args
-  ) external pure returns (int128 premiaPrice64x64, int128 cLevel64x64, int128 slippageCoefficient64x64) {
-    int128 deltaPoolState64x64 = args.newPoolState.sub(args.oldPoolState).div(args.oldPoolState).mul(args.steepness64x64);
-    int128 tradingDelta64x64 = deltaPoolState64x64.neg().exp();
-
-    int128 bsPrice64x64 = _bsPrice(
-        args.emaVarianceAnnualized64x64,
-        args.strike64x64,
-        args.spot64x64,
-        args.timeToMaturity64x64,
-        args.isCall
-    );
-
-    cLevel64x64 = tradingDelta64x64.mul(args.oldCLevel64x64);
-    slippageCoefficient64x64 = ONE_64x64.sub(tradingDelta64x64).div(deltaPoolState64x64);
-    premiaPrice64x64 = bsPrice64x64.mul(cLevel64x64).mul(slippageCoefficient64x64);
   }
 }

@@ -11,7 +11,7 @@ import { PoolStorage } from './PoolStorage.sol';
 
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
-import { IOptionMath } from '../libraries/IOptionMath.sol';
+import {OptionMath} from '../libraries/OptionMath.sol';
 
 /**
  * @title Premia option pool
@@ -21,8 +21,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   using ABDKMath64x64 for int128;
   using EnumerableSet for EnumerableSet.AddressSet;
   using PoolStorage for PoolStorage.Layout;
-
-  address private immutable OPTION_MATH_ADDRESS;
 
   address private immutable WETH_ADDRESS;
   address private immutable FEE_RECEIVER_ADDRESS;
@@ -102,13 +100,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   );
 
   constructor (
-    address optionMath,
     address weth,
     address feeReceiver,
     int128 fee64x64,
     uint256 batchingPeriod
   ) {
-    OPTION_MATH_ADDRESS = optionMath;
     WETH_ADDRESS = weth;
     FEE_RECEIVER_ADDRESS = feeReceiver;
     FEE_64x64 = fee64x64;
@@ -207,7 +203,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       if (pendingDeposits64x64 > 0) {
         cLevel64x64 = l.calculateCLevel(
-          OPTION_MATH_ADDRESS,
           oldLiquidity64x64.sub(pendingDeposits64x64),
           oldLiquidity64x64,
           isCall
@@ -225,8 +220,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     int128 price64x64;
 
-    (price64x64, cLevel64x64, slippageCoefficient64x64) = IOptionMath(OPTION_MATH_ADDRESS).quotePrice(
-      IOptionMath.QuoteArgs(
+    (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath.quotePrice(
+      OptionMath.QuoteArgs(
         args.emaVarianceAnnualized64x64,
         args.strike64x64,
         args.spot64x64,
@@ -769,7 +764,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 newLiquidity64x64,
     bool isCallPool
   ) internal {
-    int128 cLevel64x64 = l.setCLevel(OPTION_MATH_ADDRESS, oldLiquidity64x64, newLiquidity64x64, isCallPool);
+    int128 cLevel64x64 = l.setCLevel(oldLiquidity64x64, newLiquidity64x64, isCallPool);
     emit UpdateCLevel(isCallPool, cLevel64x64, oldLiquidity64x64, newLiquidity64x64);
   }
 
@@ -793,7 +788,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 oldEmaLogReturns64x64 = l.emaLogReturns64x64;
     int128 oldEmaVarianceAnnualized64x64 = l.emaVarianceAnnualized64x64;
 
-    (int128 newEmaLogReturns64x64, int128 newEmaVariance64x64) = IOptionMath(OPTION_MATH_ADDRESS).unevenRollingEmaVariance(
+    (int128 newEmaLogReturns64x64, int128 newEmaVariance64x64) = OptionMath.unevenRollingEmaVariance(
       oldEmaLogReturns64x64,
       oldEmaVarianceAnnualized64x64 / (365 * 24),
       logReturns64x64,

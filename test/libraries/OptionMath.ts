@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { OptionMathMock, OptionMathMock__factory } from '../../typechain';
+import { OptionMathMock, OptionMathMock__factory, OptionMath__factory } from '../../typechain';
 import { bnToNumber, fixedFromFloat, fixedToNumber } from '../utils/math';
 
 /*
@@ -27,7 +27,8 @@ describe('OptionMath', function () {
 
   before(async function () {
     const [deployer] = await ethers.getSigners();
-    instance = await new OptionMathMock__factory(deployer).deploy();
+    const optionMath = await new OptionMath__factory(deployer).deploy();
+    instance = await new OptionMathMock__factory({ '__$430b703ddf4d641dc7662832950ed9cf8d$__': optionMath.address }, deployer).deploy();
   });
 
   describe('#decay', function () {

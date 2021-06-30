@@ -162,8 +162,7 @@ describe('PoolProxy', function () {
 
     const optionMath = await new OptionMath__factory(owner).deploy();
 
-    const poolImp = await new PoolMock__factory(owner).deploy(
-      optionMath.address,
+    const poolImp = await new PoolMock__factory({ '__$430b703ddf4d641dc7662832950ed9cf8d$__': optionMath.address }, owner).deploy(
       underlyingWeth.address,
     );
 

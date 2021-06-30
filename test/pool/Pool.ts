@@ -35,8 +35,7 @@ describe('Pool', function () {
 
   beforeEach(async function () {
     optionMath = await new OptionMath__factory(owner).deploy();
-    instance = await new PoolMock__factory(owner).deploy(
-      optionMath.address,
+    instance = await new PoolMock__factory({ '__$430b703ddf4d641dc7662832950ed9cf8d$__': optionMath.address }, owner).deploy(
       ethers.constants.AddressZero,
     );
   });
