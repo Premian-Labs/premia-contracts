@@ -11,7 +11,7 @@ import { PoolStorage } from './PoolStorage.sol';
 
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
-import { OptionMath } from '../libraries/OptionMath.sol';
+import {OptionMath} from '../libraries/OptionMath.sol';
 
 /**
  * @title Premia option pool
@@ -202,7 +202,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
       require(oldLiquidity64x64 > 0, "no liq");
 
       if (pendingDeposits64x64 > 0) {
-        cLevel64x64 = l.calculateCLevel(oldLiquidity64x64.sub(pendingDeposits64x64), oldLiquidity64x64, isCall);
+        cLevel64x64 = l.calculateCLevel(
+          oldLiquidity64x64.sub(pendingDeposits64x64),
+          oldLiquidity64x64,
+          isCall
+        );
       }
     }
 
@@ -217,16 +221,17 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     int128 price64x64;
 
     (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath.quotePrice(
-      args.emaVarianceAnnualized64x64,
-      args.strike64x64,
-      args.spot64x64,
-      ABDKMath64x64.divu(args.maturity - block.timestamp, 365 days),
-      cLevel64x64,
-      oldLiquidity64x64,
-      oldLiquidity64x64.sub(amount64x64),
-      OptionMath.ONE_64x64,
-      isCall
-    );
+      OptionMath.QuoteArgs(
+        args.emaVarianceAnnualized64x64,
+        args.strike64x64,
+        args.spot64x64,
+        ABDKMath64x64.divu(args.maturity - block.timestamp, 365 days),
+        cLevel64x64,
+        oldLiquidity64x64,
+        oldLiquidity64x64.sub(amount64x64),
+        0x10000000000000000, // 64x64 fixed point representation of 1
+        isCall
+    ));
 
     baseCost64x64 = isCall ? price64x64.mul(amount64x64).div(args.spot64x64) : price64x64.mul(amount64x64);
     feeCost64x64 = baseCost64x64.mul(FEE_64x64);
@@ -781,23 +786,18 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
     int128 logReturns64x64 = newPrice64x64.div(oldPrice64x64).ln();
     int128 oldEmaLogReturns64x64 = l.emaLogReturns64x64;
-
-    l.emaLogReturns64x64 = OptionMath.unevenRollingEma(
-      oldEmaLogReturns64x64,
-      logReturns64x64,
-      updatedAt,
-      block.timestamp
-    );
-
     int128 oldEmaVarianceAnnualized64x64 = l.emaVarianceAnnualized64x64;
-    newEmaVarianceAnnualized64x64 = OptionMath.unevenRollingEmaVariance(
+
+    (int128 newEmaLogReturns64x64, int128 newEmaVariance64x64) = OptionMath.unevenRollingEmaVariance(
       oldEmaLogReturns64x64,
       oldEmaVarianceAnnualized64x64 / (365 * 24),
       logReturns64x64,
       updatedAt,
       block.timestamp
-    ) * (365 * 24);
+    );
 
+    l.emaLogReturns64x64 = newEmaLogReturns64x64;
+    newEmaVarianceAnnualized64x64 = newEmaVariance64x64 * (365 * 24);
     l.emaVarianceAnnualized64x64 = newEmaVarianceAnnualized64x64;
 
     emit UpdateVariance(
@@ -903,13 +903,20 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         if (amount > 0) {
           bool isCallPool = id == UNDERLYING_FREE_LIQ_TOKEN_ID;
 
-          if (from != address(0) && balanceOf(from, id) == amount) {
-            require(balanceOf(from, id) - l.pendingDeposits[from][l.nextDeposits[isCallPool].eta][isCallPool] >= amount, 'Insuf balance');
-            l.removeUnderwriter(from, isCallPool);
+          if (from != address(0)) {
+            uint256 balance = balanceOf(from, id);
+          // ToDo : Find better solution than checking if under 1e5 to ignore dust left ?
+            if (balance <= amount + 1e5) {
+              require(balance - l.pendingDeposits[from][l.nextDeposits[isCallPool].eta][isCallPool] >= amount, 'Insuf balance');
+              l.removeUnderwriter(from, isCallPool);
+            }
           }
 
-          if (to != address(0) && balanceOf(to, id) == 0) {
-            l.addUnderwriter(to, isCallPool);
+          if (to != address(0)) {
+            uint256 balance = balanceOf(to, id);
+            if (balance <= 1e5 && balance + amount > 1e5) {
+              l.addUnderwriter(to, isCallPool);
+            }
           }
         }
       }
