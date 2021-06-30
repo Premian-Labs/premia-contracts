@@ -5,6 +5,8 @@ import {
   ERC20Mock__factory,
   ManagedProxyOwnable,
   ManagedProxyOwnable__factory,
+  OptionMath,
+  OptionMath__factory,
   PoolMock,
   PoolMock__factory,
   Premia,
@@ -58,6 +60,7 @@ describe('PoolProxy', function () {
 
   let premia: Premia;
   let proxy: ManagedProxyOwnable;
+  let optionMath: OptionMath;
   let pool: PoolMock;
   let poolWeth: PoolMock;
   let base: ERC20Mock;
@@ -157,7 +160,9 @@ describe('PoolProxy', function () {
 
     //
 
-    const poolImp = await new PoolMock__factory(owner).deploy(
+    const optionMath = await new OptionMath__factory(owner).deploy();
+
+    const poolImp = await new PoolMock__factory({ '__$430b703ddf4d641dc7662832950ed9cf8d$__': optionMath.address }, owner).deploy(
       underlyingWeth.address,
     );
 

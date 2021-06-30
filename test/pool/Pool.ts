@@ -3,7 +3,13 @@ import { describeBehaviorOfPool } from './Pool.behavior';
 import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { Pool, PoolMock, PoolMock__factory } from '../../typechain';
+import {
+  OptionMath,
+  OptionMath__factory,
+  Pool,
+  PoolMock,
+  PoolMock__factory,
+} from '../../typechain';
 import { formatTokenId, TokenType } from '../utils/math';
 
 const fixedFromBigNumber = function (bn: BigNumber) {
@@ -20,6 +26,7 @@ const fixedFromFloat = function (float: number) {
 describe('Pool', function () {
   let owner: SignerWithAddress;
 
+  let optionMath: OptionMath;
   let instance: PoolMock;
 
   before(async function () {
@@ -27,7 +34,8 @@ describe('Pool', function () {
   });
 
   beforeEach(async function () {
-    instance = await new PoolMock__factory(owner).deploy(
+    optionMath = await new OptionMath__factory(owner).deploy();
+    instance = await new PoolMock__factory({ '__$430b703ddf4d641dc7662832950ed9cf8d$__': optionMath.address }, owner).deploy(
       ethers.constants.AddressZero,
     );
   });

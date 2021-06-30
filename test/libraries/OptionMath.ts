@@ -1,6 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { OptionMathMock, OptionMathMock__factory } from '../../typechain';
+import { OptionMathMock, OptionMathMock__factory, OptionMath__factory } from '../../typechain';
 import { bnToNumber, fixedFromFloat, fixedToNumber } from '../utils/math';
 
 /*
@@ -27,7 +27,8 @@ describe('OptionMath', function () {
 
   before(async function () {
     const [deployer] = await ethers.getSigners();
-    instance = await new OptionMathMock__factory(deployer).deploy();
+    const optionMath = await new OptionMath__factory(deployer).deploy();
+    instance = await new OptionMathMock__factory({ '__$430b703ddf4d641dc7662832950ed9cf8d$__': optionMath.address }, deployer).deploy();
   });
 
   describe('#decay', function () {
@@ -66,7 +67,7 @@ describe('OptionMath', function () {
       let logReturns = input_t_1[2];
       let old_ema = input_t_2[2];
 
-      let expected = bnToNumber(fixedFromFloat( 0.01346496649));
+      let expected = bnToNumber(fixedFromFloat(0.01346496649));
       const result = bnToNumber(
         await instance.callStatic.unevenRollingEma(old_ema, logReturns, t_1, t),
       );
@@ -100,17 +101,14 @@ describe('OptionMath', function () {
       let old_ema = 0;
       let old_emvar = fixedFromFloat(0.0001732); // 1.48 / 356 / 24
       let expected = bnToNumber(fixedFromFloat(0.0001727));
-      const result = bnToNumber(
-        await instance.callStatic.unevenRollingEmaVariance(
-          old_ema,
-          old_emvar,
-          logReturns,
-          t_1,
-          t,
-        ),
+      const result = await instance.callStatic.unevenRollingEmaVariance(
+        old_ema,
+        old_emvar,
+        logReturns,
+        t_1,
+        t,
       );
-
-      expect(expected / result).to.be.closeTo(1, 0.001);
+      expect(expected / bnToNumber(result[1])).to.be.closeTo(1, 0.001);
     });
   });
 
@@ -204,9 +202,7 @@ describe('OptionMath', function () {
       const price = fixedFromFloat(2000);
       const strike = fixedFromFloat(2500);
       const maturity = fixedFromFloat(10 / 365);
-      const expected = bnToNumber(
-          fixedFromFloat(30.69),
-      );
+      const expected = bnToNumber(fixedFromFloat(30.69));
       const result = bnToNumber(
         await instance.callStatic.bsPrice(
           variance,
@@ -237,17 +233,17 @@ describe('OptionMath', function () {
       ); // c * bsch * slippage
       const result = bnToNumber(
         (
-          await instance.callStatic.quotePrice(
-            variance,
-            strike,
-            price,
-            maturity,
-            cLevel,
-            S0,
-            S1,
-            steepness,
-            true,
-          )
+          await instance.callStatic.quotePrice({
+            emaVarianceAnnualized64x64: variance,
+            strike64x64: strike,
+            spot64x64: price,
+            timeToMaturity64x64: maturity,
+            oldCLevel64x64: cLevel,
+            oldPoolState: S0,
+            newPoolState: S1,
+            steepness64x64: steepness,
+            isCall: true,
+          })
         )[0],
       );
 
