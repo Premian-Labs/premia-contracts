@@ -4,6 +4,7 @@ import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
 import '@typechain/hardhat';
 import 'hardhat-abi-exporter';
+import 'hardhat-dependency-compiler';
 import 'hardhat-docgen';
 import 'hardhat-gas-reporter';
 import 'hardhat-spdx-license-identifier';
@@ -45,6 +46,24 @@ export default {
       },
       {
         version: '0.6.12',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+      {
+        version: '0.6.6',
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+      {
+        version: '0.5.16',
         settings: {
           optimizer: {
             enabled: true,
@@ -113,6 +132,14 @@ export default {
       //gasPrice: 10,
       timeout: 300000,
     },
+  },
+
+  dependencyCompiler: {
+    paths: [
+      '@uniswap/v2-core/contracts/UniswapV2Factory.sol',
+      '@uniswap/v2-core/contracts/UniswapV2Pair.sol',
+      '@uniswap/v2-periphery/contracts/UniswapV2Router02.sol',
+    ]
   },
 
   docgen: {
