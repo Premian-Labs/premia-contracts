@@ -483,22 +483,44 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     bool isCallPool
   ) external {
     PoolStorage.Layout storage l = PoolStorage.layout();
+    uint256 toWithdraw = amount;
 
     _processPendingDeposits(l, isCallPool);
 
     uint256 depositedAt = l.depositedAt[msg.sender][isCallPool];
 
     require(depositedAt + (1 days) < block.timestamp, 'liq lock 1d');
-    // TODO: account for RESERVED_LIQUIDITY tokens
+
     int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCallPool);
-    // burn free liquidity tokens from sender
-    _burn(msg.sender, _getFreeLiquidityTokenId(isCallPool), amount);
-    int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCallPool);
+
+    {
+      uint256 reservedLiqTokenId = _getReservedLiquidityTokenId(isCallPool);
+      uint256 reservedLiquidity = ERC1155EnumerableStorage.layout().totalSupply[reservedLiqTokenId];
+
+      if (reservedLiquidity > 0) {
+        uint256 reservedLiqToWithdraw;
+        if (reservedLiquidity < toWithdraw) {
+          reservedLiqToWithdraw = reservedLiquidity;
+        } else {
+          reservedLiqToWithdraw = toWithdraw;
+        }
+
+        toWithdraw -= reservedLiqToWithdraw;
+        // burn reserved liquidity tokens from sender
+        _burn(msg.sender, reservedLiqTokenId, reservedLiqToWithdraw);
+      }
+    }
+
+    if (toWithdraw > 0) {
+      // burn free liquidity tokens from sender
+      _burn(msg.sender, _getFreeLiquidityTokenId(isCallPool), toWithdraw);
+
+      int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCallPool);
+      _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
+    }
 
     _pushTo(msg.sender, _getPoolToken(isCallPool), amount);
     emit Withdrawal(msg.sender, isCallPool, depositedAt, amount);
-
-    _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
   }
 
 
