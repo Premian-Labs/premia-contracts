@@ -106,6 +106,10 @@ export default {
     hardhat: {
       allowUnlimitedContractSize: true,
       blockGasLimit: 180000000000,
+      forking: {
+        url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
+        blockNumber: 12739250,
+      },
     },
 
     mainnet: {
