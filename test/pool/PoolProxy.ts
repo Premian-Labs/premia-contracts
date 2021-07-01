@@ -162,9 +162,10 @@ describe('PoolProxy', function () {
 
     const optionMath = await new OptionMath__factory(owner).deploy();
 
-    const poolImp = await new PoolMock__factory({ '__$430b703ddf4d641dc7662832950ed9cf8d$__': optionMath.address }, owner).deploy(
-      underlyingWeth.address,
-    );
+    const poolImp = await new PoolMock__factory(
+      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      owner,
+    ).deploy(underlyingWeth.address);
 
     const facetCuts = [await new ProxyManager__factory(owner).deploy()].map(
       function (f) {
@@ -466,59 +467,39 @@ describe('PoolProxy', function () {
   });
 
   describe('#withdraw', function () {
-    describe('call', () => {
-      it('should fail withdrawing if < 1 day after deposit', async () => {
-        await poolUtil.depositLiquidity(owner, 100, true);
+    for (const isCall of [true, false]) {
+      describe(isCall ? 'call' : 'put', () => {
+        it('should fail withdrawing if < 1 day after deposit', async () => {
+          await poolUtil.depositLiquidity(owner, 100, isCall);
 
-        await expect(pool.withdraw('100', true)).to.be.revertedWith(
-          'liq lock 1d',
-        );
+          await expect(pool.withdraw('100', isCall)).to.be.revertedWith(
+            'liq lock 1d',
+          );
 
-        await increaseTimestamp(23 * 3600);
-        await expect(pool.withdraw('100', true)).to.be.revertedWith(
-          'liq lock 1d',
-        );
+          await increaseTimestamp(23 * 3600);
+          await expect(pool.withdraw('100', isCall)).to.be.revertedWith(
+            'liq lock 1d',
+          );
+        });
+
+        it('should return underlying tokens withdrawn by sender', async () => {
+          await poolUtil.depositLiquidity(owner, 100, isCall);
+          expect(await getToken(isCall).balanceOf(owner.address)).to.eq(0);
+
+          await increaseTimestamp(24 * 3600 + 60);
+          await pool.withdraw('100', isCall);
+          expect(await getToken(isCall).balanceOf(owner.address)).to.eq(100);
+          expect(
+            await pool.balanceOf(owner.address, getFreeLiqTokenId(isCall)),
+          ).to.eq(0);
+        });
+
+        it('should successfully withdraw reserved liquidity', async () => {
+          // ToDo
+          expect(false);
+        });
       });
-
-      it('should return underlying tokens withdrawn by sender', async () => {
-        await poolUtil.depositLiquidity(owner, 100, true);
-        expect(await underlying.balanceOf(owner.address)).to.eq(0);
-
-        await increaseTimestamp(24 * 3600 + 60);
-        await pool.withdraw('100', true);
-        expect(await underlying.balanceOf(owner.address)).to.eq(100);
-        expect(
-          await pool.balanceOf(owner.address, underlyingFreeLiqToken),
-        ).to.eq(0);
-      });
-    });
-
-    describe('put', () => {
-      it('should fail withdrawing if < 1 day after deposit', async () => {
-        await poolUtil.depositLiquidity(owner, 100, false);
-
-        await expect(pool.withdraw('100', false)).to.be.revertedWith(
-          'liq lock 1d',
-        );
-
-        await increaseTimestamp(23 * 3600);
-        await expect(pool.withdraw('100', false)).to.be.revertedWith(
-          'liq lock 1d',
-        );
-      });
-
-      it('should return underlying tokens withdrawn by sender', async () => {
-        await poolUtil.depositLiquidity(owner, 100, false);
-        expect(await base.balanceOf(owner.address)).to.eq(0);
-
-        await increaseTimestamp(24 * 3600 + 60);
-        await pool.withdraw('100', false);
-        expect(await base.balanceOf(owner.address)).to.eq(100);
-        expect(
-          await pool.balanceOf(owner.address, underlyingFreeLiqToken),
-        ).to.eq(0);
-      });
-    });
+    }
   });
 
   describe('#purchase', function () {
