@@ -32,17 +32,23 @@ export async function createUniswap(
     dai = await new ERC20Mock__factory(admin).deploy('DAI', 18);
   }
 
+  const router = UniswapV2Router02__factory.connect(
+    '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
+    admin
+  );
+
+  const factory = UniswapV2Factory__factory.connect(
+    await router.callStatic.factory(),
+    admin
+  );
+
   if (!weth) {
-    weth = await new WETH9__factory(admin).deploy();
+    weth = WETH9__factory.connect(
+      await router.callStatic.WETH(),
+      admin
+    );
   }
 
-  const factory = await new UniswapV2Factory__factory(admin).deploy(
-    admin.address,
-  );
-  const router = await new UniswapV2Router02__factory(admin).deploy(
-    factory.address,
-    weth.address,
-  );
   await factory.createPair(dai.address, weth.address);
   const daiWethAddr = await factory.getPair(dai.address, weth.address);
   const daiWeth = await UniswapV2Pair__factory.connect(daiWethAddr, admin);
