@@ -1366,4 +1366,8 @@ describe('PoolProxy', function () {
   describe('#reassignBatch', function () {
     it('todo');
   });
+
+  describe('#withdrawAllAndReassignBatch', function () {
+    it('todo');
+  });
 });

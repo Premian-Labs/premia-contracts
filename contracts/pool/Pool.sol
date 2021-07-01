@@ -382,7 +382,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   function withdraw (
     uint256 amount,
     bool isCallPool
-  ) external {
+  ) public {
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     _processPendingDeposits(l, isCallPool);
@@ -489,7 +489,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   function reassignBatch (
     uint256[] calldata ids,
     uint256[] calldata amounts
-  ) external returns (uint256[] memory baseCosts, uint256[] memory feeCosts) {
+  ) public returns (uint256[] memory baseCosts, uint256[] memory feeCosts) {
     require(ids.length == amounts.length, 'TODO');
 
     baseCosts = new uint256[](ids.length);
@@ -498,6 +498,18 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     for (uint256 i; i < ids.length; i++) {
       (baseCosts[i], feeCosts[i]) = reassign(ids[i], amounts[i]);
     }
+  }
+
+  /**
+   * @notice TODO
+   */
+  function withdrawAllAndReassignBatch (
+    bool isCallPool,
+    uint256[] calldata ids,
+    uint256[] calldata amounts
+  ) external returns (uint256[] memory baseCosts, uint256[] memory feeCosts) {
+    withdraw(balanceOf(msg.sender, _getFreeLiquidityTokenId(isCallPool)), isCallPool);
+    (baseCosts, feeCosts) = reassignBatch(ids, amounts);
   }
 
   /**
