@@ -31,6 +31,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   uint256 private immutable UNDERLYING_FREE_LIQ_TOKEN_ID;
   uint256 private immutable BASE_FREE_LIQ_TOKEN_ID;
 
+  uint256 private immutable UNDERLYING_RESERVED_LIQ_TOKEN_ID;
+  uint256 private immutable BASE_RESERVED_LIQ_TOKEN_ID;
+
   event Purchase (
     address indexed user,
     uint256 longTokenId,
@@ -109,8 +112,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     FEE_RECEIVER_ADDRESS = feeReceiver;
     FEE_64x64 = fee64x64;
     BATCHING_PERIOD = batchingPeriod;
+
     UNDERLYING_FREE_LIQ_TOKEN_ID = PoolStorage.formatTokenId(PoolStorage.TokenType.UNDERLYING_FREE_LIQ, 0, 0);
     BASE_FREE_LIQ_TOKEN_ID = PoolStorage.formatTokenId(PoolStorage.TokenType.BASE_FREE_LIQ, 0, 0);
+
+    UNDERLYING_RESERVED_LIQ_TOKEN_ID = PoolStorage.formatTokenId(PoolStorage.TokenType.UNDERLYING_RESERVED_LIQ, 0, 0);
+    BASE_RESERVED_LIQ_TOKEN_ID = PoolStorage.formatTokenId(PoolStorage.TokenType.BASE_RESERVED_LIQ, 0, 0);
   }
 
   /**
@@ -695,7 +702,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
 
       if (!l.getReinvestmentStatus(underwriter)) {
         _burn(underwriter, freeLiqTokenId, balance);
-        _mint(underwriter, PoolStorage.formatTokenId(PoolStorage.TokenType.RESERVED_LIQUIDITY, 0, 0), balance, '');
+        _mint(underwriter, _getReservedLiquidityTokenId(isCall), balance, '');
         continue;
       }
 
@@ -792,7 +799,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
         _addToDepositQueue(underwriter, freeLiq, isCall);
       } else {
         // ToDo : Different  tokens for put/call
-        _mint(underwriter, PoolStorage.formatTokenId(PoolStorage.TokenType.RESERVED_LIQUIDITY, 0, 0), freeLiq, '');
+        _mint(underwriter, _getReservedLiquidityTokenId(isCall), freeLiq, '');
       }
       // burn short option tokens from underwriter
       _burn(underwriter, shortTokenId, intervalAmount);
@@ -842,6 +849,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
     bool isCall
   ) internal view returns (uint256 freeLiqTokenId) {
     freeLiqTokenId = isCall ? UNDERLYING_FREE_LIQ_TOKEN_ID : BASE_FREE_LIQ_TOKEN_ID;
+  }
+
+  function _getReservedLiquidityTokenId (
+    bool isCall
+  ) internal view returns (uint256 reservedLiqTokenId) {
+    reservedLiqTokenId = isCall ? UNDERLYING_RESERVED_LIQ_TOKEN_ID : BASE_RESERVED_LIQ_TOKEN_ID;
   }
 
   function _getPoolToken (

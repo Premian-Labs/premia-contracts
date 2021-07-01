@@ -13,7 +13,19 @@ import {Pool} from './Pool.sol';
 
 library PoolStorage {
   // ToDo : Handle both  put and call for reserved liq
-  enum TokenType { UNDERLYING_FREE_LIQ, BASE_FREE_LIQ, LONG_CALL, SHORT_CALL, LONG_PUT, SHORT_PUT, RESERVED_LIQUIDITY }
+  enum TokenType {
+    UNDERLYING_FREE_LIQ,
+    BASE_FREE_LIQ,
+
+    LONG_CALL,
+    SHORT_CALL,
+
+    LONG_PUT,
+    SHORT_PUT,
+
+    UNDERLYING_RESERVED_LIQ,
+    BASE_RESERVED_LIQ
+  }
 
   struct PoolSettings {
     address underlying;
