@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import { OwnableInternal } from '@solidstate/contracts/access/OwnableInternal.sol';
+import { ERC165 } from '@solidstate/contracts/introspection/ERC165.sol';
 import { IERC20 } from '@solidstate/contracts/token/ERC20/IERC20.sol';
 import { ERC1155Enumerable, EnumerableSet, ERC1155EnumerableStorage } from '@solidstate/contracts/token/ERC1155/ERC1155Enumerable.sol';
 import { IWETH } from '@solidstate/contracts/utils/IWETH.sol';
@@ -17,7 +18,7 @@ import {OptionMath} from '../libraries/OptionMath.sol';
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract Pool is OwnableInternal, ERC1155Enumerable {
+contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   using ABDKMath64x64 for int128;
   using EnumerableSet for EnumerableSet.AddressSet;
   using PoolStorage for PoolStorage.Layout;
