@@ -1,4 +1,6 @@
 import { task } from 'hardhat/config';
+import { OptionMath__factory } from '../typechain';
+import { PoolTradingCompetitionLibraryAddresses } from '../typechain/factories/PoolTradingCompetition__factory';
 
 export const RINKEBY_WETH = '0xc778417e063141139fce010982780140aa0cd5ab';
 
@@ -15,13 +17,17 @@ task('upgrade-pool-implementation').setAction(async function (args, hre) {
 
   const weth = RINKEBY_WETH;
 
+  const optionMath = await new OptionMath__factory(deployer).deploy();
+
+  const linkAddresses: PoolTradingCompetitionLibraryAddresses = {
+    __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address,
+  };
+
   let pool: typeof Pool | typeof PoolTradingCompetition;
-  pool = await new PoolTradingCompetition__factory(deployer).deploy(
-    weth,
-    deployer.address,
-    0,
-    260,
-  );
+  pool = await new PoolTradingCompetition__factory(
+    linkAddresses,
+    deployer,
+  ).deploy(weth, deployer.address, 0, 260);
 
   const proxyManager = ProxyManager__factory.connect(
     '0x82D11b95b01bA7847b32d6d1503875FF922a1ecB',

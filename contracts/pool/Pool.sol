@@ -774,6 +774,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
   function _update (
     PoolStorage.Layout storage l
   ) internal returns (int128 newPrice64x64, int128 newEmaVarianceAnnualized64x64) {
+    if (l.updatedAt == block.timestamp) {
+      return (l.getPriceUpdate(block.timestamp), l.emaVarianceAnnualized64x64);
+    }
+
     newPrice64x64 = l.fetchPriceUpdate();
 
     uint256 updatedAt = l.updatedAt;
