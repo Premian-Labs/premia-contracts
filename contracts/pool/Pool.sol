@@ -910,7 +910,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable {
           if (from != address(0)) {
             uint256 balance = balanceOf(from, id);
           // ToDo : Find better solution than checking if under 1e5 to ignore dust left ?
-            if (balance <= amount + 1e5) {
+            if (balance > 1e5 && balance <= amount + 1e5) {
               require(balance - l.pendingDeposits[from][l.nextDeposits[isCallPool].eta][isCallPool] >= amount, 'Insuf balance');
               l.removeUnderwriter(from, isCallPool);
             }
