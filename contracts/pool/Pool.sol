@@ -12,7 +12,7 @@ import { PoolStorage } from './PoolStorage.sol';
 
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
-import {OptionMath} from '../libraries/OptionMath.sol';
+import { OptionMath } from '../libraries/OptionMath.sol';
 
 /**
  * @title Premia option pool
