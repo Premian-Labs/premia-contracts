@@ -774,24 +774,24 @@
   dependencies:
     antlr4ts "^0.5.0-alpha.4"
 
-"@solidstate/contracts@^0.0.15":
-  version "0.0.15"
-  resolved "https://registry.yarnpkg.com/@solidstate/contracts/-/contracts-0.0.15.tgz#907ee5ab37bc8b11f263f98f24765d9a85aa92db"
-  integrity sha512-JZyqFGJQ8qYgHE5uRM9VnKB87ODng2w/UszZTDv+uDwFFm+NDwfGwg1y1LUUluWeC/05V2Yfz3WNq9S4Sjy+ng==
+"@solidstate/contracts@^0.0.16":
+  version "0.0.16"
+  resolved "https://registry.yarnpkg.com/@solidstate/contracts/-/contracts-0.0.16.tgz#b06b7ada5316480b9a6e086c70033d20bcf71567"
+  integrity sha512-mGor0Db6ghLDHfAhGg7ioCH5Hc7SHn4O21AsdlG7/Bm+c616cKMJEZjswu0cCn+OSF2wmojPXJaZcXrhnmfxnA==
 
-"@solidstate/library@^0.0.15":
-  version "0.0.15"
-  resolved "https://registry.yarnpkg.com/@solidstate/library/-/library-0.0.15.tgz#f8c34b6407e222cd682532bea0f78b2ee1e2e04b"
-  integrity sha512-wmzEwOnv5Ly76bOJBG873ZWbbxLYw14le7i8iVBp7//YNX/01eqQi8Uc+stkJctZmEkREJ4Q8m2uc+pPuiUrwA==
+"@solidstate/library@^0.0.16":
+  version "0.0.16"
+  resolved "https://registry.yarnpkg.com/@solidstate/library/-/library-0.0.16.tgz#909049376c49fa75dd90f8fc2a3c8a9261783e99"
+  integrity sha512-Wv5IzJU5cldwCojhrholMPQV5yNmJT2IV8yzk3qRuNTPLaS3s7me3VGoDUQLOwY2hpoI7PCc2OPXOt3mNX9oAw==
   dependencies:
-    eth-permit "^0.1.9"
+    eth-permit "^0.1.10"
 
-"@solidstate/spec@^0.0.15":
-  version "0.0.15"
-  resolved "https://registry.yarnpkg.com/@solidstate/spec/-/spec-0.0.15.tgz#de5ee6a2c76a9dbfa29c15a5e4c1481d3e3fe91b"
-  integrity sha512-1h0hTuOpN9o4olgWhNpHQW9Qsn4GpF/1gp5MQqrpNobr3/gIIdYBK7KRB5rqmr39TxiLODDD57ShCxkAt3PMtA==
+"@solidstate/spec@^0.0.16":
+  version "0.0.16"
+  resolved "https://registry.yarnpkg.com/@solidstate/spec/-/spec-0.0.16.tgz#21981400060efee3fa922753bf3dd25f51983b42"
+  integrity sha512-bW99axJlZpnG/UOzx6ZZ2gbxvodZCqE6HFaHtU4xMfWlQKIbtW7QQ29YZxonkz49Y1w3AV9lH6kRzCit2d+zsQ==
   dependencies:
-    "@solidstate/library" "^0.0.15"
+    "@solidstate/library" "^0.0.16"
 
 "@szmarczak/http-timer@^1.1.2":
   version "1.1.2"
@@ -3981,10 +3981,10 @@ eth-lib@^0.1.26:
     ws "^3.0.0"
     xhr-request-promise "^0.1.2"
 
-eth-permit@^0.1.9:
-  version "0.1.9"
-  resolved "https://registry.yarnpkg.com/eth-permit/-/eth-permit-0.1.9.tgz#670b62483c58bddeceb49d7b62741bbebfa73df8"
-  integrity sha512-jkvmvz8/YnNMWE5/S12L+DkVL0NEgL9jaFxDJWgpx+Ozfx5gGQGsgS5gkVROKmGuixtgKm3jebtykzt1FE/LVA==
+eth-permit@^0.1.10:
+  version "0.1.10"
+  resolved "https://registry.yarnpkg.com/eth-permit/-/eth-permit-0.1.10.tgz#73f6176dd0dc9b66c87eb381cb1509e3dfe4b273"
+  integrity sha512-cMAjWvGEaCQoWSlKWBqkBMQvhCtXzVlkTCnYBxGRsCxznbBZSiYuOsHpTAb4EerRwQJkRgwd3vPvcZh3OA7Siw==
   dependencies:
     utf8 "^3.0.0"
 
