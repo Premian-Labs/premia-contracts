@@ -397,7 +397,7 @@ describe('PoolProxy', function () {
 
   describe('#deposit', function () {
     describe('call', () => {
-      it('should grant sender share tokens with ERC20 deposit (call)', async () => {
+      it('should grant sender share tokens with ERC20 deposit', async () => {
         await underlying.mint(owner.address, 100);
         await underlying.approve(pool.address, ethers.constants.MaxUint256);
         await expect(() => pool.deposit('100', true)).to.changeTokenBalance(
@@ -455,7 +455,7 @@ describe('PoolProxy', function () {
     });
 
     describe('put', () => {
-      it('should grant sender share tokens with ERC20 deposit (put)', async () => {
+      it('should grant sender share tokens with ERC20 deposit', async () => {
         await base.mint(owner.address, 100);
         await base.approve(pool.address, ethers.constants.MaxUint256);
         await expect(() => pool.deposit('100', false)).to.changeTokenBalance(
@@ -589,7 +589,7 @@ describe('PoolProxy', function () {
           ).to.be.revertedWith('exp not end UTC day');
         });
 
-        it('should revert if using a strike > 2x spot', async () => {
+        it('should revert if using a strike > 1.5x spot', async () => {
           await poolUtil.depositLiquidity(
             owner,
             parseOption(isCall ? '100' : '100000', isCall),
@@ -606,10 +606,10 @@ describe('PoolProxy', function () {
               maxCost: parseOption('100', isCall),
               isCall,
             }),
-          ).to.be.revertedWith('strike > 2x spot');
+          ).to.be.revertedWith('strike > 1.5x spot');
         });
 
-        it('should revert if using a strike < 0.5x spot', async () => {
+        it('should revert if using a strike < 0.75x spot', async () => {
           await poolUtil.depositLiquidity(
             owner,
             parseOption(isCall ? '100' : '100000', isCall),
@@ -626,7 +626,7 @@ describe('PoolProxy', function () {
               maxCost: parseOption('100', isCall),
               isCall,
             }),
-          ).to.be.revertedWith('strike < 0.5x spot');
+          ).to.be.revertedWith('strike < 0.75x spot');
         });
 
         it('should revert if cost is above max cost', async () => {
