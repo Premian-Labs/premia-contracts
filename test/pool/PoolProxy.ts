@@ -45,6 +45,7 @@ import {
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
+import { ZERO_ADDRESS } from '../utils/constants';
 
 chai.use(chaiAlmost(0.02));
 
@@ -162,9 +163,10 @@ describe('PoolProxy', function () {
 
     const optionMath = await new OptionMath__factory(owner).deploy();
 
-    const poolImp = await new PoolMock__factory({ '__$430b703ddf4d641dc7662832950ed9cf8d$__': optionMath.address }, owner).deploy(
-      underlyingWeth.address,
-    );
+    const poolImp = await new PoolMock__factory(
+      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      owner,
+    ).deploy(underlyingWeth.address);
 
     const facetCuts = [await new ProxyManager__factory(owner).deploy()].map(
       function (f) {
@@ -260,7 +262,6 @@ describe('PoolProxy', function () {
       const removeAddress = async (value: number) => {
         await pool.removeUnderwriter(formatAddress(value), true);
         queue = queue.filter((el) => el !== value);
-        // console.log(queue);
         expect(await pool.getUnderwriter()).to.eq(
           formatAddress(queue.length ? queue[0] : 0),
         );
@@ -286,7 +287,9 @@ describe('PoolProxy', function () {
       await removeAddress(5);
       await addAddress(3);
       await addAddress(3);
+      await addAddress(3);
       await removeAddress(1);
+      await removeAddress(6);
       await removeAddress(6);
       await removeAddress(9);
       await addAddress(3);
@@ -298,6 +301,8 @@ describe('PoolProxy', function () {
         // console.log(queue);
         await removeAddress(queue[0]);
       }
+
+      expect(await pool.getUnderwriter()).to.eq(ZERO_ADDRESS);
     });
   });
 
