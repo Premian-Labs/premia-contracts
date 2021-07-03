@@ -186,7 +186,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     bool isCall = args.isCall;
 
     int128 oldLiquidity64x64;
-    cLevel64x64 = l.getCLevel(isCall);
 
     {
       PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
@@ -208,9 +207,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
           oldLiquidity64x64,
           isCall
         );
+      } else {
+        cLevel64x64 = l.getCLevel(isCall);
       }
     }
-
 
     // TODO: validate values without spending gas
     // assert(oldLiquidity64x64 >= newLiquidity64x64);
