@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
 import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
+import {ERC165} from '@solidstate/contracts/introspection/ERC165.sol';
 import {ERC1155Base} from '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
 import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
 import {IERC20Metadata} from '@solidstate/contracts/token/ERC20/IERC20Metadata.sol';
@@ -18,7 +19,7 @@ import {OptionStorage} from './OptionStorage.sol';
 
 /// @author Premia
 /// @title An option contract
-contract Option is Ownable, ERC1155Base, ReentrancyGuard {
+contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     using OptionStorage for OptionStorage.Layout;
     using SafeERC20 for IERC20;
 
