@@ -12,7 +12,6 @@ import {OptionMath} from '../libraries/OptionMath.sol';
 import {Pool} from './Pool.sol';
 
 library PoolStorage {
-  // ToDo : Handle both  put and call for reserved liq
   enum TokenType {
     UNDERLYING_FREE_LIQ,
     BASE_FREE_LIQ,

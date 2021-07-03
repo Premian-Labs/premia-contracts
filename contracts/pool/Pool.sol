@@ -379,6 +379,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    * @param strike64x64 64x64 fixed point representation of strike price
    * @notice write call option without using pool liquidity
    * @param amount quantity of option contract tokens to exercise
+   * @param isCall whether this is a call or a put
    * @return longCallTokenId token id of the long call
    * @return shortCallTokenId token id of the short call
    */
@@ -386,9 +387,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     address longCallReceiver,
     uint64 maturity,
     int128 strike64x64,
-    uint256 amount
+    uint256 amount,
+    bool isCall
   ) external returns(uint256 longCallTokenId, uint256 shortCallTokenId) {
-    (longCallTokenId, shortCallTokenId) = _write(msg.sender, longCallReceiver, maturity, strike64x64, amount);
+    (longCallTokenId, shortCallTokenId) = _write(msg.sender, longCallReceiver, maturity, strike64x64, amount, isCall);
   }
 
   /**
@@ -399,6 +401,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    * @param strike64x64 64x64 fixed point representation of strike price
    * @notice write call option without using pool liquidity
    * @param amount quantity of option contract tokens to exercise
+   * @param isCall whether this is a call or a put
    * @return longCallTokenId token id of the long call
    * @return shortCallTokenId token id of the short call
    */
@@ -407,11 +410,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     address longCallReceiver,
     uint64 maturity,
     int128 strike64x64,
-    uint256 amount
+    uint256 amount,
+    bool isCall
   ) external returns(uint256 longCallTokenId, uint256 shortCallTokenId) {
     // ToDo : Should the permission to write option be separated from the approval for transfers ?
     require(isApprovedForAll(underwriter, msg.sender), 'Pool: Not approved');
-    (longCallTokenId, shortCallTokenId) = _write(underwriter, longCallReceiver, maturity, strike64x64, amount);
+    (longCallTokenId, shortCallTokenId) = _write(underwriter, longCallReceiver, maturity, strike64x64, amount, isCall);
   }
 
   /**
@@ -422,6 +426,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    * @param strike64x64 64x64 fixed point representation of strike price
    * @notice write call option without using pool liquidity
    * @param amount quantity of option contract tokens to exercise
+   * @param isCall whether this is a call or a put
    * @return longCallTokenId token id of the long call
    * @return shortCallTokenId token id of the short call
    */
@@ -430,25 +435,23 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     address longCallReceiver,
     uint64 maturity,
     int128 strike64x64,
-    uint256 amount
+    uint256 amount,
+    bool isCall
   ) internal returns(uint256 longCallTokenId, uint256 shortCallTokenId) {
-    PoolStorage.Layout storage l = PoolStorage.layout();
+    address token = _getPoolToken(isCall);
+    uint256 fee = FEE_64x64.mulu(amount);
+    _pullFrom(underwriter, token, amount + fee);
+    IERC20(token).transfer(FEE_RECEIVER_ADDRESS, fee);
 
-    _pullFrom(underwriter, l.underlying, amount);
-
-    // ToDo : Pay fee
-
-    longCallTokenId = PoolStorage.formatTokenId(PoolStorage.TokenType.LONG_CALL, maturity, strike64x64);
-    shortCallTokenId = PoolStorage.formatTokenId(PoolStorage.TokenType.SHORT_CALL, maturity, strike64x64);
+    longCallTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), maturity, strike64x64);
+    shortCallTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64);
 
     // mint long option token for underwriter (ERC1155)
     _mint(underwriter, longCallTokenId, amount, '');
     // mint short option token for underwriter (ERC1155)
     _mint(longCallReceiver, shortCallTokenId, amount, '');
 
-    // ToDo : Ensure manually written option cannot be reassigned
     // ToDo : Allow underwriter to burn both LONG and SHORT tokens to withdraw collateral
-    // ToDo : Prevent auto reinvestment of funds from exercise into the AMM liquidity, for manually written options
 
     // ToDo : Add event
   }
