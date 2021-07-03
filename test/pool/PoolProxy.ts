@@ -188,12 +188,12 @@ describe('PoolProxy', function () {
 
     const manager = ProxyManager__factory.connect(premia.address, owner);
 
-    baseOracle = await deployMockContract(owner, [
+    baseOracle = await deployMockContract(owner as any, [
       'function latestAnswer () external view returns (int)',
       'function decimals () external view returns (uint8)',
     ]);
 
-    underlyingOracle = await deployMockContract(owner, [
+    underlyingOracle = await deployMockContract(owner as any, [
       'function latestAnswer () external view returns (int)',
       'function decimals () external view returns (uint8)',
     ]);
