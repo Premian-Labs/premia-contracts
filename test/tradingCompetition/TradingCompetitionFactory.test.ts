@@ -35,11 +35,11 @@ describe('TradingCompetitionFactory', () => {
     [owner, minter, whitelisted, blacklisted, notWhitelisted] =
       await ethers.getSigners();
 
-    ethOracle = await deployMockContract(owner, [
+    ethOracle = await deployMockContract(owner as any, [
       'function latestAnswer () external view returns (int)',
     ]);
 
-    linkOracle = await deployMockContract(owner, [
+    linkOracle = await deployMockContract(owner as any, [
       'function latestAnswer () external view returns (int)',
     ]);
 

@@ -179,6 +179,8 @@ library PoolStorage {
     bool isCallPool
   ) internal {
     require(account != address(0));
+    if (isInQueue(l, account, isCallPool)) return;
+
     mapping (address => address) storage desc = l.liquidityQueueDescending[isCallPool];
 
     address last = desc[address(0)];
@@ -194,6 +196,8 @@ library PoolStorage {
     bool isCallPool
   ) internal {
     require(account != address(0));
+    if (!isInQueue(l, account, isCallPool)) return;
+
     mapping (address => address) storage asc = l.liquidityQueueAscending[isCallPool];
     mapping (address => address) storage desc = l.liquidityQueueDescending[isCallPool];
 
@@ -203,6 +207,19 @@ library PoolStorage {
     desc[next] = prev;
     delete asc[account];
     delete desc[account];
+  }
+
+  function isInQueue (
+    Layout storage l,
+    address account,
+    bool isCallPool
+  ) internal view returns (bool) {
+    mapping (address => address) storage asc = l.liquidityQueueAscending[isCallPool];
+    mapping (address => address) storage desc = l.liquidityQueueDescending[isCallPool];
+
+    return asc[address(0)] == account
+      || desc[address(0)] == account
+      || asc[account] != address(0); // No need to check desc[account]
   }
 
   function getCLevel (

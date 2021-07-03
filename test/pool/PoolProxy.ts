@@ -45,6 +45,7 @@ import {
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
+import { ZERO_ADDRESS } from '../utils/constants';
 
 chai.use(chaiAlmost(0.02));
 
@@ -187,12 +188,12 @@ describe('PoolProxy', function () {
 
     const manager = ProxyManager__factory.connect(premia.address, owner);
 
-    baseOracle = await deployMockContract(owner, [
+    baseOracle = await deployMockContract(owner as any, [
       'function latestAnswer () external view returns (int)',
       'function decimals () external view returns (uint8)',
     ]);
 
-    underlyingOracle = await deployMockContract(owner, [
+    underlyingOracle = await deployMockContract(owner as any, [
       'function latestAnswer () external view returns (int)',
       'function decimals () external view returns (uint8)',
     ]);
@@ -261,7 +262,6 @@ describe('PoolProxy', function () {
       const removeAddress = async (value: number) => {
         await pool.removeUnderwriter(formatAddress(value), true);
         queue = queue.filter((el) => el !== value);
-        // console.log(queue);
         expect(await pool.getUnderwriter()).to.eq(
           formatAddress(queue.length ? queue[0] : 0),
         );
@@ -287,7 +287,9 @@ describe('PoolProxy', function () {
       await removeAddress(5);
       await addAddress(3);
       await addAddress(3);
+      await addAddress(3);
       await removeAddress(1);
+      await removeAddress(6);
       await removeAddress(6);
       await removeAddress(9);
       await addAddress(3);
@@ -299,6 +301,8 @@ describe('PoolProxy', function () {
         // console.log(queue);
         await removeAddress(queue[0]);
       }
+
+      expect(await pool.getUnderwriter()).to.eq(ZERO_ADDRESS);
     });
   });
 
@@ -393,7 +397,7 @@ describe('PoolProxy', function () {
 
   describe('#deposit', function () {
     describe('call', () => {
-      it('should grant sender share tokens with ERC20 deposit (call)', async () => {
+      it('should grant sender share tokens with ERC20 deposit', async () => {
         await underlying.mint(owner.address, 100);
         await underlying.approve(pool.address, ethers.constants.MaxUint256);
         await expect(() => pool.deposit('100', true)).to.changeTokenBalance(
@@ -451,7 +455,7 @@ describe('PoolProxy', function () {
     });
 
     describe('put', () => {
-      it('should grant sender share tokens with ERC20 deposit (put)', async () => {
+      it('should grant sender share tokens with ERC20 deposit', async () => {
         await base.mint(owner.address, 100);
         await base.approve(pool.address, ethers.constants.MaxUint256);
         await expect(() => pool.deposit('100', false)).to.changeTokenBalance(
@@ -565,7 +569,7 @@ describe('PoolProxy', function () {
           ).to.be.revertedWith('exp not end UTC day');
         });
 
-        it('should revert if using a strike > 2x spot', async () => {
+        it('should revert if using a strike > 1.5x spot', async () => {
           await poolUtil.depositLiquidity(
             owner,
             parseOption(isCall ? '100' : '100000', isCall),
@@ -582,10 +586,10 @@ describe('PoolProxy', function () {
               maxCost: parseOption('100', isCall),
               isCall,
             }),
-          ).to.be.revertedWith('strike > 2x spot');
+          ).to.be.revertedWith('strike > 1.5x spot');
         });
 
-        it('should revert if using a strike < 0.5x spot', async () => {
+        it('should revert if using a strike < 0.75x spot', async () => {
           await poolUtil.depositLiquidity(
             owner,
             parseOption(isCall ? '100' : '100000', isCall),
@@ -602,7 +606,7 @@ describe('PoolProxy', function () {
               maxCost: parseOption('100', isCall),
               isCall,
             }),
-          ).to.be.revertedWith('strike < 0.5x spot');
+          ).to.be.revertedWith('strike < 0.75x spot');
         });
 
         it('should revert if cost is above max cost', async () => {
@@ -1342,5 +1346,13 @@ describe('PoolProxy', function () {
         });
       });
     }
+  });
+
+  describe('#reassignBatch', function () {
+    it('todo');
+  });
+
+  describe('#withdrawAllAndReassignBatch', function () {
+    it('todo');
   });
 });

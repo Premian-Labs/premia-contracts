@@ -37,7 +37,9 @@ async function main() {
     console.log(toProcess);
 
     for (const tokenId of Object.keys(toProcess)) {
-      await pool.processExpired(tokenId, toProcess[tokenId]);
+      await pool.processExpired(tokenId, toProcess[tokenId], {
+        gasLimit: 5000000,
+      });
     }
   }
 }
