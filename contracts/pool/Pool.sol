@@ -457,7 +457,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     uint256[] calldata ids,
     uint256[] calldata amounts
   ) external returns (uint256[] memory baseCosts, uint256[] memory feeCosts) {
-    withdraw(balanceOf(msg.sender, _getFreeLiquidityTokenId(isCallPool)), isCallPool);
+    uint256 balance = balanceOf(msg.sender, _getFreeLiquidityTokenId(isCallPool));
+
+    if (balance > 0) {
+      withdraw(balance, isCallPool);
+    }
+
     (baseCosts, feeCosts) = reassignBatch(ids, amounts);
   }
 
