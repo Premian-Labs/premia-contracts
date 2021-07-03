@@ -1,9 +1,11 @@
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { ONE_WEEK } from './constants';
 import { BigNumber } from 'ethers';
 
 export async function resetHardhat() {
-  await ethers.provider.send('hardhat_reset', []);
+  const { url: jsonRpcUrl, blockNumber } = (network as any).config.forking
+
+  await ethers.provider.send('hardhat_reset', [{ forking: { jsonRpcUrl, blockNumber } }]);
 }
 
 export async function getBlockNumber() {
