@@ -185,12 +185,23 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     int128 cLevel64x64,
     int128 slippageCoefficient64x64
   ) {
+    (int128 spot64x64, , , , , int128 emaVarianceAnnualized64x64) = _calculateUpdate(PoolStorage.layout());
+
     (
       baseCost64x64,
       feeCost64x64,
       cLevel64x64,
       slippageCoefficient64x64
-    ) = _quote(args);
+    ) = _quote(
+      PoolStorage.QuoteArgs(
+        args.maturity,
+        args.strike64x64,
+        spot64x64,
+        emaVarianceAnnualized64x64,
+        args.amount,
+        args.isCall
+      )
+    );
   }
 
   /**
@@ -845,39 +856,40 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    */
   function _update (
     PoolStorage.Layout storage l
-  ) internal returns (int128 newPrice64x64, int128 newEmaVarianceAnnualized64x64) {
-    _processPendingDeposits(l, true);
-    _processPendingDeposits(l, false);
+  ) internal returns (
+    int128 newPrice64x64,
+    int128 newEmaVarianceAnnualized64x64
+  ) {
+    uint256 updatedAt = l.updatedAt;
 
     if (l.updatedAt == block.timestamp) {
       return (l.getPriceUpdate(block.timestamp), l.emaVarianceAnnualized64x64);
     }
 
-    newPrice64x64 = l.fetchPriceUpdate();
+    int128 logReturns64x64;
+    int128 oldEmaLogReturns64x64;
+    int128 newEmaLogReturns64x64;
+    int128 oldEmaVarianceAnnualized64x64;
 
-    uint256 updatedAt = l.updatedAt;
-
-    int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
+    (
+      newPrice64x64,
+      logReturns64x64,
+      oldEmaLogReturns64x64,
+      newEmaLogReturns64x64,
+      oldEmaVarianceAnnualized64x64,
+      newEmaVarianceAnnualized64x64
+    ) = _calculateUpdate(l);
 
     if (l.getPriceUpdate(block.timestamp) == 0) {
       l.setPriceUpdate(newPrice64x64);
     }
 
-    int128 logReturns64x64 = newPrice64x64.div(oldPrice64x64).ln();
-    int128 oldEmaLogReturns64x64 = l.emaLogReturns64x64;
-    int128 oldEmaVarianceAnnualized64x64 = l.emaVarianceAnnualized64x64;
-
-    (int128 newEmaLogReturns64x64, int128 newEmaVariance64x64) = OptionMath.unevenRollingEmaVariance(
-      oldEmaLogReturns64x64,
-      oldEmaVarianceAnnualized64x64 / (365 * 24),
-      logReturns64x64,
-      updatedAt,
-      block.timestamp
-    );
-
     l.emaLogReturns64x64 = newEmaLogReturns64x64;
-    newEmaVarianceAnnualized64x64 = newEmaVariance64x64 * (365 * 24);
     l.emaVarianceAnnualized64x64 = newEmaVarianceAnnualized64x64;
+    l.updatedAt = block.timestamp;
+
+    _processPendingDeposits(l, true);
+    _processPendingDeposits(l, false);
 
     emit UpdateVariance(
       oldEmaLogReturns64x64,
@@ -886,8 +898,40 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       updatedAt,
       newEmaVarianceAnnualized64x64
     );
+  }
 
-    l.updatedAt = block.timestamp;
+  /**
+   * @notice TODO
+   */
+  function _calculateUpdate (
+    PoolStorage.Layout storage l
+  ) internal view returns (
+    int128 newPrice64x64,
+    int128 logReturns64x64,
+    int128 oldEmaLogReturns64x64,
+    int128 newEmaLogReturns64x64,
+    int128 oldEmaVarianceAnnualized64x64,
+    int128 newEmaVarianceAnnualized64x64
+  ) {
+    uint256 updatedAt = l.updatedAt;
+    int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
+    newPrice64x64 = l.fetchPriceUpdate();
+
+    logReturns64x64 = newPrice64x64.div(oldPrice64x64).ln();
+    oldEmaLogReturns64x64 = l.emaLogReturns64x64;
+    oldEmaVarianceAnnualized64x64 = l.emaVarianceAnnualized64x64;
+
+    int128 newEmaVariance64x64;
+
+    (newEmaLogReturns64x64, newEmaVariance64x64) = OptionMath.unevenRollingEmaVariance(
+      oldEmaLogReturns64x64,
+      oldEmaVarianceAnnualized64x64 / (365 * 24),
+      logReturns64x64,
+      updatedAt,
+      block.timestamp
+    );
+
+    newEmaVarianceAnnualized64x64 = newEmaVariance64x64 * (365 * 24);
   }
 
   /**
