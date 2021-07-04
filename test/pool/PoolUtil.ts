@@ -137,13 +137,13 @@ export class PoolUtil {
       isCall,
     );
 
-    await this.pool.connect(buyer).purchase({
+    await this.pool.connect(buyer).purchase(
       maturity,
       strike64x64,
       amount,
-      maxCost: ethers.constants.MaxUint256,
       isCall,
-    });
+      ethers.constants.MaxUint256,
+    );
 
     return quote;
   }

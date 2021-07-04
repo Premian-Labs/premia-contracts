@@ -30,14 +30,6 @@ library PoolStorage {
     bool isCall; // true for call, false for put
   }
 
-  struct PurchaseArgs {
-    uint64 maturity; // timestamp of option maturity
-    int128 strike64x64; // 64x64 fixed point representation of strike price
-    uint256 amount; // size of option contract
-    uint256 maxCost; // maximum acceptable cost after accounting for slippage
-    bool isCall; // true for call, false for put
-  }
-
   struct BatchData {
     uint256 eta;
     uint256 totalPendingDeposits;
