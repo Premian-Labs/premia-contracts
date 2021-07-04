@@ -326,12 +326,12 @@ describe('PoolProxy', function () {
       const strike64x64 = fixedFromFloat(spotPrice * 1.25);
 
       await expect(
-        pool.quote({
+        pool.quote(
           maturity,
           strike64x64,
-          amount: parseUnderlying('1'),
-          isCall: true,
-        }),
+          parseUnderlying('1'),
+          true,
+        ),
       ).to.be.revertedWith('no liq');
     });
 
@@ -343,12 +343,12 @@ describe('PoolProxy', function () {
         const spot64x64 = fixedFromFloat(spotPrice);
         const now = getCurrentTimestamp();
 
-        const q = await pool.quote({
-          maturity: now + 10 * 24 * 3600,
+        const q = await pool.quote(
+          now + 10 * 24 * 3600,
           strike64x64,
-          amount: parseUnderlying('1'),
-          isCall: true,
-        });
+          parseUnderlying('1'),
+          true,
+        );
 
         expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(70.92);
         expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
@@ -369,12 +369,12 @@ describe('PoolProxy', function () {
         const spot64x64 = fixedFromFloat(spotPrice);
         const now = getCurrentTimestamp();
 
-        const q = await pool.quote({
-          maturity: now + 10 * 24 * 3600,
+        const q = await pool.quote(
+          now + 10 * 24 * 3600,
           strike64x64,
-          amount: parseUnderlying('1'),
-          isCall: false,
-        });
+          parseUnderlying('1'),
+          false,
+        );
 
         expect(fixedToNumber(q.baseCost64x64)).to.almost(114.63);
         expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
@@ -663,12 +663,12 @@ describe('PoolProxy', function () {
           const purchaseAmountNb = 10;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
-          const quote = await pool.quote({
+          const quote = await pool.quote(
             maturity,
             strike64x64,
-            amount: purchaseAmount,
+            purchaseAmount,
             isCall,
-          });
+          );
 
           const mintAmount = parseOption('1000', isCall);
           await getToken(isCall).mint(buyer.address, mintAmount);
@@ -750,12 +750,12 @@ describe('PoolProxy', function () {
           const purchaseAmountNb = 10;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
-          const quote = await pool.quote({
+          const quote = await pool.quote(
             maturity,
             strike64x64,
-            amount: purchaseAmount,
+            purchaseAmount,
             isCall,
-          });
+          );
 
           await getToken(isCall).mint(
             buyer.address,

@@ -171,14 +171,20 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
   /**
    * @notice calculate price of option contract
-   * @param args arguments of the quote
+   * @param maturity timestamp of option maturity
+   * @param strike64x64 64x64 fixed point representation of strike price
+   * @param amount size of option contract
+   * @param isCall true for call, false for put
    * @return baseCost64x64 64x64 fixed point representation of option cost denominated in underlying currency (without fee)
    * @return feeCost64x64 64x64 fixed point representation of option fee cost denominated in underlying currency for call, or base currency for put
    * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
    * @return slippageCoefficient64x64 64x64 fixed point representation of slippage coefficient for given order size
    */
   function quote (
-    PoolStorage.QuoteArgs memory args
+    uint64 maturity,
+    int128 strike64x64,
+    uint256 amount,
+    bool isCall
   ) external view returns (
     int128 baseCost64x64,
     int128 feeCost64x64,
@@ -194,12 +200,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       slippageCoefficient64x64
     ) = _quote(
       PoolStorage.QuoteArgsInternal(
-        args.maturity,
-        args.strike64x64,
+        maturity,
+        strike64x64,
         spot64x64,
         emaVarianceAnnualized64x64,
-        args.amount,
-        args.isCall
+        amount,
+        isCall
       )
     );
   }

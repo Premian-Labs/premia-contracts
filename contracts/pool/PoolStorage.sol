@@ -21,13 +21,6 @@ library PoolStorage {
     address baseOracle;
   }
 
-  struct QuoteArgs {
-    uint64 maturity; // timestamp of option maturity
-    int128 strike64x64; // 64x64 fixed point representation of strike price
-    uint256 amount; // size of option contract
-    bool isCall; // true for call, false for put
-  }
-
   struct QuoteArgsInternal {
     uint64 maturity; // timestamp of option maturity
     int128 strike64x64; // 64x64 fixed point representation of strike price
