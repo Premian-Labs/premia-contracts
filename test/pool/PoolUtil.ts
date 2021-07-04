@@ -107,7 +107,6 @@ export class PoolUtil {
     buyer: SignerWithAddress,
     amount: BigNumber,
     maturity: BigNumber,
-    spot64x64: BigNumber,
     strike64x64: BigNumber,
     isCall: boolean,
   ) {
@@ -131,22 +130,20 @@ export class PoolUtil {
         .approve(this.pool.address, ethers.constants.MaxUint256);
     }
 
-    const quote = await this.pool.quote({
+    const quote = await this.pool.quote(
       maturity,
       strike64x64,
-      spot64x64,
       amount,
       isCall,
-      emaVarianceAnnualized64x64: await this.pool.callStatic.update(),
-    });
+    );
 
-    await this.pool.connect(buyer).purchase({
+    await this.pool.connect(buyer).purchase(
       maturity,
       strike64x64,
       amount,
-      maxCost: ethers.constants.MaxUint256,
       isCall,
-    });
+      ethers.constants.MaxUint256,
+    );
 
     return quote;
   }
