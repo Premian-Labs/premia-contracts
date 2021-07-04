@@ -374,7 +374,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
   /**
    * @notice write call option without using liquidity from the pool
-   * @param longCallReceiver address who will receive the long call token (Can be the underwriter)
+   * @param longReceiver address who will receive the long token (Can be the underwriter)
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
    * @notice write call option without using pool liquidity
@@ -384,19 +384,19 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    * @return shortCallTokenId token id of the short call
    */
   function write (
-    address longCallReceiver,
+    address longReceiver,
     uint64 maturity,
     int128 strike64x64,
     uint256 amount,
     bool isCall
   ) external returns(uint256 longCallTokenId, uint256 shortCallTokenId) {
-    (longCallTokenId, shortCallTokenId) = _write(msg.sender, longCallReceiver, maturity, strike64x64, amount, isCall);
+    (longCallTokenId, shortCallTokenId) = _write(msg.sender, longReceiver, maturity, strike64x64, amount, isCall);
   }
 
   /**
    * @notice write call option without using liquidity from the pool on behalf of another address
    * @param underwriter underwriter of the option from who collateral will be deposited
-   * @param longCallReceiver address who will receive the long call token (Can be the underwriter)
+   * @param longReceiver address who will receive the long token (Can be the underwriter)
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
    * @notice write call option without using pool liquidity
@@ -407,21 +407,21 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    */
   function writeFrom (
     address underwriter,
-    address longCallReceiver,
+    address longReceiver,
     uint64 maturity,
     int128 strike64x64,
     uint256 amount,
     bool isCall
   ) external returns(uint256 longCallTokenId, uint256 shortCallTokenId) {
     // ToDo : Should the permission to write option be separated from the approval for transfers ?
-    require(isApprovedForAll(underwriter, msg.sender), 'Pool: Not approved');
-    (longCallTokenId, shortCallTokenId) = _write(underwriter, longCallReceiver, maturity, strike64x64, amount, isCall);
+    require(isApprovedForAll(underwriter, msg.sender), 'not approved');
+    (longCallTokenId, shortCallTokenId) = _write(underwriter, longReceiver, maturity, strike64x64, amount, isCall);
   }
 
   /**
    * @notice write call option without using liquidity from the pool on behalf of another address
    * @param underwriter underwriter of the option from who collateral will be deposited
-   * @param longCallReceiver address who will receive the long call token (Can be the underwriter)
+   * @param longReceiver address who will receive the long token (Can be the underwriter)
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
    * @notice write call option without using pool liquidity
@@ -432,7 +432,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    */
   function _write (
     address underwriter,
-    address longCallReceiver,
+    address longReceiver,
     uint64 maturity,
     int128 strike64x64,
     uint256 amount,
@@ -449,7 +449,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     // mint long option token for underwriter (ERC1155)
     _mint(underwriter, longCallTokenId, amount, '');
     // mint short option token for underwriter (ERC1155)
-    _mint(longCallReceiver, shortCallTokenId, amount, '');
+    _mint(longReceiver, shortCallTokenId, amount, '');
 
     // ToDo : Allow underwriter to burn both LONG and SHORT tokens to withdraw collateral
 
