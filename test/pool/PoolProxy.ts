@@ -324,16 +324,13 @@ describe('PoolProxy', function () {
     it('should revert if no liquidity', async () => {
       const maturity = poolUtil.getMaturity(17);
       const strike64x64 = fixedFromFloat(spotPrice * 1.25);
-      const spot64x64 = fixedFromFloat(spotPrice);
 
       await expect(
         pool.quote({
           maturity,
           strike64x64,
-          spot64x64,
           amount: parseUnderlying('1'),
           isCall: true,
-          emaVarianceAnnualized64x64: await pool.callStatic.update(),
         }),
       ).to.be.revertedWith('no liq');
     });
@@ -349,10 +346,8 @@ describe('PoolProxy', function () {
         const q = await pool.quote({
           maturity: now + 10 * 24 * 3600,
           strike64x64,
-          spot64x64,
           amount: parseUnderlying('1'),
           isCall: true,
-          emaVarianceAnnualized64x64: await pool.callStatic.update(),
         });
 
         expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(70.92);
@@ -377,10 +372,8 @@ describe('PoolProxy', function () {
         const q = await pool.quote({
           maturity: now + 10 * 24 * 3600,
           strike64x64,
-          spot64x64,
           amount: parseUnderlying('1'),
           isCall: false,
-          emaVarianceAnnualized64x64: await pool.callStatic.update(),
         });
 
         expect(fixedToNumber(q.baseCost64x64)).to.almost(114.63);
@@ -673,10 +666,8 @@ describe('PoolProxy', function () {
           const quote = await pool.quote({
             maturity,
             strike64x64,
-            spot64x64: fixedFromFloat(spotPrice),
             amount: purchaseAmount,
             isCall,
-            emaVarianceAnnualized64x64: await pool.callStatic.update(),
           });
 
           const mintAmount = parseOption('1000', isCall);
@@ -762,10 +753,8 @@ describe('PoolProxy', function () {
           const quote = await pool.quote({
             maturity,
             strike64x64,
-            spot64x64: fixedFromFloat(spotPrice),
             amount: purchaseAmount,
             isCall,
-            emaVarianceAnnualized64x64: await pool.callStatic.update(),
           });
 
           await getToken(isCall).mint(
@@ -860,7 +849,6 @@ describe('PoolProxy', function () {
             buyer,
             parseUnderlying('1'),
             maturity,
-            fixedFromFloat(spotPrice),
             strike64x64,
             isCall,
           );
@@ -887,7 +875,6 @@ describe('PoolProxy', function () {
             buyer,
             parseUnderlying('1'),
             maturity,
-            fixedFromFloat(spotPrice),
             strike64x64,
             isCall,
           );
@@ -922,7 +909,6 @@ describe('PoolProxy', function () {
             buyer,
             amount,
             maturity,
-            fixedFromFloat(spotPrice),
             strike64x64,
             isCall,
           );
@@ -982,7 +968,6 @@ describe('PoolProxy', function () {
             buyer,
             amount,
             maturity,
-            fixedFromFloat(spotPrice),
             strike64x64,
             isCall,
           );
@@ -1017,7 +1002,6 @@ describe('PoolProxy', function () {
             buyer,
             amount,
             maturity,
-            fixedFromFloat(spotPrice),
             strike64x64,
             isCall,
           );
@@ -1082,7 +1066,6 @@ describe('PoolProxy', function () {
             buyer,
             parseUnderlying('1'),
             maturity,
-            fixedFromFloat(spotPrice),
             strike64x64,
             isCall,
           );
@@ -1120,7 +1103,6 @@ describe('PoolProxy', function () {
             buyer,
             amount,
             maturity,
-            fixedFromFloat(spotPrice),
             strike64x64,
             isCall,
           );
@@ -1195,7 +1177,6 @@ describe('PoolProxy', function () {
             buyer,
             amount,
             maturity,
-            fixedFromFloat(spotPrice),
             strike64x64,
             isCall,
           );
@@ -1269,7 +1250,6 @@ describe('PoolProxy', function () {
             buyer,
             parseUnderlying('1'),
             maturity,
-            fixedFromFloat(spotPrice),
             strike64x64,
             isCall,
           );
@@ -1300,7 +1280,6 @@ describe('PoolProxy', function () {
             buyer,
             parseUnderlying('1'),
             maturity,
-            fixedFromFloat(spotPrice),
             strike64x64,
             isCall,
           );
@@ -1333,7 +1312,6 @@ describe('PoolProxy', function () {
             buyer,
             amount,
             maturity,
-            fixedFromFloat(spotPrice),
             strike64x64,
             isCall,
           );

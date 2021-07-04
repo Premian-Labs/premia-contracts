@@ -193,7 +193,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       cLevel64x64,
       slippageCoefficient64x64
     ) = _quote(
-      PoolStorage.QuoteArgs(
+      PoolStorage.QuoteArgsInternal(
         args.maturity,
         args.strike64x64,
         spot64x64,
@@ -243,7 +243,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       int128 feeCost64x64;
 
       (baseCost64x64, feeCost64x64, cLevel64x64,) = _quote(
-        PoolStorage.QuoteArgs(
+        PoolStorage.QuoteArgsInternal(
           args.maturity,
           args.strike64x64,
           newPrice64x64,
@@ -442,7 +442,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    * @notice TODO
    */
   function _quote (
-    PoolStorage.QuoteArgs memory args
+    PoolStorage.QuoteArgsInternal memory args
   ) internal view returns (
     int128 baseCost64x64,
     int128 feeCost64x64,
@@ -609,7 +609,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       int128 feeCost64x64;
 
       (baseCost64x64, feeCost64x64, cLevel64x64,) = _quote(
-        PoolStorage.QuoteArgs(
+        PoolStorage.QuoteArgsInternal(
           maturity,
           strike64x64,
           newPrice64x64,
