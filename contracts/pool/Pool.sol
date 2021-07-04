@@ -354,8 +354,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    * @notice write call option without using pool liquidity
    * @param amount quantity of option contract tokens to exercise
    * @param isCall whether this is a call or a put
-   * @return longCallTokenId token id of the long call
-   * @return shortCallTokenId token id of the short call
+   * @return longTokenId token id of the long call
+   * @return shortTokenId token id of the short call
    */
   function write (
     address longReceiver,
@@ -363,8 +363,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     int128 strike64x64,
     uint256 amount,
     bool isCall
-  ) external returns(uint256 longCallTokenId, uint256 shortCallTokenId) {
-    (longCallTokenId, shortCallTokenId) = _write(msg.sender, longReceiver, maturity, strike64x64, amount, isCall);
+  ) external returns(uint256 longTokenId, uint256 shortTokenId) {
+    (longTokenId, shortTokenId) = _write(msg.sender, longReceiver, maturity, strike64x64, amount, isCall);
   }
 
   /**
@@ -376,8 +376,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    * @notice write call option without using pool liquidity
    * @param amount quantity of option contract tokens to exercise
    * @param isCall whether this is a call or a put
-   * @return longCallTokenId token id of the long call
-   * @return shortCallTokenId token id of the short call
+   * @return longTokenId token id of the long call
+   * @return shortTokenId token id of the short call
    */
   function writeFrom (
     address underwriter,
@@ -386,10 +386,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     int128 strike64x64,
     uint256 amount,
     bool isCall
-  ) external returns(uint256 longCallTokenId, uint256 shortCallTokenId) {
+  ) external returns(uint256 longTokenId, uint256 shortTokenId) {
     // ToDo : Should the permission to write option be separated from the approval for transfers ?
     require(isApprovedForAll(underwriter, msg.sender), 'not approved');
-    (longCallTokenId, shortCallTokenId) = _write(underwriter, longReceiver, maturity, strike64x64, amount, isCall);
+    (longTokenId, shortTokenId) = _write(underwriter, longReceiver, maturity, strike64x64, amount, isCall);
   }
 
   /**
@@ -401,8 +401,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    * @notice write call option without using pool liquidity
    * @param amount quantity of option contract tokens to exercise
    * @param isCall whether this is a call or a put
-   * @return longCallTokenId token id of the long call
-   * @return shortCallTokenId token id of the short call
+   * @return longTokenId token id of the long call
+   * @return shortTokenId token id of the short call
    */
   function _write (
     address underwriter,
@@ -411,19 +411,19 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     int128 strike64x64,
     uint256 amount,
     bool isCall
-  ) internal returns(uint256 longCallTokenId, uint256 shortCallTokenId) {
+  ) internal returns(uint256 longTokenId, uint256 shortTokenId) {
     address token = _getPoolToken(isCall);
     uint256 fee = FEE_64x64.mulu(amount);
     _pullFrom(underwriter, token, amount + fee);
     IERC20(token).transfer(FEE_RECEIVER_ADDRESS, fee);
 
-    longCallTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), maturity, strike64x64);
-    shortCallTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64);
+    longTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), maturity, strike64x64);
+    shortTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64);
 
     // mint long option token for underwriter (ERC1155)
-    _mint(underwriter, longCallTokenId, amount, '');
+    _mint(underwriter, longTokenId, amount, '');
     // mint short option token for underwriter (ERC1155)
-    _mint(longReceiver, shortCallTokenId, amount, '');
+    _mint(longReceiver, shortTokenId, amount, '');
 
     // ToDo : Allow underwriter to burn both LONG and SHORT tokens to withdraw collateral
 
