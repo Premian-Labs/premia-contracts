@@ -208,7 +208,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    _processPendingDeposits(l, isCall);
+    (int128 newPrice64x64,) = _update(l);
 
     {
       uint256 amount = isCall
@@ -221,8 +221,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     require(args.maturity >= block.timestamp + (1 days), 'exp < 1 day');
     require(args.maturity < block.timestamp + (29 days), 'exp > 28 days');
     require(args.maturity % (1 days) == 0, 'exp not end UTC day');
-
-    (int128 newPrice64x64,) = _update(l);
 
     require(args.strike64x64 <= newPrice64x64 * 3 / 2, 'strike > 1.5x spot');
     require(args.strike64x64 >= newPrice64x64 * 3 / 4, 'strike < 0.75x spot');
@@ -371,13 +369,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     uint256 shortTokenId,
     uint256 amount
   ) external returns (uint256 baseCost, uint256 feeCost) {
-    (PoolStorage.TokenType tokenType, , ) = PoolStorage.parseTokenId(shortTokenId);
-    bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
-
     PoolStorage.Layout storage l = PoolStorage.layout();
     (int128 newPrice64x64, ) = _update(l);
-
-    _processPendingDeposits(l, isCall);
     (baseCost, feeCost) = _reassign(l, shortTokenId, amount, newPrice64x64);
   }
 
@@ -391,11 +384,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     require(ids.length == amounts.length, 'TODO');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
-    (int128 newPrice64x64, ) = _update(l);
 
-    // process both pools because ids may correspond to both
-    _processPendingDeposits(l, true);
-    _processPendingDeposits(l, false);
+    (int128 newPrice64x64, ) = _update(l);
 
     baseCosts = new uint256[](ids.length);
     feeCosts = new uint256[](ids.length);
@@ -425,7 +415,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   /**
    * @notice Update pool data
    */
-  function update () external returns(int128 newEmaVarianceAnnualized64x64) {
+  function update () external returns (int128 newEmaVarianceAnnualized64x64) {
     (,newEmaVarianceAnnualized64x64) = _update(PoolStorage.layout());
   }
 
@@ -527,8 +517,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     }
 
     PoolStorage.Layout storage l = PoolStorage.layout();
-
-    _processPendingDeposits(l, isCall);
 
     (int128 spot64x64,) = _update(l);
 
@@ -858,6 +846,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   function _update (
     PoolStorage.Layout storage l
   ) internal returns (int128 newPrice64x64, int128 newEmaVarianceAnnualized64x64) {
+    _processPendingDeposits(l, true);
+    _processPendingDeposits(l, false);
+
     if (l.updatedAt == block.timestamp) {
       return (l.getPriceUpdate(block.timestamp), l.emaVarianceAnnualized64x64);
     }
