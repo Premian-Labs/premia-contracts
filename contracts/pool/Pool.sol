@@ -171,106 +171,82 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
   /**
    * @notice calculate price of option contract
-   * @param args arguments of the quote
+   * @param maturity timestamp of option maturity
+   * @param strike64x64 64x64 fixed point representation of strike price
+   * @param amount size of option contract
+   * @param isCall true for call, false for put
    * @return baseCost64x64 64x64 fixed point representation of option cost denominated in underlying currency (without fee)
    * @return feeCost64x64 64x64 fixed point representation of option fee cost denominated in underlying currency for call, or base currency for put
    * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
    * @return slippageCoefficient64x64 64x64 fixed point representation of slippage coefficient for given order size
    */
   function quote (
-    PoolStorage.QuoteArgs memory args
-  ) public view returns (int128 baseCost64x64, int128 feeCost64x64, int128 cLevel64x64, int128 slippageCoefficient64x64) {
-    PoolStorage.Layout storage l = PoolStorage.layout();
+    uint64 maturity,
+    int128 strike64x64,
+    uint256 amount,
+    bool isCall
+  ) external view returns (
+    int128 baseCost64x64,
+    int128 feeCost64x64,
+    int128 cLevel64x64,
+    int128 slippageCoefficient64x64
+  ) {
+    (int128 spot64x64, , , , , int128 emaVarianceAnnualized64x64) = _calculateUpdate(PoolStorage.layout());
 
-    int128 amount64x64 = ABDKMath64x64Token.fromDecimals(args.amount, l.underlyingDecimals);
-    bool isCall = args.isCall;
-
-    int128 oldLiquidity64x64;
-
-    {
-      PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
-      int128 pendingDeposits64x64;
-
-      if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
-        pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
-          batchData.totalPendingDeposits,
-          l.getTokenDecimals(isCall)
-        );
-      }
-
-      oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(pendingDeposits64x64);
-      require(oldLiquidity64x64 > 0, "no liq");
-
-      if (pendingDeposits64x64 > 0) {
-        cLevel64x64 = l.calculateCLevel(
-          oldLiquidity64x64.sub(pendingDeposits64x64),
-          oldLiquidity64x64,
-          isCall
-        );
-      } else {
-        cLevel64x64 = l.getCLevel(isCall);
-      }
-    }
-
-    // TODO: validate values without spending gas
-    // assert(oldLiquidity64x64 >= newLiquidity64x64);
-    // assert(variance64x64 > 0);
-    // assert(strike64x64 > 0);
-    // assert(spot64x64 > 0);
-    // assert(timeToMaturity64x64 > 0);
-
-    int128 price64x64;
-
-    (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath.quotePrice(
-      OptionMath.QuoteArgs(
-        args.emaVarianceAnnualized64x64,
-        args.strike64x64,
-        args.spot64x64,
-        ABDKMath64x64.divu(args.maturity - block.timestamp, 365 days),
-        cLevel64x64,
-        oldLiquidity64x64,
-        oldLiquidity64x64.sub(amount64x64),
-        0x10000000000000000, // 64x64 fixed point representation of 1
+    (
+      baseCost64x64,
+      feeCost64x64,
+      cLevel64x64,
+      slippageCoefficient64x64
+    ) = _quote(
+      PoolStorage.QuoteArgsInternal(
+        maturity,
+        strike64x64,
+        spot64x64,
+        emaVarianceAnnualized64x64,
+        amount,
         isCall
-    ));
-
-    baseCost64x64 = isCall ? price64x64.mul(amount64x64).div(args.spot64x64) : price64x64.mul(amount64x64);
-    feeCost64x64 = baseCost64x64.mul(FEE_64x64);
+      )
+    );
   }
 
   /**
    * @notice purchase call option
-   * @param args arguments for purchase
+   * @param maturity timestamp of option maturity
+   * @param strike64x64 64x64 fixed point representation of strike price
+   * @param amount size of option contract
+   * @param isCall true for call, false for put,
+   * @param maxCost maximum acceptable cost after accounting for slippage
    * @return baseCost quantity of tokens required to purchase long position
    * @return feeCost quantity of tokens required to pay fees
    */
   function purchase (
-    PoolStorage.PurchaseArgs memory args
+    uint64 maturity,
+    int128 strike64x64,
+    uint256 amount,
+    bool isCall,
+    uint256 maxCost
   ) external payable returns (uint256 baseCost, uint256 feeCost) {
     // TODO: specify payment currency
 
-    bool isCall = args.isCall;
-
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    _processPendingDeposits(l, isCall);
-
-    {
-      uint256 amount = isCall
-        ? args.amount
-        : l.fromUnderlyingToBaseDecimals(args.strike64x64.mulu(args.amount));
-
-      require(amount <= totalSupply(_getFreeLiquidityTokenId(isCall)) - l.nextDeposits[isCall].totalPendingDeposits, 'insuf liq');
-    }
-
-    require(args.maturity >= block.timestamp + (1 days), 'exp < 1 day');
-    require(args.maturity < block.timestamp + (29 days), 'exp > 28 days');
-    require(args.maturity % (1 days) == 0, 'exp not end UTC day');
+    require(maturity >= block.timestamp + (1 days), 'exp < 1 day');
+    require(maturity < block.timestamp + (29 days), 'exp > 28 days');
+    require(maturity % (1 days) == 0, 'exp not end UTC day');
 
     (int128 newPrice64x64,) = _update(l);
 
-    require(args.strike64x64 <= newPrice64x64 * 3 / 2, 'strike > 1.5x spot');
-    require(args.strike64x64 >= newPrice64x64 * 3 / 4, 'strike < 0.75x spot');
+    require(strike64x64 <= newPrice64x64 * 3 / 2, 'strike > 1.5x spot');
+    require(strike64x64 >= newPrice64x64 * 3 / 4, 'strike < 0.75x spot');
+
+    {
+      uint256 size = isCall
+        ? amount
+        : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
+
+      require(size <= totalSupply(_getFreeLiquidityTokenId(isCall)) - l.nextDeposits[isCall].totalPendingDeposits, 'insuf liq');
+    }
 
     int128 cLevel64x64;
 
@@ -278,50 +254,48 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       int128 baseCost64x64;
       int128 feeCost64x64;
 
-      (baseCost64x64, feeCost64x64, cLevel64x64,) = quote(
-        PoolStorage.QuoteArgs(
-        args.maturity,
-        args.strike64x64,
-        newPrice64x64,
-        l.emaVarianceAnnualized64x64,
-        args.amount,
-        isCall
-      ));
+      (baseCost64x64, feeCost64x64, cLevel64x64,) = _quote(
+        PoolStorage.QuoteArgsInternal(
+          maturity,
+          strike64x64,
+          newPrice64x64,
+          l.emaVarianceAnnualized64x64,
+          amount,
+          isCall
+        )
+      );
 
       baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, l.getTokenDecimals(isCall));
       feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, l.getTokenDecimals(isCall));
     }
 
-    require(baseCost + feeCost <= args.maxCost, 'excess slipp');
+    require(baseCost + feeCost <= maxCost, 'excess slipp');
     _pull(_getPoolToken(isCall), baseCost + feeCost);
 
-    {
-      uint256 longTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), args.maturity, args.strike64x64);
+    uint256 longTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), maturity, strike64x64);
+    uint256 shortTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64);
 
-      emit Purchase(
-        msg.sender,
-        longTokenId,
-        args.amount,
-        baseCost,
-        feeCost,
-        newPrice64x64
-      );
-
-      // mint long option token for buyer
-      _mint(msg.sender, longTokenId, args.amount);
-    }
-
-    uint256 shortTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, false), args.maturity, args.strike64x64);
+    // mint long option token for buyer
+    _mint(msg.sender, longTokenId, amount);
 
     int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
     // burn free liquidity tokens from other underwriters
-    _mintShortTokenLoop(l, args.amount, baseCost, shortTokenId, isCall);
+    _mintShortTokenLoop(l, amount, baseCost, shortTokenId, isCall);
     int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
 
     _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
 
     // mint free liquidity tokens for treasury
     _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost);
+
+    emit Purchase(
+      msg.sender,
+      longTokenId,
+      amount,
+      baseCost,
+      feeCost,
+      newPrice64x64
+    );
   }
 
   /**
@@ -415,13 +389,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     uint256 shortTokenId,
     uint256 amount
   ) external returns (uint256 baseCost, uint256 feeCost) {
-    (PoolStorage.TokenType tokenType, , ) = PoolStorage.parseTokenId(shortTokenId);
-    bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
-
     PoolStorage.Layout storage l = PoolStorage.layout();
     (int128 newPrice64x64, ) = _update(l);
-
-    _processPendingDeposits(l, isCall);
     (baseCost, feeCost) = _reassign(l, shortTokenId, amount, newPrice64x64);
   }
 
@@ -435,11 +404,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     require(ids.length == amounts.length, 'TODO');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
-    (int128 newPrice64x64, ) = _update(l);
 
-    // process both pools because ids may correspond to both
-    _processPendingDeposits(l, true);
-    _processPendingDeposits(l, false);
+    (int128 newPrice64x64, ) = _update(l);
 
     baseCosts = new uint256[](ids.length);
     feeCosts = new uint256[](ids.length);
@@ -469,7 +435,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   /**
    * @notice Update pool data
    */
-  function update () external returns(int128 newEmaVarianceAnnualized64x64) {
+  function update () external returns (int128 newEmaVarianceAnnualized64x64) {
     (,newEmaVarianceAnnualized64x64) = _update(PoolStorage.layout());
   }
 
@@ -480,6 +446,76 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   //////////////
   // Internal //
   //////////////
+
+  /**
+   * @notice TODO
+   */
+  function _quote (
+    PoolStorage.QuoteArgsInternal memory args
+  ) internal view returns (
+    int128 baseCost64x64,
+    int128 feeCost64x64,
+    int128 cLevel64x64,
+    int128 slippageCoefficient64x64
+  ) {
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    int128 amount64x64 = ABDKMath64x64Token.fromDecimals(args.amount, l.underlyingDecimals);
+    bool isCall = args.isCall;
+
+    int128 oldLiquidity64x64;
+
+    {
+      PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
+      int128 pendingDeposits64x64;
+
+      if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
+        pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
+          batchData.totalPendingDeposits,
+          l.getTokenDecimals(isCall)
+        );
+      }
+
+      oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(pendingDeposits64x64);
+      require(oldLiquidity64x64 > 0, "no liq");
+
+      if (pendingDeposits64x64 > 0) {
+        cLevel64x64 = l.calculateCLevel(
+          oldLiquidity64x64.sub(pendingDeposits64x64),
+          oldLiquidity64x64,
+          isCall
+        );
+      } else {
+        cLevel64x64 = l.getCLevel(isCall);
+      }
+    }
+
+    // TODO: validate values without spending gas
+    // assert(oldLiquidity64x64 >= newLiquidity64x64);
+    // assert(variance64x64 > 0);
+    // assert(strike64x64 > 0);
+    // assert(spot64x64 > 0);
+    // assert(timeToMaturity64x64 > 0);
+
+    int128 price64x64;
+
+    (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath.quotePrice(
+      OptionMath.QuoteArgs(
+        args.emaVarianceAnnualized64x64,
+        args.strike64x64,
+        args.spot64x64,
+        ABDKMath64x64.divu(args.maturity - block.timestamp, 365 days),
+        cLevel64x64,
+        oldLiquidity64x64,
+        oldLiquidity64x64.sub(amount64x64),
+        0x10000000000000000, // 64x64 fixed point representation of 1
+        isCall
+      )
+    );
+
+    baseCost64x64 = isCall ? price64x64.mul(amount64x64).div(args.spot64x64) : price64x64.mul(amount64x64);
+    feeCost64x64 = baseCost64x64.mul(FEE_64x64);
+  }
 
   function _exercise (
     address holder, // holder address of option contract tokens to exercise
@@ -501,8 +537,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     }
 
     PoolStorage.Layout storage l = PoolStorage.layout();
-
-    _processPendingDeposits(l, isCall);
 
     (int128 spot64x64,) = _update(l);
 
@@ -583,14 +617,16 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       int128 baseCost64x64;
       int128 feeCost64x64;
 
-      (baseCost64x64, feeCost64x64, cLevel64x64,) = quote(PoolStorage.QuoteArgs(
-        maturity,
-        strike64x64,
-        newPrice64x64,
-        l.emaVarianceAnnualized64x64,
-        amount,
-        isCall
-      ));
+      (baseCost64x64, feeCost64x64, cLevel64x64,) = _quote(
+        PoolStorage.QuoteArgsInternal(
+          maturity,
+          strike64x64,
+          newPrice64x64,
+          l.emaVarianceAnnualized64x64,
+          amount,
+          isCall
+        )
+      );
 
       baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, l.getTokenDecimals(isCall));
       feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, l.getTokenDecimals(isCall));
@@ -829,36 +865,40 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    */
   function _update (
     PoolStorage.Layout storage l
-  ) internal returns (int128 newPrice64x64, int128 newEmaVarianceAnnualized64x64) {
+  ) internal returns (
+    int128 newPrice64x64,
+    int128 newEmaVarianceAnnualized64x64
+  ) {
+    uint256 updatedAt = l.updatedAt;
+
     if (l.updatedAt == block.timestamp) {
       return (l.getPriceUpdate(block.timestamp), l.emaVarianceAnnualized64x64);
     }
 
-    newPrice64x64 = l.fetchPriceUpdate();
+    int128 logReturns64x64;
+    int128 oldEmaLogReturns64x64;
+    int128 newEmaLogReturns64x64;
+    int128 oldEmaVarianceAnnualized64x64;
 
-    uint256 updatedAt = l.updatedAt;
-
-    int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
+    (
+      newPrice64x64,
+      logReturns64x64,
+      oldEmaLogReturns64x64,
+      newEmaLogReturns64x64,
+      oldEmaVarianceAnnualized64x64,
+      newEmaVarianceAnnualized64x64
+    ) = _calculateUpdate(l);
 
     if (l.getPriceUpdate(block.timestamp) == 0) {
       l.setPriceUpdate(newPrice64x64);
     }
 
-    int128 logReturns64x64 = newPrice64x64.div(oldPrice64x64).ln();
-    int128 oldEmaLogReturns64x64 = l.emaLogReturns64x64;
-    int128 oldEmaVarianceAnnualized64x64 = l.emaVarianceAnnualized64x64;
-
-    (int128 newEmaLogReturns64x64, int128 newEmaVariance64x64) = OptionMath.unevenRollingEmaVariance(
-      oldEmaLogReturns64x64,
-      oldEmaVarianceAnnualized64x64 / (365 * 24),
-      logReturns64x64,
-      updatedAt,
-      block.timestamp
-    );
-
     l.emaLogReturns64x64 = newEmaLogReturns64x64;
-    newEmaVarianceAnnualized64x64 = newEmaVariance64x64 * (365 * 24);
     l.emaVarianceAnnualized64x64 = newEmaVarianceAnnualized64x64;
+    l.updatedAt = block.timestamp;
+
+    _processPendingDeposits(l, true);
+    _processPendingDeposits(l, false);
 
     emit UpdateVariance(
       oldEmaLogReturns64x64,
@@ -867,8 +907,40 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       updatedAt,
       newEmaVarianceAnnualized64x64
     );
+  }
 
-    l.updatedAt = block.timestamp;
+  /**
+   * @notice TODO
+   */
+  function _calculateUpdate (
+    PoolStorage.Layout storage l
+  ) internal view returns (
+    int128 newPrice64x64,
+    int128 logReturns64x64,
+    int128 oldEmaLogReturns64x64,
+    int128 newEmaLogReturns64x64,
+    int128 oldEmaVarianceAnnualized64x64,
+    int128 newEmaVarianceAnnualized64x64
+  ) {
+    uint256 updatedAt = l.updatedAt;
+    int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
+    newPrice64x64 = l.fetchPriceUpdate();
+
+    logReturns64x64 = newPrice64x64.div(oldPrice64x64).ln();
+    oldEmaLogReturns64x64 = l.emaLogReturns64x64;
+    oldEmaVarianceAnnualized64x64 = l.emaVarianceAnnualized64x64;
+
+    int128 newEmaVariance64x64;
+
+    (newEmaLogReturns64x64, newEmaVariance64x64) = OptionMath.unevenRollingEmaVariance(
+      oldEmaLogReturns64x64,
+      oldEmaVarianceAnnualized64x64 / (365 * 24),
+      logReturns64x64,
+      updatedAt,
+      block.timestamp
+    );
+
+    newEmaVarianceAnnualized64x64 = newEmaVariance64x64 * (365 * 24);
   }
 
   /**
