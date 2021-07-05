@@ -395,48 +395,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   }
 
   /**
-   * @notice write call option without using liquidity from the pool on behalf of another address
-   * @param underwriter underwriter of the option from who collateral will be deposited
-   * @param longReceiver address who will receive the long token (Can be the underwriter)
-   * @param maturity timestamp of option maturity
-   * @param strike64x64 64x64 fixed point representation of strike price
-   * @notice write call option without using pool liquidity
-   * @param amount quantity of option contract tokens to exercise
-   * @param isCall whether this is a call or a put
-   * @return longTokenId token id of the long call
-   * @return shortTokenId token id of the short call
-   */
-  function _write (
-    address underwriter,
-    address longReceiver,
-    uint64 maturity,
-    int128 strike64x64,
-    uint256 amount,
-    bool isCall
-  ) internal returns(uint256 longTokenId, uint256 shortTokenId) {
-    address token = _getPoolToken(isCall);
-    uint256 fee = FEE_64x64.mulu(amount);
-
-    uint256 tokenAmount = isCall ? (amount + fee) : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(amount + fee));
-
-    _pullFrom(underwriter, token, tokenAmount);
-    // mint reserved liquidity tokens for fee receiver
-    _mint(FEE_RECEIVER_ADDRESS, _getReservedLiquidityTokenId(isCall), fee);
-
-    longTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), maturity, strike64x64);
-    shortTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64);
-
-    // mint long option token for underwriter (ERC1155)
-    _mint(longReceiver, longTokenId, amount, '');
-    // mint short option token for underwriter (ERC1155)
-    _mint(underwriter, shortTokenId, amount, '');
-
-    // ToDo : Allow underwriter to burn both LONG and SHORT tokens to withdraw collateral
-
-    emit Underwrite(underwriter, longReceiver, shortTokenId, amount, 0, true);
-  }
-
-  /**
    * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
    * @param amount quantity of underlying currency to deposit
    * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
@@ -610,6 +568,48 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   //////////////
   // Internal //
   //////////////
+
+  /**
+   * @notice write call option without using liquidity from the pool on behalf of another address
+   * @param underwriter underwriter of the option from who collateral will be deposited
+   * @param longReceiver address who will receive the long token (Can be the underwriter)
+   * @param maturity timestamp of option maturity
+   * @param strike64x64 64x64 fixed point representation of strike price
+   * @notice write call option without using pool liquidity
+   * @param amount quantity of option contract tokens to exercise
+   * @param isCall whether this is a call or a put
+   * @return longTokenId token id of the long call
+   * @return shortTokenId token id of the short call
+   */
+  function _write (
+    address underwriter,
+    address longReceiver,
+    uint64 maturity,
+    int128 strike64x64,
+    uint256 amount,
+    bool isCall
+  ) internal returns(uint256 longTokenId, uint256 shortTokenId) {
+    address token = _getPoolToken(isCall);
+    uint256 fee = FEE_64x64.mulu(amount);
+
+    uint256 tokenAmount = isCall ? (amount + fee) : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(amount + fee));
+
+    _pullFrom(underwriter, token, tokenAmount);
+    // mint reserved liquidity tokens for fee receiver
+    _mint(FEE_RECEIVER_ADDRESS, _getReservedLiquidityTokenId(isCall), fee);
+
+    longTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), maturity, strike64x64);
+    shortTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64);
+
+    // mint long option token for underwriter (ERC1155)
+    _mint(longReceiver, longTokenId, amount, '');
+    // mint short option token for underwriter (ERC1155)
+    _mint(underwriter, shortTokenId, amount, '');
+
+    // ToDo : Allow underwriter to burn both LONG and SHORT tokens to withdraw collateral
+
+    emit Underwrite(underwriter, longReceiver, shortTokenId, amount, 0, true);
+  }
 
   function _withdrawFees (bool isCall) internal {
     uint256 tokenId = _getReservedLiquidityTokenId(isCall);
