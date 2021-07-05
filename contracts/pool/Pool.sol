@@ -424,9 +424,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     shortTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64);
 
     // mint long option token for underwriter (ERC1155)
-    _mint(underwriter, longTokenId, amount, '');
+    _mint(longReceiver, longTokenId, amount, '');
     // mint short option token for underwriter (ERC1155)
-    _mint(longReceiver, shortTokenId, amount, '');
+    _mint(underwriter, shortTokenId, amount, '');
 
     // ToDo : Allow underwriter to burn both LONG and SHORT tokens to withdraw collateral
 
@@ -566,10 +566,46 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     (,newEmaVarianceAnnualized64x64) = _update(PoolStorage.layout());
   }
 
+  /**
+   * @notice TODO
+   */
   function withdrawFees () external  {
     _withdrawFees(true);
     _withdrawFees(false);
   }
+
+  /**
+   * @notice Burn long and short tokens to withdraw collateral
+   * @param shortTokenId ERC1155 short token id
+   * @param amount quantity of option contract tokens to annihilate
+   */
+  function annihilate (
+    uint256 shortTokenId,
+    uint256 amount
+  ) external {
+    (PoolStorage.TokenType tokenType, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
+    bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL || tokenType == PoolStorage.TokenType.SHORT_PUT;
+    uint256 longTokenId = PoolStorage.formatTokenId(tokenType, maturity, strike64x64);
+
+    _burn(msg.sender, shortTokenId, amount);
+    _burn(msg.sender, longTokenId, amount);
+
+    _pushTo(
+      msg.sender,
+      _getPoolToken(isCall),
+      isCall ? amount : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(amount))
+    );
+
+    // ToDo : Event ?
+  }
+
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+  ////////////////////////////////////////////////////////
+
+  //////////////
+  // Internal //
+  //////////////
 
   function _withdrawFees (bool isCall) internal {
     uint256 tokenId = _getReservedLiquidityTokenId(isCall);
@@ -580,14 +616,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       // ToDo : Event ?
     }
   }
-
-  ////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////
-  ////////////////////////////////////////////////////////
-
-  //////////////
-  // Internal //
-  //////////////
 
   /**
    * @notice TODO
