@@ -56,7 +56,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     address indexed longReceiver,
     uint256 shortTokenId,
     uint256 intervalAmount,
-    uint256 intervalPremium
+    uint256 intervalPremium,
+    bool isManualUnderwrite
   );
 
   event AssignExercise (
@@ -429,7 +430,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
     // ToDo : Allow underwriter to burn both LONG and SHORT tokens to withdraw collateral
 
-    emit Underwrite(underwriter, longReceiver, shortTokenId, amount, 0);
+    emit Underwrite(underwriter, longReceiver, shortTokenId, amount, 0, true);
   }
 
   /**
@@ -862,7 +863,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       // because of rounding (Can happen for put, because of fixed point precision)
       _mint(underwriter, shortTokenId, toPay == 0 ? amount : intervalAmount);
 
-      emit Underwrite(underwriter, msg.sender, shortTokenId, toPay == 0 ? amount : intervalAmount, intervalPremium);
+      emit Underwrite(underwriter, msg.sender, shortTokenId, toPay == 0 ? amount : intervalAmount, intervalPremium, false);
 
       amount -= intervalAmount;
     }
