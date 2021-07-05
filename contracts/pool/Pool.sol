@@ -416,7 +416,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   ) internal returns(uint256 longTokenId, uint256 shortTokenId) {
     address token = _getPoolToken(isCall);
     uint256 fee = FEE_64x64.mulu(amount);
-    _pullFrom(underwriter, token, amount + fee);
+
+    uint256 tokenAmount = isCall ? (amount + fee) : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(amount + fee));
+
+    _pullFrom(underwriter, token, tokenAmount);
     // mint reserved liquidity tokens for fee receiver
     _mint(FEE_RECEIVER_ADDRESS, _getReservedLiquidityTokenId(isCall), fee);
 
@@ -584,8 +587,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     uint256 amount
   ) external {
     (PoolStorage.TokenType tokenType, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
-    bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL || tokenType == PoolStorage.TokenType.SHORT_PUT;
-    uint256 longTokenId = PoolStorage.formatTokenId(tokenType, maturity, strike64x64);
+    require(tokenType == PoolStorage.TokenType.SHORT_CALL || tokenType == PoolStorage.TokenType.SHORT_PUT, "not short");
+    bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
+    uint256 longTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), maturity, strike64x64);
 
     _burn(msg.sender, shortTokenId, amount);
     _burn(msg.sender, longTokenId, amount);

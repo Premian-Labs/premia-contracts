@@ -326,12 +326,7 @@ describe('PoolProxy', function () {
       const strike64x64 = fixedFromFloat(spotPrice * 1.25);
 
       await expect(
-        pool.quote(
-          maturity,
-          strike64x64,
-          parseUnderlying('1'),
-          true,
-        ),
+        pool.quote(maturity, strike64x64, parseUnderlying('1'), true),
       ).to.be.revertedWith('no liq');
     });
 
@@ -512,13 +507,15 @@ describe('PoolProxy', function () {
           const strike64x64 = fixedFromFloat(1.5);
 
           await expect(
-            pool.connect(buyer).purchase(
-              maturity,
-              strike64x64,
-              parseUnderlying('1'),
-              isCall,
-              parseOption('100', isCall),
-            ),
+            pool
+              .connect(buyer)
+              .purchase(
+                maturity,
+                strike64x64,
+                parseUnderlying('1'),
+                isCall,
+                parseOption('100', isCall),
+              ),
           ).to.be.revertedWith('exp < 1 day');
         });
 
@@ -532,13 +529,15 @@ describe('PoolProxy', function () {
           const strike64x64 = fixedFromFloat(1.5);
 
           await expect(
-            pool.connect(buyer).purchase(
-              maturity,
-              strike64x64,
-              parseUnderlying('1'),
-              isCall,
-              parseOption('100', isCall),
-            ),
+            pool
+              .connect(buyer)
+              .purchase(
+                maturity,
+                strike64x64,
+                parseUnderlying('1'),
+                isCall,
+                parseOption('100', isCall),
+              ),
           ).to.be.revertedWith('exp > 28 days');
         });
 
@@ -552,13 +551,15 @@ describe('PoolProxy', function () {
           const strike64x64 = fixedFromFloat(1.5);
 
           await expect(
-            pool.connect(buyer).purchase(
-              maturity,
-              strike64x64,
-              parseUnderlying('1'),
-              isCall,
-              parseOption('100', isCall),
-            ),
+            pool
+              .connect(buyer)
+              .purchase(
+                maturity,
+                strike64x64,
+                parseUnderlying('1'),
+                isCall,
+                parseOption('100', isCall),
+              ),
           ).to.be.revertedWith('exp not end UTC day');
         });
 
@@ -572,13 +573,15 @@ describe('PoolProxy', function () {
           const strike64x64 = fixedFromFloat(spotPrice * 2.01);
 
           await expect(
-            pool.connect(buyer).purchase(
-              maturity,
-              strike64x64,
-              parseUnderlying('1'),
-              isCall,
-              parseOption('100', isCall),
-            ),
+            pool
+              .connect(buyer)
+              .purchase(
+                maturity,
+                strike64x64,
+                parseUnderlying('1'),
+                isCall,
+                parseOption('100', isCall),
+              ),
           ).to.be.revertedWith('strike > 1.5x spot');
         });
 
@@ -592,13 +595,15 @@ describe('PoolProxy', function () {
           const strike64x64 = fixedFromFloat(spotPrice * 0.49);
 
           await expect(
-            pool.connect(buyer).purchase(
-              maturity,
-              strike64x64,
-              parseUnderlying('1'),
-              isCall,
-              parseOption('100', isCall),
-            ),
+            pool
+              .connect(buyer)
+              .purchase(
+                maturity,
+                strike64x64,
+                parseUnderlying('1'),
+                isCall,
+                parseOption('100', isCall),
+              ),
           ).to.be.revertedWith('strike < 0.75x spot');
         });
 
@@ -620,13 +625,15 @@ describe('PoolProxy', function () {
             .approve(pool.address, ethers.constants.MaxUint256);
 
           await expect(
-            pool.connect(buyer).purchase(
-              maturity,
-              strike64x64,
-              parseUnderlying('1'),
-              isCall,
-              parseOption('0.01', isCall),
-            ),
+            pool
+              .connect(buyer)
+              .purchase(
+                maturity,
+                strike64x64,
+                parseUnderlying('1'),
+                isCall,
+                parseOption('0.01', isCall),
+              ),
           ).to.be.revertedWith('excess slip');
         });
 
@@ -656,17 +663,15 @@ describe('PoolProxy', function () {
             .connect(buyer)
             .approve(pool.address, ethers.constants.MaxUint256);
 
-          await pool.connect(buyer).purchase(
-            maturity,
-            strike64x64,
-            purchaseAmount,
-            isCall,
-            getMaxCost(
-              quote.baseCost64x64,
-              quote.feeCost64x64,
+          await pool
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              purchaseAmount,
               isCall,
-            ),
-          );
+              getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+            );
 
           const newBalance = await getToken(isCall).balanceOf(buyer.address);
 
@@ -747,17 +752,15 @@ describe('PoolProxy', function () {
 
           const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
 
-          const tx = await pool.connect(buyer).purchase(
-            maturity,
-            strike64x64,
-            purchaseAmount,
-            isCall,
-            getMaxCost(
-              quote.baseCost64x64,
-              quote.feeCost64x64,
+          const tx = await pool
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              purchaseAmount,
               isCall,
-            ),
-          );
+              getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+            );
 
           expect(await pool.balanceOf(buyer.address, tokenId.long)).to.eq(
             purchaseAmount,
@@ -1332,5 +1335,91 @@ describe('PoolProxy', function () {
 
   describe('#withdrawAllAndReassignBatch', function () {
     it('todo');
+  });
+
+  describe('#write', () => {
+    for (const isCall of [true, false]) {
+      describe(isCall ? 'call' : 'put', () => {
+        it('should successfully manually underwrite an option', async () => {
+          const amount = parseUnderlying('1');
+          await poolUtil.writeOption(
+            lp1,
+            lp2,
+            poolUtil.getMaturity(30),
+            fixedFromFloat(2),
+            amount,
+            isCall,
+          );
+
+          const tokenIds = getOptionTokenIds(
+            poolUtil.getMaturity(30),
+            fixedFromFloat(2),
+            isCall,
+          );
+
+          expect(await getToken(isCall).balanceOf(lp1.address)).to.eq(0);
+          expect(await pool.balanceOf(lp1.address, tokenIds.long)).to.eq(0);
+          expect(await pool.balanceOf(lp2.address, tokenIds.long)).to.eq(
+            amount,
+          );
+          expect(await pool.balanceOf(lp1.address, tokenIds.short)).to.eq(
+            amount,
+          );
+          expect(await pool.balanceOf(lp2.address, tokenIds.short)).to.eq(0);
+        });
+      });
+    }
+  });
+
+  describe('#annihilate', () => {
+    for (const isCall of [true, false]) {
+      describe(isCall ? 'call' : 'put', () => {
+        it('should revert if not short token id', async () => {
+          const tokenIds = getOptionTokenIds(
+            poolUtil.getMaturity(30),
+            fixedFromFloat(2),
+            isCall,
+          );
+
+          await expect(
+            pool.connect(lp1).annihilate(tokenIds.long, parseUnderlying('1')),
+          ).to.be.revertedWith('not short');
+        });
+
+        it('should successfully burn long and short tokens + withdraw collateral', async () => {
+          const amount = parseUnderlying('1');
+          await poolUtil.writeOption(
+            lp1,
+            lp1,
+            poolUtil.getMaturity(30),
+            fixedFromFloat(2),
+            amount,
+            isCall,
+          );
+
+          const tokenIds = getOptionTokenIds(
+            poolUtil.getMaturity(30),
+            fixedFromFloat(2),
+            isCall,
+          );
+
+          expect(await pool.balanceOf(lp1.address, tokenIds.long)).to.eq(
+            amount,
+          );
+          expect(await pool.balanceOf(lp1.address, tokenIds.short)).to.eq(
+            amount,
+          );
+          expect(await getToken(isCall).balanceOf(lp1.address)).to.eq(0);
+
+          await pool.connect(lp1).annihilate(tokenIds.short, amount);
+
+          expect(await pool.balanceOf(lp1.address, tokenIds.long)).to.eq(0);
+          expect(await pool.balanceOf(lp1.address, tokenIds.short)).to.eq(0);
+          expect(await getToken(isCall).balanceOf(lp1.address)).to.eq(
+            isCall ? amount : parseBase('2'),
+          );
+        });
+      });
+    }
   });
 });
