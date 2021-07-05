@@ -304,8 +304,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
     _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
 
-    // mint free liquidity tokens for treasury
-    _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost);
+    // mint reserved liquidity tokens for fee receiver
+    _mint(FEE_RECEIVER_ADDRESS, _getReservedLiquidityTokenId(isCall), feeCost);
 
     emit Purchase(
       msg.sender,
@@ -416,7 +416,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     address token = _getPoolToken(isCall);
     uint256 fee = FEE_64x64.mulu(amount);
     _pullFrom(underwriter, token, amount + fee);
-    IERC20(token).transfer(FEE_RECEIVER_ADDRESS, fee);
+    // mint reserved liquidity tokens for fee receiver
+    _mint(FEE_RECEIVER_ADDRESS, _getReservedLiquidityTokenId(isCall), fee);
 
     longTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), maturity, strike64x64);
     shortTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64);
@@ -562,6 +563,21 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    */
   function update () external returns (int128 newEmaVarianceAnnualized64x64) {
     (,newEmaVarianceAnnualized64x64) = _update(PoolStorage.layout());
+  }
+
+  function withdrawFees () external  {
+    _withdrawFees(true);
+    _withdrawFees(false);
+  }
+
+  function _withdrawFees (bool isCall) internal {
+    uint256 tokenId = _getReservedLiquidityTokenId(isCall);
+    uint256 balance = balanceOf(FEE_RECEIVER_ADDRESS, tokenId);
+    if (balance > 0) {
+      _burn(FEE_RECEIVER_ADDRESS, tokenId, balance);
+      _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(isCall), balance);
+      // ToDo : Event ?
+    }
   }
 
   ////////////////////////////////////////////////////////
@@ -775,8 +791,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
     _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
 
-    // mint free liquidity tokens for treasury
-    _mint(FEE_RECEIVER_ADDRESS, _getFreeLiquidityTokenId(isCall), feeCost);
+    // mint reserved liquidity tokens for fee receiver
+    _mint(FEE_RECEIVER_ADDRESS, _getReservedLiquidityTokenId(isCall), feeCost);
 
     emit Reassign(
       msg.sender,
