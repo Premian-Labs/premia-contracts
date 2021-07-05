@@ -90,6 +90,16 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     uint256 amount
   );
 
+  event FeeWithdrawal (
+    bool indexed isCallPool,
+    uint256 amount
+  );
+
+  event Annihilate (
+    uint256 shortTokenId,
+    uint256 amount
+  );
+
   event UpdateCLevel (
     bool indexed isCall,
     int128 cLevel64x64,
@@ -558,7 +568,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       isCall ? amount : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(amount))
     );
 
-    // ToDo : Event ?
+    emit Annihilate(shortTokenId, amount);
   }
 
   ////////////////////////////////////////////////////////
@@ -617,7 +627,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     if (balance > 0) {
       _burn(FEE_RECEIVER_ADDRESS, tokenId, balance);
       _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(isCall), balance);
-      // ToDo : Event ?
+
+      emit FeeWithdrawal(isCall, balance);
     }
   }
 
