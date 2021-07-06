@@ -17,13 +17,13 @@ library PoolStorage {
     BASE_FREE_LIQ,
 
     UNDERLYING_RESERVED_LIQ,
-    BASE_RESERVED_LIQ
+    BASE_RESERVED_LIQ,
 
     LONG_CALL,
     SHORT_CALL,
 
     LONG_PUT,
-    SHORT_PUT,
+    SHORT_PUT
   }
 
   struct PoolSettings {
