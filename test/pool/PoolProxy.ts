@@ -1340,9 +1340,63 @@ describe('PoolProxy', function () {
   describe('#write', () => {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
-        it('should successfully manually underwrite an option', async () => {
+        it('should revert if trying to manually underwrite an option from a non approved operator', async () => {
+          const amount = parseUnderlying('1');
+          await expect(
+            poolUtil.writeOption(
+              owner,
+              lp1,
+              lp2,
+              poolUtil.getMaturity(30),
+              fixedFromFloat(2),
+              amount,
+              isCall,
+            ),
+          ).to.be.revertedWith('not approved');
+        });
+
+        it('should successfully manually underwrite an option without use of an external operator', async () => {
           const amount = parseUnderlying('1');
           await poolUtil.writeOption(
+            lp1,
+            lp1,
+            lp2,
+            poolUtil.getMaturity(30),
+            fixedFromFloat(2),
+            amount,
+            isCall,
+          );
+
+          const tokenIds = getOptionTokenIds(
+            poolUtil.getMaturity(30),
+            fixedFromFloat(2),
+            isCall,
+          );
+
+          console.log(await getToken(isCall).balanceOf(lp1.address));
+          console.log(await pool.balanceOf(lp1.address, tokenIds.long));
+          console.log(await pool.balanceOf(lp1.address, tokenIds.short));
+          console.log(await pool.balanceOf(lp2.address, tokenIds.long));
+          console.log(await pool.balanceOf(lp2.address, tokenIds.short));
+
+          console.log(tokenIds);
+
+          expect(await getToken(isCall).balanceOf(lp1.address)).to.eq(0);
+          expect(await pool.balanceOf(lp1.address, tokenIds.long)).to.eq(0);
+          expect(await pool.balanceOf(lp2.address, tokenIds.long)).to.eq(
+            amount,
+          );
+          expect(await pool.balanceOf(lp1.address, tokenIds.short)).to.eq(
+            amount,
+          );
+          expect(await pool.balanceOf(lp2.address, tokenIds.short)).to.eq(0);
+        });
+
+        it('should successfully manually underwrite an option with use of an external operator', async () => {
+          const amount = parseUnderlying('1');
+          await pool.connect(lp1).setApprovalForAll(owner.address, true);
+          await poolUtil.writeOption(
+            owner,
             lp1,
             lp2,
             poolUtil.getMaturity(30),
@@ -1389,6 +1443,7 @@ describe('PoolProxy', function () {
         it('should successfully burn long and short tokens + withdraw collateral', async () => {
           const amount = parseUnderlying('1');
           await poolUtil.writeOption(
+            lp1,
             lp1,
             lp1,
             poolUtil.getMaturity(30),

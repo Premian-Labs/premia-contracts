@@ -107,7 +107,8 @@ export class PoolUtil {
   }
 
   async writeOption(
-    lp: SignerWithAddress,
+    operator: SignerWithAddress,
+    underwriter: SignerWithAddress,
     longReceiver: SignerWithAddress,
     maturity: BigNumber,
     strike64x64: BigNumber,
@@ -116,13 +117,24 @@ export class PoolUtil {
   ) {
     const toMint = isCall ? parseUnderlying('1') : parseBase('2');
 
-    await this.getToken(isCall).mint(lp.address, toMint);
+    await this.getToken(isCall).mint(underwriter.address, toMint);
     await this.getToken(isCall)
-      .connect(lp)
+      .connect(underwriter)
       .approve(this.pool.address, ethers.constants.MaxUint256);
+    console.log('2');
+    console.log(await this.base.balanceOf(underwriter.address));
+    console.log(await this.underlying.balanceOf(underwriter.address));
+    console.log(underwriter.address, longReceiver.address);
     await this.pool
-      .connect(lp)
-      .write(longReceiver.address, maturity, strike64x64, amount, isCall);
+      .connect(operator)
+      .writeFrom(
+        underwriter.address,
+        longReceiver.address,
+        maturity,
+        strike64x64,
+        amount,
+        isCall,
+      );
   }
 
   async purchaseOption(
