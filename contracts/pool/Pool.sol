@@ -256,7 +256,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     uint256 contractAmount,
     bool isCall,
     uint256 maxCost
-  ) external payable returns (uint256 tokenBaseCost, uint256 feeCost) {
+  ) external payable returns (uint256 baseCost, uint256 feeCost) {
     // TODO: specify payment currency
 
     PoolStorage.Layout storage l = PoolStorage.layout();
@@ -295,12 +295,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
         )
       );
 
-      tokenBaseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, l.getTokenDecimals(isCall));
+      baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, l.getTokenDecimals(isCall));
       feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, l.getTokenDecimals(isCall));
     }
 
-    require(tokenBaseCost + feeCost <= maxCost, 'excess slipp');
-    _pullFrom(msg.sender, _getPoolToken(isCall), tokenBaseCost + feeCost);
+    require(baseCost + feeCost <= maxCost, 'excess slipp');
+    _pullFrom(msg.sender, _getPoolToken(isCall), baseCost + feeCost);
 
     uint256 longTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), maturity, strike64x64);
     uint256 shortTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64);
@@ -310,7 +310,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
     int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
     // burn free liquidity tokens from other underwriters
-    _mintShortTokenLoop(l, contractAmount, tokenBaseCost, shortTokenId, isCall);
+    _mintShortTokenLoop(l, contractAmount, baseCost, shortTokenId, isCall);
     int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
 
     _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
@@ -322,7 +322,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       msg.sender,
       longTokenId,
       contractAmount,
-      tokenBaseCost,
+      baseCost,
       feeCost,
       newPrice64x64
     );
