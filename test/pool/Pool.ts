@@ -11,6 +11,7 @@ import {
   PoolMock__factory,
 } from '../../typechain';
 import { formatTokenId, TokenType } from '../utils/math';
+import { ONE_ADDRESS } from '../utils/constants';
 
 const fixedFromBigNumber = function (bn: BigNumber) {
   return bn.abs().shl(64).mul(bn.abs().div(bn));
@@ -35,8 +36,14 @@ describe('Pool', function () {
 
   beforeEach(async function () {
     optionMath = await new OptionMath__factory(owner).deploy();
-    instance = await new PoolMock__factory({ '__$430b703ddf4d641dc7662832950ed9cf8d$__': optionMath.address }, owner).deploy(
+    instance = await new PoolMock__factory(
+      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      owner,
+    ).deploy(
       ethers.constants.AddressZero,
+      ONE_ADDRESS,
+      ethers.constants.AddressZero,
+      0,
     );
   });
 

@@ -31,7 +31,11 @@ describe('Premia', function () {
     // TODO: pass PremiaMaker proxy address instead of zero address
     // TODO: pass non-zero fee
     optionMath = await new OptionMath__factory(owner).deploy();
-    pool = await new Pool__factory({ '__$430b703ddf4d641dc7662832950ed9cf8d$__': optionMath.address }, owner).deploy(
+    pool = await new Pool__factory(
+      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      owner,
+    ).deploy(
+      ethers.constants.AddressZero,
       ethers.constants.AddressZero,
       ethers.constants.AddressZero,
       ethers.constants.Zero,

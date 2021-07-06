@@ -13,6 +13,7 @@ import { PoolStorage } from './PoolStorage.sol';
 import { ABDKMath64x64 } from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import { ABDKMath64x64Token } from '../libraries/ABDKMath64x64Token.sol';
 import { OptionMath } from '../libraries/OptionMath.sol';
+import { IPremiaFeeDiscount } from '../interface/IPremiaFeeDiscount.sol';
 
 /**
  * @title Premia option pool
@@ -25,6 +26,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
   address private immutable WETH_ADDRESS;
   address private immutable FEE_RECEIVER_ADDRESS;
+  address private immutable FEE_DISCOUNT_ADDRESS;
 
   int128 private immutable FEE_64x64;
   uint256 private immutable BATCHING_PERIOD;
@@ -34,6 +36,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
   uint256 private immutable UNDERLYING_RESERVED_LIQ_TOKEN_ID;
   uint256 private immutable BASE_RESERVED_LIQ_TOKEN_ID;
+
+  uint256 constant INVERSE_BASIS_POINT = 1e4;
 
   event Purchase (
     address indexed user,
@@ -118,11 +122,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   constructor (
     address weth,
     address feeReceiver,
+    address feeDiscountAddress,
     int128 fee64x64,
     uint256 batchingPeriod
   ) {
     WETH_ADDRESS = weth;
     FEE_RECEIVER_ADDRESS = feeReceiver;
+    // PremiaFeeDiscount contract address
+    FEE_DISCOUNT_ADDRESS = feeDiscountAddress;
     FEE_64x64 = fee64x64;
     BATCHING_PERIOD = batchingPeriod;
 
@@ -190,6 +197,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
   /**
    * @notice calculate price of option contract
+   * @param feePayer address of the fee payer
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
    * @param contractAmount size of option contract
@@ -200,6 +208,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    * @return slippageCoefficient64x64 64x64 fixed point representation of slippage coefficient for given order size
    */
   function quote (
+    address feePayer,
     uint64 maturity,
     int128 strike64x64,
     uint256 contractAmount,
@@ -219,6 +228,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       slippageCoefficient64x64
     ) = _quote(
       PoolStorage.QuoteArgsInternal(
+        feePayer,
         maturity,
         strike64x64,
         spot64x64,
@@ -286,6 +296,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
       (baseCost64x64, feeCost64x64, cLevel64x64,) = _quote(
         PoolStorage.QuoteArgsInternal(
+          msg.sender,
           maturity,
           strike64x64,
           newPrice64x64,
@@ -381,6 +392,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
     address token = _getPoolToken(isCall);
     uint256 fee = FEE_64x64.mulu(contractAmount);
+
+    uint256 discount = _getFeeDiscount(underwriter);
+    fee -= fee * discount / INVERSE_BASIS_POINT;
 
     uint256 tokenAmount = isCall ? (contractAmount + fee) : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(contractAmount + fee));
 
@@ -574,6 +588,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   // Internal //
   //////////////
 
+  function _getFeeDiscount (address feePayer) internal view returns (uint256 discount) {
+    if (FEE_DISCOUNT_ADDRESS != address(0)) {
+      discount = IPremiaFeeDiscount(FEE_DISCOUNT_ADDRESS).getDiscount(feePayer);
+    }
+  }
+
   function _withdrawFees (bool isCall) internal {
     uint256 tokenId = _getReservedLiquidityTokenId(isCall);
     uint256 balance = balanceOf(FEE_RECEIVER_ADDRESS, tokenId);
@@ -653,6 +673,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
     baseCost64x64 = isCall ? price64x64.mul(contractAmount64x64).div(args.spot64x64) : price64x64.mul(contractAmount64x64);
     feeCost64x64 = baseCost64x64.mul(FEE_64x64);
+
+    int128 discount = ABDKMath64x64Token.fromDecimals(_getFeeDiscount(args.feePayer), 4);
+    feeCost64x64 = feeCost64x64.mul(discount);
   }
 
   /**
@@ -760,6 +783,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
       (baseCost64x64, feeCost64x64, cLevel64x64,) = _quote(
         PoolStorage.QuoteArgsInternal(
+          msg.sender,
           maturity,
           strike64x64,
           newPrice64x64,

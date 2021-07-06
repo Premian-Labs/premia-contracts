@@ -165,7 +165,13 @@ export class PoolUtil {
         .approve(this.pool.address, ethers.constants.MaxUint256);
     }
 
-    const quote = await this.pool.quote(maturity, strike64x64, amount, isCall);
+    const quote = await this.pool.quote(
+      buyer.address,
+      maturity,
+      strike64x64,
+      amount,
+      isCall,
+    );
 
     await this.pool
       .connect(buyer)

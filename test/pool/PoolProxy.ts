@@ -45,7 +45,7 @@ import {
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
-import { ZERO_ADDRESS } from '../utils/constants';
+import { ONE_ADDRESS, ZERO_ADDRESS } from '../utils/constants';
 
 chai.use(chaiAlmost(0.02));
 
@@ -61,7 +61,6 @@ describe('PoolProxy', function () {
 
   let premia: Premia;
   let proxy: ManagedProxyOwnable;
-  let optionMath: OptionMath;
   let pool: PoolMock;
   let poolWeth: PoolMock;
   let base: ERC20Mock;
@@ -166,7 +165,7 @@ describe('PoolProxy', function () {
     const poolImp = await new PoolMock__factory(
       { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
       owner,
-    ).deploy(underlyingWeth.address);
+    ).deploy(underlyingWeth.address, ONE_ADDRESS, ZERO_ADDRESS, 0);
 
     const facetCuts = [await new ProxyManager__factory(owner).deploy()].map(
       function (f) {
@@ -326,7 +325,13 @@ describe('PoolProxy', function () {
       const strike64x64 = fixedFromFloat(spotPrice * 1.25);
 
       await expect(
-        pool.quote(maturity, strike64x64, parseUnderlying('1'), true),
+        pool.quote(
+          ZERO_ADDRESS,
+          maturity,
+          strike64x64,
+          parseUnderlying('1'),
+          true,
+        ),
       ).to.be.revertedWith('no liq');
     });
 
@@ -335,10 +340,10 @@ describe('PoolProxy', function () {
         await poolUtil.depositLiquidity(owner, parseUnderlying('10'), true);
 
         const strike64x64 = fixedFromFloat(2500);
-        const spot64x64 = fixedFromFloat(spotPrice);
         const now = getCurrentTimestamp();
 
         const q = await pool.quote(
+          ZERO_ADDRESS,
           now + 10 * 24 * 3600,
           strike64x64,
           parseUnderlying('1'),
@@ -361,10 +366,10 @@ describe('PoolProxy', function () {
         await poolUtil.depositLiquidity(owner, parseBase('10000'), false);
 
         const strike64x64 = fixedFromFloat(1750);
-        const spot64x64 = fixedFromFloat(spotPrice);
         const now = getCurrentTimestamp();
 
         const q = await pool.quote(
+          ZERO_ADDRESS,
           now + 10 * 24 * 3600,
           strike64x64,
           parseUnderlying('1'),
@@ -651,6 +656,7 @@ describe('PoolProxy', function () {
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
           const quote = await pool.quote(
+            buyer.address,
             maturity,
             strike64x64,
             purchaseAmount,
@@ -736,6 +742,7 @@ describe('PoolProxy', function () {
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
           const quote = await pool.quote(
+            buyer.address,
             maturity,
             strike64x64,
             purchaseAmount,
