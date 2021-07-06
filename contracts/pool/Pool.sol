@@ -377,7 +377,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     int128 strike64x64,
     uint256 amount,
     bool isCall
-  ) external returns(uint256 longTokenId, uint256 shortTokenId) {
+  ) external payable returns(uint256 longTokenId, uint256 shortTokenId) {
     require(msg.sender == underwriter || isApprovedForAll(underwriter, msg.sender), 'not approved');
 
     address token = _getPoolToken(isCall);
@@ -1144,7 +1144,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
     if (amount > 0) {
       require(
-        IERC20(token).transferFrom(underwriter, address(this), amount),
+        IERC20(token).transferFrom(from, address(this), amount),
         'ERC20 transfer failed'
       );
     }
