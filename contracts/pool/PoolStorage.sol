@@ -12,7 +12,19 @@ import {OptionMath} from '../libraries/OptionMath.sol';
 import {Pool} from './Pool.sol';
 
 library PoolStorage {
-  enum TokenType { UNDERLYING_FREE_LIQ, BASE_FREE_LIQ, LONG_CALL, SHORT_CALL, LONG_PUT, SHORT_PUT }
+  enum TokenType {
+    UNDERLYING_FREE_LIQ,
+    BASE_FREE_LIQ,
+
+    UNDERLYING_RESERVED_LIQ,
+    BASE_RESERVED_LIQ,
+
+    LONG_CALL,
+    SHORT_CALL,
+
+    LONG_PUT,
+    SHORT_PUT
+  }
 
   struct PoolSettings {
     address underlying;
@@ -61,6 +73,8 @@ library PoolStorage {
 
     // User -> isCall -> depositedAt
     mapping (address => mapping(bool => uint256)) depositedAt;
+
+    mapping (address => uint256) divestmentTimestamps;
 
     // doubly linked list of free liquidity intervals
     // isCall -> User -> User
@@ -140,6 +154,14 @@ library PoolStorage {
       ERC1155EnumerableStorage.layout().totalSupply[tokenId] - l.nextDeposits[isCall].totalPendingDeposits,
       getTokenDecimals(l, isCall)
     );
+  }
+
+  function getReinvestmentStatus (
+    Layout storage l,
+    address account
+  ) internal view returns (bool) {
+    uint256 timestamp = l.divestmentTimestamps[account];
+    return timestamp == 0 || timestamp > block.timestamp;
   }
 
   function addUnderwriter (
