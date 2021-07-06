@@ -364,7 +364,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    * @param longReceiver address who will receive the long token (Can be the underwriter)
    * @param maturity timestamp of option maturity
    * @param strike64x64 64x64 fixed point representation of strike price
-   * @notice write call option without using pool liquidity
    * @param amount quantity of option contract tokens to exercise
    * @param isCall whether this is a call or a put
    * @return longTokenId token id of the long call
