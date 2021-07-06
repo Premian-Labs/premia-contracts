@@ -1116,12 +1116,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
   /**
    * @notice transfer ERC20 tokens from message sender
-   * @param underwriter underwriter of the option from which collateral is pulled from
+   * @param from address from which tokens are pulled from
    * @param token ERC20 token address
    * @param amount quantity of token to transfer
    */
   function _pullFrom (
-    address underwriter,
+    address from,
     address token,
     uint256 amount
   ) internal {
