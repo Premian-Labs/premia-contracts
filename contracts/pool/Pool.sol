@@ -391,7 +391,18 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   ) external returns (uint256 baseCost, uint256 feeCost) {
     PoolStorage.Layout storage l = PoolStorage.layout();
     (int128 newPrice64x64, ) = _update(l);
-    (baseCost, feeCost) = _reassign(l, shortTokenId, amount, newPrice64x64);
+
+    (PoolStorage.TokenType tokenType, , ) = PoolStorage.parseTokenId(shortTokenId);
+    bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
+
+    uint256 amountOut;
+    (baseCost, feeCost, amountOut) = _reassign(l, shortTokenId, amount, newPrice64x64);
+
+    _pushTo(
+      msg.sender,
+      _getPoolToken(isCall),
+      amountOut
+    );
   }
 
   /**
@@ -410,8 +421,37 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     baseCosts = new uint256[](ids.length);
     feeCosts = new uint256[](ids.length);
 
+    uint256 totalAmountOutCall;
+    uint256 totalAmountOutPut;
+
     for (uint256 i; i < ids.length; i++) {
-      (baseCosts[i], feeCosts[i]) = _reassign(l, ids[i], amounts[i], newPrice64x64);
+      uint amountOut;
+      (baseCosts[i], feeCosts[i], amountOut) = _reassign(l, ids[i], amounts[i], newPrice64x64);
+
+      (PoolStorage.TokenType tokenType, , ) = PoolStorage.parseTokenId(ids[i]);
+      bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
+
+      if (isCall) {
+        totalAmountOutCall += amountOut;
+      } else {
+        totalAmountOutPut += amountOut;
+      }
+    }
+
+    if (totalAmountOutCall > 0) {
+      _pushTo(
+        msg.sender,
+        _getPoolToken(true),
+        totalAmountOutCall
+      );
+    }
+
+    if (totalAmountOutPut > 0) {
+      _pushTo(
+        msg.sender,
+        _getPoolToken(false),
+        totalAmountOutPut
+      );
     }
   }
 
@@ -597,7 +637,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     uint256 shortTokenId,
     uint256 amount,
     int128 newPrice64x64
-  ) internal returns (uint256 baseCost, uint256 feeCost) {
+  ) internal returns (
+    uint256 baseCost,
+    uint256 feeCost,
+    uint256 amountOut
+  ) {
     uint64 maturity;
     int128 strike64x64;
     bool isCall;
@@ -631,13 +675,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, l.getTokenDecimals(isCall));
       feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, l.getTokenDecimals(isCall));
 
-      uint256 pushAmount = isCall ? amount : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
-
-      _pushTo(
-        msg.sender,
-        _getPoolToken(isCall),
-        pushAmount - baseCost - feeCost
-      );
+      amountOut = (isCall ? amount : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount))) - baseCost - feeCost;
     }
 
     // burn short option tokens from underwriter
