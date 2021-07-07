@@ -549,6 +549,40 @@ describe('PoolProxy', function () {
           ).to.be.revertedWith('exp < 1 day');
         });
 
+        it('should revert if option is priced with instant profit', async () => {
+          await poolUtil.depositLiquidity(
+            owner,
+            parseOption(isCall ? '100' : '100000', isCall),
+            isCall,
+          );
+          await pool.setCLevel(isCall, fixedFromFloat('0.1'));
+
+          const maturity = poolUtil.getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(!isCall));
+
+          console.log(spotPrice, getStrike(!isCall));
+
+          if (isCall) {
+            console.log(spotPrice - getStrike(!isCall));
+          } else {
+            console.log(getStrike(!isCall) - spotPrice);
+          }
+
+          const purchaseAmountNb = 10;
+          const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+          await expect(
+            pool.quote({
+              maturity,
+              strike64x64,
+              spot64x64: fixedFromFloat(spotPrice),
+              amount: purchaseAmount,
+              isCall,
+              emaVarianceAnnualized64x64: await pool.callStatic.update(),
+            }),
+          ).to.be.revertedWith('price < intrinsic val');
+        });
+
         it('should revert if using a maturity more than 28 days in the future', async () => {
           await poolUtil.depositLiquidity(
             owner,
