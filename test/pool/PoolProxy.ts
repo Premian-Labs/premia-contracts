@@ -506,6 +506,9 @@ describe('PoolProxy', function () {
           const maturity = getCurrentTimestamp() + 10 * 3600;
           const strike64x64 = fixedFromFloat(1.5);
 
+          // TODO: why is getCurrentTimestamp not returning the expected timestamp?
+          await ethers.provider.send('evm_setNextBlockTimestamp', [getCurrentTimestamp()])
+
           await expect(
             pool
               .connect(buyer)
