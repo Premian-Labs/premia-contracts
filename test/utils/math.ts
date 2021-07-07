@@ -11,10 +11,12 @@ import { BytesLike } from '@ethersproject/bytes';
 export enum TokenType {
   UnderlyingFreeLiq = 0,
   BaseFreeLiq = 1,
-  LongCall = 2,
-  ShortCall = 3,
-  LongPut = 4,
-  ShortPut = 5,
+  UnderlyingReservedLiq = 2,
+  BaseReservedLiq = 3,
+  LongCall = 4,
+  ShortCall = 5,
+  LongPut = 6,
+  ShortPut = 7,
 }
 
 export interface TokenIdParams {
