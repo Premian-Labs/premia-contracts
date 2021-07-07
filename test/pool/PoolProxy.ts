@@ -559,15 +559,6 @@ describe('PoolProxy', function () {
 
           const maturity = poolUtil.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(!isCall));
-
-          console.log(spotPrice, getStrike(!isCall));
-
-          if (isCall) {
-            console.log(spotPrice - getStrike(!isCall));
-          } else {
-            console.log(getStrike(!isCall) - spotPrice);
-          }
-
           const purchaseAmountNb = 10;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
