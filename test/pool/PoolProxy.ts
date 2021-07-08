@@ -731,7 +731,8 @@ describe('PoolProxy', function () {
 
           expect(bnToNumber(newBalance, getTokenDecimals(isCall))).to.almost(
             bnToNumber(mintAmount, getTokenDecimals(isCall)) -
-              fixedToNumber(quote.baseCost64x64),
+              fixedToNumber(quote.baseCost64x64) -
+              fixedToNumber(quote.feeCost64x64),
           );
 
           const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
@@ -1189,7 +1190,8 @@ describe('PoolProxy', function () {
             ),
           ).to.almost(
             Number(formatOption(initialBuyerAmount, isCall)) -
-              fixedToNumber(quote.baseCost64x64),
+              fixedToNumber(quote.baseCost64x64) -
+              fixedToNumber(quote.feeCost64x64),
           );
 
           const freeLiqAfter = await pool.balanceOf(
@@ -1265,7 +1267,8 @@ describe('PoolProxy', function () {
             ),
           ).to.almost(
             Number(formatOption(initialBuyerAmount, isCall)) -
-              fixedToNumber(quote.baseCost64x64) +
+              fixedToNumber(quote.baseCost64x64) -
+              fixedToNumber(quote.feeCost64x64) +
               exerciseValue,
           );
 
