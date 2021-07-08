@@ -101,7 +101,16 @@ library OptionMath {
 
     cLevel64x64 = tradingDelta64x64.mul(args.oldCLevel64x64);
     slippageCoefficient64x64 = ONE_64x64.sub(tradingDelta64x64).div(deltaPoolState64x64);
+
+    int128 intrinsicValue64x64;
+    if (args.isCall && args.strike64x64 < args.spot64x64) {
+      intrinsicValue64x64 = args.spot64x64.sub(args.strike64x64);
+    } else if (!args.isCall && args.strike64x64 > args.spot64x64) {
+      intrinsicValue64x64 = args.strike64x64.sub(args.spot64x64);
+    }
+
     premiaPrice64x64 = bsPrice64x64.mul(cLevel64x64).mul(slippageCoefficient64x64);
+    require(premiaPrice64x64 > intrinsicValue64x64, "price < intrinsic val");
   }
 
   /**
