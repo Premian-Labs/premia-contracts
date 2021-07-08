@@ -5,7 +5,6 @@ import {
   ERC20Mock__factory,
   ManagedProxyOwnable,
   ManagedProxyOwnable__factory,
-  OptionMath,
   OptionMath__factory,
   PoolMock,
   PoolMock__factory,
@@ -61,7 +60,6 @@ describe('PoolProxy', function () {
 
   let premia: Premia;
   let proxy: ManagedProxyOwnable;
-  let optionMath: OptionMath;
   let pool: PoolMock;
   let poolWeth: PoolMock;
   let base: ERC20Mock;
@@ -533,14 +531,7 @@ describe('PoolProxy', function () {
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
           await expect(
-            pool.quote({
-              maturity,
-              strike64x64,
-              spot64x64: fixedFromFloat(spotPrice),
-              amount: purchaseAmount,
-              isCall,
-              emaVarianceAnnualized64x64: await pool.callStatic.update(),
-            }),
+            pool.quote(maturity, strike64x64, purchaseAmount, isCall),
           ).to.be.revertedWith('price < intrinsic val');
         });
 
