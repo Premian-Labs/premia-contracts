@@ -1332,6 +1332,8 @@ describe('PoolProxy', function () {
             isCall,
           );
 
+          await increaseTimestamp(25 * 3600);
+
           const shortTokenId = formatTokenId({
             tokenType: getShort(isCall),
             maturity,
@@ -1343,8 +1345,17 @@ describe('PoolProxy', function () {
             shortTokenId,
           );
 
-          await pool.connect(lp1).reassign(shortTokenId, shortTokenBalance);
+          await pool
+            .connect(lp1)
+            .withdrawAllAndReassignBatch(
+              isCall,
+              [shortTokenId],
+              [shortTokenBalance],
+            );
 
+          expect(
+            await pool.balanceOf(lp1.address, getFreeLiqTokenId(isCall)),
+          ).to.eq(0);
           expect(await pool.balanceOf(lp1.address, shortTokenId)).to.eq(0);
           expect(await pool.balanceOf(lp2.address, shortTokenId)).to.eq(
             shortTokenBalance,
