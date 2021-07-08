@@ -5,7 +5,6 @@ import {
   ERC20Mock__factory,
   ManagedProxyOwnable,
   ManagedProxyOwnable__factory,
-  OptionMath,
   OptionMath__factory,
   PoolMock,
   PoolMock__factory,
@@ -45,7 +44,7 @@ import {
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
-import { ONE_ADDRESS, ZERO_ADDRESS } from '../utils/constants';
+import { ZERO_ADDRESS } from '../utils/constants';
 
 chai.use(chaiAlmost(0.02));
 
@@ -58,6 +57,7 @@ describe('PoolProxy', function () {
   let lp2: SignerWithAddress;
   let buyer: SignerWithAddress;
   let thirdParty: SignerWithAddress;
+  let feeReceiver: SignerWithAddress;
 
   let premia: Premia;
   let proxy: ManagedProxyOwnable;
@@ -135,6 +135,22 @@ describe('PoolProxy', function () {
     }
   };
 
+  const getReservedLiqTokenId = (isCall: boolean) => {
+    if (isCall) {
+      return formatTokenId({
+        tokenType: TokenType.UnderlyingReservedLiq,
+        maturity: BigNumber.from(0),
+        strike64x64: BigNumber.from(0),
+      });
+    } else {
+      return formatTokenId({
+        tokenType: TokenType.BaseReservedLiq,
+        maturity: BigNumber.from(0),
+        strike64x64: BigNumber.from(0),
+      });
+    }
+  };
+
   const spotPrice = 2000;
 
   const setUnderlyingPrice = async (price: BigNumber) => {
@@ -143,7 +159,8 @@ describe('PoolProxy', function () {
 
   beforeEach(async function () {
     await resetHardhat();
-    [owner, lp1, lp2, buyer, thirdParty] = await ethers.getSigners();
+    [owner, lp1, lp2, buyer, thirdParty, feeReceiver] =
+      await ethers.getSigners();
 
     //
 
@@ -165,7 +182,12 @@ describe('PoolProxy', function () {
     const poolImp = await new PoolMock__factory(
       { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
       owner,
-    ).deploy(underlyingWeth.address, ONE_ADDRESS, ZERO_ADDRESS, 0);
+    ).deploy(
+      underlyingWeth.address,
+      feeReceiver.address,
+      ZERO_ADDRESS,
+      fixedFromFloat(0.01),
+    );
 
     const facetCuts = [await new ProxyManager__factory(owner).deploy()].map(
       function (f) {
@@ -351,7 +373,9 @@ describe('PoolProxy', function () {
         );
 
         expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(70.92);
-        expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
+        expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
+          fixedToNumber(q.baseCost64x64) * 0.01,
+        );
         expect(fixedToNumber(q.cLevel64x64)).to.almost(2.21);
         expect(
           (fixedToNumber(q.baseCost64x64) * spotPrice) /
@@ -377,7 +401,7 @@ describe('PoolProxy', function () {
         );
 
         expect(fixedToNumber(q.baseCost64x64)).to.almost(114.63);
-        expect(fixedToNumber(q.feeCost64x64)).to.eq(0);
+        expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(114.63 * 0.01);
         expect(fixedToNumber(q.cLevel64x64)).to.almost(2);
         expect(
           fixedToNumber(q.baseCost64x64) /
@@ -538,14 +562,13 @@ describe('PoolProxy', function () {
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
           await expect(
-            pool.quote({
+            pool.quote(
+              buyer.address,
               maturity,
               strike64x64,
-              spot64x64: fixedFromFloat(spotPrice),
-              amount: purchaseAmount,
+              purchaseAmount,
               isCall,
-              emaVarianceAnnualized64x64: await pool.callStatic.update(),
-            }),
+            ),
           ).to.be.revertedWith('price < intrinsic val');
         });
 
@@ -734,6 +757,15 @@ describe('PoolProxy', function () {
                 fixedToNumber(quote.baseCost64x64),
             );
           }
+
+          expect(
+            bnToNumber(
+              await pool.balanceOf(
+                feeReceiver.address,
+                getReservedLiqTokenId(isCall),
+              ),
+            ),
+          ).to.almost(fixedToNumber(quote.feeCost64x64));
 
           expect(await pool.balanceOf(lp1.address, tokenId.long)).to.eq(0);
           expect(await pool.balanceOf(lp1.address, tokenId.short)).to.eq(
