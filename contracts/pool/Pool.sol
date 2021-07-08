@@ -442,7 +442,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
     {
       uint256 reservedLiqTokenId = _getReservedLiquidityTokenId(isCallPool);
-      uint256 reservedLiquidity = ERC1155EnumerableStorage.layout().totalSupply[reservedLiqTokenId];
+      uint256 reservedLiquidity = balanceOf(msg.sender, reservedLiqTokenId);
 
       if (reservedLiquidity > 0) {
         uint256 reservedLiqToWithdraw;
