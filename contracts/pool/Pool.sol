@@ -400,16 +400,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     require(msg.sender == underwriter || isApprovedForAll(underwriter, msg.sender), 'not approved');
 
     address token = _getPoolToken(isCall);
-    uint256 fee = FEE_64x64.mulu(contractSize);
 
-    uint256 discount = _getFeeDiscount(underwriter);
-    fee -= fee * discount / INVERSE_BASIS_POINT;
-
-    uint256 tokenAmount = isCall ? (contractSize + fee) : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize + fee));
+    uint256 tokenAmount = isCall ? contractSize : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
 
     _pullFrom(underwriter, token, tokenAmount);
-    // mint reserved liquidity tokens for fee receiver
-    _mint(FEE_RECEIVER_ADDRESS, _getReservedLiquidityTokenId(isCall), fee);
 
     longTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), maturity, strike64x64);
     shortTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64);
@@ -603,6 +597,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     }
   }
 
+  function _getFeeWithDiscount (address feePayer, uint256 fee) internal view returns (uint256) {
+    uint256 discount = _getFeeDiscount(feePayer);
+    return fee - (fee * discount / INVERSE_BASIS_POINT);
+  }
+
   function _withdrawFees (bool isCall) internal {
     uint256 tokenId = _getReservedLiquidityTokenId(isCall);
     uint256 balance = balanceOf(FEE_RECEIVER_ADDRESS, tokenId);
@@ -731,8 +730,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       }
     }
 
+
+    uint256 totalFee;
+
     if (onlyExpired) {
-      _burnLongTokenLoop(
+      totalFee += _burnLongTokenLoop(
         contractSize,
         exerciseValue,
         longTokenId,
@@ -743,7 +745,10 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       _burn(holder, longTokenId, contractSize);
 
       if (exerciseValue > 0) {
-        _pushTo(holder, _getPoolToken(isCall), exerciseValue);
+        uint256 fee = _getFeeWithDiscount(holder, FEE_64x64.mulu(exerciseValue));
+        totalFee += fee;
+
+        _pushTo(holder, _getPoolToken(isCall), exerciseValue - fee);
 
         emit Exercise(
           holder,
@@ -754,12 +759,14 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       }
     }
 
-    _burnShortTokenLoop(
+    totalFee += _burnShortTokenLoop(
       contractSize,
       exerciseValue,
       PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
       isCall
     );
+
+    _mint(FEE_RECEIVER_ADDRESS, _getReservedLiquidityTokenId(isCall), totalFee);
   }
 
   /**
@@ -907,7 +914,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     uint256 exerciseValue,
     uint256 longTokenId,
     bool isCall
-  ) internal {
+  ) internal returns (uint256 totalFee) {
     EnumerableSet.AddressSet storage holders = ERC1155EnumerableStorage.layout().accountsByToken[longTokenId];
 
     while (contractSize > 0) {
@@ -918,10 +925,15 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
       uint256 intervalExerciseValue;
 
+      uint256 fee;
       if (exerciseValue > 0) {
         intervalExerciseValue = exerciseValue * intervalContractSize / contractSize;
+
+        fee = _getFeeWithDiscount(longTokenHolder, FEE_64x64.mulu(intervalExerciseValue));
+        totalFee += fee;
+
         exerciseValue -= intervalExerciseValue;
-        _pushTo(longTokenHolder, _getPoolToken(isCall), intervalExerciseValue);
+        _pushTo(longTokenHolder, _getPoolToken(isCall), intervalExerciseValue - fee);
       }
 
       contractSize -= intervalContractSize;
@@ -930,7 +942,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
         longTokenHolder,
         longTokenId,
         intervalContractSize,
-        intervalExerciseValue
+        intervalExerciseValue - fee
       );
 
       _burn(longTokenHolder, longTokenId, intervalContractSize);
@@ -942,7 +954,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     uint256 exerciseValue,
     uint256 shortTokenId,
     bool isCall
-  ) private {
+  ) private returns (uint256 totalFee) {
     EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage.layout().accountsByToken[shortTokenId];
     (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
@@ -962,16 +974,19 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
         ? intervalContractSize - intervalExerciseValue
         : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(intervalContractSize)) - intervalExerciseValue;
 
+      uint256 fee = _getFeeWithDiscount(underwriter, FEE_64x64.mulu(freeLiq));
+      totalFee += fee;
+
       // mint free liquidity tokens for underwriter
       if (PoolStorage.layout().getReinvestmentStatus(underwriter)) {
-        _addToDepositQueue(underwriter, freeLiq, isCall);
+        _addToDepositQueue(underwriter, freeLiq - fee, isCall);
       } else {
-        _mint(underwriter, _getReservedLiquidityTokenId(isCall), freeLiq, '');
+        _mint(underwriter, _getReservedLiquidityTokenId(isCall), freeLiq - fee, '');
       }
       // burn short option tokens from underwriter
       _burn(underwriter, shortTokenId, intervalContractSize);
 
-      emit AssignExercise(underwriter, shortTokenId, freeLiq, intervalContractSize);
+      emit AssignExercise(underwriter, shortTokenId, freeLiq - fee, intervalContractSize);
     }
   }
 
