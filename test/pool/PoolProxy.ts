@@ -333,7 +333,6 @@ describe('PoolProxy', function () {
         await poolUtil.depositLiquidity(owner, parseUnderlying('10'), true);
 
         const strike64x64 = fixedFromFloat(2500);
-        const spot64x64 = fixedFromFloat(spotPrice);
         const now = getCurrentTimestamp();
 
         const q = await pool.quote(
@@ -790,33 +789,21 @@ describe('PoolProxy', function () {
 
             let expectedAmount = 0;
 
-            if (isCall) {
-              if (i < purchaseAmountNb) {
-                if (i < purchaseAmountNb - 1) {
-                  // For all underwriter before last intervals, we add premium which is automatically reinvested
-                  expectedAmount =
-                    1 + fixedToNumber(quote.baseCost64x64) / purchaseAmountNb;
-                } else {
-                  // For underwriter of the last interval, we subtract baseCost,
-                  // as previous intervals were > 1 because of reinvested premium
-                  expectedAmount = 1 - fixedToNumber(quote.baseCost64x64);
-                }
-              }
-            } else {
-              const totalToPay = purchaseAmountNb * getStrike(isCall);
-              const intervalAmount =
-                (depositAmountNb *
-                  (totalToPay + fixedToNumber(quote.baseCost64x64))) /
-                totalToPay /
-                getStrike(isCall);
+            const totalToPay = isCall
+              ? purchaseAmountNb
+              : purchaseAmountNb * getStrike(isCall);
+            const intervalAmount =
+              (depositAmountNb *
+                (totalToPay + fixedToNumber(quote.baseCost64x64))) /
+              totalToPay /
+              (isCall ? 1 : getStrike(isCall));
 
-              if (intervalAmount < amount) {
-                expectedAmount = intervalAmount;
-                amount -= intervalAmount;
-              } else {
-                expectedAmount = amount;
-                amount = 0;
-              }
+            if (intervalAmount < amount) {
+              expectedAmount = intervalAmount;
+              amount -= intervalAmount;
+            } else {
+              expectedAmount = amount;
+              amount = 0;
             }
 
             expect(
@@ -1399,14 +1386,6 @@ describe('PoolProxy', function () {
             fixedFromFloat(2),
             isCall,
           );
-
-          console.log(await getToken(isCall).balanceOf(lp1.address));
-          console.log(await pool.balanceOf(lp1.address, tokenIds.long));
-          console.log(await pool.balanceOf(lp1.address, tokenIds.short));
-          console.log(await pool.balanceOf(lp2.address, tokenIds.long));
-          console.log(await pool.balanceOf(lp2.address, tokenIds.short));
-
-          console.log(tokenIds);
 
           expect(await getToken(isCall).balanceOf(lp1.address)).to.eq(0);
           expect(await pool.balanceOf(lp1.address, tokenIds.long)).to.eq(0);

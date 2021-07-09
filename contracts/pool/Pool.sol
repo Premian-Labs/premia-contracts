@@ -210,7 +210,16 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     int128 cLevel64x64,
     int128 slippageCoefficient64x64
   ) {
-    (int128 spot64x64, , , , , int128 emaVarianceAnnualized64x64) = _calculateUpdate(PoolStorage.layout());
+    int128 spot64x64;
+    int128 emaVarianceAnnualized64x64;
+
+    PoolStorage.Layout storage l = PoolStorage.layout();
+    if (l.updatedAt != block.timestamp) {
+      (spot64x64, , , , , emaVarianceAnnualized64x64) = _calculateUpdate(PoolStorage.layout());
+    } else {
+      spot64x64 = l.getPriceUpdate(block.timestamp);
+      emaVarianceAnnualized64x64 = l.emaVarianceAnnualized64x64;
+    }
 
     (
       baseCost64x64,
@@ -1081,6 +1090,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     int128 newEmaVarianceAnnualized64x64
   ) {
     uint256 updatedAt = l.updatedAt;
+    require(l.updatedAt != block.timestamp, 'alrdy updated');
+
     int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
     newPrice64x64 = l.fetchPriceUpdate();
 
