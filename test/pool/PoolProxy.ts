@@ -562,7 +562,13 @@ describe('PoolProxy', function () {
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
           await expect(
-            pool.quote(maturity, strike64x64, purchaseAmount, isCall),
+            pool.quote(
+              buyer.address,
+              maturity,
+              strike64x64,
+              purchaseAmount,
+              isCall,
+            ),
           ).to.be.revertedWith('price < intrinsic val');
         });
 
