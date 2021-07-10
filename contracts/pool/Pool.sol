@@ -558,21 +558,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     uint256 shortTokenId,
     uint256 contractSize
   ) external {
-    (PoolStorage.TokenType tokenType, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
-    require(tokenType == PoolStorage.TokenType.SHORT_CALL || tokenType == PoolStorage.TokenType.SHORT_PUT, "not short");
-    bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
-    uint256 longTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), maturity, strike64x64);
-
-    _burn(msg.sender, shortTokenId, contractSize);
-    _burn(msg.sender, longTokenId, contractSize);
-
-    _pushTo(
-      msg.sender,
-      _getPoolToken(isCall),
-      isCall ? contractSize : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize))
-    );
-
-    emit Annihilate(shortTokenId, contractSize);
+    _annihilate(shortTokenId, contractSize);
   }
 
   ////////////////////////////////////////////////////////
@@ -662,6 +648,30 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
     baseCost64x64 = isCall ? price64x64.mul(contractSize64x64).div(args.spot64x64) : price64x64.mul(contractSize64x64);
     feeCost64x64 = baseCost64x64.mul(FEE_64x64);
+  }
+
+  /**
+   * @notice TODO
+   */
+  function _annihilate (
+    uint256 shortTokenId,
+    uint256 contractSize
+  ) internal {
+    (PoolStorage.TokenType tokenType, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
+    require(tokenType == PoolStorage.TokenType.SHORT_CALL || tokenType == PoolStorage.TokenType.SHORT_PUT, "not short");
+    bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
+    uint256 longTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), maturity, strike64x64);
+
+    _burn(msg.sender, shortTokenId, contractSize);
+    _burn(msg.sender, longTokenId, contractSize);
+
+    _pushTo(
+      msg.sender,
+      _getPoolToken(isCall),
+      isCall ? contractSize : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize))
+    );
+
+    emit Annihilate(shortTokenId, contractSize);
   }
 
   /**
