@@ -536,9 +536,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   /**
    * @notice TODO
    */
-  function withdrawFees () external  {
-    _withdrawFees(true);
-    _withdrawFees(false);
+  function withdrawFees () external returns (uint256 amountOutCall, uint256 amountOutPut) {
+    amountOutCall = _withdrawFees(true);
+    amountOutPut = _withdrawFees(false);
+    _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(true), amountOutCall);
+    _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(false), amountOutPut);
+
   }
 
   /**
@@ -569,14 +572,15 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   // Internal //
   //////////////
 
-  function _withdrawFees (bool isCall) internal {
+  function _withdrawFees (
+    bool isCall
+  ) internal returns (uint256 amount) {
     uint256 tokenId = _getReservedLiquidityTokenId(isCall);
-    uint256 balance = balanceOf(FEE_RECEIVER_ADDRESS, tokenId);
-    if (balance > 0) {
-      _burn(FEE_RECEIVER_ADDRESS, tokenId, balance);
-      _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(isCall), balance);
+    amount = balanceOf(FEE_RECEIVER_ADDRESS, tokenId);
 
-      emit FeeWithdrawal(isCall, balance);
+    if (amount > 0) {
+      _burn(FEE_RECEIVER_ADDRESS, tokenId, amount);
+      emit FeeWithdrawal(isCall, amount);
     }
   }
 
