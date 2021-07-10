@@ -80,6 +80,10 @@ export class PoolUtil {
     this.base = props.base;
   }
 
+  getToken(isCall: boolean) {
+    return isCall ? this.underlying : this.base;
+  }
+
   async depositLiquidity(
     lp: SignerWithAddress,
     amount: BigNumberish,
@@ -100,6 +104,37 @@ export class PoolUtil {
     await this.pool.connect(lp).deposit(amount, isCall);
 
     await increaseTimestamp(300);
+  }
+
+  async writeOption(
+    operator: SignerWithAddress,
+    underwriter: SignerWithAddress,
+    longReceiver: SignerWithAddress,
+    maturity: BigNumber,
+    strike64x64: BigNumber,
+    amount: BigNumber,
+    isCall: boolean,
+  ) {
+    const toMint = isCall ? parseUnderlying('1') : parseBase('2');
+
+    await this.getToken(isCall).mint(underwriter.address, toMint);
+    await this.getToken(isCall)
+      .connect(underwriter)
+      .approve(this.pool.address, ethers.constants.MaxUint256);
+    console.log('2');
+    console.log(await this.base.balanceOf(underwriter.address));
+    console.log(await this.underlying.balanceOf(underwriter.address));
+    console.log(underwriter.address, longReceiver.address);
+    await this.pool
+      .connect(operator)
+      .writeFrom(
+        underwriter.address,
+        longReceiver.address,
+        maturity,
+        strike64x64,
+        amount,
+        isCall,
+      );
   }
 
   async purchaseOption(
@@ -130,20 +165,17 @@ export class PoolUtil {
         .approve(this.pool.address, ethers.constants.MaxUint256);
     }
 
-    const quote = await this.pool.quote(
-      maturity,
-      strike64x64,
-      amount,
-      isCall,
-    );
+    const quote = await this.pool.quote(maturity, strike64x64, amount, isCall);
 
-    await this.pool.connect(buyer).purchase(
-      maturity,
-      strike64x64,
-      amount,
-      isCall,
-      ethers.constants.MaxUint256,
-    );
+    await this.pool
+      .connect(buyer)
+      .purchase(
+        maturity,
+        strike64x64,
+        amount,
+        isCall,
+        ethers.constants.MaxUint256,
+      );
 
     return quote;
   }

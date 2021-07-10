@@ -12,7 +12,19 @@ import {OptionMath} from '../libraries/OptionMath.sol';
 import {Pool} from './Pool.sol';
 
 library PoolStorage {
-  enum TokenType { UNDERLYING_FREE_LIQ, BASE_FREE_LIQ, LONG_CALL, SHORT_CALL, LONG_PUT, SHORT_PUT }
+  enum TokenType {
+    UNDERLYING_FREE_LIQ,
+    BASE_FREE_LIQ,
+
+    UNDERLYING_RESERVED_LIQ,
+    BASE_RESERVED_LIQ,
+
+    LONG_CALL,
+    SHORT_CALL,
+
+    LONG_PUT,
+    SHORT_PUT
+  }
 
   struct PoolSettings {
     address underlying;
@@ -26,7 +38,7 @@ library PoolStorage {
     int128 strike64x64; // 64x64 fixed point representation of strike price
     int128 spot64x64; // 64x64 fixed point representation of spot price
     int128 emaVarianceAnnualized64x64; // 64x64 fixed point representation of annualized variance
-    uint256 amount; // size of option contract
+    uint256 contractSize; // size of option contract
     bool isCall; // true for call, false for put
   }
 
@@ -61,6 +73,8 @@ library PoolStorage {
 
     // User -> isCall -> depositedAt
     mapping (address => mapping(bool => uint256)) depositedAt;
+
+    mapping (address => uint256) divestmentTimestamps;
 
     // doubly linked list of free liquidity intervals
     // isCall -> User -> User
@@ -142,6 +156,14 @@ library PoolStorage {
     );
   }
 
+  function getReinvestmentStatus (
+    Layout storage l,
+    address account
+  ) internal view returns (bool) {
+    uint256 timestamp = l.divestmentTimestamps[account];
+    return timestamp == 0 || timestamp > block.timestamp;
+  }
+
   function addUnderwriter (
     Layout storage l,
     address account,
@@ -206,9 +228,6 @@ library PoolStorage {
   ) internal returns (int128 cLevel64x64) {
     cLevel64x64 = calculateCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
 
-    // 0.8
-    if (cLevel64x64 < 0xcccccccccccccccd) cLevel64x64 = 0xcccccccccccccccd;
-
     if (isCallPool) {
       l.cLevelUnderlying64x64 = cLevel64x64;
     } else {
@@ -222,12 +241,14 @@ library PoolStorage {
     int128 newLiquidity64x64,
     bool isCallPool
   ) internal view returns(int128) {
-    return OptionMath.calculateCLevel(
+    int128 cLevel64x64 = OptionMath.calculateCLevel(
       isCallPool ? l.cLevelUnderlying64x64 : l.cLevelBase64x64,
       oldLiquidity64x64,
       newLiquidity64x64,
       0x10000000000000000 // 64x64 fixed point representation of 1
     );
+
+    return cLevel64x64 < 0xcccccccccccccccd ? int128(0xcccccccccccccccd) : cLevel64x64; // 0.8 min
   }
 
   function setOracles(
