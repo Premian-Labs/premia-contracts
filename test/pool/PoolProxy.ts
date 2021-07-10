@@ -1434,18 +1434,6 @@ describe('PoolProxy', function () {
   describe('#annihilate', () => {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
-        it('should revert if not short token id', async () => {
-          const tokenIds = getOptionTokenIds(
-            poolUtil.getMaturity(30),
-            fixedFromFloat(2),
-            isCall,
-          );
-
-          await expect(
-            pool.connect(lp1).annihilate(tokenIds.long, parseUnderlying('1')),
-          ).to.be.revertedWith('not short');
-        });
-
         it('should successfully burn long and short tokens + withdraw collateral', async () => {
           const amount = parseUnderlying('1');
           await poolUtil.writeOption(
