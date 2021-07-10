@@ -266,6 +266,19 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     bool isCall,
     uint256 maxCost
   ) external payable returns (uint256 baseCost, uint256 feeCost) {
+    // TODO: specify payment currency
+
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    require(maturity >= block.timestamp + (1 days), 'exp < 1 day');
+    require(maturity < block.timestamp + (29 days), 'exp > 28 days');
+    require(maturity % (1 days) == 0, 'exp not end UTC day');
+
+    (int128 newPrice64x64,) = _update(l);
+
+    require(strike64x64 <= newPrice64x64 * 3 / 2, 'strike > 1.5x spot');
+    require(strike64x64 >= newPrice64x64 * 3 / 4, 'strike < 0.75x spot');
+
     (baseCost, feeCost) = _purchase(
       maturity,
       strike64x64,
@@ -622,18 +635,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     bool isCall,
     uint256 maxCost
   ) internal returns (uint256 baseCost, uint256 feeCost) {
-    // TODO: specify payment currency
-
     PoolStorage.Layout storage l = PoolStorage.layout();
 
-    require(maturity >= block.timestamp + (1 days), 'exp < 1 day');
-    require(maturity < block.timestamp + (29 days), 'exp > 28 days');
-    require(maturity % (1 days) == 0, 'exp not end UTC day');
-
-    (int128 newPrice64x64,) = _update(l);
-
-    require(strike64x64 <= newPrice64x64 * 3 / 2, 'strike > 1.5x spot');
-    require(strike64x64 >= newPrice64x64 * 3 / 4, 'strike < 0.75x spot');
+    int128 newPrice64x64 = l.getPriceUpdate(block.timestamp);
 
     {
       uint256 size = isCall
