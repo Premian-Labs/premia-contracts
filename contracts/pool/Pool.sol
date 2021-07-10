@@ -922,7 +922,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
         longTokenHolder,
         longTokenId,
         intervalContractSize,
-        intervalExerciseValue - fee
+        intervalExerciseValue - fee,
+        fee
       );
 
       _burn(longTokenHolder, longTokenId, intervalContractSize);
