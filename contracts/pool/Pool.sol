@@ -635,6 +635,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     bool isCall,
     uint256 maxCost
   ) internal returns (uint256 baseCost, uint256 feeCost) {
+    require(maturity > block.timestamp, 'expired');
+
     PoolStorage.Layout storage l = PoolStorage.layout();
 
     int128 newPrice64x64 = l.getPriceUpdate(block.timestamp);
