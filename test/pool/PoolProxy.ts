@@ -50,6 +50,7 @@ chai.use(chaiAlmost(0.02));
 
 const SYMBOL_BASE = 'SYMBOL_BASE';
 const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
+const FEE = 0.01;
 
 describe('PoolProxy', function () {
   let owner: SignerWithAddress;
@@ -186,7 +187,7 @@ describe('PoolProxy', function () {
       underlyingWeth.address,
       feeReceiver.address,
       ZERO_ADDRESS,
-      fixedFromFloat(0.01),
+      fixedFromFloat(FEE),
     );
 
     const facetCuts = [await new ProxyManager__factory(owner).deploy()].map(
@@ -975,7 +976,7 @@ describe('PoolProxy', function () {
           );
 
           expect(Number(formatOption(premium, isCall))).to.almost(
-            exerciseValue,
+            exerciseValue * (1 - FEE),
           );
           expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
 
@@ -986,9 +987,10 @@ describe('PoolProxy', function () {
 
           // Free liq = initial amount + premia paid
           expect(
-            Number(formatOption(initialFreeLiqAmount, isCall)) +
-              fixedToNumber(quote.baseCost64x64) -
-              exerciseValue,
+            (Number(formatOption(initialFreeLiqAmount, isCall)) -
+              exerciseValue) *
+              (1 - FEE) +
+              fixedToNumber(quote.baseCost64x64),
           ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
         });
 
@@ -1069,7 +1071,7 @@ describe('PoolProxy', function () {
             curBalance,
           );
           expect(Number(formatOption(premium, isCall))).to.almost(
-            exerciseValue,
+            exerciseValue * (1 - FEE),
           );
 
           expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
@@ -1081,9 +1083,10 @@ describe('PoolProxy', function () {
 
           // Free liq = initial amount + premia paid
           expect(
-            Number(formatOption(initialFreeLiqAmount, isCall)) +
-              fixedToNumber(quote.baseCost64x64) -
-              exerciseValue,
+            (Number(formatOption(initialFreeLiqAmount, isCall)) -
+              exerciseValue) *
+              (1 - FEE) +
+              fixedToNumber(quote.baseCost64x64),
           ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
         });
       });
@@ -1189,7 +1192,7 @@ describe('PoolProxy', function () {
 
           // Free liq = initial amount + premia paid
           expect(
-            Number(formatOption(initialFreeLiqAmount, isCall)) +
+            Number(formatOption(initialFreeLiqAmount, isCall)) * (1 - FEE) +
               fixedToNumber(quote.baseCost64x64),
           ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
         });
@@ -1257,7 +1260,7 @@ describe('PoolProxy', function () {
             Number(formatOption(initialBuyerAmount, isCall)) -
               fixedToNumber(quote.baseCost64x64) -
               fixedToNumber(quote.feeCost64x64) +
-              exerciseValue,
+              exerciseValue * (1 - FEE),
           );
 
           const freeLiqAfter = await pool.balanceOf(
@@ -1267,9 +1270,10 @@ describe('PoolProxy', function () {
 
           // Free liq = initial amount + premia paid - exerciseValue
           expect(
-            Number(formatOption(initialFreeLiqAmount, isCall)) +
-              fixedToNumber(quote.baseCost64x64) -
-              exerciseValue,
+            (Number(formatOption(initialFreeLiqAmount, isCall)) -
+              exerciseValue) *
+              (1 - FEE) +
+              fixedToNumber(quote.baseCost64x64),
           ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
         });
       });
