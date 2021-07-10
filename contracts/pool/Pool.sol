@@ -273,8 +273,9 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       l,
       maturity,
       strike64x64,
+      isCall,
       contractSize,
-      isCall
+      newPrice64x64
     );
 
     require(baseCost + feeCost <= maxCost, 'excess slipp');
@@ -632,12 +633,11 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     PoolStorage.Layout storage l,
     uint64 maturity,
     int128 strike64x64,
+    bool isCall,
     uint256 contractSize,
-    bool isCall
+    int128 newPrice64x64
   ) internal returns (uint256 baseCost, uint256 feeCost) {
     require(maturity > block.timestamp, 'expired');
-
-    int128 newPrice64x64 = l.getPriceUpdate(block.timestamp);
 
     {
       uint256 size = isCall
@@ -705,7 +705,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     uint256 contractSize,
     int128 newPrice64x64
   ) internal returns (uint256 baseCost, uint256 feeCost) {
-    (baseCost, feeCost) = _purchase(l, maturity, strike64x64, contractSize, isCall);
+    (baseCost, feeCost) = _purchase(l, maturity, strike64x64, isCall, contractSize, newPrice64x64);
     _annihilate(maturity, strike64x64, isCall, contractSize);
 
     uint256 annihilateAmount = isCall ? contractSize : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
