@@ -295,7 +295,6 @@ describe('PoolProxy', function () {
           queue.push(value);
         }
 
-        // console.log(queue);
         expect(await pool.getUnderwriter()).to.eq(formatAddress(queue[0]));
       };
 
@@ -320,7 +319,6 @@ describe('PoolProxy', function () {
       await addAddress(5);
 
       while (queue.length) {
-        // console.log(queue);
         await removeAddress(queue[0]);
       }
 
@@ -868,7 +866,6 @@ describe('PoolProxy', function () {
           }
 
           const r = await tx.wait(1);
-          console.log('GAS', r.gasUsed.toString());
         });
       });
     }
@@ -1283,36 +1280,6 @@ describe('PoolProxy', function () {
   describe('#reassign', function () {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
-        it('should revert if token is a LONG token', async () => {
-          const maturity = poolUtil.getMaturity(10);
-          const strike64x64 = fixedFromFloat(getStrike(isCall));
-
-          await poolUtil.purchaseOption(
-            lp1,
-            buyer,
-            parseUnderlying('1'),
-            maturity,
-            strike64x64,
-            isCall,
-          );
-
-          await poolUtil.depositLiquidity(
-            lp2,
-            parseOption('2', isCall),
-            isCall,
-          );
-
-          const longTokenId = formatTokenId({
-            tokenType: getLong(isCall),
-            maturity,
-            strike64x64,
-          });
-
-          await expect(
-            pool.connect(lp1).reassign(longTokenId, parseUnderlying('1')),
-          ).to.be.revertedWith('invalid type');
-        });
-
         it('should revert if option is expired', async () => {
           const maturity = poolUtil.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
@@ -1490,18 +1457,6 @@ describe('PoolProxy', function () {
   describe('#annihilate', () => {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
-        it('should revert if not short token id', async () => {
-          const tokenIds = getOptionTokenIds(
-            poolUtil.getMaturity(30),
-            fixedFromFloat(2),
-            isCall,
-          );
-
-          await expect(
-            pool.connect(lp1).annihilate(tokenIds.long, parseUnderlying('1')),
-          ).to.be.revertedWith('not short');
-        });
-
         it('should successfully burn long and short tokens + withdraw collateral', async () => {
           const amount = parseUnderlying('1');
           await poolUtil.writeOption(
