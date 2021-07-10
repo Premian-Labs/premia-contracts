@@ -516,6 +516,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     (PoolStorage.TokenType tokenType, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(tokenId);
     bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL || tokenType == PoolStorage.TokenType.LONG_CALL;
     _annihilate(maturity, strike64x64, isCall, contractSize);
+
+    _pushTo(
+      msg.sender,
+      _getPoolToken(isCall),
+      isCall ? contractSize : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize))
+    );
   }
 
   ////////////////////////////////////////////////////////
@@ -621,12 +627,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
     _burn(msg.sender, longTokenId, contractSize);
     _burn(msg.sender, shortTokenId, contractSize);
-
-    _pushTo(
-      msg.sender,
-      _getPoolToken(isCall),
-      isCall ? contractSize : PoolStorage.layout().fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize))
-    );
 
     emit Annihilate(shortTokenId, contractSize);
   }
