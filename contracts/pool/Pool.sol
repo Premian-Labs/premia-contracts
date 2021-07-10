@@ -52,7 +52,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     address indexed user,
     uint256 longTokenId,
     uint256 contractSize,
-    uint256 exerciseValue
+    uint256 exerciseValue,
+    uint256 fee
   );
 
   event Underwrite (
@@ -68,7 +69,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     address indexed underwriter,
     uint256 shortTokenId,
     uint256 freedAmount,
-    uint256 intervalContractSize
+    uint256 intervalContractSize,
+    uint256 fee
   );
 
   event Reassign (
@@ -754,7 +756,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
           holder,
           longTokenId,
           contractSize,
-          exerciseValue
+          exerciseValue,
+          fee
         );
       }
     }
@@ -986,7 +989,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       // burn short option tokens from underwriter
       _burn(underwriter, shortTokenId, intervalContractSize);
 
-      emit AssignExercise(underwriter, shortTokenId, freeLiq - fee, intervalContractSize);
+      emit AssignExercise(underwriter, shortTokenId, freeLiq - fee, intervalContractSize, fee);
     }
   }
 
