@@ -703,81 +703,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   /**
    * @notice TODO
    */
-  function _exercise (
-    address holder, // holder address of option contract tokens to exercise
-    uint256 longTokenId, // amount quantity of option contract tokens to exercise
-    uint256 contractSize // quantity of option contract tokens to exercise
-  ) internal {
-    uint64 maturity;
-    int128 strike64x64;
-    bool isCall;
-
-    bool onlyExpired = holder == address(0);
-
-    {
-      PoolStorage.TokenType tokenType;
-      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(longTokenId);
-      require(tokenType == PoolStorage.TokenType.LONG_CALL || tokenType == PoolStorage.TokenType.LONG_PUT, 'invalid type');
-      require(!onlyExpired || maturity < block.timestamp, 'not expired');
-      isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
-    }
-
-    PoolStorage.Layout storage l = PoolStorage.layout();
-
-    (int128 spot64x64,) = _update(l);
-
-    if (maturity < block.timestamp) {
-      spot64x64 = l.getPriceUpdateAfter(maturity);
-    }
-
-    require(onlyExpired || (isCall ? (spot64x64 > strike64x64) : (spot64x64 < strike64x64)), 'not ITM');
-
-    uint256 exerciseValue;
-    // option has a non-zero exercise value
-    if (isCall) {
-      if (spot64x64 > strike64x64) {
-        exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(contractSize);
-      }
-    } else {
-      if (spot64x64 < strike64x64) {
-        exerciseValue = l.fromUnderlyingToBaseDecimals(strike64x64.sub(spot64x64).mulu(contractSize));
-      }
-    }
-
-    if (onlyExpired) {
-      _burnLongTokenLoop(
-        contractSize,
-        exerciseValue,
-        longTokenId,
-        isCall
-      );
-    } else {
-      // burn long option tokens from sender
-      _burn(holder, longTokenId, contractSize);
-
-      if (exerciseValue > 0) {
-        _pushTo(holder, _getPoolToken(isCall), exerciseValue);
-
-        emit Exercise(
-          holder,
-          longTokenId,
-          contractSize,
-          exerciseValue
-        );
-      }
-    }
-
-    _burnShortTokenLoop(
-      contractSize,
-      exerciseValue,
-      PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
-      isCall
-    );
-  }
-
-  /**
-   * @notice TODO
-   */
   function _reassign (
     PoolStorage.Layout storage l,
     uint256 shortTokenId,
@@ -847,6 +772,81 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       feeCost,
       cLevel64x64,
       newPrice64x64
+    );
+  }
+
+  /**
+   * @notice TODO
+   */
+  function _exercise (
+    address holder, // holder address of option contract tokens to exercise
+    uint256 longTokenId, // amount quantity of option contract tokens to exercise
+    uint256 contractSize // quantity of option contract tokens to exercise
+  ) internal {
+    uint64 maturity;
+    int128 strike64x64;
+    bool isCall;
+
+    bool onlyExpired = holder == address(0);
+
+    {
+      PoolStorage.TokenType tokenType;
+      (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(longTokenId);
+      require(tokenType == PoolStorage.TokenType.LONG_CALL || tokenType == PoolStorage.TokenType.LONG_PUT, 'invalid type');
+      require(!onlyExpired || maturity < block.timestamp, 'not expired');
+      isCall = tokenType == PoolStorage.TokenType.LONG_CALL;
+    }
+
+    PoolStorage.Layout storage l = PoolStorage.layout();
+
+    (int128 spot64x64,) = _update(l);
+
+    if (maturity < block.timestamp) {
+      spot64x64 = l.getPriceUpdateAfter(maturity);
+    }
+
+    require(onlyExpired || (isCall ? (spot64x64 > strike64x64) : (spot64x64 < strike64x64)), 'not ITM');
+
+    uint256 exerciseValue;
+    // option has a non-zero exercise value
+    if (isCall) {
+      if (spot64x64 > strike64x64) {
+        exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(contractSize);
+      }
+    } else {
+      if (spot64x64 < strike64x64) {
+        exerciseValue = l.fromUnderlyingToBaseDecimals(strike64x64.sub(spot64x64).mulu(contractSize));
+      }
+    }
+
+    if (onlyExpired) {
+      _burnLongTokenLoop(
+        contractSize,
+        exerciseValue,
+        longTokenId,
+        isCall
+      );
+    } else {
+      // burn long option tokens from sender
+      _burn(holder, longTokenId, contractSize);
+
+      if (exerciseValue > 0) {
+        _pushTo(holder, _getPoolToken(isCall), exerciseValue);
+
+        emit Exercise(
+          holder,
+          longTokenId,
+          contractSize,
+          exerciseValue
+        );
+      }
+    }
+
+    _burnShortTokenLoop(
+      contractSize,
+      exerciseValue,
+      PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64),
+      isCall
     );
   }
 
