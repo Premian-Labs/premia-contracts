@@ -271,7 +271,6 @@ describe('PoolProxy', function () {
           queue.push(value);
         }
 
-        // console.log(queue);
         expect(await pool.getUnderwriter()).to.eq(formatAddress(queue[0]));
       };
 
@@ -296,7 +295,6 @@ describe('PoolProxy', function () {
       await addAddress(5);
 
       while (queue.length) {
-        // console.log(queue);
         await removeAddress(queue[0]);
       }
 
@@ -817,7 +815,6 @@ describe('PoolProxy', function () {
           }
 
           const r = await tx.wait(1);
-          console.log('GAS', r.gasUsed.toString());
         });
       });
     }
