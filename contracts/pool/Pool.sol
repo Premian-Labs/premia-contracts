@@ -280,12 +280,16 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     require(strike64x64 >= newPrice64x64 * 3 / 4, 'strike < 0.75x spot');
 
     (baseCost, feeCost) = _purchase(
+      l,
       maturity,
       strike64x64,
       contractSize,
-      isCall,
-      maxCost
+      isCall
     );
+
+    require(baseCost + feeCost <= maxCost, 'excess slipp');
+
+    _pullFrom(msg.sender, _getPoolToken(isCall), baseCost + feeCost);
   }
 
   /**
@@ -631,15 +635,13 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    * @notice TODO
    */
   function _purchase (
+    PoolStorage.Layout storage l,
     uint64 maturity,
     int128 strike64x64,
     uint256 contractSize,
-    bool isCall,
-    uint256 maxCost
+    bool isCall
   ) internal returns (uint256 baseCost, uint256 feeCost) {
     require(maturity > block.timestamp, 'expired');
-
-    PoolStorage.Layout storage l = PoolStorage.layout();
 
     int128 newPrice64x64 = l.getPriceUpdate(block.timestamp);
 
@@ -671,9 +673,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       baseCost = ABDKMath64x64Token.toDecimals(baseCost64x64, l.getTokenDecimals(isCall));
       feeCost = ABDKMath64x64Token.toDecimals(feeCost64x64, l.getTokenDecimals(isCall));
     }
-
-    require(baseCost + feeCost <= maxCost, 'excess slipp');
-    _pullFrom(msg.sender, _getPoolToken(isCall), baseCost + feeCost);
 
     uint256 longTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, true), maturity, strike64x64);
     uint256 shortTokenId = PoolStorage.formatTokenId(_getTokenType(isCall, false), maturity, strike64x64);
