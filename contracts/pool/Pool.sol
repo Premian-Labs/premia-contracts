@@ -487,21 +487,17 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       }
     }
 
-    if (amountOutCall > 0) {
-      _pushTo(
-        msg.sender,
-        _getPoolToken(true),
-        amountOutCall
-      );
-    }
+    _pushTo(
+      msg.sender,
+      _getPoolToken(true),
+      amountOutCall
+    );
 
-    if (amountOutPut > 0) {
-      _pushTo(
-        msg.sender,
-        _getPoolToken(false),
-        amountOutPut
-      );
-    }
+    _pushTo(
+      msg.sender,
+      _getPoolToken(false),
+      amountOutPut
+    );
   }
 
   /**
@@ -1142,6 +1138,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     address token,
     uint256 amount
   ) internal {
+    if (amount == 0) return;
+
     require(
       IERC20(token).transfer(to, amount),
       'ERC20 transfer failed'
