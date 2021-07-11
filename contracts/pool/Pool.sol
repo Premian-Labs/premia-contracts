@@ -432,16 +432,24 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
    * @param contractSize quantity of option contract tokens to reassign
    * @return baseCost quantity of tokens required to reassign short position
    * @return feeCost quantity of tokens required to pay fees
+   * @return amountOut TODO
    */
   function reassign (
     uint256 tokenId,
     uint256 contractSize
-  ) external returns (uint256 baseCost, uint256 feeCost) {
+  ) external returns (uint256 baseCost, uint256 feeCost, uint256 amountOut) {
     PoolStorage.Layout storage l = PoolStorage.layout();
     (int128 newPrice64x64, ) = _update(l);
+
     (PoolStorage.TokenType tokenType, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(tokenId);
     bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL || tokenType == PoolStorage.TokenType.LONG_CALL;
-    (baseCost, feeCost) = _reassign(l, maturity, strike64x64, isCall, contractSize, newPrice64x64);
+    (baseCost, feeCost, amountOut) = _reassign(l, maturity, strike64x64, isCall, contractSize, newPrice64x64);
+
+    _pushTo(
+      msg.sender,
+      _getPoolToken(isCall),
+      amountOut
+    );
   }
 
   /**
@@ -450,7 +458,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   function reassignBatch (
     uint256[] calldata tokenIds,
     uint256[] calldata contractSizes
-  ) public returns (uint256[] memory baseCosts, uint256[] memory feeCosts) {
+  ) public returns (
+    uint256[] memory baseCosts,
+    uint256[] memory feeCosts,
+    uint256 amountOutCall,
+    uint256 amountOutPut
+  ) {
     require(tokenIds.length == contractSizes.length, 'TODO');
 
     PoolStorage.Layout storage l = PoolStorage.layout();
@@ -463,8 +476,28 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     for (uint256 i; i < tokenIds.length; i++) {
       (PoolStorage.TokenType tokenType, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(tokenIds[i]);
       bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL || tokenType == PoolStorage.TokenType.LONG_CALL;
-      (baseCosts[i], feeCosts[i]) = _reassign(l, maturity, strike64x64, isCall, contractSizes[i], newPrice64x64);
+      uint256 amountOut;
+      uint256 contractSize = contractSizes[i];
+      (baseCosts[i], feeCosts[i], amountOut) = _reassign(l, maturity, strike64x64, isCall, contractSize, newPrice64x64);
+
+      if (isCall) {
+        amountOutCall += amountOut;
+      } else {
+        amountOutPut += amountOut;
+      }
     }
+
+    _pushTo(
+      msg.sender,
+      _getPoolToken(true),
+      amountOutCall
+    );
+
+    _pushTo(
+      msg.sender,
+      _getPoolToken(false),
+      amountOutPut
+    );
   }
 
   /**
@@ -474,14 +507,19 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     bool isCallPool,
     uint256[] calldata ids,
     uint256[] calldata contractSizes
-  ) external returns (uint256[] memory baseCosts, uint256[] memory feeCosts) {
+  ) external returns (
+    uint256[] memory baseCosts,
+    uint256[] memory feeCosts,
+    uint256 amountOutCall,
+    uint256 amountOutPut
+  ) {
     uint256 balance = balanceOf(msg.sender, _getFreeLiquidityTokenId(isCallPool));
 
     if (balance > 0) {
       withdraw(balance, isCallPool);
     }
 
-    (baseCosts, feeCosts) = reassignBatch(ids, contractSizes);
+    (baseCosts, feeCosts, amountOutCall, amountOutPut) = reassignBatch(ids, contractSizes);
   }
 
   /**
@@ -494,9 +532,12 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   /**
    * @notice TODO
    */
-  function withdrawFees () external  {
-    _withdrawFees(true);
-    _withdrawFees(false);
+  function withdrawFees () external returns (uint256 amountOutCall, uint256 amountOutPut) {
+    amountOutCall = _withdrawFees(true);
+    amountOutPut = _withdrawFees(false);
+    _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(true), amountOutCall);
+    _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(false), amountOutPut);
+
   }
 
   /**
@@ -527,14 +568,15 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   // Internal //
   //////////////
 
-  function _withdrawFees (bool isCall) internal {
+  function _withdrawFees (
+    bool isCall
+  ) internal returns (uint256 amount) {
     uint256 tokenId = _getReservedLiquidityTokenId(isCall);
-    uint256 balance = balanceOf(FEE_RECEIVER_ADDRESS, tokenId);
-    if (balance > 0) {
-      _burn(FEE_RECEIVER_ADDRESS, tokenId, balance);
-      _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(isCall), balance);
+    amount = balanceOf(FEE_RECEIVER_ADDRESS, tokenId);
 
-      emit FeeWithdrawal(isCall, balance);
+    if (amount > 0) {
+      _burn(FEE_RECEIVER_ADDRESS, tokenId, amount);
+      emit FeeWithdrawal(isCall, amount);
     }
   }
 
@@ -704,17 +746,13 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     bool isCall,
     uint256 contractSize,
     int128 newPrice64x64
-  ) internal returns (uint256 baseCost, uint256 feeCost) {
+  ) internal returns (uint256 baseCost, uint256 feeCost, uint256 amountOut) {
     (baseCost, feeCost) = _purchase(l, maturity, strike64x64, isCall, contractSize, newPrice64x64);
     _annihilate(maturity, strike64x64, isCall, contractSize);
 
     uint256 annihilateAmount = isCall ? contractSize : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
 
-    _pushTo(
-      msg.sender,
-      _getPoolToken(isCall),
-      annihilateAmount - baseCost - feeCost
-    );
+    amountOut = annihilateAmount - baseCost - feeCost;
   }
 
   /**
@@ -1100,6 +1138,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     address token,
     uint256 amount
   ) internal {
+    if (amount == 0) return;
+
     require(
       IERC20(token).transfer(to, amount),
       'ERC20 transfer failed'
