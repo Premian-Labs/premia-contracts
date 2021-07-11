@@ -1,6 +1,7 @@
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ethers } from 'hardhat';
 import {
+  ERC20,
   ERC20Mock,
   ERC20Mock__factory,
   ManagedProxyOwnable,
@@ -10,6 +11,8 @@ import {
   PoolMock__factory,
   Premia,
   Premia__factory,
+  PremiaFeeDiscount,
+  PremiaFeeDiscount__factory,
   ProxyManager__factory,
   WETH9,
   WETH9__factory,
@@ -21,7 +24,7 @@ import chai, { expect } from 'chai';
 import { increaseTimestamp, resetHardhat, setTimestamp } from '../utils/evm';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { deployMockContract, MockContract } from 'ethereum-waffle';
-import { hexlify, hexZeroPad, parseUnits } from 'ethers/lib/utils';
+import { hexlify, hexZeroPad, parseEther, parseUnits } from 'ethers/lib/utils';
 import {
   DECIMALS_BASE,
   DECIMALS_UNDERLYING,
@@ -40,6 +43,7 @@ import {
   fixedToNumber,
   formatTokenId,
   getOptionTokenIds,
+  parseTokenId,
   TokenType,
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
@@ -51,6 +55,7 @@ chai.use(chaiAlmost(0.02));
 const SYMBOL_BASE = 'SYMBOL_BASE';
 const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 const FEE = 0.01;
+const oneMonth = 30 * 24 * 3600;
 
 describe('PoolProxy', function () {
   let owner: SignerWithAddress;
@@ -61,6 +66,8 @@ describe('PoolProxy', function () {
   let feeReceiver: SignerWithAddress;
 
   let premia: Premia;
+  let xPremia: ERC20Mock;
+  let premiaFeeDiscount: PremiaFeeDiscount;
   let proxy: ManagedProxyOwnable;
   let pool: PoolMock;
   let poolWeth: PoolMock;
@@ -167,6 +174,23 @@ describe('PoolProxy', function () {
 
     const erc20Factory = new ERC20Mock__factory(owner);
 
+    xPremia = await erc20Factory.deploy('xPREMIA', 18);
+    premiaFeeDiscount = await new PremiaFeeDiscount__factory(owner).deploy(
+      xPremia.address,
+    );
+
+    await premiaFeeDiscount.setStakeLevels([
+      { amount: parseEther('5000'), discount: 2500 }, // -25%
+      { amount: parseEther('50000'), discount: 5000 }, // -50%
+      { amount: parseEther('250000'), discount: 7500 }, // -75%
+      { amount: parseEther('500000'), discount: 9500 }, // -95%
+    ]);
+
+    await premiaFeeDiscount.setStakePeriod(oneMonth, 10000);
+    await premiaFeeDiscount.setStakePeriod(3 * oneMonth, 12500);
+    await premiaFeeDiscount.setStakePeriod(6 * oneMonth, 15000);
+    await premiaFeeDiscount.setStakePeriod(12 * oneMonth, 20000);
+
     base = await erc20Factory.deploy(SYMBOL_BASE, DECIMALS_BASE);
     await base.deployed();
     underlying = await erc20Factory.deploy(
@@ -186,7 +210,7 @@ describe('PoolProxy', function () {
     ).deploy(
       underlyingWeth.address,
       feeReceiver.address,
-      ZERO_ADDRESS,
+      premiaFeeDiscount.address,
       fixedFromFloat(FEE),
     );
 
@@ -924,6 +948,94 @@ describe('PoolProxy', function () {
               .connect(buyer)
               .exerciseFrom(buyer.address, longTokenId, parseUnderlying('1')),
           ).to.be.revertedWith('not ITM');
+        });
+
+        it('should successfully apply staking fee discount on exercise', async () => {
+          const maturity = poolUtil.getMaturity(10);
+          const strike = getStrike(isCall);
+          const strike64x64 = fixedFromFloat(strike);
+          const amountNb = 10;
+          const amount = parseUnderlying(amountNb.toString());
+          const initialFreeLiqAmount = isCall
+            ? amount
+            : parseBase(formatUnderlying(amount)).mul(
+                fixedToNumber(strike64x64),
+              );
+
+          const quote = await poolUtil.purchaseOption(
+            lp1,
+            buyer,
+            amount,
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          // Stake xPremia for fee discount
+          await xPremia.mint(buyer.address, parseEther('5000'));
+          await xPremia.mint(lp1.address, parseEther('50000'));
+          await xPremia
+            .connect(buyer)
+            .approve(premiaFeeDiscount.address, ethers.constants.MaxUint256);
+          await xPremia
+            .connect(lp1)
+            .approve(premiaFeeDiscount.address, ethers.constants.MaxUint256);
+          await premiaFeeDiscount
+            .connect(buyer)
+            .stake(parseEther('5000'), oneMonth);
+          await premiaFeeDiscount
+            .connect(lp1)
+            .stake(parseEther('50000'), oneMonth);
+
+          //
+
+          expect(await premiaFeeDiscount.getDiscount(buyer.address)).to.eq(
+            2500,
+          );
+          expect(await premiaFeeDiscount.getDiscount(lp1.address)).to.eq(5000);
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const price = isCall ? strike * 1.4 : strike * 0.7;
+          await setUnderlyingPrice(parseUnits(price.toString(), 8));
+
+          const curBalance = await getToken(isCall).balanceOf(buyer.address);
+
+          await pool
+            .connect(buyer)
+            .exerciseFrom(buyer.address, longTokenId, amount);
+
+          const exerciseValue = getExerciseValue(
+            price,
+            strike,
+            amountNb,
+            isCall,
+          );
+          const premium = (await getToken(isCall).balanceOf(buyer.address)).sub(
+            curBalance,
+          );
+
+          expect(Number(formatOption(premium, isCall))).to.almost(
+            exerciseValue * (1 - FEE * 0.75),
+          );
+          expect(await pool.balanceOf(buyer.address, longTokenId)).to.eq(0);
+
+          const freeLiqAfter = await pool.balanceOf(
+            lp1.address,
+            getFreeLiqTokenId(isCall),
+          );
+
+          // Free liq = initial amount + premia paid
+          expect(
+            (Number(formatOption(initialFreeLiqAmount, isCall)) -
+              exerciseValue) *
+              (1 - FEE * 0.5) +
+              fixedToNumber(quote.baseCost64x64),
+          ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
         });
 
         it('should successfully exercise', async () => {
