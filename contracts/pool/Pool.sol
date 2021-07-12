@@ -1242,10 +1242,8 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
         l.tokenIds.add(id);
       }
 
-      if (to == address(0)) {
-        if (totalSupply(id) == amount) {
-          l.tokenIds.remove(id);
-        }
+      if (to == address(0) && totalSupply(id) == 0) {
+        l.tokenIds.remove(id);
       }
 
       if (id == UNDERLYING_FREE_LIQ_TOKEN_ID || id == BASE_FREE_LIQ_TOKEN_ID) {
