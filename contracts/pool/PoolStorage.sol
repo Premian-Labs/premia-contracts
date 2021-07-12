@@ -289,8 +289,8 @@ library PoolStorage {
     uint bucket = timestamp / (1 hours);
     uint sequenceId = bucket >> 8;
     // shift to skip buckets from earlier in sequence
-    // TODO: underflow
-    uint offset = (bucket & 255) - 1;
+    uint offset = bucket & 255;
+    offset = offset == 0 ? 255 : offset - 1;
     uint sequence = l.priceUpdateSequences[sequenceId] << offset >> offset;
 
     uint currentPriceUpdateSequenceId = block.timestamp / (256 hours);
