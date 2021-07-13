@@ -106,6 +106,10 @@ contract PremiaMaker is OwnableInternal {
         return result;
     }
 
+    /// @notice Withdraw fees from pools, convert tokens into Premia, and send Premia to PremiaStaking contract
+    /// @param _pools List of pools from which to withdraw fees
+    /// @param _router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
+    /// @param _tokens The list of tokens to swap to premia
     function withdrawFeesAndConvert(address[] memory _pools, IUniswapV2Router02 _router, address[] memory _tokens) public {
         for (uint256 i=0; i < _pools.length; i++) {
             IPool(_pools[i]).withdrawFees();
