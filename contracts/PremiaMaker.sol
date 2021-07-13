@@ -2,39 +2,35 @@
 
 pragma solidity ^0.8.0;
 
-import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
+import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
 
-import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
-import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
-import {EnumerableSet} from '@solidstate/contracts/utils/EnumerableSet.sol';
+import { Ownable } from '@solidstate/contracts/access/Ownable.sol';
+import { OwnableInternal } from '@solidstate/contracts/access/OwnableInternal.sol';
+import { EnumerableSet } from '@solidstate/contracts/utils/EnumerableSet.sol';
 
-import {IUniswapV2Router02} from './uniswapV2/interfaces/IUniswapV2Router02.sol';
-import {IWETH} from './uniswapV2/interfaces/IWETH.sol';
+import { IUniswapV2Router02 } from './uniswapV2/interfaces/IUniswapV2Router02.sol';
+import { IWETH } from './uniswapV2/interfaces/IWETH.sol';
+
+import { PremiaMakerStorage } from './PremiaMakerStorage.sol';
 
 /// @author Premia
 /// @title A contract receiving all protocol fees, swapping them for premia
-contract PremiaMaker is Ownable {
+contract PremiaMaker is OwnableInternal {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    // UniswapRouter contracts which can be used to swap tokens
-    EnumerableSet.AddressSet private _whitelistedRouters;
-
     // The premia token
-    IERC20 public premia;
+    address private immutable premia;
     // The premia staking contract (xPremia)
-    address public premiaStaking;
+    address private immutable premiaStaking;
 
     // The treasury address which will receive a portion of the protocol fees
-    address public treasury;
+    address private immutable treasury;
     // The percentage of protocol fees the treasury will get (in basis points)
-    uint256 public treasuryFee = 2e3; // 20%
+    uint256 private constant treasuryFee = 2e3; // 20%
 
     uint256 private constant _inverseBasisPoint = 1e4;
-
-    // Set a custom swap path for a token
-    mapping(address=>address[]) public customPath;
 
     ////////////
     // Events //
@@ -49,9 +45,7 @@ contract PremiaMaker is Ownable {
     // @param _premia The premia token
     // @param _premiaStaking The premia staking contract (xPremia)
     // @param _treasury The treasury address which will receive a portion of the protocol fees
-    constructor(IERC20 _premia, address _premiaStaking, address _treasury) {
-        OwnableStorage.layout().owner = msg.sender;
-
+    constructor(address _premia, address _premiaStaking, address _treasury) {
         premia = _premia;
         premiaStaking = _premiaStaking;
         treasury = _treasury;
@@ -71,29 +65,26 @@ contract PremiaMaker is Ownable {
     /// @param _token The token
     /// @param _path The swap path
     function setCustomPath(address _token, address[] memory _path) external onlyOwner {
-        customPath[_token] = _path;
-    }
-
-    /// @notice Set a new treasury fee
-    /// @param _fee New fee
-    function setTreasuryFee(uint256 _fee) external onlyOwner {
-        require(_fee <= _inverseBasisPoint);
-        treasuryFee = _fee;
+        PremiaMakerStorage.layout().customPath[_token] = _path;
     }
 
     /// @notice Add UniswapRouters to the whitelist so that they can be used to swap tokens.
     /// @param _addr The addresses to add to the whitelist
     function addWhitelistedRouter(address[] memory _addr) external onlyOwner {
+        PremiaMakerStorage.Layout storage l = PremiaMakerStorage.layout();
+
         for (uint256 i=0; i < _addr.length; i++) {
-            _whitelistedRouters.add(_addr[i]);
+            l.whitelistedRouters.add(_addr[i]);
         }
     }
 
     /// @notice Remove UniswapRouters from the whitelist so that they cannot be used to swap tokens.
     /// @param _addr The addresses to remove the whitelist
     function removeWhitelistedRouter(address[] memory _addr) external onlyOwner {
+        PremiaMakerStorage.Layout storage l = PremiaMakerStorage.layout();
+
         for (uint256 i=0; i < _addr.length; i++) {
-            _whitelistedRouters.remove(_addr[i]);
+            l.whitelistedRouters.remove(_addr[i]);
         }
     }
 
@@ -102,11 +93,13 @@ contract PremiaMaker is Ownable {
     /// @notice Get the list of whitelisted routers
     /// @return The list of whitelisted routers
     function getWhitelistedRouters() external view returns(address[] memory) {
-        uint256 length = _whitelistedRouters.length();
+        PremiaMakerStorage.Layout storage l = PremiaMakerStorage.layout();
+
+        uint256 length = l.whitelistedRouters.length();
         address[] memory result = new address[](length);
 
         for (uint256 i=0; i < length; i++) {
-            result[i] = _whitelistedRouters.at(i);
+            result[i] = l.whitelistedRouters.at(i);
         }
 
         return result;
@@ -116,7 +109,9 @@ contract PremiaMaker is Ownable {
     /// @param _router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
     /// @param _token The token to swap to premia
     function convert(IUniswapV2Router02 _router, address _token) public {
-        require(_whitelistedRouters.contains(address(_router)), "Router not whitelisted");
+        PremiaMakerStorage.Layout storage l = PremiaMakerStorage.layout();
+
+        require(l.whitelistedRouters.contains(address(_router)), "Router not whitelisted");
 
         IERC20 token = IERC20(_token);
 
@@ -137,7 +132,7 @@ contract PremiaMaker is Ownable {
             address[] memory path;
 
             if (_token != weth) {
-                path = customPath[_token];
+                path = l.customPath[_token];
                 if (path.length == 0) {
                     path = new address[](3);
                     path[0] = _token;
@@ -159,7 +154,7 @@ contract PremiaMaker is Ownable {
             );
         } else {
             premiaAmount = amountMinusFee;
-            premia.safeTransfer(premiaStaking, premiaAmount);
+            IERC20(premia).safeTransfer(premiaStaking, premiaAmount);
             // Just for the event
             _router = IUniswapV2Router02(address(0));
         }
