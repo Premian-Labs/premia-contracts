@@ -667,7 +667,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     baseCost64x64 = isCall ? price64x64.mul(contractSize64x64).div(args.spot64x64) : price64x64.mul(contractSize64x64);
     feeCost64x64 = baseCost64x64.mul(FEE_64x64);
 
-    int128 discount = ABDKMath64x64Token.fromDecimals(_getFeeDiscount(args.feePayer), 4);
+    int128 discount = ABDKMath64x64.divu(_getFeeDiscount(args.feePayer), INVERSE_BASIS_POINT);
     feeCost64x64 -= feeCost64x64.mul(discount);
   }
 
