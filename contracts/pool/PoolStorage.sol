@@ -285,9 +285,12 @@ library PoolStorage {
     Layout storage l,
     uint timestamp
   ) internal view returns (int128) {
+    // price updates are grouped by hour
     uint bucket = timestamp / (1 hours);
+    // divide by 256 to get the index of the relevant price update sequence
     uint sequenceId = bucket >> 8;
 
+    // get position within sequence releant to current price update
     uint offset = bucket & 255;
 
     if (offset == 0) {
@@ -300,13 +303,21 @@ library PoolStorage {
     // shift to skip buckets from earlier in sequence
     uint sequence = l.priceUpdateSequences[sequenceId] << offset >> offset;
 
+    // iterate through future sequences until a price update is found
+    // sequence corresponding to curren timestamp used as upper bound
+
     uint currentPriceUpdateSequenceId = block.timestamp / (256 hours);
 
     while (sequence == 0 && sequenceId <= currentPriceUpdateSequenceId) {
       sequence = l.priceUpdateSequences[++sequenceId];
     }
 
-    uint256 msb; // most significant bit
+    // if no price update is found (sequence == 0)
+    // this should never occur, as each relevant external function triggers a price update
+
+    // the most significant bit of the selected sequence corresponds to the bucket of the first price update
+
+    uint256 msb;
 
     for (uint256 i = 128; i > 0; i >>= 1) {
       if (sequence >> i > 0) {
