@@ -15,6 +15,8 @@ contract ProxyUpgradeableOwnable is Proxy, SafeOwnable {
         ProxyUpgradeableOwnableStorage.layout().implementation = implementation;
     }
 
+    receive () external payable {}
+
     /**
      * @notice get address of implementation contract
      * @return implementation address
