@@ -267,13 +267,15 @@ library PoolStorage {
   /**
    * @notice set price update for current hourly bucket
    * @param l storage layout struct
+   * @param timestamp timestamp to update
    * @param price64x64 64x64 fixed point representation of price
    */
   function setPriceUpdate (
     Layout storage l,
+    uint256 timestamp,
     int128 price64x64
   ) internal {
-    uint bucket = block.timestamp / (1 hours);
+    uint bucket = timestamp / (1 hours);
     l.bucketPrices64x64[bucket] = price64x64;
     l.priceUpdateSequences[bucket >> 8] += 1 << 256 - (bucket & 255);
   }

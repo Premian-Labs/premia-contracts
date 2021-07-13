@@ -91,9 +91,6 @@ contract PoolMock is Pool {
     uint timestamp,
     int128 price64x64
   ) external {
-    PoolStorage.Layout storage l = PoolStorage.layout();
-    uint bucket = timestamp / (1 hours);
-    l.bucketPrices64x64[bucket] = price64x64;
-    l.priceUpdateSequences[bucket >> 8] += 1 << 256 - (bucket & 255);
+    PoolStorage.layout().setPriceUpdate(timestamp, price64x64);
   }
 }
