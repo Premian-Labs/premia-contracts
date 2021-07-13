@@ -310,16 +310,15 @@ library PoolStorage {
 
     uint offset = bucket & 255;
 
+    uint sequence;
     if (offset > 0) {
       offset--;
+      // shift to skip buckets from earlier in sequence
+      sequence = l.priceUpdateSequences[sequenceId] << offset >> offset;
     } else {
-      // handle underflow
-      offset = 255;
+      // set id of previous sequence, as this will be incremented in loop under
       sequenceId--;
     }
-
-    // shift to skip buckets from earlier in sequence
-    uint sequence = l.priceUpdateSequences[sequenceId] << offset >> offset;
 
     // iterate through future sequences until a price update is found
     // sequence corresponding to current timestamp used as upper bound
