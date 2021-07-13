@@ -264,6 +264,11 @@ library PoolStorage {
     );
   }
 
+  /**
+   * @notice set price update for current hourly bucket
+   * @param l storage layout struct
+   * @param price64x64 64x64 fixed point representation of price
+   */
   function setPriceUpdate (
     Layout storage l,
     int128 price64x64
@@ -273,6 +278,12 @@ library PoolStorage {
     l.priceUpdateSequences[bucket >> 8] += 1 << 256 - (bucket & 255);
   }
 
+  /**
+   * @notice get price update for hourly bucket corresponding to given timestamp
+   * @param l storage layout struct
+   * @param timestamp timestamp to query
+   * @return 64x64 fixed point representation of price
+   */
   function getPriceUpdate (
     Layout storage l,
     uint timestamp
@@ -280,6 +291,12 @@ library PoolStorage {
     return l.bucketPrices64x64[timestamp / (1 hours)];
   }
 
+  /**
+   * @notice get first price update available following given timestamp
+   * @param l storage layout struct
+   * @param timestamp timestamp to query
+   * @return 64x64 fixed point representation of price
+   */
   function getPriceUpdateAfter (
     Layout storage l,
     uint timestamp
