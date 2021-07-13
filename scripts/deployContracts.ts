@@ -22,6 +22,7 @@ import {
   PremiaStaking,
   PremiaStaking__factory,
   ProxyManagerOld__factory,
+  ProxyUpgradeableOwnable__factory,
 } from '../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { ZERO_ADDRESS } from '../test/utils/constants';
@@ -76,11 +77,21 @@ export async function deployContracts(
     );
   }
 
-  const premiaMaker = await new PremiaMaker__factory(deployer).deploy(
+  const premiaMakerImpl = await new PremiaMaker__factory(deployer).deploy(
     premia.address,
     xPremia.address,
     treasury,
   );
+
+  const premiaMakerProxy = await new ProxyUpgradeableOwnable__factory(
+    deployer,
+  ).deploy(premiaMakerImpl.address);
+
+  const premiaMaker = PremiaMaker__factory.connect(
+    premiaMakerProxy.address,
+    deployer,
+  );
+
   if (log) {
     console.log(
       `PremiaMaker deployed at ${premiaMaker.address} (Args : ${premia.address} / ${xPremia.address} / ${treasury})`,
