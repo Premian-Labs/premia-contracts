@@ -34,6 +34,7 @@ library PoolStorage {
   }
 
   struct QuoteArgsInternal {
+    address feePayer; // address of the fee payer
     uint64 maturity; // timestamp of option maturity
     int128 strike64x64; // 64x64 fixed point representation of strike price
     int128 spot64x64; // 64x64 fixed point representation of spot price
