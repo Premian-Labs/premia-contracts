@@ -22,11 +22,11 @@ import {
   PremiaStaking,
   PremiaStaking__factory,
   ProxyManagerOld__factory,
-} from '../typechain';
+} from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { ZERO_ADDRESS } from '../test/utils/constants';
+import { ZERO_ADDRESS } from '../../test/utils/constants';
 
-export async function deployContracts(
+export async function deployV1(
   deployer: SignerWithAddress,
   treasury: string,
   isTest: boolean,

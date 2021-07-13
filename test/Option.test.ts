@@ -19,7 +19,7 @@ import {
   TEST_USE_WETH,
 } from './utils/constants';
 import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
-import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
+import { deployV1, IPremiaContracts } from '../scripts/utils/deployV1';
 import { parseEther } from 'ethers/lib/utils';
 import { createUniswap, IUniswap } from './utils/uniswap';
 import {
@@ -59,7 +59,7 @@ describe('Option', () => {
 
     testToken = getToken(weth, wbtc);
 
-    p = await deployContracts(admin, feeRecipient.address, true);
+    p = await deployV1(admin, feeRecipient.address, true);
     dai = p.dai as ERC20Mock;
     option = p.option;
 

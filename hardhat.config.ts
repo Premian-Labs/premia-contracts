@@ -13,7 +13,6 @@ import fs from 'fs';
 import path from 'path';
 import { TASK_COMPILE } from 'hardhat/builtin-tasks/task-names';
 
-import './tasks/deploy';
 import './tasks/accounts';
 
 Dotenv.config();
