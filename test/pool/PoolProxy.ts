@@ -306,6 +306,40 @@ describe('PoolProxy', function () {
     });
   });
 
+  describe('#getPriceUpdateAfter', () => {
+    it('should return the first price update available', async () => {
+      const getPriceAfter = async (timestamp: number) => {
+        return fixedToNumber(await pool.getPriceUpdateAfter(timestamp));
+      };
+
+      const oneHour = 3600;
+      const timestamp = 1625705450;
+      // const timestamp = 1626174352;
+      let bucket = Math.floor(timestamp / 3600);
+
+      let sequenceId = timestamp >> 8;
+      let offset = bucket & 255;
+      expect(offset).to.eq(0);
+
+      await pool.setPriceUpdate(timestamp - oneHour * 10, fixedFromFloat(1));
+      await pool.setPriceUpdate(timestamp - oneHour * 2, fixedFromFloat(5));
+
+      await pool.setPriceUpdate(timestamp, fixedFromFloat(10));
+
+      await pool.setPriceUpdate(timestamp + oneHour * 50, fixedFromFloat(20));
+      await pool.setPriceUpdate(timestamp + oneHour * 255, fixedFromFloat(30));
+
+      expect(await getPriceAfter(timestamp - oneHour * 20)).to.eq(1);
+      expect(await getPriceAfter(timestamp - oneHour * 5)).to.eq(5);
+      expect(await getPriceAfter(timestamp - oneHour)).to.eq(10);
+      expect(await getPriceAfter(timestamp)).to.eq(10);
+      expect(await getPriceAfter(timestamp + oneHour)).to.eq(20);
+      expect(await getPriceAfter(timestamp + oneHour * 50)).to.eq(30);
+
+      console.log(bucket, sequenceId, offset);
+    });
+  });
+
   describe('#getUnderlying', function () {
     it('returns underlying address', async () => {
       expect((await pool.getPoolSettings()).underlying).to.eq(

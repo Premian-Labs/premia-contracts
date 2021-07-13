@@ -12,6 +12,7 @@ import {PoolStorage} from '../pool/PoolStorage.sol';
 
 contract PoolMock is Pool {
   using ERC165Storage for ERC165Storage.Layout;
+  using PoolStorage for PoolStorage.Layout;
 
   // TODO: pass non-zero fee
   // TODO: confirm batching period
@@ -78,5 +79,21 @@ contract PoolMock is Pool {
     } else {
       l.cLevelBase64x64 = cLevel64x64;
     }
+  }
+
+  function getPriceUpdateAfter (
+    uint timestamp
+  ) external view returns (int128) {
+    return PoolStorage.layout().getPriceUpdateAfter(timestamp);
+  }
+
+  function setPriceUpdate (
+    uint timestamp,
+    int128 price64x64
+  ) external {
+    PoolStorage.Layout storage l = PoolStorage.layout();
+    uint bucket = timestamp / (1 hours);
+    l.bucketPrices64x64[bucket] = price64x64;
+    l.priceUpdateSequences[bucket >> 8] += 1 << 256 - (bucket & 255);
   }
 }
