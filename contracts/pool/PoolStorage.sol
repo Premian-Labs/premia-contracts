@@ -285,12 +285,19 @@ library PoolStorage {
     Layout storage l,
     uint timestamp
   ) internal view returns (int128) {
-    // TODO: check for off-by-one errors
     uint bucket = timestamp / (1 hours);
     uint sequenceId = bucket >> 8;
+
+    uint offset = bucket & 255;
+
+    if (offset == 0) {
+      offset = 255;
+      sequenceId--;
+    } else {
+      offset--;
+    }
+
     // shift to skip buckets from earlier in sequence
-    // TODO: underflow
-    uint offset = (bucket & 255) - 1;
     uint sequence = l.priceUpdateSequences[sequenceId] << offset >> offset;
 
     uint currentPriceUpdateSequenceId = block.timestamp / (256 hours);
