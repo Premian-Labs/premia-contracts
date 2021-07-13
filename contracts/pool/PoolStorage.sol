@@ -306,11 +306,6 @@ library PoolStorage {
       sequence = l.priceUpdateSequences[++sequenceId];
     }
 
-    if (sequence == 0) {
-      // TODO: no price update found; continuing function will return 0 anyway
-      return 0;
-    }
-
     uint256 msb; // most significant bit
 
     for (uint256 i = 128; i > 0; i >>= 1) {
