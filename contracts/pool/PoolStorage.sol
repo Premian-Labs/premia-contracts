@@ -277,7 +277,7 @@ library PoolStorage {
   ) internal {
     uint bucket = timestamp / (1 hours);
     l.bucketPrices64x64[bucket] = price64x64;
-    l.priceUpdateSequences[bucket >> 8] += 1 << 256 - (bucket & 255);
+    l.priceUpdateSequences[bucket >> 8] += 1 << 255 - (bucket & 255);
   }
 
   /**
@@ -311,16 +311,8 @@ library PoolStorage {
     // get position within sequence relevant to current price update
 
     uint offset = bucket & 255;
-
-    uint sequence;
-    if (offset > 0) {
-      offset--;
-      // shift to skip buckets from earlier in sequence
-      sequence = l.priceUpdateSequences[sequenceId] << offset >> offset;
-    } else {
-      // set id of previous sequence, as this will be incremented in loop under
-      sequenceId--;
-    }
+    // shift to skip buckets from earlier in sequence
+    uint sequence = l.priceUpdateSequences[sequenceId] << offset >> offset;
 
     // iterate through future sequences until a price update is found
     // sequence corresponding to current timestamp used as upper bound
@@ -345,7 +337,7 @@ library PoolStorage {
       }
     }
 
-    return l.bucketPrices64x64[(sequenceId + 1 << 8) - msb];
+    return l.bucketPrices64x64[(sequenceId + 1 << 8) - msb - 1];
   }
 
   function fromBaseToUnderlyingDecimals (
