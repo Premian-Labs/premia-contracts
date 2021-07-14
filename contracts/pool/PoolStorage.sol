@@ -234,7 +234,7 @@ library PoolStorage {
       isCallPool ? l.cLevelUnderlying64x64 : l.cLevelBase64x64,
       oldLiquidity64x64,
       newLiquidity64x64,
-      0x10000000000000000 // 64x64 fixed point representation of 1
+      0x8000000000000000 // 64x64 fixed point representation of 0.5
     );
   }
 
