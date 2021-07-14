@@ -323,7 +323,7 @@ library PoolStorage {
       sequence = l.priceUpdateSequences[++sequenceId];
     }
 
-    // if no price update is found (sequence == 0)
+    // if no price update is found (sequence == 0) function will return 0
     // this should never occur, as each relevant external function triggers a price update
 
     // the most significant bit of the sequence corresponds to the offset of the relevant bucket
