@@ -22,6 +22,7 @@ import { IPremiaFeeDiscount } from '../interface/IPremiaFeeDiscount.sol';
 contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
   using ABDKMath64x64 for int128;
   using EnumerableSet for EnumerableSet.AddressSet;
+  using EnumerableSet for EnumerableSet.UintSet;
   using PoolStorage for PoolStorage.Layout;
 
   address private immutable WETH_ADDRESS;
@@ -144,6 +145,22 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
       l.underlyingOracle,
       l.baseOracle
     );
+  }
+
+  /**
+    * @notice get the list of all existing token ids
+    * @return list of all existing token ids
+    */
+  function getTokenIds () external view returns (uint256[] memory) {
+    PoolStorage.Layout storage l = PoolStorage.layout();
+    uint256 length = l.tokenIds.length();
+    uint256[] memory result = new uint256[](length);
+
+    for (uint256 i=0; i < length; i++) {
+      result[i] = l.tokenIds.at(i);
+    }
+
+    return result;
   }
 
   /**
@@ -1257,27 +1274,34 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
 
     for (uint256 i; i < ids.length; i++) {
       uint256 id = ids[i];
+      uint256 amount = amounts[i];
+
+      if (amount == 0) continue;
+
+      if (from == address(0)) {
+        l.tokenIds.add(id);
+      }
+
+      if (to == address(0) && totalSupply(id) == 0) {
+        l.tokenIds.remove(id);
+      }
 
       if (id == UNDERLYING_FREE_LIQ_TOKEN_ID || id == BASE_FREE_LIQ_TOKEN_ID) {
-        uint256 amount = amounts[i];
+        bool isCallPool = id == UNDERLYING_FREE_LIQ_TOKEN_ID;
 
-        if (amount > 0) {
-          bool isCallPool = id == UNDERLYING_FREE_LIQ_TOKEN_ID;
-
-          if (from != address(0)) {
-            uint256 balance = balanceOf(from, id);
-          // ToDo : Find better solution than checking if under 1e5 to ignore dust left ?
-            if (balance > 1e5 && balance <= amount + 1e5) {
-              require(balance - l.pendingDeposits[from][l.nextDeposits[isCallPool].eta][isCallPool] >= amount, 'Insuf balance');
-              l.removeUnderwriter(from, isCallPool);
-            }
+        if (from != address(0)) {
+          uint256 balance = balanceOf(from, id);
+        // ToDo : Find better solution than checking if under 1e5 to ignore dust left ?
+          if (balance > 1e5 && balance <= amount + 1e5) {
+            require(balance - l.pendingDeposits[from][l.nextDeposits[isCallPool].eta][isCallPool] >= amount, 'Insuf balance');
+            l.removeUnderwriter(from, isCallPool);
           }
+        }
 
-          if (to != address(0)) {
-            uint256 balance = balanceOf(to, id);
-            if (balance <= 1e5 && balance + amount > 1e5) {
-              l.addUnderwriter(to, isCallPool);
-            }
+        if (to != address(0)) {
+          uint256 balance = balanceOf(to, id);
+          if (balance <= 1e5 && balance + amount > 1e5) {
+            l.addUnderwriter(to, isCallPool);
           }
         }
       }

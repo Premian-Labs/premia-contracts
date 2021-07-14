@@ -1389,6 +1389,49 @@ describe('PoolProxy', function () {
     }
   });
 
+  describe('#getTokenIds', function () {
+    it('should correctly list existing tokenIds', async () => {
+      const isCall = true;
+
+      const maturity = poolUtil.getMaturity(20);
+      const strike = getStrike(isCall);
+      const strike64x64 = fixedFromFloat(strike);
+      const amount = parseUnderlying('1');
+
+      await poolUtil.purchaseOption(
+        lp1,
+        buyer,
+        amount,
+        maturity,
+        strike64x64,
+        isCall,
+      );
+
+      const optionId = getOptionTokenIds(maturity, strike64x64, isCall);
+
+      let tokenIds = await pool.getTokenIds();
+      expect(tokenIds.length).to.eq(3);
+      expect(tokenIds[0]).to.eq(getFreeLiqTokenId(isCall));
+      expect(tokenIds[1]).to.eq(optionId.long);
+      expect(tokenIds[2]).to.eq(optionId.short);
+
+      await setTimestamp(maturity.add(100).toNumber());
+
+      const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
+
+      const price = isCall ? strike * 0.7 : strike * 1.4;
+      await setUnderlyingPrice(parseUnits(price.toString(), 8));
+
+      await pool
+        .connect(buyer)
+        .processExpired(tokenId.long, parseUnderlying('1'));
+
+      tokenIds = await pool.getTokenIds();
+      expect(tokenIds.length).to.eq(1);
+      expect(tokenIds[0]).to.eq(getFreeLiqTokenId(isCall));
+    });
+  });
+
   describe('#reassign', function () {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
