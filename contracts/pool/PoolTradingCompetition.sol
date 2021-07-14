@@ -61,7 +61,7 @@ contract PoolTradingCompetition is Pool {
 
         int128 newPrice64x64 = l.fetchPriceUpdate();
         if (l.getPriceUpdate(block.timestamp) == 0) {
-            l.setPriceUpdate(newPrice64x64);
+            l.setPriceUpdate(block.timestamp, newPrice64x64);
         }
 
         l.updatedAt = block.timestamp;
