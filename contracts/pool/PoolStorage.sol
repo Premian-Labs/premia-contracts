@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import {AggregatorInterface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorInterface.sol';
 import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
-import {ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155EnumerableStorage.sol';
+import {EnumerableSet, ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155EnumerableStorage.sol';
 
 import {ABDKMath64x64} from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import {ABDKMath64x64Token} from '../libraries/ABDKMath64x64Token.sol';
@@ -34,6 +34,7 @@ library PoolStorage {
   }
 
   struct QuoteArgsInternal {
+    address feePayer; // address of the fee payer
     uint64 maturity; // timestamp of option maturity
     int128 strike64x64; // 64x64 fixed point representation of strike price
     int128 spot64x64; // 64x64 fixed point representation of spot price
@@ -93,6 +94,8 @@ library PoolStorage {
     mapping(bool => BatchData) nextDeposits;
     // user -> batch timestamp -> isCall -> pending amount
     mapping(address => mapping(uint256 => mapping(bool => uint256))) pendingDeposits;
+
+    EnumerableSet.UintSet tokenIds;
   }
 
   function layout () internal pure returns (Layout storage l) {
