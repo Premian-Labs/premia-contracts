@@ -22,6 +22,7 @@ import {
   PremiaStaking,
   PremiaStaking__factory,
   ProxyManagerOld__factory,
+  ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { ZERO_ADDRESS } from '../../test/utils/constants';
