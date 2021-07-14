@@ -264,16 +264,28 @@ library PoolStorage {
     );
   }
 
+  /**
+   * @notice set price update for current hourly bucket
+   * @param l storage layout struct
+   * @param timestamp timestamp to update
+   * @param price64x64 64x64 fixed point representation of price
+   */
   function setPriceUpdate (
     Layout storage l,
+    uint256 timestamp,
     int128 price64x64
   ) internal {
-    // TODO: check for off-by-one errors
-    uint bucket = block.timestamp / (1 hours);
+    uint bucket = timestamp / (1 hours);
     l.bucketPrices64x64[bucket] = price64x64;
-    l.priceUpdateSequences[bucket >> 8] += 1 << 256 - (bucket & 255);
+    l.priceUpdateSequences[bucket >> 8] += 1 << 255 - (bucket & 255);
   }
 
+  /**
+   * @notice get price update for hourly bucket corresponding to given timestamp
+   * @param l storage layout struct
+   * @param timestamp timestamp to query
+   * @return 64x64 fixed point representation of price
+   */
   function getPriceUpdate (
     Layout storage l,
     uint timestamp
@@ -281,17 +293,29 @@ library PoolStorage {
     return l.bucketPrices64x64[timestamp / (1 hours)];
   }
 
+  /**
+   * @notice get first price update available following given timestamp
+   * @param l storage layout struct
+   * @param timestamp timestamp to query
+   * @return 64x64 fixed point representation of price
+   */
   function getPriceUpdateAfter (
     Layout storage l,
     uint timestamp
   ) internal view returns (int128) {
-    // TODO: check for off-by-one errors
+    // price updates are grouped into hourly buckets
     uint bucket = timestamp / (1 hours);
+    // divide by 256 to get the index of the relevant price update sequence
     uint sequenceId = bucket >> 8;
+
+    // get position within sequence relevant to current price update
+
+    uint offset = bucket & 255;
     // shift to skip buckets from earlier in sequence
-    // TODO: underflow
-    uint offset = (bucket & 255) - 1;
     uint sequence = l.priceUpdateSequences[sequenceId] << offset >> offset;
+
+    // iterate through future sequences until a price update is found
+    // sequence corresponding to current timestamp used as upper bound
 
     uint currentPriceUpdateSequenceId = block.timestamp / (256 hours);
 
@@ -299,12 +323,12 @@ library PoolStorage {
       sequence = l.priceUpdateSequences[++sequenceId];
     }
 
-    if (sequence == 0) {
-      // TODO: no price update found; continuing function will return 0 anyway
-      return 0;
-    }
+    // if no price update is found (sequence == 0) function will return 0
+    // this should never occur, as each relevant external function triggers a price update
 
-    uint256 msb; // most significant bit
+    // the most significant bit of the sequence corresponds to the offset of the relevant bucket
+
+    uint256 msb;
 
     for (uint256 i = 128; i > 0; i >>= 1) {
       if (sequence >> i > 0) {
@@ -313,7 +337,7 @@ library PoolStorage {
       }
     }
 
-    return l.bucketPrices64x64[(sequenceId + 1 << 8) - msb];
+    return l.bucketPrices64x64[(sequenceId + 1 << 8) - msb - 1];
   }
 
   function fromBaseToUnderlyingDecimals (

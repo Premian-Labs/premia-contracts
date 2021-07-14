@@ -43,7 +43,7 @@ contract PoolProxy is ManagedProxyOwnable {
       l.cLevelUnderlying64x64 = initialCLevel64x64;
 
       int128 newPrice64x64 = l.fetchPriceUpdate();
-      l.setPriceUpdate(newPrice64x64);
+      l.setPriceUpdate(block.timestamp, newPrice64x64);
 
       l.emaVarianceAnnualized64x64 = emaVarianceAnnualized64x64;
 

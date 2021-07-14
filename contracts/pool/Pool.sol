@@ -841,7 +841,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
 
     if (l.getPriceUpdate(block.timestamp) == 0) {
-      l.setPriceUpdate(newPrice64x64);
+      l.setPriceUpdate(block.timestamp, newPrice64x64);
     }
 
     int128 logReturns64x64 = newPrice64x64.div(oldPrice64x64).ln();
