@@ -58,6 +58,12 @@ contract PoolTradingCompetition is Pool {
         l.cLevelUnderlying64x64 = INITIAL_C_LEVEL_64x64;
         l.cLevelBase64x64 = INITIAL_C_LEVEL_64x64;
         l.emaLogReturns64x64 = 0;
+
+        int128 newPrice64x64 = l.fetchPriceUpdate();
+        if (l.getPriceUpdate(block.timestamp) == 0) {
+            l.setPriceUpdate(newPrice64x64);
+        }
+
         l.updatedAt = block.timestamp;
     }
 
