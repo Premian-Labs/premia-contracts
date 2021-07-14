@@ -5,7 +5,6 @@ import {
   ERC20Mock__factory,
   ManagedProxyOwnable,
   ManagedProxyOwnable__factory,
-  OptionMath,
   OptionMath__factory,
   PoolMock,
   PoolMock__factory,
@@ -61,7 +60,6 @@ describe('PoolProxy', function () {
 
   let premia: Premia;
   let proxy: ManagedProxyOwnable;
-  let optionMath: OptionMath;
   let pool: PoolMock;
   let poolWeth: PoolMock;
   let base: ERC20Mock;
@@ -273,7 +271,6 @@ describe('PoolProxy', function () {
           queue.push(value);
         }
 
-        // console.log(queue);
         expect(await pool.getUnderwriter()).to.eq(formatAddress(queue[0]));
       };
 
@@ -298,7 +295,6 @@ describe('PoolProxy', function () {
       await addAddress(5);
 
       while (queue.length) {
-        // console.log(queue);
         await removeAddress(queue[0]);
       }
 
@@ -335,7 +331,6 @@ describe('PoolProxy', function () {
         await poolUtil.depositLiquidity(owner, parseUnderlying('10'), true);
 
         const strike64x64 = fixedFromFloat(2500);
-        const spot64x64 = fixedFromFloat(spotPrice);
         const now = getCurrentTimestamp();
 
         const q = await pool.quote(
@@ -520,6 +515,24 @@ describe('PoolProxy', function () {
                 parseOption('100', isCall),
               ),
           ).to.be.revertedWith('exp < 1 day');
+        });
+
+        it('should revert if option is priced with instant profit', async () => {
+          await poolUtil.depositLiquidity(
+            owner,
+            parseOption(isCall ? '100' : '100000', isCall),
+            isCall,
+          );
+          await pool.setCLevel(isCall, fixedFromFloat('0.1'));
+
+          const maturity = poolUtil.getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(!isCall));
+          const purchaseAmountNb = 10;
+          const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+          await expect(
+            pool.quote(maturity, strike64x64, purchaseAmount, isCall),
+          ).to.be.revertedWith('price < intrinsic val');
         });
 
         it('should revert if using a maturity more than 28 days in the future', async () => {
@@ -777,33 +790,21 @@ describe('PoolProxy', function () {
 
             let expectedAmount = 0;
 
-            if (isCall) {
-              if (i < purchaseAmountNb) {
-                if (i < purchaseAmountNb - 1) {
-                  // For all underwriter before last intervals, we add premium which is automatically reinvested
-                  expectedAmount =
-                    1 + fixedToNumber(quote.baseCost64x64) / purchaseAmountNb;
-                } else {
-                  // For underwriter of the last interval, we subtract baseCost,
-                  // as previous intervals were > 1 because of reinvested premium
-                  expectedAmount = 1 - fixedToNumber(quote.baseCost64x64);
-                }
-              }
-            } else {
-              const totalToPay = purchaseAmountNb * getStrike(isCall);
-              const intervalAmount =
-                (depositAmountNb *
-                  (totalToPay + fixedToNumber(quote.baseCost64x64))) /
-                totalToPay /
-                getStrike(isCall);
+            const totalToPay = isCall
+              ? purchaseAmountNb
+              : purchaseAmountNb * getStrike(isCall);
+            const intervalAmount =
+              (depositAmountNb *
+                (totalToPay + fixedToNumber(quote.baseCost64x64))) /
+              totalToPay /
+              (isCall ? 1 : getStrike(isCall));
 
-              if (intervalAmount < amount) {
-                expectedAmount = intervalAmount;
-                amount -= intervalAmount;
-              } else {
-                expectedAmount = amount;
-                amount = 0;
-              }
+            if (intervalAmount < amount) {
+              expectedAmount = intervalAmount;
+              amount -= intervalAmount;
+            } else {
+              expectedAmount = amount;
+              amount = 0;
             }
 
             expect(
@@ -817,7 +818,6 @@ describe('PoolProxy', function () {
           }
 
           const r = await tx.wait(1);
-          console.log('GAS', r.gasUsed.toString());
         });
       });
     }
@@ -1227,36 +1227,6 @@ describe('PoolProxy', function () {
   describe('#reassign', function () {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
-        it('should revert if token is a LONG token', async () => {
-          const maturity = poolUtil.getMaturity(10);
-          const strike64x64 = fixedFromFloat(getStrike(isCall));
-
-          await poolUtil.purchaseOption(
-            lp1,
-            buyer,
-            parseUnderlying('1'),
-            maturity,
-            strike64x64,
-            isCall,
-          );
-
-          await poolUtil.depositLiquidity(
-            lp2,
-            parseOption('2', isCall),
-            isCall,
-          );
-
-          const longTokenId = formatTokenId({
-            tokenType: getLong(isCall),
-            maturity,
-            strike64x64,
-          });
-
-          await expect(
-            pool.connect(lp1).reassign(longTokenId, parseUnderlying('1')),
-          ).to.be.revertedWith('invalid type');
-        });
-
         it('should revert if option is expired', async () => {
           const maturity = poolUtil.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
@@ -1310,6 +1280,8 @@ describe('PoolProxy', function () {
             isCall,
           );
 
+          await increaseTimestamp(25 * 3600);
+
           const shortTokenId = formatTokenId({
             tokenType: getShort(isCall),
             maturity,
@@ -1321,8 +1293,17 @@ describe('PoolProxy', function () {
             shortTokenId,
           );
 
-          await pool.connect(lp1).reassign(shortTokenId, shortTokenBalance);
+          await pool
+            .connect(lp1)
+            .withdrawAllAndReassignBatch(
+              isCall,
+              [shortTokenId],
+              [shortTokenBalance],
+            );
 
+          expect(
+            await pool.balanceOf(lp1.address, getFreeLiqTokenId(isCall)),
+          ).to.eq(0);
           expect(await pool.balanceOf(lp1.address, shortTokenId)).to.eq(0);
           expect(await pool.balanceOf(lp2.address, shortTokenId)).to.eq(
             shortTokenBalance,
@@ -1376,14 +1357,6 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          console.log(await getToken(isCall).balanceOf(lp1.address));
-          console.log(await pool.balanceOf(lp1.address, tokenIds.long));
-          console.log(await pool.balanceOf(lp1.address, tokenIds.short));
-          console.log(await pool.balanceOf(lp2.address, tokenIds.long));
-          console.log(await pool.balanceOf(lp2.address, tokenIds.short));
-
-          console.log(tokenIds);
-
           expect(await getToken(isCall).balanceOf(lp1.address)).to.eq(0);
           expect(await pool.balanceOf(lp1.address, tokenIds.long)).to.eq(0);
           expect(await pool.balanceOf(lp2.address, tokenIds.long)).to.eq(
@@ -1431,18 +1404,6 @@ describe('PoolProxy', function () {
   describe('#annihilate', () => {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
-        it('should revert if not short token id', async () => {
-          const tokenIds = getOptionTokenIds(
-            poolUtil.getMaturity(30),
-            fixedFromFloat(2),
-            isCall,
-          );
-
-          await expect(
-            pool.connect(lp1).annihilate(tokenIds.long, parseUnderlying('1')),
-          ).to.be.revertedWith('not short');
-        });
-
         it('should successfully burn long and short tokens + withdraw collateral', async () => {
           const amount = parseUnderlying('1');
           await poolUtil.writeOption(

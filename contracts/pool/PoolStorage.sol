@@ -228,9 +228,6 @@ library PoolStorage {
   ) internal returns (int128 cLevel64x64) {
     cLevel64x64 = calculateCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
 
-    // 0.8
-    if (cLevel64x64 < 0xcccccccccccccccd) cLevel64x64 = 0xcccccccccccccccd;
-
     if (isCallPool) {
       l.cLevelUnderlying64x64 = cLevel64x64;
     } else {
@@ -244,12 +241,14 @@ library PoolStorage {
     int128 newLiquidity64x64,
     bool isCallPool
   ) internal view returns(int128) {
-    return OptionMath.calculateCLevel(
+    int128 cLevel64x64 = OptionMath.calculateCLevel(
       isCallPool ? l.cLevelUnderlying64x64 : l.cLevelBase64x64,
       oldLiquidity64x64,
       newLiquidity64x64,
       0x10000000000000000 // 64x64 fixed point representation of 1
     );
+
+    return cLevel64x64 < 0xcccccccccccccccd ? int128(0xcccccccccccccccd) : cLevel64x64; // 0.8 min
   }
 
   function setOracles(
