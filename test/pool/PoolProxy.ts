@@ -307,8 +307,7 @@ describe('PoolProxy', function () {
   });
 
   describe('#getPriceUpdateAfter', () => {
-    const ONE_MINUTE = 60;
-    const ONE_HOUR = ONE_MINUTE * 60;
+    const ONE_HOUR = 3600;
     const SEQUENCE_LENGTH = ONE_HOUR * 256;
 
     const BASE_TIMESTAMP = 1750 * SEQUENCE_LENGTH;
