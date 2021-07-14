@@ -105,6 +105,12 @@ contract PoolTradingCompetition is Pool {
 //      }
 //    }
 
+    function getPriceUpdateAfter (
+        uint timestamp
+    ) external view returns (int128) {
+        return PoolStorage.layout().getPriceUpdateAfter(timestamp);
+    }
+
     function _beforeTokenTransfer (
         address operator,
         address from,
