@@ -18,8 +18,7 @@ contract ProxyUpgradeableOwnable is Proxy, SafeOwnable {
     receive () external payable {}
 
     /**
-     * @notice get address of implementation contract
-     * @return implementation address
+     * @inheritdoc Proxy
      */
     function _getImplementation () override internal view returns (address) {
         return ProxyUpgradeableOwnableStorage.layout().implementation;

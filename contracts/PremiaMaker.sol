@@ -22,16 +22,16 @@ contract PremiaMaker is OwnableInternal {
     using EnumerableSet for EnumerableSet.AddressSet;
 
     // The premia token
-    address private immutable premia;
+    address private immutable PREMIA;
     // The premia staking contract (xPremia)
-    address private immutable premiaStaking;
+    address private immutable PREMIA_STAKING;
 
     // The treasury address which will receive a portion of the protocol fees
-    address private immutable treasury;
+    address private immutable TREASURY;
     // The percentage of protocol fees the treasury will get (in basis points)
-    uint256 private constant treasuryFee = 2e3; // 20%
+    uint256 private constant TREASURY_FEE = 2e3; // 20%
 
-    uint256 private constant _inverseBasisPoint = 1e4;
+    uint256 private constant INVERSE_BASIS_POINT = 1e4;
 
     ////////////
     // Events //
@@ -47,9 +47,9 @@ contract PremiaMaker is OwnableInternal {
     // @param _premiaStaking The premia staking contract (xPremia)
     // @param _treasury The treasury address which will receive a portion of the protocol fees
     constructor(address _premia, address _premiaStaking, address _treasury) {
-        premia = _premia;
-        premiaStaking = _premiaStaking;
-        treasury = _treasury;
+        PREMIA = _premia;
+        PREMIA_STAKING = _premiaStaking;
+        TREASURY = _treasury;
     }
 
     //////////////////////////////////////////////////
@@ -131,10 +131,10 @@ contract PremiaMaker is OwnableInternal {
         IERC20 token = IERC20(_token);
 
         uint256 amount = token.balanceOf(address(this));
-        uint256 fee = amount * treasuryFee / _inverseBasisPoint;
+        uint256 fee = amount * TREASURY_FEE / INVERSE_BASIS_POINT;
         uint256 amountMinusFee = amount - fee;
 
-        token.safeTransfer(treasury, fee);
+        token.safeTransfer(TREASURY, fee);
 
         if (amountMinusFee == 0) return;
 
@@ -143,7 +143,7 @@ contract PremiaMaker is OwnableInternal {
         address weth = _router.WETH();
         uint256 premiaAmount;
 
-        if (_token != address(premia)) {
+        if (_token != address(PREMIA)) {
             address[] memory path;
 
             if (_token != weth) {
@@ -152,24 +152,24 @@ contract PremiaMaker is OwnableInternal {
                     path = new address[](3);
                     path[0] = _token;
                     path[1] = weth;
-                    path[2] = address(premia);
+                    path[2] = address(PREMIA);
                 }
             } else {
                 path = new address[](2);
                 path[0] = _token;
-                path[1] = address(premia);
+                path[1] = address(PREMIA);
             }
 
             _router.swapExactTokensForTokens(
                 amountMinusFee,
                 0,
                 path,
-                premiaStaking,
+                PREMIA_STAKING,
                 block.timestamp
             );
         } else {
             premiaAmount = amountMinusFee;
-            IERC20(premia).safeTransfer(premiaStaking, premiaAmount);
+            IERC20(PREMIA).safeTransfer(PREMIA_STAKING, premiaAmount);
             // Just for the event
             _router = IUniswapV2Router02(address(0));
         }
