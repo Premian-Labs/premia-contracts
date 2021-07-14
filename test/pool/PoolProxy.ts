@@ -354,16 +354,24 @@ describe('PoolProxy', function () {
 
       // check timestamps in previous sequence
 
-      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH)).to.eq(PRICE);
+      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH)).to.eq(
+        PRICE,
+      );
       expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH)).to.eq(PRICE);
       expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH)).to.eq(PRICE);
 
       // check timestamps in very old sequence
 
-      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH * 3)).to.eq(PRICE);
-      expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH * 3)).to.eq(PRICE);
-      expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH * 3)).to.eq(PRICE);
-    })
+      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+    });
 
     it('returns price update stored mid sequence', async () => {
       const timestamp = SEQUENCE_MID;
@@ -391,16 +399,24 @@ describe('PoolProxy', function () {
 
       // check timestamps in previous sequence
 
-      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH)).to.eq(PRICE);
+      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH)).to.eq(
+        PRICE,
+      );
       expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH)).to.eq(PRICE);
       expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH)).to.eq(PRICE);
 
       // check timestamps in very old sequence
 
-      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH * 3)).to.eq(PRICE);
-      expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH * 3)).to.eq(PRICE);
-      expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH * 3)).to.eq(PRICE);
-    })
+      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+    });
 
     it('returns price update stored at end of sequence', async () => {
       const timestamp = SEQUENCE_END;
@@ -428,23 +444,29 @@ describe('PoolProxy', function () {
 
       // check timestamps in previous sequence
 
-      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH)).to.eq(PRICE);
+      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH)).to.eq(
+        PRICE,
+      );
       expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH)).to.eq(PRICE);
       expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH)).to.eq(PRICE);
 
       // check timestamps in very old sequence
 
-      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH * 3)).to.eq(PRICE);
-      expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH * 3)).to.eq(PRICE);
-      expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH * 3)).to.eq(PRICE);
-    })
+      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+    });
 
     it('should return the first price update available', async () => {
-      const timestamp = 1625705450;
-      // const timestamp = 1626174352;
+      const timestamp = 1624783000;
       let bucket = Math.floor(timestamp / 3600);
 
-      let sequenceId = timestamp >> 8;
       let offset = bucket & 255;
       expect(offset).to.eq(0);
 
@@ -461,9 +483,8 @@ describe('PoolProxy', function () {
       expect(await getPriceAfter(timestamp - ONE_HOUR)).to.eq(10);
       expect(await getPriceAfter(timestamp)).to.eq(10);
       expect(await getPriceAfter(timestamp + ONE_HOUR)).to.eq(20);
-      expect(await getPriceAfter(timestamp + ONE_HOUR * 50)).to.eq(30);
-
-      console.log(bucket, sequenceId, offset);
+      expect(await getPriceAfter(timestamp + ONE_HOUR * 50)).to.eq(20);
+      expect(await getPriceAfter(timestamp + ONE_HOUR * 51)).to.eq(30);
     });
   });
 
