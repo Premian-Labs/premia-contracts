@@ -337,7 +337,14 @@ library PoolStorage {
       }
     }
 
-    return l.bucketPrices64x64[(sequenceId + 1 << 8) - msb - 1];
+    uint id = (sequenceId + 1 << 8) - msb - 1;
+
+    // ToDo : Only keep for trading competition
+    if (timestamp < 1626252226) {
+      id++;
+    }
+
+    return l.bucketPrices64x64[id];
   }
 
   function fromBaseToUnderlyingDecimals (
