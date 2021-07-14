@@ -23,6 +23,9 @@ contract PoolTradingCompetition is Pool {
     using EnumerableSet for EnumerableSet.AddressSet;
     using PoolStorage for PoolStorage.Layout;
 
+    // 64x64 fixed point representation of 2e
+    int128 private constant INITIAL_C_LEVEL_64x64 = 0x56fc2a2c515da32ea;
+
     constructor (
       address weth,
       address feeReceiver,
@@ -42,6 +45,26 @@ contract PoolTradingCompetition is Pool {
         address addr
     ) external view returns(address) {
         return PoolStorage.layout().liquidityQueueDescending[isCall][addr];
+    }
+
+    function resetPool (int128 emaVarianceAnnualized64x64) external {
+        require(
+            msg.sender == 0xFBB8495A691232Cb819b84475F57e76aa9aBb6f1 ||
+            msg.sender == 0x573C2AA43D3cD14501Ec116fDC83020Fd479Bb5E, 'Not admin'
+        );
+
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        l.emaVarianceAnnualized64x64 = emaVarianceAnnualized64x64;
+        l.cLevelUnderlying64x64 = INITIAL_C_LEVEL_64x64;
+        l.cLevelBase64x64 = INITIAL_C_LEVEL_64x64;
+        l.emaLogReturns64x64 = 0;
+
+        int128 newPrice64x64 = l.fetchPriceUpdate();
+        if (l.getPriceUpdate(block.timestamp) == 0) {
+            l.setPriceUpdate(newPrice64x64);
+        }
+
+        l.updatedAt = block.timestamp;
     }
 
 //    function fixLiquidityQueue (address[] memory wipeList) external {
