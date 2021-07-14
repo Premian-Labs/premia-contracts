@@ -1130,7 +1130,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
     ) = _calculateUpdate(l);
 
     if (l.getPriceUpdate(block.timestamp) == 0) {
-      l.setPriceUpdate(newPrice64x64);
+      l.setPriceUpdate(block.timestamp, newPrice64x64);
     }
 
     l.emaLogReturns64x64 = newEmaLogReturns64x64;

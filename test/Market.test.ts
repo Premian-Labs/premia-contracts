@@ -14,7 +14,7 @@ import { IOrderCreated } from '../types';
 import { MarketTestUtil } from './utils/MarketTestUtil';
 import { resetHardhat, setTimestampPostExpiration } from './utils/evm';
 import { TEST_TOKEN_DECIMALS, ZERO_ADDRESS } from './utils/constants';
-import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
+import { deployV1, IPremiaContracts } from '../scripts/utils/deployV1';
 import { parseEther } from 'ethers/lib/utils';
 import { getToken, mintTestToken, parseTestToken } from './utils/token';
 
@@ -46,7 +46,7 @@ describe('Market', () => {
       TEST_TOKEN_DECIMALS,
     );
 
-    p = await deployContracts(admin, feeRecipient.address, true);
+    p = await deployV1(admin, feeRecipient.address, true);
     await p.feeCalculator.setPremiaFeeDiscount(ZERO_ADDRESS);
     dai = p.dai as ERC20Mock;
 

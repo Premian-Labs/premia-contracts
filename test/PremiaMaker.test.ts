@@ -2,7 +2,7 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { resetHardhat } from './utils/evm';
-import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
+import { deployV1, IPremiaContracts } from '../scripts/utils/deployV1';
 import { formatEther, parseEther } from 'ethers/lib/utils';
 import { createUniswap, IUniswap } from './utils/uniswap';
 import { ERC20Mock } from '../typechain';
@@ -24,7 +24,7 @@ describe('PremiaMaker', () => {
 
     [admin, user1, treasury] = await ethers.getSigners();
 
-    p = await deployContracts(admin, treasury.address, true);
+    p = await deployV1(admin, treasury.address, true);
 
     uniswap = await createUniswap(admin, p.premia);
 

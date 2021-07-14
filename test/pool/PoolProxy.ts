@@ -350,6 +350,188 @@ describe('PoolProxy', function () {
     });
   });
 
+  describe('#getPriceUpdateAfter', () => {
+    const ONE_HOUR = 3600;
+    const SEQUENCE_LENGTH = ONE_HOUR * 256;
+
+    const BASE_TIMESTAMP = 1750 * SEQUENCE_LENGTH;
+
+    // first timestamp of sequence
+    const SEQUENCE_START = BASE_TIMESTAMP;
+    const SEQUENCE_MID = BASE_TIMESTAMP + ONE_HOUR * 128;
+    // first timestamp of last bucket of sequence
+    const SEQUENCE_END = BASE_TIMESTAMP + ONE_HOUR * 256;
+
+    const PRICE = 1234;
+
+    const setPriceUpdate = async (timestamp: number, price: number) => {
+      await pool.setPriceUpdate(timestamp, fixedFromFloat(price));
+    };
+
+    const getPriceAfter = async (timestamp: number) => {
+      return fixedToNumber(await pool.getPriceUpdateAfter(timestamp));
+    };
+
+    it('returns price update stored at beginning of sequence', async () => {
+      const timestamp = SEQUENCE_START;
+
+      await setPriceUpdate(timestamp, PRICE);
+
+      // check timestamp in future bucket
+
+      expect(await getPriceAfter(timestamp + ONE_HOUR)).not.to.eq(PRICE);
+
+      // check timestamps in same bucket
+
+      expect(await getPriceAfter(timestamp)).to.eq(PRICE);
+      expect(await getPriceAfter(timestamp + ONE_HOUR - 1)).to.eq(PRICE);
+
+      // check timestamps in previous bucket
+
+      expect(await getPriceAfter(timestamp - 1)).to.eq(PRICE);
+      expect(await getPriceAfter(timestamp - ONE_HOUR)).to.eq(PRICE);
+
+      // check timestamps earlier in same sequence
+
+      expect(await getPriceAfter(timestamp - SEQUENCE_LENGTH / 4)).to.eq(PRICE);
+      expect(await getPriceAfter(SEQUENCE_START)).to.eq(PRICE);
+
+      // check timestamps in previous sequence
+
+      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH)).to.eq(PRICE);
+      expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH)).to.eq(PRICE);
+
+      // check timestamps in very old sequence
+
+      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+    });
+
+    it('returns price update stored mid sequence', async () => {
+      const timestamp = SEQUENCE_MID;
+
+      await setPriceUpdate(timestamp, PRICE);
+
+      // check timestamp in future bucket
+
+      expect(await getPriceAfter(timestamp + ONE_HOUR)).not.to.eq(PRICE);
+
+      // check timestamps in same bucket
+
+      expect(await getPriceAfter(timestamp)).to.eq(PRICE);
+      expect(await getPriceAfter(timestamp + ONE_HOUR - 1)).to.eq(PRICE);
+
+      // check timestamps in previous bucket
+
+      expect(await getPriceAfter(timestamp - 1)).to.eq(PRICE);
+      expect(await getPriceAfter(timestamp - ONE_HOUR)).to.eq(PRICE);
+
+      // check timestamps earlier in same sequence
+
+      expect(await getPriceAfter(timestamp - SEQUENCE_LENGTH / 4)).to.eq(PRICE);
+      expect(await getPriceAfter(SEQUENCE_START)).to.eq(PRICE);
+
+      // check timestamps in previous sequence
+
+      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH)).to.eq(PRICE);
+      expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH)).to.eq(PRICE);
+
+      // check timestamps in very old sequence
+
+      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+    });
+
+    it('returns price update stored at end of sequence', async () => {
+      const timestamp = SEQUENCE_END;
+
+      await setPriceUpdate(timestamp, PRICE);
+
+      // check timestamp in future bucket
+
+      expect(await getPriceAfter(timestamp + ONE_HOUR)).not.to.eq(PRICE);
+
+      // check timestamps in same bucket
+
+      expect(await getPriceAfter(timestamp)).to.eq(PRICE);
+      expect(await getPriceAfter(timestamp + ONE_HOUR - 1)).to.eq(PRICE);
+
+      // check timestamps in previous bucket
+
+      expect(await getPriceAfter(timestamp - 1)).to.eq(PRICE);
+      expect(await getPriceAfter(timestamp - ONE_HOUR)).to.eq(PRICE);
+
+      // check timestamps earlier in same sequence
+
+      expect(await getPriceAfter(timestamp - SEQUENCE_LENGTH / 4)).to.eq(PRICE);
+      expect(await getPriceAfter(SEQUENCE_START)).to.eq(PRICE);
+
+      // check timestamps in previous sequence
+
+      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH)).to.eq(PRICE);
+      expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH)).to.eq(PRICE);
+
+      // check timestamps in very old sequence
+
+      expect(await getPriceAfter(SEQUENCE_START - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_MID - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+      expect(await getPriceAfter(SEQUENCE_END - SEQUENCE_LENGTH * 3)).to.eq(
+        PRICE,
+      );
+    });
+
+    it('should return the first price update available', async () => {
+      const timestamp = 1624783000;
+      let bucket = Math.floor(timestamp / 3600);
+
+      let offset = bucket & 255;
+      expect(offset).to.eq(0);
+
+      await setPriceUpdate(timestamp - ONE_HOUR * 10, 1);
+      await setPriceUpdate(timestamp - ONE_HOUR * 2, 5);
+
+      await setPriceUpdate(timestamp, 10);
+
+      await setPriceUpdate(timestamp + ONE_HOUR * 50, 20);
+      await setPriceUpdate(timestamp + ONE_HOUR * 255, 30);
+
+      expect(await getPriceAfter(timestamp - ONE_HOUR * 20)).to.eq(1);
+      expect(await getPriceAfter(timestamp - ONE_HOUR * 5)).to.eq(5);
+      expect(await getPriceAfter(timestamp - ONE_HOUR)).to.eq(10);
+      expect(await getPriceAfter(timestamp)).to.eq(10);
+      expect(await getPriceAfter(timestamp + ONE_HOUR)).to.eq(20);
+      expect(await getPriceAfter(timestamp + ONE_HOUR * 50)).to.eq(20);
+      expect(await getPriceAfter(timestamp + ONE_HOUR * 51)).to.eq(30);
+    });
+  });
+
   describe('#getUnderlying', function () {
     it('returns underlying address', async () => {
       expect((await pool.getPoolSettings()).underlying).to.eq(

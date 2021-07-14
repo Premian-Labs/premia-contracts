@@ -1,19 +1,17 @@
-import { task } from 'hardhat/config';
-import { OptionMath__factory } from '../typechain';
+import { ethers } from 'hardhat';
+import {
+  OptionMath__factory,
+  ProxyManager__factory,
+  Pool,
+  PoolTradingCompetition,
+  PoolTradingCompetition__factory,
+} from '../typechain';
 import { PoolTradingCompetitionLibraryAddresses } from '../typechain/factories/PoolTradingCompetition__factory';
 
 export const RINKEBY_WETH = '0xc778417e063141139fce010982780140aa0cd5ab';
 
-task('upgrade-pool-implementation').setAction(async function (args, hre) {
-  // Leave imports here so that we can run hardhat compile even if typechain folder has not been generated  yet
-  const {
-    ProxyManager__factory,
-    Pool,
-    PoolTradingCompetition,
-    PoolTradingCompetition__factory,
-  } = require('../typechain');
-
-  const [deployer] = await hre.ethers.getSigners();
+async function main() {
+  const [deployer] = await ethers.getSigners();
 
   const weth = RINKEBY_WETH;
 
@@ -23,7 +21,7 @@ task('upgrade-pool-implementation').setAction(async function (args, hre) {
     __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address,
   };
 
-  let pool: typeof Pool | typeof PoolTradingCompetition;
+  let pool: Pool | PoolTradingCompetition;
   pool = await new PoolTradingCompetition__factory(
     linkAddresses,
     deployer,
@@ -165,4 +163,13 @@ task('upgrade-pool-implementation').setAction(async function (args, hre) {
   //   )
   // ).wait();
   // console.log('done');
-});
+}
+
+// We recommend this pattern to be able to use async/await everywhere
+// and properly handle errors.
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
