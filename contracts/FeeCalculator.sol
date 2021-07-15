@@ -2,18 +2,24 @@
 
 pragma solidity ^0.8.0;
 
-import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
-import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
-import {EnumerableSet} from '@solidstate/contracts/utils/EnumerableSet.sol';
+import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
+import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 
-import {IPremiaFeeDiscount} from './interface/IPremiaFeeDiscount.sol';
+import {IPremiaFeeDiscount} from "./interface/IPremiaFeeDiscount.sol";
 
 /// @author Premia
 /// @title Calculate protocol fees, including discount from xPremia locking
 contract FeeCalculator is Ownable {
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    enum FeeType {Write, Exercise, Maker, Taker, FlashLoan}
+    enum FeeType {
+        Write,
+        Exercise,
+        Maker,
+        Taker,
+        FlashLoan
+    }
 
     // Addresses which dont have to pay fees
     EnumerableSet.AddressSet private _whitelisted;
@@ -53,49 +59,57 @@ contract FeeCalculator is Ownable {
 
     /// @notice Set new address for PremiaFeeDiscount contract
     /// @param _premiaFeeDiscount The new contract address
-    function setPremiaFeeDiscount(IPremiaFeeDiscount _premiaFeeDiscount) external onlyOwner {
+    function setPremiaFeeDiscount(IPremiaFeeDiscount _premiaFeeDiscount)
+        external
+        onlyOwner
+    {
         premiaFeeDiscount = _premiaFeeDiscount;
     }
 
     /// @notice Set new protocol fee for option writing
     /// @param _fee The new fee (In basis points)
     function setWriteFee(uint256 _fee) external onlyOwner {
-        require(_fee <= 500); // Hardcoded max at 5%
+        require(_fee <= 500);
+        // Hardcoded max at 5%
         writeFee = _fee;
     }
 
     /// @notice Set new protocol fee for exercising options
     /// @param _fee The new fee (In basis points)
     function setExerciseFee(uint256 _fee) external onlyOwner {
-        require(_fee <= 500); // Hardcoded max at 5%
+        require(_fee <= 500);
+        // Hardcoded max at 5%
         exerciseFee = _fee;
     }
 
     /// @notice Set new protocol fee for flashLoans
     /// @param _fee The new fee (In basis points)
     function setFlashLoanFee(uint256 _fee) external onlyOwner {
-        require(_fee <= 500); // Hardcoded max at 5%
+        require(_fee <= 500);
+        // Hardcoded max at 5%
         flashLoanFee = _fee;
     }
 
     /// @notice Set new protocol fee for order maker
     /// @param _fee The new fee (In basis points)
     function setMakerFee(uint256 _fee) external onlyOwner {
-        require(_fee <= 500); // Hardcoded max at 5%
+        require(_fee <= 500);
+        // Hardcoded max at 5%
         makerFee = _fee;
     }
 
     /// @notice Set new protocol fee for order taker
     /// @param _fee The new fee (In basis points)
     function setTakerFee(uint256 _fee) external onlyOwner {
-        require(_fee <= 500); // Hardcoded max at 5%
+        require(_fee <= 500);
+        // Hardcoded max at 5%
         takerFee = _fee;
     }
 
     /// @notice Add addresses to the whitelist so that they dont have to pay fees. (Could be use to whitelist some contracts)
     /// @param _addr The addresses to add to the whitelist
     function addWhitelisted(address[] memory _addr) external onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
+        for (uint256 i = 0; i < _addr.length; i++) {
             _whitelisted.add(_addr[i]);
         }
     }
@@ -103,7 +117,7 @@ contract FeeCalculator is Ownable {
     /// @notice Removed addresses from the whitelist so that they have to pay fees again.
     /// @param _addr The addresses to remove the whitelist
     function removeWhitelisted(address[] memory _addr) external onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
+        for (uint256 i = 0; i < _addr.length; i++) {
             _whitelisted.remove(_addr[i]);
         }
     }
@@ -116,11 +130,11 @@ contract FeeCalculator is Ownable {
 
     /// @notice Get the list of whitelisted addresses
     /// @return The list of whitelisted addresses
-    function getWhitelisted() external view returns(address[] memory) {
+    function getWhitelisted() external view returns (address[] memory) {
         uint256 length = _whitelisted.length();
         address[] memory result = new address[](length);
 
-        for (uint256 i=0; i < length; i++) {
+        for (uint256 i = 0; i < length; i++) {
             result[i] = _whitelisted.at(i);
         }
 
@@ -131,7 +145,11 @@ contract FeeCalculator is Ownable {
     /// @param _user The address for which to calculate the fee
     /// @param _feeType The type of fee
     /// @return The protocol fee to pay by _user (In basis points)
-    function getFee(address _user, FeeType _feeType) external view returns(uint256) {
+    function getFee(address _user, FeeType _feeType)
+        external
+        view
+        returns (uint256)
+    {
         if (_whitelisted.contains(_user)) return 0;
 
         uint256 fee = _getBaseFee(_feeType);
@@ -139,7 +157,7 @@ contract FeeCalculator is Ownable {
         // If premiaFeeDiscount contract is set, we calculate discount
         if (address(premiaFeeDiscount) != address(0)) {
             uint256 discount = premiaFeeDiscount.getDiscount(_user);
-            fee = fee * discount / _inverseBasisPoint;
+            fee = (fee * discount) / _inverseBasisPoint;
         }
 
         return fee;
@@ -150,10 +168,15 @@ contract FeeCalculator is Ownable {
     /// @param _amount The amount for which fee needs to be calculated
     /// @param _feeType The type of fee
     /// @return Fee amount to pay to protocol
-    function getFeeAmount(address _user, uint256 _amount, FeeType _feeType) external view returns(uint256) {
+    function getFeeAmount(
+        address _user,
+        uint256 _amount,
+        FeeType _feeType
+    ) external view returns (uint256) {
         if (_whitelisted.contains(_user)) return 0;
 
-        uint256 baseFee = _amount * _getBaseFee(_feeType) / _inverseBasisPoint;
+        uint256 baseFee = (_amount * _getBaseFee(_feeType)) /
+            _inverseBasisPoint;
         return getFeeAmountWithDiscount(_user, baseFee);
     }
 
@@ -161,7 +184,11 @@ contract FeeCalculator is Ownable {
     /// @param _user The address for which to calculate the fee
     /// @param _baseFee The total fee to pay (without including any discount)
     /// @return Fee amount to pay to protocol
-    function getFeeAmountWithDiscount(address _user, uint256 _baseFee) public view returns(uint256) {
+    function getFeeAmountWithDiscount(address _user, uint256 _baseFee)
+        public
+        view
+        returns (uint256)
+    {
         if (_whitelisted.contains(_user)) return 0;
 
         uint256 feeDiscount = 0;
@@ -170,7 +197,7 @@ contract FeeCalculator is Ownable {
         if (address(premiaFeeDiscount) != address(0)) {
             uint256 discount = premiaFeeDiscount.getDiscount(_user);
             require(discount <= _inverseBasisPoint, "Discount > max");
-            feeDiscount = _baseFee * discount / _inverseBasisPoint;
+            feeDiscount = (_baseFee * discount) / _inverseBasisPoint;
         }
 
         return _baseFee - feeDiscount;
@@ -185,7 +212,7 @@ contract FeeCalculator is Ownable {
     /// @notice Get the base protocol fee, for a given fee type
     /// @param _feeType The type of fee
     /// @return The base protocol fee for _feeType (In basis points)
-    function _getBaseFee(FeeType _feeType) internal view returns(uint256) {
+    function _getBaseFee(FeeType _feeType) internal view returns (uint256) {
         if (_feeType == FeeType.Write) {
             return writeFee;
         } else if (_feeType == FeeType.Exercise) {

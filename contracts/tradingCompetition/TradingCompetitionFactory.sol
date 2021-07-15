@@ -2,13 +2,13 @@
 
 pragma solidity ^0.8.0;
 
-import {ERC20} from '@solidstate/contracts/token/ERC20/ERC20.sol';
-import {ERC20MetadataStorage} from '@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol';
-import {Ownable, OwnableStorage} from '@solidstate/contracts/access/Ownable.sol';
-import {EnumerableSet} from '@solidstate/contracts/utils/EnumerableSet.sol';
-import {AggregatorInterface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorInterface.sol';
+import {ERC20} from "@solidstate/contracts/token/ERC20/ERC20.sol";
+import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol";
+import {Ownable, OwnableStorage} from "@solidstate/contracts/access/Ownable.sol";
+import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
+import {AggregatorInterface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorInterface.sol";
 
-import {TradingCompetitionERC20} from './TradingCompetitionERC20.sol';
+import {TradingCompetitionERC20} from "./TradingCompetitionERC20.sol";
 
 contract TradingCompetitionFactory is Ownable {
     event TokenDeployed(address addr, address oracle, string symbol);
@@ -29,17 +29,25 @@ contract TradingCompetitionFactory is Ownable {
 
     //
 
-    event Swap(address tokenIn, address tokenOut, uint256 amountIn, uint256 amountOut);
+    event Swap(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountIn,
+        uint256 amountOut
+    );
 
     //
 
-    constructor () {
+    constructor() {
         OwnableStorage.layout().owner = msg.sender;
     }
 
     //
 
-    function deployToken(string memory _symbol, address _oracle) external returns(address) {
+    function deployToken(string memory _symbol, address _oracle)
+        external
+        returns (address)
+    {
         TradingCompetitionERC20 token = new TradingCompetitionERC20(_symbol);
         oracles[address(token)] = _oracle;
         emit TokenDeployed(address(token), _oracle, _symbol);
@@ -50,11 +58,18 @@ contract TradingCompetitionFactory is Ownable {
         oracles[_token] = _oracle;
     }
 
-    function airdrop(address[] memory _addresses, address[] memory _tokens, uint256[] memory _amounts) external {
-        require(isMinter(msg.sender), 'Not minter');
+    function airdrop(
+        address[] memory _addresses,
+        address[] memory _tokens,
+        uint256[] memory _amounts
+    ) external {
+        require(isMinter(msg.sender), "Not minter");
         for (uint256 i; i < _addresses.length; i++) {
             for (uint256 j; j < _tokens.length; j++) {
-                TradingCompetitionERC20(_tokens[j]).mint(_addresses[i], _amounts[j]);
+                TradingCompetitionERC20(_tokens[j]).mint(
+                    _addresses[i],
+                    _amounts[j]
+                );
             }
         }
     }
@@ -63,21 +78,43 @@ contract TradingCompetitionFactory is Ownable {
 
     // Swap functions
 
-    function getAmountOut(address _tokenIn, address _tokenOut, uint256 _amountIn) public view returns(uint256) {
-        uint256 tokenInPrice = uint256(AggregatorInterface(oracles[_tokenIn]).latestAnswer());
-        uint256 tokenOutPrice = uint256(AggregatorInterface(oracles[_tokenOut]).latestAnswer());
+    function getAmountOut(
+        address _tokenIn,
+        address _tokenOut,
+        uint256 _amountIn
+    ) public view returns (uint256) {
+        uint256 tokenInPrice = uint256(
+            AggregatorInterface(oracles[_tokenIn]).latestAnswer()
+        );
+        uint256 tokenOutPrice = uint256(
+            AggregatorInterface(oracles[_tokenOut]).latestAnswer()
+        );
 
-        return (_amountIn * tokenInPrice / tokenOutPrice) * 99 / 100; // 1% fee burnt
+        return (((_amountIn * tokenInPrice) / tokenOutPrice) * 99) / 100;
+        // 1% fee burnt
     }
 
-    function getAmountIn(address _tokenIn, address _tokenOut, uint256 _amountOut) public view returns(uint256) {
-        uint256 tokenInPrice = uint256(AggregatorInterface(oracles[_tokenIn]).latestAnswer());
-        uint256 tokenOutPrice = uint256(AggregatorInterface(oracles[_tokenOut]).latestAnswer());
+    function getAmountIn(
+        address _tokenIn,
+        address _tokenOut,
+        uint256 _amountOut
+    ) public view returns (uint256) {
+        uint256 tokenInPrice = uint256(
+            AggregatorInterface(oracles[_tokenIn]).latestAnswer()
+        );
+        uint256 tokenOutPrice = uint256(
+            AggregatorInterface(oracles[_tokenOut]).latestAnswer()
+        );
 
-        return (_amountOut * tokenOutPrice / tokenInPrice) * 100 / 99; // 1% fee burnt
+        return (((_amountOut * tokenOutPrice) / tokenInPrice) * 100) / 99;
+        // 1% fee burnt
     }
 
-    function swapTokenFrom(address _tokenIn, address _tokenOut, uint256 _amountIn) external {
+    function swapTokenFrom(
+        address _tokenIn,
+        address _tokenOut,
+        uint256 _amountIn
+    ) external {
         uint256 amountOut = getAmountOut(_tokenIn, _tokenOut, _amountIn);
 
         TradingCompetitionERC20(_tokenIn).burn(msg.sender, _amountIn);
@@ -86,7 +123,11 @@ contract TradingCompetitionFactory is Ownable {
         emit Swap(_tokenIn, _tokenOut, _amountIn, amountOut);
     }
 
-    function swapTokenTo(address _tokenIn, address _tokenOut, uint256 _amountOut) external {
+    function swapTokenTo(
+        address _tokenIn,
+        address _tokenOut,
+        uint256 _amountOut
+    ) external {
         uint256 amountIn = getAmountIn(_tokenIn, _tokenOut, _amountOut);
 
         TradingCompetitionERC20(_tokenIn).burn(msg.sender, amountIn);
@@ -97,14 +138,20 @@ contract TradingCompetitionFactory is Ownable {
 
     //
 
-    function isMinter(address _user) public view returns(bool) {
+    function isMinter(address _user) public view returns (bool) {
         return _user == address(this) || _minters.contains(_user);
     }
 
-    function isWhitelisted(address _from, address _to) external view returns(bool) {
-        if (_blacklisted.contains(_from) || _blacklisted.contains(_to)) return false;
-        if (_from == address (0) || _to == address(0)) return true;
-        if (_whitelisted.contains(_from) || _whitelisted.contains(_to)) return true;
+    function isWhitelisted(address _from, address _to)
+        external
+        view
+        returns (bool)
+    {
+        if (_blacklisted.contains(_from) || _blacklisted.contains(_to))
+            return false;
+        if (_from == address(0) || _to == address(0)) return true;
+        if (_whitelisted.contains(_from) || _whitelisted.contains(_to))
+            return true;
 
         return false;
     }
@@ -112,22 +159,22 @@ contract TradingCompetitionFactory is Ownable {
     //
 
     function addMinters(address[] memory _addr) external onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
+        for (uint256 i = 0; i < _addr.length; i++) {
             _minters.add(_addr[i]);
         }
     }
 
     function removeMinters(address[] memory _addr) external onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
+        for (uint256 i = 0; i < _addr.length; i++) {
             _minters.remove(_addr[i]);
         }
     }
 
-    function getMinters() external view returns(address[] memory) {
+    function getMinters() external view returns (address[] memory) {
         uint256 length = _minters.length();
         address[] memory result = new address[](length);
 
-        for (uint256 i=0; i < length; i++) {
+        for (uint256 i = 0; i < length; i++) {
             result[i] = _minters.at(i);
         }
 
@@ -137,22 +184,22 @@ contract TradingCompetitionFactory is Ownable {
     //
 
     function addWhitelisted(address[] memory _addr) external onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
+        for (uint256 i = 0; i < _addr.length; i++) {
             _whitelisted.add(_addr[i]);
         }
     }
 
     function removeWhitelisted(address[] memory _addr) external onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
+        for (uint256 i = 0; i < _addr.length; i++) {
             _whitelisted.remove(_addr[i]);
         }
     }
 
-    function getWhitelisted() external view returns(address[] memory) {
+    function getWhitelisted() external view returns (address[] memory) {
         uint256 length = _whitelisted.length();
         address[] memory result = new address[](length);
 
-        for (uint256 i=0; i < length; i++) {
+        for (uint256 i = 0; i < length; i++) {
             result[i] = _whitelisted.at(i);
         }
 
@@ -162,22 +209,22 @@ contract TradingCompetitionFactory is Ownable {
     //
 
     function addBlacklisted(address[] memory _addr) external onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
+        for (uint256 i = 0; i < _addr.length; i++) {
             _blacklisted.add(_addr[i]);
         }
     }
 
     function removeBlacklisted(address[] memory _addr) external onlyOwner {
-        for (uint256 i=0; i < _addr.length; i++) {
+        for (uint256 i = 0; i < _addr.length; i++) {
             _blacklisted.remove(_addr[i]);
         }
     }
 
-    function getBlacklisted() external view returns(address[] memory) {
+    function getBlacklisted() external view returns (address[] memory) {
         uint256 length = _blacklisted.length();
         address[] memory result = new address[](length);
 
-        for (uint256 i=0; i < length; i++) {
+        for (uint256 i = 0; i < length; i++) {
             result[i] = _blacklisted.at(i);
         }
 

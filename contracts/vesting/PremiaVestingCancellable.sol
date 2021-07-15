@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
-import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
+import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 
 /// @author Premia
 /// @title Vesting contract releasing premia over the course of 2 years, and cancellable by a third party
@@ -34,7 +34,11 @@ contract PremiaVestingCancellable is Ownable {
     //////////////////////////////////////////////////
 
     // @param _premia The premia token
-    constructor(IERC20 _premia, address _treasury, address _thirdParty) {
+    constructor(
+        IERC20 _premia,
+        address _treasury,
+        address _thirdParty
+    ) {
         OwnableStorage.layout().owner = msg.sender;
 
         premia = _premia;
@@ -67,15 +71,22 @@ contract PremiaVestingCancellable is Ownable {
         if (timestamp >= endTimestamp) {
             premia.safeTransfer(_user, balance);
         } else {
-            uint256 elapsedSinceLastWithdrawal = timestamp - _lastWithdrawalTimestamp;
+            uint256 elapsedSinceLastWithdrawal = timestamp -
+                _lastWithdrawalTimestamp;
             uint256 timeLeft = endTimestamp - _lastWithdrawalTimestamp;
-            premia.safeTransfer(_user, balance * elapsedSinceLastWithdrawal / timeLeft);
+            premia.safeTransfer(
+                _user,
+                (balance * elapsedSinceLastWithdrawal) / timeLeft
+            );
         }
     }
 
     function cancel() public {
         require(msg.sender == thirdParty, "Not thirdParty");
-        require(block.timestamp >= endTimestamp - releasePeriod + minReleasePeriod, "Min release period not ended");
+        require(
+            block.timestamp >= endTimestamp - releasePeriod + minReleasePeriod,
+            "Min release period not ended"
+        );
         // Send pending withdrawal to contract owner
         _withdraw(owner());
 

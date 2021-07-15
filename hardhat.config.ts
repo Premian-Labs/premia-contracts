@@ -13,9 +13,7 @@ import fs from 'fs';
 import path from 'path';
 import { TASK_COMPILE } from 'hardhat/builtin-tasks/task-names';
 
-import './tasks/deploy';
 import './tasks/accounts';
-import './tasks/upgrade-pool-implementation';
 
 Dotenv.config();
 
@@ -99,26 +97,6 @@ export default {
         },
       },
     ],
-    overrides: {
-      'contracts/pool/Pool.sol': {
-        version: '0.8.4',
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 50,
-          },
-        },
-      },
-      'contracts/pool/PoolTradingCompetition.sol': {
-        version: '0.8.4',
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 50,
-          },
-        },
-      },
-    },
   },
   networks: {
     hardhat: {

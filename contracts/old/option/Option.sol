@@ -2,21 +2,20 @@
 
 pragma solidity ^0.8.0;
 
-import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {ERC165} from '@solidstate/contracts/introspection/ERC165.sol';
-import {ERC1155Base} from '@solidstate/contracts/token/ERC1155/ERC1155Base.sol';
-import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
-import {IERC20Metadata} from '@solidstate/contracts/token/ERC20/IERC20Metadata.sol';
-import {ReentrancyGuard} from '@solidstate/contracts/utils/ReentrancyGuard.sol';
+import {ERC165} from "@solidstate/contracts/introspection/ERC165.sol";
+import {ERC1155Base} from "@solidstate/contracts/token/ERC1155/ERC1155Base.sol";
+import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
+import {IERC20Metadata} from "@solidstate/contracts/token/ERC20/IERC20Metadata.sol";
+import {ReentrancyGuard} from "@solidstate/contracts/utils/ReentrancyGuard.sol";
 
-import {IFeeCalculator} from '../../interface/IFeeCalculator.sol';
-import {IFlashLoanReceiver} from '../../interface/IFlashLoanReceiver.sol';
-import {OptionStorage} from './OptionStorage.sol';
+import {IFeeCalculator} from "../../interface/IFeeCalculator.sol";
+import {IFlashLoanReceiver} from "../../interface/IFlashLoanReceiver.sol";
+import {OptionStorage} from "./OptionStorage.sol";
 
-import {IUniswapV2Router02} from '../../uniswapV2/interfaces/IUniswapV2Router02.sol';
-
+import {IUniswapV2Router02} from "../../uniswapV2/interfaces/IUniswapV2Router02.sol";
 
 /// @author Premia
 /// @title An option contract
@@ -29,17 +28,36 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     // Expiration increment
     uint256 private constant _expirationIncrement = 1 weeks;
 
-
     ////////////
     // Events //
     ////////////
 
     event TokenWhitelisted(address indexed token, bool whitelisted);
     event OptionIdCreated(uint256 indexed optionId, address indexed token);
-    event OptionWritten(address indexed owner, uint256 indexed optionId, address indexed token, uint256 amount);
-    event OptionCancelled(address indexed owner, uint256 indexed optionId, address indexed token, uint256 amount);
-    event OptionExercised(address indexed user, uint256 indexed optionId, address indexed token, uint256 amount);
-    event Withdraw(address indexed user, uint256 indexed optionId, address indexed token, uint256 amount);
+    event OptionWritten(
+        address indexed owner,
+        uint256 indexed optionId,
+        address indexed token,
+        uint256 amount
+    );
+    event OptionCancelled(
+        address indexed owner,
+        uint256 indexed optionId,
+        address indexed token,
+        uint256 amount
+    );
+    event OptionExercised(
+        address indexed user,
+        uint256 indexed optionId,
+        address indexed token,
+        uint256 amount
+    );
+    event Withdraw(
+        address indexed user,
+        uint256 indexed optionId,
+        address indexed token,
+        uint256 amount
+    );
     event FeePaid(address indexed user, address indexed token, uint256 fee);
 
     //////////////////////////////////////////////////
@@ -51,12 +69,20 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     ///////////////
 
     modifier notExpired(uint256 _optionId) {
-        require(block.timestamp < OptionStorage.layout().optionData[_optionId].expiration, "Expired");
+        require(
+            block.timestamp <
+                OptionStorage.layout().optionData[_optionId].expiration,
+            "Expired"
+        );
         _;
     }
 
     modifier expired(uint256 _optionId) {
-        require(block.timestamp >= OptionStorage.layout().optionData[_optionId].expiration, "Not expired");
+        require(
+            block.timestamp >=
+                OptionStorage.layout().optionData[_optionId].expiration,
+            "Not expired"
+        );
         _;
     }
 
@@ -95,10 +121,13 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @notice Set whitelisting for token
     /// @param _tokens The list of tokens for which to set strike price increment
     /// @param _whitelist Whether each token is to be added to the whitelist or removed
-    function setTokensWhitelisted(address[] memory _tokens, bool _whitelist) external onlyOwner {
+    function setTokensWhitelisted(address[] memory _tokens, bool _whitelist)
+        external
+        onlyOwner
+    {
         OptionStorage.Layout storage l = OptionStorage.layout();
 
-        for (uint256 i=0; i < _tokens.length; i++) {
+        for (uint256 i = 0; i < _tokens.length; i++) {
             l.whitelistedTokens[_tokens[i]] = _whitelist;
             emit TokenWhitelisted(_tokens[i], _whitelist);
         }
@@ -106,12 +135,15 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
 
     /// @notice Set a new list of whitelisted UniswapRouter contracts allowed to be used for flashExercise
     /// @param _addrList The new list of whitelisted routers
-    function setWhitelistedUniswapRouters(address[] memory _addrList) external onlyOwner {
+    function setWhitelistedUniswapRouters(address[] memory _addrList)
+        external
+        onlyOwner
+    {
         OptionStorage.Layout storage l = OptionStorage.layout();
 
         delete l.whitelistedUniswapRouters;
 
-        for (uint256 i=0; i < _addrList.length; i++) {
+        for (uint256 i = 0; i < _addrList.length; i++) {
             l.whitelistedUniswapRouters.push(_addrList[i]);
         }
     }
@@ -126,15 +158,23 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
         return OptionStorage.layout().uri;
     }
 
-    function whitelistedTokens(address _token) external view returns(bool) {
+    function whitelistedTokens(address _token) external view returns (bool) {
         return OptionStorage.layout().whitelistedTokens[_token];
     }
 
-    function nbWritten(address _user, uint256 _optionId) external view returns(uint256) {
+    function nbWritten(address _user, uint256 _optionId)
+        external
+        view
+        returns (uint256)
+    {
         return OptionStorage.layout().nbWritten[_user][_optionId];
     }
 
-    function optionData(uint256 _optionId) external view returns(OptionStorage.OptionData memory) {
+    function optionData(uint256 _optionId)
+        external
+        view
+        returns (OptionStorage.OptionData memory)
+    {
         return OptionStorage.layout().optionData[_optionId];
     }
 
@@ -144,8 +184,16 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _strikePrice Strike price of the option
     /// @param _isCall Whether the option is a call or a put
     /// @return The option id
-    function getOptionId(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public view returns(uint256) {
-        return OptionStorage.layout().options[_token][_expiration][_strikePrice][_isCall];
+    function getOptionId(
+        address _token,
+        uint256 _expiration,
+        uint256 _strikePrice,
+        bool _isCall
+    ) public view returns (uint256) {
+        return
+            OptionStorage.layout().options[_token][_expiration][_strikePrice][
+                _isCall
+            ];
     }
 
     /// @notice Get a quote to write an option
@@ -153,7 +201,11 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _option The option to write
     /// @param _decimals The option token decimals
     /// @return The quote
-    function getWriteQuote(address _from, OptionStorage.OptionWriteArgs memory _option, uint8 _decimals) public view returns(OptionStorage.QuoteWrite memory) {
+    function getWriteQuote(
+        address _from,
+        OptionStorage.OptionWriteArgs memory _option,
+        uint8 _decimals
+    ) public view returns (OptionStorage.QuoteWrite memory) {
         OptionStorage.Layout storage l = OptionStorage.layout();
         OptionStorage.QuoteWrite memory quote;
 
@@ -163,11 +215,17 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
             quote.collateralDecimals = _decimals;
         } else {
             quote.collateralToken = l.denominator;
-            quote.collateral = _option.amount * _option.strikePrice / (10**_decimals);
+            quote.collateral =
+                (_option.amount * _option.strikePrice) /
+                (10**_decimals);
             quote.collateralDecimals = l.denominatorDecimals;
         }
 
-        quote.fee = IFeeCalculator(l.feeCalculator).getFeeAmount(_from, quote.collateral, IFeeCalculator.FeeType.Write);
+        quote.fee = IFeeCalculator(l.feeCalculator).getFeeAmount(
+            _from,
+            quote.collateral,
+            IFeeCalculator.FeeType.Write
+        );
 
         return quote;
     }
@@ -177,12 +235,18 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _option The option to exercise
     /// @param _decimals The option token decimals
     /// @return The quote
-    function getExerciseQuote(address _from, OptionStorage.OptionData memory _option, uint256 _amount, uint8 _decimals) public view returns(OptionStorage.QuoteExercise memory) {
+    function getExerciseQuote(
+        address _from,
+        OptionStorage.OptionData memory _option,
+        uint256 _amount,
+        uint8 _decimals
+    ) public view returns (OptionStorage.QuoteExercise memory) {
         OptionStorage.Layout storage l = OptionStorage.layout();
         OptionStorage.QuoteExercise memory quote;
 
         uint256 tokenAmount = _amount;
-        uint256 denominatorAmount = _amount * _option.strikePrice / (10**_decimals);
+        uint256 denominatorAmount = (_amount * _option.strikePrice) /
+            (10**_decimals);
 
         if (_option.isCall) {
             quote.inputToken = l.denominator;
@@ -200,7 +264,11 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
             quote.outputDecimals = l.denominatorDecimals;
         }
 
-        quote.fee = IFeeCalculator(l.feeCalculator).getFeeAmount(_from, quote.input, IFeeCalculator.FeeType.Exercise);
+        quote.fee = IFeeCalculator(l.feeCalculator).getFeeAmount(
+            _from,
+            quote.input,
+            IFeeCalculator.FeeType.Exercise
+        );
 
         return quote;
     }
@@ -217,10 +285,20 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _strikePrice Strike price of the option
     /// @param _isCall Whether the option is a call or a put
     /// @return The option id
-    function getOptionIdOrCreate(address _token, uint256 _expiration, uint256 _strikePrice, bool _isCall) public returns(uint256) {
+    function getOptionIdOrCreate(
+        address _token,
+        uint256 _expiration,
+        uint256 _strikePrice,
+        bool _isCall
+    ) public returns (uint256) {
         OptionStorage.Layout storage l = OptionStorage.layout();
 
-        uint256 optionId = getOptionId(_token, _expiration, _strikePrice, _isCall);
+        uint256 optionId = getOptionId(
+            _token,
+            _expiration,
+            _strikePrice,
+            _isCall
+        );
 
         if (optionId == 0) {
             _preCheckOptionIdCreate(_token, _strikePrice, _expiration);
@@ -252,11 +330,18 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _optionId The id of the option to write
     /// @param _amount Amount of options to write
     /// @return The option id
-    function writeOptionWithIdFrom(address _from, uint256 _optionId, uint256 _amount) external returns(uint256) {
+    function writeOptionWithIdFrom(
+        address _from,
+        uint256 _optionId,
+        uint256 _amount
+    ) external returns (uint256) {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
 
-        OptionStorage.OptionData memory data = OptionStorage.layout().optionData[_optionId];
-        OptionStorage.OptionWriteArgs memory writeArgs = OptionStorage.OptionWriteArgs({
+        OptionStorage.OptionData memory data = OptionStorage
+        .layout()
+        .optionData[_optionId];
+        OptionStorage.OptionWriteArgs memory writeArgs = OptionStorage
+        .OptionWriteArgs({
             token: data.token,
             amount: _amount,
             strikePrice: data.strikePrice,
@@ -272,7 +357,10 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _from Address on behalf of which the option is written
     /// @param _option The option to write
     /// @return The option id
-    function writeOptionFrom(address _from, OptionStorage.OptionWriteArgs memory _option) external returns(uint256) {
+    function writeOptionFrom(
+        address _from,
+        OptionStorage.OptionWriteArgs memory _option
+    ) external returns (uint256) {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
         return _writeOption(_from, _option);
     }
@@ -280,7 +368,10 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @notice Write an option
     /// @param _option The option to write
     /// @return The option id
-    function writeOption(OptionStorage.OptionWriteArgs memory _option) public returns(uint256) {
+    function writeOption(OptionStorage.OptionWriteArgs memory _option)
+        public
+        returns (uint256)
+    {
         return _writeOption(msg.sender, _option);
     }
 
@@ -288,16 +379,32 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _from Address on behalf of which the option is written
     /// @param _option The option to write
     /// @return The option id
-    function _writeOption(address _from, OptionStorage.OptionWriteArgs memory _option) internal nonReentrant returns(uint256) {
+    function _writeOption(
+        address _from,
+        OptionStorage.OptionWriteArgs memory _option
+    ) internal nonReentrant returns (uint256) {
         require(_option.amount > 0, "Amount <= 0");
 
         OptionStorage.Layout storage l = OptionStorage.layout();
 
-        uint256 optionId = getOptionIdOrCreate(_option.token, _option.expiration, _option.strikePrice, _option.isCall);
+        uint256 optionId = getOptionIdOrCreate(
+            _option.token,
+            _option.expiration,
+            _option.strikePrice,
+            _option.isCall
+        );
 
-        OptionStorage.QuoteWrite memory quote = getWriteQuote(_from, _option, l.optionData[optionId].decimals);
+        OptionStorage.QuoteWrite memory quote = getWriteQuote(
+            _from,
+            _option,
+            l.optionData[optionId].decimals
+        );
 
-        IERC20(quote.collateralToken).safeTransferFrom(_from, address(this), quote.collateral);
+        IERC20(quote.collateralToken).safeTransferFrom(
+            _from,
+            address(this),
+            quote.collateral
+        );
         _payFees(_from, IERC20(quote.collateralToken), quote.fee);
 
         if (_option.isCall) {
@@ -324,7 +431,11 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _from Address on behalf of which the option is cancelled
     /// @param _optionId The id of the option to cancel
     /// @param _amount Amount to cancel
-    function cancelOptionFrom(address _from, uint256 _optionId, uint256 _amount) external {
+    function cancelOptionFrom(
+        address _from,
+        uint256 _optionId,
+        uint256 _amount
+    ) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
         _cancelOption(_from, _optionId, _amount);
     }
@@ -344,7 +455,11 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _from Address on behalf of which the option is cancelled
     /// @param _optionId The id of the option to cancel
     /// @param _amount Amount to cancel
-    function _cancelOption(address _from, uint256 _optionId, uint256 _amount) internal nonReentrant {
+    function _cancelOption(
+        address _from,
+        uint256 _optionId,
+        uint256 _amount
+    ) internal nonReentrant {
         OptionStorage.Layout storage l = OptionStorage.layout();
 
         require(_amount > 0, "Amount <= 0");
@@ -357,12 +472,18 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
             l.pools[_optionId].tokenAmount -= _amount;
             IERC20(l.optionData[_optionId].token).safeTransfer(_from, _amount);
         } else {
-            uint256 amount = _amount * l.optionData[_optionId].strikePrice / (10 ** l.optionData[_optionId].decimals);
+            uint256 amount = (_amount * l.optionData[_optionId].strikePrice) /
+                (10**l.optionData[_optionId].decimals);
             l.pools[_optionId].denominatorAmount -= amount;
             IERC20(l.denominator).safeTransfer(_from, amount);
         }
 
-        emit OptionCancelled(_from, _optionId, l.optionData[_optionId].token, _amount);
+        emit OptionCancelled(
+            _from,
+            _optionId,
+            l.optionData[_optionId].token,
+            _amount
+        );
     }
 
     //////////////////////////////////////////////////
@@ -372,7 +493,11 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _from Address on behalf of which the option will be exercised
     /// @param _optionId The id of the option to exercise
     /// @param _amount Amount to exercise
-    function exerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount) external {
+    function exerciseOptionFrom(
+        address _from,
+        uint256 _optionId,
+        uint256 _amount
+    ) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
         _exerciseOption(_from, _optionId, _amount);
     }
@@ -388,7 +513,11 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _from Address on behalf of which the option will be exercised
     /// @param _optionId The id of the option to exercise
     /// @param _amount Amount to exercise
-    function _exerciseOption(address _from, uint256 _optionId, uint256 _amount) internal nonReentrant {
+    function _exerciseOption(
+        address _from,
+        uint256 _optionId,
+        uint256 _amount
+    ) internal nonReentrant {
         require(_amount > 0, "Amount <= 0");
 
         OptionStorage.Layout storage l = OptionStorage.layout();
@@ -398,8 +527,17 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
         burn(_from, _optionId, _amount);
         data.exercised += _amount;
 
-        OptionStorage.QuoteExercise memory quote = getExerciseQuote(_from, data, _amount, data.decimals);
-        IERC20(quote.inputToken).safeTransferFrom(_from, address(this), quote.input);
+        OptionStorage.QuoteExercise memory quote = getExerciseQuote(
+            _from,
+            data,
+            _amount,
+            data.decimals
+        );
+        IERC20(quote.inputToken).safeTransferFrom(
+            _from,
+            address(this),
+            quote.input
+        );
         _payFees(_from, IERC20(quote.inputToken), quote.fee);
 
         if (data.isCall) {
@@ -449,7 +587,11 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @dev Only callable by addresses which have unclaimed funds for options they wrote
     /// @param _from Address on behalf of which the withdraw call is made (Which will receive the withdrawn funds)
     /// @param _optionId The id of the option to withdraw funds from
-    function _withdraw(address _from, uint256 _optionId) internal nonReentrant expired(_optionId) {
+    function _withdraw(address _from, uint256 _optionId)
+        internal
+        nonReentrant
+        expired(_optionId)
+    {
         OptionStorage.Layout storage l = OptionStorage.layout();
 
         // Amount of options user still has to claim funds from
@@ -461,8 +603,10 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
         uint256 nbTotal = data.supply + data.exercised - data.claimsPreExp;
         //
 
-        uint256 denominatorAmount = l.pools[_optionId].denominatorAmount * claimsUser / nbTotal;
-        uint256 tokenAmount = l.pools[_optionId].tokenAmount * claimsUser / nbTotal;
+        uint256 denominatorAmount = (l.pools[_optionId].denominatorAmount *
+            claimsUser) / nbTotal;
+        uint256 tokenAmount = (l.pools[_optionId].tokenAmount * claimsUser) /
+            nbTotal;
 
         //
 
@@ -474,7 +618,10 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
         }
 
         if (tokenAmount > 0) {
-            IERC20(l.optionData[_optionId].token).safeTransfer(_from, tokenAmount);
+            IERC20(l.optionData[_optionId].token).safeTransfer(
+                _from,
+                tokenAmount
+            );
         }
 
         emit Withdraw(_from, _optionId, data.token, claimsUser);
@@ -501,7 +648,11 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _from Address on behalf of which the withdrawPreExpiration call is made (Which will receive the withdrawn funds)
     /// @param _optionId The id of the option to withdraw funds from
     /// @param _amount The amount of options for which withdrawPreExpiration
-    function withdrawPreExpirationFrom(address _from, uint256 _optionId, uint256 _amount) external {
+    function withdrawPreExpirationFrom(
+        address _from,
+        uint256 _optionId,
+        uint256 _amount
+    ) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
         _withdrawPreExpiration(_from, _optionId, _amount);
     }
@@ -545,7 +696,11 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _from Address on behalf of which the withdrawPreExpiration call is made (Which will receive the withdrawn funds)
     /// @param _optionId The id of the option to withdraw funds from
     /// @param _amount The amount of options for which withdrawPreExpiration
-    function _withdrawPreExpiration(address _from, uint256 _optionId, uint256 _amount) internal nonReentrant notExpired(_optionId) {
+    function _withdrawPreExpiration(
+        address _from,
+        uint256 _optionId,
+        uint256 _amount
+    ) internal nonReentrant notExpired(_optionId) {
         require(_amount > 0, "Amount <= 0");
 
         OptionStorage.Layout storage l = OptionStorage.layout();
@@ -565,7 +720,7 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
         data.claimsPreExp += _amount;
 
         if (data.isCall) {
-            uint256 amount = _amount * data.strikePrice / (10**data.decimals);
+            uint256 amount = (_amount * data.strikePrice) / (10**data.decimals);
             l.pools[_optionId].denominatorAmount -= amount;
             IERC20(l.denominator).safeTransfer(_from, amount);
         } else {
@@ -588,9 +743,23 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _router The UniswapRouter used to perform the swap (Needs to be a whitelisted router)
     /// @param _amountInMax Max amount of collateral token to use for the swap, for the tx to not be reverted
     /// @param _path Path used for the routing of the swap
-    function flashExerciseOptionFrom(address _from, uint256 _optionId, uint256 _amount, IUniswapV2Router02 _router, uint256 _amountInMax, address[] memory _path) external {
+    function flashExerciseOptionFrom(
+        address _from,
+        uint256 _optionId,
+        uint256 _amount,
+        IUniswapV2Router02 _router,
+        uint256 _amountInMax,
+        address[] memory _path
+    ) external {
         require(isApprovedForAll(_from, msg.sender), "Not approved");
-        _flashExerciseOption(_from, _optionId, _amount, _router, _amountInMax, _path);
+        _flashExerciseOption(
+            _from,
+            _optionId,
+            _amount,
+            _router,
+            _amountInMax,
+            _path
+        );
     }
 
     /// @notice Flash exercise an option
@@ -603,8 +772,21 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _router The UniswapRouter used to perform the swap (Needs to be a whitelisted router)
     /// @param _amountInMax Max amount of collateral token to use for the swap, for the tx to not be reverted
     /// @param _path Path used for the routing of the swap
-    function flashExerciseOption(uint256 _optionId, uint256 _amount, IUniswapV2Router02 _router, uint256 _amountInMax, address[] memory _path) external {
-        _flashExerciseOption(msg.sender, _optionId, _amount, _router, _amountInMax, _path);
+    function flashExerciseOption(
+        uint256 _optionId,
+        uint256 _amount,
+        IUniswapV2Router02 _router,
+        uint256 _amountInMax,
+        address[] memory _path
+    ) external {
+        _flashExerciseOption(
+            msg.sender,
+            _optionId,
+            _amount,
+            _router,
+            _amountInMax,
+            _path
+        );
     }
 
     /// @notice Flash exercise an option on behalf of an address
@@ -619,7 +801,14 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _router The UniswapRouter used to perform the swap (Needs to be a whitelisted router)
     /// @param _amountInMax Max amount of collateral token to use for the swap, for the tx to not be reverted
     /// @param _path Path used for the routing of the swap
-    function _flashExerciseOption(address _from, uint256 _optionId, uint256 _amount, IUniswapV2Router02 _router, uint256 _amountInMax, address[] memory _path) internal nonReentrant {
+    function _flashExerciseOption(
+        address _from,
+        uint256 _optionId,
+        uint256 _amount,
+        IUniswapV2Router02 _router,
+        uint256 _amountInMax,
+        address[] memory _path
+    ) internal nonReentrant {
         require(_amount > 0, "Amount <= 0");
 
         burn(_from, _optionId, _amount);
@@ -627,12 +816,19 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
         OptionStorage.Layout storage l = OptionStorage.layout();
         l.optionData[_optionId].exercised += _amount;
 
-        OptionStorage.QuoteExercise memory quote = getExerciseQuote(_from, l.optionData[_optionId], _amount, l.optionData[_optionId].decimals);
+        OptionStorage.QuoteExercise memory quote = getExerciseQuote(
+            _from,
+            l.optionData[_optionId],
+            _amount,
+            l.optionData[_optionId].decimals
+        );
 
         IERC20 tokenErc20 = IERC20(l.optionData[_optionId].token);
 
         uint256 tokenAmountRequired = tokenErc20.balanceOf(address(this));
-        uint256 denominatorAmountRequired = IERC20(l.denominator).balanceOf(address(this));
+        uint256 denominatorAmountRequired = IERC20(l.denominator).balanceOf(
+            address(this)
+        );
 
         if (l.optionData[_optionId].isCall) {
             l.pools[_optionId].tokenAmount -= quote.output;
@@ -649,7 +845,13 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
         }
 
         // Swap enough denominator to tokenErc20 to pay fee + strike price
-        uint256 tokenAmountUsed = _swap(_router, quote.outputToken, quote.input + quote.fee, _amountInMax, _path)[0];
+        uint256 tokenAmountUsed = _swap(
+            _router,
+            quote.outputToken,
+            quote.input + quote.fee,
+            _amountInMax,
+            _path
+        )[0];
 
         // Pay fees
         _payFees(address(this), IERC20(quote.inputToken), quote.fee);
@@ -669,10 +871,22 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
             tokenAmountRequired += quote.input;
         }
 
-        require(IERC20(l.denominator).balanceOf(address(this)) >= denominatorAmountRequired, "Wrong denom bal");
-        require(tokenErc20.balanceOf(address(this)) >= tokenAmountRequired, "Wrong token bal");
+        require(
+            IERC20(l.denominator).balanceOf(address(this)) >=
+                denominatorAmountRequired,
+            "Wrong denom bal"
+        );
+        require(
+            tokenErc20.balanceOf(address(this)) >= tokenAmountRequired,
+            "Wrong token bal"
+        );
 
-        emit OptionExercised(_from, _optionId, l.optionData[_optionId].token, _amount);
+        emit OptionExercised(
+            _from,
+            _optionId,
+            l.optionData[_optionId].token,
+            _amount
+        );
     }
 
     //////////////////////////////////////////////////
@@ -682,15 +896,22 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _tokenAddress Token to flashLoan
     /// @param _amount Amount to flashLoan
     /// @param _receiver Receiver of the flashLoan
-    function flashLoan(address _tokenAddress, uint256 _amount, IFlashLoanReceiver _receiver) public nonReentrant {
+    function flashLoan(
+        address _tokenAddress,
+        uint256 _amount,
+        IFlashLoanReceiver _receiver
+    ) public nonReentrant {
         OptionStorage.Layout storage l = OptionStorage.layout();
 
         IERC20 _token = IERC20(_tokenAddress);
         uint256 startBalance = _token.balanceOf(address(this));
         _token.safeTransfer(address(_receiver), _amount);
 
-
-        uint256 fee = IFeeCalculator(l.feeCalculator).getFeeAmount(msg.sender, _amount, IFeeCalculator.FeeType.FlashLoan);
+        uint256 fee = IFeeCalculator(l.feeCalculator).getFeeAmount(
+            msg.sender,
+            _amount,
+            IFeeCalculator.FeeType.FlashLoan
+        );
 
         _receiver.execute(_tokenAddress, _amount, _amount + fee);
 
@@ -715,8 +936,14 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @dev Requires option to not be expired
     /// @param _account Address for which ERC1155 is minted
     /// @param _amount Amount minted
-    function mint(address _account, uint256 _id, uint256 _amount) internal notExpired(_id) {
-        OptionStorage.OptionData storage data = OptionStorage.layout().optionData[_id];
+    function mint(
+        address _account,
+        uint256 _id,
+        uint256 _amount
+    ) internal notExpired(_id) {
+        OptionStorage.OptionData storage data = OptionStorage
+        .layout()
+        .optionData[_id];
 
         _mint(_account, _id, _amount, "");
         data.supply += _amount;
@@ -725,8 +952,14 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @notice Burn ERC1155 representing the option
     /// @param _account Address from which ERC1155 is burnt
     /// @param _amount Amount burnt
-    function burn(address _account, uint256 _id, uint256 _amount) internal notExpired(_id) {
-        OptionStorage.OptionData storage data = OptionStorage.layout().optionData[_id];
+    function burn(
+        address _account,
+        uint256 _id,
+        uint256 _amount
+    ) internal notExpired(_id) {
+        OptionStorage.OptionData storage data = OptionStorage
+        .layout()
+        .optionData[_id];
 
         data.supply -= _amount;
         _burn(_account, _id, _amount);
@@ -736,7 +969,11 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _value The value to look for
     /// @param _array The array to check
     /// @return Whether the value is in the array or not
-    function _isInArray(address _value, address[] memory _array) internal pure returns(bool) {
+    function _isInArray(address _value, address[] memory _array)
+        internal
+        pure
+        returns (bool)
+    {
         uint256 length = _array.length;
         for (uint256 i = 0; i < length; ++i) {
             if (_array[i] == _value) {
@@ -751,7 +988,11 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _from Address paying protocol fees
     /// @param _token The token in which protocol fees are paid
     /// @param _fee Protocol fee to pay to feeRecipient
-    function _payFees(address _from, IERC20 _token, uint256 _fee) internal {
+    function _payFees(
+        address _from,
+        IERC20 _token,
+        uint256 _fee
+    ) internal {
         OptionStorage.Layout storage l = OptionStorage.layout();
 
         if (_fee > 0) {
@@ -761,7 +1002,6 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
             } else {
                 _token.safeTransferFrom(_from, l.feeRecipient, _fee);
             }
-
         }
 
         emit FeePaid(_from, address(_token), _fee);
@@ -774,10 +1014,19 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _amountInMax Max amount of input token to spend for the tx to not revert
     /// @param _path Path used for the routing of the swap
     /// @return Swap amounts
-    function _swap(IUniswapV2Router02 _router, address _from, uint256 _amount, uint256 _amountInMax, address[] memory _path) internal returns (uint256[] memory) {
+    function _swap(
+        IUniswapV2Router02 _router,
+        address _from,
+        uint256 _amount,
+        uint256 _amountInMax,
+        address[] memory _path
+    ) internal returns (uint256[] memory) {
         OptionStorage.Layout storage l = OptionStorage.layout();
 
-        require(_isInArray(address(_router), l.whitelistedUniswapRouters), "Router not whitelisted");
+        require(
+            _isInArray(address(_router), l.whitelistedUniswapRouters),
+            "Router not whitelisted"
+        );
 
         IERC20(_from).approve(address(_router), _amountInMax);
 
@@ -798,13 +1047,20 @@ contract Option is Ownable, ERC1155Base, ERC165, ReentrancyGuard {
     /// @param _token Token for which option this
     /// @param _strikePrice Strike price of the option
     /// @param _expiration timestamp of the option
-    function _preCheckOptionIdCreate(address _token, uint256 _strikePrice, uint256 _expiration) internal view {
+    function _preCheckOptionIdCreate(
+        address _token,
+        uint256 _strikePrice,
+        uint256 _expiration
+    ) internal view {
         OptionStorage.Layout storage l = OptionStorage.layout();
 
         require(l.whitelistedTokens[_token] == true, "Token not supported");
         require(_strikePrice > 0, "Strike <= 0");
         require(_expiration > block.timestamp, "Exp passed");
         require(_expiration - block.timestamp <= l.maxExpiration, "Exp > 1 yr");
-        require(_expiration % _expirationIncrement == _baseExpiration, "Wrong exp incr");
+        require(
+            _expiration % _expirationIncrement == _baseExpiration,
+            "Wrong exp incr"
+        );
     }
 }

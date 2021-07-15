@@ -2,16 +2,16 @@
 
 pragma solidity ^0.8.0;
 
-import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import {SafeCast} from '@openzeppelin/contracts/utils/math/SafeCast.sol';
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
-import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
-import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
-import {ReentrancyGuard} from '@solidstate/contracts/utils/ReentrancyGuard.sol';
-import {IERC2612} from '@solidstate/contracts/token/ERC20/IERC2612.sol';
+import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
+import {ReentrancyGuard} from "@solidstate/contracts/utils/ReentrancyGuard.sol";
+import {IERC2612} from "@solidstate/contracts/token/ERC20/IERC2612.sol";
 
-import {INewPremiaFeeDiscount} from './interface/INewPremiaFeeDiscount.sol';
+import {INewPremiaFeeDiscount} from "./interface/INewPremiaFeeDiscount.sol";
 
 /// @author Premia
 /// @title A contract allowing you to lock xPremia to get Premia protocol fee discounts
@@ -20,14 +20,14 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
     using SafeCast for uint256;
 
     struct UserInfo {
-        uint256 balance;      // Balance staked by user
-        uint64 stakePeriod;   // Stake period selected by user
-        uint64 lockedUntil;   // Timestamp at which the lock ends
+        uint256 balance; // Balance staked by user
+        uint64 stakePeriod; // Stake period selected by user
+        uint64 lockedUntil; // Timestamp at which the lock ends
     }
 
     struct StakeLevel {
-        uint256 amount;       // Amount to stake
-        uint256 discount;     // Discount when amount is reached
+        uint256 amount; // Amount to stake
+        uint256 discount; // Discount when amount is reached
     }
 
     // The xPremia token
@@ -36,9 +36,9 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
     uint256 private constant _inverseBasisPoint = 1e4;
 
     // User data with balance staked and date at which lock ends
-    mapping (address => UserInfo) public userInfo;
+    mapping(address => UserInfo) public userInfo;
     // Available lockup periods with their bonus (seconds lockup => multiplier (x1 = 1e4))
-    mapping (uint256 => uint256) public stakePeriods;
+    mapping(uint256 => uint256) public stakePeriods;
 
     // List of all existing stake periods
     uint256[] public existingStakePeriods;
@@ -54,9 +54,20 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
     // Events //
     ////////////
 
-    event Staked(address indexed user, uint256 amount, uint256 stakePeriod, uint256 lockedUntil);
+    event Staked(
+        address indexed user,
+        uint256 amount,
+        uint256 stakePeriod,
+        uint256 lockedUntil
+    );
     event Unstaked(address indexed user, uint256 amount);
-    event StakeMigrated(address indexed user, address newContract, uint256 amount, uint256 stakePeriod, uint256 lockedUntil);
+    event StakeMigrated(
+        address indexed user,
+        address newContract,
+        uint256 amount,
+        uint256 stakePeriod,
+        uint256 lockedUntil
+    );
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
@@ -80,14 +91,20 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
     /// @notice Set a new PremiaFeeDiscount contract, to enable migration
     ///         Users will have to call the migration function themselves to migrate their own stake
     /// @param _newContract The new contract address
-    function setNewContract(INewPremiaFeeDiscount _newContract) external onlyOwner {
+    function setNewContract(INewPremiaFeeDiscount _newContract)
+        external
+        onlyOwner
+    {
         newContract = _newContract;
     }
 
     /// @notice Set a stake period multiplier
     /// @param _secondsLocked The length (in seconds) that the stake will be locked for
     /// @param _multiplier The multiplier (In basis points) that users will get from choosing this staking period
-    function setStakePeriod(uint256 _secondsLocked, uint256 _multiplier) external onlyOwner {
+    function setStakePeriod(uint256 _secondsLocked, uint256 _multiplier)
+        external
+        onlyOwner
+    {
         if (_isInArray(_secondsLocked, existingStakePeriods)) {
             existingStakePeriods.push(_secondsLocked);
         }
@@ -98,16 +115,23 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
     /// @notice Set new amounts and discounts values for stake levels
     /// @dev Previous stake levels will be removed and replace by the new ones given
     /// @param _stakeLevels The new stake levels to set
-    function setStakeLevels(StakeLevel[] memory _stakeLevels) external onlyOwner {
-        for (uint256 i=0; i < _stakeLevels.length; i++) {
+    function setStakeLevels(StakeLevel[] memory _stakeLevels)
+        external
+        onlyOwner
+    {
+        for (uint256 i = 0; i < _stakeLevels.length; i++) {
             if (i > 0) {
-                require(_stakeLevels[i].amount > _stakeLevels[i-1].amount && _stakeLevels[i].discount > _stakeLevels[i-1].discount, "Wrong stake level");
+                require(
+                    _stakeLevels[i].amount > _stakeLevels[i - 1].amount &&
+                        _stakeLevels[i].discount > _stakeLevels[i - 1].discount,
+                    "Wrong stake level"
+                );
             }
         }
 
         delete stakeLevels;
 
-        for (uint256 i=0; i < _stakeLevels.length; i++) {
+        for (uint256 i = 0; i < _stakeLevels.length; i++) {
             stakeLevels.push(_stakeLevels[i]);
         }
     }
@@ -129,8 +153,19 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         delete userInfo[msg.sender];
 
         xPremia.safeIncreaseAllowance(address(newContract), user.balance);
-        newContract.migrate(msg.sender, user.balance, user.stakePeriod, user.lockedUntil);
-        emit StakeMigrated(msg.sender, address(newContract), user.balance, user.stakePeriod, user.lockedUntil);
+        newContract.migrate(
+            msg.sender,
+            user.balance,
+            user.stakePeriod,
+            user.lockedUntil
+        );
+        emit StakeMigrated(
+            msg.sender,
+            address(newContract),
+            user.balance,
+            user.stakePeriod,
+            user.lockedUntil
+        );
     }
 
     /// @notice Stake using IERC2612 permit
@@ -140,8 +175,23 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
     /// @param _v V
     /// @param _r R
     /// @param _s S
-    function stakeWithPermit(uint256 _amount, uint256 _period, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) external {
-        IERC2612(address(xPremia)).permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
+    function stakeWithPermit(
+        uint256 _amount,
+        uint256 _period,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external {
+        IERC2612(address(xPremia)).permit(
+            msg.sender,
+            address(this),
+            _amount,
+            _deadline,
+            _v,
+            _r,
+            _s
+        );
         stake(_amount, _period);
     }
 
@@ -154,7 +204,10 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         UserInfo storage user = userInfo[msg.sender];
 
         uint256 lockedUntil = block.timestamp + _period;
-        require(lockedUntil > user.lockedUntil, "Cannot add stake with lower stake period");
+        require(
+            lockedUntil > user.lockedUntil,
+            "Cannot add stake with lower stake period"
+        );
 
         xPremia.safeTransferFrom(msg.sender, address(this), _amount);
         user.balance = user.balance + _amount;
@@ -170,7 +223,11 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
         UserInfo storage user = userInfo[msg.sender];
 
         // We allow unstake if the stakePeriod that the user used has been disabled
-        require(stakePeriods[user.stakePeriod] == 0 || user.lockedUntil <= block.timestamp, "Stake still locked");
+        require(
+            stakePeriods[user.stakePeriod] == 0 ||
+                user.lockedUntil <= block.timestamp,
+            "Stake still locked"
+        );
 
         user.balance -= _amount;
         xPremia.safeTransfer(msg.sender, _amount);
@@ -186,26 +243,32 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
 
     /// @notice Get number of stake levels
     /// @return The amount of stake levels
-    function stakeLevelsLength() external view returns(uint256) {
+    function stakeLevelsLength() external view returns (uint256) {
         return stakeLevels.length;
     }
 
     /// Calculate the stake amount of a user, after applying the bonus from the lockup period chosen
     /// @param _user The user from which to query the stake amount
     /// @return The user stake amount after applying the bonus
-    function getStakeAmountWithBonus(address _user) public view returns(uint256) {
+    function getStakeAmountWithBonus(address _user)
+        public
+        view
+        returns (uint256)
+    {
         UserInfo memory user = userInfo[_user];
-        return user.balance * stakePeriods[user.stakePeriod] / _inverseBasisPoint;
+        return
+            (user.balance * stakePeriods[user.stakePeriod]) /
+            _inverseBasisPoint;
     }
 
     /// @notice Calculate the % of fee discount for user, based on his stake
     /// @param _user The _user for which the discount is for
     /// @return Percentage of protocol fee discount (in basis point)
     ///         Ex : 1000 = 10% fee discount
-    function getDiscount(address _user) external view returns(uint256) {
+    function getDiscount(address _user) external view returns (uint256) {
         uint256 userBalance = getStakeAmountWithBonus(_user);
 
-        for (uint256 i=0; i < stakeLevels.length; i++) {
+        for (uint256 i = 0; i < stakeLevels.length; i++) {
             StakeLevel memory level = stakeLevels[i];
 
             if (userBalance < level.amount) {
@@ -226,9 +289,12 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
 
                 uint256 remappedAmount = level.amount - amountPrevLevel;
                 uint256 remappedBalance = userBalance - amountPrevLevel;
-                uint256 levelProgress = remappedBalance * _inverseBasisPoint / remappedAmount;
+                uint256 levelProgress = (remappedBalance * _inverseBasisPoint) /
+                    remappedAmount;
 
-                return discountPrevLevel + (remappedDiscount * levelProgress / _inverseBasisPoint);
+                return
+                    discountPrevLevel +
+                    ((remappedDiscount * levelProgress) / _inverseBasisPoint);
             }
         }
 
@@ -246,7 +312,11 @@ contract PremiaFeeDiscount is Ownable, ReentrancyGuard {
     /// @param _value The value to look for
     /// @param _array The array to check
     /// @return Whether the value is in the array or not
-    function _isInArray(uint256 _value, uint256[] memory _array) internal pure returns(bool) {
+    function _isInArray(uint256 _value, uint256[] memory _array)
+        internal
+        pure
+        returns (bool)
+    {
         uint256 length = _array.length;
         for (uint256 i = 0; i < length; ++i) {
             if (_array[i] == _value) {

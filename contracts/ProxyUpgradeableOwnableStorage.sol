@@ -1,13 +1,13 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: UNLICENSED
 
 pragma solidity ^0.8.0;
 
-library ManagerStorage {
+library ProxyUpgradeableOwnableStorage {
     bytes32 internal constant STORAGE_SLOT =
-        keccak256("premia.contracts.storage.Manager");
+        keccak256("premia.contracts.storage.ProxyUpgradeableOwnable");
 
     struct Layout {
-        address manager;
+        address implementation;
     }
 
     function layout() internal pure returns (Layout storage l) {
@@ -15,9 +15,5 @@ library ManagerStorage {
         assembly {
             l.slot := slot
         }
-    }
-
-    function setManager(Layout storage l, address manager) internal {
-        l.manager = manager;
     }
 }

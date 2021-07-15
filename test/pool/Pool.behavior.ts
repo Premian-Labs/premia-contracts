@@ -1,7 +1,5 @@
 import { expect } from 'chai';
-import {
-  describeBehaviorOfERC1155Enumerable
-} from '@solidstate/spec';
+import { describeBehaviorOfERC1155Enumerable } from '@solidstate/spec';
 import {
   ERC20Mock,
   ERC20Mock__factory,
@@ -27,11 +25,7 @@ interface PoolBehaviorArgs {
 }
 
 export function describeBehaviorOfPool(
-  {
-    deploy,
-    mintERC1155,
-    burnERC1155,
-  }: PoolBehaviorArgs,
+  { deploy, mintERC1155, burnERC1155 }: PoolBehaviorArgs,
   skips?: string[],
 ) {
   describe('::Pool', function () {

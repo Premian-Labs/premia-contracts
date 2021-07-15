@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
-import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
+import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 
 /// @author Premia
 /// @title Vesting contract for Premia founder allocations, releasing the allocations over the course of a year
@@ -54,10 +54,13 @@ contract PremiaVesting is Ownable {
         if (timestamp >= endTimestamp) {
             premia.safeTransfer(msg.sender, balance);
         } else {
-
-            uint256 elapsedSinceLastWithdrawal = timestamp - _lastWithdrawalTimestamp;
+            uint256 elapsedSinceLastWithdrawal = timestamp -
+                _lastWithdrawalTimestamp;
             uint256 timeLeft = endTimestamp - _lastWithdrawalTimestamp;
-            premia.safeTransfer(msg.sender, balance * elapsedSinceLastWithdrawal / timeLeft);
+            premia.safeTransfer(
+                msg.sender,
+                (balance * elapsedSinceLastWithdrawal) / timeLeft
+            );
         }
     }
 }
