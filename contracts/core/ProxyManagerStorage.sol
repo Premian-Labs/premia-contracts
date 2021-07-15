@@ -10,6 +10,7 @@ library ProxyManagerStorage {
         address poolImplementation;
         // base => underlying => Pool
         mapping(address => mapping(address => address)) pools;
+        address[] poolList;
     }
 
     function layout() internal pure returns (Layout storage l) {
