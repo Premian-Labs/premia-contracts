@@ -31,7 +31,7 @@ contract PoolTradingCompetition is Pool {
       address feeReceiver,
       int128 fee64x64,
       uint256 batchingPeriod
-    ) Pool(weth, feeReceiver, fee64x64, batchingPeriod) {}
+    ) Pool(weth, feeReceiver, address(0), fee64x64, batchingPeriod) {}
 
     function getAscending (
     bool isCall,

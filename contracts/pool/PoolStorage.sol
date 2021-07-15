@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import {AggregatorInterface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorInterface.sol';
 import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol';
-import {ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155EnumerableStorage.sol';
+import {EnumerableSet, ERC1155EnumerableStorage} from '@solidstate/contracts/token/ERC1155/ERC1155EnumerableStorage.sol';
 
 import {ABDKMath64x64} from 'abdk-libraries-solidity/ABDKMath64x64.sol';
 import {ABDKMath64x64Token} from '../libraries/ABDKMath64x64Token.sol';
@@ -12,7 +12,19 @@ import {OptionMath} from '../libraries/OptionMath.sol';
 import {Pool} from './Pool.sol';
 
 library PoolStorage {
-  enum TokenType { UNDERLYING_FREE_LIQ, BASE_FREE_LIQ, LONG_CALL, SHORT_CALL, LONG_PUT, SHORT_PUT }
+  enum TokenType {
+    UNDERLYING_FREE_LIQ,
+    BASE_FREE_LIQ,
+
+    UNDERLYING_RESERVED_LIQ,
+    BASE_RESERVED_LIQ,
+
+    LONG_CALL,
+    SHORT_CALL,
+
+    LONG_PUT,
+    SHORT_PUT
+  }
 
   struct PoolSettings {
     address underlying;
@@ -21,20 +33,13 @@ library PoolStorage {
     address baseOracle;
   }
 
-  struct QuoteArgs {
+  struct QuoteArgsInternal {
+    address feePayer; // address of the fee payer
     uint64 maturity; // timestamp of option maturity
     int128 strike64x64; // 64x64 fixed point representation of strike price
     int128 spot64x64; // 64x64 fixed point representation of spot price
     int128 emaVarianceAnnualized64x64; // 64x64 fixed point representation of annualized variance
-    uint256 amount; // size of option contract
-    bool isCall; // true for call, false for put
-  }
-
-  struct PurchaseArgs {
-    uint64 maturity; // timestamp of option maturity
-    int128 strike64x64; // 64x64 fixed point representation of strike price
-    uint256 amount; // size of option contract
-    uint256 maxCost; // maximum acceptable cost after accounting for slippage
+    uint256 contractSize; // size of option contract
     bool isCall; // true for call, false for put
   }
 
@@ -70,6 +75,8 @@ library PoolStorage {
     // User -> isCall -> depositedAt
     mapping (address => mapping(bool => uint256)) depositedAt;
 
+    mapping (address => uint256) divestmentTimestamps;
+
     // doubly linked list of free liquidity intervals
     // isCall -> User -> User
     mapping (bool => mapping(address => address)) liquidityQueueAscending;
@@ -87,6 +94,8 @@ library PoolStorage {
     mapping(bool => BatchData) nextDeposits;
     // user -> batch timestamp -> isCall -> pending amount
     mapping(address => mapping(uint256 => mapping(bool => uint256))) pendingDeposits;
+
+    EnumerableSet.UintSet tokenIds;
   }
 
   function layout () internal pure returns (Layout storage l) {
@@ -148,6 +157,14 @@ library PoolStorage {
       ERC1155EnumerableStorage.layout().totalSupply[tokenId] - l.nextDeposits[isCall].totalPendingDeposits,
       getTokenDecimals(l, isCall)
     );
+  }
+
+  function getReinvestmentStatus (
+    Layout storage l,
+    address account
+  ) internal view returns (bool) {
+    uint256 timestamp = l.divestmentTimestamps[account];
+    return timestamp == 0 || timestamp > block.timestamp;
   }
 
   function addUnderwriter (
@@ -214,9 +231,6 @@ library PoolStorage {
   ) internal returns (int128 cLevel64x64) {
     cLevel64x64 = calculateCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
 
-    // 0.8
-    if (cLevel64x64 < 0xcccccccccccccccd) cLevel64x64 = 0xcccccccccccccccd;
-
     if (isCallPool) {
       l.cLevelUnderlying64x64 = cLevel64x64;
     } else {
@@ -230,12 +244,14 @@ library PoolStorage {
     int128 newLiquidity64x64,
     bool isCallPool
   ) internal view returns(int128) {
-    return OptionMath.calculateCLevel(
+    int128 cLevel64x64 = OptionMath.calculateCLevel(
       isCallPool ? l.cLevelUnderlying64x64 : l.cLevelBase64x64,
       oldLiquidity64x64,
       newLiquidity64x64,
       0x8000000000000000 // 64x64 fixed point representation of 0.5
     );
+
+    return cLevel64x64 < 0xcccccccccccccccd ? int128(0xcccccccccccccccd) : cLevel64x64; // 0.8 min
   }
 
   function setOracles(
