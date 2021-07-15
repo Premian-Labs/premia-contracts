@@ -1,6 +1,10 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import { OptionMathMock, OptionMathMock__factory, OptionMath__factory } from '../../typechain';
+import {
+  OptionMathMock,
+  OptionMathMock__factory,
+  OptionMath__factory,
+} from '../../typechain';
 import { bnToNumber, fixedFromFloat, fixedToNumber } from '../utils/math';
 
 /*
@@ -28,7 +32,10 @@ describe('OptionMath', function () {
   before(async function () {
     const [deployer] = await ethers.getSigners();
     const optionMath = await new OptionMath__factory(deployer).deploy();
-    instance = await new OptionMathMock__factory({ '__$430b703ddf4d641dc7662832950ed9cf8d$__': optionMath.address }, deployer).deploy();
+    instance = await new OptionMathMock__factory(
+      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      deployer,
+    ).deploy();
   });
 
   describe('#decay', function () {
@@ -100,7 +107,7 @@ describe('OptionMath', function () {
       let logReturns = 0;
       let old_ema = 0;
       let old_emvar = fixedFromFloat(0.0001732); // 1.48 / 356 / 24
-      let expected = bnToNumber(fixedFromFloat(0.0001730));
+      let expected = bnToNumber(fixedFromFloat(0.000173));
       const result = await instance.callStatic.unevenRollingEmaVariance(
         old_ema,
         old_emvar,

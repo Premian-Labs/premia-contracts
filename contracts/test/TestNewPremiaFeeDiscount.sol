@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import {SafeCast} from '@openzeppelin/contracts/utils/math/SafeCast.sol';
-import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {PremiaFeeDiscount} from '../PremiaFeeDiscount.sol';
+import {PremiaFeeDiscount} from "../PremiaFeeDiscount.sol";
 
 contract TestNewPremiaFeeDiscount is PremiaFeeDiscount {
     using SafeERC20 for IERC20;
@@ -14,11 +14,18 @@ contract TestNewPremiaFeeDiscount is PremiaFeeDiscount {
 
     address public previousContract;
 
-    constructor(address _previousContract, IERC20 _xPremia) PremiaFeeDiscount(_xPremia) {
+    constructor(address _previousContract, IERC20 _xPremia)
+        PremiaFeeDiscount(_xPremia)
+    {
         previousContract = _previousContract;
     }
 
-    function migrate(address _user, uint256 _amount, uint256 _stakePeriod, uint256 _lockedUntil) external {
+    function migrate(
+        address _user,
+        uint256 _amount,
+        uint256 _stakePeriod,
+        uint256 _lockedUntil
+    ) external {
         require(msg.sender == previousContract);
 
         UserInfo storage user = userInfo[_user];

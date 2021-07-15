@@ -2,18 +2,18 @@
 
 pragma solidity ^0.8.0;
 
-import { SafeERC20 } from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import { IERC20 } from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import { Ownable } from '@solidstate/contracts/access/Ownable.sol';
-import { OwnableInternal } from '@solidstate/contracts/access/OwnableInternal.sol';
-import { EnumerableSet } from '@solidstate/contracts/utils/EnumerableSet.sol';
+import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
+import {OwnableInternal} from "@solidstate/contracts/access/OwnableInternal.sol";
+import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 
-import { IUniswapV2Router02 } from './uniswapV2/interfaces/IUniswapV2Router02.sol';
-import { IWETH } from './uniswapV2/interfaces/IWETH.sol';
+import {IUniswapV2Router02} from "./uniswapV2/interfaces/IUniswapV2Router02.sol";
+import {IWETH} from "./uniswapV2/interfaces/IWETH.sol";
 
-import { PremiaMakerStorage } from './PremiaMakerStorage.sol';
-import { IPool } from './pool/IPool.sol';
+import {PremiaMakerStorage} from "./PremiaMakerStorage.sol";
+import {IPool} from "./pool/IPool.sol";
 
 /// @author Premia
 /// @title A contract receiving all protocol fees, swapping them for premia
@@ -37,7 +37,13 @@ contract PremiaMaker is OwnableInternal {
     // Events //
     ////////////
 
-    event Converted(address indexed account, address indexed router, address indexed token, uint256 tokenAmount, uint256 premiaAmount);
+    event Converted(
+        address indexed account,
+        address indexed router,
+        address indexed token,
+        uint256 tokenAmount,
+        uint256 premiaAmount
+    );
 
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
@@ -46,7 +52,11 @@ contract PremiaMaker is OwnableInternal {
     // @param _premia The premia token
     // @param _premiaStaking The premia staking contract (xPremia)
     // @param _treasury The treasury address which will receive a portion of the protocol fees
-    constructor(address _premia, address _premiaStaking, address _treasury) {
+    constructor(
+        address _premia,
+        address _premiaStaking,
+        address _treasury
+    ) {
         PREMIA = _premia;
         PREMIA_STAKING = _premiaStaking;
         TREASURY = _treasury;
@@ -65,7 +75,10 @@ contract PremiaMaker is OwnableInternal {
     /// @notice Set a custom swap path for a token
     /// @param _token The token
     /// @param _path The swap path
-    function setCustomPath(address _token, address[] memory _path) external onlyOwner {
+    function setCustomPath(address _token, address[] memory _path)
+        external
+        onlyOwner
+    {
         PremiaMakerStorage.layout().customPath[_token] = _path;
     }
 
@@ -74,17 +87,20 @@ contract PremiaMaker is OwnableInternal {
     function addWhitelistedRouter(address[] memory _addr) external onlyOwner {
         PremiaMakerStorage.Layout storage l = PremiaMakerStorage.layout();
 
-        for (uint256 i=0; i < _addr.length; i++) {
+        for (uint256 i = 0; i < _addr.length; i++) {
             l.whitelistedRouters.add(_addr[i]);
         }
     }
 
     /// @notice Remove UniswapRouters from the whitelist so that they cannot be used to swap tokens.
     /// @param _addr The addresses to remove the whitelist
-    function removeWhitelistedRouter(address[] memory _addr) external onlyOwner {
+    function removeWhitelistedRouter(address[] memory _addr)
+        external
+        onlyOwner
+    {
         PremiaMakerStorage.Layout storage l = PremiaMakerStorage.layout();
 
-        for (uint256 i=0; i < _addr.length; i++) {
+        for (uint256 i = 0; i < _addr.length; i++) {
             l.whitelistedRouters.remove(_addr[i]);
         }
     }
@@ -93,13 +109,13 @@ contract PremiaMaker is OwnableInternal {
 
     /// @notice Get the list of whitelisted routers
     /// @return The list of whitelisted routers
-    function getWhitelistedRouters() external view returns(address[] memory) {
+    function getWhitelistedRouters() external view returns (address[] memory) {
         PremiaMakerStorage.Layout storage l = PremiaMakerStorage.layout();
 
         uint256 length = l.whitelistedRouters.length();
         address[] memory result = new address[](length);
 
-        for (uint256 i=0; i < length; i++) {
+        for (uint256 i = 0; i < length; i++) {
             result[i] = l.whitelistedRouters.at(i);
         }
 
@@ -110,12 +126,16 @@ contract PremiaMaker is OwnableInternal {
     /// @param _pools List of pools from which to withdraw fees
     /// @param _router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
     /// @param _tokens The list of tokens to swap to premia
-    function withdrawFeesAndConvert(address[] memory _pools, IUniswapV2Router02 _router, address[] memory _tokens) public {
-        for (uint256 i=0; i < _pools.length; i++) {
+    function withdrawFeesAndConvert(
+        address[] memory _pools,
+        IUniswapV2Router02 _router,
+        address[] memory _tokens
+    ) public {
+        for (uint256 i = 0; i < _pools.length; i++) {
             IPool(_pools[i]).withdrawFees();
         }
 
-        for (uint256 i=0; i < _tokens.length; i++) {
+        for (uint256 i = 0; i < _tokens.length; i++) {
             convert(_router, _tokens[i]);
         }
     }
@@ -126,12 +146,15 @@ contract PremiaMaker is OwnableInternal {
     function convert(IUniswapV2Router02 _router, address _token) public {
         PremiaMakerStorage.Layout storage l = PremiaMakerStorage.layout();
 
-        require(l.whitelistedRouters.contains(address(_router)), "Router not whitelisted");
+        require(
+            l.whitelistedRouters.contains(address(_router)),
+            "Router not whitelisted"
+        );
 
         IERC20 token = IERC20(_token);
 
         uint256 amount = token.balanceOf(address(this));
-        uint256 fee = amount * TREASURY_FEE / INVERSE_BASIS_POINT;
+        uint256 fee = (amount * TREASURY_FEE) / INVERSE_BASIS_POINT;
         uint256 amountMinusFee = amount - fee;
 
         token.safeTransfer(TREASURY, fee);
@@ -174,6 +197,12 @@ contract PremiaMaker is OwnableInternal {
             _router = IUniswapV2Router02(address(0));
         }
 
-        emit Converted(msg.sender, address(_router), _token, amountMinusFee, premiaAmount);
+        emit Converted(
+            msg.sender,
+            address(_router),
+            _token,
+            amountMinusFee,
+            premiaAmount
+        );
     }
 }

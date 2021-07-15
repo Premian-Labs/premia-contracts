@@ -2,14 +2,14 @@
 
 pragma solidity ^0.8.0;
 
-import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {ERC20} from '@solidstate/contracts/token/ERC20/ERC20.sol';
-import {ERC20Permit} from '@solidstate/contracts/token/ERC20/ERC20Permit.sol';
-import {ERC20MetadataStorage} from '@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol';
+import {ERC20} from "@solidstate/contracts/token/ERC20/ERC20.sol";
+import {ERC20Permit} from "@solidstate/contracts/token/ERC20/ERC20Permit.sol";
+import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol";
 
-import {IERC2612} from '@solidstate/contracts/token/ERC20/IERC2612.sol';
+import {IERC2612} from "@solidstate/contracts/token/ERC20/IERC2612.sol";
 
 /// @author SushiSwap
 /// @notice This contract handles swapping to and from xPremia, PremiaSwap's staking token.
@@ -35,8 +35,22 @@ contract PremiaStaking is ERC20, ERC20Permit {
     /// @param _v V
     /// @param _r R
     /// @param _s S
-    function enterWithPermit(uint256 _amount, uint256 _deadline, uint8 _v, bytes32 _r, bytes32 _s) public {
-        IERC2612(address(premia)).permit(msg.sender, address(this), _amount, _deadline, _v, _r, _s);
+    function enterWithPermit(
+        uint256 _amount,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) public {
+        IERC2612(address(premia)).permit(
+            msg.sender,
+            address(this),
+            _amount,
+            _deadline,
+            _v,
+            _r,
+            _s
+        );
         enter(_amount);
     }
 
@@ -54,7 +68,7 @@ contract PremiaStaking is ERC20, ERC20Permit {
         }
         // Calculate and mint the amount of xPremia the Premia is worth. The ratio will change overtime, as xPremia is burned/minted and Premia deposited + gained from fees / withdrawn.
         else {
-            uint256 what = _amount * totalShares / totalPremia;
+            uint256 what = (_amount * totalShares) / totalPremia;
             _mint(msg.sender, what);
         }
         // Lock the Premia in the contract
@@ -68,7 +82,7 @@ contract PremiaStaking is ERC20, ERC20Permit {
         // Gets the amount of xPremia in existence
         uint256 totalShares = totalSupply();
         // Calculates the amount of Premia the xPremia is worth
-        uint256 what = _share * premia.balanceOf(address(this)) / totalShares;
+        uint256 what = (_share * premia.balanceOf(address(this))) / totalShares;
         _burn(msg.sender, _share);
         premia.safeTransfer(msg.sender, what);
     }

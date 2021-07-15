@@ -39,6 +39,6 @@ export function describeBehaviorOfProxyManager(
 
     describe('#setPoolImplementation', function () {
       it('todo');
-    })
+    });
   });
 }

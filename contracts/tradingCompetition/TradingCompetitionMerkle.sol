@@ -3,21 +3,30 @@
 
 pragma solidity ^0.8.0;
 
-import '@openzeppelin/contracts/utils/cryptography/MerkleProof.sol';
-import '@openzeppelin/contracts/token/ERC20/IERC20.sol';
-import '@openzeppelin/contracts/access/Ownable.sol';
+import "@openzeppelin/contracts/utils/cryptography/MerkleProof.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-import {ITradingCompetitionERC20} from './ITradingCompetitionERC20.sol';
+import {ITradingCompetitionERC20} from "./ITradingCompetitionERC20.sol";
 
 interface ITradingCompetitionMerkle {
     // Returns the merkle root of the merkle tree containing account balances available to claim.
     function merkleRoots(uint256 airdropId) external view returns (bytes32);
 
     // Returns true if the index has been marked claimed.
-    function isClaimed(uint256 airdropId, uint256 index) external view returns (bool);
+    function isClaimed(uint256 airdropId, uint256 index)
+        external
+        view
+        returns (bool);
 
     // Claim the given amount of the tokens to the given address. Reverts if the inputs are invalid.
-    function claim(uint256 airdropId, uint256 index, address account, uint256 amount, bytes32[] calldata merkleProof) external;
+    function claim(
+        uint256 airdropId,
+        uint256 index,
+        address account,
+        uint256 amount,
+        bytes32[] calldata merkleProof
+    ) external;
 
     // This event is triggered whenever a call to #claim succeeds.
     event Claimed(
@@ -42,17 +51,25 @@ contract TradingCompetitionMerkle is ITradingCompetitionMerkle, Ownable {
     constructor(IERC20[] memory _tokens, uint256[] memory _weights) {
         tokens = _tokens;
 
-        for (uint256 i=0; i < _tokens.length; i++) {
-            require(weights[address(_tokens[i])] == 0, 'Token duplicate');
+        for (uint256 i = 0; i < _tokens.length; i++) {
+            require(weights[address(_tokens[i])] == 0, "Token duplicate");
             weights[address(_tokens[i])] = _weights[i];
         }
     }
 
-    function addMerkleRoot(uint256 airdropId, bytes32 merkleRoot) public onlyOwner {
+    function addMerkleRoot(uint256 airdropId, bytes32 merkleRoot)
+        public
+        onlyOwner
+    {
         merkleRoots[airdropId] = merkleRoot;
     }
 
-    function isClaimed(uint256 airdropId, uint256 index) public override view returns (bool) {
+    function isClaimed(uint256 airdropId, uint256 index)
+        public
+        view
+        override
+        returns (bool)
+    {
         mapping(uint256 => uint256) storage claimed = claimedBitMaps[airdropId];
 
         uint256 claimedWordIndex = index / 256;
@@ -70,23 +87,35 @@ contract TradingCompetitionMerkle is ITradingCompetitionMerkle, Ownable {
         uint256 claimedBitIndex = index % 256;
 
         claimed[claimedWordIndex] =
-        claimed[claimedWordIndex] |
-        (1 << claimedBitIndex);
+            claimed[claimedWordIndex] |
+            (1 << claimedBitIndex);
     }
 
-    function claim(uint256 airdropId, uint256 index, address account, uint256 amount, bytes32[] calldata merkleProof) external override {
-        require(!isClaimed(airdropId, index), 'Already claimed');
+    function claim(
+        uint256 airdropId,
+        uint256 index,
+        address account,
+        uint256 amount,
+        bytes32[] calldata merkleProof
+    ) external override {
+        require(!isClaimed(airdropId, index), "Already claimed");
 
         // Verify the merkle proof.
         bytes32 node = keccak256(abi.encodePacked(index, account, amount));
 
-        require(MerkleProof.verify(merkleProof, merkleRoots[airdropId], node), 'Invalid proof');
+        require(
+            MerkleProof.verify(merkleProof, merkleRoots[airdropId], node),
+            "Invalid proof"
+        );
 
         // Mark it claimed and send the tokens
         _setClaimed(airdropId, index);
 
-        for (uint256 i=0; i < tokens.length; i++) {
-            ITradingCompetitionERC20(address(tokens[i])).mint(account, amount * weights[address(tokens[i])]);
+        for (uint256 i = 0; i < tokens.length; i++) {
+            ITradingCompetitionERC20(address(tokens[i])).mint(
+                account,
+                amount * weights[address(tokens[i])]
+            );
         }
 
         emit Claimed(airdropId, index, account, amount);

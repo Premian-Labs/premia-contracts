@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 interface IKeeperCompatible {
-
     /**
      * @notice method that is simulated by the keepers to see if any work actually
      * needs to be performed. This method does does not actually need to be
@@ -20,14 +19,10 @@ interface IKeeperCompatible {
      * upkeep is needed. If you would like to encode data to decode later, try
      * `abi.encode`.
      */
-    function checkUpkeep(
-        bytes calldata checkData
-    )
+    function checkUpkeep(bytes calldata checkData)
         external
-        returns (
-            bool upkeepNeeded,
-            bytes memory performData
-        );
+        returns (bool upkeepNeeded, bytes memory performData);
+
     /**
      * @notice method that is actually executed by the keepers, via the registry.
      * The data returned by the checkUpkeep simulation will be passed into
@@ -44,8 +39,5 @@ interface IKeeperCompatible {
      * calling `abi.decode`. This data should not be trusted, and should be
      * validated against the contract's current state.
      */
-    function performUpkeep(
-        bytes calldata performData
-    ) external;
+    function performUpkeep(bytes calldata performData) external;
 }
-
