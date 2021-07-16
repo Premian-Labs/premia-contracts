@@ -385,14 +385,7 @@ library PoolStorage {
             }
         }
 
-        uint256 id = ((sequenceId + 1) << 8) - msb - 1;
-
-        // ToDo : Only keep for trading competition
-        if (timestamp < 1626252226) {
-            id++;
-        }
-
-        return l.bucketPrices64x64[id];
+        return l.bucketPrices64x64[((sequenceId + 1) << 8) - msb - 1];
     }
 
     function fromBaseToUnderlyingDecimals(Layout storage l, uint256 value)

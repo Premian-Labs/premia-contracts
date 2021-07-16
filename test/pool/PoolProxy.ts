@@ -43,7 +43,6 @@ import {
   fixedToNumber,
   formatTokenId,
   getOptionTokenIds,
-  parseTokenId,
   TokenType,
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
