@@ -6,6 +6,7 @@ import {
   OptionMath__factory,
   PoolMock,
   PoolMock__factory,
+  Premia,
   Premia__factory,
   ProxyManager__factory,
   WETH9,
@@ -15,7 +16,12 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber, BigNumberish, ethers } from 'ethers';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { increaseTimestamp } from '../utils/evm';
-import { fixedFromFloat, fixedToNumber } from '../utils/math';
+import {
+  fixedFromFloat,
+  fixedToNumber,
+  formatTokenId,
+  TokenType,
+} from '../utils/math';
 import { formatUnits, parseUnits } from 'ethers/lib/utils';
 import { deployMockContract, MockContract } from 'ethereum-waffle';
 
@@ -26,6 +32,7 @@ export const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 export const FEE = 0.01;
 
 interface PoolUtilArgs {
+  premiaDiamond: Premia;
   pool: PoolMock;
   poolWeth: PoolMock;
   underlying: ERC20Mock;
@@ -91,6 +98,7 @@ export function getExerciseValue(
 }
 
 export class PoolUtil {
+  premiaDiamond: Premia;
   pool: PoolMock;
   poolWeth: PoolMock;
   underlying: ERC20Mock;
@@ -101,6 +109,7 @@ export class PoolUtil {
   proxy: ManagedProxyOwnable;
 
   constructor(props: PoolUtilArgs) {
+    this.premiaDiamond = props.premiaDiamond;
     this.pool = props.pool;
     this.poolWeth = props.poolWeth;
     this.underlying = props.underlying;
@@ -154,13 +163,22 @@ export class PoolUtil {
       },
     );
 
-    const premia = await new Premia__factory(deployer).deploy(poolImp.address);
+    const premiaDiamond = await new Premia__factory(deployer).deploy(
+      poolImp.address,
+    );
 
-    await premia.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
+    await premiaDiamond.diamondCut(
+      facetCuts,
+      ethers.constants.AddressZero,
+      '0x',
+    );
 
     //
 
-    const manager = ProxyManager__factory.connect(premia.address, deployer);
+    const manager = ProxyManager__factory.connect(
+      premiaDiamond.address,
+      deployer,
+    );
 
     const baseOracle = await deployMockContract(deployer as any, [
       'function latestAnswer () external view returns (int)',
@@ -212,6 +230,7 @@ export class PoolUtil {
     );
 
     return new PoolUtil({
+      premiaDiamond,
       pool,
       poolWeth,
       underlying,
@@ -229,6 +248,72 @@ export class PoolUtil {
 
   getToken(isCall: boolean) {
     return isCall ? this.underlying : this.base;
+  }
+
+  getLong(isCall: boolean) {
+    return isCall ? TokenType.LongCall : TokenType.LongPut;
+  }
+
+  getShort(isCall: boolean) {
+    return isCall ? TokenType.ShortCall : TokenType.ShortPut;
+  }
+
+  getStrike(isCall: boolean, spotPrice: number) {
+    return isCall ? spotPrice * 1.25 : spotPrice * 0.75;
+  }
+
+  getMaxCost(
+    baseCost64x64: BigNumber,
+    feeCost64x64: BigNumber,
+    isCall: boolean,
+  ) {
+    if (isCall) {
+      return parseUnderlying(
+        (
+          (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
+          1.03
+        ).toString(),
+      );
+    } else {
+      return parseBase(
+        (
+          (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
+          1.03
+        ).toString(),
+      );
+    }
+  }
+
+  getFreeLiqTokenId(isCall: boolean) {
+    if (isCall) {
+      return formatTokenId({
+        tokenType: TokenType.UnderlyingFreeLiq,
+        maturity: BigNumber.from(0),
+        strike64x64: BigNumber.from(0),
+      });
+    } else {
+      return formatTokenId({
+        tokenType: TokenType.BaseFreeLiq,
+        maturity: BigNumber.from(0),
+        strike64x64: BigNumber.from(0),
+      });
+    }
+  }
+
+  getReservedLiqTokenId(isCall: boolean) {
+    if (isCall) {
+      return formatTokenId({
+        tokenType: TokenType.UnderlyingReservedLiq,
+        maturity: BigNumber.from(0),
+        strike64x64: BigNumber.from(0),
+      });
+    } else {
+      return formatTokenId({
+        tokenType: TokenType.BaseReservedLiq,
+        maturity: BigNumber.from(0),
+        strike64x64: BigNumber.from(0),
+      });
+    }
   }
 
   async depositLiquidity(
