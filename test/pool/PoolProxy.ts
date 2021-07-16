@@ -43,7 +43,6 @@ import {
   fixedToNumber,
   formatTokenId,
   getOptionTokenIds,
-  parseTokenId,
   TokenType,
 } from '../utils/math';
 import chaiAlmost from 'chai-almost';
@@ -577,16 +576,16 @@ describe('PoolProxy', function () {
           true,
         );
 
-        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(70.92);
+        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(117.49);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
-        expect(fixedToNumber(q.cLevel64x64)).to.almost(2.21);
+        expect(fixedToNumber(q.cLevel64x64)).to.almost(3.64);
         expect(
           (fixedToNumber(q.baseCost64x64) * spotPrice) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(30.51);
+        ).to.almost(30.65);
       });
     });
 
@@ -605,14 +604,16 @@ describe('PoolProxy', function () {
           false,
         );
 
-        expect(fixedToNumber(q.baseCost64x64)).to.almost(114.63);
-        expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(114.63 * 0.01);
-        expect(fixedToNumber(q.cLevel64x64)).to.almost(2);
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(189.59);
+        expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
+          fixedToNumber(q.baseCost64x64) * 0.01,
+        );
+        expect(fixedToNumber(q.cLevel64x64)).to.almost(3.29);
         expect(
           fixedToNumber(q.baseCost64x64) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(57.31);
+        ).to.almost(57.48);
       });
     });
   });
@@ -1592,10 +1593,11 @@ describe('PoolProxy', function () {
       const optionId = getOptionTokenIds(maturity, strike64x64, isCall);
 
       let tokenIds = await pool.getTokenIds();
-      expect(tokenIds.length).to.eq(3);
+      expect(tokenIds.length).to.eq(4);
       expect(tokenIds[0]).to.eq(getFreeLiqTokenId(isCall));
       expect(tokenIds[1]).to.eq(optionId.long);
       expect(tokenIds[2]).to.eq(optionId.short);
+      expect(tokenIds[3]).to.eq(getReservedLiqTokenId(isCall));
 
       await setTimestamp(maturity.add(100).toNumber());
 
@@ -1609,8 +1611,9 @@ describe('PoolProxy', function () {
         .processExpired(tokenId.long, parseUnderlying('1'));
 
       tokenIds = await pool.getTokenIds();
-      expect(tokenIds.length).to.eq(1);
+      expect(tokenIds.length).to.eq(2);
       expect(tokenIds[0]).to.eq(getFreeLiqTokenId(isCall));
+      expect(tokenIds[1]).to.eq(getReservedLiqTokenId(isCall));
     });
   });
 
