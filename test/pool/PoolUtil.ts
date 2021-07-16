@@ -1,18 +1,39 @@
-import { ERC20Mock, Pool } from '../../typechain';
+import {
+  ERC20Mock,
+  ERC20Mock__factory,
+  ManagedProxyOwnable,
+  ManagedProxyOwnable__factory,
+  OptionMath__factory,
+  PoolMock,
+  PoolMock__factory,
+  Premia__factory,
+  ProxyManager__factory,
+  WETH9,
+  WETH9__factory,
+} from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber, BigNumberish, ethers } from 'ethers';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { increaseTimestamp } from '../utils/evm';
-import { fixedToNumber } from '../utils/math';
+import { fixedFromFloat, fixedToNumber } from '../utils/math';
 import { formatUnits, parseUnits } from 'ethers/lib/utils';
+import { deployMockContract, MockContract } from 'ethereum-waffle';
 
 export const DECIMALS_BASE = 18;
 export const DECIMALS_UNDERLYING = 8;
+export const SYMBOL_BASE = 'SYMBOL_BASE';
+export const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
+export const FEE = 0.01;
 
 interface PoolUtilArgs {
-  pool: Pool;
+  pool: PoolMock;
+  poolWeth: PoolMock;
   underlying: ERC20Mock;
+  underlyingWeth: WETH9;
   base: ERC20Mock;
+  baseOracle: MockContract;
+  underlyingOracle: MockContract;
+  proxy: ManagedProxyOwnable;
 }
 
 const ONE_DAY = 3600 * 24;
@@ -70,14 +91,140 @@ export function getExerciseValue(
 }
 
 export class PoolUtil {
-  pool: Pool;
+  pool: PoolMock;
+  poolWeth: PoolMock;
   underlying: ERC20Mock;
+  underlyingWeth: WETH9;
   base: ERC20Mock;
+  baseOracle: MockContract;
+  underlyingOracle: MockContract;
+  proxy: ManagedProxyOwnable;
 
   constructor(props: PoolUtilArgs) {
     this.pool = props.pool;
+    this.poolWeth = props.poolWeth;
     this.underlying = props.underlying;
+    this.underlyingWeth = props.underlyingWeth;
     this.base = props.base;
+    this.baseOracle = props.baseOracle;
+    this.underlyingOracle = props.underlyingOracle;
+    this.proxy = props.proxy;
+  }
+
+  static async deploy(
+    deployer: SignerWithAddress,
+    priceUnderlying: number,
+    feeReceiver: string,
+    premiaFeeDiscount: string,
+  ) {
+    const erc20Factory = new ERC20Mock__factory(deployer);
+
+    const base = await erc20Factory.deploy(SYMBOL_BASE, DECIMALS_BASE);
+    await base.deployed();
+    let underlying = await erc20Factory.deploy(
+      SYMBOL_UNDERLYING,
+      DECIMALS_UNDERLYING,
+    );
+    await underlying.deployed();
+    const underlyingWeth = await new WETH9__factory(deployer).deploy();
+
+    //
+
+    const optionMath = await new OptionMath__factory(deployer).deploy();
+
+    const poolImp = await new PoolMock__factory(
+      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      deployer,
+    ).deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+
+    const facetCuts = [await new ProxyManager__factory(deployer).deploy()].map(
+      function (f) {
+        return {
+          target: f.address,
+          action: 0,
+          selectors: Object.keys(f.interface.functions).map((fn) =>
+            f.interface.getSighash(fn),
+          ),
+        };
+      },
+    );
+
+    const premia = await new Premia__factory(deployer).deploy(poolImp.address);
+
+    await premia.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
+
+    //
+
+    const manager = ProxyManager__factory.connect(premia.address, deployer);
+
+    const baseOracle = await deployMockContract(deployer as any, [
+      'function latestAnswer () external view returns (int)',
+      'function decimals () external view returns (uint8)',
+    ]);
+
+    const underlyingOracle = await deployMockContract(deployer as any, [
+      'function latestAnswer () external view returns (int)',
+      'function decimals () external view returns (uint8)',
+    ]);
+
+    await baseOracle.mock.decimals.returns(8);
+    await underlyingOracle.mock.decimals.returns(8);
+    await baseOracle.mock.latestAnswer.returns(parseUnits('1', 8));
+    await underlyingOracle.mock.latestAnswer.returns(
+      parseUnits(priceUnderlying.toString(), 8),
+    );
+
+    let tx = await manager.deployPool(
+      base.address,
+      underlying.address,
+      baseOracle.address,
+      underlyingOracle.address,
+      fixedFromFloat(1.22 * 1.22),
+    );
+
+    let poolAddress = (await tx.wait()).events![0].args!.pool;
+    const proxy = ManagedProxyOwnable__factory.connect(poolAddress, deployer);
+    const pool = PoolMock__factory.connect(poolAddress, deployer);
+
+    //
+
+    tx = await manager.deployPool(
+      base.address,
+      underlyingWeth.address,
+      baseOracle.address,
+      underlyingOracle.address,
+      fixedFromFloat(1.1),
+    );
+
+    poolAddress = (await tx.wait()).events![0].args!.pool;
+    const poolWeth = PoolMock__factory.connect(poolAddress, deployer);
+
+    //
+
+    underlying = ERC20Mock__factory.connect(
+      (await pool.getPoolSettings()).underlying,
+      deployer,
+    );
+
+    return new PoolUtil({
+      pool,
+      poolWeth,
+      underlying,
+      underlyingWeth,
+      base,
+      baseOracle,
+      underlyingOracle,
+      proxy,
+    });
+  }
+
+  async setUnderlyingPrice(price: BigNumber) {
+    await this.underlyingOracle.mock.latestAnswer.returns(price);
   }
 
   getToken(isCall: boolean) {
