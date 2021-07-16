@@ -13,7 +13,7 @@ contract ProcessExpiredKeeper is KeeperCompatibleInterface {
         PREMIA_DIAMOND = premiaDiamond;
     }
 
-    function checkUpkeep(bytes calldata checkData)
+    function checkUpkeep(bytes calldata)
         external
         view
         override
