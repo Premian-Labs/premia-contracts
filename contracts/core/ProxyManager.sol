@@ -16,6 +16,8 @@ import {OptionMath} from "../libraries/OptionMath.sol";
 contract ProxyManager is IProxyManager, OwnableInternal {
     using ProxyManagerStorage for ProxyManagerStorage.Layout;
 
+    address private immutable DIAMOND;
+
     // 64x64 fixed point representation of 2e
     int128 private constant INITIAL_C_LEVEL_64x64 = 0x56fc2a2c515da32ea;
 
@@ -28,12 +30,8 @@ contract ProxyManager is IProxyManager, OwnableInternal {
         address pool
     );
 
-    /**
-     * @notice get address of Pool implementation contract for forwarding via PoolProxy
-     * @return implementation address
-     */
-    function getPoolImplementation() external view override returns (address) {
-        return ProxyManagerStorage.layout().poolImplementation;
+    constructor(address diamond) {
+        DIAMOND = diamond;
     }
 
     /**
@@ -56,17 +54,6 @@ contract ProxyManager is IProxyManager, OwnableInternal {
      */
     function getPoolList() external view override returns (address[] memory) {
         return ProxyManagerStorage.layout().poolList;
-    }
-
-    /**
-     * @notice set address of Pool implementation contract
-     * @param poolImplementation Pool implementation address
-     */
-    function setPoolImplementation(address poolImplementation)
-        external
-        onlyOwner
-    {
-        ProxyManagerStorage.layout().poolImplementation = poolImplementation;
     }
 
     /**
@@ -94,6 +81,7 @@ contract ProxyManager is IProxyManager, OwnableInternal {
 
         address pool = address(
             new PoolProxy(
+                DIAMOND,
                 base,
                 underlying,
                 baseOracle,

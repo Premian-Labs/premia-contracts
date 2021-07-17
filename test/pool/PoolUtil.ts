@@ -141,31 +141,44 @@ export class PoolUtil {
 
     const optionMath = await new OptionMath__factory(deployer).deploy();
 
-    const poolImp = await new PoolMock__factory(
-      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
-      deployer,
-    ).deploy(
-      underlyingWeth.address,
-      feeReceiver,
-      premiaFeeDiscount,
-      fixedFromFloat(FEE),
+    const premiaDiamond = await new Premia__factory(deployer).deploy();
+
+    let facetCuts = [
+      await new ProxyManager__factory(deployer).deploy(premiaDiamond.address),
+    ].map(function (f) {
+      return {
+        target: f.address,
+        action: 0,
+        selectors: Object.keys(f.interface.functions).map((fn) =>
+          f.interface.getSighash(fn),
+        ),
+      };
+    });
+    await premiaDiamond.diamondCut(
+      facetCuts,
+      ethers.constants.AddressZero,
+      '0x',
     );
 
-    const facetCuts = [await new ProxyManager__factory(deployer).deploy()].map(
-      function (f) {
-        return {
-          target: f.address,
-          action: 0,
-          selectors: Object.keys(f.interface.functions).map((fn) =>
-            f.interface.getSighash(fn),
-          ),
-        };
-      },
-    );
-
-    const premiaDiamond = await new Premia__factory(deployer).deploy(
-      poolImp.address,
-    );
+    facetCuts = [
+      await new PoolMock__factory(
+        { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+        deployer,
+      ).deploy(
+        underlyingWeth.address,
+        feeReceiver,
+        premiaFeeDiscount,
+        fixedFromFloat(FEE),
+      ),
+    ].map(function (f) {
+      return {
+        target: f.address,
+        action: 0,
+        selectors: Object.keys(f.interface.functions)
+          .filter((fn) => fn != 'supportsInterface(bytes4)')
+          .map((fn) => f.interface.getSighash(fn)),
+      };
+    });
 
     await premiaDiamond.diamondCut(
       facetCuts,

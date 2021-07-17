@@ -7,7 +7,6 @@ library ProxyManagerStorage {
         keccak256("premia.contracts.storage.ProxyManager");
 
     struct Layout {
-        address poolImplementation;
         // base => underlying => Pool
         mapping(address => mapping(address => address)) pools;
         address[] poolList;

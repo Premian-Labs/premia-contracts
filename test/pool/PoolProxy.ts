@@ -8,7 +8,6 @@ import {
   PremiaFeeDiscount__factory,
 } from '../../typechain';
 
-import { describeBehaviorOfManagedProxyOwnable } from '@solidstate/spec';
 import { describeBehaviorOfPool } from './Pool.behavior';
 import chai, { expect } from 'chai';
 import { increaseTimestamp, resetHardhat, setTimestamp } from '../utils/evm';
@@ -111,11 +110,11 @@ describe('PoolProxy', function () {
     poolWeth = p.poolWeth;
   });
 
-  describeBehaviorOfManagedProxyOwnable({
-    deploy: async () => p.proxy,
-    implementationFunction: 'getPoolSettings()',
-    implementationFunctionArgs: [],
-  });
+  // describeBehaviorOfManagedProxyOwnable({
+  //   deploy: async () => p.proxy,
+  //   implementationFunction: 'getPoolSettings()',
+  //   implementationFunctionArgs: [],
+  // });
 
   describeBehaviorOfPool(
     {
