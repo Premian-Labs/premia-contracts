@@ -14,12 +14,13 @@ import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
 import {IPremiaFeeDiscount} from "../interface/IPremiaFeeDiscount.sol";
+import {IPool} from "./IPool.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
+contract Pool is IPool, OwnableInternal, ERC1155Enumerable, ERC165 {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -162,7 +163,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
      * @notice get the list of all existing token ids
      * @return list of all existing token ids
      */
-    function getTokenIds() external view returns (uint256[] memory) {
+    function getTokenIds() external view override returns (uint256[] memory) {
         PoolStorage.Layout storage l = PoolStorage.layout();
         uint256 length = l.tokenIds.length();
         uint256[] memory result = new uint256[](length);
@@ -359,6 +360,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
      */
     function processExpired(uint256 longTokenId, uint256 contractSize)
         external
+        override
     {
         _exercise(address(0), longTokenId, contractSize);
     }
@@ -632,6 +634,7 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165 {
      */
     function withdrawFees()
         external
+        override
         returns (uint256 amountOutCall, uint256 amountOutPut)
     {
         amountOutCall = _withdrawFees(true);

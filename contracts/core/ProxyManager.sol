@@ -51,6 +51,14 @@ contract ProxyManager is IProxyManager, OwnableInternal {
     }
 
     /**
+     * @notice get address list of all Pool contracts
+     * @return list of pool addresses
+     */
+    function getPoolList() external view override returns (address[] memory) {
+        return ProxyManagerStorage.layout().poolList;
+    }
+
+    /**
      * @notice set address of Pool implementation contract
      * @param poolImplementation Pool implementation address
      */
@@ -77,9 +85,10 @@ contract ProxyManager is IProxyManager, OwnableInternal {
         address underlyingOracle,
         int128 emaVarianceAnnualized64x64
     ) external onlyOwner returns (address) {
+        ProxyManagerStorage.Layout storage l = ProxyManagerStorage.layout();
+
         require(
-            ProxyManagerStorage.layout().getPool(base, underlying) ==
-                address(0),
+            l.getPool(base, underlying) == address(0),
             "ProxyManager: Pool already exists"
         );
 
@@ -93,11 +102,9 @@ contract ProxyManager is IProxyManager, OwnableInternal {
                 INITIAL_C_LEVEL_64x64
             )
         );
-        ProxyManagerStorage.layout().setPool(
-            base,
-            underlying,
-            underlyingOracle
-        );
+        l.setPool(base, underlying, underlyingOracle);
+
+        l.poolList.push(pool);
 
         emit DeployPool(
             base,
