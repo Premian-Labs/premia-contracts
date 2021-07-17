@@ -142,9 +142,10 @@ export class PoolUtil {
     const optionMath = await new OptionMath__factory(deployer).deploy();
 
     const premiaDiamond = await new Premia__factory(deployer).deploy();
+    const poolDiamond = await new Premia__factory(deployer).deploy();
 
     let facetCuts = [
-      await new ProxyManager__factory(deployer).deploy(premiaDiamond.address),
+      await new ProxyManager__factory(deployer).deploy(poolDiamond.address),
     ].map(function (f) {
       return {
         target: f.address,
@@ -180,11 +181,7 @@ export class PoolUtil {
       };
     });
 
-    await premiaDiamond.diamondCut(
-      facetCuts,
-      ethers.constants.AddressZero,
-      '0x',
-    );
+    await poolDiamond.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
 
     //
 
