@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import {KeeperCompatibleInterface} from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import {IProxyManager} from "../core/IProxyManager.sol";
+import {IPoolExercise} from "../pool/IPoolExercise.sol";
 import {IPool} from "../pool/IPool.sol";
 import {IERC1155Enumerable} from "../interface/IERC1155Enumerable.sol";
 import {PoolStorage} from "../pool/PoolStorage.sol";
@@ -54,6 +55,6 @@ contract ProcessExpiredKeeper is KeeperCompatibleInterface {
             (address, uint256, uint256)
         );
 
-        IPool(pool).processExpired(longTokenId, supply);
+        IPoolExercise(pool).processExpired(longTokenId, supply);
     }
 }

@@ -4,6 +4,7 @@ import {
   ManagedProxyOwnable,
   ManagedProxyOwnable__factory,
   OptionMath__factory,
+  PoolExercise__factory,
   PoolMock,
   PoolMock__factory,
   Premia,
@@ -144,6 +145,8 @@ export class PoolUtil {
     const premiaDiamond = await new Premia__factory(deployer).deploy();
     const poolDiamond = await new Premia__factory(deployer).deploy();
 
+    //
+
     let facetCuts = [
       await new ProxyManager__factory(deployer).deploy(poolDiamond.address),
     ].map(function (f) {
@@ -160,6 +163,8 @@ export class PoolUtil {
       ethers.constants.AddressZero,
       '0x',
     );
+
+    //
 
     facetCuts = [
       await new PoolMock__factory(
@@ -180,6 +185,35 @@ export class PoolUtil {
           .map((fn) => f.interface.getSighash(fn)),
       };
     });
+
+    await poolDiamond.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
+
+    //
+
+    const poolExerciseImpl = await new PoolExercise__factory(
+      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      deployer,
+    ).deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+      260,
+    );
+
+    const fns = poolExerciseImpl.interface.functions;
+    const selectors = [
+      fns['processExpired(uint256,uint256)'],
+      fns['exerciseFrom(address,uint256,uint256)'],
+    ].map((fn) => poolExerciseImpl.interface.getSighash(fn));
+
+    facetCuts = [
+      {
+        target: poolExerciseImpl.address as string,
+        action: 0,
+        selectors,
+      },
+    ];
 
     await poolDiamond.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
 

@@ -3,6 +3,8 @@ import { ethers } from 'hardhat';
 import {
   ERC20Mock,
   ERC20Mock__factory,
+  PoolExercise,
+  PoolExercise__factory,
   PoolMock,
   PremiaFeeDiscount,
   PremiaFeeDiscount__factory,
@@ -53,6 +55,7 @@ describe('PoolProxy', function () {
   let xPremia: ERC20Mock;
   let premiaFeeDiscount: PremiaFeeDiscount;
   let pool: PoolMock;
+  let poolExercise: PoolExercise;
   let poolWeth: PoolMock;
   let p: PoolUtil;
 
@@ -107,6 +110,7 @@ describe('PoolProxy', function () {
     );
 
     pool = p.pool;
+    poolExercise = PoolExercise__factory.connect(p.pool.address, owner);
     poolWeth = p.poolWeth;
   });
 
@@ -930,7 +934,7 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            pool
+            poolExercise
               .connect(buyer)
               .exerciseFrom(buyer.address, shortTokenId, parseUnderlying('1')),
           ).to.be.revertedWith('invalid type');
@@ -956,7 +960,7 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            pool
+            poolExercise
               .connect(buyer)
               .exerciseFrom(buyer.address, longTokenId, parseUnderlying('1')),
           ).to.be.revertedWith('not ITM');
@@ -1017,7 +1021,7 @@ describe('PoolProxy', function () {
 
           const curBalance = await p.getToken(isCall).balanceOf(buyer.address);
 
-          await pool
+          await poolExercise
             .connect(buyer)
             .exerciseFrom(buyer.address, longTokenId, amount);
 
@@ -1082,7 +1086,7 @@ describe('PoolProxy', function () {
 
           const curBalance = await p.getToken(isCall).balanceOf(buyer.address);
 
-          await pool
+          await poolExercise
             .connect(buyer)
             .exerciseFrom(buyer.address, longTokenId, amount);
 
@@ -1138,7 +1142,7 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            pool
+            poolExercise
               .connect(thirdParty)
               .exerciseFrom(buyer.address, longTokenId, amount),
           ).to.be.revertedWith('not approved');
@@ -1178,7 +1182,7 @@ describe('PoolProxy', function () {
 
           await pool.connect(buyer).setApprovalForAll(thirdParty.address, true);
 
-          await pool
+          await poolExercise
             .connect(thirdParty)
             .exerciseFrom(buyer.address, longTokenId, amount);
 
@@ -1237,7 +1241,7 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            pool
+            poolExercise
               .connect(buyer)
               .processExpired(longTokenId, parseUnderlying('1')),
           ).to.be.revertedWith('not expired');
@@ -1285,7 +1289,7 @@ describe('PoolProxy', function () {
           ).to.almost(fixedToNumber(quote.baseCost64x64));
 
           // Process expired
-          await pool
+          await poolExercise
             .connect(buyer)
             .processExpired(tokenId.long, parseUnderlying('1'));
 
@@ -1360,7 +1364,7 @@ describe('PoolProxy', function () {
           ).to.almost(fixedToNumber(quote.baseCost64x64));
 
           // Process expired
-          await pool
+          await poolExercise
             .connect(buyer)
             .processExpired(tokenId.long, parseUnderlying('1'));
 
@@ -1428,7 +1432,7 @@ describe('PoolProxy', function () {
       const price = isCall ? strike * 0.7 : strike * 1.4;
       await p.setUnderlyingPrice(parseUnits(price.toString(), 8));
 
-      await pool
+      await poolExercise
         .connect(buyer)
         .processExpired(tokenId.long, parseUnderlying('1'));
 
