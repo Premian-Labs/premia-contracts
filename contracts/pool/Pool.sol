@@ -14,13 +14,13 @@ import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
 import {IPremiaFeeDiscount} from "../interface/IPremiaFeeDiscount.sol";
-import "./IPool.sol";
+import {IPool} from "./IPool.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract Pool is OwnableInternal, ERC1155Enumerable, ERC165, IPool {
+contract Pool is IPool, OwnableInternal, ERC1155Enumerable, ERC165 {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -363,14 +363,6 @@ contract Pool is OwnableInternal, ERC1155Enumerable, ERC165, IPool {
         override
     {
         _exercise(address(0), longTokenId, contractSize);
-    }
-
-    /**
-     * @notice process all expired option for a tokenId, freeing liquidity and distributing profits
-     * @param longTokenId long option token id
-     */
-    function processAllExpired(uint256 longTokenId) external override {
-        _exercise(address(0), longTokenId, totalSupply(longTokenId));
     }
 
     /**

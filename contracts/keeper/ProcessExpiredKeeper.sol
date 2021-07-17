@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 import {KeeperCompatibleInterface} from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import {IProxyManager} from "../core/IProxyManager.sol";
 import {IPool} from "../pool/IPool.sol";
+import {IERC1155Enumerable} from "../interface/IERC1155Enumerable.sol";
 import {PoolStorage} from "../pool/PoolStorage.sol";
 
 contract ProcessExpiredKeeper is KeeperCompatibleInterface {
@@ -39,7 +40,7 @@ contract ProcessExpiredKeeper is KeeperCompatibleInterface {
                 ) continue;
                 if (maturity > block.timestamp) continue;
 
-                return (true, abi.encode(pool, tokenIds[j]));
+                return (true, abi.encode(address(pool), tokenIds[j]));
             }
         }
 
@@ -47,11 +48,14 @@ contract ProcessExpiredKeeper is KeeperCompatibleInterface {
     }
 
     function performUpkeep(bytes calldata performData) external override {
-        (IPool pool, uint256 longTokenId) = abi.decode(
+        (address pool, uint256 longTokenId) = abi.decode(
             performData,
-            (IPool, uint256)
+            (address, uint256)
         );
 
-        pool.processAllExpired(longTokenId);
+        uint256 supply = IERC1155Enumerable(pool).totalSupply(longTokenId);
+        if (supply > 0) {
+            IPool(pool).processExpired(longTokenId, supply);
+        }
     }
 }
