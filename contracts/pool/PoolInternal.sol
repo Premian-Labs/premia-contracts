@@ -29,7 +29,6 @@ contract PoolInternal is ERC1155Enumerable, ERC165 {
     address immutable FEE_DISCOUNT_ADDRESS;
 
     int128 immutable FEE_64x64;
-    uint256 immutable BATCHING_PERIOD;
 
     uint256 immutable UNDERLYING_FREE_LIQ_TOKEN_ID;
     uint256 immutable BASE_FREE_LIQ_TOKEN_ID;
@@ -38,6 +37,7 @@ contract PoolInternal is ERC1155Enumerable, ERC165 {
     uint256 immutable BASE_RESERVED_LIQ_TOKEN_ID;
 
     uint256 constant INVERSE_BASIS_POINT = 1e4;
+    uint256 constant BATCHING_PERIOD = 260;
 
     event Purchase(
         address indexed user,
@@ -105,15 +105,13 @@ contract PoolInternal is ERC1155Enumerable, ERC165 {
         address weth,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64,
-        uint256 batchingPeriod
+        int128 fee64x64
     ) {
         WETH_ADDRESS = weth;
         FEE_RECEIVER_ADDRESS = feeReceiver;
         // PremiaFeeDiscount contract address
         FEE_DISCOUNT_ADDRESS = feeDiscountAddress;
         FEE_64x64 = fee64x64;
-        BATCHING_PERIOD = batchingPeriod;
 
         UNDERLYING_FREE_LIQ_TOKEN_ID = PoolStorage.formatTokenId(
             PoolStorage.TokenType.UNDERLYING_FREE_LIQ,

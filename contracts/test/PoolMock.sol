@@ -21,7 +21,7 @@ contract PoolMock is PoolWrite {
         address feeReceiver,
         address feeDiscount,
         int128 fee64x64
-    ) PoolWrite(weth, feeReceiver, feeDiscount, fee64x64, 260) {}
+    ) PoolWrite(weth, feeReceiver, feeDiscount, fee64x64) {}
 
     function tokenIdFor(
         PoolStorage.TokenType tokenType,

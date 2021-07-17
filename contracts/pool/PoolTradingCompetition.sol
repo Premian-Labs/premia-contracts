@@ -30,9 +30,8 @@ contract PoolTradingCompetition is PoolWrite {
     constructor(
         address weth,
         address feeReceiver,
-        int128 fee64x64,
-        uint256 batchingPeriod
-    ) PoolWrite(weth, feeReceiver, address(0), fee64x64, batchingPeriod) {}
+        int128 fee64x64
+    ) PoolWrite(weth, feeReceiver, address(0), fee64x64) {}
 
     function getAscending(bool isCall, address addr)
         external

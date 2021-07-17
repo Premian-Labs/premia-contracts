@@ -189,7 +189,6 @@ export class PoolUtil {
       feeReceiver,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
-      260,
     );
     registeredSelectors = registeredSelectors.concat(
       await PoolUtil.diamondCut(
@@ -208,7 +207,6 @@ export class PoolUtil {
       feeReceiver,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
-      260,
     );
     registeredSelectors = registeredSelectors.concat(
       await PoolUtil.diamondCut(
@@ -230,7 +228,6 @@ export class PoolUtil {
       feeReceiver,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
-      260,
     );
     registeredSelectors = registeredSelectors.concat(
       await PoolUtil.diamondCut(

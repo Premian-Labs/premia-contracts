@@ -23,17 +23,8 @@ contract PoolIO is IPoolIO, PoolInternal {
         address weth,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64,
-        uint256 batchingPeriod
-    )
-        PoolInternal(
-            weth,
-            feeReceiver,
-            feeDiscountAddress,
-            fee64x64,
-            batchingPeriod
-        )
-    {}
+        int128 fee64x64
+    ) PoolInternal(weth, feeReceiver, feeDiscountAddress, fee64x64) {}
 
     /**
      * @notice set timestamp after which reinvestment is disabled
