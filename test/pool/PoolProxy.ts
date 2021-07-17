@@ -6,6 +6,8 @@ import {
   PoolExercise,
   PoolExercise__factory,
   PoolMock,
+  PoolView,
+  PoolView__factory,
   PremiaFeeDiscount,
   PremiaFeeDiscount__factory,
 } from '../../typechain';
@@ -56,6 +58,7 @@ describe('PoolProxy', function () {
   let premiaFeeDiscount: PremiaFeeDiscount;
   let pool: PoolMock;
   let poolExercise: PoolExercise;
+  let poolView: PoolView;
   let poolWeth: PoolMock;
   let p: PoolUtil;
 
@@ -111,6 +114,8 @@ describe('PoolProxy', function () {
 
     pool = p.pool;
     poolExercise = PoolExercise__factory.connect(p.pool.address, owner);
+    poolView = PoolView__factory.connect(p.pool.address, owner);
+
     poolWeth = p.poolWeth;
   });
 
@@ -365,7 +370,7 @@ describe('PoolProxy', function () {
 
   describe('#getUnderlying', function () {
     it('returns underlying address', async () => {
-      expect((await pool.getPoolSettings()).underlying).to.eq(
+      expect((await poolView.getPoolSettings()).underlying).to.eq(
         p.underlying.address,
       );
     });
@@ -373,7 +378,7 @@ describe('PoolProxy', function () {
 
   describe('#getBase', function () {
     it('returns base address', async () => {
-      expect((await pool.getPoolSettings()).base).to.eq(p.base.address);
+      expect((await poolView.getPoolSettings()).base).to.eq(p.base.address);
     });
   });
 
@@ -1418,7 +1423,7 @@ describe('PoolProxy', function () {
 
       const optionId = getOptionTokenIds(maturity, strike64x64, isCall);
 
-      let tokenIds = await pool.getTokenIds();
+      let tokenIds = await poolView.getTokenIds();
       expect(tokenIds.length).to.eq(4);
       expect(tokenIds[0]).to.eq(p.getFreeLiqTokenId(isCall));
       expect(tokenIds[1]).to.eq(optionId.long);
@@ -1436,7 +1441,7 @@ describe('PoolProxy', function () {
         .connect(buyer)
         .processExpired(tokenId.long, parseUnderlying('1'));
 
-      tokenIds = await pool.getTokenIds();
+      tokenIds = await poolView.getTokenIds();
       expect(tokenIds.length).to.eq(2);
       expect(tokenIds[0]).to.eq(p.getFreeLiqTokenId(isCall));
       expect(tokenIds[1]).to.eq(p.getReservedLiqTokenId(isCall));

@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {KeeperCompatibleInterface} from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
 import {IProxyManager} from "../core/IProxyManager.sol";
 import {IPoolExercise} from "../pool/IPoolExercise.sol";
-import {IPool} from "../pool/IPool.sol";
+import {IPoolView} from "../pool/IPoolView.sol";
 import {IERC1155Enumerable} from "../interface/IERC1155Enumerable.sol";
 import {PoolStorage} from "../pool/PoolStorage.sol";
 
@@ -24,7 +24,7 @@ contract ProcessExpiredKeeper is KeeperCompatibleInterface {
         address[] memory poolList = IProxyManager(PREMIA_DIAMOND).getPoolList();
 
         for (uint256 i = 0; i < poolList.length; i++) {
-            uint256[] memory tokenIds = IPool(poolList[i]).getTokenIds();
+            uint256[] memory tokenIds = IPoolView(poolList[i]).getTokenIds();
 
             for (uint256 j = 0; j < tokenIds.length; j++) {
                 (

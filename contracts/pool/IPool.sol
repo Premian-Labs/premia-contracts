@@ -6,6 +6,4 @@ interface IPool {
     function withdrawFees()
         external
         returns (uint256 amountOutCall, uint256 amountOutPut);
-
-    function getTokenIds() external view returns (uint256[] memory);
 }

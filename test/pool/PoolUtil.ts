@@ -7,6 +7,7 @@ import {
   PoolExercise__factory,
   PoolMock,
   PoolMock__factory,
+  PoolView__factory,
   Premia,
   Premia__factory,
   ProxyManager__factory,
@@ -188,7 +189,8 @@ export class PoolUtil {
 
     await poolDiamond.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
 
-    //
+    //////////////////////////////////////////////
+    //////////////////////////////////////////////
 
     const poolExerciseImpl = await new PoolExercise__factory(
       { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
@@ -201,15 +203,47 @@ export class PoolUtil {
       260,
     );
 
-    const fns = poolExerciseImpl.interface.functions;
-    const selectors = [
-      fns['processExpired(uint256,uint256)'],
-      fns['exerciseFrom(address,uint256,uint256)'],
+    let fnExercise = poolExerciseImpl.interface.functions;
+    let selectors = [
+      fnExercise['processExpired(uint256,uint256)'],
+      fnExercise['exerciseFrom(address,uint256,uint256)'],
     ].map((fn) => poolExerciseImpl.interface.getSighash(fn));
 
     facetCuts = [
       {
         target: poolExerciseImpl.address as string,
+        action: 0,
+        selectors,
+      },
+    ];
+
+    await poolDiamond.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
+
+    //////////////////////////////////////////////
+    //////////////////////////////////////////////
+
+    const poolViewImpl = await new PoolView__factory(deployer).deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+      260,
+    );
+
+    const fnView = poolViewImpl.interface.functions;
+    selectors = [
+      fnView['getPoolSettings()'],
+      fnView['getTokenIds()'],
+      fnView['getCLevel64x64(bool)'],
+      fnView['getEmaLogReturns64x64()'],
+      fnView['getEmaVarianceAnnualized64x64()'],
+      fnView['getPrice(uint256)'],
+      fnView['getParametersForTokenId(uint256)'],
+    ].map((fn) => poolExerciseImpl.interface.getSighash(fn));
+
+    facetCuts = [
+      {
+        target: poolViewImpl.address as string,
         action: 0,
         selectors,
       },
@@ -252,6 +286,7 @@ export class PoolUtil {
     let poolAddress = (await tx.wait()).events![0].args!.pool;
     const proxy = ManagedProxyOwnable__factory.connect(poolAddress, deployer);
     const pool = PoolMock__factory.connect(poolAddress, deployer);
+    const poolView = PoolView__factory.connect(poolAddress, deployer);
 
     //
 
@@ -269,7 +304,7 @@ export class PoolUtil {
     //
 
     underlying = ERC20Mock__factory.connect(
-      (await pool.getPoolSettings()).underlying,
+      (await poolView.getPoolSettings()).underlying,
       deployer,
     );
 
