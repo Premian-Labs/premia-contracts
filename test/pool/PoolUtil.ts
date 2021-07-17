@@ -1,12 +1,11 @@
 import {
   ERC20Mock,
   ERC20Mock__factory,
-  ManagedProxyOwnable,
-  ManagedProxyOwnable__factory,
   OptionMath__factory,
+  Pool,
+  Pool__factory,
   PoolExercise__factory,
   PoolIO__factory,
-  PoolMock,
   PoolMock__factory,
   PoolView__factory,
   Premia,
@@ -36,14 +35,13 @@ export const FEE = 0.01;
 
 interface PoolUtilArgs {
   premiaDiamond: Premia;
-  pool: PoolMock;
-  poolWeth: PoolMock;
+  pool: Pool;
+  poolWeth: Pool;
   underlying: ERC20Mock;
   underlyingWeth: WETH9;
   base: ERC20Mock;
   baseOracle: MockContract;
   underlyingOracle: MockContract;
-  proxy: ManagedProxyOwnable;
 }
 
 const ONE_DAY = 3600 * 24;
@@ -102,14 +100,13 @@ export function getExerciseValue(
 
 export class PoolUtil {
   premiaDiamond: Premia;
-  pool: PoolMock;
-  poolWeth: PoolMock;
+  pool: Pool;
+  poolWeth: Pool;
   underlying: ERC20Mock;
   underlyingWeth: WETH9;
   base: ERC20Mock;
   baseOracle: MockContract;
   underlyingOracle: MockContract;
-  proxy: ManagedProxyOwnable;
 
   constructor(props: PoolUtilArgs) {
     this.premiaDiamond = props.premiaDiamond;
@@ -120,7 +117,6 @@ export class PoolUtil {
     this.base = props.base;
     this.baseOracle = props.baseOracle;
     this.underlyingOracle = props.underlyingOracle;
-    this.proxy = props.proxy;
   }
 
   static async deploy(
@@ -278,8 +274,7 @@ export class PoolUtil {
     );
 
     let poolAddress = (await tx.wait()).events![0].args!.pool;
-    const proxy = ManagedProxyOwnable__factory.connect(poolAddress, deployer);
-    const pool = PoolMock__factory.connect(poolAddress, deployer);
+    const pool = Pool__factory.connect(poolAddress, deployer);
     const poolView = PoolView__factory.connect(poolAddress, deployer);
 
     //
@@ -293,7 +288,7 @@ export class PoolUtil {
     );
 
     poolAddress = (await tx.wait()).events![0].args!.pool;
-    const poolWeth = PoolMock__factory.connect(poolAddress, deployer);
+    const poolWeth = Pool__factory.connect(poolAddress, deployer);
 
     //
 
@@ -311,7 +306,6 @@ export class PoolUtil {
       base,
       baseOracle,
       underlyingOracle,
-      proxy,
     });
   }
 

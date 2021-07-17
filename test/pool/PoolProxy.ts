@@ -3,13 +3,9 @@ import { ethers } from 'hardhat';
 import {
   ERC20Mock,
   ERC20Mock__factory,
-  PoolExercise,
-  PoolExercise__factory,
-  PoolIO,
-  PoolIO__factory,
+  Pool,
   PoolMock,
-  PoolView,
-  PoolView__factory,
+  PoolMock__factory,
   PremiaFeeDiscount,
   PremiaFeeDiscount__factory,
 } from '../../typechain';
@@ -59,13 +55,9 @@ describe('PoolProxy', function () {
   let xPremia: ERC20Mock;
   let premiaFeeDiscount: PremiaFeeDiscount;
 
-  let pool: PoolMock;
-  let poolExercise: PoolExercise;
-  let poolView: PoolView;
-  let poolIO: PoolIO;
-
-  let poolWeth: PoolMock;
-  let poolWethIO: PoolIO;
+  let pool: Pool;
+  let poolMock: PoolMock;
+  let poolWeth: Pool;
   let p: PoolUtil;
 
   const underlyingFreeLiqToken = formatTokenId({
@@ -119,12 +111,8 @@ describe('PoolProxy', function () {
     );
 
     pool = p.pool;
-    poolExercise = PoolExercise__factory.connect(p.pool.address, owner);
-    poolView = PoolView__factory.connect(p.pool.address, owner);
-    poolIO = PoolIO__factory.connect(p.pool.address, owner);
-
+    poolMock = PoolMock__factory.connect(p.pool.address, owner);
     poolWeth = p.poolWeth;
-    poolWethIO = PoolIO__factory.connect(p.poolWeth.address, owner);
   });
 
   // describeBehaviorOfManagedProxyOwnable({
@@ -150,20 +138,20 @@ describe('PoolProxy', function () {
         return hexZeroPad(hexlify(value), 20);
       };
       const removeAddress = async (value: number) => {
-        await pool.removeUnderwriter(formatAddress(value), true);
+        await poolMock.removeUnderwriter(formatAddress(value), true);
         queue = queue.filter((el) => el !== value);
-        expect(await pool.getUnderwriter()).to.eq(
+        expect(await poolMock.getUnderwriter()).to.eq(
           formatAddress(queue.length ? queue[0] : 0),
         );
       };
       const addAddress = async (value: number) => {
-        await pool.addUnderwriter(formatAddress(value), true);
+        await poolMock.addUnderwriter(formatAddress(value), true);
 
         if (!queue.includes(value)) {
           queue.push(value);
         }
 
-        expect(await pool.getUnderwriter()).to.eq(formatAddress(queue[0]));
+        expect(await poolMock.getUnderwriter()).to.eq(formatAddress(queue[0]));
       };
 
       let i = 1;
@@ -190,7 +178,7 @@ describe('PoolProxy', function () {
         await removeAddress(queue[0]);
       }
 
-      expect(await pool.getUnderwriter()).to.eq(ZERO_ADDRESS);
+      expect(await poolMock.getUnderwriter()).to.eq(ZERO_ADDRESS);
     });
   });
 
@@ -209,11 +197,11 @@ describe('PoolProxy', function () {
     const PRICE = 1234;
 
     const setPriceUpdate = async (timestamp: number, price: number) => {
-      await pool.setPriceUpdate(timestamp, fixedFromFloat(price));
+      await poolMock.setPriceUpdate(timestamp, fixedFromFloat(price));
     };
 
     const getPriceAfter = async (timestamp: number) => {
-      return fixedToNumber(await pool.getPriceUpdateAfter(timestamp));
+      return fixedToNumber(await poolMock.getPriceUpdateAfter(timestamp));
     };
 
     it('returns price update stored at beginning of sequence', async () => {
@@ -378,7 +366,7 @@ describe('PoolProxy', function () {
 
   describe('#getUnderlying', function () {
     it('returns underlying address', async () => {
-      expect((await poolView.getPoolSettings()).underlying).to.eq(
+      expect((await pool.getPoolSettings()).underlying).to.eq(
         p.underlying.address,
       );
     });
@@ -386,7 +374,7 @@ describe('PoolProxy', function () {
 
   describe('#getBase', function () {
     it('returns base address', async () => {
-      expect((await poolView.getPoolSettings()).base).to.eq(p.base.address);
+      expect((await pool.getPoolSettings()).base).to.eq(p.base.address);
     });
   });
 
@@ -468,7 +456,7 @@ describe('PoolProxy', function () {
       it('should grant sender share tokens with ERC20 deposit', async () => {
         await p.underlying.mint(owner.address, 100);
         await p.underlying.approve(pool.address, ethers.constants.MaxUint256);
-        await expect(() => poolIO.deposit('100', true)).to.changeTokenBalance(
+        await expect(() => pool.deposit('100', true)).to.changeTokenBalance(
           p.underlying,
           owner,
           -100,
@@ -485,18 +473,20 @@ describe('PoolProxy', function () {
           poolWeth.address,
           ethers.constants.MaxUint256,
         );
-        await expect(() =>
-          poolWethIO.deposit('50', true),
-        ).to.changeTokenBalance(p.underlyingWeth, owner, -50);
+        await expect(() => poolWeth.deposit('50', true)).to.changeTokenBalance(
+          p.underlyingWeth,
+          owner,
+          -50,
+        );
 
         // Use ETH
         await expect(() =>
-          poolWethIO.deposit('200', true, { value: 200 }),
+          poolWeth.deposit('200', true, { value: 200 }),
         ).to.changeEtherBalance(owner, -200);
 
         // Use both ETH and WETH tokens
         await expect(() =>
-          poolWethIO.deposit('100', true, { value: 50 }),
+          poolWeth.deposit('100', true, { value: 50 }),
         ).to.changeEtherBalance(owner, -50);
 
         expect(await p.underlyingWeth.balanceOf(owner.address)).to.eq(0);
@@ -509,13 +499,13 @@ describe('PoolProxy', function () {
         await p.underlying.mint(owner.address, 100);
         await p.underlying.approve(pool.address, ethers.constants.MaxUint256);
         await expect(
-          poolIO.deposit('100', true, { value: 1 }),
+          pool.deposit('100', true, { value: 1 }),
         ).to.be.revertedWith('not WETH deposit');
       });
 
       it('should revert if user send too much ETH with a WETH deposit', async () => {
         await expect(
-          poolWethIO.deposit('200', true, { value: 201 }),
+          poolWeth.deposit('200', true, { value: 201 }),
         ).to.be.revertedWith('too much ETH sent');
       });
     });
@@ -524,7 +514,7 @@ describe('PoolProxy', function () {
       it('should grant sender share tokens with ERC20 deposit', async () => {
         await p.base.mint(owner.address, 100);
         await p.base.approve(pool.address, ethers.constants.MaxUint256);
-        await expect(() => poolIO.deposit('100', false)).to.changeTokenBalance(
+        await expect(() => pool.deposit('100', false)).to.changeTokenBalance(
           p.base,
           owner,
           -100,
@@ -542,12 +532,12 @@ describe('PoolProxy', function () {
         it('should fail withdrawing if < 1 day after deposit', async () => {
           await p.depositLiquidity(owner, 100, isCall);
 
-          await expect(poolIO.withdraw('100', isCall)).to.be.revertedWith(
+          await expect(pool.withdraw('100', isCall)).to.be.revertedWith(
             'liq lock 1d',
           );
 
           await increaseTimestamp(23 * 3600);
-          await expect(poolIO.withdraw('100', isCall)).to.be.revertedWith(
+          await expect(pool.withdraw('100', isCall)).to.be.revertedWith(
             'liq lock 1d',
           );
         });
@@ -557,7 +547,7 @@ describe('PoolProxy', function () {
           expect(await p.getToken(isCall).balanceOf(owner.address)).to.eq(0);
 
           await increaseTimestamp(24 * 3600 + 60);
-          await poolIO.withdraw('100', isCall);
+          await pool.withdraw('100', isCall);
           expect(await p.getToken(isCall).balanceOf(owner.address)).to.eq(100);
           expect(
             await pool.balanceOf(owner.address, p.getFreeLiqTokenId(isCall)),
@@ -603,7 +593,7 @@ describe('PoolProxy', function () {
             parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
-          await pool.setCLevel(isCall, fixedFromFloat('0.1'));
+          await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
 
           const maturity = p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(!isCall));
@@ -945,7 +935,7 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            poolExercise
+            pool
               .connect(buyer)
               .exerciseFrom(buyer.address, shortTokenId, parseUnderlying('1')),
           ).to.be.revertedWith('invalid type');
@@ -971,7 +961,7 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            poolExercise
+            pool
               .connect(buyer)
               .exerciseFrom(buyer.address, longTokenId, parseUnderlying('1')),
           ).to.be.revertedWith('not ITM');
@@ -1032,7 +1022,7 @@ describe('PoolProxy', function () {
 
           const curBalance = await p.getToken(isCall).balanceOf(buyer.address);
 
-          await poolExercise
+          await pool
             .connect(buyer)
             .exerciseFrom(buyer.address, longTokenId, amount);
 
@@ -1097,7 +1087,7 @@ describe('PoolProxy', function () {
 
           const curBalance = await p.getToken(isCall).balanceOf(buyer.address);
 
-          await poolExercise
+          await pool
             .connect(buyer)
             .exerciseFrom(buyer.address, longTokenId, amount);
 
@@ -1153,7 +1143,7 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            poolExercise
+            pool
               .connect(thirdParty)
               .exerciseFrom(buyer.address, longTokenId, amount),
           ).to.be.revertedWith('not approved');
@@ -1193,7 +1183,7 @@ describe('PoolProxy', function () {
 
           await pool.connect(buyer).setApprovalForAll(thirdParty.address, true);
 
-          await poolExercise
+          await pool
             .connect(thirdParty)
             .exerciseFrom(buyer.address, longTokenId, amount);
 
@@ -1252,7 +1242,7 @@ describe('PoolProxy', function () {
           });
 
           await expect(
-            poolExercise
+            pool
               .connect(buyer)
               .processExpired(longTokenId, parseUnderlying('1')),
           ).to.be.revertedWith('not expired');
@@ -1300,7 +1290,7 @@ describe('PoolProxy', function () {
           ).to.almost(fixedToNumber(quote.baseCost64x64));
 
           // Process expired
-          await poolExercise
+          await pool
             .connect(buyer)
             .processExpired(tokenId.long, parseUnderlying('1'));
 
@@ -1375,7 +1365,7 @@ describe('PoolProxy', function () {
           ).to.almost(fixedToNumber(quote.baseCost64x64));
 
           // Process expired
-          await poolExercise
+          await pool
             .connect(buyer)
             .processExpired(tokenId.long, parseUnderlying('1'));
 
@@ -1429,7 +1419,7 @@ describe('PoolProxy', function () {
 
       const optionId = getOptionTokenIds(maturity, strike64x64, isCall);
 
-      let tokenIds = await poolView.getTokenIds();
+      let tokenIds = await pool.getTokenIds();
       expect(tokenIds.length).to.eq(4);
       expect(tokenIds[0]).to.eq(p.getFreeLiqTokenId(isCall));
       expect(tokenIds[1]).to.eq(optionId.long);
@@ -1443,11 +1433,11 @@ describe('PoolProxy', function () {
       const price = isCall ? strike * 0.7 : strike * 1.4;
       await p.setUnderlyingPrice(parseUnits(price.toString(), 8));
 
-      await poolExercise
+      await pool
         .connect(buyer)
         .processExpired(tokenId.long, parseUnderlying('1'));
 
-      tokenIds = await poolView.getTokenIds();
+      tokenIds = await pool.getTokenIds();
       expect(tokenIds.length).to.eq(2);
       expect(tokenIds[0]).to.eq(p.getFreeLiqTokenId(isCall));
       expect(tokenIds[1]).to.eq(p.getReservedLiqTokenId(isCall));
@@ -1484,7 +1474,7 @@ describe('PoolProxy', function () {
           await increaseTimestamp(11 * 24 * 3600);
 
           await expect(
-            poolIO.connect(lp1).reassign(shortTokenId, shortTokenBalance),
+            pool.connect(lp1).reassign(shortTokenId, shortTokenBalance),
           ).to.be.revertedWith('expired');
         });
 
@@ -1523,7 +1513,7 @@ describe('PoolProxy', function () {
             shortTokenId,
           );
 
-          await poolIO
+          await pool
             .connect(lp1)
             .withdrawAllAndReassignBatch(
               isCall,
@@ -1660,7 +1650,7 @@ describe('PoolProxy', function () {
           );
           expect(await p.getToken(isCall).balanceOf(lp1.address)).to.eq(0);
 
-          await poolIO.connect(lp1).annihilate(tokenIds.short, amount);
+          await pool.connect(lp1).annihilate(tokenIds.short, amount);
 
           expect(await pool.balanceOf(lp1.address, tokenIds.long)).to.eq(0);
           expect(await pool.balanceOf(lp1.address, tokenIds.short)).to.eq(0);
