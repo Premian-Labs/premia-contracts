@@ -84,12 +84,13 @@ describe('ProcessExpiredKeeper', () => {
 
     await increaseTimestamp(15 * 24 * 3600);
 
+    const supply = await p.pool.totalSupply(tokenIds.long);
     const r = await expKeeper.callStatic.checkUpkeep('0x00');
     expect(r.upkeepNeeded).to.be.true;
     expect(r.performData).to.eq(
       ethers.utils.defaultAbiCoder.encode(
-        ['address', 'uint256'],
-        [p.pool.address, tokenIds.long],
+        ['address', 'uint256', 'uint256'],
+        [p.pool.address, tokenIds.long, supply],
       ),
     );
   });
@@ -155,12 +156,13 @@ describe('ProcessExpiredKeeper', () => {
 
     await increaseTimestamp(15 * 24 * 3600);
 
+    let supply = await p.pool.totalSupply(tokenIds1.long);
     let r = await expKeeper.callStatic.checkUpkeep('0x00');
     expect(r.upkeepNeeded).to.be.true;
     expect(r.performData).to.eq(
       ethers.utils.defaultAbiCoder.encode(
-        ['address', 'uint256'],
-        [p.pool.address, tokenIds1.long],
+        ['address', 'uint256', 'uint256'],
+        [p.pool.address, tokenIds1.long, supply],
       ),
     );
 
@@ -168,12 +170,13 @@ describe('ProcessExpiredKeeper', () => {
     await expKeeper.performUpkeep(r.performData);
     expect(await p.pool.totalSupply(tokenIds1.long)).to.eq(0);
 
+    supply = await p.pool.totalSupply(tokenIds2.long);
     r = await expKeeper.callStatic.checkUpkeep('0x00');
     expect(r.upkeepNeeded).to.be.true;
     expect(r.performData).to.eq(
       ethers.utils.defaultAbiCoder.encode(
-        ['address', 'uint256'],
-        [p.pool.address, tokenIds2.long],
+        ['address', 'uint256', 'uint256'],
+        [p.pool.address, tokenIds2.long, supply],
       ),
     );
 
