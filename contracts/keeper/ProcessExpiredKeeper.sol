@@ -23,9 +23,7 @@ contract ProcessExpiredKeeper is KeeperCompatibleInterface {
         address[] memory poolList = IProxyManager(PREMIA_DIAMOND).getPoolList();
 
         for (uint256 i = 0; i < poolList.length; i++) {
-            IPool pool = IPool(poolList[i]);
-
-            uint256[] memory tokenIds = pool.getTokenIds();
+            uint256[] memory tokenIds = IPool(poolList[i]).getTokenIds();
 
             for (uint256 j = 0; j < tokenIds.length; j++) {
                 (
@@ -40,7 +38,10 @@ contract ProcessExpiredKeeper is KeeperCompatibleInterface {
                 ) continue;
                 if (maturity > block.timestamp) continue;
 
-                return (true, abi.encode(address(pool), tokenIds[j]));
+                uint256 supply = IERC1155Enumerable(poolList[i]).totalSupply(
+                    tokenIds[j]
+                );
+                return (true, abi.encode(poolList[i], tokenIds[j], supply));
             }
         }
 
@@ -48,14 +49,11 @@ contract ProcessExpiredKeeper is KeeperCompatibleInterface {
     }
 
     function performUpkeep(bytes calldata performData) external override {
-        (address pool, uint256 longTokenId) = abi.decode(
+        (address pool, uint256 longTokenId, uint256 supply) = abi.decode(
             performData,
-            (address, uint256)
+            (address, uint256, uint256)
         );
 
-        uint256 supply = IERC1155Enumerable(pool).totalSupply(longTokenId);
-        if (supply > 0) {
-            IPool(pool).processExpired(longTokenId, supply);
-        }
+        IPool(pool).processExpired(longTokenId, supply);
     }
 }
