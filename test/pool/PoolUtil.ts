@@ -16,7 +16,7 @@ import {
   WETH9__factory,
 } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { BigNumber, BigNumberish, ethers } from 'ethers';
+import { BigNumber, BigNumberish, ContractFactory, ethers } from 'ethers';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { increaseTimestamp } from '../utils/evm';
 import {
@@ -149,145 +149,101 @@ export class PoolUtil {
 
     //
 
-    let facetCuts = [
-      await new ProxyManager__factory(deployer).deploy(poolDiamond.address),
-    ].map(function (f) {
-      return {
-        target: f.address,
-        action: 0,
-        selectors: Object.keys(f.interface.functions).map((fn) =>
-          f.interface.getSighash(fn),
-        ),
-      };
-    });
-    await premiaDiamond.diamondCut(
-      facetCuts,
-      ethers.constants.AddressZero,
-      '0x',
+    const proxyManagerFactory = new ProxyManager__factory(deployer);
+    const proxyManager = await proxyManagerFactory.deploy(poolDiamond.address);
+    await PoolUtil.diamondCut(
+      premiaDiamond,
+      proxyManager.address,
+      proxyManagerFactory,
     );
 
-    //
+    //////////////////////////////////////////////
 
-    facetCuts = [
-      await new PoolMock__factory(
-        { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
-        deployer,
-      ).deploy(
-        underlyingWeth.address,
-        feeReceiver,
-        premiaFeeDiscount,
-        fixedFromFloat(FEE),
+    let registeredSelectors = [
+      poolDiamond.interface.getSighash('supportsInterface(bytes4)'),
+    ];
+
+    const poolMockFactory = new PoolMock__factory(
+      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      deployer,
+    );
+    const poolMockImpl = await poolMockFactory.deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+    registeredSelectors = registeredSelectors.concat(
+      await PoolUtil.diamondCut(
+        poolDiamond,
+        poolMockImpl.address,
+        poolMockFactory,
+        registeredSelectors,
       ),
-    ].map(function (f) {
-      return {
-        target: f.address,
-        action: 0,
-        selectors: Object.keys(f.interface.functions)
-          .filter((fn) => fn != 'supportsInterface(bytes4)')
-          .map((fn) => f.interface.getSighash(fn)),
-      };
-    });
-
-    await poolDiamond.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
+    );
 
     //////////////////////////////////////////////
-    //////////////////////////////////////////////
 
-    const poolExerciseImpl = await new PoolExercise__factory(
+    const poolExerciseFactory = new PoolExercise__factory(
       { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
       deployer,
-    ).deploy(
+    );
+    const poolExerciseImpl = await poolExerciseFactory.deploy(
       underlyingWeth.address,
       feeReceiver,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
       260,
     );
-
-    let fnExercise = poolExerciseImpl.interface.functions;
-    let selectors = [
-      fnExercise['processExpired(uint256,uint256)'],
-      fnExercise['exerciseFrom(address,uint256,uint256)'],
-    ].map((fn) => poolExerciseImpl.interface.getSighash(fn));
-
-    facetCuts = [
-      {
-        target: poolExerciseImpl.address as string,
-        action: 0,
-        selectors,
-      },
-    ];
-
-    await poolDiamond.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
+    registeredSelectors = registeredSelectors.concat(
+      await PoolUtil.diamondCut(
+        poolDiamond,
+        poolExerciseImpl.address,
+        poolExerciseFactory,
+        registeredSelectors,
+      ),
+    );
 
     //////////////////////////////////////////////
-    //////////////////////////////////////////////
 
-    const poolViewImpl = await new PoolView__factory(deployer).deploy(
+    const poolViewFactory = new PoolView__factory(deployer);
+    const poolViewImpl = await poolViewFactory.deploy(
       underlyingWeth.address,
       feeReceiver,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
       260,
     );
-
-    const fnView = poolViewImpl.interface.functions;
-    selectors = [
-      fnView['getPoolSettings()'],
-      fnView['getTokenIds()'],
-      fnView['getCLevel64x64(bool)'],
-      fnView['getEmaLogReturns64x64()'],
-      fnView['getEmaVarianceAnnualized64x64()'],
-      fnView['getPrice(uint256)'],
-      fnView['getParametersForTokenId(uint256)'],
-    ].map((fn) => poolViewImpl.interface.getSighash(fn));
-
-    facetCuts = [
-      {
-        target: poolViewImpl.address as string,
-        action: 0,
-        selectors,
-      },
-    ];
-
-    await poolDiamond.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
+    registeredSelectors = registeredSelectors.concat(
+      await PoolUtil.diamondCut(
+        poolDiamond,
+        poolViewImpl.address,
+        poolViewFactory,
+        registeredSelectors,
+      ),
+    );
 
     //////////////////////////////////////////////
-    //////////////////////////////////////////////
 
-    const poolIOImpl = await new PoolIO__factory(
+    const poolIOFactory = new PoolIO__factory(
       { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
       deployer,
-    ).deploy(
+    );
+    const poolIOImpl = await poolIOFactory.deploy(
       underlyingWeth.address,
       feeReceiver,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
       260,
     );
-
-    const fnIO = poolIOImpl.interface.functions;
-    selectors = [
-      fnIO['setDivestmentTimestamp(uint64)'],
-      fnIO['deposit(uint256,bool)'],
-      fnIO['withdraw(uint256,bool)'],
-      fnIO['reassign(uint256,uint256)'],
-      fnIO['reassignBatch(uint256[],uint256[])'],
-      fnIO['withdrawAllAndReassignBatch(bool,uint256[],uint256[])'],
-      fnIO['withdrawFees()'],
-      fnIO['annihilate(uint256,uint256)'],
-    ].map((fn) => poolIOImpl.interface.getSighash(fn));
-
-    facetCuts = [
-      {
-        target: poolIOImpl.address as string,
-        action: 0,
-        selectors,
-      },
-    ];
-
-    await poolDiamond.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
-
+    registeredSelectors = registeredSelectors.concat(
+      await PoolUtil.diamondCut(
+        poolDiamond,
+        poolIOImpl.address,
+        poolIOFactory,
+        registeredSelectors,
+      ),
+    );
     //////////////////////////////////////////////
     //////////////////////////////////////////////
 
@@ -541,5 +497,33 @@ export class PoolUtil {
     return BigNumber.from(
       Math.floor(getCurrentTimestamp() / ONE_DAY) * ONE_DAY + days * ONE_DAY,
     );
+  }
+
+  static async diamondCut(
+    diamond: Premia,
+    contractAddress: string,
+    factory: ContractFactory,
+    excludeList: string[] = [],
+  ) {
+    const registeredSelectors: string[] = [];
+    const facetCuts = [
+      {
+        target: contractAddress,
+        action: 0,
+        selectors: Object.keys(factory.interface.functions)
+          .filter(
+            (fn) => !excludeList.includes(factory.interface.getSighash(fn)),
+          )
+          .map((fn) => {
+            const sl = factory.interface.getSighash(fn);
+            registeredSelectors.push(sl);
+            return sl;
+          }),
+      },
+    ];
+
+    await diamond.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
+
+    return registeredSelectors;
   }
 }
