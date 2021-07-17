@@ -5,6 +5,8 @@ import {
   ERC20Mock__factory,
   PoolExercise,
   PoolExercise__factory,
+  PoolIO,
+  PoolIO__factory,
   PoolMock,
   PoolView,
   PoolView__factory,
@@ -56,10 +58,14 @@ describe('PoolProxy', function () {
 
   let xPremia: ERC20Mock;
   let premiaFeeDiscount: PremiaFeeDiscount;
+
   let pool: PoolMock;
   let poolExercise: PoolExercise;
   let poolView: PoolView;
+  let poolIO: PoolIO;
+
   let poolWeth: PoolMock;
+  let poolWethIO: PoolIO;
   let p: PoolUtil;
 
   const underlyingFreeLiqToken = formatTokenId({
@@ -115,8 +121,10 @@ describe('PoolProxy', function () {
     pool = p.pool;
     poolExercise = PoolExercise__factory.connect(p.pool.address, owner);
     poolView = PoolView__factory.connect(p.pool.address, owner);
+    poolIO = PoolIO__factory.connect(p.pool.address, owner);
 
     poolWeth = p.poolWeth;
+    poolWethIO = PoolIO__factory.connect(p.poolWeth.address, owner);
   });
 
   // describeBehaviorOfManagedProxyOwnable({
@@ -460,7 +468,7 @@ describe('PoolProxy', function () {
       it('should grant sender share tokens with ERC20 deposit', async () => {
         await p.underlying.mint(owner.address, 100);
         await p.underlying.approve(pool.address, ethers.constants.MaxUint256);
-        await expect(() => pool.deposit('100', true)).to.changeTokenBalance(
+        await expect(() => poolIO.deposit('100', true)).to.changeTokenBalance(
           p.underlying,
           owner,
           -100,
@@ -477,20 +485,18 @@ describe('PoolProxy', function () {
           poolWeth.address,
           ethers.constants.MaxUint256,
         );
-        await expect(() => poolWeth.deposit('50', true)).to.changeTokenBalance(
-          p.underlyingWeth,
-          owner,
-          -50,
-        );
+        await expect(() =>
+          poolWethIO.deposit('50', true),
+        ).to.changeTokenBalance(p.underlyingWeth, owner, -50);
 
         // Use ETH
         await expect(() =>
-          poolWeth.deposit('200', true, { value: 200 }),
+          poolWethIO.deposit('200', true, { value: 200 }),
         ).to.changeEtherBalance(owner, -200);
 
         // Use both ETH and WETH tokens
         await expect(() =>
-          poolWeth.deposit('100', true, { value: 50 }),
+          poolWethIO.deposit('100', true, { value: 50 }),
         ).to.changeEtherBalance(owner, -50);
 
         expect(await p.underlyingWeth.balanceOf(owner.address)).to.eq(0);
@@ -503,13 +509,13 @@ describe('PoolProxy', function () {
         await p.underlying.mint(owner.address, 100);
         await p.underlying.approve(pool.address, ethers.constants.MaxUint256);
         await expect(
-          pool.deposit('100', true, { value: 1 }),
+          poolIO.deposit('100', true, { value: 1 }),
         ).to.be.revertedWith('not WETH deposit');
       });
 
       it('should revert if user send too much ETH with a WETH deposit', async () => {
         await expect(
-          poolWeth.deposit('200', true, { value: 201 }),
+          poolWethIO.deposit('200', true, { value: 201 }),
         ).to.be.revertedWith('too much ETH sent');
       });
     });
@@ -518,7 +524,7 @@ describe('PoolProxy', function () {
       it('should grant sender share tokens with ERC20 deposit', async () => {
         await p.base.mint(owner.address, 100);
         await p.base.approve(pool.address, ethers.constants.MaxUint256);
-        await expect(() => pool.deposit('100', false)).to.changeTokenBalance(
+        await expect(() => poolIO.deposit('100', false)).to.changeTokenBalance(
           p.base,
           owner,
           -100,
@@ -536,12 +542,12 @@ describe('PoolProxy', function () {
         it('should fail withdrawing if < 1 day after deposit', async () => {
           await p.depositLiquidity(owner, 100, isCall);
 
-          await expect(pool.withdraw('100', isCall)).to.be.revertedWith(
+          await expect(poolIO.withdraw('100', isCall)).to.be.revertedWith(
             'liq lock 1d',
           );
 
           await increaseTimestamp(23 * 3600);
-          await expect(pool.withdraw('100', isCall)).to.be.revertedWith(
+          await expect(poolIO.withdraw('100', isCall)).to.be.revertedWith(
             'liq lock 1d',
           );
         });
@@ -551,7 +557,7 @@ describe('PoolProxy', function () {
           expect(await p.getToken(isCall).balanceOf(owner.address)).to.eq(0);
 
           await increaseTimestamp(24 * 3600 + 60);
-          await pool.withdraw('100', isCall);
+          await poolIO.withdraw('100', isCall);
           expect(await p.getToken(isCall).balanceOf(owner.address)).to.eq(100);
           expect(
             await pool.balanceOf(owner.address, p.getFreeLiqTokenId(isCall)),
@@ -1478,7 +1484,7 @@ describe('PoolProxy', function () {
           await increaseTimestamp(11 * 24 * 3600);
 
           await expect(
-            pool.connect(lp1).reassign(shortTokenId, shortTokenBalance),
+            poolIO.connect(lp1).reassign(shortTokenId, shortTokenBalance),
           ).to.be.revertedWith('expired');
         });
 
@@ -1517,7 +1523,7 @@ describe('PoolProxy', function () {
             shortTokenId,
           );
 
-          await pool
+          await poolIO
             .connect(lp1)
             .withdrawAllAndReassignBatch(
               isCall,
@@ -1654,7 +1660,7 @@ describe('PoolProxy', function () {
           );
           expect(await p.getToken(isCall).balanceOf(lp1.address)).to.eq(0);
 
-          await pool.connect(lp1).annihilate(tokenIds.short, amount);
+          await poolIO.connect(lp1).annihilate(tokenIds.short, amount);
 
           expect(await pool.balanceOf(lp1.address, tokenIds.long)).to.eq(0);
           expect(await pool.balanceOf(lp1.address, tokenIds.short)).to.eq(0);

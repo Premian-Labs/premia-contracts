@@ -5,6 +5,7 @@ import {
   ManagedProxyOwnable__factory,
   OptionMath__factory,
   PoolExercise__factory,
+  PoolIO__factory,
   PoolMock,
   PoolMock__factory,
   PoolView__factory,
@@ -239,7 +240,7 @@ export class PoolUtil {
       fnView['getEmaVarianceAnnualized64x64()'],
       fnView['getPrice(uint256)'],
       fnView['getParametersForTokenId(uint256)'],
-    ].map((fn) => poolExerciseImpl.interface.getSighash(fn));
+    ].map((fn) => poolViewImpl.interface.getSighash(fn));
 
     facetCuts = [
       {
@@ -251,7 +252,44 @@ export class PoolUtil {
 
     await poolDiamond.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
 
-    //
+    //////////////////////////////////////////////
+    //////////////////////////////////////////////
+
+    const poolIOImpl = await new PoolIO__factory(
+      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      deployer,
+    ).deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+      260,
+    );
+
+    const fnIO = poolIOImpl.interface.functions;
+    selectors = [
+      fnIO['setDivestmentTimestamp(uint64)'],
+      fnIO['deposit(uint256,bool)'],
+      fnIO['withdraw(uint256,bool)'],
+      fnIO['reassign(uint256,uint256)'],
+      fnIO['reassignBatch(uint256[],uint256[])'],
+      fnIO['withdrawAllAndReassignBatch(bool,uint256[],uint256[])'],
+      fnIO['withdrawFees()'],
+      fnIO['annihilate(uint256,uint256)'],
+    ].map((fn) => poolIOImpl.interface.getSighash(fn));
+
+    facetCuts = [
+      {
+        target: poolIOImpl.address as string,
+        action: 0,
+        selectors,
+      },
+    ];
+
+    await poolDiamond.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
+
+    //////////////////////////////////////////////
+    //////////////////////////////////////////////
 
     const manager = ProxyManager__factory.connect(
       premiaDiamond.address,
@@ -412,7 +450,9 @@ export class PoolUtil {
         .approve(this.pool.address, ethers.constants.MaxUint256);
     }
 
-    await this.pool.connect(lp).deposit(amount, isCall);
+    await PoolIO__factory.connect(this.pool.address, lp)
+      .connect(lp)
+      .deposit(amount, isCall);
 
     await increaseTimestamp(300);
   }
