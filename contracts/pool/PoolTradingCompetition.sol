@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import "./Pool.sol";
+import "./PoolWrite.sol";
 
 library PoolTradingCompetitionStorage {
     bytes32 internal constant STORAGE_SLOT =
@@ -20,7 +20,7 @@ library PoolTradingCompetitionStorage {
     }
 }
 
-contract PoolTradingCompetition is Pool {
+contract PoolTradingCompetition is PoolWrite {
     using EnumerableSet for EnumerableSet.AddressSet;
     using PoolStorage for PoolStorage.Layout;
 
@@ -32,7 +32,7 @@ contract PoolTradingCompetition is Pool {
         address feeReceiver,
         int128 fee64x64,
         uint256 batchingPeriod
-    ) Pool(weth, feeReceiver, address(0), fee64x64, batchingPeriod) {}
+    ) PoolWrite(weth, feeReceiver, address(0), fee64x64, batchingPeriod) {}
 
     function getAscending(bool isCall, address addr)
         external

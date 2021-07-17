@@ -12,7 +12,7 @@ import {PoolInternal} from "./PoolInternal.sol";
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract Pool is PoolInternal {
+contract PoolWrite is PoolInternal {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;

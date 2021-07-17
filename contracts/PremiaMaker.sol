@@ -13,7 +13,7 @@ import {IUniswapV2Router02} from "./uniswapV2/interfaces/IUniswapV2Router02.sol"
 import {IWETH} from "./uniswapV2/interfaces/IWETH.sol";
 
 import {PremiaMakerStorage} from "./PremiaMakerStorage.sol";
-import {IPool} from "./pool/IPool.sol";
+import {IPoolIO} from "./pool/IPoolIO.sol";
 
 /// @author Premia
 /// @title A contract receiving all protocol fees, swapping them for premia
@@ -132,7 +132,7 @@ contract PremiaMaker is OwnableInternal {
         address[] memory _tokens
     ) public {
         for (uint256 i = 0; i < _pools.length; i++) {
-            IPool(_pools[i]).withdrawFees();
+            IPoolIO(_pools[i]).withdrawFees();
         }
 
         for (uint256 i = 0; i < _tokens.length; i++) {
