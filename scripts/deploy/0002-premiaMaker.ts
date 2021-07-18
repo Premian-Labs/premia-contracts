@@ -1,5 +1,8 @@
 import { ethers } from 'hardhat';
-import { PremiaMaker__factory } from '../../typechain';
+import {
+  PremiaMaker__factory,
+  ProxyUpgradeableOwnable__factory,
+} from '../../typechain';
 
 async function main() {
   const [deployer] = await ethers.getSigners();
@@ -13,31 +16,25 @@ async function main() {
     // '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D', // Uniswap router
   ];
 
-  const premiaMaker = await new PremiaMaker__factory(deployer).deploy(
+  const impl = await new PremiaMaker__factory(deployer).deploy(
     premia,
     premiaStaking,
     treasury,
   );
 
-  // Badger custom swap path
-  await premiaMaker.setCustomPath(
-    '0x3472A5A71965499acd81997a54BBA8D852C6E53d',
-    [
-      '0x3472A5A71965499acd81997a54BBA8D852C6E53d', // Badger
-      '0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599', // Wbtc
-      '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2', // Weth
-      premia,
-    ],
-  );
-
   console.log(
-    `PremiaMaker contract deployed at ${premiaMaker.address} (Args : ${premia}, ${premiaStaking}, ${treasury})`,
+    `Implementation contract deployed at ${impl.address} (Args : ${premia}, ${premiaStaking}, ${treasury})`,
   );
 
+  const proxy = await new ProxyUpgradeableOwnable__factory(deployer).deploy(
+    impl.address,
+  );
+
+  const premiaMaker = PremiaMaker__factory.connect(proxy.address, deployer);
   await premiaMaker.addWhitelistedRouter(uniswapRouters);
   console.log('Whitelisted uniswap routers on PremiaMaker');
 
-  await premiaMaker.transferOwnership(treasury);
+  await proxy.transferOwnership(treasury);
   console.log(`PremiaMaker ownership transferred to ${treasury}`);
 }
 

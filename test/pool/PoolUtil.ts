@@ -1,22 +1,22 @@
 import {
   ERC20Mock,
   ERC20Mock__factory,
-  OptionMath__factory,
   IPool,
   IPool__factory,
+  OptionMath__factory,
   PoolExercise__factory,
   PoolIO__factory,
   PoolMock__factory,
   PoolView__factory,
+  PoolWrite__factory,
   Premia,
   Premia__factory,
   ProxyManager__factory,
   WETH9,
   WETH9__factory,
-  PoolWrite__factory,
 } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { BigNumber, BigNumberish, ContractFactory, ethers } from 'ethers';
+import { BigNumber, BigNumberish, ethers } from 'ethers';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { increaseTimestamp } from '../utils/evm';
 import {
@@ -27,6 +27,7 @@ import {
 } from '../utils/math';
 import { formatUnits, parseUnits } from 'ethers/lib/utils';
 import { deployMockContract, MockContract } from 'ethereum-waffle';
+import { diamondCut } from '../../scripts/utils/diamond';
 
 export const DECIMALS_BASE = 18;
 export const DECIMALS_UNDERLYING = 8;
@@ -148,11 +149,7 @@ export class PoolUtil {
 
     const proxyManagerFactory = new ProxyManager__factory(deployer);
     const proxyManager = await proxyManagerFactory.deploy(poolDiamond.address);
-    await PoolUtil.diamondCut(
-      premiaDiamond,
-      proxyManager.address,
-      proxyManagerFactory,
-    );
+    await diamondCut(premiaDiamond, proxyManager.address, proxyManagerFactory);
 
     //////////////////////////////////////////////
 
@@ -171,7 +168,7 @@ export class PoolUtil {
       fixedFromFloat(FEE),
     );
     registeredSelectors = registeredSelectors.concat(
-      await PoolUtil.diamondCut(
+      await diamondCut(
         poolDiamond,
         poolWriteImpl.address,
         poolWriteFactory,
@@ -189,7 +186,7 @@ export class PoolUtil {
       fixedFromFloat(FEE),
     );
     registeredSelectors = registeredSelectors.concat(
-      await PoolUtil.diamondCut(
+      await diamondCut(
         poolDiamond,
         poolMockImpl.address,
         poolMockFactory,
@@ -210,7 +207,7 @@ export class PoolUtil {
       fixedFromFloat(FEE),
     );
     registeredSelectors = registeredSelectors.concat(
-      await PoolUtil.diamondCut(
+      await diamondCut(
         poolDiamond,
         poolExerciseImpl.address,
         poolExerciseFactory,
@@ -228,7 +225,7 @@ export class PoolUtil {
       fixedFromFloat(FEE),
     );
     registeredSelectors = registeredSelectors.concat(
-      await PoolUtil.diamondCut(
+      await diamondCut(
         poolDiamond,
         poolViewImpl.address,
         poolViewFactory,
@@ -249,7 +246,7 @@ export class PoolUtil {
       fixedFromFloat(FEE),
     );
     registeredSelectors = registeredSelectors.concat(
-      await PoolUtil.diamondCut(
+      await diamondCut(
         poolDiamond,
         poolIOImpl.address,
         poolIOFactory,
@@ -507,33 +504,5 @@ export class PoolUtil {
     return BigNumber.from(
       Math.floor(getCurrentTimestamp() / ONE_DAY) * ONE_DAY + days * ONE_DAY,
     );
-  }
-
-  static async diamondCut(
-    diamond: Premia,
-    contractAddress: string,
-    factory: ContractFactory,
-    excludeList: string[] = [],
-  ) {
-    const registeredSelectors: string[] = [];
-    const facetCuts = [
-      {
-        target: contractAddress,
-        action: 0,
-        selectors: Object.keys(factory.interface.functions)
-          .filter(
-            (fn) => !excludeList.includes(factory.interface.getSighash(fn)),
-          )
-          .map((fn) => {
-            const sl = factory.interface.getSighash(fn);
-            registeredSelectors.push(sl);
-            return sl;
-          }),
-      },
-    ];
-
-    await diamond.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
-
-    return registeredSelectors;
   }
 }

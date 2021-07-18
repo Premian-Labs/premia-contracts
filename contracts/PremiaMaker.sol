@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
 import {OwnableInternal} from "@solidstate/contracts/access/OwnableInternal.sol";
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 

@@ -3,17 +3,15 @@ import { parseEther } from 'ethers/lib/utils';
 import { fixedFromFloat } from '../../test/utils/math';
 import {
   OptionMath__factory,
-  Pool,
-  Pool__factory,
-  PoolTradingCompetition,
-  PoolTradingCompetition__factory,
+  PoolExercise__factory,
+  PoolIO__factory,
+  PoolView__factory,
+  PoolWrite__factory,
   Premia__factory,
   ProxyManager__factory,
-  TradingCompetitionFactory,
-  TradingCompetitionFactory__factory,
-  TradingCompetitionMerkle,
-  TradingCompetitionMerkle__factory,
 } from '../../typechain';
+import { diamondCut } from './diamond';
+import { BigNumber } from 'ethers';
 
 export interface TokenAddresses {
   ETH: string;
@@ -24,6 +22,9 @@ export interface TokenAddresses {
 
 export async function deployV2(
   weth: string,
+  fee64x64: BigNumber,
+  feeReceiver: string,
+  premiaFeeDiscount: string,
   tokens: TokenAddresses,
   oracles: TokenAddresses,
   isTestnet: boolean,
@@ -32,32 +33,115 @@ export async function deployV2(
 
   const optionMath = await new OptionMath__factory(deployer).deploy();
 
-  let pool: Pool | PoolTradingCompetition;
-  if (isTestnet) {
-    pool = await new PoolTradingCompetition__factory(
-      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
-      deployer,
-    ).deploy(weth, deployer.address, 0, 260);
-  } else {
-    pool = await new Pool__factory(
-      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
-      deployer,
-    ).deploy(weth, deployer.address, fixedFromFloat(0.01), 260);
-  }
+  const premiaDiamond = await new Premia__factory(deployer).deploy();
+  const poolDiamond = await new Premia__factory(deployer).deploy();
 
-  const facetCuts = [await new ProxyManager__factory(deployer).deploy()].map(
-    function (f) {
-      return {
-        target: f.address,
-        action: 0,
-        selectors: Object.keys(f.interface.functions).map((fn) =>
-          f.interface.getSighash(fn),
-        ),
-      };
-    },
+  //
+
+  const proxyManagerFactory = new ProxyManager__factory(deployer);
+  const proxyManager = await proxyManagerFactory.deploy(poolDiamond.address);
+  await diamondCut(premiaDiamond, proxyManager.address, proxyManagerFactory);
+
+  let registeredSelectors = [
+    poolDiamond.interface.getSighash('supportsInterface(bytes4)'),
+  ];
+
+  //////////////////////////////////////////////
+
+  const poolWriteFactory = new PoolWrite__factory(
+    { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+    deployer,
+  );
+  const poolWriteImpl = await poolWriteFactory.deploy(
+    tokens.ETH,
+    feeReceiver,
+    premiaFeeDiscount,
+    fee64x64,
+  );
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolWriteImpl.address,
+      poolWriteFactory,
+      registeredSelectors,
+    ),
   );
 
-  const instance = await new Premia__factory(deployer).deploy(pool.address);
+  //////////////////////////////////////////////
+
+  const poolExerciseFactory = new PoolExercise__factory(
+    { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+    deployer,
+  );
+  const poolExerciseImpl = await poolExerciseFactory.deploy(
+    tokens.ETH,
+    feeReceiver,
+    premiaFeeDiscount,
+    fee64x64,
+  );
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolExerciseImpl.address,
+      poolExerciseFactory,
+      registeredSelectors,
+    ),
+  );
+
+  //////////////////////////////////////////////
+
+  const poolViewFactory = new PoolView__factory(deployer);
+  const poolViewImpl = await poolViewFactory.deploy(
+    tokens.ETH,
+    feeReceiver,
+    premiaFeeDiscount,
+    fee64x64,
+  );
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolViewImpl.address,
+      poolViewFactory,
+      registeredSelectors,
+    ),
+  );
+
+  //////////////////////////////////////////////
+
+  const poolIOFactory = new PoolIO__factory(
+    { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+    deployer,
+  );
+  const poolIOImpl = await poolIOFactory.deploy(
+    tokens.ETH,
+    feeReceiver,
+    premiaFeeDiscount,
+    fee64x64,
+  );
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolIOImpl.address,
+      poolIOFactory,
+      registeredSelectors,
+    ),
+  );
+
+  //////////////////////////////////////////////
+
+  const facetCuts = [
+    await new ProxyManager__factory(deployer).deploy(poolDiamond.address),
+  ].map(function (f) {
+    return {
+      target: f.address,
+      action: 0,
+      selectors: Object.keys(f.interface.functions).map((fn) =>
+        f.interface.getSighash(fn),
+      ),
+    };
+  });
+
+  const instance = await new Premia__factory(deployer).deploy();
 
   const diamondTx = await instance.diamondCut(
     facetCuts,
@@ -67,71 +151,7 @@ export async function deployV2(
 
   await diamondTx.wait(1);
 
-  let tradingCompetition: TradingCompetitionFactory | undefined;
-  let tradingCompetitionMerkle: TradingCompetitionMerkle | undefined;
-
-  if (isTestnet) {
-    tradingCompetition = await new TradingCompetitionFactory__factory(
-      deployer,
-    ).deploy();
-
-    const wethToken = await tradingCompetition.callStatic.deployToken(
-      'WETH',
-      oracles.ETH,
-    );
-    await (await tradingCompetition.deployToken('WETH', oracles.ETH)).wait(1);
-
-    const daiToken = await tradingCompetition.callStatic.deployToken(
-      'DAI',
-      oracles.DAI,
-    );
-    await (await tradingCompetition.deployToken('DAI', oracles.DAI)).wait(1);
-
-    const wbtcToken = await tradingCompetition.callStatic.deployToken(
-      'wBTC',
-      oracles.BTC,
-    );
-    await (await tradingCompetition.deployToken('wBTC', oracles.BTC)).wait(1);
-
-    const linkToken = await tradingCompetition.callStatic.deployToken(
-      'LINK',
-      oracles.LINK,
-    );
-    await (await tradingCompetition.deployToken('LINK', oracles.LINK)).wait(1);
-
-    tokens = { ETH: wethToken, BTC: wbtcToken, DAI: daiToken, LINK: linkToken };
-
-    tradingCompetitionMerkle = await new TradingCompetitionMerkle__factory(
-      deployer,
-    ).deploy(
-      [wethToken, daiToken, wbtcToken, linkToken],
-      [
-        parseEther('5'),
-        parseEther('20000'),
-        parseEther('0.3'),
-        parseEther('500'),
-      ],
-    );
-
-    await tradingCompetitionMerkle.addMerkleRoot(
-      0,
-      '0x7854e4fea1b4cc79e4c13d6ccb9c31782fb2831a1b12b32b6a02289a5733648a',
-    );
-
-    const tx = await tradingCompetition.addMinters([
-      '0x42014C88ccd07f1dA0E22A5095aAA06D2200b2Ea',
-      '0xFBB8495A691232Cb819b84475F57e76aa9aBb6f1',
-      deployer.address,
-      tradingCompetitionMerkle.address,
-    ]);
-
-    await tx.wait(1);
-  }
-
-  const proxyManager = ProxyManager__factory.connect(
-    instance.address,
-    deployer,
-  );
+  // ToDo : Deploy test tokens pools for testnet
 
   const wethPoolAddress = await proxyManager.callStatic.deployPool(
     tokens.DAI,
@@ -187,15 +207,6 @@ export async function deployV2(
 
   await poolTx.wait(1);
 
-  if (isTestnet && tradingCompetitionMerkle) {
-    await tradingCompetition?.addWhitelisted([
-      wethPoolAddress,
-      wbtcPoolAddress,
-      linkPoolAddress,
-      tradingCompetitionMerkle.address,
-    ]);
-  }
-
   console.log('daiToken', tokens.DAI);
   console.log('wethToken', tokens.ETH);
   console.log('wbtcToken', tokens.BTC);
@@ -203,9 +214,11 @@ export async function deployV2(
   console.log('wethPoolAddress', wethPoolAddress);
   console.log('wbtcPoolAddress', wbtcPoolAddress);
   console.log('linkPoolAddress', linkPoolAddress);
-  console.log('TradingCompetition: ', tradingCompetition?.address);
-  console.log('TradingCompetitionMerkle: ', tradingCompetitionMerkle?.address);
 
+  console.log('PoolWrite implementation:', poolWriteImpl.address);
+  console.log('PoolIO implementation:', poolIOImpl.address);
+  console.log('PoolView implementation:', poolViewImpl.address);
+  console.log('PoolExercise implementation:', poolExerciseImpl.address);
   console.log('Deployer: ', deployer.address);
   console.log('PremiaInstance: ', instance.address);
 }
