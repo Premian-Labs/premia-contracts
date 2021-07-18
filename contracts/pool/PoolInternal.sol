@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import {OwnableInternal} from "@solidstate/contracts/access/OwnableInternal.sol";
 import {ERC165} from "@solidstate/contracts/introspection/ERC165.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155Enumerable, EnumerableSet, ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/ERC1155Enumerable.sol";
@@ -14,108 +13,44 @@ import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
 import {IPremiaFeeDiscount} from "../interface/IPremiaFeeDiscount.sol";
-import {IPool} from "./IPool.sol";
+import {IPoolEvents} from "./IPoolEvents.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract Pool is IPool, OwnableInternal, ERC1155Enumerable, ERC165 {
+contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
     using PoolStorage for PoolStorage.Layout;
 
-    address private immutable WETH_ADDRESS;
-    address private immutable FEE_RECEIVER_ADDRESS;
-    address private immutable FEE_DISCOUNT_ADDRESS;
+    address internal immutable WETH_ADDRESS;
+    address internal immutable FEE_RECEIVER_ADDRESS;
+    address internal immutable FEE_DISCOUNT_ADDRESS;
 
-    int128 private immutable FEE_64x64;
-    uint256 private immutable BATCHING_PERIOD;
+    int128 internal immutable FEE_64x64;
 
-    uint256 private immutable UNDERLYING_FREE_LIQ_TOKEN_ID;
-    uint256 private immutable BASE_FREE_LIQ_TOKEN_ID;
+    uint256 internal immutable UNDERLYING_FREE_LIQ_TOKEN_ID;
+    uint256 internal immutable BASE_FREE_LIQ_TOKEN_ID;
 
-    uint256 private immutable UNDERLYING_RESERVED_LIQ_TOKEN_ID;
-    uint256 private immutable BASE_RESERVED_LIQ_TOKEN_ID;
+    uint256 internal immutable UNDERLYING_RESERVED_LIQ_TOKEN_ID;
+    uint256 internal immutable BASE_RESERVED_LIQ_TOKEN_ID;
 
-    uint256 constant INVERSE_BASIS_POINT = 1e4;
-
-    event Purchase(
-        address indexed user,
-        uint256 longTokenId,
-        uint256 contractSize,
-        uint256 baseCost,
-        uint256 feeCost,
-        int128 spot64x64
-    );
-
-    event Exercise(
-        address indexed user,
-        uint256 longTokenId,
-        uint256 contractSize,
-        uint256 exerciseValue,
-        uint256 fee
-    );
-
-    event Underwrite(
-        address indexed underwriter,
-        address indexed longReceiver,
-        uint256 shortTokenId,
-        uint256 intervalContractSize,
-        uint256 intervalPremium,
-        bool isManualUnderwrite
-    );
-
-    event AssignExercise(
-        address indexed underwriter,
-        uint256 shortTokenId,
-        uint256 freedAmount,
-        uint256 intervalContractSize,
-        uint256 fee
-    );
-
-    event Deposit(address indexed user, bool isCallPool, uint256 amount);
-
-    event Withdrawal(
-        address indexed user,
-        bool isCallPool,
-        uint256 depositedAt,
-        uint256 amount
-    );
-
-    event FeeWithdrawal(bool indexed isCallPool, uint256 amount);
-
-    event Annihilate(uint256 shortTokenId, uint256 amount);
-
-    event UpdateCLevel(
-        bool indexed isCall,
-        int128 cLevel64x64,
-        int128 oldLiquidity64x64,
-        int128 newLiquidity64x64
-    );
-
-    event UpdateVariance(
-        int128 oldEmaLogReturns64x64,
-        int128 oldEmaVariance64x64,
-        int128 logReturns64x64,
-        uint256 oldTimestamp,
-        int128 emaVarianceAnnualized64x64
-    );
+    uint256 internal constant INVERSE_BASIS_POINT = 1e4;
+    uint256 internal constant BATCHING_PERIOD = 260;
 
     constructor(
         address weth,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64,
-        uint256 batchingPeriod
+        int128 fee64x64
     ) {
         WETH_ADDRESS = weth;
         FEE_RECEIVER_ADDRESS = feeReceiver;
         // PremiaFeeDiscount contract address
         FEE_DISCOUNT_ADDRESS = feeDiscountAddress;
         FEE_64x64 = fee64x64;
-        BATCHING_PERIOD = batchingPeriod;
 
         UNDERLYING_FREE_LIQ_TOKEN_ID = PoolStorage.formatTokenId(
             PoolStorage.TokenType.UNDERLYING_FREE_LIQ,
@@ -139,543 +74,6 @@ contract Pool is IPool, OwnableInternal, ERC1155Enumerable, ERC165 {
             0
         );
     }
-
-    /**
-     * @notice get pool settings
-     * @return pool settings
-     */
-    function getPoolSettings()
-        external
-        view
-        returns (PoolStorage.PoolSettings memory)
-    {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        return
-            PoolStorage.PoolSettings(
-                l.underlying,
-                l.base,
-                l.underlyingOracle,
-                l.baseOracle
-            );
-    }
-
-    /**
-     * @notice get the list of all existing token ids
-     * @return list of all existing token ids
-     */
-    function getTokenIds() external view override returns (uint256[] memory) {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        uint256 length = l.tokenIds.length();
-        uint256[] memory result = new uint256[](length);
-
-        for (uint256 i = 0; i < length; i++) {
-            result[i] = l.tokenIds.at(i);
-        }
-
-        return result;
-    }
-
-    /**
-     * @notice get C Level
-     * @return 64x64 fixed point representation of C-Level of Pool after purchase
-     */
-    function getCLevel64x64(bool isCall) external view returns (int128) {
-        return PoolStorage.layout().getCLevel(isCall);
-    }
-
-    /**
-     * @notice get ema log returns
-     * @return 64x64 fixed point representation of natural log of rate of return for current period
-     */
-    function getEmaLogReturns64x64() external view returns (int128) {
-        return PoolStorage.layout().emaLogReturns64x64;
-    }
-
-    /**
-     * @notice get ema variance annualized
-     * @return 64x64 fixed point representation of ema variance annualized
-     */
-    function getEmaVarianceAnnualized64x64() external view returns (int128) {
-        return PoolStorage.layout().emaVarianceAnnualized64x64;
-    }
-
-    /**
-     * @notice get price at timestamp
-     * @return price at timestamp
-     */
-    function getPrice(uint256 timestamp) external view returns (int128) {
-        return PoolStorage.layout().getPriceUpdate(timestamp);
-    }
-
-    /**
-     * @notice get parameters for token id
-     * @return parameters for token id
-     */
-    function getParametersForTokenId(uint256 tokenId)
-        external
-        pure
-        returns (
-            PoolStorage.TokenType,
-            uint64,
-            int128
-        )
-    {
-        return PoolStorage.parseTokenId(tokenId);
-    }
-
-    /**
-     * @notice calculate price of option contract
-     * @param feePayer address of the fee payer
-     * @param maturity timestamp of option maturity
-     * @param strike64x64 64x64 fixed point representation of strike price
-     * @param contractSize size of option contract
-     * @param isCall true for call, false for put
-     * @return baseCost64x64 64x64 fixed point representation of option cost denominated in underlying currency (without fee)
-     * @return feeCost64x64 64x64 fixed point representation of option fee cost denominated in underlying currency for call, or base currency for put
-     * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
-     * @return slippageCoefficient64x64 64x64 fixed point representation of slippage coefficient for given order size
-     */
-    function quote(
-        address feePayer,
-        uint64 maturity,
-        int128 strike64x64,
-        uint256 contractSize,
-        bool isCall
-    )
-        external
-        view
-        returns (
-            int128 baseCost64x64,
-            int128 feeCost64x64,
-            int128 cLevel64x64,
-            int128 slippageCoefficient64x64
-        )
-    {
-        int128 spot64x64;
-        int128 emaVarianceAnnualized64x64;
-
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        if (l.updatedAt != block.timestamp) {
-            (spot64x64, , , , , emaVarianceAnnualized64x64) = _calculateUpdate(
-                PoolStorage.layout()
-            );
-        } else {
-            spot64x64 = l.getPriceUpdate(block.timestamp);
-            emaVarianceAnnualized64x64 = l.emaVarianceAnnualized64x64;
-        }
-
-        (
-            baseCost64x64,
-            feeCost64x64,
-            cLevel64x64,
-            slippageCoefficient64x64
-        ) = _quote(
-            PoolStorage.QuoteArgsInternal(
-                feePayer,
-                maturity,
-                strike64x64,
-                spot64x64,
-                emaVarianceAnnualized64x64,
-                contractSize,
-                isCall
-            )
-        );
-    }
-
-    /**
-     * @notice set timestamp after which reinvestment is disabled
-     * @param timestamp timestamp to begin divestment
-     */
-    function setDivestmentTimestamp(uint64 timestamp) external {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        l.divestmentTimestamps[msg.sender] = timestamp;
-    }
-
-    /**
-     * @notice purchase call option
-     * @param maturity timestamp of option maturity
-     * @param strike64x64 64x64 fixed point representation of strike price
-     * @param contractSize size of option contract
-     * @param isCall true for call, false for put,
-     * @param maxCost maximum acceptable cost after accounting for slippage
-     * @return baseCost quantity of tokens required to purchase long position
-     * @return feeCost quantity of tokens required to pay fees
-     */
-    function purchase(
-        uint64 maturity,
-        int128 strike64x64,
-        uint256 contractSize,
-        bool isCall,
-        uint256 maxCost
-    ) external payable returns (uint256 baseCost, uint256 feeCost) {
-        // TODO: specify payment currency
-
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
-        require(maturity >= block.timestamp + (1 days), "exp < 1 day");
-        require(maturity < block.timestamp + (29 days), "exp > 28 days");
-        require(maturity % (1 days) == 0, "exp not end UTC day");
-
-        (int128 newPrice64x64, ) = _update(l);
-
-        require(strike64x64 <= (newPrice64x64 * 3) / 2, "strike > 1.5x spot");
-        require(strike64x64 >= (newPrice64x64 * 3) / 4, "strike < 0.75x spot");
-
-        (baseCost, feeCost) = _purchase(
-            l,
-            maturity,
-            strike64x64,
-            isCall,
-            contractSize,
-            newPrice64x64
-        );
-
-        require(baseCost + feeCost <= maxCost, "excess slipp");
-
-        _pullFrom(msg.sender, _getPoolToken(isCall), baseCost + feeCost);
-    }
-
-    /**
-     * @notice exercise call option on behalf of holder
-     * @param holder owner of long option tokens to exercise
-     * @param longTokenId long option token id
-     * @param contractSize quantity of tokens to exercise
-     */
-    function exerciseFrom(
-        address holder,
-        uint256 longTokenId,
-        uint256 contractSize
-    ) external {
-        if (msg.sender != holder) {
-            require(isApprovedForAll(holder, msg.sender), "not approved");
-        }
-
-        _exercise(holder, longTokenId, contractSize);
-    }
-
-    /**
-     * @notice process expired option, freeing liquidity and distributing profits
-     * @param longTokenId long option token id
-     * @param contractSize quantity of tokens to process
-     */
-    function processExpired(uint256 longTokenId, uint256 contractSize)
-        external
-        override
-    {
-        _exercise(address(0), longTokenId, contractSize);
-    }
-
-    /**
-     * @notice write call option without using liquidity from the pool on behalf of another address
-     * @param underwriter underwriter of the option from who collateral will be deposited
-     * @param longReceiver address who will receive the long token (Can be the underwriter)
-     * @param maturity timestamp of option maturity
-     * @param strike64x64 64x64 fixed point representation of strike price
-     * @param contractSize quantity of option contract tokens to exercise
-     * @param isCall whether this is a call or a put
-     * @return longTokenId token id of the long call
-     * @return shortTokenId token id of the short call
-     */
-    function writeFrom(
-        address underwriter,
-        address longReceiver,
-        uint64 maturity,
-        int128 strike64x64,
-        uint256 contractSize,
-        bool isCall
-    ) external payable returns (uint256 longTokenId, uint256 shortTokenId) {
-        require(
-            msg.sender == underwriter ||
-                isApprovedForAll(underwriter, msg.sender),
-            "not approved"
-        );
-
-        address token = _getPoolToken(isCall);
-
-        uint256 tokenAmount = isCall
-            ? contractSize
-            : PoolStorage.layout().fromUnderlyingToBaseDecimals(
-                strike64x64.mulu(contractSize)
-            );
-
-        _pullFrom(underwriter, token, tokenAmount);
-
-        longTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, true),
-            maturity,
-            strike64x64
-        );
-        shortTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, false),
-            maturity,
-            strike64x64
-        );
-
-        // mint long option token for underwriter (ERC1155)
-        _mint(longReceiver, longTokenId, contractSize, "");
-        // mint short option token for underwriter (ERC1155)
-        _mint(underwriter, shortTokenId, contractSize, "");
-
-        emit Underwrite(
-            underwriter,
-            longReceiver,
-            shortTokenId,
-            contractSize,
-            0,
-            true
-        );
-    }
-
-    /**
-     * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
-     * @param amount quantity of underlying currency to deposit
-     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
-     */
-    function deposit(uint256 amount, bool isCallPool) external payable {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
-        _processPendingDeposits(l, isCallPool);
-
-        l.depositedAt[msg.sender][isCallPool] = block.timestamp;
-        _pullFrom(msg.sender, _getPoolToken(isCallPool), amount);
-
-        _addToDepositQueue(msg.sender, amount, isCallPool);
-
-        emit Deposit(msg.sender, isCallPool, amount);
-    }
-
-    /**
-     * @notice redeem pool share tokens for underlying asset
-     * @param amount quantity of share tokens to redeem
-     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
-     */
-    function withdraw(uint256 amount, bool isCallPool) public {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        uint256 toWithdraw = amount;
-
-        _processPendingDeposits(l, isCallPool);
-
-        uint256 depositedAt = l.depositedAt[msg.sender][isCallPool];
-
-        require(depositedAt + (1 days) < block.timestamp, "liq lock 1d");
-
-        int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCallPool);
-
-        {
-            uint256 reservedLiqTokenId = _getReservedLiquidityTokenId(
-                isCallPool
-            );
-            uint256 reservedLiquidity = balanceOf(
-                msg.sender,
-                reservedLiqTokenId
-            );
-
-            if (reservedLiquidity > 0) {
-                uint256 reservedLiqToWithdraw;
-                if (reservedLiquidity < toWithdraw) {
-                    reservedLiqToWithdraw = reservedLiquidity;
-                } else {
-                    reservedLiqToWithdraw = toWithdraw;
-                }
-
-                toWithdraw -= reservedLiqToWithdraw;
-                // burn reserved liquidity tokens from sender
-                _burn(msg.sender, reservedLiqTokenId, reservedLiqToWithdraw);
-            }
-        }
-
-        if (toWithdraw > 0) {
-            // burn free liquidity tokens from sender
-            _burn(msg.sender, _getFreeLiquidityTokenId(isCallPool), toWithdraw);
-
-            int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(
-                isCallPool
-            );
-            _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
-        }
-
-        _pushTo(msg.sender, _getPoolToken(isCallPool), amount);
-        emit Withdrawal(msg.sender, isCallPool, depositedAt, amount);
-    }
-
-    /**
-     * @notice reassign short position to new liquidity provider
-     * @param tokenId ERC1155 token id (long or short)
-     * @param contractSize quantity of option contract tokens to reassign
-     * @return baseCost quantity of tokens required to reassign short position
-     * @return feeCost quantity of tokens required to pay fees
-     * @return amountOut TODO
-     */
-    function reassign(uint256 tokenId, uint256 contractSize)
-        external
-        returns (
-            uint256 baseCost,
-            uint256 feeCost,
-            uint256 amountOut
-        )
-    {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        (int128 newPrice64x64, ) = _update(l);
-
-        (
-            PoolStorage.TokenType tokenType,
-            uint64 maturity,
-            int128 strike64x64
-        ) = PoolStorage.parseTokenId(tokenId);
-        bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL ||
-            tokenType == PoolStorage.TokenType.LONG_CALL;
-        (baseCost, feeCost, amountOut) = _reassign(
-            l,
-            maturity,
-            strike64x64,
-            isCall,
-            contractSize,
-            newPrice64x64
-        );
-
-        _pushTo(msg.sender, _getPoolToken(isCall), amountOut);
-    }
-
-    /**
-     * @notice TODO
-     */
-    function reassignBatch(
-        uint256[] calldata tokenIds,
-        uint256[] calldata contractSizes
-    )
-        public
-        returns (
-            uint256[] memory baseCosts,
-            uint256[] memory feeCosts,
-            uint256 amountOutCall,
-            uint256 amountOutPut
-        )
-    {
-        require(tokenIds.length == contractSizes.length, "TODO");
-
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
-        (int128 newPrice64x64, ) = _update(l);
-
-        baseCosts = new uint256[](tokenIds.length);
-        feeCosts = new uint256[](tokenIds.length);
-
-        for (uint256 i; i < tokenIds.length; i++) {
-            (
-                PoolStorage.TokenType tokenType,
-                uint64 maturity,
-                int128 strike64x64
-            ) = PoolStorage.parseTokenId(tokenIds[i]);
-            bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL ||
-                tokenType == PoolStorage.TokenType.LONG_CALL;
-            uint256 amountOut;
-            uint256 contractSize = contractSizes[i];
-            (baseCosts[i], feeCosts[i], amountOut) = _reassign(
-                l,
-                maturity,
-                strike64x64,
-                isCall,
-                contractSize,
-                newPrice64x64
-            );
-
-            if (isCall) {
-                amountOutCall += amountOut;
-            } else {
-                amountOutPut += amountOut;
-            }
-        }
-
-        _pushTo(msg.sender, _getPoolToken(true), amountOutCall);
-
-        _pushTo(msg.sender, _getPoolToken(false), amountOutPut);
-    }
-
-    /**
-     * @notice TODO
-     */
-    function withdrawAllAndReassignBatch(
-        bool isCallPool,
-        uint256[] calldata ids,
-        uint256[] calldata contractSizes
-    )
-        external
-        returns (
-            uint256[] memory baseCosts,
-            uint256[] memory feeCosts,
-            uint256 amountOutCall,
-            uint256 amountOutPut
-        )
-    {
-        uint256 balance = balanceOf(
-            msg.sender,
-            _getFreeLiquidityTokenId(isCallPool)
-        );
-
-        if (balance > 0) {
-            withdraw(balance, isCallPool);
-        }
-
-        (baseCosts, feeCosts, amountOutCall, amountOutPut) = reassignBatch(
-            ids,
-            contractSizes
-        );
-    }
-
-    /**
-     * @notice Update pool data
-     */
-    function update() external returns (int128 newEmaVarianceAnnualized64x64) {
-        (, newEmaVarianceAnnualized64x64) = _update(PoolStorage.layout());
-    }
-
-    /**
-     * @notice TODO
-     */
-    function withdrawFees()
-        external
-        override
-        returns (uint256 amountOutCall, uint256 amountOutPut)
-    {
-        amountOutCall = _withdrawFees(true);
-        amountOutPut = _withdrawFees(false);
-        _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(true), amountOutCall);
-        _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(false), amountOutPut);
-    }
-
-    /**
-     * @notice Burn long and short tokens to withdraw collateral
-     * @param tokenId ERC1155 token id (long or short)
-     * @param contractSize quantity of option contract tokens to annihilate
-     */
-    function annihilate(uint256 tokenId, uint256 contractSize) external {
-        (
-            PoolStorage.TokenType tokenType,
-            uint64 maturity,
-            int128 strike64x64
-        ) = PoolStorage.parseTokenId(tokenId);
-        bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL ||
-            tokenType == PoolStorage.TokenType.LONG_CALL;
-        _annihilate(maturity, strike64x64, isCall, contractSize);
-
-        _pushTo(
-            msg.sender,
-            _getPoolToken(isCall),
-            isCall
-                ? contractSize
-                : PoolStorage.layout().fromUnderlyingToBaseDecimals(
-                    strike64x64.mulu(contractSize)
-                )
-        );
-    }
-
-    ////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////
-    ////////////////////////////////////////////////////////
-
-    //////////////
-    // Internal //
-    //////////////
 
     function _getFeeDiscount(address feePayer)
         internal
@@ -709,7 +107,12 @@ contract Pool is IPool, OwnableInternal, ERC1155Enumerable, ERC165 {
     }
 
     /**
-     * @notice TODO
+     * @notice calculate price of option contract
+     * @param args structured quote arguments
+     * @return baseCost64x64 64x64 fixed point representation of option cost denominated in underlying currency (without fee)
+     * @return feeCost64x64 64x64 fixed point representation of option fee cost denominated in underlying currency for call, or base currency for put
+     * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
+     * @return slippageCoefficient64x64 64x64 fixed point representation of slippage coefficient for given order size
      */
     function _quote(PoolStorage.QuoteArgsInternal memory args)
         internal
@@ -795,7 +198,11 @@ contract Pool is IPool, OwnableInternal, ERC1155Enumerable, ERC165 {
     }
 
     /**
-     * @notice TODO
+     * @notice burn corresponding long and short option tokens
+     * @param maturity timestamp of option maturity
+     * @param strike64x64 64x64 fixed point representation of strike price
+     * @param isCall true for call, false for put
+     * @param contractSize quantity of option contract tokens to annihilate
      */
     function _annihilate(
         uint64 maturity,
@@ -821,7 +228,15 @@ contract Pool is IPool, OwnableInternal, ERC1155Enumerable, ERC165 {
     }
 
     /**
-     * @notice TODO
+     * @notice purchase call option
+     * @param l storage layout struct
+     * @param maturity timestamp of option maturity
+     * @param strike64x64 64x64 fixed point representation of strike price
+     * @param isCall true for call, false for put
+     * @param contractSize size of option contract
+     * @param newPrice64x64 64x64 fixed point representation of current spot price
+     * @return baseCost quantity of tokens required to purchase long position
+     * @return feeCost quantity of tokens required to pay fees
      */
     function _purchase(
         PoolStorage.Layout storage l,
@@ -915,7 +330,16 @@ contract Pool is IPool, OwnableInternal, ERC1155Enumerable, ERC165 {
     }
 
     /**
-     * @notice TODO
+     * @notice reassign short position to new underwriter
+     * @param l storage layout struct
+     * @param maturity timestamp of option maturity
+     * @param strike64x64 64x64 fixed point representation of strike price
+     * @param isCall true for call, false for put
+     * @param contractSize quantity of option contract tokens to reassign
+     * @param newPrice64x64 64x64 fixed point representation of current spot price
+     * @return baseCost quantity of tokens required to reassign short position
+     * @return feeCost quantity of tokens required to pay fees
+     * @return amountOut quantity of liquidity freed
      */
     function _reassign(
         PoolStorage.Layout storage l,
@@ -950,12 +374,16 @@ contract Pool is IPool, OwnableInternal, ERC1155Enumerable, ERC165 {
     }
 
     /**
-     * @notice TODO
+     * @notice exercise call option on behalf of holder
+     * @dev used for processing of expired options if passed holder is zero address
+     * @param holder owner of long option tokens to exercise
+     * @param longTokenId long option token id
+     * @param contractSize quantity of tokens to exercise
      */
     function _exercise(
-        address holder, // holder address of option contract tokens to exercise
-        uint256 longTokenId, // amount quantity of option contract tokens to exercise
-        uint256 contractSize // quantity of option contract tokens to exercise
+        address holder,
+        uint256 longTokenId,
+        uint256 contractSize
     ) internal {
         uint64 maturity;
         int128 strike64x64;
@@ -1067,7 +495,7 @@ contract Pool is IPool, OwnableInternal, ERC1155Enumerable, ERC165 {
         uint256 premium,
         uint256 shortTokenId,
         bool isCall
-    ) private {
+    ) internal {
         address underwriter;
         uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCall);
         (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
@@ -1215,7 +643,7 @@ contract Pool is IPool, OwnableInternal, ERC1155Enumerable, ERC165 {
         uint256 exerciseValue,
         uint256 shortTokenId,
         bool isCall
-    ) private returns (uint256 totalFee) {
+    ) internal returns (uint256 totalFee) {
         EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage
         .layout()
         .accountsByToken[shortTokenId];
@@ -1334,14 +762,14 @@ contract Pool is IPool, OwnableInternal, ERC1155Enumerable, ERC165 {
             : BASE_RESERVED_LIQ_TOKEN_ID;
     }
 
-    function _getPoolToken(bool isCall) private view returns (address token) {
+    function _getPoolToken(bool isCall) internal view returns (address token) {
         token = isCall
             ? PoolStorage.layout().underlying
             : PoolStorage.layout().base;
     }
 
     function _getTokenType(bool isCall, bool isLong)
-        private
+        internal
         pure
         returns (PoolStorage.TokenType tokenType)
     {
@@ -1376,7 +804,10 @@ contract Pool is IPool, OwnableInternal, ERC1155Enumerable, ERC165 {
     }
 
     /**
-     * @notice TODO
+     * @notice calculate and store updated market state
+     * @param l storage layout struct
+     * @return newPrice64x64 64x64 fixed point representation of current spot price
+     * @return newEmaVarianceAnnualized64x64 64x64 fixed point representation of annualized EMA of variance
      */
     function _update(PoolStorage.Layout storage l)
         internal
@@ -1426,7 +857,14 @@ contract Pool is IPool, OwnableInternal, ERC1155Enumerable, ERC165 {
     }
 
     /**
-     * @notice TODO
+     * @notice fetch price data from oracle and calculate variance
+     * @param l storage layout struct
+     * @return newPrice64x64 64x64 fixed point representation of current spot price
+     * @return logReturns64x64 64x64 fixed point representation of natural log of rate of return for current period
+     * @return oldEmaLogReturns64x64 64x64 fixed point representation of old EMA of natural log of rate of returns
+     * @return newEmaLogReturns64x64 64x64 fixed point representation of new EMA of natural log of rate of returns
+     * @return oldEmaVarianceAnnualized64x64 64x64 fixed point representation of old annualized EMA of variance
+     * @return newEmaVarianceAnnualized64x64 64x64 fixed point representation of new annualized EMA of variance
      */
     function _calculateUpdate(PoolStorage.Layout storage l)
         internal

@@ -3,11 +3,10 @@ import { expect } from 'chai';
 
 interface ProxyBehaviorArgs {
   deploy: () => Promise<ProxyManager>;
-  getPoolImplementationAddress: () => string;
 }
 
 export function describeBehaviorOfProxyManager(
-  { deploy, getPoolImplementationAddress }: ProxyBehaviorArgs,
+  { deploy }: ProxyBehaviorArgs,
   skips?: string[],
 ) {
   describe('::ProxyManager', function () {
@@ -27,18 +26,6 @@ export function describeBehaviorOfProxyManager(
       describe('reverts if', function () {
         it('todo');
       });
-    });
-
-    describe('#getPoolImplementation', function () {
-      it('returns address of pool implementation', async function () {
-        expect(await instance.callStatic.getPoolImplementation()).to.equal(
-          getPoolImplementationAddress(),
-        );
-      });
-    });
-
-    describe('#setPoolImplementation', function () {
-      it('todo');
     });
   });
 }

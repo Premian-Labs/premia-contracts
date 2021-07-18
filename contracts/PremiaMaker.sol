@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
 import {OwnableInternal} from "@solidstate/contracts/access/OwnableInternal.sol";
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 
@@ -13,7 +12,7 @@ import {IUniswapV2Router02} from "./uniswapV2/interfaces/IUniswapV2Router02.sol"
 import {IWETH} from "./uniswapV2/interfaces/IWETH.sol";
 
 import {PremiaMakerStorage} from "./PremiaMakerStorage.sol";
-import {IPool} from "./pool/IPool.sol";
+import {IPoolIO} from "./pool/IPoolIO.sol";
 
 /// @author Premia
 /// @title A contract receiving all protocol fees, swapping them for premia
@@ -132,7 +131,7 @@ contract PremiaMaker is OwnableInternal {
         address[] memory _tokens
     ) public {
         for (uint256 i = 0; i < _pools.length; i++) {
-            IPool(_pools[i]).withdrawFees();
+            IPoolIO(_pools[i]).withdrawFees();
         }
 
         for (uint256 i = 0; i < _tokens.length; i++) {

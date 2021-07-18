@@ -1,11 +1,14 @@
 import {
   ERC20Mock,
   ERC20Mock__factory,
-  ManagedProxyOwnable,
-  ManagedProxyOwnable__factory,
+  IPool,
+  IPool__factory,
   OptionMath__factory,
-  PoolMock,
+  PoolExercise__factory,
+  PoolIO__factory,
   PoolMock__factory,
+  PoolView__factory,
+  PoolWrite__factory,
   Premia,
   Premia__factory,
   ProxyManager__factory,
@@ -24,6 +27,7 @@ import {
 } from '../utils/math';
 import { formatUnits, parseUnits } from 'ethers/lib/utils';
 import { deployMockContract, MockContract } from 'ethereum-waffle';
+import { diamondCut } from '../../scripts/utils/diamond';
 
 export const DECIMALS_BASE = 18;
 export const DECIMALS_UNDERLYING = 8;
@@ -33,14 +37,13 @@ export const FEE = 0.01;
 
 interface PoolUtilArgs {
   premiaDiamond: Premia;
-  pool: PoolMock;
-  poolWeth: PoolMock;
+  pool: IPool;
+  poolWeth: IPool;
   underlying: ERC20Mock;
   underlyingWeth: WETH9;
   base: ERC20Mock;
   baseOracle: MockContract;
   underlyingOracle: MockContract;
-  proxy: ManagedProxyOwnable;
 }
 
 const ONE_DAY = 3600 * 24;
@@ -99,14 +102,13 @@ export function getExerciseValue(
 
 export class PoolUtil {
   premiaDiamond: Premia;
-  pool: PoolMock;
-  poolWeth: PoolMock;
+  pool: IPool;
+  poolWeth: IPool;
   underlying: ERC20Mock;
   underlyingWeth: WETH9;
   base: ERC20Mock;
   baseOracle: MockContract;
   underlyingOracle: MockContract;
-  proxy: ManagedProxyOwnable;
 
   constructor(props: PoolUtilArgs) {
     this.premiaDiamond = props.premiaDiamond;
@@ -117,7 +119,6 @@ export class PoolUtil {
     this.base = props.base;
     this.baseOracle = props.baseOracle;
     this.underlyingOracle = props.underlyingOracle;
-    this.proxy = props.proxy;
   }
 
   static async deploy(
@@ -141,39 +142,119 @@ export class PoolUtil {
 
     const optionMath = await new OptionMath__factory(deployer).deploy();
 
-    const poolImp = await new PoolMock__factory(
+    const premiaDiamond = await new Premia__factory(deployer).deploy();
+    const poolDiamond = await new Premia__factory(deployer).deploy();
+
+    //
+
+    const proxyManagerFactory = new ProxyManager__factory(deployer);
+    const proxyManager = await proxyManagerFactory.deploy(poolDiamond.address);
+    await diamondCut(premiaDiamond, proxyManager.address, proxyManagerFactory);
+
+    //////////////////////////////////////////////
+
+    let registeredSelectors = [
+      poolDiamond.interface.getSighash('supportsInterface(bytes4)'),
+    ];
+
+    const poolWriteFactory = new PoolWrite__factory(
       { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
       deployer,
-    ).deploy(
+    );
+    const poolWriteImpl = await poolWriteFactory.deploy(
       underlyingWeth.address,
       feeReceiver,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
     );
-
-    const facetCuts = [await new ProxyManager__factory(deployer).deploy()].map(
-      function (f) {
-        return {
-          target: f.address,
-          action: 0,
-          selectors: Object.keys(f.interface.functions).map((fn) =>
-            f.interface.getSighash(fn),
-          ),
-        };
-      },
+    registeredSelectors = registeredSelectors.concat(
+      await diamondCut(
+        poolDiamond,
+        poolWriteImpl.address,
+        poolWriteFactory,
+        registeredSelectors,
+      ),
     );
 
-    const premiaDiamond = await new Premia__factory(deployer).deploy(
-      poolImp.address,
+    //////////////////////////////////////////////
+
+    const poolMockFactory = new PoolMock__factory(deployer);
+    const poolMockImpl = await poolMockFactory.deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+    registeredSelectors = registeredSelectors.concat(
+      await diamondCut(
+        poolDiamond,
+        poolMockImpl.address,
+        poolMockFactory,
+        registeredSelectors,
+      ),
     );
 
-    await premiaDiamond.diamondCut(
-      facetCuts,
-      ethers.constants.AddressZero,
-      '0x',
+    //////////////////////////////////////////////
+
+    const poolExerciseFactory = new PoolExercise__factory(
+      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      deployer,
+    );
+    const poolExerciseImpl = await poolExerciseFactory.deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+    registeredSelectors = registeredSelectors.concat(
+      await diamondCut(
+        poolDiamond,
+        poolExerciseImpl.address,
+        poolExerciseFactory,
+        registeredSelectors,
+      ),
     );
 
-    //
+    //////////////////////////////////////////////
+
+    const poolViewFactory = new PoolView__factory(deployer);
+    const poolViewImpl = await poolViewFactory.deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+    registeredSelectors = registeredSelectors.concat(
+      await diamondCut(
+        poolDiamond,
+        poolViewImpl.address,
+        poolViewFactory,
+        registeredSelectors,
+      ),
+    );
+
+    //////////////////////////////////////////////
+
+    const poolIOFactory = new PoolIO__factory(
+      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      deployer,
+    );
+    const poolIOImpl = await poolIOFactory.deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+    registeredSelectors = registeredSelectors.concat(
+      await diamondCut(
+        poolDiamond,
+        poolIOImpl.address,
+        poolIOFactory,
+        registeredSelectors,
+      ),
+    );
+    //////////////////////////////////////////////
+    //////////////////////////////////////////////
 
     const manager = ProxyManager__factory.connect(
       premiaDiamond.address,
@@ -206,8 +287,8 @@ export class PoolUtil {
     );
 
     let poolAddress = (await tx.wait()).events![0].args!.pool;
-    const proxy = ManagedProxyOwnable__factory.connect(poolAddress, deployer);
-    const pool = PoolMock__factory.connect(poolAddress, deployer);
+    const pool = IPool__factory.connect(poolAddress, deployer);
+    const poolView = PoolView__factory.connect(poolAddress, deployer);
 
     //
 
@@ -220,12 +301,12 @@ export class PoolUtil {
     );
 
     poolAddress = (await tx.wait()).events![0].args!.pool;
-    const poolWeth = PoolMock__factory.connect(poolAddress, deployer);
+    const poolWeth = IPool__factory.connect(poolAddress, deployer);
 
     //
 
     underlying = ERC20Mock__factory.connect(
-      (await pool.getPoolSettings()).underlying,
+      (await poolView.getPoolSettings()).underlying,
       deployer,
     );
 
@@ -238,7 +319,6 @@ export class PoolUtil {
       base,
       baseOracle,
       underlyingOracle,
-      proxy,
     });
   }
 
@@ -333,7 +413,9 @@ export class PoolUtil {
         .approve(this.pool.address, ethers.constants.MaxUint256);
     }
 
-    await this.pool.connect(lp).deposit(amount, isCall);
+    await PoolIO__factory.connect(this.pool.address, lp)
+      .connect(lp)
+      .deposit(amount, isCall);
 
     await increaseTimestamp(300);
   }

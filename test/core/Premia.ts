@@ -1,8 +1,8 @@
 import {
   Premia,
   Premia__factory,
-  Pool,
-  Pool__factory,
+  PoolWrite,
+  PoolWrite__factory,
   ProxyManager__factory,
   OptionMath,
   OptionMath__factory,
@@ -19,7 +19,7 @@ describe('Premia', function () {
   let nomineeOwner: SignerWithAddress;
 
   let optionMath: OptionMath;
-  let pool: Pool;
+  let poolWrite: PoolWrite;
 
   let facetCuts: any[] = [,];
 
@@ -31,7 +31,7 @@ describe('Premia', function () {
     // TODO: pass PremiaMaker proxy address instead of zero address
     // TODO: pass non-zero fee
     optionMath = await new OptionMath__factory(owner).deploy();
-    pool = await new Pool__factory(
+    poolWrite = await new PoolWrite__factory(
       { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
       owner,
     ).deploy(
@@ -39,10 +39,13 @@ describe('Premia', function () {
       ethers.constants.AddressZero,
       ethers.constants.AddressZero,
       ethers.constants.Zero,
-      ethers.BigNumber.from('260'),
     );
 
-    [await new ProxyManager__factory(owner).deploy()].forEach(function (f) {
+    [
+      await new ProxyManager__factory(owner).deploy(
+        ethers.constants.AddressZero,
+      ),
+    ].forEach(function (f) {
       facetCuts.push({
         target: f.address,
         action: 0,
@@ -54,7 +57,7 @@ describe('Premia', function () {
   });
 
   beforeEach(async function () {
-    instance = await new Premia__factory(owner).deploy(pool.address);
+    instance = await new Premia__factory(owner).deploy();
 
     await instance.diamondCut(
       facetCuts.slice(1),
@@ -87,7 +90,6 @@ describe('Premia', function () {
     {
       deploy: async () =>
         ProxyManager__factory.connect(instance.address, owner),
-      getPoolImplementationAddress: () => pool.address,
     },
     [],
   );

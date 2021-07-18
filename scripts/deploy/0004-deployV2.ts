@@ -1,4 +1,5 @@
 import { deployV2, TokenAddresses } from '../utils/deployV2';
+import { fixedFromFloat } from '../../test/utils/math';
 
 async function main() {
   const tokens: TokenAddresses = {
@@ -15,7 +16,19 @@ async function main() {
     LINK: '0x2c1d072e956AFFC0D435Cb7AC38EF18d24d9127c',
   };
 
-  await deployV2(tokens.ETH, tokens, oracles, false);
+  // ToDo : Set after new upgradable PremiaMaker is deployed
+  const premiaMaker = '0x0';
+  const premiaFeeDiscount = '0xF5aae75D1AD6fDD62Cce66137F2674c96FEda854';
+
+  await deployV2(
+    tokens.ETH,
+    fixedFromFloat(0.01),
+    premiaMaker,
+    premiaFeeDiscount,
+    tokens,
+    oracles,
+    false,
+  );
 }
 
 // We recommend this pattern to be able to use async/await everywhere

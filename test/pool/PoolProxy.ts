@@ -3,12 +3,14 @@ import { ethers } from 'hardhat';
 import {
   ERC20Mock,
   ERC20Mock__factory,
+  IPool,
   PoolMock,
+  PoolMock__factory,
   PremiaFeeDiscount,
   PremiaFeeDiscount__factory,
+  Proxy__factory,
 } from '../../typechain';
 
-import { describeBehaviorOfManagedProxyOwnable } from '@solidstate/spec';
 import { describeBehaviorOfPool } from './Pool.behavior';
 import chai, { expect } from 'chai';
 import { increaseTimestamp, resetHardhat, setTimestamp } from '../utils/evm';
@@ -38,6 +40,7 @@ import {
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
 import { ZERO_ADDRESS } from '../utils/constants';
+import { describeBehaviorOfProxy } from '@solidstate/spec';
 
 chai.use(chaiAlmost(0.02));
 
@@ -53,8 +56,10 @@ describe('PoolProxy', function () {
 
   let xPremia: ERC20Mock;
   let premiaFeeDiscount: PremiaFeeDiscount;
-  let pool: PoolMock;
-  let poolWeth: PoolMock;
+
+  let pool: IPool;
+  let poolMock: PoolMock;
+  let poolWeth: IPool;
   let p: PoolUtil;
 
   const underlyingFreeLiqToken = formatTokenId({
@@ -108,11 +113,12 @@ describe('PoolProxy', function () {
     );
 
     pool = p.pool;
+    poolMock = PoolMock__factory.connect(p.pool.address, owner);
     poolWeth = p.poolWeth;
   });
 
-  describeBehaviorOfManagedProxyOwnable({
-    deploy: async () => p.proxy,
+  describeBehaviorOfProxy({
+    deploy: async () => Proxy__factory.connect(p.pool.address, owner),
     implementationFunction: 'getPoolSettings()',
     implementationFunctionArgs: [],
   });
@@ -134,20 +140,20 @@ describe('PoolProxy', function () {
         return hexZeroPad(hexlify(value), 20);
       };
       const removeAddress = async (value: number) => {
-        await pool.removeUnderwriter(formatAddress(value), true);
+        await poolMock.removeUnderwriter(formatAddress(value), true);
         queue = queue.filter((el) => el !== value);
-        expect(await pool.getUnderwriter()).to.eq(
+        expect(await poolMock.getUnderwriter()).to.eq(
           formatAddress(queue.length ? queue[0] : 0),
         );
       };
       const addAddress = async (value: number) => {
-        await pool.addUnderwriter(formatAddress(value), true);
+        await poolMock.addUnderwriter(formatAddress(value), true);
 
         if (!queue.includes(value)) {
           queue.push(value);
         }
 
-        expect(await pool.getUnderwriter()).to.eq(formatAddress(queue[0]));
+        expect(await poolMock.getUnderwriter()).to.eq(formatAddress(queue[0]));
       };
 
       let i = 1;
@@ -174,7 +180,7 @@ describe('PoolProxy', function () {
         await removeAddress(queue[0]);
       }
 
-      expect(await pool.getUnderwriter()).to.eq(ZERO_ADDRESS);
+      expect(await poolMock.getUnderwriter()).to.eq(ZERO_ADDRESS);
     });
   });
 
@@ -193,11 +199,11 @@ describe('PoolProxy', function () {
     const PRICE = 1234;
 
     const setPriceUpdate = async (timestamp: number, price: number) => {
-      await pool.setPriceUpdate(timestamp, fixedFromFloat(price));
+      await poolMock.setPriceUpdate(timestamp, fixedFromFloat(price));
     };
 
     const getPriceAfter = async (timestamp: number) => {
-      return fixedToNumber(await pool.getPriceUpdateAfter(timestamp));
+      return fixedToNumber(await poolMock.getPriceUpdateAfter(timestamp));
     };
 
     it('returns price update stored at beginning of sequence', async () => {
@@ -589,7 +595,7 @@ describe('PoolProxy', function () {
             parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
-          await pool.setCLevel(isCall, fixedFromFloat('0.1'));
+          await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
 
           const maturity = p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(!isCall));

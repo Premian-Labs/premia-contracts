@@ -35,7 +35,7 @@ library OptionMath {
      * @param logReturns64x64 64x64 fixed point representation of natural log of rate of return for current period
      * @param oldTimestamp timestamp of previous update
      * @param newTimestamp current timestamp
-     * @return emaLogReturns64x64 64x64 fixed point representation of EMA
+     * @return emaLogReturns64x64 64x64 fixed point representation of EMA of natural log of rate of returns
      * @return emaVariance64x64 64x64 fixed point representation of EMA of variance
      */
     function unevenRollingEmaVariance(
