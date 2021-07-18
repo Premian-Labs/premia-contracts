@@ -14,7 +14,6 @@ import path from 'path';
 import { TASK_COMPILE } from 'hardhat/builtin-tasks/task-names';
 
 import './tasks/accounts';
-import { generatePoolAbi } from './poolAbi';
 
 Dotenv.config();
 
@@ -33,8 +32,6 @@ function replaceBytecode(filePath: string, bytecode: string) {
 
 task(TASK_COMPILE, async function (args, hre, runSuper) {
   await runSuper();
-
-  generatePoolAbi();
 
   const cwd = process.cwd();
 
@@ -155,7 +152,6 @@ export default {
 
   typechain: {
     alwaysGenerateOverloads: true,
-    externalArtifacts: ['abi/Pool.json'],
   },
 
   ...(ETHERSCAN_KEY

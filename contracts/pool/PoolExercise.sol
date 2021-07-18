@@ -27,7 +27,7 @@ contract PoolExercise is IPoolExercise, PoolInternal {
         address holder,
         uint256 longTokenId,
         uint256 contractSize
-    ) external {
+    ) external override {
         if (msg.sender != holder) {
             require(isApprovedForAll(holder, msg.sender), "not approved");
         }

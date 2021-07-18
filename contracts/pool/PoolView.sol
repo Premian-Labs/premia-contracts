@@ -30,6 +30,7 @@ contract PoolView is IPoolView, PoolInternal {
     function getPoolSettings()
         external
         view
+        override
         returns (PoolStorage.PoolSettings memory)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
@@ -62,7 +63,12 @@ contract PoolView is IPoolView, PoolInternal {
      * @notice get C Level
      * @return 64x64 fixed point representation of C-Level of Pool after purchase
      */
-    function getCLevel64x64(bool isCall) external view returns (int128) {
+    function getCLevel64x64(bool isCall)
+        external
+        view
+        override
+        returns (int128)
+    {
         return PoolStorage.layout().getCLevel(isCall);
     }
 
@@ -70,7 +76,7 @@ contract PoolView is IPoolView, PoolInternal {
      * @notice get ema log returns
      * @return 64x64 fixed point representation of natural log of rate of return for current period
      */
-    function getEmaLogReturns64x64() external view returns (int128) {
+    function getEmaLogReturns64x64() external view override returns (int128) {
         return PoolStorage.layout().emaLogReturns64x64;
     }
 
@@ -78,7 +84,12 @@ contract PoolView is IPoolView, PoolInternal {
      * @notice get ema variance annualized
      * @return 64x64 fixed point representation of ema variance annualized
      */
-    function getEmaVarianceAnnualized64x64() external view returns (int128) {
+    function getEmaVarianceAnnualized64x64()
+        external
+        view
+        override
+        returns (int128)
+    {
         return PoolStorage.layout().emaVarianceAnnualized64x64;
     }
 
@@ -86,7 +97,12 @@ contract PoolView is IPoolView, PoolInternal {
      * @notice get price at timestamp
      * @return price at timestamp
      */
-    function getPrice(uint256 timestamp) external view returns (int128) {
+    function getPrice(uint256 timestamp)
+        external
+        view
+        override
+        returns (int128)
+    {
         return PoolStorage.layout().getPriceUpdate(timestamp);
     }
 
@@ -97,6 +113,7 @@ contract PoolView is IPoolView, PoolInternal {
     function getParametersForTokenId(uint256 tokenId)
         external
         pure
+        override
         returns (
             PoolStorage.TokenType,
             uint64,

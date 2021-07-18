@@ -13,12 +13,13 @@ import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
 import {IPremiaFeeDiscount} from "../interface/IPremiaFeeDiscount.sol";
+import {IPoolEvents} from "./IPoolEvents.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolInternal is ERC1155Enumerable, ERC165 {
+contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -38,68 +39,6 @@ contract PoolInternal is ERC1155Enumerable, ERC165 {
 
     uint256 constant INVERSE_BASIS_POINT = 1e4;
     uint256 constant BATCHING_PERIOD = 260;
-
-    event Purchase(
-        address indexed user,
-        uint256 longTokenId,
-        uint256 contractSize,
-        uint256 baseCost,
-        uint256 feeCost,
-        int128 spot64x64
-    );
-
-    event Exercise(
-        address indexed user,
-        uint256 longTokenId,
-        uint256 contractSize,
-        uint256 exerciseValue,
-        uint256 fee
-    );
-
-    event Underwrite(
-        address indexed underwriter,
-        address indexed longReceiver,
-        uint256 shortTokenId,
-        uint256 intervalContractSize,
-        uint256 intervalPremium,
-        bool isManualUnderwrite
-    );
-
-    event AssignExercise(
-        address indexed underwriter,
-        uint256 shortTokenId,
-        uint256 freedAmount,
-        uint256 intervalContractSize,
-        uint256 fee
-    );
-
-    event Deposit(address indexed user, bool isCallPool, uint256 amount);
-
-    event Withdrawal(
-        address indexed user,
-        bool isCallPool,
-        uint256 depositedAt,
-        uint256 amount
-    );
-
-    event FeeWithdrawal(bool indexed isCallPool, uint256 amount);
-
-    event Annihilate(uint256 shortTokenId, uint256 amount);
-
-    event UpdateCLevel(
-        bool indexed isCall,
-        int128 cLevel64x64,
-        int128 oldLiquidity64x64,
-        int128 newLiquidity64x64
-    );
-
-    event UpdateVariance(
-        int128 oldEmaLogReturns64x64,
-        int128 oldEmaVariance64x64,
-        int128 logReturns64x64,
-        uint256 oldTimestamp,
-        int128 emaVarianceAnnualized64x64
-    );
 
     constructor(
         address weth,

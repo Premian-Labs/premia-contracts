@@ -2,8 +2,8 @@ import {
   ERC20Mock,
   ERC20Mock__factory,
   OptionMath__factory,
-  Pool,
-  Pool__factory,
+  IPool,
+  IPool__factory,
   PoolExercise__factory,
   PoolIO__factory,
   PoolMock__factory,
@@ -35,8 +35,8 @@ export const FEE = 0.01;
 
 interface PoolUtilArgs {
   premiaDiamond: Premia;
-  pool: Pool;
-  poolWeth: Pool;
+  pool: IPool;
+  poolWeth: IPool;
   underlying: ERC20Mock;
   underlyingWeth: WETH9;
   base: ERC20Mock;
@@ -100,8 +100,8 @@ export function getExerciseValue(
 
 export class PoolUtil {
   premiaDiamond: Premia;
-  pool: Pool;
-  poolWeth: Pool;
+  pool: IPool;
+  poolWeth: IPool;
   underlying: ERC20Mock;
   underlyingWeth: WETH9;
   base: ERC20Mock;
@@ -271,7 +271,7 @@ export class PoolUtil {
     );
 
     let poolAddress = (await tx.wait()).events![0].args!.pool;
-    const pool = Pool__factory.connect(poolAddress, deployer);
+    const pool = IPool__factory.connect(poolAddress, deployer);
     const poolView = PoolView__factory.connect(poolAddress, deployer);
 
     //
@@ -285,7 +285,7 @@ export class PoolUtil {
     );
 
     poolAddress = (await tx.wait()).events![0].args!.pool;
-    const poolWeth = Pool__factory.connect(poolAddress, deployer);
+    const poolWeth = IPool__factory.connect(poolAddress, deployer);
 
     //
 

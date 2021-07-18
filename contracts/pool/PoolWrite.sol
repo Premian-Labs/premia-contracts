@@ -7,12 +7,13 @@ import {PoolStorage} from "./PoolStorage.sol";
 
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {PoolInternal} from "./PoolInternal.sol";
+import {IPoolWrite} from "./IPoolWrite.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolWrite is PoolInternal {
+contract PoolWrite is IPoolWrite, PoolInternal {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -46,6 +47,7 @@ contract PoolWrite is PoolInternal {
     )
         external
         view
+        override
         returns (
             int128 baseCost64x64,
             int128 feeCost64x64,
@@ -100,7 +102,7 @@ contract PoolWrite is PoolInternal {
         uint256 contractSize,
         bool isCall,
         uint256 maxCost
-    ) external payable returns (uint256 baseCost, uint256 feeCost) {
+    ) external payable override returns (uint256 baseCost, uint256 feeCost) {
         // TODO: specify payment currency
 
         PoolStorage.Layout storage l = PoolStorage.layout();
@@ -146,7 +148,12 @@ contract PoolWrite is PoolInternal {
         int128 strike64x64,
         uint256 contractSize,
         bool isCall
-    ) external payable returns (uint256 longTokenId, uint256 shortTokenId) {
+    )
+        external
+        payable
+        override
+        returns (uint256 longTokenId, uint256 shortTokenId)
+    {
         require(
             msg.sender == underwriter ||
                 isApprovedForAll(underwriter, msg.sender),
@@ -192,7 +199,11 @@ contract PoolWrite is PoolInternal {
     /**
      * @notice Update pool data
      */
-    function update() external returns (int128 newEmaVarianceAnnualized64x64) {
+    function update()
+        external
+        override
+        returns (int128 newEmaVarianceAnnualized64x64)
+    {
         (, newEmaVarianceAnnualized64x64) = _update(PoolStorage.layout());
     }
 }

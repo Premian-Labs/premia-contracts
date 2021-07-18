@@ -3,7 +3,7 @@ import { ethers } from 'hardhat';
 import {
   ERC20Mock,
   ERC20Mock__factory,
-  Pool,
+  IPool,
   PoolMock,
   PoolMock__factory,
   PremiaFeeDiscount,
@@ -55,9 +55,9 @@ describe('PoolProxy', function () {
   let xPremia: ERC20Mock;
   let premiaFeeDiscount: PremiaFeeDiscount;
 
-  let pool: Pool;
+  let pool: IPool;
   let poolMock: PoolMock;
-  let poolWeth: Pool;
+  let poolWeth: IPool;
   let p: PoolUtil;
 
   const underlyingFreeLiqToken = formatTokenId({

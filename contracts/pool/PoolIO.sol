@@ -30,7 +30,7 @@ contract PoolIO is IPoolIO, PoolInternal {
      * @notice set timestamp after which reinvestment is disabled
      * @param timestamp timestamp to begin divestment
      */
-    function setDivestmentTimestamp(uint64 timestamp) external {
+    function setDivestmentTimestamp(uint64 timestamp) external override {
         PoolStorage.Layout storage l = PoolStorage.layout();
         l.divestmentTimestamps[msg.sender] = timestamp;
     }
@@ -40,7 +40,11 @@ contract PoolIO is IPoolIO, PoolInternal {
      * @param amount quantity of underlying currency to deposit
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
      */
-    function deposit(uint256 amount, bool isCallPool) external payable {
+    function deposit(uint256 amount, bool isCallPool)
+        external
+        payable
+        override
+    {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         _processPendingDeposits(l, isCallPool);
@@ -58,7 +62,7 @@ contract PoolIO is IPoolIO, PoolInternal {
      * @param amount quantity of share tokens to redeem
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
      */
-    function withdraw(uint256 amount, bool isCallPool) public {
+    function withdraw(uint256 amount, bool isCallPool) public override {
         PoolStorage.Layout storage l = PoolStorage.layout();
         uint256 toWithdraw = amount;
 
@@ -117,6 +121,7 @@ contract PoolIO is IPoolIO, PoolInternal {
      */
     function reassign(uint256 tokenId, uint256 contractSize)
         external
+        override
         returns (
             uint256 baseCost,
             uint256 feeCost,
@@ -159,6 +164,7 @@ contract PoolIO is IPoolIO, PoolInternal {
         uint256[] calldata contractSizes
     )
         public
+        override
         returns (
             uint256[] memory baseCosts,
             uint256[] memory feeCosts,
@@ -222,6 +228,7 @@ contract PoolIO is IPoolIO, PoolInternal {
         uint256[] calldata contractSizes
     )
         external
+        override
         returns (
             uint256[] memory baseCosts,
             uint256[] memory feeCosts,
@@ -265,7 +272,10 @@ contract PoolIO is IPoolIO, PoolInternal {
      * @param tokenId ERC1155 token id (long or short)
      * @param contractSize quantity of option contract tokens to annihilate
      */
-    function annihilate(uint256 tokenId, uint256 contractSize) external {
+    function annihilate(uint256 tokenId, uint256 contractSize)
+        external
+        override
+    {
         (
             PoolStorage.TokenType tokenType,
             uint64 maturity,
