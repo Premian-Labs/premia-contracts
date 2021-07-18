@@ -89,7 +89,7 @@ contract PoolWrite is PoolInternal {
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param contractSize size of option contract
-     * @param isCall true for call, false for put,
+     * @param isCall true for call, false for put
      * @param maxCost maximum acceptable cost after accounting for slippage
      * @return baseCost quantity of tokens required to purchase long position
      * @return feeCost quantity of tokens required to pay fees

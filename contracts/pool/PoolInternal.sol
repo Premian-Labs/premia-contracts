@@ -168,7 +168,12 @@ contract PoolInternal is ERC1155Enumerable, ERC165 {
     }
 
     /**
-     * @notice TODO
+     * @notice calculate price of option contract
+     * @param args structured quote arguments
+     * @return baseCost64x64 64x64 fixed point representation of option cost denominated in underlying currency (without fee)
+     * @return feeCost64x64 64x64 fixed point representation of option fee cost denominated in underlying currency for call, or base currency for put
+     * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
+     * @return slippageCoefficient64x64 64x64 fixed point representation of slippage coefficient for given order size
      */
     function _quote(PoolStorage.QuoteArgsInternal memory args)
         internal
@@ -254,7 +259,11 @@ contract PoolInternal is ERC1155Enumerable, ERC165 {
     }
 
     /**
-     * @notice TODO
+     * @notice burn corresponding long and short option tokens
+     * @param maturity timestamp of option maturity
+     * @param strike64x64 64x64 fixed point representation of strike price
+     * @param isCall true for call, false for put
+     * @param contractSize quantity of option contract tokens to annihilate
      */
     function _annihilate(
         uint64 maturity,
@@ -280,7 +289,15 @@ contract PoolInternal is ERC1155Enumerable, ERC165 {
     }
 
     /**
-     * @notice TODO
+     * @notice purchase call option
+     * @param l storage layout struct
+     * @param maturity timestamp of option maturity
+     * @param strike64x64 64x64 fixed point representation of strike price
+     * @param isCall true for call, false for put
+     * @param contractSize size of option contract
+     * @param newPrice64x64 64x64 fixed point representation of current spot price
+     * @return baseCost quantity of tokens required to purchase long position
+     * @return feeCost quantity of tokens required to pay fees
      */
     function _purchase(
         PoolStorage.Layout storage l,
@@ -374,7 +391,16 @@ contract PoolInternal is ERC1155Enumerable, ERC165 {
     }
 
     /**
-     * @notice TODO
+     * @notice reassign short position to new underwriter
+     * @param l storage layout struct
+     * @param maturity timestamp of option maturity
+     * @param strike64x64 64x64 fixed point representation of strike price
+     * @param isCall true for call, false for put
+     * @param contractSize quantity of option contract tokens to reassign
+     * @param newPrice64x64 64x64 fixed point representation of current spot price
+     * @return baseCost quantity of tokens required to reassign short position
+     * @return feeCost quantity of tokens required to pay fees
+     * @return amountOut quantity of liquidity freed
      */
     function _reassign(
         PoolStorage.Layout storage l,
@@ -409,12 +435,15 @@ contract PoolInternal is ERC1155Enumerable, ERC165 {
     }
 
     /**
-     * @notice TODO
+     * @notice exercise call option on behalf of holder
+     * @param holder owner of long option tokens to exercise
+     * @param longTokenId long option token id
+     * @param contractSize quantity of tokens to exercise
      */
     function _exercise(
-        address holder, // holder address of option contract tokens to exercise
-        uint256 longTokenId, // amount quantity of option contract tokens to exercise
-        uint256 contractSize // quantity of option contract tokens to exercise
+        address holder,
+        uint256 longTokenId,
+        uint256 contractSize
     ) internal {
         uint64 maturity;
         int128 strike64x64;
@@ -835,7 +864,10 @@ contract PoolInternal is ERC1155Enumerable, ERC165 {
     }
 
     /**
-     * @notice TODO
+     * @notice calculate and store updated market state
+     * @param l storage layout struct
+     * @return newPrice64x64 64x64 fixed point representation of current spot price
+     * @return newEmaVarianceAnnualized64x64 64x64 fixed point representation of annualized EMA of variance
      */
     function _update(PoolStorage.Layout storage l)
         internal
@@ -885,7 +917,14 @@ contract PoolInternal is ERC1155Enumerable, ERC165 {
     }
 
     /**
-     * @notice TODO
+     * @notice fetch price data from oracle and calculate variance
+     * @param l storage layout struct
+     * @return newPrice64x64 64x64 fixed point representation of current spot price
+     * @return logReturns64x64 64x64 fixed point representation of natural log of rate of return for current period
+     * @return oldEmaLogReturns64x64 64x64 fixed point representation of old EMA of natural log of rate of returns
+     * @return newEmaLogReturns64x64 64x64 fixed point representation of new EMA of natural log of rate of returns
+     * @return oldEmaVarianceAnnualized64x64 64x64 fixed point representation of old annualized EMA of variance
+     * @return newEmaVarianceAnnualized64x64 64x64 fixed point representation of new annualized EMA of variance
      */
     function _calculateUpdate(PoolStorage.Layout storage l)
         internal

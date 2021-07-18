@@ -108,12 +108,12 @@ contract PoolIO is IPoolIO, PoolInternal {
     }
 
     /**
-     * @notice reassign short position to new liquidity provider
+     * @notice reassign short position to new underwriter
      * @param tokenId ERC1155 token id (long or short)
      * @param contractSize quantity of option contract tokens to reassign
      * @return baseCost quantity of tokens required to reassign short position
      * @return feeCost quantity of tokens required to pay fees
-     * @return amountOut TODO
+     * @return amountOut quantity of liquidity freed and transferred to owner
      */
     function reassign(uint256 tokenId, uint256 contractSize)
         external
@@ -146,7 +146,13 @@ contract PoolIO is IPoolIO, PoolInternal {
     }
 
     /**
-     * @notice TODO
+     * @notice reassign set of short position to new underwriter
+     * @param tokenIds array of ERC1155 token ids (long or short)
+     * @param contractSizes array of quantities of option contract tokens to reassign
+     * @return baseCosts quantities of tokens required to reassign each short position
+     * @return feeCosts quantities of tokens required to pay fees
+     * @return amountOutCall quantity of call pool liquidity freed and transferred to owner
+     * @return amountOutPut quantity of put pool liquidity freed and transferred to owner
      */
     function reassignBatch(
         uint256[] calldata tokenIds,
@@ -201,11 +207,18 @@ contract PoolIO is IPoolIO, PoolInternal {
     }
 
     /**
-     * @notice TODO
+     * @notice withdraw all free liquidity and reassign set of short position to new underwriter
+     * @param isCallPool true for call, false for put
+     * @param tokenIds array of ERC1155 token ids (long or short)
+     * @param contractSizes array of quantities of option contract tokens to reassign
+     * @return baseCosts quantities of tokens required to reassign each short position
+     * @return feeCosts quantities of tokens required to pay fees
+     * @return amountOutCall quantity of call pool liquidity freed and transferred to owner
+     * @return amountOutPut quantity of put pool liquidity freed and transferred to owner
      */
     function withdrawAllAndReassignBatch(
         bool isCallPool,
-        uint256[] calldata ids,
+        uint256[] calldata tokenIds,
         uint256[] calldata contractSizes
     )
         external
@@ -226,13 +239,15 @@ contract PoolIO is IPoolIO, PoolInternal {
         }
 
         (baseCosts, feeCosts, amountOutCall, amountOutPut) = reassignBatch(
-            ids,
+            tokenIds,
             contractSizes
         );
     }
 
     /**
-     * @notice TODO
+     * @notice transfer accumulated fees to the fee receiver
+     * @return amountOutCall quantity of underlying tokens transferred
+     * @return amountOutPut quantity of base tokens transferred
      */
     function withdrawFees()
         external
@@ -246,7 +261,7 @@ contract PoolIO is IPoolIO, PoolInternal {
     }
 
     /**
-     * @notice Burn long and short tokens to withdraw collateral
+     * @notice burn corresponding long and short option tokens and withdraw collateral
      * @param tokenId ERC1155 token id (long or short)
      * @param contractSize quantity of option contract tokens to annihilate
      */
