@@ -182,9 +182,9 @@ contract PoolWrite is IPoolWrite, PoolInternal {
         );
 
         // mint long option token for underwriter (ERC1155)
-        _mint(longReceiver, longTokenId, contractSize, "");
+        _mint(longReceiver, longTokenId, contractSize);
         // mint short option token for underwriter (ERC1155)
-        _mint(underwriter, shortTokenId, contractSize, "");
+        _mint(underwriter, shortTokenId, contractSize);
 
         emit Underwrite(
             underwriter,

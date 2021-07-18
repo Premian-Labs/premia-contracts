@@ -527,8 +527,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                 _mint(
                     underwriter,
                     _getReservedLiquidityTokenId(isCall),
-                    balance,
-                    ""
+                    balance
                 );
                 continue;
             }
@@ -682,8 +681,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                 _mint(
                     underwriter,
                     _getReservedLiquidityTokenId(isCall),
-                    freeLiq - fee,
-                    ""
+                    freeLiq - fee
                 );
             }
             // burn short option tokens from underwriter

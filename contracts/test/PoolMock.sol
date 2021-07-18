@@ -50,7 +50,7 @@ contract PoolMock is PoolInternal {
         uint256 tokenId,
         uint256 amount
     ) external {
-        _mint(account, tokenId, amount, "");
+        _mint(account, tokenId, amount);
     }
 
     function burn(
