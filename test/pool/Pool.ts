@@ -6,7 +6,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   OptionMath,
   OptionMath__factory,
-  Pool,
   PoolMock,
   PoolMock__factory,
 } from '../../typechain';
@@ -36,10 +35,7 @@ describe('Pool', function () {
 
   beforeEach(async function () {
     optionMath = await new OptionMath__factory(owner).deploy();
-    instance = await new PoolMock__factory(
-      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
-      owner,
-    ).deploy(
+    instance = await new PoolMock__factory(owner).deploy(
       ethers.constants.AddressZero,
       ONE_ADDRESS,
       ethers.constants.AddressZero,
