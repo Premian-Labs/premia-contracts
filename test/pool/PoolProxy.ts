@@ -8,6 +8,7 @@ import {
   PoolMock__factory,
   PremiaFeeDiscount,
   PremiaFeeDiscount__factory,
+  Proxy__factory,
 } from '../../typechain';
 
 import { describeBehaviorOfPool } from './Pool.behavior';
@@ -39,6 +40,7 @@ import {
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
 import { ZERO_ADDRESS } from '../utils/constants';
+import { describeBehaviorOfProxy } from '@solidstate/spec';
 
 chai.use(chaiAlmost(0.02));
 
@@ -115,11 +117,11 @@ describe('PoolProxy', function () {
     poolWeth = p.poolWeth;
   });
 
-  // describeBehaviorOfManagedProxyOwnable({
-  //   deploy: async () => p.proxy,
-  //   implementationFunction: 'getPoolSettings()',
-  //   implementationFunctionArgs: [],
-  // });
+  describeBehaviorOfProxy({
+    deploy: async () => Proxy__factory.connect(p.pool.address, owner),
+    implementationFunction: 'getPoolSettings()',
+    implementationFunctionArgs: [],
+  });
 
   describeBehaviorOfPool(
     {
