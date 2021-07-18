@@ -25,20 +25,20 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
     using EnumerableSet for EnumerableSet.UintSet;
     using PoolStorage for PoolStorage.Layout;
 
-    address immutable WETH_ADDRESS;
-    address immutable FEE_RECEIVER_ADDRESS;
-    address immutable FEE_DISCOUNT_ADDRESS;
+    address internal immutable WETH_ADDRESS;
+    address internal immutable FEE_RECEIVER_ADDRESS;
+    address internal immutable FEE_DISCOUNT_ADDRESS;
 
-    int128 immutable FEE_64x64;
+    int128 internal immutable FEE_64x64;
 
-    uint256 immutable UNDERLYING_FREE_LIQ_TOKEN_ID;
-    uint256 immutable BASE_FREE_LIQ_TOKEN_ID;
+    uint256 internal immutable UNDERLYING_FREE_LIQ_TOKEN_ID;
+    uint256 internal immutable BASE_FREE_LIQ_TOKEN_ID;
 
-    uint256 immutable UNDERLYING_RESERVED_LIQ_TOKEN_ID;
-    uint256 immutable BASE_RESERVED_LIQ_TOKEN_ID;
+    uint256 internal immutable UNDERLYING_RESERVED_LIQ_TOKEN_ID;
+    uint256 internal immutable BASE_RESERVED_LIQ_TOKEN_ID;
 
-    uint256 constant INVERSE_BASIS_POINT = 1e4;
-    uint256 constant BATCHING_PERIOD = 260;
+    uint256 internal constant INVERSE_BASIS_POINT = 1e4;
+    uint256 internal constant BATCHING_PERIOD = 260;
 
     constructor(
         address weth,
