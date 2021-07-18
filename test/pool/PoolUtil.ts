@@ -13,6 +13,7 @@ import {
   ProxyManager__factory,
   WETH9,
   WETH9__factory,
+  PoolWrite__factory,
 } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber, BigNumberish, ContractFactory, ethers } from 'ethers';
@@ -159,10 +160,28 @@ export class PoolUtil {
       poolDiamond.interface.getSighash('supportsInterface(bytes4)'),
     ];
 
-    const poolMockFactory = new PoolMock__factory(
+    const poolWriteFactory = new PoolWrite__factory(
       { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
       deployer,
     );
+    const poolWriteImpl = await poolWriteFactory.deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+    registeredSelectors = registeredSelectors.concat(
+      await PoolUtil.diamondCut(
+        poolDiamond,
+        poolWriteImpl.address,
+        poolWriteFactory,
+        registeredSelectors,
+      ),
+    );
+
+    //////////////////////////////////////////////
+
+    const poolMockFactory = new PoolMock__factory(deployer);
     const poolMockImpl = await poolMockFactory.deploy(
       underlyingWeth.address,
       feeReceiver,
