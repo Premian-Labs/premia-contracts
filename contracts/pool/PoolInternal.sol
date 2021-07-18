@@ -375,6 +375,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
 
     /**
      * @notice exercise call option on behalf of holder
+     * @dev used for processing of expired options if passed holder is zero address
      * @param holder owner of long option tokens to exercise
      * @param longTokenId long option token id
      * @param contractSize quantity of tokens to exercise
