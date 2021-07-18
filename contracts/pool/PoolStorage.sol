@@ -9,7 +9,6 @@ import {EnumerableSet, ERC1155EnumerableStorage} from "@solidstate/contracts/tok
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
-import {PoolWrite} from "./PoolWrite.sol";
 
 library PoolStorage {
     enum TokenType {
