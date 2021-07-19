@@ -29,11 +29,20 @@ interface IPoolView {
             int128
         );
 
-    function getMinimumAmounts() external view returns (uint256, uint256);
+    function getMinimumAmounts()
+        external
+        view
+        returns (uint256 minCallTokenAmount, uint256 minPutTokenAmount);
 
-    function getUserTVL(address user) external view returns (uint256, uint256);
+    function getUserTVL(address user)
+        external
+        view
+        returns (uint256 underlyingTVL, uint256 baseTVL);
 
-    function getTotalTVL() external view returns (uint256, uint256);
+    function getTotalTVL()
+        external
+        view
+        returns (uint256 underlyingTVL, uint256 baseTVL);
 
     function getPoolMining() external view returns (address);
 }

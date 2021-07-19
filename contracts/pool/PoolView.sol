@@ -134,28 +134,28 @@ contract PoolView is IPoolView, PoolInternal {
 
     /**
      * @notice get minimum purchase and interval amounts
-     * @return minimum call pool amount
-     * @return minimum put pool amount
+     * @return minCallTokenAmount minimum call pool amount
+     * @return minPutTokenAmount minimum put pool amount
      */
     function getMinimumAmounts()
         external
         view
         override
-        returns (uint256, uint256)
+        returns (uint256 minCallTokenAmount, uint256 minPutTokenAmount)
     {
         return (_getMinimumAmount(true), _getMinimumAmount(false));
     }
 
     /**
      * @notice get user total value locked
-     * @return user total value locked in call pool (in underlying token amount)
-     * @return user total value locked in put pool (in base token amount)
+     * @return underlyingTVL user total value locked in call pool (in underlying token amount)
+     * @return baseTVL user total value locked in put pool (in base token amount)
      */
     function getUserTVL(address user)
         external
         view
         override
-        returns (uint256, uint256)
+        returns (uint256 underlyingTVL, uint256 baseTVL)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
         return (l.userTVL[user][true], l.userTVL[user][false]);
@@ -163,10 +163,15 @@ contract PoolView is IPoolView, PoolInternal {
 
     /**
      * @notice get total value locked
-     * @return total value locked in call pool (in underlying token amount)
-     * @return total value locked in put pool (in base token amount)
+     * @return underlyingTVL total value locked in call pool (in underlying token amount)
+     * @return baseTVL total value locked in put pool (in base token amount)
      */
-    function getTotalTVL() external view override returns (uint256, uint256) {
+    function getTotalTVL()
+        external
+        view
+        override
+        returns (uint256 underlyingTVL, uint256 baseTVL)
+    {
         PoolStorage.Layout storage l = PoolStorage.layout();
         return (l.totalTVL[true], l.totalTVL[false]);
     }
