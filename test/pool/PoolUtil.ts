@@ -435,10 +435,6 @@ export class PoolUtil {
     await this.getToken(isCall)
       .connect(underwriter)
       .approve(this.pool.address, ethers.constants.MaxUint256);
-    console.log('2');
-    console.log(await this.base.balanceOf(underwriter.address));
-    console.log(await this.underlying.balanceOf(underwriter.address));
-    console.log(underwriter.address, longReceiver.address);
     await this.pool
       .connect(operator)
       .writeFrom(
