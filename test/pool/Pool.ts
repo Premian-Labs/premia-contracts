@@ -6,7 +6,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   OptionMath,
   OptionMath__factory,
-  Pool,
   PoolMock,
   PoolMock__factory,
 } from '../../typechain';
@@ -36,10 +35,7 @@ describe('Pool', function () {
 
   beforeEach(async function () {
     optionMath = await new OptionMath__factory(owner).deploy();
-    instance = await new PoolMock__factory(
-      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
-      owner,
-    ).deploy(
+    instance = await new PoolMock__factory(owner).deploy(
       ethers.constants.AddressZero,
       ONE_ADDRESS,
       ethers.constants.AddressZero,
@@ -59,7 +55,7 @@ describe('Pool', function () {
   );
 
   describe('__internal', function () {
-    describe('#_tokenIdFor', function () {
+    describe('#_formatTokenId', function () {
       it('returns concatenation of maturity and strikePrice', async function () {
         const tokenType = TokenType.LongCall;
         const maturity = ethers.BigNumber.from(
@@ -69,7 +65,7 @@ describe('Pool', function () {
         const tokenId = formatTokenId({ tokenType, maturity, strike64x64 });
 
         expect(
-          await instance.callStatic['tokenIdFor(uint8,uint64,int128)'](
+          await instance.callStatic['formatTokenId(uint8,uint64,int128)'](
             tokenType,
             maturity,
             strike64x64,
@@ -78,7 +74,7 @@ describe('Pool', function () {
       });
     });
 
-    describe('#_parametersFor', function () {
+    describe('#_parseTokenId', function () {
       it('returns parameters derived from tokenId', async function () {
         const tokenType = TokenType.LongCall;
         const maturity = ethers.BigNumber.from(
@@ -88,7 +84,7 @@ describe('Pool', function () {
         const tokenId = formatTokenId({ tokenType, maturity, strike64x64 });
 
         expect(
-          await instance.callStatic['parametersFor(uint256)'](tokenId),
+          await instance.callStatic['parseTokenId(uint256)'](tokenId),
         ).to.deep.equal([tokenType, maturity, strike64x64]);
       });
     });

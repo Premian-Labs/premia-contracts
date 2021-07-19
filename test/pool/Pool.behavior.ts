@@ -1,19 +1,11 @@
-import { expect } from 'chai';
-import {
-  describeBehaviorOfERC1155Enumerable
-} from '@solidstate/spec';
-import {
-  ERC20Mock,
-  ERC20Mock__factory,
-  Pool,
-  Pool__factory,
-} from '../../typechain';
+import { describeBehaviorOfERC1155Enumerable } from '@solidstate/spec';
+import { PoolInternal } from '../../typechain';
 import { BigNumber, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ethers } from 'hardhat';
 
 interface PoolBehaviorArgs {
-  deploy: () => Promise<Pool>;
+  deploy: () => Promise<PoolInternal>;
   mintERC1155: (
     address: string,
     id: BigNumber,
@@ -27,16 +19,12 @@ interface PoolBehaviorArgs {
 }
 
 export function describeBehaviorOfPool(
-  {
-    deploy,
-    mintERC1155,
-    burnERC1155,
-  }: PoolBehaviorArgs,
+  { deploy, mintERC1155, burnERC1155 }: PoolBehaviorArgs,
   skips?: string[],
 ) {
   describe('::Pool', function () {
     let deployer: SignerWithAddress;
-    let instance: Pool;
+    let instance: PoolInternal;
 
     before(async () => {
       [deployer] = await ethers.getSigners();

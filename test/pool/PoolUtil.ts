@@ -1,18 +1,49 @@
-import { ERC20Mock, Pool } from '../../typechain';
+import {
+  ERC20Mock,
+  ERC20Mock__factory,
+  IPool,
+  IPool__factory,
+  OptionMath__factory,
+  PoolExercise__factory,
+  PoolIO__factory,
+  PoolMock__factory,
+  PoolView__factory,
+  PoolWrite__factory,
+  Premia,
+  Premia__factory,
+  ProxyManager__factory,
+  WETH9,
+  WETH9__factory,
+} from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber, BigNumberish, ethers } from 'ethers';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { increaseTimestamp } from '../utils/evm';
-import { fixedToNumber } from '../utils/math';
+import {
+  fixedFromFloat,
+  fixedToNumber,
+  formatTokenId,
+  TokenType,
+} from '../utils/math';
 import { formatUnits, parseUnits } from 'ethers/lib/utils';
+import { deployMockContract, MockContract } from 'ethereum-waffle';
+import { diamondCut } from '../../scripts/utils/diamond';
 
 export const DECIMALS_BASE = 18;
 export const DECIMALS_UNDERLYING = 8;
+export const SYMBOL_BASE = 'SYMBOL_BASE';
+export const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
+export const FEE = 0.01;
 
 interface PoolUtilArgs {
-  pool: Pool;
+  premiaDiamond: Premia;
+  pool: IPool;
+  poolWeth: IPool;
   underlying: ERC20Mock;
+  underlyingWeth: WETH9;
   base: ERC20Mock;
+  baseOracle: MockContract;
+  underlyingOracle: MockContract;
 }
 
 const ONE_DAY = 3600 * 24;
@@ -70,18 +101,303 @@ export function getExerciseValue(
 }
 
 export class PoolUtil {
-  pool: Pool;
+  premiaDiamond: Premia;
+  pool: IPool;
+  poolWeth: IPool;
   underlying: ERC20Mock;
+  underlyingWeth: WETH9;
   base: ERC20Mock;
+  baseOracle: MockContract;
+  underlyingOracle: MockContract;
 
   constructor(props: PoolUtilArgs) {
+    this.premiaDiamond = props.premiaDiamond;
     this.pool = props.pool;
+    this.poolWeth = props.poolWeth;
     this.underlying = props.underlying;
+    this.underlyingWeth = props.underlyingWeth;
     this.base = props.base;
+    this.baseOracle = props.baseOracle;
+    this.underlyingOracle = props.underlyingOracle;
+  }
+
+  static async deploy(
+    deployer: SignerWithAddress,
+    priceUnderlying: number,
+    feeReceiver: string,
+    premiaFeeDiscount: string,
+  ) {
+    const erc20Factory = new ERC20Mock__factory(deployer);
+
+    const base = await erc20Factory.deploy(SYMBOL_BASE, DECIMALS_BASE);
+    await base.deployed();
+    let underlying = await erc20Factory.deploy(
+      SYMBOL_UNDERLYING,
+      DECIMALS_UNDERLYING,
+    );
+    await underlying.deployed();
+    const underlyingWeth = await new WETH9__factory(deployer).deploy();
+
+    //
+
+    const optionMath = await new OptionMath__factory(deployer).deploy();
+
+    const premiaDiamond = await new Premia__factory(deployer).deploy();
+    const poolDiamond = await new Premia__factory(deployer).deploy();
+
+    //
+
+    const proxyManagerFactory = new ProxyManager__factory(deployer);
+    const proxyManager = await proxyManagerFactory.deploy(poolDiamond.address);
+    await diamondCut(premiaDiamond, proxyManager.address, proxyManagerFactory);
+
+    //////////////////////////////////////////////
+
+    let registeredSelectors = [
+      poolDiamond.interface.getSighash('supportsInterface(bytes4)'),
+    ];
+
+    const poolWriteFactory = new PoolWrite__factory(
+      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      deployer,
+    );
+    const poolWriteImpl = await poolWriteFactory.deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+    registeredSelectors = registeredSelectors.concat(
+      await diamondCut(
+        poolDiamond,
+        poolWriteImpl.address,
+        poolWriteFactory,
+        registeredSelectors,
+      ),
+    );
+
+    //////////////////////////////////////////////
+
+    const poolMockFactory = new PoolMock__factory(deployer);
+    const poolMockImpl = await poolMockFactory.deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+    registeredSelectors = registeredSelectors.concat(
+      await diamondCut(
+        poolDiamond,
+        poolMockImpl.address,
+        poolMockFactory,
+        registeredSelectors,
+      ),
+    );
+
+    //////////////////////////////////////////////
+
+    const poolExerciseFactory = new PoolExercise__factory(
+      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      deployer,
+    );
+    const poolExerciseImpl = await poolExerciseFactory.deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+    registeredSelectors = registeredSelectors.concat(
+      await diamondCut(
+        poolDiamond,
+        poolExerciseImpl.address,
+        poolExerciseFactory,
+        registeredSelectors,
+      ),
+    );
+
+    //////////////////////////////////////////////
+
+    const poolViewFactory = new PoolView__factory(deployer);
+    const poolViewImpl = await poolViewFactory.deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+    registeredSelectors = registeredSelectors.concat(
+      await diamondCut(
+        poolDiamond,
+        poolViewImpl.address,
+        poolViewFactory,
+        registeredSelectors,
+      ),
+    );
+
+    //////////////////////////////////////////////
+
+    const poolIOFactory = new PoolIO__factory(
+      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      deployer,
+    );
+    const poolIOImpl = await poolIOFactory.deploy(
+      underlyingWeth.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+    registeredSelectors = registeredSelectors.concat(
+      await diamondCut(
+        poolDiamond,
+        poolIOImpl.address,
+        poolIOFactory,
+        registeredSelectors,
+      ),
+    );
+    //////////////////////////////////////////////
+    //////////////////////////////////////////////
+
+    const manager = ProxyManager__factory.connect(
+      premiaDiamond.address,
+      deployer,
+    );
+
+    const baseOracle = await deployMockContract(deployer as any, [
+      'function latestAnswer () external view returns (int)',
+      'function decimals () external view returns (uint8)',
+    ]);
+
+    const underlyingOracle = await deployMockContract(deployer as any, [
+      'function latestAnswer () external view returns (int)',
+      'function decimals () external view returns (uint8)',
+    ]);
+
+    await baseOracle.mock.decimals.returns(8);
+    await underlyingOracle.mock.decimals.returns(8);
+    await baseOracle.mock.latestAnswer.returns(parseUnits('1', 8));
+    await underlyingOracle.mock.latestAnswer.returns(
+      parseUnits(priceUnderlying.toString(), 8),
+    );
+
+    let tx = await manager.deployPool(
+      base.address,
+      underlying.address,
+      baseOracle.address,
+      underlyingOracle.address,
+      fixedFromFloat(100),
+      fixedFromFloat(0.1),
+      fixedFromFloat(1.22 * 1.22),
+    );
+
+    let poolAddress = (await tx.wait()).events![0].args!.pool;
+    const pool = IPool__factory.connect(poolAddress, deployer);
+    const poolView = PoolView__factory.connect(poolAddress, deployer);
+
+    //
+
+    tx = await manager.deployPool(
+      base.address,
+      underlyingWeth.address,
+      baseOracle.address,
+      underlyingOracle.address,
+      fixedFromFloat(100),
+      fixedFromFloat(0.1),
+      fixedFromFloat(1.1),
+    );
+
+    poolAddress = (await tx.wait()).events![0].args!.pool;
+    const poolWeth = IPool__factory.connect(poolAddress, deployer);
+
+    //
+
+    underlying = ERC20Mock__factory.connect(
+      (await poolView.getPoolSettings()).underlying,
+      deployer,
+    );
+
+    return new PoolUtil({
+      premiaDiamond,
+      pool,
+      poolWeth,
+      underlying,
+      underlyingWeth,
+      base,
+      baseOracle,
+      underlyingOracle,
+    });
+  }
+
+  async setUnderlyingPrice(price: BigNumber) {
+    await this.underlyingOracle.mock.latestAnswer.returns(price);
   }
 
   getToken(isCall: boolean) {
     return isCall ? this.underlying : this.base;
+  }
+
+  getLong(isCall: boolean) {
+    return isCall ? TokenType.LongCall : TokenType.LongPut;
+  }
+
+  getShort(isCall: boolean) {
+    return isCall ? TokenType.ShortCall : TokenType.ShortPut;
+  }
+
+  getStrike(isCall: boolean, spotPrice: number) {
+    return isCall ? spotPrice * 1.25 : spotPrice * 0.75;
+  }
+
+  getMaxCost(
+    baseCost64x64: BigNumber,
+    feeCost64x64: BigNumber,
+    isCall: boolean,
+  ) {
+    if (isCall) {
+      return parseUnderlying(
+        (
+          (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
+          1.03
+        ).toString(),
+      );
+    } else {
+      return parseBase(
+        (
+          (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
+          1.03
+        ).toString(),
+      );
+    }
+  }
+
+  getFreeLiqTokenId(isCall: boolean) {
+    if (isCall) {
+      return formatTokenId({
+        tokenType: TokenType.UnderlyingFreeLiq,
+        maturity: BigNumber.from(0),
+        strike64x64: BigNumber.from(0),
+      });
+    } else {
+      return formatTokenId({
+        tokenType: TokenType.BaseFreeLiq,
+        maturity: BigNumber.from(0),
+        strike64x64: BigNumber.from(0),
+      });
+    }
+  }
+
+  getReservedLiqTokenId(isCall: boolean) {
+    if (isCall) {
+      return formatTokenId({
+        tokenType: TokenType.UnderlyingReservedLiq,
+        maturity: BigNumber.from(0),
+        strike64x64: BigNumber.from(0),
+      });
+    } else {
+      return formatTokenId({
+        tokenType: TokenType.BaseReservedLiq,
+        maturity: BigNumber.from(0),
+        strike64x64: BigNumber.from(0),
+      });
+    }
   }
 
   async depositLiquidity(
@@ -101,7 +417,9 @@ export class PoolUtil {
         .approve(this.pool.address, ethers.constants.MaxUint256);
     }
 
-    await this.pool.connect(lp).deposit(amount, isCall);
+    await PoolIO__factory.connect(this.pool.address, lp)
+      .connect(lp)
+      .deposit(amount, isCall);
 
     await increaseTimestamp(300);
   }
@@ -121,10 +439,6 @@ export class PoolUtil {
     await this.getToken(isCall)
       .connect(underwriter)
       .approve(this.pool.address, ethers.constants.MaxUint256);
-    console.log('2');
-    console.log(await this.base.balanceOf(underwriter.address));
-    console.log(await this.underlying.balanceOf(underwriter.address));
-    console.log(underwriter.address, longReceiver.address);
     await this.pool
       .connect(operator)
       .writeFrom(

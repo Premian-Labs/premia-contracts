@@ -26,7 +26,13 @@
     "deploy": "hardhat deploy",
     "deploy:rinkeby": "hardhat --network rinkeby deploy",
     "test": "hardhat test",
-    "contract-size": "yarn run hardhat size-contracts"
+    "contract-size": "yarn run hardhat size-contracts",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.{js,ts,sol}": [
+      "prettier --write"
+    ]
   },
   "devDependencies": {
     "@chainlink/contracts": "^0.2.1-beta.0",
@@ -42,7 +48,7 @@
     "@types/chai": "^4.2.21",
     "@types/chai-almost": "^1.0.1",
     "@types/mocha": "^8.2.3",
-    "@types/node": "^16.3.1",
+    "@types/node": "^16.3.2",
     "@types/utf8": "^3.0.0",
     "@uniswap/v2-core": "^1.0.1",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
@@ -50,6 +56,7 @@
     "chai": "^4.3.4",
     "chai-almost": "^1.0.1",
     "dotenv": "^10.0.0",
+    "eth-permit": "^0.1.10",
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.4.1",
     "hardhat": "^2.4.3",
@@ -59,6 +66,8 @@
     "hardhat-docgen": "^1.1.1",
     "hardhat-gas-reporter": "^1.0.4",
     "hardhat-spdx-license-identifier": "^2.0.3",
+    "husky": "^7.0.1",
+    "lint-staged": "^11.0.1",
     "prettier": "^2.3.2",
     "prettier-plugin-solidity": "^1.0.0-beta.15",
     "solidity-coverage": "^0.7.16",

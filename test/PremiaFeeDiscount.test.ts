@@ -7,8 +7,8 @@ import {
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { resetHardhat, setTimestamp } from './utils/evm';
-import { signERC2612Permit } from './eth-permit/eth-permit';
-import { deployContracts, IPremiaContracts } from '../scripts/deployContracts';
+import { signERC2612Permit } from 'eth-permit';
+import { deployV1, IPremiaContracts } from '../scripts/utils/deployV1';
 import { parseEther } from 'ethers/lib/utils';
 
 let p: IPremiaContracts;
@@ -24,7 +24,7 @@ describe('PremiaFeeDiscount', () => {
     await resetHardhat();
     [admin, user1, treasury] = await ethers.getSigners();
 
-    p = await deployContracts(admin, treasury.address, true);
+    p = await deployV1(admin, treasury.address, true);
 
     await p.premiaFeeDiscount.setStakeLevels([
       { amount: parseEther('5000'), discount: 2500 }, // -25%

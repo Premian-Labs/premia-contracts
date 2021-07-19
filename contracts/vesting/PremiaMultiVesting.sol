@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
-import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
+import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 
 /// @author Premia
 /// @title A vesting contract allowing to set multiple deposits for multiple users, with 1 year vesting
@@ -30,8 +30,17 @@ contract PremiaMultiVesting is Ownable {
     // User -> Id of last deposit added
     mapping(address => uint256) public depositsLength;
 
-    event DepositAdded(address indexed user, uint256 depositId, uint256 amount, uint256 eta);
-    event DepositClaimed(address indexed user, uint256 depositId, uint256 amount);
+    event DepositAdded(
+        address indexed user,
+        uint256 depositId,
+        uint256 amount,
+        uint256 eta
+    );
+    event DepositClaimed(
+        address indexed user,
+        uint256 depositId,
+        uint256 amount
+    );
 
     constructor(IERC20 _premia) {
         OwnableStorage.layout().owner = msg.sender;
@@ -39,7 +48,10 @@ contract PremiaMultiVesting is Ownable {
         premia = _premia;
     }
 
-    function addDeposits(address[] memory _users, uint256[] memory _amounts) external onlyOwner {
+    function addDeposits(address[] memory _users, uint256[] memory _amounts)
+        external
+        onlyOwner
+    {
         require(_users.length == _amounts.length, "Array diff length");
 
         uint256 total;
@@ -83,11 +95,21 @@ contract PremiaMultiVesting is Ownable {
         }
     }
 
-    function getPendingDeposits(address _user) external view returns(Deposit[] memory) {
-        Deposit[] memory result = new Deposit[](depositsLength[_user] - lastClaimedDepositId[_user]);
+    function getPendingDeposits(address _user)
+        external
+        view
+        returns (Deposit[] memory)
+    {
+        Deposit[] memory result = new Deposit[](
+            depositsLength[_user] - lastClaimedDepositId[_user]
+        );
 
         uint256 idx = 0;
-        for (uint256 i = lastClaimedDepositId[_user] + 1; i < depositsLength[_user] + 1; ++i) {
+        for (
+            uint256 i = lastClaimedDepositId[_user] + 1;
+            i < depositsLength[_user] + 1;
+            ++i
+        ) {
             result[idx] = deposits[_user][i];
             idx++;
         }

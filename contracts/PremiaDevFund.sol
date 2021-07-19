@@ -2,11 +2,11 @@
 
 pragma solidity ^0.8.0;
 
-import {Ownable} from '@solidstate/contracts/access/Ownable.sol';
-import {OwnableStorage} from '@solidstate/contracts/access/OwnableStorage.sol';
+import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 
-import {SafeERC20} from '@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol';
-import {IERC20} from '@openzeppelin/contracts/token/ERC20/IERC20.sol';
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @author Premia
 /// @title 3 days timelock contract for dev fund
@@ -63,7 +63,10 @@ contract PremiaDevFund is Ownable {
     function doWithdraw() external onlyOwner {
         require(withdrawalETA > 0, "No pending withdrawal");
         require(block.timestamp >= withdrawalETA, "Still timelocked");
-        require(pendingWithdrawalDestination != address(0), "No destination set");
+        require(
+            pendingWithdrawalDestination != address(0),
+            "No destination set"
+        );
 
         uint256 amount = pendingWithdrawalAmount;
         address to = pendingWithdrawalDestination;

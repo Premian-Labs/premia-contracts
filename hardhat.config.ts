@@ -12,9 +12,7 @@ import 'solidity-coverage';
 import 'hardhat-contract-sizer';
 import fs from 'fs';
 
-import './tasks/deploy';
 import './tasks/accounts';
-import './tasks/upgrade-pool-implementation';
 
 Dotenv.config();
 
@@ -123,7 +121,7 @@ export default {
       '@uniswap/v2-core/contracts/UniswapV2Factory.sol',
       '@uniswap/v2-core/contracts/UniswapV2Pair.sol',
       '@uniswap/v2-periphery/contracts/UniswapV2Router02.sol',
-    ]
+    ],
   },
 
   docgen: {

@@ -7,7 +7,7 @@ import {
 } from '../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { signERC2612Permit } from './eth-permit/eth-permit';
+import { signERC2612Permit } from 'eth-permit';
 
 let admin: SignerWithAddress;
 let alice: SignerWithAddress;
