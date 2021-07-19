@@ -149,7 +149,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
         uint256 accPremiaPerShare = pool.accPremiaPerShare;
 
         if (block.number > pool.lastRewardBlock && TVL != 0) {
-            uint256 premiaReward = ((pool.lastRewardBlock - block.number) *
+            uint256 premiaReward = ((block.number - pool.lastRewardBlock) *
                 PREMIA_PER_BLOCK *
                 pool.allocPoint) / l.totalAllocPoint;
 
@@ -192,7 +192,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
             return;
         }
 
-        uint256 premiaReward = ((pool.lastRewardBlock - block.number) *
+        uint256 premiaReward = ((block.number - pool.lastRewardBlock) *
             PREMIA_PER_BLOCK *
             pool.allocPoint) / l.totalAllocPoint;
 
