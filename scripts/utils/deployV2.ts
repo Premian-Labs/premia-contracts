@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { parseEther } from 'ethers/lib/utils';
+import { parseEther, parseUnits } from 'ethers/lib/utils';
 import { fixedFromFloat } from '../../test/utils/math';
 import {
   OptionMath__factory,
@@ -158,6 +158,8 @@ export async function deployV2(
     tokens.ETH,
     oracles.DAI,
     oracles.ETH,
+    parseUnits('100', 8),
+    parseUnits('0.05', 18),
     fixedFromFloat(1.92),
   );
 
@@ -166,6 +168,8 @@ export async function deployV2(
     tokens.ETH,
     oracles.DAI,
     oracles.ETH,
+    parseUnits('100', 8),
+    parseUnits('0.05', 18),
     fixedFromFloat(1.92),
   );
 
@@ -176,6 +180,8 @@ export async function deployV2(
     tokens.BTC,
     oracles.DAI,
     oracles.BTC,
+    parseUnits('100', 8),
+    parseUnits('0.005', 8),
     fixedFromFloat(1.35),
   );
 
@@ -184,6 +190,8 @@ export async function deployV2(
     tokens.BTC,
     oracles.DAI,
     oracles.BTC,
+    parseUnits('100', 8),
+    parseUnits('0.005', 8),
     fixedFromFloat(1.35),
   );
 
@@ -194,6 +202,8 @@ export async function deployV2(
     tokens.LINK,
     oracles.DAI,
     oracles.LINK,
+    parseUnits('100', 8),
+    parseUnits('5', 18),
     fixedFromFloat(3.12),
   );
 
@@ -202,6 +212,8 @@ export async function deployV2(
     tokens.LINK,
     oracles.DAI,
     oracles.LINK,
+    parseUnits('100', 8),
+    parseUnits('5', 18),
     fixedFromFloat(3.12),
   );
 
