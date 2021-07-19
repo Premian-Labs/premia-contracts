@@ -12,6 +12,7 @@ import {IERC165} from "@solidstate/contracts/introspection/IERC165.sol";
 
 import {IProxyManager} from "../core/IProxyManager.sol";
 import {PoolStorage} from "./PoolStorage.sol";
+import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 
 /**
  * @title Upgradeable proxy with centrally controlled Pool implementation
@@ -28,8 +29,8 @@ contract PoolProxy is Proxy {
         address underlying,
         address baseOracle,
         address underlyingOracle,
-        uint256 baseMinimum,
-        uint256 underlyingMinimum,
+        int128 baseMinimum64x64,
+        int128 underlyingMinimum64x64,
         int128 emaVarianceAnnualized64x64,
         int128 initialCLevel64x64
     ) {
@@ -44,11 +45,20 @@ contract PoolProxy is Proxy {
 
             l.setOracles(baseOracle, underlyingOracle);
 
-            l.baseDecimals = IERC20Metadata(base).decimals();
-            l.underlyingDecimals = IERC20Metadata(underlying).decimals();
+            uint8 baseDecimals = IERC20Metadata(base).decimals();
+            uint8 underlyingDecimals = IERC20Metadata(underlying).decimals();
 
-            l.baseMinimum = baseMinimum;
-            l.underlyingMinimum = underlyingMinimum;
+            l.baseDecimals = baseDecimals;
+            l.underlyingDecimals = underlyingDecimals;
+
+            l.baseMinimum = ABDKMath64x64Token.toDecimals(
+                baseMinimum64x64,
+                baseDecimals
+            );
+            l.underlyingMinimum = ABDKMath64x64Token.toDecimals(
+                underlyingMinimum64x64,
+                underlyingDecimals
+            );
 
             l.cLevelBase64x64 = initialCLevel64x64;
             l.cLevelUnderlying64x64 = initialCLevel64x64;
