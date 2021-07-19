@@ -40,7 +40,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
     }
 
     // Add a new lp to the pool. Can only be called by the owner.
-    function add(address _pool, uint256 _allocPoint) public onlyOwner {
+    function add(address _pool, uint256 _allocPoint) external onlyOwner {
         PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
         require(
             l.poolInfo[_pool][true].lastRewardBlock == 0 &&
@@ -68,7 +68,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
     }
 
     // Update the given pool's PREMIA allocation point. Can only be called by the owner.
-    function set(address _pool, uint256 _allocPoint) public onlyOwner {
+    function set(address _pool, uint256 _allocPoint) external onlyOwner {
         PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
 
         require(
