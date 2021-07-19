@@ -567,6 +567,23 @@ describe('PoolProxy', function () {
   describe('#purchase', function () {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
+        it('should revert if contract size is less than minimum', async () => {
+          const maturity = getCurrentTimestamp() + 10 * 3600;
+          const strike64x64 = fixedFromFloat(1.5);
+
+          await expect(
+            pool
+              .connect(buyer)
+              .purchase(
+                maturity,
+                strike64x64,
+                parseUnderlying('0.001'),
+                isCall,
+                parseOption('100', isCall),
+              ),
+          ).to.be.revertedWith('too small');
+        });
+
         it('should revert if using a maturity less than 1 day in the future', async () => {
           await p.depositLiquidity(
             owner,
