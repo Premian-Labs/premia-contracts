@@ -5,10 +5,12 @@ import {
   OptionMath__factory,
   PoolExercise__factory,
   PoolIO__factory,
+  PoolMining__factory,
   PoolView__factory,
   PoolWrite__factory,
   Premia__factory,
   ProxyManager__factory,
+  ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
 import { diamondCut } from './diamond';
 import { BigNumber } from 'ethers';
@@ -22,6 +24,7 @@ export interface TokenAddresses {
 
 export async function deployV2(
   weth: string,
+  premia: string,
   fee64x64: BigNumber,
   feeReceiver: string,
   premiaFeeDiscount: string,
@@ -31,10 +34,29 @@ export async function deployV2(
 ) {
   const [deployer] = await ethers.getSigners();
 
+  //
+
   const optionMath = await new OptionMath__factory(deployer).deploy();
 
   const premiaDiamond = await new Premia__factory(deployer).deploy();
   const poolDiamond = await new Premia__factory(deployer).deploy();
+
+  //
+
+  const poolMiningImpl = await new PoolMining__factory(deployer).deploy(
+    premiaDiamond.address,
+    premia,
+    parseEther('100'),
+  );
+
+  const poolMiningProxy = await new ProxyUpgradeableOwnable__factory(
+    deployer,
+  ).deploy(poolMiningImpl.address);
+
+  const poolMining = PoolMining__factory.connect(
+    poolMiningProxy.address,
+    deployer,
+  );
 
   //
 
@@ -54,6 +76,7 @@ export async function deployV2(
   );
   const poolWriteImpl = await poolWriteFactory.deploy(
     tokens.ETH,
+    poolMining.address,
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
@@ -75,6 +98,7 @@ export async function deployV2(
   );
   const poolExerciseImpl = await poolExerciseFactory.deploy(
     tokens.ETH,
+    poolMining.address,
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
@@ -93,6 +117,7 @@ export async function deployV2(
   const poolViewFactory = new PoolView__factory(deployer);
   const poolViewImpl = await poolViewFactory.deploy(
     tokens.ETH,
+    poolMining.address,
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
@@ -114,6 +139,7 @@ export async function deployV2(
   );
   const poolIOImpl = await poolIOFactory.deploy(
     tokens.ETH,
+    poolMining.address,
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
@@ -161,6 +187,7 @@ export async function deployV2(
     fixedFromFloat(100),
     fixedFromFloat(0.05),
     fixedFromFloat(1.92),
+    100,
   );
 
   let poolTx = await proxyManager.deployPool(
@@ -171,6 +198,7 @@ export async function deployV2(
     fixedFromFloat(100),
     fixedFromFloat(0.05),
     fixedFromFloat(1.92),
+    100,
   );
 
   await poolTx.wait(1);
@@ -183,6 +211,7 @@ export async function deployV2(
     fixedFromFloat(100),
     fixedFromFloat(0.005),
     fixedFromFloat(1.35),
+    100,
   );
 
   poolTx = await proxyManager.deployPool(
@@ -193,6 +222,7 @@ export async function deployV2(
     fixedFromFloat(100),
     fixedFromFloat(0.005),
     fixedFromFloat(1.35),
+    100,
   );
 
   await poolTx.wait(1);
@@ -205,6 +235,7 @@ export async function deployV2(
     fixedFromFloat(100),
     fixedFromFloat(5),
     fixedFromFloat(3.12),
+    100,
   );
 
   poolTx = await proxyManager.deployPool(
@@ -215,6 +246,7 @@ export async function deployV2(
     fixedFromFloat(100),
     fixedFromFloat(5),
     fixedFromFloat(3.12),
+    100,
   );
 
   await poolTx.wait(1);
@@ -226,6 +258,9 @@ export async function deployV2(
   console.log('wethPoolAddress', wethPoolAddress);
   console.log('wbtcPoolAddress', wbtcPoolAddress);
   console.log('linkPoolAddress', linkPoolAddress);
+
+  console.log('PoolMining implementation:', poolMiningImpl.address);
+  console.log('PoolMining proxy:', poolMiningProxy.address);
 
   console.log('PoolWrite implementation:', poolWriteImpl.address);
   console.log('PoolIO implementation:', poolIOImpl.address);

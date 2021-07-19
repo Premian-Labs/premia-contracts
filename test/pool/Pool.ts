@@ -37,6 +37,7 @@ describe('Pool', function () {
     optionMath = await new OptionMath__factory(owner).deploy();
     instance = await new PoolMock__factory(owner).deploy(
       ethers.constants.AddressZero,
+      ethers.constants.AddressZero,
       ONE_ADDRESS,
       ethers.constants.AddressZero,
       fixedFromFloat(0.01),

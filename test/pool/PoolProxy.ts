@@ -61,6 +61,7 @@ describe('PoolProxy', function () {
   let poolMock: PoolMock;
   let poolWeth: IPool;
   let p: PoolUtil;
+  let premia: ERC20Mock;
 
   const underlyingFreeLiqToken = formatTokenId({
     tokenType: TokenType.UnderlyingFreeLiq,
@@ -88,6 +89,7 @@ describe('PoolProxy', function () {
 
     const erc20Factory = new ERC20Mock__factory(owner);
 
+    premia = await erc20Factory.deploy('PREMIA', 18);
     xPremia = await erc20Factory.deploy('xPREMIA', 18);
     premiaFeeDiscount = await new PremiaFeeDiscount__factory(owner).deploy(
       xPremia.address,
@@ -107,6 +109,7 @@ describe('PoolProxy', function () {
 
     p = await PoolUtil.deploy(
       owner,
+      premia.address,
       spotPrice,
       feeReceiver.address,
       premiaFeeDiscount.address,
@@ -474,7 +477,7 @@ describe('PoolProxy', function () {
         ).to.eq(100);
       });
 
-      it('should grand sender share tokens with WETH deposit', async () => {
+      it('should grant sender share tokens with WETH deposit', async () => {
         // Use WETH tokens
         await p.underlyingWeth.deposit({ value: 100 });
         await p.underlyingWeth.approve(

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import {OwnableInternal} from "@solidstate/contracts/access/OwnableInternal.sol";
+import {OwnableInternal, OwnableStorage} from "@solidstate/contracts/access/OwnableInternal.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 
@@ -14,6 +14,10 @@ contract PoolMining is IPoolMining, OwnableInternal {
     using PoolMiningStorage for PoolMiningStorage.Layout;
     using SafeERC20 for IERC20;
 
+    address internal immutable DIAMOND;
+    address internal immutable PREMIA;
+    uint256 internal immutable PREMIA_PER_BLOCK;
+
     event Claim(
         address indexed user,
         address indexed pool,
@@ -22,10 +26,14 @@ contract PoolMining is IPoolMining, OwnableInternal {
     );
     event UpdatePoolAlloc(address indexed pool, uint256 allocPoints);
 
-    constructor(address _premia, uint256 _premiaPerBlock) {
-        PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
-        l.premia = _premia;
-        l.premiaPerBlock = _premiaPerBlock;
+    constructor(
+        address _diamond,
+        address _premia,
+        uint256 _premiaPerBlock
+    ) {
+        DIAMOND = _diamond;
+        PREMIA = _premia;
+        PREMIA_PER_BLOCK = _premiaPerBlock;
     }
 
     modifier onlyPool(address _pool) {
@@ -33,14 +41,31 @@ contract PoolMining is IPoolMining, OwnableInternal {
         _;
     }
 
-    function addPremiaRewards(uint256 _amount) external onlyOwner {
+    modifier onlyDiamondOrOwner() {
+        require(
+            msg.sender == DIAMOND ||
+                msg.sender == OwnableStorage.layout().owner,
+            "Not diamond or owner"
+        );
+        _;
+    }
+
+    function addPremiaRewards(uint256 _amount)
+        external
+        override
+        onlyDiamondOrOwner
+    {
         PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
-        IERC20(l.premia).safeTransferFrom(msg.sender, address(this), _amount);
+        IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), _amount);
         l.premiaAvailable += _amount;
     }
 
     // Add a new lp to the pool. Can only be called by the owner.
-    function add(address _pool, uint256 _allocPoint) external onlyOwner {
+    function add(address _pool, uint256 _allocPoint)
+        external
+        override
+        onlyDiamondOrOwner
+    {
         PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
         require(
             l.poolInfo[_pool][true].lastRewardBlock == 0 &&
@@ -68,7 +93,11 @@ contract PoolMining is IPoolMining, OwnableInternal {
     }
 
     // Update the given pool's PREMIA allocation point. Can only be called by the owner.
-    function set(address _pool, uint256 _allocPoint) external onlyOwner {
+    function set(address _pool, uint256 _allocPoint)
+        external
+        override
+        onlyDiamondOrOwner
+    {
         PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
 
         require(
@@ -94,7 +123,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
         address _pool,
         bool _isCallPool,
         address _user
-    ) external view returns (uint256) {
+    ) external view override returns (uint256) {
         uint256 TVL;
         uint256 userTVL;
 
@@ -121,7 +150,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
 
         if (block.number > pool.lastRewardBlock && TVL != 0) {
             uint256 premiaReward = ((pool.lastRewardBlock - block.number) *
-                l.premiaPerBlock *
+                PREMIA_PER_BLOCK *
                 pool.allocPoint) / l.totalAllocPoint;
 
             // If we are running out of rewards to distribute, distribute whats left
@@ -156,7 +185,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
         }
 
         uint256 premiaReward = ((pool.lastRewardBlock - block.number) *
-            l.premiaPerBlock *
+            PREMIA_PER_BLOCK *
             pool.allocPoint) / l.totalAllocPoint;
 
         // If we are running out of rewards to distribute, distribute whats left
@@ -215,15 +244,14 @@ contract PoolMining is IPoolMining, OwnableInternal {
 
         uint256 reward = l.userInfo[_pool][_isCallPool][_user].reward;
         l.userInfo[_pool][_isCallPool][_user].reward = 0;
-        IERC20(l.premia).safeTransfer(_user, reward);
+        IERC20(PREMIA).safeTransfer(_user, reward);
 
         emit Claim(_user, _pool, _isCallPool, reward);
     }
 
     // Safe premia transfer function, just in case if rounding error causes pool to not have enough PREMIA.
     function _safePremiaTransfer(address _to, uint256 _amount) internal {
-        PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
-        IERC20 premia = IERC20(l.premia);
+        IERC20 premia = IERC20(PREMIA);
 
         uint256 premiaBal = premia.balanceOf(address(this));
         if (_amount > premiaBal) {

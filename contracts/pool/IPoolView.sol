@@ -34,4 +34,6 @@ interface IPoolView {
     function getUserTVL(address user) external view returns (uint256, uint256);
 
     function getTotalTVL() external view returns (uint256, uint256);
+
+    function getPoolMining() external view returns (address);
 }

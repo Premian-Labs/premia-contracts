@@ -31,9 +31,6 @@ library PoolMiningStorage {
     }
 
     struct Layout {
-        address premia;
-        // PREMIA tokens distributed per block
-        uint256 premiaPerBlock;
         // Total PREMIA left to distribute
         uint256 premiaAvailable;
         // List of option pool contracts with a liquidity mining pool added here

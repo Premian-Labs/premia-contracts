@@ -170,4 +170,12 @@ contract PoolView is IPoolView, PoolInternal {
         PoolStorage.Layout storage l = PoolStorage.layout();
         return (l.totalTVL[true], l.totalTVL[false]);
     }
+
+    /**
+     * @notice get the addres of PoolMining contract
+     * @return address of PoolMining contract
+     */
+    function getPoolMining() external view override returns (address) {
+        return POOL_MINING_ADDRESS;
+    }
 }
