@@ -168,7 +168,15 @@ contract PoolMining is IPoolMining, OwnableInternal {
         address _pool,
         bool _isCallPool,
         uint256 _totalTVL
-    ) public override onlyPool(_pool) {
+    ) external override onlyPool(_pool) {
+        _updatePool(_pool, _isCallPool, _totalTVL);
+    }
+
+    function _updatePool(
+        address _pool,
+        bool _isCallPool,
+        uint256 _totalTVL
+    ) internal {
         PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
 
         PoolMiningStorage.PoolInfo storage pool = l.poolInfo[_pool][
@@ -205,7 +213,25 @@ contract PoolMining is IPoolMining, OwnableInternal {
         uint256 _userTVLOld,
         uint256 _userTVLNew,
         uint256 _totalTVL
-    ) public override onlyPool(_pool) {
+    ) external override onlyPool(_pool) {
+        _allocatePending(
+            _user,
+            _pool,
+            _isCallPool,
+            _userTVLOld,
+            _userTVLNew,
+            _totalTVL
+        );
+    }
+
+    function _allocatePending(
+        address _user,
+        address _pool,
+        bool _isCallPool,
+        uint256 _userTVLOld,
+        uint256 _userTVLNew,
+        uint256 _totalTVL
+    ) internal {
         PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
         PoolMiningStorage.PoolInfo storage pool = l.poolInfo[_pool][
             _isCallPool
@@ -214,7 +240,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
             _isCallPool
         ][_user];
 
-        updatePool(_pool, _isCallPool, _totalTVL);
+        _updatePool(_pool, _isCallPool, _totalTVL);
 
         user.reward +=
             ((_userTVLOld * pool.accPremiaPerShare) / 1e12) -
@@ -233,7 +259,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
     ) external override onlyPool(_pool) {
         PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
 
-        allocatePending(
+        _allocatePending(
             _user,
             _pool,
             _isCallPool,
