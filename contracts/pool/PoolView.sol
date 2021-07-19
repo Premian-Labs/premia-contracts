@@ -136,4 +136,19 @@ contract PoolView is IPoolView, PoolInternal {
     {
         return (_getMinimumAmount(true), _getMinimumAmount(false));
     }
+
+    /**
+     * @notice get user total value locked
+     * @return user total value locked in call pool (in underlying token amount)
+     * @return user total value locked in put pool (in base token amount)
+     */
+    function getUserTVL(address user)
+        external
+        view
+        override
+        returns (uint256, uint256)
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        return (l.userTVL[user][true], l.userTVL[user][false]);
+    }
 }

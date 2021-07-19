@@ -529,6 +529,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                     _getReservedLiquidityTokenId(isCall),
                     balance
                 );
+                l.userTVL[underwriter][isCall] -= balance;
                 continue;
             }
 
@@ -668,6 +669,10 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                     strike64x64.mulu(intervalContractSize)
                 ) - intervalExerciseValue;
 
+            PoolStorage.layout().userTVL[underwriter][
+                isCall
+            ] -= intervalExerciseValue;
+
             uint256 fee = _getFeeWithDiscount(
                 underwriter,
                 FEE_64x64.mulu(freeLiq)
@@ -683,6 +688,8 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                     _getReservedLiquidityTokenId(isCall),
                     freeLiq - fee
                 );
+                PoolStorage.layout().userTVL[underwriter][isCall] -= (freeLiq -
+                    fee);
             }
             // burn short option tokens from underwriter
             _burn(underwriter, shortTokenId, intervalContractSize);
@@ -1024,6 +1031,11 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                         );
                         l.removeUnderwriter(from, isCallPool);
                     }
+
+                    if (to != address(0)) {
+                        l.userTVL[from][isCallPool] -= amounts[i];
+                        l.userTVL[to][isCallPool] += amounts[i];
+                    }
                 }
 
                 if (to != address(0)) {
@@ -1032,6 +1044,27 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                         l.addUnderwriter(to, isCallPool);
                     }
                 }
+            }
+
+            // Update userTVL on SHORT options transfers
+            (
+                PoolStorage.TokenType tokenType,
+                ,
+                int128 strike64x64
+            ) = PoolStorage.parseTokenId(id);
+
+            if (
+                (from != address(0) && to != address(0)) &&
+                (tokenType == PoolStorage.TokenType.SHORT_CALL ||
+                    tokenType == PoolStorage.TokenType.SHORT_PUT)
+            ) {
+                bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
+                uint256 collateral = isCall
+                    ? amount
+                    : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
+
+                l.userTVL[from][isCall] -= collateral;
+                l.userTVL[to][isCall] += collateral;
             }
         }
     }
