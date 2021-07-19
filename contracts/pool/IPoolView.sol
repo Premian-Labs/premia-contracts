@@ -32,4 +32,6 @@ interface IPoolView {
     function getMinimumAmounts() external view returns (uint256, uint256);
 
     function getUserTVL(address user) external view returns (uint256, uint256);
+
+    function getTotalTVL() external view returns (uint256, uint256);
 }

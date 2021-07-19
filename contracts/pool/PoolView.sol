@@ -18,10 +18,19 @@ contract PoolView is IPoolView, PoolInternal {
 
     constructor(
         address weth,
+        address poolMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
-    ) PoolInternal(weth, feeReceiver, feeDiscountAddress, fee64x64) {}
+    )
+        PoolInternal(
+            weth,
+            poolMining,
+            feeReceiver,
+            feeDiscountAddress,
+            fee64x64
+        )
+    {}
 
     /**
      * @notice get pool settings
@@ -150,5 +159,15 @@ contract PoolView is IPoolView, PoolInternal {
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
         return (l.userTVL[user][true], l.userTVL[user][false]);
+    }
+
+    /**
+     * @notice get total value locked
+     * @return total value locked in call pool (in underlying token amount)
+     * @return total value locked in put pool (in base token amount)
+     */
+    function getTotalTVL() external view override returns (uint256, uint256) {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        return (l.totalTVL[true], l.totalTVL[false]);
     }
 }

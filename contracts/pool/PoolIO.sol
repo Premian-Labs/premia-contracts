@@ -21,10 +21,19 @@ contract PoolIO is IPoolIO, PoolInternal {
 
     constructor(
         address weth,
+        address poolMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
-    ) PoolInternal(weth, feeReceiver, feeDiscountAddress, fee64x64) {}
+    )
+        PoolInternal(
+            weth,
+            poolMining,
+            feeReceiver,
+            feeDiscountAddress,
+            fee64x64
+        )
+    {}
 
     /**
      * @notice set timestamp after which reinvestment is disabled
@@ -50,7 +59,7 @@ contract PoolIO is IPoolIO, PoolInternal {
         _processPendingDeposits(l, isCallPool);
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;
-        l.userTVL[msg.sender][isCallPool] += amount;
+        _addUserTVL(l, msg.sender, isCallPool, amount);
         _pullFrom(msg.sender, _getPoolToken(isCallPool), amount);
 
         _addToDepositQueue(msg.sender, amount, isCallPool);
@@ -108,7 +117,7 @@ contract PoolIO is IPoolIO, PoolInternal {
             _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
         }
 
-        l.userTVL[msg.sender][isCallPool] -= amount;
+        _subUserTVL(l, msg.sender, isCallPool, amount);
         _pushTo(msg.sender, _getPoolToken(isCallPool), amount);
         emit Withdrawal(msg.sender, isCallPool, depositedAt, amount);
     }

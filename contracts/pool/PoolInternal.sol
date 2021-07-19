@@ -14,6 +14,7 @@ import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
 import {IPremiaFeeDiscount} from "../interface/IPremiaFeeDiscount.sol";
 import {IPoolEvents} from "./IPoolEvents.sol";
+import {IPoolMining} from "../mining/IPoolMining.sol";
 
 /**
  * @title Premia option pool
@@ -26,6 +27,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
     using PoolStorage for PoolStorage.Layout;
 
     address internal immutable WETH_ADDRESS;
+    address internal immutable POOL_MINING_ADDRESS;
     address internal immutable FEE_RECEIVER_ADDRESS;
     address internal immutable FEE_DISCOUNT_ADDRESS;
 
@@ -42,11 +44,13 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
 
     constructor(
         address weth,
+        address poolMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
     ) {
         WETH_ADDRESS = weth;
+        POOL_MINING_ADDRESS = poolMining;
         FEE_RECEIVER_ADDRESS = feeReceiver;
         // PremiaFeeDiscount contract address
         FEE_DISCOUNT_ADDRESS = feeDiscountAddress;
@@ -529,7 +533,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                     _getReservedLiquidityTokenId(isCall),
                     balance
                 );
-                l.userTVL[underwriter][isCall] -= balance;
+                _subUserTVL(l, underwriter, isCall, balance);
                 continue;
             }
 
@@ -669,9 +673,12 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                     strike64x64.mulu(intervalContractSize)
                 ) - intervalExerciseValue;
 
-            PoolStorage.layout().userTVL[underwriter][
-                isCall
-            ] -= intervalExerciseValue;
+            _subUserTVL(
+                PoolStorage.layout(),
+                underwriter,
+                isCall,
+                intervalExerciseValue
+            );
 
             uint256 fee = _getFeeWithDiscount(
                 underwriter,
@@ -682,14 +689,14 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
             // mint free liquidity tokens for underwriter
             if (PoolStorage.layout().getReinvestmentStatus(underwriter)) {
                 _addToDepositQueue(underwriter, freeLiq - fee, isCall);
+                _subUserTVL(PoolStorage.layout(), underwriter, isCall, fee);
             } else {
                 _mint(
                     underwriter,
                     _getReservedLiquidityTokenId(isCall),
                     freeLiq - fee
                 );
-                PoolStorage.layout().userTVL[underwriter][isCall] -= (freeLiq -
-                    fee);
+                _subUserTVL(PoolStorage.layout(), underwriter, isCall, freeLiq);
             }
             // burn short option tokens from underwriter
             _burn(underwriter, shortTokenId, intervalContractSize);
@@ -973,6 +980,48 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
         _mint(account, tokenId, amount, "");
     }
 
+    function _addUserTVL(
+        PoolStorage.Layout storage l,
+        address user,
+        bool isCallPool,
+        uint256 amount
+    ) internal {
+        uint256 userTVL = l.userTVL[user][isCallPool];
+        uint256 totalTVL = l.totalTVL[isCallPool];
+
+        IPoolMining(POOL_MINING_ADDRESS).allocatePending(
+            user,
+            address(this),
+            isCallPool,
+            userTVL,
+            userTVL + amount,
+            totalTVL
+        );
+        l.userTVL[user][isCallPool] = userTVL + amount;
+        l.totalTVL[isCallPool] = totalTVL + amount;
+    }
+
+    function _subUserTVL(
+        PoolStorage.Layout storage l,
+        address user,
+        bool isCallPool,
+        uint256 amount
+    ) internal {
+        uint256 userTVL = l.userTVL[user][isCallPool];
+        uint256 totalTVL = l.totalTVL[isCallPool];
+
+        IPoolMining(POOL_MINING_ADDRESS).allocatePending(
+            user,
+            address(this),
+            isCallPool,
+            userTVL,
+            userTVL - amount,
+            totalTVL
+        );
+        l.userTVL[user][isCallPool] = userTVL - amount;
+        l.totalTVL[isCallPool] = totalTVL - amount;
+    }
+
     /**
      * @notice ERC1155 hook: track eligible underwriters
      * @param operator transaction sender
@@ -1033,8 +1082,8 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                     }
 
                     if (to != address(0)) {
-                        l.userTVL[from][isCallPool] -= amounts[i];
-                        l.userTVL[to][isCallPool] += amounts[i];
+                        _subUserTVL(l, from, isCallPool, amounts[i]);
+                        _addUserTVL(l, to, isCallPool, amounts[i]);
                     }
                 }
 
@@ -1063,8 +1112,8 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                     ? amount
                     : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
 
-                l.userTVL[from][isCall] -= collateral;
-                l.userTVL[to][isCall] += collateral;
+                _subUserTVL(l, from, isCall, collateral);
+                _addUserTVL(l, to, isCall, collateral);
             }
         }
     }

@@ -85,8 +85,10 @@ library PoolStorage {
         // user -> batch timestamp -> isCall -> pending amount
         mapping(address => mapping(uint256 => mapping(bool => uint256))) pendingDeposits;
         EnumerableSet.UintSet tokenIds;
-        // user -> isCallPool -> total value locked (Used for liquidity mining)
+        // user -> isCallPool -> total value locked of user (Used for liquidity mining)
         mapping(address => mapping(bool => uint256)) userTVL;
+        // isCallPool -> total value locked
+        mapping(bool => uint256) totalTVL;
     }
 
     function layout() internal pure returns (Layout storage l) {
