@@ -283,6 +283,9 @@ export class PoolUtil {
       underlying.address,
       baseOracle.address,
       underlyingOracle.address,
+      // TODO: use realistic minimum amounts
+      '10000',
+      '10000',
       fixedFromFloat(1.22 * 1.22),
     );
 
@@ -297,6 +300,9 @@ export class PoolUtil {
       underlyingWeth.address,
       baseOracle.address,
       underlyingOracle.address,
+      // TODO: use realistic minimum amounts
+      '10000',
+      '10000',
       fixedFromFloat(1.1),
     );
 

@@ -28,6 +28,8 @@ contract PoolProxy is Proxy {
         address underlying,
         address baseOracle,
         address underlyingOracle,
+        uint256 baseMinimum,
+        uint256 underlyingMinimum,
         int128 emaVarianceAnnualized64x64,
         int128 initialCLevel64x64
     ) {
@@ -44,6 +46,10 @@ contract PoolProxy is Proxy {
 
             l.baseDecimals = IERC20Metadata(base).decimals();
             l.underlyingDecimals = IERC20Metadata(underlying).decimals();
+
+            l.baseMinimum = baseMinimum;
+            l.underlyingMinimum = underlyingMinimum;
+
             l.cLevelBase64x64 = initialCLevel64x64;
             l.cLevelUnderlying64x64 = initialCLevel64x64;
 

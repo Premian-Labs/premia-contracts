@@ -105,6 +105,8 @@ contract PoolWrite is IPoolWrite, PoolInternal {
     ) external payable override returns (uint256 baseCost, uint256 feeCost) {
         // TODO: specify payment currency
 
+        require(contractSize >= _getMinimumAmount(isCall), "TODO");
+
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         require(maturity >= block.timestamp + (1 days), "exp < 1 day");

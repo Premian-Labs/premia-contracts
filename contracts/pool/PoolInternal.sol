@@ -512,9 +512,8 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
             underwriter = queue[address(0)];
             uint256 balance = balanceOf(underwriter, freeLiqTokenId);
 
-            // ToDo : Find better solution ?
             // If dust left, we remove underwriter and skip to next
-            if (balance < 1e5) {
+            if (balance < _getMinimumAmount(isCall)) {
                 l.removeUnderwriter(underwriter, isCall);
                 continue;
             }
@@ -782,6 +781,15 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
         }
     }
 
+    function _getMinimumAmount(bool isCall)
+        internal
+        view
+        returns (uint256 minimumAmount)
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        minimumAmount = isCall ? l.underlyingMinimum : l.baseMinimum;
+    }
+
     function _setCLevel(
         PoolStorage.Layout storage l,
         int128 oldLiquidity64x64,
@@ -977,7 +985,6 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
 
         // TODO: use linked list for ERC1155Enumerable
-        // TODO: enforce minimum balance
 
         PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -1000,11 +1007,12 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                 id == BASE_FREE_LIQ_TOKEN_ID
             ) {
                 bool isCallPool = id == UNDERLYING_FREE_LIQ_TOKEN_ID;
+                uint256 minimum = _getMinimumAmount(isCallPool);
 
                 if (from != address(0)) {
                     uint256 balance = balanceOf(from, id);
-                    // ToDo : Find better solution than checking if under 1e5 to ignore dust left ?
-                    if (balance > 1e5 && balance <= amount + 1e5) {
+
+                    if (balance > minimum && balance <= amount + minimum) {
                         require(
                             balance -
                                 l.pendingDeposits[from][
@@ -1019,7 +1027,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
 
                 if (to != address(0)) {
                     uint256 balance = balanceOf(to, id);
-                    if (balance <= 1e5 && balance + amount > 1e5) {
+                    if (balance <= minimum && balance + amount > minimum) {
                         l.addUnderwriter(to, isCallPool);
                     }
                 }

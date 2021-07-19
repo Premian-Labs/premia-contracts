@@ -62,6 +62,8 @@ library PoolStorage {
         uint256 updatedAt;
         int128 emaLogReturns64x64;
         int128 emaVarianceAnnualized64x64;
+        uint256 baseMinimum;
+        uint256 underlyingMinimum;
         // User -> isCall -> depositedAt
         mapping(address => mapping(bool => uint256)) depositedAt;
         mapping(address => uint256) divestmentTimestamps;
