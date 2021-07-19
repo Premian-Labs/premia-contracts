@@ -23,7 +23,7 @@ contract PoolMock is PoolInternal {
         int128 fee64x64
     ) PoolInternal(weth, feeReceiver, feeDiscount, fee64x64) {}
 
-    function tokenIdFor(
+    function formatTokenId(
         PoolStorage.TokenType tokenType,
         uint64 maturity,
         int128 strikePrice
@@ -32,7 +32,7 @@ contract PoolMock is PoolInternal {
         return PoolStorage.formatTokenId(tokenType, maturity, strikePrice);
     }
 
-    function parametersFor(uint256 tokenId)
+    function parseTokenId(uint256 tokenId)
         external
         pure
         returns (
