@@ -283,6 +283,8 @@ export class PoolUtil {
       underlying.address,
       baseOracle.address,
       underlyingOracle.address,
+      fixedFromFloat(100),
+      fixedFromFloat(0.1),
       fixedFromFloat(1.22 * 1.22),
     );
 
@@ -297,6 +299,8 @@ export class PoolUtil {
       underlyingWeth.address,
       baseOracle.address,
       underlyingOracle.address,
+      fixedFromFloat(100),
+      fixedFromFloat(0.1),
       fixedFromFloat(1.1),
     );
 

@@ -62,6 +62,8 @@ contract ProxyManager is IProxyManager, OwnableInternal {
      * @param underlying underlying token
      * @param baseOracle Chainlink price aggregator for base
      * @param underlyingOracle Chainlink price aggregator for underlying
+     * @param baseMinimum64x64 64x64 fixed point representation of minimum base currency amount
+     * @param underlyingMinimum64x64 64x64 fixed point representation of minimum underlying currency amount
      * TODO: unrestrict
      * @return deployment address
      */
@@ -70,6 +72,8 @@ contract ProxyManager is IProxyManager, OwnableInternal {
         address underlying,
         address baseOracle,
         address underlyingOracle,
+        int128 baseMinimum64x64,
+        int128 underlyingMinimum64x64,
         int128 emaVarianceAnnualized64x64
     ) external onlyOwner returns (address) {
         ProxyManagerStorage.Layout storage l = ProxyManagerStorage.layout();
@@ -86,6 +90,8 @@ contract ProxyManager is IProxyManager, OwnableInternal {
                 underlying,
                 baseOracle,
                 underlyingOracle,
+                baseMinimum64x64,
+                underlyingMinimum64x64,
                 emaVarianceAnnualized64x64,
                 INITIAL_C_LEVEL_64x64
             )

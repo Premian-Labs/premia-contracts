@@ -122,4 +122,18 @@ contract PoolView is IPoolView, PoolInternal {
     {
         return PoolStorage.parseTokenId(tokenId);
     }
+
+    /**
+     * @notice get minimum purchase and interval amounts
+     * @return minimum call pool amount
+     * @return minimum put pool amount
+     */
+    function getMinimumAmounts()
+        external
+        view
+        override
+        returns (uint256, uint256)
+    {
+        return (_getMinimumAmount(true), _getMinimumAmount(false));
+    }
 }

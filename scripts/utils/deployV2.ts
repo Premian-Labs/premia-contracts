@@ -158,6 +158,8 @@ export async function deployV2(
     tokens.ETH,
     oracles.DAI,
     oracles.ETH,
+    fixedFromFloat(100),
+    fixedFromFloat(0.05),
     fixedFromFloat(1.92),
   );
 
@@ -166,6 +168,8 @@ export async function deployV2(
     tokens.ETH,
     oracles.DAI,
     oracles.ETH,
+    fixedFromFloat(100),
+    fixedFromFloat(0.05),
     fixedFromFloat(1.92),
   );
 
@@ -176,6 +180,8 @@ export async function deployV2(
     tokens.BTC,
     oracles.DAI,
     oracles.BTC,
+    fixedFromFloat(100),
+    fixedFromFloat(0.005),
     fixedFromFloat(1.35),
   );
 
@@ -184,6 +190,8 @@ export async function deployV2(
     tokens.BTC,
     oracles.DAI,
     oracles.BTC,
+    fixedFromFloat(100),
+    fixedFromFloat(0.005),
     fixedFromFloat(1.35),
   );
 
@@ -194,6 +202,8 @@ export async function deployV2(
     tokens.LINK,
     oracles.DAI,
     oracles.LINK,
+    fixedFromFloat(100),
+    fixedFromFloat(5),
     fixedFromFloat(3.12),
   );
 
@@ -202,6 +212,8 @@ export async function deployV2(
     tokens.LINK,
     oracles.DAI,
     oracles.LINK,
+    fixedFromFloat(100),
+    fixedFromFloat(5),
     fixedFromFloat(3.12),
   );
 

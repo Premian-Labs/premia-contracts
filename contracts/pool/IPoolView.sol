@@ -28,4 +28,6 @@ interface IPoolView {
             uint64,
             int128
         );
+
+    function getMinimumAmounts() external view returns (uint256, uint256);
 }
