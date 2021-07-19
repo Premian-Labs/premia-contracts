@@ -21,6 +21,7 @@ import {
   DECIMALS_UNDERLYING,
   FEE,
   formatOption,
+  formatOptionToNb,
   formatUnderlying,
   getExerciseValue,
   getTokenDecimals,
@@ -288,11 +289,20 @@ describe('PoolProxy', function () {
 
           const userTVL = await p.pool.getUserTVL(lp1.address);
           const totalTVL = await p.pool.getTotalTVL();
+          const baseCost = fixedToNumber(quote.baseCost64x64);
 
-          expect(userTVL.underlyingTVL).to.eq(isCall ? amount : 0);
-          expect(userTVL.baseTVL).to.eq(isCall ? 0 : amount);
-          expect(totalTVL.underlyingTVL).to.eq(isCall ? amount : 0);
-          expect(totalTVL.baseTVL).to.eq(isCall ? 0 : amount);
+          expect(formatOptionToNb(userTVL.underlyingTVL, isCall)).to.almost(
+            isCall ? amountNb + baseCost : 0,
+          );
+          expect(formatOptionToNb(userTVL.baseTVL, isCall)).to.almost(
+            isCall ? 0 : amountNb + baseCost,
+          );
+          expect(formatOptionToNb(totalTVL.underlyingTVL, isCall)).to.almost(
+            isCall ? amountNb + baseCost : 0,
+          );
+          expect(formatOptionToNb(totalTVL.baseTVL, isCall)).to.almost(
+            isCall ? 0 : amountNb + baseCost,
+          );
         });
 
         it('should transfer user TVL if free liq token is transferred', async () => {
@@ -323,6 +333,210 @@ describe('PoolProxy', function () {
           expect(lp2TVL.baseTVL).to.eq(isCall ? 0 : amountToTransfer);
           expect(totalTVL.underlyingTVL).to.eq(isCall ? amount : 0);
           expect(totalTVL.baseTVL).to.eq(isCall ? 0 : amount);
+        });
+
+        it('should not change user TVL if option long token is transferred', async () => {
+          const amountNb = isCall ? 10 : 100000;
+          const amount = parseOption(amountNb.toString(), isCall);
+          await p.depositLiquidity(lp1, amount, isCall);
+
+          const maturity = p.getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(isCall));
+
+          const purchaseAmountNb = 4;
+          const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+          const quote = await pool.quote(
+            buyer.address,
+            maturity,
+            strike64x64,
+            purchaseAmount,
+            isCall,
+          );
+
+          const mintAmount = parseOption('1000', isCall);
+          await p.getToken(isCall).mint(buyer.address, mintAmount);
+          await p
+            .getToken(isCall)
+            .connect(buyer)
+            .approve(pool.address, ethers.constants.MaxUint256);
+
+          await pool
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              purchaseAmount,
+              isCall,
+              p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+            );
+          const tokenIds = getOptionTokenIds(maturity, strike64x64, isCall);
+
+          await pool
+            .connect(buyer)
+            .safeTransferFrom(
+              buyer.address,
+              lp2.address,
+              tokenIds.long,
+              purchaseAmount.div(2),
+              '0x',
+            );
+
+          const userTVL = await p.pool.getUserTVL(lp1.address);
+          const totalTVL = await p.pool.getTotalTVL();
+          const baseCost = fixedToNumber(quote.baseCost64x64);
+
+          expect(formatOptionToNb(userTVL.underlyingTVL, isCall)).to.almost(
+            isCall ? amountNb + baseCost : 0,
+          );
+          expect(formatOptionToNb(userTVL.baseTVL, isCall)).to.almost(
+            isCall ? 0 : amountNb + baseCost,
+          );
+          expect(formatOptionToNb(totalTVL.underlyingTVL, isCall)).to.almost(
+            isCall ? amountNb + baseCost : 0,
+          );
+          expect(formatOptionToNb(totalTVL.baseTVL, isCall)).to.almost(
+            isCall ? 0 : amountNb + baseCost,
+          );
+        });
+
+        it('should transfer user TVL if option short token is transferred', async () => {
+          const amountNb = isCall ? 10 : 100000;
+          const amount = parseOption(amountNb.toString(), isCall);
+          await p.depositLiquidity(lp1, amount, isCall);
+
+          const maturity = p.getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(isCall));
+
+          const purchaseAmountNb = 4;
+          const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+          const quote = await pool.quote(
+            buyer.address,
+            maturity,
+            strike64x64,
+            purchaseAmount,
+            isCall,
+          );
+
+          const mintAmount = parseOption('1000', isCall);
+          await p.getToken(isCall).mint(buyer.address, mintAmount);
+          await p
+            .getToken(isCall)
+            .connect(buyer)
+            .approve(pool.address, ethers.constants.MaxUint256);
+
+          await pool
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              purchaseAmount,
+              isCall,
+              p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+            );
+          const tokenIds = getOptionTokenIds(maturity, strike64x64, isCall);
+
+          await pool
+            .connect(lp1)
+            .safeTransferFrom(
+              lp1.address,
+              lp2.address,
+              tokenIds.short,
+              purchaseAmount.div(4),
+              '0x',
+            );
+
+          const user1TVL = await p.pool.getUserTVL(lp1.address);
+          const user2TVL = await p.pool.getUserTVL(lp2.address);
+          const totalTVL = await p.pool.getTotalTVL();
+          const baseCost = fixedToNumber(quote.baseCost64x64);
+
+          expect(formatOptionToNb(user1TVL.underlyingTVL, isCall)).to.almost(
+            isCall ? 9 + baseCost : 0,
+          );
+          expect(formatOptionToNb(user1TVL.baseTVL, isCall)).to.almost(
+            isCall ? 0 : amountNb + baseCost - p.getStrike(isCall, spotPrice),
+          );
+          expect(formatOptionToNb(user2TVL.underlyingTVL, isCall)).to.almost(
+            isCall ? 1 : 0,
+          );
+          expect(formatOptionToNb(user2TVL.baseTVL, isCall)).to.almost(
+            isCall ? 0 : p.getStrike(isCall, spotPrice),
+          );
+          expect(formatOptionToNb(totalTVL.underlyingTVL, isCall)).to.almost(
+            isCall ? amountNb + baseCost : 0,
+          );
+          expect(formatOptionToNb(totalTVL.baseTVL, isCall)).to.almost(
+            isCall ? 0 : amountNb + baseCost,
+          );
+        });
+
+        it('should decrease user TVL if buyer exercise option with profit', async () => {
+          const amountNb = isCall ? 10 : 100000;
+          const amount = parseOption(amountNb.toString(), isCall);
+          const strike = getStrike(isCall);
+          await p.depositLiquidity(lp1, amount, isCall);
+
+          const maturity = p.getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(isCall));
+
+          const purchaseAmountNb = 4;
+          const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+          const quote = await pool.quote(
+            buyer.address,
+            maturity,
+            strike64x64,
+            purchaseAmount,
+            isCall,
+          );
+
+          const mintAmount = parseOption('1000', isCall);
+          await p.getToken(isCall).mint(buyer.address, mintAmount);
+          await p
+            .getToken(isCall)
+            .connect(buyer)
+            .approve(pool.address, ethers.constants.MaxUint256);
+
+          await pool
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              purchaseAmount,
+              isCall,
+              p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+            );
+
+          const price = isCall ? strike * 1.4 : strike * 0.7;
+          await p.setUnderlyingPrice(parseUnits(price.toString(), 8));
+          const tokenIds = getOptionTokenIds(maturity, strike64x64, isCall);
+
+          await pool
+            .connect(buyer)
+            .exerciseFrom(buyer.address, tokenIds.long, parseUnderlying('1'));
+
+          const exerciseValue = getExerciseValue(price, strike, 1, isCall);
+
+          const userTVL = await p.pool.getUserTVL(lp1.address);
+          const totalTVL = await p.pool.getTotalTVL();
+          const baseCost = fixedToNumber(quote.baseCost64x64);
+          const feeCost =
+            (isCall ? 1 - exerciseValue : strike - exerciseValue) * FEE;
+
+          expect(formatOptionToNb(userTVL.underlyingTVL, isCall)).to.almost(
+            isCall ? amountNb + baseCost - exerciseValue - feeCost : 0,
+          );
+          expect(formatOptionToNb(userTVL.baseTVL, isCall)).to.almost(
+            isCall ? 0 : amountNb + baseCost - exerciseValue - feeCost,
+          );
+          expect(formatOptionToNb(totalTVL.underlyingTVL, isCall)).to.almost(
+            isCall ? amountNb + baseCost - exerciseValue - feeCost : 0,
+          );
+          expect(formatOptionToNb(totalTVL.baseTVL, isCall)).to.almost(
+            isCall ? 0 : amountNb + baseCost - exerciseValue - feeCost,
+          );
         });
       });
     }

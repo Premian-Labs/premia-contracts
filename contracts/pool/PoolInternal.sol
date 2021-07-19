@@ -549,6 +549,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
             uint256 intervalPremium = (premium * intervalContractSize) / toPay;
             premium -= intervalPremium;
             toPay -= intervalContractSize;
+            _addUserTVL(l, underwriter, isCall, intervalPremium);
 
             // burn free liquidity tokens from underwriter
             _burn(
@@ -673,31 +674,34 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                     strike64x64.mulu(intervalContractSize)
                 ) - intervalExerciseValue;
 
-            _subUserTVL(
-                PoolStorage.layout(),
-                underwriter,
-                isCall,
-                intervalExerciseValue
-            );
-
             uint256 fee = _getFeeWithDiscount(
                 underwriter,
                 FEE_64x64.mulu(freeLiq)
             );
             totalFee += fee;
 
+            uint256 tvlToSubtract = intervalExerciseValue;
+
             // mint free liquidity tokens for underwriter
             if (PoolStorage.layout().getReinvestmentStatus(underwriter)) {
                 _addToDepositQueue(underwriter, freeLiq - fee, isCall);
-                _subUserTVL(PoolStorage.layout(), underwriter, isCall, fee);
+                tvlToSubtract += fee;
             } else {
                 _mint(
                     underwriter,
                     _getReservedLiquidityTokenId(isCall),
                     freeLiq - fee
                 );
-                _subUserTVL(PoolStorage.layout(), underwriter, isCall, freeLiq);
+                tvlToSubtract += freeLiq;
             }
+
+            _subUserTVL(
+                PoolStorage.layout(),
+                underwriter,
+                isCall,
+                tvlToSubtract
+            );
+
             // burn short option tokens from underwriter
             _burn(underwriter, shortTokenId, intervalContractSize);
 

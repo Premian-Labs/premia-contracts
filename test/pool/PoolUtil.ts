@@ -83,6 +83,10 @@ export function formatOption(amount: BigNumberish, isCall: boolean) {
   }
 }
 
+export function formatOptionToNb(amount: BigNumberish, isCall: boolean) {
+  return Number(formatOption(amount, isCall));
+}
+
 export function formatUnderlying(amount: BigNumberish) {
   return formatUnits(amount, DECIMALS_UNDERLYING);
 }
@@ -366,6 +370,10 @@ export class PoolUtil {
 
   getToken(isCall: boolean) {
     return isCall ? this.underlying : this.base;
+  }
+
+  getTokenDecimals(isCall: boolean) {
+    return isCall ? DECIMALS_UNDERLYING : DECIMALS_BASE;
   }
 
   getLong(isCall: boolean) {
