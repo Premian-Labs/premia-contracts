@@ -538,6 +538,76 @@ describe('PoolProxy', function () {
             isCall ? 0 : amountNb + baseCost - exerciseValue - feeCost,
           );
         });
+
+        it('should decrease user TVL when free liquidity is moved as reserved liquidity', async () => {
+          const amountNb = isCall ? 10 : 100000;
+          const amount = parseOption(amountNb.toString(), isCall);
+          await p.depositLiquidity(lp1, amount, isCall);
+          await p.depositLiquidity(lp2, amount, isCall);
+
+          await p.pool.connect(lp1).setDivestmentTimestamp(1);
+
+          const maturity = p.getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(isCall));
+
+          const purchaseAmountNb = 4;
+          const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+          const quote = await pool.quote(
+            buyer.address,
+            maturity,
+            strike64x64,
+            purchaseAmount,
+            isCall,
+          );
+
+          const mintAmount = parseOption('1000', isCall);
+          await p.getToken(isCall).mint(buyer.address, mintAmount);
+          await p
+            .getToken(isCall)
+            .connect(buyer)
+            .approve(pool.address, ethers.constants.MaxUint256);
+
+          await pool
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              purchaseAmount,
+              isCall,
+              p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+            );
+
+          const lp1TVL = await p.pool.getUserTVL(lp1.address);
+          const lp2TVL = await p.pool.getUserTVL(lp2.address);
+          const totalTVL = await p.pool.getTotalTVL();
+          const baseCost = fixedToNumber(quote.baseCost64x64);
+
+          expect(
+            await p.pool.balanceOf(lp1.address, p.getFreeLiqTokenId(isCall)),
+          ).to.eq(0);
+          expect(
+            await p.pool.balanceOf(
+              lp1.address,
+              p.getReservedLiqTokenId(isCall),
+            ),
+          ).to.eq(amount);
+
+          expect(lp1TVL.underlyingTVL).to.eq(0);
+          expect(lp1TVL.baseTVL).to.eq(0);
+          expect(formatOptionToNb(lp2TVL.underlyingTVL, isCall)).to.almost(
+            isCall ? amountNb + baseCost : 0,
+          );
+          expect(formatOptionToNb(lp2TVL.baseTVL, isCall)).to.almost(
+            isCall ? 0 : amountNb + baseCost,
+          );
+          expect(formatOptionToNb(totalTVL.underlyingTVL, isCall)).to.almost(
+            isCall ? amountNb + baseCost : 0,
+          );
+          expect(formatOptionToNb(totalTVL.baseTVL, isCall)).to.almost(
+            isCall ? 0 : amountNb + baseCost,
+          );
+        });
       });
     }
   });
