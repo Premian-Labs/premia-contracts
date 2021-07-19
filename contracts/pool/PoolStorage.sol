@@ -57,13 +57,15 @@ library PoolStorage {
         // token metadata
         uint8 underlyingDecimals;
         uint8 baseDecimals;
-        int128 cLevelUnderlying64x64;
-        int128 cLevelBase64x64;
-        uint256 updatedAt;
-        int128 emaLogReturns64x64;
-        int128 emaVarianceAnnualized64x64;
+        // minimum amounts
         uint256 baseMinimum;
         uint256 underlyingMinimum;
+        // market state
+        int128 cLevelUnderlying64x64;
+        int128 cLevelBase64x64;
+        int128 emaLogReturns64x64;
+        int128 emaVarianceAnnualized64x64;
+        uint256 updatedAt;
         // User -> isCall -> depositedAt
         mapping(address => mapping(bool => uint256)) depositedAt;
         mapping(address => uint256) divestmentTimestamps;
