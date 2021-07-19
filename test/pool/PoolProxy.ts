@@ -175,6 +175,12 @@ describe('PoolProxy', function () {
       await addAddress(3);
       await addAddress(9);
       await addAddress(5);
+      await addAddress(queue[0]);
+      await addAddress(queue[0]);
+      await addAddress(queue[queue.length - 1]);
+      await addAddress(queue[queue.length - 1]);
+      await removeAddress(queue[queue.length - 1]);
+      await removeAddress(queue[queue.length - 1]);
 
       while (queue.length) {
         await removeAddress(queue[0]);
