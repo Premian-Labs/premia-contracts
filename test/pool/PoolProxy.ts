@@ -568,8 +568,13 @@ describe('PoolProxy', function () {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
         it('should revert if contract size is less than minimum', async () => {
-          const maturity = getCurrentTimestamp() + 10 * 3600;
-          const strike64x64 = fixedFromFloat(1.5);
+          await p.depositLiquidity(
+            owner,
+            parseOption(isCall ? '100' : '100000', isCall),
+            isCall,
+          );
+          const maturity = p.getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           await expect(
             pool
@@ -1466,6 +1471,30 @@ describe('PoolProxy', function () {
   describe('#reassign', function () {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
+        it('should revert if contract size is less than minimum', async () => {
+          const maturity = p.getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(isCall));
+
+          await p.purchaseOption(
+            lp1,
+            buyer,
+            parseUnderlying('1'),
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          const shortTokenId = formatTokenId({
+            tokenType: p.getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await expect(
+            pool.connect(lp1).reassign(shortTokenId, '1'),
+          ).to.be.revertedWith('too small');
+        });
+
         it('should revert if option is expired', async () => {
           const maturity = p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
@@ -1554,6 +1583,31 @@ describe('PoolProxy', function () {
 
   describe('#reassignBatch', function () {
     it('todo');
+
+    it('should revert if contract size is less than minimum', async () => {
+      const isCall = true;
+      const maturity = p.getMaturity(10);
+      const strike64x64 = fixedFromFloat(getStrike(isCall));
+
+      await p.purchaseOption(
+        lp1,
+        buyer,
+        parseUnderlying('1'),
+        maturity,
+        strike64x64,
+        isCall,
+      );
+
+      const shortTokenId = formatTokenId({
+        tokenType: p.getShort(isCall),
+        maturity,
+        strike64x64,
+      });
+
+      await expect(
+        pool.connect(lp1).reassignBatch([shortTokenId], ['1']),
+      ).to.be.revertedWith('too small');
+    });
   });
 
   describe('#withdrawAllAndReassignBatch', function () {

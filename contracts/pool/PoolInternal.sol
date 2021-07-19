@@ -247,6 +247,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
         int128 newPrice64x64
     ) internal returns (uint256 baseCost, uint256 feeCost) {
         require(maturity > block.timestamp, "expired");
+        require(contractSize >= l.underlyingMinimum, "too small");
 
         {
             uint256 size = isCall

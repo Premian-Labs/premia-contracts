@@ -107,8 +107,6 @@ contract PoolWrite is IPoolWrite, PoolInternal {
 
         PoolStorage.Layout storage l = PoolStorage.layout();
 
-        require(contractSize >= l.underlyingMinimum, "too small");
-
         require(maturity >= block.timestamp + (1 days), "exp < 1 day");
         require(maturity < block.timestamp + (29 days), "exp > 28 days");
         require(maturity % (1 days) == 0, "exp not end UTC day");
