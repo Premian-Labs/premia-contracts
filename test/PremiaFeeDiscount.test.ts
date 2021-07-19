@@ -7,7 +7,7 @@ import {
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { resetHardhat, setTimestamp } from './utils/evm';
-import { signERC2612Permit } from './eth-permit/eth-permit';
+import { signERC2612Permit } from 'eth-permit';
 import { deployV1, IPremiaContracts } from '../scripts/utils/deployV1';
 import { parseEther } from 'ethers/lib/utils';
 
