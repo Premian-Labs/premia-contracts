@@ -10,6 +10,9 @@ import {PoolMiningStorage} from "./PoolMiningStorage.sol";
 import {IPoolMining} from "./IPoolMining.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
 
+/**
+ * @title Premia liquidity mining contract, derived from Sushiswap's MasterChev.sol ( https://github.com/sushiswap/sushiswap )
+ */
 contract PoolMining is IPoolMining, OwnableInternal {
     using PoolMiningStorage for PoolMiningStorage.Layout;
     using SafeERC20 for IERC20;
@@ -44,21 +47,37 @@ contract PoolMining is IPoolMining, OwnableInternal {
         _;
     }
 
-    function addPremiaRewards(uint256 _amount)
-        external
-        override
-        onlyDiamondOrOwner
-    {
+    /**
+     * @notice Add premia rewards to distribute. Can only be called by the owner
+     * @param _amount Amount of premia to add
+     */
+    function addPremiaRewards(uint256 _amount) external override onlyOwner {
         PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), _amount);
         l.premiaAvailable += _amount;
     }
 
+    /**
+     * @notice Get amount of premia reward available to distribute
+     * @return Amount of premia reward available to distribute
+     */
     function premiaRewardsAvailable() external view returns (uint256) {
         return PoolMiningStorage.layout().premiaAvailable;
     }
 
-    // Add a new lp to the pool. Can only be called by the owner.
+    /**
+     * @notice Set new alloc points for an option pool. Can only be called by the owner.
+     * @param _premiaPerBlock Amount of PREMIA per block to allocate as reward accross all pools
+     */
+    function setPremiaPerBlock(uint256 _premiaPerBlock) external onlyOwner {
+        PoolMiningStorage.layout().premiaPerBlock = _premiaPerBlock;
+    }
+
+    /**
+     * @notice Add a new option pool to the liquidity mining. Can only be called by the owner or premia diamond
+     * @param _pool Address of option pool contract
+     * @param _allocPoint Weight of this pool in the reward calculation
+     */
     function add(address _pool, uint256 _allocPoint)
         external
         override
@@ -90,7 +109,11 @@ contract PoolMining is IPoolMining, OwnableInternal {
         emit UpdatePoolAlloc(_pool, _allocPoint);
     }
 
-    // Update the given pool's PREMIA allocation point. Can only be called by the owner.
+    /**
+     * @notice Set new alloc points for an option pool. Can only be called by the owner or premia diamond
+     * @param _pool Address of option pool contract
+     * @param _allocPoint Weight of this pool in the reward calculation
+     */
     function set(address _pool, uint256 _allocPoint)
         external
         override
@@ -116,11 +139,11 @@ contract PoolMining is IPoolMining, OwnableInternal {
         emit UpdatePoolAlloc(_pool, _allocPoint);
     }
 
-    function setPremiaPerBlock(uint256 _premiaPerBlock) external onlyOwner {
-        PoolMiningStorage.layout().premiaPerBlock = _premiaPerBlock;
-    }
-
-    // View function to see pending PREMIA on frontend.
+    /**
+     * @notice Get pending premia reward for a user on a pool
+     * @param _pool Address of option pool contract
+     * @param _isCallPool True if for call option pool, False if for put option pool
+     */
     function pendingPremia(
         address _pool,
         bool _isCallPool,
@@ -168,7 +191,12 @@ contract PoolMining is IPoolMining, OwnableInternal {
             user.reward;
     }
 
-    // Update reward variables of the given pool to be up-to-date.
+    /**
+     * @notice Update reward variables of the given pool to be up-to-date. Only callable by the option pool
+     * @param _pool Address of option pool contract
+     * @param _isCallPool True if for call option pool, False if for put option pool
+     * @param _totalTVL Total amount of tokens deposited in the option pool
+     */
     function updatePool(
         address _pool,
         bool _isCallPool,
@@ -177,6 +205,12 @@ contract PoolMining is IPoolMining, OwnableInternal {
         _updatePool(_pool, _isCallPool, _totalTVL);
     }
 
+    /**
+     * @notice Update reward variables of the given pool to be up-to-date. Only callable by the option pool
+     * @param _pool Address of option pool contract
+     * @param _isCallPool True if for call option pool, False if for put option pool
+     * @param _totalTVL Total amount of tokens deposited in the option pool
+     */
     function _updatePool(
         address _pool,
         bool _isCallPool,
@@ -211,6 +245,15 @@ contract PoolMining is IPoolMining, OwnableInternal {
         pool.lastRewardBlock = block.number;
     }
 
+    /**
+     * @notice Allocate pending rewards to a user. Only callable by the option pool
+     * @param _user User for whom allocate the rewards
+     * @param _pool Address of option pool contract
+     * @param _isCallPool True if for call option pool, False if for put option pool
+     * @param _userTVLOld Total amount of tokens deposited in the option pool by user before the allocation update
+     * @param _userTVLNew Total amount of tokens deposited in the option pool by user after the allocation update
+     * @param _totalTVL Total amount of tokens deposited in the option pool
+     */
     function allocatePending(
         address _user,
         address _pool,
@@ -229,6 +272,15 @@ contract PoolMining is IPoolMining, OwnableInternal {
         );
     }
 
+    /**
+     * @notice Allocate pending rewards to a user. Only callable by the option pool
+     * @param _user User for whom allocate the rewards
+     * @param _pool Address of option pool contract
+     * @param _isCallPool True if for call option pool, False if for put option pool
+     * @param _userTVLOld Total amount of tokens deposited in the option pool by user before the allocation update
+     * @param _userTVLNew Total amount of tokens deposited in the option pool by user after the allocation update
+     * @param _totalTVL Total amount of tokens deposited in the option pool
+     */
     function _allocatePending(
         address _user,
         address _pool,
@@ -254,6 +306,15 @@ contract PoolMining is IPoolMining, OwnableInternal {
         user.rewardDebt = (_userTVLNew * pool.accPremiaPerShare) / 1e12;
     }
 
+    /**
+     * @notice Update user reward allocation + claim allocated PREMIA reward. Only callable by the option pool
+     * @param _user User claiming the rewards
+     * @param _pool Address of option pool contract
+     * @param _isCallPool True if for call option pool, False if for put option pool
+     * @param _userTVLOld Total amount of tokens deposited in the option pool by user before the allocation update
+     * @param _userTVLNew Total amount of tokens deposited in the option pool by user after the allocation update
+     * @param _totalTVL Total amount of tokens deposited in the option pool
+     */
     function claim(
         address _user,
         address _pool,
@@ -280,7 +341,11 @@ contract PoolMining is IPoolMining, OwnableInternal {
         emit Claim(_user, _pool, _isCallPool, reward);
     }
 
-    // Safe premia transfer function, just in case if rounding error causes pool to not have enough PREMIA.
+    /**
+     * @notice Safe premia transfer function, just in case if rounding error causes pool to not have enough PREMIA.
+     * @param _to Address where to transfer the Premia
+     * @param _amount Amount of tokens to transfer
+     */
     function _safePremiaTransfer(address _to, uint256 _amount) internal {
         IERC20 premia = IERC20(PREMIA);
 
