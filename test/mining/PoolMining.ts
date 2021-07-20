@@ -1,6 +1,11 @@
 import chai, { expect } from 'chai';
 import { PoolUtil } from '../pool/PoolUtil';
-import { increaseTimestamp, mineBlockUntil, resetHardhat } from '../utils/evm';
+import {
+  increaseTimestamp,
+  mineBlock,
+  mineBlockUntil,
+  resetHardhat,
+} from '../utils/evm';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
@@ -32,7 +37,7 @@ describe('PoolMining', () => {
   let p: PoolUtil;
 
   const spotPrice = 2000;
-  const totalRewardAmount = 100000;
+  const totalRewardAmount = 200000;
 
   beforeEach(async () => {
     await resetHardhat();
@@ -74,14 +79,25 @@ describe('PoolMining', () => {
     );
 
     for (const lp of [lp1, lp2, lp3]) {
-      await p.underlying.mint(lp.address, parseEther('100'));
-      await p.underlying
-        .connect(lp)
-        .approve(p.pool.address, ethers.constants.MaxUint256);
+      for (const token of [p.underlying, p.base]) {
+        await token.mint(lp.address, parseEther('100'));
+        await token
+          .connect(lp)
+          .approve(p.pool.address, ethers.constants.MaxUint256);
+      }
     }
   });
 
+  it('should revert if calling update not from the option pool', async () => {
+    await expect(
+      p.poolMining.updatePool(p.pool.address, true, parseEther('1')),
+    ).to.be.revertedWith('Not pool');
+  });
+
   it('should distribute PREMIA properly for each LP', async () => {
+    await mineBlockUntil(99);
+    await p.pool.connect(lp1).deposit(parseEther('10'), false);
+
     await mineBlockUntil(109);
     // LP1 deposits 10 at block 100
     await p.pool.connect(lp1).deposit(parseEther('10'), true);
@@ -156,6 +172,11 @@ describe('PoolMining', () => {
         await p.poolMining.pendingPremia(p.pool.address, true, lp3.address),
       ),
     ).to.almost(26567.76);
+    expect(
+      bnToNumber(
+        await p.poolMining.pendingPremia(p.pool.address, false, lp1.address),
+      ),
+    ).to.almost(60000);
 
     await p.pool.connect(lp1).claimRewards(true);
     await p.pool.connect(lp2).claimRewards(true);
@@ -169,5 +190,41 @@ describe('PoolMining', () => {
     await expect(bnToNumber(await premia.balanceOf(lp3.address))).to.almost(
       26567.76,
     );
+  });
+
+  it('should stop distributing rewards if available rewards run out', async () => {
+    await p.pool.connect(lp1).deposit(parseEther('10'), true);
+
+    await mineBlockUntil(300);
+
+    expect(
+      await p.poolMining.pendingPremia(p.pool.address, true, lp1.address),
+    ).to.eq(parseEther(totalRewardAmount.toString()));
+
+    await p.pool.connect(lp1).claimRewards(true);
+    expect(await p.poolMining.premiaRewardsAvailable()).to.eq(0);
+    expect(await premia.balanceOf(lp1.address)).to.eq(
+      parseEther(totalRewardAmount.toString()),
+    );
+
+    await mineBlockUntil(320);
+    expect(
+      await p.poolMining.pendingPremia(p.pool.address, true, lp1.address),
+    ).to.eq(0);
+
+    await premia.mint(owner.address, parseEther(totalRewardAmount.toString()));
+    await mineBlockUntil(349);
+    // Trigger pool update
+    await p.pool.connect(lp1).updateMiningPools();
+    await p.poolMining
+      .connect(owner)
+      .addPremiaRewards(parseEther(totalRewardAmount.toString()));
+
+    await mineBlockUntil(360);
+    expect(
+      bnToNumber(
+        await p.poolMining.pendingPremia(p.pool.address, true, lp1.address),
+      ),
+    ).to.almost(10000);
   });
 });

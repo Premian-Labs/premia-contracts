@@ -322,4 +322,20 @@ contract PoolIO is IPoolIO, PoolInternal {
             totalTVL
         );
     }
+
+    function updateMiningPools() external override {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        IPoolMining(POOL_MINING_ADDRESS).updatePool(
+            address(this),
+            true,
+            l.totalTVL[true]
+        );
+
+        IPoolMining(POOL_MINING_ADDRESS).updatePool(
+            address(this),
+            false,
+            l.totalTVL[false]
+        );
+    }
 }
