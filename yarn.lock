@@ -1164,10 +1164,10 @@
   resolved "https://registry.yarnpkg.com/@typechain/ethers-v5/-/ethers-v5-7.0.1.tgz#f9ae60ae5bd9e8ea8a996f66244147e8e74034ae"
   integrity sha512-mXEJ7LG0pOYO+MRPkHtbf30Ey9X2KAsU0wkeoVvjQIn7iAY6tB3k3s+82bbmJAUMyENbQ04RDOZit36CgSG6Gg==
 
-"@typechain/hardhat@^2.1.2":
-  version "2.1.2"
-  resolved "https://registry.yarnpkg.com/@typechain/hardhat/-/hardhat-2.1.2.tgz#daf4c5ffaad21196fef71296968180acc616a9bf"
-  integrity sha512-8MbYzR/cXP/FqVQ9C6zHLS+5fjTAjox4qniiZIej+pV7WCe1kzw1VHee3NsFq3nZVN8ITC6pTgSth7iL++dZ9g==
+"@typechain/hardhat@^2.2.0":
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/@typechain/hardhat/-/hardhat-2.2.0.tgz#a3e99b49c215c364c375c554bdce626bb21ecc47"
+  integrity sha512-ICZdbc5QA/bSZEvdAHsEL3/u260ZPIK7WZLNnoGywQNo6A98w7VKQW4DR7hPPMHe1FaSI1LTuIesRQvCUVyT3A==
   dependencies:
     fs-extra "^9.1.0"
 
@@ -1282,10 +1282,10 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-12.20.14.tgz#9caf7eea0df08b406829889cc015256a6d81ab10"
   integrity sha512-iFJOS5Q470FF+r4Ol2pSley7/wCNVqf+jgjhtxLLaJcDs+To2iCxlXIkJXrGLD9w9G/oJ9ibySu7z92DCwr7Pg==
 
-"@types/node@^16.3.2":
-  version "16.3.2"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-16.3.2.tgz#655432817f83b51ac869c2d51dd8305fb8342e16"
-  integrity sha512-jJs9ErFLP403I+hMLGnqDRWT0RYKSvArxuBVh2veudHV7ifEC1WAmjJADacZ7mRbA2nWgHtn8xyECMAot0SkAw==
+"@types/node@^16.3.3":
+  version "16.3.3"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-16.3.3.tgz#0c30adff37bbbc7a50eb9b58fae2a504d0d88038"
+  integrity sha512-8h7k1YgQKxKXWckzFCMfsIwn0Y61UK6tlD6y2lOb3hTOIMlK3t9/QwHOhc81TwU+RMf0As5fj7NPjroERCnejQ==
 
 "@types/node@^8.0.0":
   version "8.10.66"
@@ -8244,10 +8244,10 @@ prepend-http@^2.0.0:
   resolved "https://registry.yarnpkg.com/prepend-http/-/prepend-http-2.0.0.tgz#e92434bfa5ea8c19f41cdfd401d741a3c819d897"
   integrity sha1-6SQ0v6XqjBn0HN/UAddBo8gZ2Jc=
 
-prettier-plugin-solidity@^1.0.0-beta.15:
-  version "1.0.0-beta.15"
-  resolved "https://registry.yarnpkg.com/prettier-plugin-solidity/-/prettier-plugin-solidity-1.0.0-beta.15.tgz#ca7388e17e2620dc6251746e405150479abdc0a3"
-  integrity sha512-5+pM/Z1BgQN6xMCe/AfXmiVhoteaVgruVoGT8aa0zJMRiNOiK+SeaW2kOyzTI6sgg3QsUW58+ahf1hxlc/Adbw==
+prettier-plugin-solidity@^1.0.0-beta.16:
+  version "1.0.0-beta.16"
+  resolved "https://registry.yarnpkg.com/prettier-plugin-solidity/-/prettier-plugin-solidity-1.0.0-beta.16.tgz#7288b222536ca38388f80208f6ce8e4ebde06540"
+  integrity sha512-xVBcnoWpe52dNnCCbqPHC9ZrTWXcNfldf852ZD0DBcHDqVMwjHTAPEdfBVy6FczbFpVa8bmxQil+G5XkEz5WHA==
   dependencies:
     "@solidity-parser/parser" "^0.13.2"
     emoji-regex "^9.2.2"
@@ -10108,10 +10108,10 @@ typechain@^3.0.0:
     ts-essentials "^6.0.3"
     ts-generator "^0.1.1"
 
-typechain@^5.1.1:
-  version "5.1.1"
-  resolved "https://registry.yarnpkg.com/typechain/-/typechain-5.1.1.tgz#2e54bee69bb91d21096943deb400aa91638f698e"
-  integrity sha512-zN4ylCc3gSw2BXy5Zlpmw8q0lf5pQ+U8gYd5WCWRfDVuUkKyZBURz31VLjkPY/nfOr+P6EcwTC4Ae5VNVqrv/g==
+typechain@^5.1.2:
+  version "5.1.2"
+  resolved "https://registry.yarnpkg.com/typechain/-/typechain-5.1.2.tgz#c8784d6155a8e69397ca47f438a3b4fb2aa939da"
+  integrity sha512-FuaCxJd7BD3ZAjVJoO+D6TnqKey3pQdsqOBsC83RKYWKli5BDhdf0TPkwfyjt20TUlZvOzJifz+lDwXsRkiSKA==
   dependencies:
     "@types/prettier" "^2.1.1"
     command-line-args "^4.0.7"

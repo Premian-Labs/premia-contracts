@@ -28,11 +28,9 @@ describe('Premia', function () {
   before(async function () {
     [nobody, owner, nomineeOwner] = await ethers.getSigners();
 
-    // TODO: pass PremiaMaker proxy address instead of zero address
-    // TODO: pass non-zero fee
     optionMath = await new OptionMath__factory(owner).deploy();
     poolWrite = await new PoolWrite__factory(
-      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath.address },
       owner,
     ).deploy(
       ethers.constants.AddressZero,
