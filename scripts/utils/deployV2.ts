@@ -6,11 +6,11 @@ import {
   PoolExercise__factory,
   PoolIO__factory,
   PoolMining__factory,
+  PoolMiningProxy__factory,
   PoolView__factory,
   PoolWrite__factory,
   Premia__factory,
   ProxyManager__factory,
-  ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
 import { diamondCut } from './diamond';
 import { BigNumber } from 'ethers';
@@ -46,12 +46,12 @@ export async function deployV2(
   const poolMiningImpl = await new PoolMining__factory(deployer).deploy(
     premiaDiamond.address,
     premia,
-    parseEther('100'),
   );
 
-  const poolMiningProxy = await new ProxyUpgradeableOwnable__factory(
-    deployer,
-  ).deploy(poolMiningImpl.address);
+  const poolMiningProxy = await new PoolMiningProxy__factory(deployer).deploy(
+    poolMiningImpl.address,
+    parseEther('10'),
+  );
 
   const poolMining = PoolMining__factory.connect(
     poolMiningProxy.address,

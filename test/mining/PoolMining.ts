@@ -1,11 +1,6 @@
 import chai, { expect } from 'chai';
 import { PoolUtil } from '../pool/PoolUtil';
-import {
-  increaseTimestamp,
-  mineBlock,
-  mineBlockUntil,
-  resetHardhat,
-} from '../utils/evm';
+import { increaseTimestamp, mineBlockUntil, resetHardhat } from '../utils/evm';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {

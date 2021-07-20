@@ -8,13 +8,13 @@ import {
   PoolIO__factory,
   PoolMining,
   PoolMining__factory,
+  PoolMiningProxy__factory,
   PoolMock__factory,
   PoolView__factory,
   PoolWrite__factory,
   Premia,
   Premia__factory,
   ProxyManager__factory,
-  ProxyUpgradeableOwnable__factory,
   WETH9,
   WETH9__factory,
 } from '../../typechain';
@@ -161,12 +161,12 @@ export class PoolUtil {
     const poolMiningImpl = await new PoolMining__factory(deployer).deploy(
       premiaDiamond.address,
       premia,
-      parseEther('4000'),
     );
 
-    const poolMiningProxy = await new ProxyUpgradeableOwnable__factory(
-      deployer,
-    ).deploy(poolMiningImpl.address);
+    const poolMiningProxy = await new PoolMiningProxy__factory(deployer).deploy(
+      poolMiningImpl.address,
+      parseEther('4000'),
+    );
 
     const poolMining = PoolMining__factory.connect(
       poolMiningProxy.address,

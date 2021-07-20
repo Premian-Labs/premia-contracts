@@ -16,7 +16,6 @@ contract PoolMining is IPoolMining, OwnableInternal {
 
     address internal immutable DIAMOND;
     address internal immutable PREMIA;
-    uint256 internal immutable PREMIA_PER_BLOCK;
 
     event Claim(
         address indexed user,
@@ -26,14 +25,9 @@ contract PoolMining is IPoolMining, OwnableInternal {
     );
     event UpdatePoolAlloc(address indexed pool, uint256 allocPoints);
 
-    constructor(
-        address _diamond,
-        address _premia,
-        uint256 _premiaPerBlock
-    ) {
+    constructor(address _diamond, address _premia) {
         DIAMOND = _diamond;
         PREMIA = _premia;
-        PREMIA_PER_BLOCK = _premiaPerBlock;
     }
 
     modifier onlyPool(address _pool) {
@@ -122,6 +116,10 @@ contract PoolMining is IPoolMining, OwnableInternal {
         emit UpdatePoolAlloc(_pool, _allocPoint);
     }
 
+    function setPremiaPerBlock(uint256 _premiaPerBlock) external onlyOwner {
+        PoolMiningStorage.layout().premiaPerBlock = _premiaPerBlock;
+    }
+
     // View function to see pending PREMIA on frontend.
     function pendingPremia(
         address _pool,
@@ -154,7 +152,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
 
         if (block.number > pool.lastRewardBlock && TVL != 0) {
             uint256 premiaReward = ((block.number - pool.lastRewardBlock) *
-                PREMIA_PER_BLOCK *
+                l.premiaPerBlock *
                 pool.allocPoint) / l.totalAllocPoint;
 
             // If we are running out of rewards to distribute, distribute whats left
@@ -200,7 +198,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
         }
 
         uint256 premiaReward = ((block.number - pool.lastRewardBlock) *
-            PREMIA_PER_BLOCK *
+            l.premiaPerBlock *
             pool.allocPoint) / l.totalAllocPoint;
 
         // If we are running out of rewards to distribute, distribute whats left
