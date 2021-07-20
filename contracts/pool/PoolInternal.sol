@@ -1011,6 +1011,14 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                 uint256 minimum = _getMinimumAmount(isCallPool);
 
                 if (from != address(0)) {
+                    if (to != address(0)) {
+                        require(
+                            l.depositedAt[from][isCallPool] + (1 days) <
+                                block.timestamp,
+                            "liq lock 1d"
+                        );
+                    }
+
                     uint256 balance = balanceOf(from, id);
 
                     if (balance > minimum && balance <= amount + minimum) {
@@ -1028,6 +1036,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
 
                 if (to != address(0)) {
                     uint256 balance = balanceOf(to, id);
+
                     if (balance <= minimum && balance + amount > minimum) {
                         l.addUnderwriter(to, isCallPool);
                     }
