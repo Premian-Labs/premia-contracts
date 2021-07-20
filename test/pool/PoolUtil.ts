@@ -161,7 +161,7 @@ export class PoolUtil {
     const poolMiningImpl = await new PoolMining__factory(deployer).deploy(
       premiaDiamond.address,
       premia,
-      parseEther('100'),
+      parseEther('4000'),
     );
 
     const poolMiningProxy = await new ProxyUpgradeableOwnable__factory(

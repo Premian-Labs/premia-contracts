@@ -60,6 +60,10 @@ contract PoolMining is IPoolMining, OwnableInternal {
         l.premiaAvailable += _amount;
     }
 
+    function premiaRewardsAvailable() external view returns (uint256) {
+        return PoolMiningStorage.layout().premiaAvailable;
+    }
+
     // Add a new lp to the pool. Can only be called by the owner.
     function add(address _pool, uint256 _allocPoint)
         external
@@ -129,13 +133,13 @@ contract PoolMining is IPoolMining, OwnableInternal {
 
         {
             (uint256 underlyingTVL, uint256 baseTVL) = IPoolView(_pool)
-            .getTotalTVL();
+                .getTotalTVL();
             TVL = _isCallPool ? underlyingTVL : baseTVL;
         }
 
         {
             (uint256 userUnderlyingTVL, uint256 userBaseTVL) = IPoolView(_pool)
-            .getUserTVL(_user);
+                .getUserTVL(_user);
             userTVL = _isCallPool ? userUnderlyingTVL : userBaseTVL;
         }
 
@@ -160,7 +164,10 @@ contract PoolMining is IPoolMining, OwnableInternal {
 
             accPremiaPerShare += (premiaReward * 1e12) / TVL;
         }
-        return ((userTVL * accPremiaPerShare) / 1e12) - user.rewardDebt;
+        return
+            ((userTVL * accPremiaPerShare) / 1e12) -
+            user.rewardDebt +
+            user.reward;
     }
 
     // Update reward variables of the given pool to be up-to-date.

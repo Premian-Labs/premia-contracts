@@ -8,6 +8,7 @@ import {PoolStorage} from "./PoolStorage.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {IPoolIO} from "./IPoolIO.sol";
 import {PoolInternal} from "./PoolInternal.sol";
+import {IPoolMining} from "../mining/IPoolMining.sol";
 
 /**
  * @title Premia option pool
@@ -304,6 +305,21 @@ contract PoolIO is IPoolIO, PoolInternal {
                 : PoolStorage.layout().fromUnderlyingToBaseDecimals(
                     strike64x64.mulu(contractSize)
                 )
+        );
+    }
+
+    function claimRewards(bool isCallPool) external override {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        uint256 userTVL = l.userTVL[msg.sender][isCallPool];
+        uint256 totalTVL = l.totalTVL[isCallPool];
+
+        IPoolMining(POOL_MINING_ADDRESS).claim(
+            msg.sender,
+            address(this),
+            isCallPool,
+            userTVL,
+            userTVL,
+            totalTVL
         );
     }
 }
