@@ -186,7 +186,7 @@ export class PoolUtil {
     ];
 
     const poolWriteFactory = new PoolWrite__factory(
-      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath.address },
       deployer,
     );
     const poolWriteImpl = await poolWriteFactory.deploy(
@@ -227,7 +227,7 @@ export class PoolUtil {
     //////////////////////////////////////////////
 
     const poolExerciseFactory = new PoolExercise__factory(
-      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath.address },
       deployer,
     );
     const poolExerciseImpl = await poolExerciseFactory.deploy(
@@ -268,7 +268,7 @@ export class PoolUtil {
     //////////////////////////////////////////////
 
     const poolIOFactory = new PoolIO__factory(
-      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath.address },
       deployer,
     );
     const poolIOImpl = await poolIOFactory.deploy(

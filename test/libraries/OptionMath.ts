@@ -33,7 +33,7 @@ describe('OptionMath', function () {
     const [deployer] = await ethers.getSigners();
     const optionMath = await new OptionMath__factory(deployer).deploy();
     instance = await new OptionMathMock__factory(
-      { __$430b703ddf4d641dc7662832950ed9cf8d$__: optionMath.address },
+      { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath.address },
       deployer,
     ).deploy();
   });
