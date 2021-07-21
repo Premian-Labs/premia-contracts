@@ -104,7 +104,7 @@ contract ProxyManager is IProxyManager, OwnableInternal {
 
         l.poolList.push(pool);
 
-        IPoolMining(IPoolView(DIAMOND).getPoolMining()).add(
+        IPoolMining(IPoolView(DIAMOND).getPoolMining()).addPool(
             pool,
             miningAllocPoints
         );

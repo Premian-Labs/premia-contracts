@@ -90,23 +90,23 @@ contract PoolMining is IPoolMining, OwnableInternal {
             "Pool exists"
         );
 
-        l.totalAllocPoint += (_allocPoint * 2);
+        l.totalAllocPoint += (_allocPoints * 2);
 
         l.poolInfo[_pool][true] = PoolMiningStorage.PoolInfo({
-            allocPoint: _allocPoint,
+            allocPoint: _allocPoints,
             lastRewardBlock: block.number,
             accPremiaPerShare: 0
         });
 
         l.poolInfo[_pool][false] = PoolMiningStorage.PoolInfo({
-            allocPoint: _allocPoint,
+            allocPoint: _allocPoints,
             lastRewardBlock: block.number,
             accPremiaPerShare: 0
         });
 
         l.optionPoolList.push(_pool);
 
-        emit UpdatePoolAlloc(_pool, _allocPoint);
+        emit UpdatePoolAlloc(_pool, _allocPoints);
     }
 
     /**
@@ -131,12 +131,12 @@ contract PoolMining is IPoolMining, OwnableInternal {
             l.totalAllocPoint -
             l.poolInfo[_pool][true].allocPoint -
             l.poolInfo[_pool][false].allocPoint +
-            (_allocPoint * 2);
+            (_allocPoints * 2);
 
-        l.poolInfo[_pool][true].allocPoint = _allocPoint;
-        l.poolInfo[_pool][false].allocPoint = _allocPoint;
+        l.poolInfo[_pool][true].allocPoint = _allocPoints;
+        l.poolInfo[_pool][false].allocPoint = _allocPoints;
 
-        emit UpdatePoolAlloc(_pool, _allocPoint);
+        emit UpdatePoolAlloc(_pool, _allocPoints);
     }
 
     /**
@@ -336,7 +336,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
 
         uint256 reward = l.userInfo[_pool][_isCallPool][_user].reward;
         l.userInfo[_pool][_isCallPool][_user].reward = 0;
-        IERC20(PREMIA).safeTransfer(_user, reward);
+        _safePremiaTransfer(_user, reward);
 
         emit Claim(_user, _pool, _isCallPool, reward);
     }
@@ -351,9 +351,9 @@ contract PoolMining is IPoolMining, OwnableInternal {
 
         uint256 premiaBal = premia.balanceOf(address(this));
         if (_amount > premiaBal) {
-            premia.transfer(_to, premiaBal);
+            premia.safeTransfer(_to, premiaBal);
         } else {
-            premia.transfer(_to, _amount);
+            premia.safeTransfer(_to, _amount);
         }
     }
 }
