@@ -5,9 +5,9 @@ pragma solidity ^0.8.0;
 interface IPoolMining {
     function addPremiaRewards(uint256 _amount) external;
 
-    function add(address _pool, uint256 _allocPoint) external;
+    function addPool(address _pool, uint256 _allocPoints) external;
 
-    function set(address _pool, uint256 _allocPoint) external;
+    function setPoolAllocPoints(address _pool, uint256 _allocPoints) external;
 
     function pendingPremia(
         address _pool,

@@ -11,7 +11,7 @@ import {IPoolMining} from "./IPoolMining.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
 
 /**
- * @title Premia liquidity mining contract, derived from Sushiswap's MasterChev.sol ( https://github.com/sushiswap/sushiswap )
+ * @title Premia liquidity mining contract, derived from Sushiswap's MasterChef.sol ( https://github.com/sushiswap/sushiswap )
  */
 contract PoolMining is IPoolMining, OwnableInternal {
     using PoolMiningStorage for PoolMiningStorage.Layout;
@@ -76,9 +76,9 @@ contract PoolMining is IPoolMining, OwnableInternal {
     /**
      * @notice Add a new option pool to the liquidity mining. Can only be called by the owner or premia diamond
      * @param _pool Address of option pool contract
-     * @param _allocPoint Weight of this pool in the reward calculation
+     * @param _allocPoints Weight of this pool in the reward calculation
      */
-    function add(address _pool, uint256 _allocPoint)
+    function addPool(address _pool, uint256 _allocPoints)
         external
         override
         onlyDiamondOrOwner
@@ -112,9 +112,9 @@ contract PoolMining is IPoolMining, OwnableInternal {
     /**
      * @notice Set new alloc points for an option pool. Can only be called by the owner or premia diamond
      * @param _pool Address of option pool contract
-     * @param _allocPoint Weight of this pool in the reward calculation
+     * @param _allocPoints Weight of this pool in the reward calculation
      */
-    function set(address _pool, uint256 _allocPoint)
+    function setPoolAllocPoints(address _pool, uint256 _allocPoints)
         external
         override
         onlyDiamondOrOwner
