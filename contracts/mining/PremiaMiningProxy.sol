@@ -3,12 +3,12 @@
 pragma solidity ^0.8.0;
 
 import {ProxyUpgradeableOwnable} from "../ProxyUpgradeableOwnable.sol";
-import {PoolMiningStorage} from "./PoolMiningStorage.sol";
+import {PremiaMiningStorage} from "./PremiaMiningStorage.sol";
 
-contract PoolMiningProxy is ProxyUpgradeableOwnable {
+contract PremiaMiningProxy is ProxyUpgradeableOwnable {
     constructor(address implementation, uint256 premiaPerBlock)
         ProxyUpgradeableOwnable(implementation)
     {
-        PoolMiningStorage.layout().premiaPerBlock = premiaPerBlock;
+        PremiaMiningStorage.layout().premiaPerBlock = premiaPerBlock;
     }
 }

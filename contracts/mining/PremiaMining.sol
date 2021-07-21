@@ -6,15 +6,15 @@ import {OwnableInternal, OwnableStorage} from "@solidstate/contracts/access/Owna
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 
-import {PoolMiningStorage} from "./PoolMiningStorage.sol";
-import {IPoolMining} from "./IPoolMining.sol";
+import {PremiaMiningStorage} from "./PremiaMiningStorage.sol";
+import {IPremiaMining} from "./IPremiaMining.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
 
 /**
  * @title Premia liquidity mining contract, derived from Sushiswap's MasterChef.sol ( https://github.com/sushiswap/sushiswap )
  */
-contract PoolMining is IPoolMining, OwnableInternal {
-    using PoolMiningStorage for PoolMiningStorage.Layout;
+contract PremiaMining is IPremiaMining, OwnableInternal {
+    using PremiaMiningStorage for PremiaMiningStorage.Layout;
     using SafeERC20 for IERC20;
 
     address internal immutable DIAMOND;
@@ -52,7 +52,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
      * @param _amount Amount of premia to add
      */
     function addPremiaRewards(uint256 _amount) external override onlyOwner {
-        PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
+        PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), _amount);
         l.premiaAvailable += _amount;
     }
@@ -62,7 +62,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
      * @return Amount of premia reward available to distribute
      */
     function premiaRewardsAvailable() external view returns (uint256) {
-        return PoolMiningStorage.layout().premiaAvailable;
+        return PremiaMiningStorage.layout().premiaAvailable;
     }
 
     /**
@@ -70,7 +70,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
      * @param _premiaPerBlock Amount of PREMIA per block to allocate as reward accross all pools
      */
     function setPremiaPerBlock(uint256 _premiaPerBlock) external onlyOwner {
-        PoolMiningStorage.layout().premiaPerBlock = _premiaPerBlock;
+        PremiaMiningStorage.layout().premiaPerBlock = _premiaPerBlock;
     }
 
     /**
@@ -83,7 +83,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
         override
         onlyDiamondOrOwner
     {
-        PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
+        PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
         require(
             l.poolInfo[_pool][true].lastRewardBlock == 0 &&
                 l.poolInfo[_pool][false].lastRewardBlock == 0,
@@ -92,13 +92,13 @@ contract PoolMining is IPoolMining, OwnableInternal {
 
         l.totalAllocPoint += (_allocPoints * 2);
 
-        l.poolInfo[_pool][true] = PoolMiningStorage.PoolInfo({
+        l.poolInfo[_pool][true] = PremiaMiningStorage.PoolInfo({
             allocPoint: _allocPoints,
             lastRewardBlock: block.number,
             accPremiaPerShare: 0
         });
 
-        l.poolInfo[_pool][false] = PoolMiningStorage.PoolInfo({
+        l.poolInfo[_pool][false] = PremiaMiningStorage.PoolInfo({
             allocPoint: _allocPoints,
             lastRewardBlock: block.number,
             accPremiaPerShare: 0
@@ -119,7 +119,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
         override
         onlyDiamondOrOwner
     {
-        PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
+        PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
 
         require(
             l.poolInfo[_pool][true].lastRewardBlock > 0 &&
@@ -164,11 +164,11 @@ contract PoolMining is IPoolMining, OwnableInternal {
             userTVL = _isCallPool ? userUnderlyingTVL : userBaseTVL;
         }
 
-        PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
-        PoolMiningStorage.PoolInfo storage pool = l.poolInfo[_pool][
+        PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
+        PremiaMiningStorage.PoolInfo storage pool = l.poolInfo[_pool][
             _isCallPool
         ];
-        PoolMiningStorage.UserInfo storage user = l.userInfo[_pool][
+        PremiaMiningStorage.UserInfo storage user = l.userInfo[_pool][
             _isCallPool
         ][_user];
         uint256 accPremiaPerShare = pool.accPremiaPerShare;
@@ -216,9 +216,9 @@ contract PoolMining is IPoolMining, OwnableInternal {
         bool _isCallPool,
         uint256 _totalTVL
     ) internal {
-        PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
+        PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
 
-        PoolMiningStorage.PoolInfo storage pool = l.poolInfo[_pool][
+        PremiaMiningStorage.PoolInfo storage pool = l.poolInfo[_pool][
             _isCallPool
         ];
 
@@ -289,11 +289,11 @@ contract PoolMining is IPoolMining, OwnableInternal {
         uint256 _userTVLNew,
         uint256 _totalTVL
     ) internal {
-        PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
-        PoolMiningStorage.PoolInfo storage pool = l.poolInfo[_pool][
+        PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
+        PremiaMiningStorage.PoolInfo storage pool = l.poolInfo[_pool][
             _isCallPool
         ];
-        PoolMiningStorage.UserInfo storage user = l.userInfo[_pool][
+        PremiaMiningStorage.UserInfo storage user = l.userInfo[_pool][
             _isCallPool
         ][_user];
 
@@ -323,7 +323,7 @@ contract PoolMining is IPoolMining, OwnableInternal {
         uint256 _userTVLNew,
         uint256 _totalTVL
     ) external override onlyPool(_pool) {
-        PoolMiningStorage.Layout storage l = PoolMiningStorage.layout();
+        PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
 
         _allocatePending(
             _user,

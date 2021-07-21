@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-library PoolMiningStorage {
+library PremiaMiningStorage {
     bytes32 internal constant STORAGE_SLOT =
-        keccak256("premia.contracts.storage.PoolMining");
+        keccak256("premia.contracts.storage.PremiaMining");
 
     // Info of each pool.
     struct PoolInfo {

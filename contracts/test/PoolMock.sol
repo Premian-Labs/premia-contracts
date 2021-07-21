@@ -16,11 +16,11 @@ contract PoolMock is PoolInternal {
 
     constructor(
         address weth,
-        address poolMining,
+        address premiaMining,
         address feeReceiver,
         address feeDiscount,
         int128 fee64x64
-    ) PoolInternal(weth, poolMining, feeReceiver, feeDiscount, fee64x64) {}
+    ) PoolInternal(weth, premiaMining, feeReceiver, feeDiscount, fee64x64) {}
 
     function formatTokenId(
         PoolStorage.TokenType tokenType,

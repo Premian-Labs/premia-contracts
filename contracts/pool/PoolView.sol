@@ -18,14 +18,14 @@ contract PoolView is IPoolView, PoolInternal {
 
     constructor(
         address weth,
-        address poolMining,
+        address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
     )
         PoolInternal(
             weth,
-            poolMining,
+            premiaMining,
             feeReceiver,
             feeDiscountAddress,
             fee64x64
@@ -177,10 +177,10 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice get the addres of PoolMining contract
-     * @return address of PoolMining contract
+     * @notice get the addres of PremiaMining contract
+     * @return address of PremiaMining contract
      */
-    function getPoolMining() external view override returns (address) {
-        return POOL_MINING_ADDRESS;
+    function getPremiaMining() external view override returns (address) {
+        return PREMIA_MINING_ADDRESS;
     }
 }

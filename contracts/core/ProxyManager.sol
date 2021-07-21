@@ -9,7 +9,7 @@ import {ProxyManagerStorage} from "./ProxyManagerStorage.sol";
 import {PoolProxy} from "../pool/PoolProxy.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
-import {IPoolMining} from "../mining/IPoolMining.sol";
+import {IPremiaMining} from "../mining/IPremiaMining.sol";
 
 /**
  * @title Options pair management contract
@@ -104,7 +104,7 @@ contract ProxyManager is IProxyManager, OwnableInternal {
 
         l.poolList.push(pool);
 
-        IPoolMining(IPoolView(DIAMOND).getPoolMining()).addPool(
+        IPremiaMining(IPoolView(DIAMOND).getPremiaMining()).addPool(
             pool,
             miningAllocPoints
         );

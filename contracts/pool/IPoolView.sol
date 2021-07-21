@@ -44,5 +44,5 @@ interface IPoolView {
         view
         returns (uint256 underlyingTVL, uint256 baseTVL);
 
-    function getPoolMining() external view returns (address);
+    function getPremiaMining() external view returns (address);
 }

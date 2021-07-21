@@ -14,7 +14,7 @@ import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
 import {IPremiaFeeDiscount} from "../interface/IPremiaFeeDiscount.sol";
 import {IPoolEvents} from "./IPoolEvents.sol";
-import {IPoolMining} from "../mining/IPoolMining.sol";
+import {IPremiaMining} from "../mining/IPremiaMining.sol";
 
 /**
  * @title Premia option pool
@@ -27,7 +27,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
     using PoolStorage for PoolStorage.Layout;
 
     address internal immutable WETH_ADDRESS;
-    address internal immutable POOL_MINING_ADDRESS;
+    address internal immutable PREMIA_MINING_ADDRESS;
     address internal immutable FEE_RECEIVER_ADDRESS;
     address internal immutable FEE_DISCOUNT_ADDRESS;
 
@@ -44,13 +44,13 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
 
     constructor(
         address weth,
-        address poolMining,
+        address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
     ) {
         WETH_ADDRESS = weth;
-        POOL_MINING_ADDRESS = poolMining;
+        PREMIA_MINING_ADDRESS = premiaMining;
         FEE_RECEIVER_ADDRESS = feeReceiver;
         // PremiaFeeDiscount contract address
         FEE_DISCOUNT_ADDRESS = feeDiscountAddress;
@@ -175,7 +175,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
         int128 price64x64;
 
         (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath
-        .quotePrice(
+            .quotePrice(
             OptionMath.QuoteArgs(
                 args.emaVarianceAnnualized64x64,
                 args.strike64x64,
@@ -594,8 +594,8 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
         bool isCall
     ) internal returns (uint256 totalFee) {
         EnumerableSet.AddressSet storage holders = ERC1155EnumerableStorage
-        .layout()
-        .accountsByToken[longTokenId];
+            .layout()
+            .accountsByToken[longTokenId];
 
         while (contractSize > 0) {
             address longTokenHolder = holders.at(holders.length() - 1);
@@ -650,8 +650,8 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
         bool isCall
     ) internal returns (uint256 totalFee) {
         EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage
-        .layout()
-        .accountsByToken[shortTokenId];
+            .layout()
+            .accountsByToken[shortTokenId];
         (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
         while (contractSize > 0) {
@@ -916,7 +916,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
         int128 newEmaVariance64x64;
 
         (newEmaLogReturns64x64, newEmaVariance64x64) = OptionMath
-        .unevenRollingEmaVariance(
+            .unevenRollingEmaVariance(
             oldEmaLogReturns64x64,
             oldEmaVarianceAnnualized64x64 / (365 * 24),
             logReturns64x64,
@@ -993,7 +993,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
         uint256 userTVL = l.userTVL[user][isCallPool];
         uint256 totalTVL = l.totalTVL[isCallPool];
 
-        IPoolMining(POOL_MINING_ADDRESS).allocatePending(
+        IPremiaMining(PREMIA_MINING_ADDRESS).allocatePending(
             user,
             address(this),
             isCallPool,
@@ -1014,7 +1014,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
         uint256 userTVL = l.userTVL[user][isCallPool];
         uint256 totalTVL = l.totalTVL[isCallPool];
 
-        IPoolMining(POOL_MINING_ADDRESS).allocatePending(
+        IPremiaMining(PREMIA_MINING_ADDRESS).allocatePending(
             user,
             address(this),
             isCallPool,

@@ -6,9 +6,9 @@ import {
   OptionMath__factory,
   PoolExercise__factory,
   PoolIO__factory,
-  PoolMining,
-  PoolMining__factory,
-  PoolMiningProxy__factory,
+  PremiaMining,
+  PremiaMining__factory,
+  PremiaMiningProxy__factory,
   PoolMock__factory,
   PoolView__factory,
   PoolWrite__factory,
@@ -47,7 +47,7 @@ interface PoolUtilArgs {
   base: ERC20Mock;
   baseOracle: MockContract;
   underlyingOracle: MockContract;
-  poolMining: PoolMining;
+  premiaMining: PremiaMining;
 }
 
 const ONE_DAY = 3600 * 24;
@@ -117,7 +117,7 @@ export class PoolUtil {
   base: ERC20Mock;
   baseOracle: MockContract;
   underlyingOracle: MockContract;
-  poolMining: PoolMining;
+  premiaMining: PremiaMining;
 
   constructor(props: PoolUtilArgs) {
     this.premiaDiamond = props.premiaDiamond;
@@ -128,7 +128,7 @@ export class PoolUtil {
     this.base = props.base;
     this.baseOracle = props.baseOracle;
     this.underlyingOracle = props.underlyingOracle;
-    this.poolMining = props.poolMining;
+    this.premiaMining = props.premiaMining;
   }
 
   static async deploy(
@@ -158,18 +158,17 @@ export class PoolUtil {
 
     //
 
-    const poolMiningImpl = await new PoolMining__factory(deployer).deploy(
+    const premiaMiningImpl = await new PremiaMining__factory(deployer).deploy(
       premiaDiamond.address,
       premia,
     );
 
-    const poolMiningProxy = await new PoolMiningProxy__factory(deployer).deploy(
-      poolMiningImpl.address,
-      parseEther('4000'),
-    );
+    const premiaMiningProxy = await new PremiaMiningProxy__factory(
+      deployer,
+    ).deploy(premiaMiningImpl.address, parseEther('4000'));
 
-    const poolMining = PoolMining__factory.connect(
-      poolMiningProxy.address,
+    const premiaMining = PremiaMining__factory.connect(
+      premiaMiningProxy.address,
       deployer,
     );
 
@@ -191,7 +190,7 @@ export class PoolUtil {
     );
     const poolWriteImpl = await poolWriteFactory.deploy(
       underlyingWeth.address,
-      poolMining.address,
+      premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
@@ -210,7 +209,7 @@ export class PoolUtil {
     const poolMockFactory = new PoolMock__factory(deployer);
     const poolMockImpl = await poolMockFactory.deploy(
       underlyingWeth.address,
-      poolMining.address,
+      premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
@@ -232,7 +231,7 @@ export class PoolUtil {
     );
     const poolExerciseImpl = await poolExerciseFactory.deploy(
       underlyingWeth.address,
-      poolMining.address,
+      premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
@@ -251,7 +250,7 @@ export class PoolUtil {
     const poolViewFactory = new PoolView__factory(deployer);
     const poolViewImpl = await poolViewFactory.deploy(
       underlyingWeth.address,
-      poolMining.address,
+      premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
@@ -273,7 +272,7 @@ export class PoolUtil {
     );
     const poolIOImpl = await poolIOFactory.deploy(
       underlyingWeth.address,
-      poolMining.address,
+      premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
@@ -360,7 +359,7 @@ export class PoolUtil {
       base,
       baseOracle,
       underlyingOracle,
-      poolMining,
+      premiaMining: premiaMining,
     });
   }
 

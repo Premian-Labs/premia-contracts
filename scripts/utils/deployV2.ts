@@ -5,8 +5,8 @@ import {
   OptionMath__factory,
   PoolExercise__factory,
   PoolIO__factory,
-  PoolMining__factory,
-  PoolMiningProxy__factory,
+  PremiaMining__factory,
+  PremiaMiningProxy__factory,
   PoolView__factory,
   PoolWrite__factory,
   Premia__factory,
@@ -43,18 +43,17 @@ export async function deployV2(
 
   //
 
-  const poolMiningImpl = await new PoolMining__factory(deployer).deploy(
+  const premiaMiningImpl = await new PremiaMining__factory(deployer).deploy(
     premiaDiamond.address,
     premia,
   );
 
-  const poolMiningProxy = await new PoolMiningProxy__factory(deployer).deploy(
-    poolMiningImpl.address,
-    parseEther('10'),
-  );
+  const premiaMiningProxy = await new PremiaMiningProxy__factory(
+    deployer,
+  ).deploy(premiaMiningImpl.address, parseEther('10'));
 
-  const poolMining = PoolMining__factory.connect(
-    poolMiningProxy.address,
+  const premiaMining = PremiaMining__factory.connect(
+    premiaMiningProxy.address,
     deployer,
   );
 
@@ -76,7 +75,7 @@ export async function deployV2(
   );
   const poolWriteImpl = await poolWriteFactory.deploy(
     tokens.ETH,
-    poolMining.address,
+    premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
@@ -98,7 +97,7 @@ export async function deployV2(
   );
   const poolExerciseImpl = await poolExerciseFactory.deploy(
     tokens.ETH,
-    poolMining.address,
+    premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
@@ -117,7 +116,7 @@ export async function deployV2(
   const poolViewFactory = new PoolView__factory(deployer);
   const poolViewImpl = await poolViewFactory.deploy(
     tokens.ETH,
-    poolMining.address,
+    premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
@@ -139,7 +138,7 @@ export async function deployV2(
   );
   const poolIOImpl = await poolIOFactory.deploy(
     tokens.ETH,
-    poolMining.address,
+    premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
@@ -259,8 +258,8 @@ export async function deployV2(
   console.log('wbtcPoolAddress', wbtcPoolAddress);
   console.log('linkPoolAddress', linkPoolAddress);
 
-  console.log('PoolMining implementation:', poolMiningImpl.address);
-  console.log('PoolMining proxy:', poolMiningProxy.address);
+  console.log('PremiaMining implementation:', premiaMiningImpl.address);
+  console.log('PremiaMining proxy:', premiaMiningProxy.address);
 
   console.log('PoolWrite implementation:', poolWriteImpl.address);
   console.log('PoolIO implementation:', poolIOImpl.address);

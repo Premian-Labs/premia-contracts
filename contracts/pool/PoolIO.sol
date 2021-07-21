@@ -8,7 +8,7 @@ import {PoolStorage} from "./PoolStorage.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {IPoolIO} from "./IPoolIO.sol";
 import {PoolInternal} from "./PoolInternal.sol";
-import {IPoolMining} from "../mining/IPoolMining.sol";
+import {IPremiaMining} from "../mining/IPremiaMining.sol";
 
 /**
  * @title Premia option pool
@@ -22,14 +22,14 @@ contract PoolIO is IPoolIO, PoolInternal {
 
     constructor(
         address weth,
-        address poolMining,
+        address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
     )
         PoolInternal(
             weth,
-            poolMining,
+            premiaMining,
             feeReceiver,
             feeDiscountAddress,
             fee64x64
@@ -313,7 +313,7 @@ contract PoolIO is IPoolIO, PoolInternal {
         uint256 userTVL = l.userTVL[msg.sender][isCallPool];
         uint256 totalTVL = l.totalTVL[isCallPool];
 
-        IPoolMining(POOL_MINING_ADDRESS).claim(
+        IPremiaMining(PREMIA_MINING_ADDRESS).claim(
             msg.sender,
             address(this),
             isCallPool,
@@ -326,13 +326,13 @@ contract PoolIO is IPoolIO, PoolInternal {
     function updateMiningPools() external override {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
-        IPoolMining(POOL_MINING_ADDRESS).updatePool(
+        IPremiaMining(PREMIA_MINING_ADDRESS).updatePool(
             address(this),
             true,
             l.totalTVL[true]
         );
 
-        IPoolMining(POOL_MINING_ADDRESS).updatePool(
+        IPremiaMining(PREMIA_MINING_ADDRESS).updatePool(
             address(this),
             false,
             l.totalTVL[false]

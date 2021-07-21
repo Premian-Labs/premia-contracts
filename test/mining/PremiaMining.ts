@@ -17,7 +17,7 @@ chai.use(chaiAlmost(0.01));
 
 const oneMonth = 30 * 24 * 3600;
 
-describe('PoolMining', () => {
+describe('PremiaMining', () => {
   let owner: SignerWithAddress;
   let lp1: SignerWithAddress;
   let lp2: SignerWithAddress;
@@ -68,8 +68,8 @@ describe('PoolMining', () => {
     await premia.mint(owner.address, parseEther(totalRewardAmount.toString()));
     await premia
       .connect(owner)
-      .approve(p.poolMining.address, ethers.constants.MaxUint256);
-    await p.poolMining.addPremiaRewards(
+      .approve(p.premiaMining.address, ethers.constants.MaxUint256);
+    await p.premiaMining.addPremiaRewards(
       parseEther(totalRewardAmount.toString()),
     );
 
@@ -85,7 +85,7 @@ describe('PoolMining', () => {
 
   it('should revert if calling update not from the option pool', async () => {
     await expect(
-      p.poolMining.updatePool(p.pool.address, true, parseEther('1')),
+      p.premiaMining.updatePool(p.pool.address, true, parseEther('1')),
     ).to.be.revertedWith('Not pool');
   });
 
@@ -104,7 +104,7 @@ describe('PoolMining', () => {
     // There is 4 pools with equal alloc points, with premia reward of 4k per block
     // Each pool should get 1k reward per block. Lp1 should therefore have 4 * 1000 pending reward now
     expect(
-      await p.poolMining.pendingPremia(p.pool.address, true, lp1.address),
+      await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
     ).to.eq(parseEther('4000'));
 
     // LP3 deposits 30 at block 118
@@ -117,7 +117,7 @@ describe('PoolMining', () => {
     await p.pool.connect(lp1).deposit(parseEther('10'), true);
     expect(
       bnToNumber(
-        await p.poolMining.pendingPremia(p.pool.address, true, lp1.address),
+        await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
       ),
     ).to.almost(5666.66);
 
@@ -129,7 +129,7 @@ describe('PoolMining', () => {
     await p.pool.connect(lp2).withdraw(parseEther('5'), true);
     expect(
       bnToNumber(
-        await p.poolMining.pendingPremia(p.pool.address, true, lp2.address),
+        await p.premiaMining.pendingPremia(p.pool.address, true, lp2.address),
       ),
     ).to.almost(6190.47);
 
@@ -145,31 +145,31 @@ describe('PoolMining', () => {
     await mineBlockUntil(159);
     await p.pool.connect(lp3).withdraw(parseEther('30'), true);
 
-    expect(bnToNumber(await p.poolMining.premiaRewardsAvailable())).to.almost(
+    expect(bnToNumber(await p.premiaMining.premiaRewardsAvailable())).to.almost(
       totalRewardAmount - 50000,
     );
 
     // LP1 should have: 5666 + 10*2/7*1000 + 10*2/6.5*1000 = 11600.73
     expect(
       bnToNumber(
-        await p.poolMining.pendingPremia(p.pool.address, true, lp1.address),
+        await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
       ),
     ).to.almost(11600.73);
     // LP2 should have: 6190 + 10*1.5/6.5 * 1000 + 10*1.5/4.5*1000 = 11831.5
     expect(
       bnToNumber(
-        await p.poolMining.pendingPremia(p.pool.address, true, lp2.address),
+        await p.premiaMining.pendingPremia(p.pool.address, true, lp2.address),
       ),
     ).to.almost(11831.5);
     // LP3 should have: 2*3/6*1000 + 10*3/7*1000 + 10*3/6.5*1000 + 10*3/4.5*1000 + 10*1000 = 26567.76
     expect(
       bnToNumber(
-        await p.poolMining.pendingPremia(p.pool.address, true, lp3.address),
+        await p.premiaMining.pendingPremia(p.pool.address, true, lp3.address),
       ),
     ).to.almost(26567.76);
     expect(
       bnToNumber(
-        await p.poolMining.pendingPremia(p.pool.address, false, lp1.address),
+        await p.premiaMining.pendingPremia(p.pool.address, false, lp1.address),
       ),
     ).to.almost(60000);
 
@@ -193,32 +193,32 @@ describe('PoolMining', () => {
     await mineBlockUntil(300);
 
     expect(
-      await p.poolMining.pendingPremia(p.pool.address, true, lp1.address),
+      await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
     ).to.eq(parseEther(totalRewardAmount.toString()));
 
     await p.pool.connect(lp1).claimRewards(true);
-    expect(await p.poolMining.premiaRewardsAvailable()).to.eq(0);
+    expect(await p.premiaMining.premiaRewardsAvailable()).to.eq(0);
     expect(await premia.balanceOf(lp1.address)).to.eq(
       parseEther(totalRewardAmount.toString()),
     );
 
     await mineBlockUntil(320);
     expect(
-      await p.poolMining.pendingPremia(p.pool.address, true, lp1.address),
+      await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
     ).to.eq(0);
 
     await premia.mint(owner.address, parseEther(totalRewardAmount.toString()));
     await mineBlockUntil(349);
     // Trigger pool update
     await p.pool.connect(lp1).updateMiningPools();
-    await p.poolMining
+    await p.premiaMining
       .connect(owner)
       .addPremiaRewards(parseEther(totalRewardAmount.toString()));
 
     await mineBlockUntil(360);
     expect(
       bnToNumber(
-        await p.poolMining.pendingPremia(p.pool.address, true, lp1.address),
+        await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
       ),
     ).to.almost(10000);
   });

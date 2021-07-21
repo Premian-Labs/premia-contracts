@@ -12,14 +12,14 @@ import {IPoolExercise} from "./IPoolExercise.sol";
 contract PoolExercise is IPoolExercise, PoolInternal {
     constructor(
         address weth,
-        address poolMining,
+        address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
     )
         PoolInternal(
             weth,
-            poolMining,
+            premiaMining,
             feeReceiver,
             feeDiscountAddress,
             fee64x64
