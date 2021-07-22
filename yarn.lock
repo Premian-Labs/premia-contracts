@@ -1083,24 +1083,24 @@
   dependencies:
     antlr4ts "^0.5.0-alpha.4"
 
-"@solidstate/contracts@^0.0.16":
-  version "0.0.16"
-  resolved "https://registry.yarnpkg.com/@solidstate/contracts/-/contracts-0.0.16.tgz#b06b7ada5316480b9a6e086c70033d20bcf71567"
-  integrity sha512-mGor0Db6ghLDHfAhGg7ioCH5Hc7SHn4O21AsdlG7/Bm+c616cKMJEZjswu0cCn+OSF2wmojPXJaZcXrhnmfxnA==
+"@solidstate/contracts@^0.0.17":
+  version "0.0.17"
+  resolved "https://registry.yarnpkg.com/@solidstate/contracts/-/contracts-0.0.17.tgz#4f174af117369af24973d7cdc7817a674a615168"
+  integrity sha512-2ELDdD+GWVGiWMNnYPqxxbBzk8H0z6ljJ5YFpxHm5nLggFIWbUR7tq6IO4/cSDeM1iv/hUqyC01HBjUwbBeVng==
 
-"@solidstate/library@^0.0.16":
-  version "0.0.16"
-  resolved "https://registry.yarnpkg.com/@solidstate/library/-/library-0.0.16.tgz#909049376c49fa75dd90f8fc2a3c8a9261783e99"
-  integrity sha512-Wv5IzJU5cldwCojhrholMPQV5yNmJT2IV8yzk3qRuNTPLaS3s7me3VGoDUQLOwY2hpoI7PCc2OPXOt3mNX9oAw==
+"@solidstate/library@^0.0.17":
+  version "0.0.17"
+  resolved "https://registry.yarnpkg.com/@solidstate/library/-/library-0.0.17.tgz#0b83723e644c117edca07e434577731dc014ed76"
+  integrity sha512-CBbgkJpViEFl+Txv1WiXri1/rFLTW0GsjwnyJp53wvtoN0T8f/L/URSR9WdhEJelgoAByMmN6hXN3kJJ+MGAqQ==
   dependencies:
     eth-permit "^0.1.10"
 
-"@solidstate/spec@^0.0.16":
-  version "0.0.16"
-  resolved "https://registry.yarnpkg.com/@solidstate/spec/-/spec-0.0.16.tgz#21981400060efee3fa922753bf3dd25f51983b42"
-  integrity sha512-bW99axJlZpnG/UOzx6ZZ2gbxvodZCqE6HFaHtU4xMfWlQKIbtW7QQ29YZxonkz49Y1w3AV9lH6kRzCit2d+zsQ==
+"@solidstate/spec@^0.0.17":
+  version "0.0.17"
+  resolved "https://registry.yarnpkg.com/@solidstate/spec/-/spec-0.0.17.tgz#d7e286bdccc3e4daa654735b1b36435e3cab273c"
+  integrity sha512-h/Fs/l1JlTF39CW5UdDSoH5e1sgRU3L0451cVxf0Sdn1JtHOfZbuKowrGIPCnb/nrO3RPaHpF+pZTtz5gpvlig==
   dependencies:
-    "@solidstate/library" "^0.0.16"
+    "@solidstate/library" "^0.0.17"
 
 "@szmarczak/http-timer@^1.1.2":
   version "1.1.2"
@@ -5511,10 +5511,10 @@ hardhat-spdx-license-identifier@^2.0.3:
   resolved "https://registry.yarnpkg.com/hardhat-spdx-license-identifier/-/hardhat-spdx-license-identifier-2.0.3.tgz#6dd89a7e036ede4f7e86fb349eb23daaaad6890f"
   integrity sha512-G4u4I1md0tWaitX6Os7Nq9sYZ/CFdR+ibm7clCksGJ4yrtdHEZxgLjWpJ0WiALF9SoFKt03PwCe9lczDQ/5ADA==
 
-hardhat@^2.4.3:
-  version "2.4.3"
-  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.4.3.tgz#093373b383eacec0d3e7fb223353b2f0cb9f2802"
-  integrity sha512-xgbnhEnmaKau8xT6wPJlzoyMLAZyxQoElACQQCyEeAY1DURpZbYwjIQUywmL/ZNv3QEl38Yqu/n8mPOc2HXyGA==
+hardhat@^2.5.0:
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/hardhat/-/hardhat-2.5.0.tgz#0a10bf85d9b2c3c7c12cfa4e35454296c670c054"
+  integrity sha512-S5CWcmiFZlFF2qFGyf5LlgVnJDXwTs5UBKU3GPQCjsUD3NAIWzXr/4xDSij3YWdg751axgLiKAJM01cHcxGb7A==
   dependencies:
     "@ethereumjs/block" "^3.4.0"
     "@ethereumjs/blockchain" "^5.4.0"

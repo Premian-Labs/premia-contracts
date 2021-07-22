@@ -39,7 +39,7 @@ export function describeBehaviorOfPool(
         deploy: async () => instance,
         mint: mintERC1155,
         burn: burnERC1155,
-        // tokenId: BigNumber.from(1),
+        tokenId: BigNumber.from('1'),
       },
       skips,
     );
