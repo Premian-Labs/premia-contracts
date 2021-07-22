@@ -84,9 +84,11 @@ describe('Pool', function () {
         const strike64x64 = fixedFromFloat(Math.random() * 1000);
         const tokenId = formatTokenId({ tokenType, maturity, strike64x64 });
 
-        expect(
-          await instance.callStatic['parseTokenId(uint256)'](tokenId),
-        ).to.deep.equal([tokenType, maturity, strike64x64]);
+        const tokenData = await instance.callStatic.parseTokenId(tokenId);
+
+        expect(tokenData[0]).to.eq(tokenType);
+        expect(tokenData[1]).to.eq(maturity);
+        expect(tokenData[2]).to.eq(strike64x64);
       });
     });
   });
