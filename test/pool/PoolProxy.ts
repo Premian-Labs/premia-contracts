@@ -459,6 +459,27 @@ describe('PoolProxy', function () {
     });
   });
 
+  describe('#setDivestmentTimestamp', () => {
+    it('todo');
+
+    describe('reverts if', () => {
+      it('timestamp is less than one day in future', async () => {
+        let { timestamp } = await ethers.provider.getBlock('latest');
+
+        await ethers.provider.send('evm_setNextBlockTimestamp', [++timestamp]);
+
+        await expect(
+          pool.setDivestmentTimestamp(timestamp + 86400 - 1),
+        ).to.be.revertedWith('liq lock 1d');
+
+        await ethers.provider.send('evm_setNextBlockTimestamp', [++timestamp]);
+
+        await expect(pool.setDivestmentTimestamp(timestamp + 86400)).not.to.be
+          .reverted;
+      });
+    });
+  });
+
   describe('#deposit', function () {
     describe('call', () => {
       it('should grant sender share tokens with ERC20 deposit', async () => {
