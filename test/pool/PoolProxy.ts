@@ -14,7 +14,6 @@ import {
 import { describeBehaviorOfPool } from './Pool.behavior';
 import chai, { expect } from 'chai';
 import { increaseTimestamp, resetHardhat, setTimestamp } from '../utils/evm';
-import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { hexlify, hexZeroPad, parseEther, parseUnits } from 'ethers/lib/utils';
 import {
   DECIMALS_BASE,
@@ -407,11 +406,13 @@ describe('PoolProxy', function () {
         await p.depositLiquidity(owner, parseUnderlying('10'), true);
 
         const strike64x64 = fixedFromFloat(2500);
-        const now = getCurrentTimestamp();
+        let { timestamp } = await ethers.provider.getBlock('latest');
+
+        await ethers.provider.send('evm_setNextBlockTimestamp', [++timestamp]);
 
         const q = await pool.quote(
           ZERO_ADDRESS,
-          now + 10 * 24 * 3600,
+          timestamp + 10 * 24 * 3600,
           strike64x64,
           parseUnderlying('1'),
           true,
@@ -435,11 +436,13 @@ describe('PoolProxy', function () {
         await p.depositLiquidity(owner, parseBase('10000'), false);
 
         const strike64x64 = fixedFromFloat(1750);
-        const now = getCurrentTimestamp();
+        let { timestamp } = await ethers.provider.getBlock('latest');
+
+        await ethers.provider.send('evm_setNextBlockTimestamp', [++timestamp]);
 
         const q = await pool.quote(
           ZERO_ADDRESS,
-          now + 10 * 24 * 3600,
+          timestamp + 10 * 24 * 3600,
           strike64x64,
           parseUnderlying('1'),
           false,
@@ -622,7 +625,7 @@ describe('PoolProxy', function () {
             parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
-          const maturity = getCurrentTimestamp() + 10 * 3600;
+          const maturity = p.getMaturity(1).sub(ethers.constants.One);
           const strike64x64 = fixedFromFloat(1.5);
 
           await expect(
