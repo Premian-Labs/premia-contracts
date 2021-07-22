@@ -1,11 +1,11 @@
 import { describeBehaviorOfERC1155Enumerable } from '@solidstate/spec';
-import { PoolInternal } from '../../typechain';
+import { PoolBase } from '../../typechain';
 import { BigNumber, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ethers } from 'hardhat';
 
 interface PoolBehaviorArgs {
-  deploy: () => Promise<PoolInternal>;
+  deploy: () => Promise<PoolBase>;
   mintERC1155: (
     address: string,
     id: BigNumber,
@@ -24,7 +24,7 @@ export function describeBehaviorOfPool(
 ) {
   describe('::Pool', function () {
     let deployer: SignerWithAddress;
-    let instance: PoolInternal;
+    let instance: PoolBase;
 
     before(async () => {
       [deployer] = await ethers.getSigners();

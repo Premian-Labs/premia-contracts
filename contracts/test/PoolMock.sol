@@ -7,10 +7,10 @@ import {ERC165Storage} from "@solidstate/contracts/introspection/ERC165Storage.s
 import {ERC20} from "@solidstate/contracts/token/ERC20/ERC20.sol";
 import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol";
 
-import {PoolInternal} from "../pool/PoolInternal.sol";
+import {PoolBase} from "../pool/PoolBase.sol";
 import {PoolStorage} from "../pool/PoolStorage.sol";
 
-contract PoolMock is PoolInternal {
+contract PoolMock is PoolBase {
     using ERC165Storage for ERC165Storage.Layout;
     using PoolStorage for PoolStorage.Layout;
 
@@ -20,7 +20,7 @@ contract PoolMock is PoolInternal {
         address feeReceiver,
         address feeDiscount,
         int128 fee64x64
-    ) PoolInternal(weth, premiaMining, feeReceiver, feeDiscount, fee64x64) {}
+    ) PoolBase(weth, premiaMining, feeReceiver, feeDiscount, fee64x64) {}
 
     function formatTokenId(
         PoolStorage.TokenType tokenType,

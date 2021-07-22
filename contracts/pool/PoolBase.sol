@@ -20,7 +20,7 @@ import {IPremiaMining} from "../mining/IPremiaMining.sol";
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
+contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -176,18 +176,21 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
 
         (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath
             .quotePrice(
-            OptionMath.QuoteArgs(
-                args.emaVarianceAnnualized64x64,
-                args.strike64x64,
-                args.spot64x64,
-                ABDKMath64x64.divu(args.maturity - block.timestamp, 365 days),
-                cLevel64x64,
-                oldLiquidity64x64,
-                oldLiquidity64x64.sub(contractSize64x64),
-                0x10000000000000000, // 64x64 fixed point representation of 1
-                isCall
-            )
-        );
+                OptionMath.QuoteArgs(
+                    args.emaVarianceAnnualized64x64,
+                    args.strike64x64,
+                    args.spot64x64,
+                    ABDKMath64x64.divu(
+                        args.maturity - block.timestamp,
+                        365 days
+                    ),
+                    cLevel64x64,
+                    oldLiquidity64x64,
+                    oldLiquidity64x64.sub(contractSize64x64),
+                    0x10000000000000000, // 64x64 fixed point representation of 1
+                    isCall
+                )
+            );
 
         baseCost64x64 = isCall
             ? price64x64.mul(contractSize64x64).div(args.spot64x64)
@@ -917,12 +920,12 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
 
         (newEmaLogReturns64x64, newEmaVariance64x64) = OptionMath
             .unevenRollingEmaVariance(
-            oldEmaLogReturns64x64,
-            oldEmaVarianceAnnualized64x64 / (365 * 24),
-            logReturns64x64,
-            updatedAt,
-            block.timestamp
-        );
+                oldEmaLogReturns64x64,
+                oldEmaVarianceAnnualized64x64 / (365 * 24),
+                logReturns64x64,
+                updatedAt,
+                block.timestamp
+            );
 
         newEmaVarianceAnnualized64x64 = newEmaVariance64x64 * (365 * 24);
     }
