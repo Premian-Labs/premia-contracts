@@ -1757,5 +1757,21 @@ describe('PoolProxy', function () {
           ),
       ).to.be.revertedWith('liq lock 1d');
     });
+
+    it('reverts if tokenId corresponds to locked reserved liquidity', async () => {
+      await p.depositLiquidity(owner, parseOption('100', true), true);
+
+      expect(
+        pool
+          .connect(owner)
+          .safeTransferFrom(
+            owner.address,
+            owner.address,
+            p.getReservedLiqTokenId(true),
+            '1',
+            ethers.utils.randomBytes(0),
+          ),
+      ).to.be.revertedWith('liq lock 1d');
+    });
   });
 });
