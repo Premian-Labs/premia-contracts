@@ -408,8 +408,6 @@ describe('PoolProxy', function () {
         const strike64x64 = fixedFromFloat(2500);
         let { timestamp } = await ethers.provider.getBlock('latest');
 
-        await ethers.provider.send('evm_setNextBlockTimestamp', [++timestamp]);
-
         const q = await pool.quote(
           ZERO_ADDRESS,
           timestamp + 10 * 24 * 3600,
@@ -437,8 +435,6 @@ describe('PoolProxy', function () {
 
         const strike64x64 = fixedFromFloat(1750);
         let { timestamp } = await ethers.provider.getBlock('latest');
-
-        await ethers.provider.send('evm_setNextBlockTimestamp', [++timestamp]);
 
         const q = await pool.quote(
           ZERO_ADDRESS,
