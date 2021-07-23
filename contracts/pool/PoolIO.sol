@@ -48,6 +48,12 @@ contract PoolIO is IPoolIO, PoolInternal {
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
+        require(
+            l.divestmentTimestamps[msg.sender] == 0 ||
+                l.divestmentTimestamps[msg.sender] > block.timestamp + (1 days),
+            "divestment imminent"
+        );
+
         _processPendingDeposits(l, isCallPool);
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;
