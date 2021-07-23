@@ -1,8 +1,6 @@
 trailingComma: 'all'
 tabWidth: 2
 singleQuote: true
-jsxBracketSameLine: false
-jsxSingleQuote: true
 arrowParens: always
 overrides:
   - files: '*.sol'
@@ -12,3 +10,4 @@ overrides:
       useTabs: false
       singleQuote: false
       bracketSpacing: false
+      explicitTypes: always

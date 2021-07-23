@@ -104,8 +104,6 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
             accPremiaPerShare: 0
         });
 
-        l.optionPoolList.push(_pool);
-
         emit UpdatePoolAlloc(_pool, _allocPoints);
     }
 

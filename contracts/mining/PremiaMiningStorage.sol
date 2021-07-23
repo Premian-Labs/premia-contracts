@@ -35,8 +35,6 @@ library PremiaMiningStorage {
         uint256 premiaAvailable;
         // Amount of premia per block distributed
         uint256 premiaPerBlock;
-        // List of option pool contracts with a liquidity mining pool added here
-        address[] optionPoolList;
         // pool -> isCallPool -> PoolInfo
         mapping(address => mapping(bool => PoolInfo)) poolInfo;
         // pool -> isCallPool -> user -> UserInfo
