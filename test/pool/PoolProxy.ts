@@ -387,6 +387,64 @@ describe('PoolProxy', function () {
   });
 
   describe('#quote', function () {
+    it('should return intrinsic value + 5% if call option is priced with instant profit', async () => {
+      const isCall = true;
+
+      await p.depositLiquidity(
+        owner,
+        parseOption(isCall ? '100' : '100000', isCall),
+        isCall,
+      );
+      await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
+
+      const maturity = p.getMaturity(10);
+      const strike64x64 = fixedFromFloat(getStrike(!isCall));
+      const purchaseAmountNb = 10;
+      const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+      const quote = await pool.callStatic.quote(
+        buyer.address,
+        maturity,
+        strike64x64,
+        purchaseAmount,
+        isCall,
+      );
+
+      // TODO: calculate intrinsic value based on Pool state
+      const intrinsicValue64x64 = 0;
+
+      expect(quote.baseCost64x64).to.equal(intrinsicValue64x64);
+    });
+
+    it('should return intrinsic value + 5% if put option is priced with instant profit', async () => {
+      const isCall = false;
+
+      await p.depositLiquidity(
+        owner,
+        parseOption(isCall ? '100' : '100000', isCall),
+        isCall,
+      );
+      await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
+
+      const maturity = p.getMaturity(10);
+      const strike64x64 = fixedFromFloat(getStrike(!isCall));
+      const purchaseAmountNb = 10;
+      const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+      const quote = await pool.callStatic.quote(
+        buyer.address,
+        maturity,
+        strike64x64,
+        purchaseAmount,
+        isCall,
+      );
+
+      // TODO: calculate intrinsic value based on Pool state
+      const intrinsicValue64x64 = 0;
+
+      expect(quote.baseCost64x64).to.equal(intrinsicValue64x64);
+    });
+
     it('should revert if no liquidity', async () => {
       const maturity = p.getMaturity(17);
       const strike64x64 = fixedFromFloat(spotPrice * 1.25);
@@ -615,30 +673,6 @@ describe('PoolProxy', function () {
                 parseOption('100', isCall),
               ),
           ).to.be.revertedWith('exp < 1 day');
-        });
-
-        it('should revert if option is priced with instant profit', async () => {
-          await p.depositLiquidity(
-            owner,
-            parseOption(isCall ? '100' : '100000', isCall),
-            isCall,
-          );
-          await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
-
-          const maturity = p.getMaturity(10);
-          const strike64x64 = fixedFromFloat(getStrike(!isCall));
-          const purchaseAmountNb = 10;
-          const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
-
-          await expect(
-            pool.quote(
-              buyer.address,
-              maturity,
-              strike64x64,
-              purchaseAmount,
-              isCall,
-            ),
-          ).to.be.revertedWith('price < intrinsic val');
         });
 
         it('should revert if using a maturity more than 28 days in the future', async () => {
