@@ -33,6 +33,7 @@ contract PoolIO is IPoolIO, PoolBase {
      * @param timestamp timestamp to begin divestment
      */
     function setDivestmentTimestamp(uint64 timestamp) external override {
+        require(timestamp >= block.timestamp + (1 days), "liq lock 1d");
         PoolStorage.Layout storage l = PoolStorage.layout();
         l.divestmentTimestamps[msg.sender] = timestamp;
     }
@@ -48,6 +49,12 @@ contract PoolIO is IPoolIO, PoolBase {
         override
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
+
+        require(
+            l.divestmentTimestamps[msg.sender] == 0 ||
+                l.divestmentTimestamps[msg.sender] > block.timestamp + (1 days),
+            "divestment imminent"
+        );
 
         _processPendingDeposits(l, isCallPool);
 

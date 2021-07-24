@@ -14,7 +14,6 @@ import {
 import { describeBehaviorOfPool } from './Pool.behavior';
 import chai, { expect } from 'chai';
 import { increaseTimestamp, resetHardhat, setTimestamp } from '../utils/evm';
-import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { hexlify, hexZeroPad, parseEther, parseUnits } from 'ethers/lib/utils';
 import {
   DECIMALS_BASE,
@@ -42,6 +41,7 @@ import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
 import { ZERO_ADDRESS } from '../utils/constants';
 import { describeBehaviorOfProxy } from '@solidstate/spec';
+import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 
 chai.use(chaiAlmost(0.02));
 
@@ -309,6 +309,7 @@ describe('PoolProxy', function () {
           const amount = parseOption('10', isCall);
           const amountToTransfer = parseOption('3', isCall);
           await p.depositLiquidity(lp1, amount, isCall);
+          await increaseTimestamp(25 * 3600);
           await p.pool
             .connect(lp1)
             .safeTransferFrom(
@@ -545,7 +546,10 @@ describe('PoolProxy', function () {
           await p.depositLiquidity(lp1, amount, isCall);
           await p.depositLiquidity(lp2, amount, isCall);
 
-          await p.pool.connect(lp1).setDivestmentTimestamp(1);
+          await p.pool
+            .connect(lp1)
+            .setDivestmentTimestamp(getCurrentTimestamp() + 25 * 3600);
+          await increaseTimestamp(26 * 3600);
 
           const maturity = p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
@@ -829,11 +833,11 @@ describe('PoolProxy', function () {
         await p.depositLiquidity(owner, parseUnderlying('10'), true);
 
         const strike64x64 = fixedFromFloat(2500);
-        const now = getCurrentTimestamp();
+        let { timestamp } = await ethers.provider.getBlock('latest');
 
         const q = await pool.quote(
           ZERO_ADDRESS,
-          now + 10 * 24 * 3600,
+          timestamp + 10 * 24 * 3600,
           strike64x64,
           parseUnderlying('1'),
           true,
@@ -857,11 +861,11 @@ describe('PoolProxy', function () {
         await p.depositLiquidity(owner, parseBase('10000'), false);
 
         const strike64x64 = fixedFromFloat(1750);
-        const now = getCurrentTimestamp();
+        let { timestamp } = await ethers.provider.getBlock('latest');
 
         const q = await pool.quote(
           ZERO_ADDRESS,
-          now + 10 * 24 * 3600,
+          timestamp + 10 * 24 * 3600,
           strike64x64,
           parseUnderlying('1'),
           false,
@@ -877,6 +881,27 @@ describe('PoolProxy', function () {
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
         ).to.almost(57.48);
+      });
+    });
+  });
+
+  describe('#setDivestmentTimestamp', () => {
+    it('todo');
+
+    describe('reverts if', () => {
+      it('timestamp is less than one day in future', async () => {
+        let { timestamp } = await ethers.provider.getBlock('latest');
+
+        await ethers.provider.send('evm_setNextBlockTimestamp', [++timestamp]);
+
+        await expect(
+          pool.setDivestmentTimestamp(timestamp + 86400 - 1),
+        ).to.be.revertedWith('liq lock 1d');
+
+        await ethers.provider.send('evm_setNextBlockTimestamp', [++timestamp]);
+
+        await expect(pool.setDivestmentTimestamp(timestamp + 86400)).not.to.be
+          .reverted;
       });
     });
   });
@@ -1023,7 +1048,7 @@ describe('PoolProxy', function () {
             parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
-          const maturity = getCurrentTimestamp() + 10 * 3600;
+          const maturity = p.getMaturity(1).sub(ethers.constants.One);
           const strike64x64 = fixedFromFloat(1.5);
 
           await expect(
@@ -2161,5 +2186,39 @@ describe('PoolProxy', function () {
         });
       });
     }
+  });
+
+  describe('#safeTransferFrom', () => {
+    it('reverts if tokenId corresponds to locked free liquidity', async () => {
+      await p.depositLiquidity(owner, parseOption('100', true), true);
+
+      expect(
+        pool
+          .connect(owner)
+          .safeTransferFrom(
+            owner.address,
+            owner.address,
+            p.getFreeLiqTokenId(true),
+            '1',
+            ethers.utils.randomBytes(0),
+          ),
+      ).to.be.revertedWith('liq lock 1d');
+    });
+
+    it('reverts if tokenId corresponds to locked reserved liquidity', async () => {
+      await p.depositLiquidity(owner, parseOption('100', true), true);
+
+      expect(
+        pool
+          .connect(owner)
+          .safeTransferFrom(
+            owner.address,
+            owner.address,
+            p.getReservedLiqTokenId(true),
+            '1',
+            ethers.utils.randomBytes(0),
+          ),
+      ).to.be.revertedWith('liq lock 1d');
+    });
   });
 });

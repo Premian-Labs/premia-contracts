@@ -1066,6 +1066,26 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
                 l.tokenIds.remove(id);
             }
 
+            // prevent transfer of free and reserved liquidity during waiting period
+
+            if (
+                id == UNDERLYING_FREE_LIQ_TOKEN_ID ||
+                id == BASE_FREE_LIQ_TOKEN_ID ||
+                id == UNDERLYING_RESERVED_LIQ_TOKEN_ID ||
+                id == BASE_RESERVED_LIQ_TOKEN_ID
+            ) {
+                if (from != address(0) && to != address(0)) {
+                    bool isCallPool = id == UNDERLYING_FREE_LIQ_TOKEN_ID ||
+                        id == UNDERLYING_RESERVED_LIQ_TOKEN_ID;
+
+                    require(
+                        l.depositedAt[from][isCallPool] + (1 days) <
+                            block.timestamp,
+                        "liq lock 1d"
+                    );
+                }
+            }
+
             if (
                 id == UNDERLYING_FREE_LIQ_TOKEN_ID ||
                 id == BASE_FREE_LIQ_TOKEN_ID
@@ -1096,6 +1116,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
 
                 if (to != address(0)) {
                     uint256 balance = balanceOf(to, id);
+
                     if (balance <= minimum && balance + amount > minimum) {
                         l.addUnderwriter(to, isCallPool);
                     }
