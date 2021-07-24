@@ -6,13 +6,13 @@ import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 import {PoolStorage} from "./PoolStorage.sol";
 
 import {IPoolView} from "./IPoolView.sol";
-import {PoolInternal} from "./PoolInternal.sol";
+import {PoolBase} from "./PoolBase.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolView is IPoolView, PoolInternal {
+contract PoolView is IPoolView, PoolBase {
     using EnumerableSet for EnumerableSet.UintSet;
     using PoolStorage for PoolStorage.Layout;
 
@@ -22,15 +22,7 @@ contract PoolView is IPoolView, PoolInternal {
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
-    )
-        PoolInternal(
-            weth,
-            premiaMining,
-            feeReceiver,
-            feeDiscountAddress,
-            fee64x64
-        )
-    {}
+    ) PoolBase(weth, premiaMining, feeReceiver, feeDiscountAddress, fee64x64) {}
 
     /**
      * @notice get pool settings

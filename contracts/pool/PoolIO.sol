@@ -7,14 +7,14 @@ import {PoolStorage} from "./PoolStorage.sol";
 
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {IPoolIO} from "./IPoolIO.sol";
-import {PoolInternal} from "./PoolInternal.sol";
+import {PoolBase} from "./PoolBase.sol";
 import {IPremiaMining} from "../mining/IPremiaMining.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolIO is IPoolIO, PoolInternal {
+contract PoolIO is IPoolIO, PoolBase {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -26,15 +26,7 @@ contract PoolIO is IPoolIO, PoolInternal {
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
-    )
-        PoolInternal(
-            weth,
-            premiaMining,
-            feeReceiver,
-            feeDiscountAddress,
-            fee64x64
-        )
-    {}
+    ) PoolBase(weth, premiaMining, feeReceiver, feeDiscountAddress, fee64x64) {}
 
     /**
      * @notice set timestamp after which reinvestment is disabled

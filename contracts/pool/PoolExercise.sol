@@ -2,29 +2,21 @@
 
 pragma solidity ^0.8.0;
 
-import {PoolInternal} from "./PoolInternal.sol";
+import {PoolBase} from "./PoolBase.sol";
 import {IPoolExercise} from "./IPoolExercise.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolExercise is IPoolExercise, PoolInternal {
+contract PoolExercise is IPoolExercise, PoolBase {
     constructor(
         address weth,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
-    )
-        PoolInternal(
-            weth,
-            premiaMining,
-            feeReceiver,
-            feeDiscountAddress,
-            fee64x64
-        )
-    {}
+    ) PoolBase(weth, premiaMining, feeReceiver, feeDiscountAddress, fee64x64) {}
 
     /**
      * @notice exercise call option on behalf of holder
