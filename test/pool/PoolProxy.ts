@@ -41,6 +41,7 @@ import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
 import { ZERO_ADDRESS } from '../utils/constants';
 import { describeBehaviorOfProxy } from '@solidstate/spec';
+import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 
 chai.use(chaiAlmost(0.02));
 
@@ -308,6 +309,7 @@ describe('PoolProxy', function () {
           const amount = parseOption('10', isCall);
           const amountToTransfer = parseOption('3', isCall);
           await p.depositLiquidity(lp1, amount, isCall);
+          await increaseTimestamp(25 * 3600);
           await p.pool
             .connect(lp1)
             .safeTransferFrom(
@@ -544,7 +546,10 @@ describe('PoolProxy', function () {
           await p.depositLiquidity(lp1, amount, isCall);
           await p.depositLiquidity(lp2, amount, isCall);
 
-          await p.pool.connect(lp1).setDivestmentTimestamp(1);
+          await p.pool
+            .connect(lp1)
+            .setDivestmentTimestamp(getCurrentTimestamp() + 25 * 3600);
+          await increaseTimestamp(26 * 3600);
 
           const maturity = p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
