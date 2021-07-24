@@ -14,18 +14,20 @@ import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
 import {IPremiaFeeDiscount} from "../interface/IPremiaFeeDiscount.sol";
 import {IPoolEvents} from "./IPoolEvents.sol";
+import {IPremiaMining} from "../mining/IPremiaMining.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
+contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
     using PoolStorage for PoolStorage.Layout;
 
     address internal immutable WETH_ADDRESS;
+    address internal immutable PREMIA_MINING_ADDRESS;
     address internal immutable FEE_RECEIVER_ADDRESS;
     address internal immutable FEE_DISCOUNT_ADDRESS;
 
@@ -42,11 +44,13 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
 
     constructor(
         address weth,
+        address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
     ) {
         WETH_ADDRESS = weth;
+        PREMIA_MINING_ADDRESS = premiaMining;
         FEE_RECEIVER_ADDRESS = feeReceiver;
         // PremiaFeeDiscount contract address
         FEE_DISCOUNT_ADDRESS = feeDiscountAddress;
@@ -171,19 +175,22 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
         int128 price64x64;
 
         (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath
-        .quotePrice(
-            OptionMath.QuoteArgs(
-                args.emaVarianceAnnualized64x64,
-                args.strike64x64,
-                args.spot64x64,
-                ABDKMath64x64.divu(args.maturity - block.timestamp, 365 days),
-                cLevel64x64,
-                oldLiquidity64x64,
-                oldLiquidity64x64.sub(contractSize64x64),
-                0x10000000000000000, // 64x64 fixed point representation of 1
-                isCall
-            )
-        );
+            .quotePrice(
+                OptionMath.QuoteArgs(
+                    args.emaVarianceAnnualized64x64,
+                    args.strike64x64,
+                    args.spot64x64,
+                    ABDKMath64x64.divu(
+                        args.maturity - block.timestamp,
+                        365 days
+                    ),
+                    cLevel64x64,
+                    oldLiquidity64x64,
+                    oldLiquidity64x64.sub(contractSize64x64),
+                    0x10000000000000000, // 64x64 fixed point representation of 1
+                    isCall
+                )
+            );
 
         baseCost64x64 = isCall
             ? price64x64.mul(contractSize64x64).div(args.spot64x64)
@@ -529,6 +536,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                     _getReservedLiquidityTokenId(isCall),
                     balance
                 );
+                _subUserTVL(l, underwriter, isCall, balance);
                 continue;
             }
 
@@ -544,6 +552,7 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
             uint256 intervalPremium = (premium * intervalContractSize) / toPay;
             premium -= intervalPremium;
             toPay -= intervalContractSize;
+            _addUserTVL(l, underwriter, isCall, intervalPremium);
 
             // burn free liquidity tokens from underwriter
             _burn(
@@ -588,8 +597,8 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
         bool isCall
     ) internal returns (uint256 totalFee) {
         EnumerableSet.AddressSet storage holders = ERC1155EnumerableStorage
-        .layout()
-        .accountsByToken[longTokenId];
+            .layout()
+            .accountsByToken[longTokenId];
 
         while (contractSize > 0) {
             address longTokenHolder = holders.at(holders.length() - 1);
@@ -644,8 +653,8 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
         bool isCall
     ) internal returns (uint256 totalFee) {
         EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage
-        .layout()
-        .accountsByToken[shortTokenId];
+            .layout()
+            .accountsByToken[shortTokenId];
         (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
         while (contractSize > 0) {
@@ -674,16 +683,28 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
             );
             totalFee += fee;
 
+            uint256 tvlToSubtract = intervalExerciseValue;
+
             // mint free liquidity tokens for underwriter
             if (PoolStorage.layout().getReinvestmentStatus(underwriter)) {
                 _addToDepositQueue(underwriter, freeLiq - fee, isCall);
+                tvlToSubtract += fee;
             } else {
                 _mint(
                     underwriter,
                     _getReservedLiquidityTokenId(isCall),
                     freeLiq - fee
                 );
+                tvlToSubtract += freeLiq;
             }
+
+            _subUserTVL(
+                PoolStorage.layout(),
+                underwriter,
+                isCall,
+                tvlToSubtract
+            );
+
             // burn short option tokens from underwriter
             _burn(underwriter, shortTokenId, intervalContractSize);
 
@@ -898,13 +919,13 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
         int128 newEmaVariance64x64;
 
         (newEmaLogReturns64x64, newEmaVariance64x64) = OptionMath
-        .unevenRollingEmaVariance(
-            oldEmaLogReturns64x64,
-            oldEmaVarianceAnnualized64x64 / (365 * 24),
-            logReturns64x64,
-            updatedAt,
-            block.timestamp
-        );
+            .unevenRollingEmaVariance(
+                oldEmaLogReturns64x64,
+                oldEmaVarianceAnnualized64x64 / (365 * 24),
+                logReturns64x64,
+                updatedAt,
+                block.timestamp
+            );
 
         newEmaVarianceAnnualized64x64 = newEmaVariance64x64 * (365 * 24);
     }
@@ -964,6 +985,48 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
     ) internal {
         // TODO: incorporate into SolidState
         _mint(account, tokenId, amount, "");
+    }
+
+    function _addUserTVL(
+        PoolStorage.Layout storage l,
+        address user,
+        bool isCallPool,
+        uint256 amount
+    ) internal {
+        uint256 userTVL = l.userTVL[user][isCallPool];
+        uint256 totalTVL = l.totalTVL[isCallPool];
+
+        IPremiaMining(PREMIA_MINING_ADDRESS).allocatePending(
+            user,
+            address(this),
+            isCallPool,
+            userTVL,
+            userTVL + amount,
+            totalTVL
+        );
+        l.userTVL[user][isCallPool] = userTVL + amount;
+        l.totalTVL[isCallPool] = totalTVL + amount;
+    }
+
+    function _subUserTVL(
+        PoolStorage.Layout storage l,
+        address user,
+        bool isCallPool,
+        uint256 amount
+    ) internal {
+        uint256 userTVL = l.userTVL[user][isCallPool];
+        uint256 totalTVL = l.totalTVL[isCallPool];
+
+        IPremiaMining(PREMIA_MINING_ADDRESS).allocatePending(
+            user,
+            address(this),
+            isCallPool,
+            userTVL,
+            userTVL - amount,
+            totalTVL
+        );
+        l.userTVL[user][isCallPool] = userTVL - amount;
+        l.totalTVL[isCallPool] = totalTVL - amount;
     }
 
     /**
@@ -1044,6 +1107,11 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                         );
                         l.removeUnderwriter(from, isCallPool);
                     }
+
+                    if (to != address(0)) {
+                        _subUserTVL(l, from, isCallPool, amounts[i]);
+                        _addUserTVL(l, to, isCallPool, amounts[i]);
+                    }
                 }
 
                 if (to != address(0)) {
@@ -1053,6 +1121,27 @@ contract PoolInternal is IPoolEvents, ERC1155Enumerable, ERC165 {
                         l.addUnderwriter(to, isCallPool);
                     }
                 }
+            }
+
+            // Update userTVL on SHORT options transfers
+            (
+                PoolStorage.TokenType tokenType,
+                ,
+                int128 strike64x64
+            ) = PoolStorage.parseTokenId(id);
+
+            if (
+                (from != address(0) && to != address(0)) &&
+                (tokenType == PoolStorage.TokenType.SHORT_CALL ||
+                    tokenType == PoolStorage.TokenType.SHORT_PUT)
+            ) {
+                bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
+                uint256 collateral = isCall
+                    ? amount
+                    : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
+
+                _subUserTVL(l, from, isCall, collateral);
+                _addUserTVL(l, to, isCall, collateral);
             }
         }
     }
