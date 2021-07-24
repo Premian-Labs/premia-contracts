@@ -14,14 +14,13 @@ contract PoolMock is PoolInternal {
     using ERC165Storage for ERC165Storage.Layout;
     using PoolStorage for PoolStorage.Layout;
 
-    // TODO: pass non-zero fee
-    // TODO: confirm batching period
     constructor(
         address weth,
+        address premiaMining,
         address feeReceiver,
         address feeDiscount,
         int128 fee64x64
-    ) PoolInternal(weth, feeReceiver, feeDiscount, fee64x64) {}
+    ) PoolInternal(weth, premiaMining, feeReceiver, feeDiscount, fee64x64) {}
 
     function formatTokenId(
         PoolStorage.TokenType tokenType,

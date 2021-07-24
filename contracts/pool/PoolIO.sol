@@ -8,6 +8,7 @@ import {PoolStorage} from "./PoolStorage.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {IPoolIO} from "./IPoolIO.sol";
 import {PoolInternal} from "./PoolInternal.sol";
+import {IPremiaMining} from "../mining/IPremiaMining.sol";
 
 /**
  * @title Premia option pool
@@ -21,10 +22,19 @@ contract PoolIO is IPoolIO, PoolInternal {
 
     constructor(
         address weth,
+        address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
-    ) PoolInternal(weth, feeReceiver, feeDiscountAddress, fee64x64) {}
+    )
+        PoolInternal(
+            weth,
+            premiaMining,
+            feeReceiver,
+            feeDiscountAddress,
+            fee64x64
+        )
+    {}
 
     /**
      * @notice set timestamp after which reinvestment is disabled
@@ -50,6 +60,7 @@ contract PoolIO is IPoolIO, PoolInternal {
         _processPendingDeposits(l, isCallPool);
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;
+        _addUserTVL(l, msg.sender, isCallPool, amount);
         _pullFrom(msg.sender, _getPoolToken(isCallPool), amount);
 
         _addToDepositQueue(msg.sender, amount, isCallPool);
@@ -107,6 +118,7 @@ contract PoolIO is IPoolIO, PoolInternal {
             _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
         }
 
+        _subUserTVL(l, msg.sender, isCallPool, amount);
         _pushTo(msg.sender, _getPoolToken(isCallPool), amount);
         emit Withdrawal(msg.sender, isCallPool, depositedAt, amount);
     }
@@ -293,6 +305,37 @@ contract PoolIO is IPoolIO, PoolInternal {
                 : PoolStorage.layout().fromUnderlyingToBaseDecimals(
                     strike64x64.mulu(contractSize)
                 )
+        );
+    }
+
+    function claimRewards(bool isCallPool) external override {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        uint256 userTVL = l.userTVL[msg.sender][isCallPool];
+        uint256 totalTVL = l.totalTVL[isCallPool];
+
+        IPremiaMining(PREMIA_MINING_ADDRESS).claim(
+            msg.sender,
+            address(this),
+            isCallPool,
+            userTVL,
+            userTVL,
+            totalTVL
+        );
+    }
+
+    function updateMiningPools() external override {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        IPremiaMining(PREMIA_MINING_ADDRESS).updatePool(
+            address(this),
+            true,
+            l.totalTVL[true]
+        );
+
+        IPremiaMining(PREMIA_MINING_ADDRESS).updatePool(
+            address(this),
+            false,
+            l.totalTVL[false]
         );
     }
 }

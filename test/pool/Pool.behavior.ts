@@ -3,6 +3,7 @@ import { PoolInternal } from '../../typechain';
 import { BigNumber, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ethers } from 'hardhat';
+import { formatTokenId, TokenType } from '../utils/math';
 
 interface PoolBehaviorArgs {
   deploy: () => Promise<PoolInternal>;
@@ -39,6 +40,13 @@ export function describeBehaviorOfPool(
         deploy: async () => instance,
         mint: mintERC1155,
         burn: burnERC1155,
+        tokenId: BigNumber.from(
+          formatTokenId({
+            tokenType: TokenType.LongCall,
+            strike64x64: BigNumber.from(0),
+            maturity: BigNumber.from(0),
+          }),
+        ),
       },
       skips,
     );

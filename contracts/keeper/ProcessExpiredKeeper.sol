@@ -2,10 +2,10 @@
 pragma solidity ^0.8.0;
 
 import {KeeperCompatibleInterface} from "@chainlink/contracts/src/v0.8/interfaces/KeeperCompatibleInterface.sol";
+import {IERC1155Enumerable} from "@solidstate/contracts/token/ERC1155/IERC1155Enumerable.sol";
 import {IProxyManager} from "../core/IProxyManager.sol";
 import {IPoolExercise} from "../pool/IPoolExercise.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
-import {IERC1155Enumerable} from "../interface/IERC1155Enumerable.sol";
 import {PoolStorage} from "../pool/PoolStorage.sol";
 
 contract ProcessExpiredKeeper is KeeperCompatibleInterface {

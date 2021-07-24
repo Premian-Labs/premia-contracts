@@ -36,6 +36,7 @@ describe('Premia', function () {
       ethers.constants.AddressZero,
       ethers.constants.AddressZero,
       ethers.constants.AddressZero,
+      ethers.constants.AddressZero,
       ethers.constants.Zero,
     );
 
