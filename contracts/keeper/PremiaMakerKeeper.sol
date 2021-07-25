@@ -58,7 +58,7 @@ contract PremiaMakerKeeper is IKeeperCompatible, Ownable {
             uint256 convertValueInEth;
 
             if (token != weth) {
-                address[] memory path = premiaMaker.customPath(token);
+                address[] memory path = premiaMaker.getCustomPath(token);
 
                 if (path.length == 0) {
                     path = new address[](2);
@@ -98,10 +98,11 @@ contract PremiaMakerKeeper is IKeeperCompatible, Ownable {
      * validated against the contract's current state.
      */
     function performUpkeep(bytes calldata performData) external override {
-        (address token, IUniswapV2Router02 router) = abi.decode(
+        (address pool, address router, address[] memory tokens) = abi.decode(
             performData,
-            (address, IUniswapV2Router02)
+            (address, address, address[])
         );
-        premiaMaker.convert(router, token);
+
+        premiaMaker.withdrawFeesAndConvert(pool, router, tokens);
     }
 }
