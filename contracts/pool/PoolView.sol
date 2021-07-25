@@ -6,22 +6,23 @@ import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 import {PoolStorage} from "./PoolStorage.sol";
 
 import {IPoolView} from "./IPoolView.sol";
-import {PoolInternal} from "./PoolInternal.sol";
+import {PoolBase} from "./PoolBase.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolView is IPoolView, PoolInternal {
+contract PoolView is IPoolView, PoolBase {
     using EnumerableSet for EnumerableSet.UintSet;
     using PoolStorage for PoolStorage.Layout;
 
     constructor(
         address weth,
+        address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
-    ) PoolInternal(weth, feeReceiver, feeDiscountAddress, fee64x64) {}
+    ) PoolBase(weth, premiaMining, feeReceiver, feeDiscountAddress, fee64x64) {}
 
     /**
      * @notice get pool settings
@@ -125,15 +126,53 @@ contract PoolView is IPoolView, PoolInternal {
 
     /**
      * @notice get minimum purchase and interval amounts
-     * @return minimum call pool amount
-     * @return minimum put pool amount
+     * @return minCallTokenAmount minimum call pool amount
+     * @return minPutTokenAmount minimum put pool amount
      */
     function getMinimumAmounts()
         external
         view
         override
-        returns (uint256, uint256)
+        returns (uint256 minCallTokenAmount, uint256 minPutTokenAmount)
     {
         return (_getMinimumAmount(true), _getMinimumAmount(false));
+    }
+
+    /**
+     * @notice get user total value locked
+     * @return underlyingTVL user total value locked in call pool (in underlying token amount)
+     * @return baseTVL user total value locked in put pool (in base token amount)
+     */
+    function getUserTVL(address user)
+        external
+        view
+        override
+        returns (uint256 underlyingTVL, uint256 baseTVL)
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        return (l.userTVL[user][true], l.userTVL[user][false]);
+    }
+
+    /**
+     * @notice get total value locked
+     * @return underlyingTVL total value locked in call pool (in underlying token amount)
+     * @return baseTVL total value locked in put pool (in base token amount)
+     */
+    function getTotalTVL()
+        external
+        view
+        override
+        returns (uint256 underlyingTVL, uint256 baseTVL)
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        return (l.totalTVL[true], l.totalTVL[false]);
+    }
+
+    /**
+     * @notice get the addres of PremiaMining contract
+     * @return address of PremiaMining contract
+     */
+    function getPremiaMining() external view override returns (address) {
+        return PREMIA_MINING_ADDRESS;
     }
 }

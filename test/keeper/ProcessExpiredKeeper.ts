@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
+  ERC20Mock__factory,
   ProcessExpiredKeeper,
   ProcessExpiredKeeper__factory,
 } from '../../typechain';
@@ -26,6 +27,9 @@ describe('ProcessExpiredKeeper', () => {
 
     p = await PoolUtil.deploy(
       owner,
+      (
+        await new ERC20Mock__factory(owner).deploy('PREMIA', 18)
+      ).address,
       spotPrice,
       feeReceiver.address,
       ZERO_ADDRESS,

@@ -6,14 +6,14 @@ import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 import {PoolStorage} from "./PoolStorage.sol";
 
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
-import {PoolInternal} from "./PoolInternal.sol";
+import {PoolBase} from "./PoolBase.sol";
 import {IPoolWrite} from "./IPoolWrite.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolWrite is IPoolWrite, PoolInternal {
+contract PoolWrite is IPoolWrite, PoolBase {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -21,10 +21,11 @@ contract PoolWrite is IPoolWrite, PoolInternal {
 
     constructor(
         address weth,
+        address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
-    ) PoolInternal(weth, feeReceiver, feeDiscountAddress, fee64x64) {}
+    ) PoolBase(weth, premiaMining, feeReceiver, feeDiscountAddress, fee64x64) {}
 
     /**
      * @notice calculate price of option contract
