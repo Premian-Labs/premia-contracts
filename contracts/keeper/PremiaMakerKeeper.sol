@@ -104,8 +104,6 @@ contract PremiaMakerKeeper is IKeeperCompatible, Ownable {
                 );
             }
 
-            if (baseEthValue > minConvertValueInEth) {}
-
             uint256 nbToConvert;
             if (baseEthValue > minConvertValueInEth) nbToConvert++;
             if (underlyingEthValue > minConvertValueInEth) nbToConvert++;
@@ -161,8 +159,9 @@ contract PremiaMakerKeeper is IKeeperCompatible, Ownable {
         address _token,
         uint256 _amount
     ) internal view returns (uint256) {
-        address weth = IUniswapV2Router02(_router).WETH();
+        if (_amount == 0) return 0;
 
+        address weth = IUniswapV2Router02(_router).WETH();
         if (_token == weth) return _amount;
 
         address[] memory path = IPremiaMaker(PREMIA_MAKER).getCustomPath(

@@ -4,14 +4,19 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { resetHardhat } from './utils/evm';
 import { deployV1, IPremiaContracts } from '../scripts/utils/deployV1';
 import { formatEther, parseEther } from 'ethers/lib/utils';
-import { createUniswap, IUniswap } from './utils/uniswap';
-import { ERC20Mock } from '../typechain';
+import {
+  createUniswap,
+  depositUniswapLiquidity,
+  IUniswap,
+} from './utils/uniswap';
+import { ERC20Mock, UniswapV2Pair } from '../typechain';
 
 let p: IPremiaContracts;
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
 let treasury: SignerWithAddress;
 let uniswap: IUniswap;
+let premiaWeth: UniswapV2Pair;
 
 const chai = require('chai');
 const chaiAlmost = require('chai-almost');
@@ -29,21 +34,33 @@ describe('PremiaMaker', () => {
     uniswap = await createUniswap(admin, p.premia);
 
     await p.premiaMaker.addWhitelistedRouter([uniswap.router.address]);
+    premiaWeth = uniswap.premiaWeth as UniswapV2Pair;
   });
 
   it('should make premia successfully', async () => {
-    await (p.premia as ERC20Mock).mint(
-      uniswap.premiaWeth.address,
-      parseEther('10000'),
+    await depositUniswapLiquidity(
+      user1,
+      uniswap.weth.address,
+      premiaWeth,
+      (await premiaWeth.token0()) == uniswap.weth.address
+        ? parseEther('1')
+        : parseEther('10000'),
+      (await premiaWeth.token1()) == uniswap.weth.address
+        ? parseEther('1')
+        : parseEther('10000'),
     );
-    await uniswap.weth.deposit({ value: parseEther('1') });
-    await uniswap.weth.transfer(uniswap.premiaWeth.address, parseEther('1'));
-    await uniswap.premiaWeth.mint(user1.address);
 
-    await uniswap.dai.mint(uniswap.daiWeth.address, parseEther('100'));
-    await uniswap.weth.deposit({ value: parseEther('1') });
-    await uniswap.weth.transfer(uniswap.daiWeth.address, parseEther('1'));
-    await uniswap.daiWeth.mint(user1.address);
+    await depositUniswapLiquidity(
+      user1,
+      uniswap.weth.address,
+      uniswap.daiWeth,
+      (await premiaWeth.token0()) == uniswap.weth.address
+        ? parseEther('1')
+        : parseEther('100'),
+      (await premiaWeth.token1()) == uniswap.weth.address
+        ? parseEther('1')
+        : parseEther('100'),
+    );
 
     await uniswap.dai.mint(p.premiaMaker.address, parseEther('10'));
 
@@ -59,18 +76,29 @@ describe('PremiaMaker', () => {
   });
 
   it('should make premia successfully with WETH', async () => {
-    await (p.premia as ERC20Mock).mint(
-      uniswap.premiaWeth.address,
-      parseEther('10000'),
+    await depositUniswapLiquidity(
+      user1,
+      uniswap.weth.address,
+      premiaWeth,
+      (await premiaWeth.token0()) == uniswap.weth.address
+        ? parseEther('1')
+        : parseEther('10000'),
+      (await premiaWeth.token1()) == uniswap.weth.address
+        ? parseEther('1')
+        : parseEther('10000'),
     );
-    await uniswap.weth.deposit({ value: parseEther('1') });
-    await uniswap.weth.transfer(uniswap.premiaWeth.address, parseEther('1'));
-    await uniswap.premiaWeth.mint(user1.address);
 
-    await uniswap.dai.mint(uniswap.daiWeth.address, parseEther('100'));
-    await uniswap.weth.deposit({ value: parseEther('1') });
-    await uniswap.weth.transfer(uniswap.daiWeth.address, parseEther('1'));
-    await uniswap.daiWeth.mint(user1.address);
+    await depositUniswapLiquidity(
+      user1,
+      uniswap.weth.address,
+      uniswap.daiWeth,
+      (await premiaWeth.token0()) == uniswap.weth.address
+        ? parseEther('1')
+        : parseEther('100'),
+      (await premiaWeth.token1()) == uniswap.weth.address
+        ? parseEther('1')
+        : parseEther('100'),
+    );
 
     await uniswap.weth.deposit({ value: parseEther('10') });
     await uniswap.weth.transfer(p.premiaMaker.address, parseEther('10'));

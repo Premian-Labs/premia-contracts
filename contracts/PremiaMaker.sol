@@ -14,7 +14,7 @@ import {IWETH} from "./uniswapV2/interfaces/IWETH.sol";
 import {PremiaMakerStorage} from "./PremiaMakerStorage.sol";
 import {IPoolIO} from "./pool/IPoolIO.sol";
 
-import "./interface/IPremiaMaker.sol";
+import {IPremiaMaker} from "./interface/IPremiaMaker.sol";
 
 /// @author Premia
 /// @title A contract receiving all protocol fees, swapping them for premia
