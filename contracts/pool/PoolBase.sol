@@ -28,7 +28,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
 
     address internal immutable WETH_ADDRESS;
     address internal immutable PREMIA_MINING_ADDRESS;
-    address internal immutable FEE_RECEIVER_ADDRESS;
+    address public immutable FEE_RECEIVER_ADDRESS;
     address internal immutable FEE_DISCOUNT_ADDRESS;
 
     int128 internal immutable FEE_64x64;
