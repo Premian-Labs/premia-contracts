@@ -2,6 +2,8 @@ import { deployV2, TokenAddresses } from '../utils/deployV2';
 import { fixedFromFloat } from '../../test/utils/math';
 
 async function main() {
+  const premia = '0x6399C842dD2bE3dE30BF99Bc7D1bBF6Fa3650E70';
+
   const tokens: TokenAddresses = {
     ETH: '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
     DAI: '0x6B175474E89094C44Da98b954EedeAC495271d0F',
@@ -22,6 +24,7 @@ async function main() {
 
   await deployV2(
     tokens.ETH,
+    premia,
     fixedFromFloat(0.01),
     premiaMaker,
     premiaFeeDiscount,

@@ -5,6 +5,7 @@ import {
   hexDataSlice,
   hexZeroPad,
   parseEther,
+  parseUnits,
 } from 'ethers/lib/utils';
 import { BytesLike } from '@ethersproject/bytes';
 
@@ -49,8 +50,8 @@ export function fixedToNumber(fixed: BigNumber) {
   return Number(integer) + Number(decimalsNumber) / 1e10;
 }
 
-export function fixedToBn(fixed: BigNumber) {
-  return parseEther(fixedToNumber(fixed).toString());
+export function fixedToBn(fixed: BigNumber, decimals = 18) {
+  return parseUnits(fixedToNumber(fixed).toString(), decimals);
 }
 
 export function formatTokenId({

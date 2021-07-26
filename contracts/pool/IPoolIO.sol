@@ -47,4 +47,8 @@ interface IPoolIO {
         returns (uint256 amountOutCall, uint256 amountOutPut);
 
     function annihilate(uint256 tokenId, uint256 contractSize) external;
+
+    function claimRewards(bool isCallPool) external;
+
+    function updateMiningPools() external;
 }
