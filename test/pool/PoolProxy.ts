@@ -836,10 +836,20 @@ describe('PoolProxy', function () {
         isCall,
       );
 
-      // TODO: calculate intrinsic value based on Pool state
-      const intrinsicValue64x64 = 0;
+      const spot64x64 = fixedFromFloat(spotPrice);
 
-      expect(quote.baseCost64x64).to.equal(intrinsicValue64x64);
+      expect(strike64x64).to.be.lt(spot64x64);
+
+      const intrinsicValue64x64 = spot64x64
+        .sub(strike64x64)
+        .mul(BigNumber.from(purchaseAmountNb))
+        .div(BigNumber.from(spotPrice));
+
+      expect(quote.baseCost64x64).to.equal(
+        intrinsicValue64x64
+          .mul(BigNumber.from('105'))
+          .div(BigNumber.from('100')),
+      );
     });
 
     it('should return intrinsic value + 5% if put option is priced with instant profit', async () => {
@@ -865,10 +875,21 @@ describe('PoolProxy', function () {
         isCall,
       );
 
-      // TODO: calculate intrinsic value based on Pool state
-      const intrinsicValue64x64 = 0;
+      const spot64x64 = fixedFromFloat(spotPrice);
 
-      expect(quote.baseCost64x64).to.equal(intrinsicValue64x64);
+      expect(strike64x64).to.be.gt(spot64x64);
+
+      const intrinsicValue64x64 = strike64x64
+        .sub(spot64x64)
+        .mul(BigNumber.from(purchaseAmountNb));
+
+      // rounding error caused by ABDKMath64x64 operations
+      expect(quote.baseCost64x64).to.be.closeTo(
+        intrinsicValue64x64
+          .mul(BigNumber.from('105'))
+          .div(BigNumber.from('100')),
+        1000,
+      );
     });
 
     it('should revert if no liquidity', async () => {
