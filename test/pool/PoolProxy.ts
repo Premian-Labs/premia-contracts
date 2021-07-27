@@ -252,7 +252,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -355,7 +355,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -420,7 +420,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -493,7 +493,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -565,7 +565,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
