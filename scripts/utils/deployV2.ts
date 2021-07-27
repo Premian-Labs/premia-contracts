@@ -30,7 +30,6 @@ export async function deployV2(
   premiaFeeDiscount: string,
   tokens: TokenAddresses,
   oracles: TokenAddresses,
-  isTestnet: boolean,
 ) {
   const [deployer] = await ethers.getSigners();
 
@@ -267,4 +266,6 @@ export async function deployV2(
   console.log('PoolExercise implementation:', poolExerciseImpl.address);
   console.log('Deployer: ', deployer.address);
   console.log('PremiaInstance: ', instance.address);
+
+  return instance.address;
 }

@@ -19,7 +19,6 @@ export async function deployV1(
   isTest: boolean,
   log = false,
   premiaAddress?: string,
-  daiAddress?: string,
 ): Promise<IPremiaContracts> {
   let premia: PremiaErc20 | ERC20Mock;
 
@@ -32,9 +31,6 @@ export async function deployV1(
   } else {
     if (!premiaAddress) {
       throw new Error('Premia address not set');
-    }
-    if (!daiAddress) {
-      throw new Error('Dai address not set');
     }
     // premia = await new PremiaErc20__factory(deployer).deploy();
     premia = PremiaErc20__factory.connect(premiaAddress, deployer);
