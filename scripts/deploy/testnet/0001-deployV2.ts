@@ -57,6 +57,7 @@ async function main() {
   const premiaMakerKeeper = await new PremiaMakerKeeper__factory(
     deployer,
   ).deploy(contracts.premiaMaker.address, premiaDiamond);
+
   const processExpiredKeeper = await new ProcessExpiredKeeper__factory(
     deployer,
   ).deploy(premiaDiamond);
