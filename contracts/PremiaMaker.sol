@@ -14,9 +14,11 @@ import {IWETH} from "./uniswapV2/interfaces/IWETH.sol";
 import {PremiaMakerStorage} from "./PremiaMakerStorage.sol";
 import {IPoolIO} from "./pool/IPoolIO.sol";
 
+import {IPremiaMaker} from "./interface/IPremiaMaker.sol";
+
 /// @author Premia
 /// @title A contract receiving all protocol fees, swapping them for premia
-contract PremiaMaker is OwnableInternal {
+contract PremiaMaker is IPremiaMaker, OwnableInternal {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
@@ -106,9 +108,26 @@ contract PremiaMaker is OwnableInternal {
 
     //////////////////////////
 
+    /// @notice Get a custom swap path for a token
+    /// @param _token The token
+    /// @return The swap path
+    function getCustomPath(address _token)
+        external
+        view
+        override
+        returns (address[] memory)
+    {
+        return PremiaMakerStorage.layout().customPath[_token];
+    }
+
     /// @notice Get the list of whitelisted routers
     /// @return The list of whitelisted routers
-    function getWhitelistedRouters() external view returns (address[] memory) {
+    function getWhitelistedRouters()
+        external
+        view
+        override
+        returns (address[] memory)
+    {
         PremiaMakerStorage.Layout storage l = PremiaMakerStorage.layout();
 
         uint256 length = l.whitelistedRouters.length();
@@ -122,17 +141,15 @@ contract PremiaMaker is OwnableInternal {
     }
 
     /// @notice Withdraw fees from pools, convert tokens into Premia, and send Premia to PremiaStaking contract
-    /// @param _pools List of pools from which to withdraw fees
+    /// @param _pool from which to withdraw fees
     /// @param _router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
     /// @param _tokens The list of tokens to swap to premia
     function withdrawFeesAndConvert(
-        address[] memory _pools,
-        IUniswapV2Router02 _router,
+        address _pool,
+        address _router,
         address[] memory _tokens
-    ) public {
-        for (uint256 i = 0; i < _pools.length; i++) {
-            IPoolIO(_pools[i]).withdrawFees();
-        }
+    ) external override {
+        IPoolIO(_pool).withdrawFees();
 
         for (uint256 i = 0; i < _tokens.length; i++) {
             convert(_router, _tokens[i]);
@@ -142,7 +159,7 @@ contract PremiaMaker is OwnableInternal {
     /// @notice Convert tokens into Premia, and send Premia to PremiaStaking contract
     /// @param _router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
     /// @param _token The token to swap to premia
-    function convert(IUniswapV2Router02 _router, address _token) public {
+    function convert(address _router, address _token) public override {
         PremiaMakerStorage.Layout storage l = PremiaMakerStorage.layout();
 
         require(
@@ -160,9 +177,9 @@ contract PremiaMaker is OwnableInternal {
 
         if (amountMinusFee == 0) return;
 
-        token.safeIncreaseAllowance(address(_router), amountMinusFee);
+        token.safeIncreaseAllowance(_router, amountMinusFee);
 
-        address weth = _router.WETH();
+        address weth = IUniswapV2Router02(_router).WETH();
         uint256 premiaAmount;
 
         if (_token != address(PREMIA)) {
@@ -182,7 +199,7 @@ contract PremiaMaker is OwnableInternal {
                 path[1] = address(PREMIA);
             }
 
-            _router.swapExactTokensForTokens(
+            IUniswapV2Router02(_router).swapExactTokensForTokens(
                 amountMinusFee,
                 0,
                 path,
@@ -193,12 +210,12 @@ contract PremiaMaker is OwnableInternal {
             premiaAmount = amountMinusFee;
             IERC20(PREMIA).safeTransfer(PREMIA_STAKING, premiaAmount);
             // Just for the event
-            _router = IUniswapV2Router02(address(0));
+            _router = address(0);
         }
 
         emit Converted(
             msg.sender,
-            address(_router),
+            _router,
             _token,
             amountMinusFee,
             premiaAmount
