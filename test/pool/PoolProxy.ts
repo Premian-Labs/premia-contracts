@@ -813,85 +813,6 @@ describe('PoolProxy', function () {
   });
 
   describe('#quote', function () {
-    it('should return intrinsic value + 5% if call option is priced with instant profit', async () => {
-      const isCall = true;
-
-      await p.depositLiquidity(
-        owner,
-        parseOption(isCall ? '100' : '100000', isCall),
-        isCall,
-      );
-      await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
-
-      const maturity = p.getMaturity(10);
-      const strike64x64 = fixedFromFloat(getStrike(!isCall));
-      const purchaseAmountNb = 10;
-      const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
-
-      const quote = await pool.callStatic.quote(
-        buyer.address,
-        maturity,
-        strike64x64,
-        purchaseAmount,
-        isCall,
-      );
-
-      const spot64x64 = fixedFromFloat(spotPrice);
-
-      expect(strike64x64).to.be.lt(spot64x64);
-
-      const intrinsicValue64x64 = spot64x64
-        .sub(strike64x64)
-        .mul(BigNumber.from(purchaseAmountNb))
-        .div(BigNumber.from(spotPrice));
-
-      expect(quote.baseCost64x64).to.equal(
-        intrinsicValue64x64
-          .mul(BigNumber.from('105'))
-          .div(BigNumber.from('100')),
-      );
-    });
-
-    it('should return intrinsic value + 5% if put option is priced with instant profit', async () => {
-      const isCall = false;
-
-      await p.depositLiquidity(
-        owner,
-        parseOption(isCall ? '100' : '100000', isCall),
-        isCall,
-      );
-      await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
-
-      const maturity = p.getMaturity(10);
-      const strike64x64 = fixedFromFloat(getStrike(!isCall));
-      const purchaseAmountNb = 10;
-      const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
-
-      const quote = await pool.callStatic.quote(
-        buyer.address,
-        maturity,
-        strike64x64,
-        purchaseAmount,
-        isCall,
-      );
-
-      const spot64x64 = fixedFromFloat(spotPrice);
-
-      expect(strike64x64).to.be.gt(spot64x64);
-
-      const intrinsicValue64x64 = strike64x64
-        .sub(spot64x64)
-        .mul(BigNumber.from(purchaseAmountNb));
-
-      // rounding error caused by ABDKMath64x64 operations
-      expect(quote.baseCost64x64).to.be.closeTo(
-        intrinsicValue64x64
-          .mul(BigNumber.from('105'))
-          .div(BigNumber.from('100')),
-        1000,
-      );
-    });
-
     it('should revert if no liquidity', async () => {
       const maturity = p.getMaturity(17);
       const strike64x64 = fixedFromFloat(spotPrice * 1.25);
@@ -933,6 +854,45 @@ describe('PoolProxy', function () {
             fixedToNumber(q.slippageCoefficient64x64),
         ).to.almost(30.65);
       });
+
+      it('should return intrinsic value + 5% if option is priced with instant profit', async () => {
+        const isCall = true;
+
+        await p.depositLiquidity(
+          owner,
+          parseOption(isCall ? '100' : '100000', isCall),
+          isCall,
+        );
+        await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
+
+        const maturity = p.getMaturity(10);
+        const strike64x64 = fixedFromFloat(getStrike(!isCall));
+        const purchaseAmountNb = 10;
+        const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+        const quote = await pool.callStatic.quote(
+          buyer.address,
+          maturity,
+          strike64x64,
+          purchaseAmount,
+          isCall,
+        );
+
+        const spot64x64 = fixedFromFloat(spotPrice);
+
+        expect(strike64x64).to.be.lt(spot64x64);
+
+        const intrinsicValue64x64 = spot64x64
+          .sub(strike64x64)
+          .mul(BigNumber.from(purchaseAmountNb))
+          .div(BigNumber.from(spotPrice));
+
+        expect(quote.baseCost64x64).to.equal(
+          intrinsicValue64x64
+            .mul(BigNumber.from('105'))
+            .div(BigNumber.from('100')),
+        );
+      });
     });
 
     describe('put', () => {
@@ -960,6 +920,46 @@ describe('PoolProxy', function () {
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
         ).to.almost(57.48);
+      });
+
+      it('should return intrinsic value + 5% if option is priced with instant profit', async () => {
+        const isCall = false;
+
+        await p.depositLiquidity(
+          owner,
+          parseOption(isCall ? '100' : '100000', isCall),
+          isCall,
+        );
+        await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
+
+        const maturity = p.getMaturity(10);
+        const strike64x64 = fixedFromFloat(getStrike(!isCall));
+        const purchaseAmountNb = 10;
+        const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+        const quote = await pool.callStatic.quote(
+          buyer.address,
+          maturity,
+          strike64x64,
+          purchaseAmount,
+          isCall,
+        );
+
+        const spot64x64 = fixedFromFloat(spotPrice);
+
+        expect(strike64x64).to.be.gt(spot64x64);
+
+        const intrinsicValue64x64 = strike64x64
+          .sub(spot64x64)
+          .mul(BigNumber.from(purchaseAmountNb));
+
+        // rounding error caused by ABDKMath64x64 operations
+        expect(quote.baseCost64x64).to.be.closeTo(
+          intrinsicValue64x64
+            .mul(BigNumber.from('105'))
+            .div(BigNumber.from('100')),
+          1000,
+        );
       });
     });
   });
