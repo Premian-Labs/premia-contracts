@@ -140,12 +140,16 @@ library OptionMath {
             slippageCoefficient64x64
         );
 
-        // calculate intrinsic value, multiply by 1.05
-        int128 intrinsicValue64x64 = args
-            .spot64x64
-            .sub(args.strike64x64)
-            .abs()
-            .mul(0x10ccccccccccccccd);
+        int128 intrinsicValue64x64;
+
+        if (args.isCall && args.strike64x64 < args.spot64x64) {
+            intrinsicValue64x64 = args.spot64x64.sub(args.strike64x64);
+        } else if (!args.isCall && args.strike64x64 > args.spot64x64) {
+            intrinsicValue64x64 = args.strike64x64.sub(args.spot64x64);
+        }
+
+        // multiply by 1.05
+        intrinsicValue64x64 = intrinsicValue64x64.mul(0x10ccccccccccccccd);
 
         if (intrinsicValue64x64 > premiaPrice64x64) {
             premiaPrice64x64 = intrinsicValue64x64;
