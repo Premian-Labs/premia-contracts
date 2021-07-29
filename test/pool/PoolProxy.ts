@@ -775,7 +775,9 @@ describe('PoolProxy', function () {
     });
 
     it('should return the first price update available', async () => {
-      const timestamp = 1624783000;
+      let { timestamp } = await ethers.provider.getBlock('latest');
+      timestamp = (Math.floor(timestamp / 3600 / 256) - 1) * 3600 * 256;
+
       let bucket = Math.floor(timestamp / 3600);
 
       let offset = bucket & 255;
