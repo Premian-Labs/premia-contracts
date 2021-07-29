@@ -1005,13 +1005,10 @@ describe('PoolProxy', function () {
 
       it('should grant sender share tokens with WETH deposit', async () => {
         // Use WETH tokens
-        await p.underlyingWeth.deposit({ value: 100 });
-        await p.underlyingWeth.approve(
-          poolWeth.address,
-          ethers.constants.MaxUint256,
-        );
+        await p.weth.deposit({ value: 100 });
+        await p.weth.approve(poolWeth.address, ethers.constants.MaxUint256);
         await expect(() => poolWeth.deposit('50', true)).to.changeTokenBalance(
-          p.underlyingWeth,
+          p.weth,
           owner,
           -50,
         );
@@ -1026,7 +1023,7 @@ describe('PoolProxy', function () {
           poolWeth.deposit('100', true, { value: 50 }),
         ).to.changeEtherBalance(owner, -50);
 
-        expect(await p.underlyingWeth.balanceOf(owner.address)).to.eq(0);
+        expect(await p.weth.balanceOf(owner.address)).to.eq(0);
         expect(
           await poolWeth.balanceOf(owner.address, underlyingFreeLiqToken),
         ).to.eq(350);

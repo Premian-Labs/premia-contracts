@@ -43,7 +43,7 @@ interface PoolUtilArgs {
   pool: IPool;
   poolWeth: IPool;
   underlying: ERC20Mock;
-  underlyingWeth: WETH9;
+  weth: WETH9;
   base: ERC20Mock;
   baseOracle: MockContract;
   underlyingOracle: MockContract;
@@ -113,7 +113,7 @@ export class PoolUtil {
   pool: IPool;
   poolWeth: IPool;
   underlying: ERC20Mock;
-  underlyingWeth: WETH9;
+  weth: WETH9;
   base: ERC20Mock;
   baseOracle: MockContract;
   underlyingOracle: MockContract;
@@ -124,7 +124,7 @@ export class PoolUtil {
     this.pool = props.pool;
     this.poolWeth = props.poolWeth;
     this.underlying = props.underlying;
-    this.underlyingWeth = props.underlyingWeth;
+    this.weth = props.weth;
     this.base = props.base;
     this.baseOracle = props.baseOracle;
     this.underlyingOracle = props.underlyingOracle;
@@ -147,7 +147,10 @@ export class PoolUtil {
       DECIMALS_UNDERLYING,
     );
     await underlying.deployed();
-    const underlyingWeth = await new WETH9__factory(deployer).deploy();
+    const weth = WETH9__factory.connect(
+      '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+      deployer,
+    );
 
     //
 
@@ -189,7 +192,7 @@ export class PoolUtil {
       deployer,
     );
     const poolWriteImpl = await poolWriteFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -208,7 +211,7 @@ export class PoolUtil {
 
     const poolMockFactory = new PoolMock__factory(deployer);
     const poolMockImpl = await poolMockFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -230,7 +233,7 @@ export class PoolUtil {
       deployer,
     );
     const poolExerciseImpl = await poolExerciseFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -249,7 +252,7 @@ export class PoolUtil {
 
     const poolViewFactory = new PoolView__factory(deployer);
     const poolViewImpl = await poolViewFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -271,7 +274,7 @@ export class PoolUtil {
       deployer,
     );
     const poolIOImpl = await poolIOFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -330,7 +333,7 @@ export class PoolUtil {
 
     tx = await manager.deployPool(
       base.address,
-      underlyingWeth.address,
+      weth.address,
       baseOracle.address,
       underlyingOracle.address,
       fixedFromFloat(100),
@@ -355,7 +358,7 @@ export class PoolUtil {
       pool,
       poolWeth,
       underlying,
-      underlyingWeth,
+      weth,
       base,
       baseOracle,
       underlyingOracle,
