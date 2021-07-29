@@ -41,7 +41,6 @@ import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
 import { ZERO_ADDRESS } from '../utils/constants';
 import { describeBehaviorOfProxy } from '@solidstate/spec';
-import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 
 chai.use(chaiAlmost(0.02));
 
@@ -546,9 +545,11 @@ describe('PoolProxy', function () {
           await p.depositLiquidity(lp1, amount, isCall);
           await p.depositLiquidity(lp2, amount, isCall);
 
+          const { timestamp } = await ethers.provider.getBlock('latest');
+
           await p.pool
             .connect(lp1)
-            .setDivestmentTimestamp(getCurrentTimestamp() + 25 * 3600);
+            .setDivestmentTimestamp(timestamp + 25 * 3600);
           await increaseTimestamp(26 * 3600);
 
           const maturity = await p.getMaturity(10);
@@ -1129,9 +1130,6 @@ describe('PoolProxy', function () {
           );
           const maturity = (await p.getMaturity(1)).sub(ethers.constants.One);
           const strike64x64 = fixedFromFloat(1.5);
-
-          // TODO: why is getCurrentTimestamp not returning the expected timestamp?
-          await setTimestamp(getCurrentTimestamp());
 
           await expect(
             pool
