@@ -46,7 +46,8 @@ describe('PremiaDevFund', () => {
       'Still timelocked',
     );
 
-    const now = Math.floor(new Date().getTime() / 1000);
+    const { timestamp: now } = await ethers.provider.getBlock('latest');
+
     await setTimestamp(now + 3 * 24 * 3600 - 200);
 
     await expect(premiaDevFund.doWithdraw()).to.be.revertedWith(
