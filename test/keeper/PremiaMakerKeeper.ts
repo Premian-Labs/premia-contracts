@@ -61,7 +61,7 @@ describe('PremiaMakerKeeper', () => {
       owner,
       contracts.premia,
       undefined,
-      p.underlyingWeth,
+      undefined,
     );
 
     pairBase = await createUniswapPair(
