@@ -63,14 +63,14 @@ library OptionMath {
 
         // v = (1 - decay) * var_prev + (decay * (current - m_prev) * (current - m)) / delta_t
         emaVariance64x64 = ONE_64x64
-        .sub(omega64x64)
-        .mul(oldEmaVariance64x64)
-        .add(
-            omega64x64
-            .mul(logReturns64x64.sub(oldEmaLogReturns64x64))
-            .mul(logReturns64x64.sub(emaLogReturns64x64))
-            .div(delta64x64)
-        );
+            .sub(omega64x64)
+            .mul(oldEmaVariance64x64)
+            .add(
+                omega64x64
+                    .mul(logReturns64x64.sub(oldEmaLogReturns64x64))
+                    .mul(logReturns64x64.sub(emaLogReturns64x64))
+                    .div(delta64x64)
+            );
     }
 
     /**
@@ -91,10 +91,11 @@ library OptionMath {
             newPoolState64x64
                 .sub(oldPoolState64x64)
                 .div(
-                oldPoolState64x64 > newPoolState64x64
-                    ? oldPoolState64x64
-                    : newPoolState64x64
-            ).mul(steepness64x64)
+                    oldPoolState64x64 > newPoolState64x64
+                        ? oldPoolState64x64
+                        : newPoolState64x64
+                )
+                .mul(steepness64x64)
                 .neg()
                 .exp()
                 .mul(initialCLevel64x64);
@@ -116,10 +117,10 @@ library OptionMath {
         )
     {
         int128 deltaPoolState64x64 = args
-        .newPoolState
-        .sub(args.oldPoolState)
-        .div(args.oldPoolState)
-        .mul(args.steepness64x64);
+            .newPoolState
+            .sub(args.oldPoolState)
+            .div(args.oldPoolState)
+            .mul(args.steepness64x64);
         int128 tradingDelta64x64 = deltaPoolState64x64.neg().exp();
 
         int128 bsPrice64x64 = _bsPrice(
@@ -135,20 +136,24 @@ library OptionMath {
             deltaPoolState64x64
         );
 
+        premiaPrice64x64 = bsPrice64x64.mul(cLevel64x64).mul(
+            slippageCoefficient64x64
+        );
+
         int128 intrinsicValue64x64;
+
         if (args.isCall && args.strike64x64 < args.spot64x64) {
             intrinsicValue64x64 = args.spot64x64.sub(args.strike64x64);
         } else if (!args.isCall && args.strike64x64 > args.spot64x64) {
             intrinsicValue64x64 = args.strike64x64.sub(args.spot64x64);
         }
 
-        premiaPrice64x64 = bsPrice64x64.mul(cLevel64x64).mul(
-            slippageCoefficient64x64
-        );
-        require(
-            premiaPrice64x64 > intrinsicValue64x64,
-            "price < intrinsic val"
-        );
+        // multiply by 1.05
+        intrinsicValue64x64 = intrinsicValue64x64.mul(0x10ccccccccccccccd);
+
+        if (intrinsicValue64x64 > premiaPrice64x64) {
+            premiaPrice64x64 = intrinsicValue64x64;
+        }
     }
 
     /**
@@ -231,10 +236,10 @@ library OptionMath {
 
         // ToDo : Ensure we never have division by 0 / price of 0
         int128 d1_64x64 = spot64x64
-        .div(strike64x64)
-        .ln()
-        .add(cumulativeVariance64x64 >> 1)
-        .div(cumulativeVarianceSqrt64x64);
+            .div(strike64x64)
+            .ln()
+            .add(cumulativeVariance64x64 >> 1)
+            .div(cumulativeVarianceSqrt64x64);
         int128 d2_64x64 = d1_64x64.sub(cumulativeVarianceSqrt64x64);
 
         if (isCall) {

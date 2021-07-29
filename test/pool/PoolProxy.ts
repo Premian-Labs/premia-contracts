@@ -252,7 +252,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -355,7 +355,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -420,7 +420,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -493,7 +493,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -565,7 +565,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -854,6 +854,45 @@ describe('PoolProxy', function () {
             fixedToNumber(q.slippageCoefficient64x64),
         ).to.almost(30.65);
       });
+
+      it('should return intrinsic value + 5% if option is priced with instant profit', async () => {
+        const isCall = true;
+
+        await p.depositLiquidity(
+          owner,
+          parseOption(isCall ? '100' : '100000', isCall),
+          isCall,
+        );
+        await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
+
+        const maturity = p.getMaturity(10);
+        const strike64x64 = fixedFromFloat(getStrike(!isCall));
+        const purchaseAmountNb = 10;
+        const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+        const quote = await pool.callStatic.quote(
+          buyer.address,
+          maturity,
+          strike64x64,
+          purchaseAmount,
+          isCall,
+        );
+
+        const spot64x64 = fixedFromFloat(spotPrice);
+
+        expect(strike64x64).to.be.lt(spot64x64);
+
+        const intrinsicValue64x64 = spot64x64
+          .sub(strike64x64)
+          .mul(BigNumber.from(purchaseAmountNb))
+          .div(BigNumber.from(spotPrice));
+
+        expect(quote.baseCost64x64).to.equal(
+          intrinsicValue64x64
+            .mul(BigNumber.from('105'))
+            .div(BigNumber.from('100')),
+        );
+      });
     });
 
     describe('put', () => {
@@ -881,6 +920,46 @@ describe('PoolProxy', function () {
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
         ).to.almost(57.48);
+      });
+
+      it('should return intrinsic value + 5% if option is priced with instant profit', async () => {
+        const isCall = false;
+
+        await p.depositLiquidity(
+          owner,
+          parseOption(isCall ? '100' : '100000', isCall),
+          isCall,
+        );
+        await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
+
+        const maturity = p.getMaturity(10);
+        const strike64x64 = fixedFromFloat(getStrike(!isCall));
+        const purchaseAmountNb = 10;
+        const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+        const quote = await pool.callStatic.quote(
+          buyer.address,
+          maturity,
+          strike64x64,
+          purchaseAmount,
+          isCall,
+        );
+
+        const spot64x64 = fixedFromFloat(spotPrice);
+
+        expect(strike64x64).to.be.gt(spot64x64);
+
+        const intrinsicValue64x64 = strike64x64
+          .sub(spot64x64)
+          .mul(BigNumber.from(purchaseAmountNb));
+
+        // rounding error caused by ABDKMath64x64 operations
+        expect(quote.baseCost64x64).to.be.closeTo(
+          intrinsicValue64x64
+            .mul(BigNumber.from('105'))
+            .div(BigNumber.from('100')),
+          1000,
+        );
       });
     });
   });
@@ -1067,30 +1146,6 @@ describe('PoolProxy', function () {
           ).to.be.revertedWith('exp < 1 day');
         });
 
-        it('should revert if option is priced with instant profit', async () => {
-          await p.depositLiquidity(
-            owner,
-            parseOption(isCall ? '100' : '100000', isCall),
-            isCall,
-          );
-          await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
-
-          const maturity = await p.getMaturity(10);
-          const strike64x64 = fixedFromFloat(getStrike(!isCall));
-          const purchaseAmountNb = 10;
-          const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
-
-          await expect(
-            pool.quote(
-              buyer.address,
-              maturity,
-              strike64x64,
-              purchaseAmount,
-              isCall,
-            ),
-          ).to.be.revertedWith('price < intrinsic val');
-        });
-
         it('should revert if using a maturity more than 28 days in the future', async () => {
           await p.depositLiquidity(
             owner,
@@ -1230,7 +1285,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -1329,7 +1384,7 @@ describe('PoolProxy', function () {
 
           await p
             .getToken(isCall)
-            .mint(buyer.address, parseOption('1000', isCall));
+            .mint(buyer.address, parseOption('10000', isCall));
           await p
             .getToken(isCall)
             .connect(buyer)
