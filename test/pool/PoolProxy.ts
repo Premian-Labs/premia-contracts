@@ -865,7 +865,7 @@ describe('PoolProxy', function () {
         );
         await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
 
-        const maturity = p.getMaturity(10);
+        const maturity = await p.getMaturity(10);
         const strike64x64 = fixedFromFloat(getStrike(!isCall));
         const purchaseAmountNb = 10;
         const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -932,7 +932,7 @@ describe('PoolProxy', function () {
         );
         await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
 
-        const maturity = p.getMaturity(10);
+        const maturity = await p.getMaturity(10);
         const strike64x64 = fixedFromFloat(getStrike(!isCall));
         const purchaseAmountNb = 10;
         const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
