@@ -3,19 +3,26 @@ pragma solidity ^0.8.0;
 
 import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
+import {IERC1155} from "@solidstate/contracts/token/ERC1155/IERC1155.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import {IKeeperCompatible} from "../interface/IKeeperCompatible.sol";
 import {IPremiaMaker} from "../interface/IPremiaMaker.sol";
-import {IPremiaOption} from "../interface/IPremiaOption.sol";
+import {IProxyManager} from "../core/IProxyManager.sol";
+import {IPoolBase} from "../pool/IPoolBase.sol";
+import {IPoolView} from "../pool/IPoolView.sol";
+import {PoolStorage} from "../pool/PoolStorage.sol";
 
 contract PremiaMakerKeeper is IKeeperCompatible, Ownable {
-    IPremiaMaker public premiaMaker =
-        IPremiaMaker(0xcb81dB76Ae0a46c6e1E378E3Ade61DaB275ff96E);
-    IPremiaOption public premiaOptionDai =
-        IPremiaOption(0x5920cb60B1c62dC69467bf7c6EDFcFb3f98548c0);
+    address internal immutable PREMIA_MAKER;
+    address internal immutable PREMIA_DIAMOND;
 
-    uint256 minConvertValueInEth = 1e18; // 1 ETH
+    uint256 public minConvertValueInEth = 1e18; // 1 ETH
+
+    constructor(address _premiaMaker, address _premiaDiamond) {
+        PREMIA_MAKER = _premiaMaker;
+        PREMIA_DIAMOND = _premiaDiamond;
+    }
 
     function setMinConvertValueInEth(uint256 _minConvertValueInEth)
         external
@@ -47,38 +54,79 @@ contract PremiaMakerKeeper is IKeeperCompatible, Ownable {
         override
         returns (bool upkeepNeeded, bytes memory performData)
     {
-        IUniswapV2Router02 router = abi.decode(checkData, (IUniswapV2Router02));
-        address[] memory potentialTokens = premiaOptionDai.tokens();
-        address weth = router.WETH();
+        address[] memory pools = IProxyManager(PREMIA_DIAMOND).getPoolList();
 
-        address token;
-        for (uint256 i = 0; i < potentialTokens.length; i++) {
-            token = potentialTokens[i];
-            uint256 balance = IERC20(token).balanceOf(address(premiaMaker));
-            uint256 convertValueInEth;
+        uint256 baseReservedTokenId = PoolStorage.formatTokenId(
+            PoolStorage.TokenType.BASE_RESERVED_LIQ,
+            0,
+            0
+        );
+        uint256 underlyingReservedTokenId = PoolStorage.formatTokenId(
+            PoolStorage.TokenType.UNDERLYING_RESERVED_LIQ,
+            0,
+            0
+        );
 
-            if (token != weth) {
-                address[] memory path = premiaMaker.customPath(token);
+        address router = abi.decode(checkData, (address));
 
-                if (path.length == 0) {
-                    path = new address[](2);
-                    path[0] = token;
-                    path[1] = weth;
-                }
+        for (uint256 i = 0; i < pools.length; i++) {
+            address pool = pools[i];
 
-                uint256[] memory amounts = router.getAmountsOut(balance, path);
+            PoolStorage.PoolSettings memory pSettings = IPoolView(pool)
+                .getPoolSettings();
+            address feeReceiver = IPoolBase(pool).FEE_RECEIVER_ADDRESS();
 
-                convertValueInEth = amounts[1];
-            } else {
-                convertValueInEth = balance;
+            uint256 baseEthValue;
+            uint256 underlyingEthValue;
+
+            {
+                uint256 baseFee = IERC1155(pool).balanceOf(
+                    feeReceiver,
+                    baseReservedTokenId
+                );
+                uint256 underlyingFee = IERC1155(pool).balanceOf(
+                    feeReceiver,
+                    underlyingReservedTokenId
+                );
+
+                // Calculate total amount in premia maker contract after withdrawal
+                uint256 baseTotal = IERC20(pSettings.base).balanceOf(
+                    PREMIA_MAKER
+                ) + baseFee;
+                uint256 underlyingTotal = IERC20(pSettings.underlying)
+                    .balanceOf(PREMIA_MAKER) + underlyingFee;
+
+                baseEthValue = _getEthValue(router, pSettings.base, baseTotal);
+                underlyingEthValue = _getEthValue(
+                    router,
+                    pSettings.underlying,
+                    underlyingTotal
+                );
             }
 
-            if (convertValueInEth > minConvertValueInEth) {
-                return (true, abi.encode(token, router));
+            uint256 nbToConvert;
+            if (baseEthValue > minConvertValueInEth) nbToConvert++;
+            if (underlyingEthValue > minConvertValueInEth) nbToConvert++;
+
+            address[] memory tokensToConvert;
+            if (nbToConvert > 0) {
+                tokensToConvert = new address[](nbToConvert);
+                uint256 j;
+
+                if (baseEthValue > minConvertValueInEth) {
+                    tokensToConvert[j] = pSettings.base;
+                    j++;
+                }
+
+                if (underlyingEthValue > minConvertValueInEth) {
+                    tokensToConvert[j] = pSettings.underlying;
+                }
+
+                return (true, abi.encode(pool, router, tokensToConvert));
             }
         }
 
-        return (false, abi.encode(token, router));
+        return (false, "");
     }
 
     /**
@@ -98,10 +146,39 @@ contract PremiaMakerKeeper is IKeeperCompatible, Ownable {
      * validated against the contract's current state.
      */
     function performUpkeep(bytes calldata performData) external override {
-        (address token, IUniswapV2Router02 router) = abi.decode(
+        (address pool, address router, address[] memory tokens) = abi.decode(
             performData,
-            (address, IUniswapV2Router02)
+            (address, address, address[])
         );
-        premiaMaker.convert(router, token);
+
+        IPremiaMaker(PREMIA_MAKER).withdrawFeesAndConvert(pool, router, tokens);
+    }
+
+    function _getEthValue(
+        address _router,
+        address _token,
+        uint256 _amount
+    ) internal view returns (uint256) {
+        if (_amount == 0) return 0;
+
+        address weth = IUniswapV2Router02(_router).WETH();
+        if (_token == weth) return _amount;
+
+        address[] memory path = IPremiaMaker(PREMIA_MAKER).getCustomPath(
+            _token
+        );
+
+        if (path.length == 0) {
+            path = new address[](2);
+            path[0] = _token;
+            path[1] = weth;
+        }
+
+        uint256[] memory amounts = IUniswapV2Router02(_router).getAmountsOut(
+            _amount,
+            path
+        );
+
+        return amounts[1];
     }
 }

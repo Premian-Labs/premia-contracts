@@ -30,7 +30,6 @@ export async function deployV2(
   premiaFeeDiscount: string,
   tokens: TokenAddresses,
   oracles: TokenAddresses,
-  isTestnet: boolean,
 ) {
   const [deployer] = await ethers.getSigners();
 
@@ -60,14 +59,24 @@ export async function deployV2(
   //
 
   const proxyManagerFactory = new ProxyManager__factory(deployer);
-  const proxyManager = await proxyManagerFactory.deploy(poolDiamond.address);
-  await diamondCut(premiaDiamond, proxyManager.address, proxyManagerFactory);
+  const proxyManagerImpl = await proxyManagerFactory.deploy(
+    poolDiamond.address,
+  );
+  await diamondCut(
+    premiaDiamond,
+    proxyManagerImpl.address,
+    proxyManagerFactory,
+  );
+  const proxyManager = ProxyManager__factory.connect(
+    premiaDiamond.address,
+    deployer,
+  );
+
+  //////////////////////////////////////////////
 
   let registeredSelectors = [
     poolDiamond.interface.getSighash('supportsInterface(bytes4)'),
   ];
-
-  //////////////////////////////////////////////
 
   const poolWriteFactory = new PoolWrite__factory(
     { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath.address },
@@ -153,28 +162,6 @@ export async function deployV2(
   );
 
   //////////////////////////////////////////////
-
-  const facetCuts = [
-    await new ProxyManager__factory(deployer).deploy(poolDiamond.address),
-  ].map(function (f) {
-    return {
-      target: f.address,
-      action: 0,
-      selectors: Object.keys(f.interface.functions).map((fn) =>
-        f.interface.getSighash(fn),
-      ),
-    };
-  });
-
-  const instance = await new Premia__factory(deployer).deploy();
-
-  const diamondTx = await instance.diamondCut(
-    facetCuts,
-    ethers.constants.AddressZero,
-    '0x',
-  );
-
-  await diamondTx.wait(1);
 
   // ToDo : Deploy test tokens pools for testnet
 
@@ -266,5 +253,8 @@ export async function deployV2(
   console.log('PoolView implementation:', poolViewImpl.address);
   console.log('PoolExercise implementation:', poolExerciseImpl.address);
   console.log('Deployer: ', deployer.address);
-  console.log('PremiaInstance: ', instance.address);
+  console.log('PoolDiamond: ', poolDiamond.address);
+  console.log('PremiaDiamond: ', premiaDiamond.address);
+
+  return premiaDiamond.address;
 }
