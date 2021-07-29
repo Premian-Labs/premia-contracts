@@ -18,9 +18,9 @@ import {
   WETH9,
   WETH9__factory,
 } from '../../typechain';
+import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { BigNumber, BigNumberish, ethers } from 'ethers';
-import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
+import { BigNumber, BigNumberish } from 'ethers';
 import { increaseTimestamp } from '../utils/evm';
 import {
   fixedFromFloat,
@@ -541,9 +541,11 @@ export class PoolUtil {
     return quote;
   }
 
-  getMaturity(days: number) {
+  async getMaturity(days: number) {
+    const { timestamp } = await ethers.provider.getBlock('latest');
+
     return BigNumber.from(
-      Math.floor(getCurrentTimestamp() / ONE_DAY) * ONE_DAY + days * ONE_DAY,
+      Math.floor(timestamp / ONE_DAY) * ONE_DAY + days * ONE_DAY,
     );
   }
 }
