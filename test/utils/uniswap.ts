@@ -27,7 +27,6 @@ export async function createUniswap(
   admin: SignerWithAddress,
   premia?: PremiaErc20,
   dai?: ERC20Mock,
-  weth?: WETH9,
 ) {
   if (!dai) {
     dai = await new ERC20Mock__factory(admin).deploy('DAI', 18);
@@ -43,9 +42,10 @@ export async function createUniswap(
     admin,
   );
 
-  if (!weth) {
-    weth = WETH9__factory.connect(await router.callStatic.WETH(), admin);
-  }
+  const weth = WETH9__factory.connect(
+    '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+    admin,
+  );
 
   const daiWeth = await createUniswapPair(
     admin,

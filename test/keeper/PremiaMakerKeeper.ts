@@ -57,12 +57,7 @@ describe('PremiaMakerKeeper', () => {
       p.premiaDiamond.address,
     );
 
-    uniswap = await createUniswap(
-      owner,
-      contracts.premia,
-      undefined,
-      undefined,
-    );
+    uniswap = await createUniswap(owner, contracts.premia, undefined);
 
     pairBase = await createUniswapPair(
       owner,
