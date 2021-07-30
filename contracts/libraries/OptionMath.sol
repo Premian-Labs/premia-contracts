@@ -16,6 +16,7 @@ library OptionMath {
         int128 oldPoolState; // 64x64 fixed point representation of current state of the pool
         int128 newPoolState; // 64x64 fixed point representation of state of the pool after trade
         int128 steepness64x64; // 64x64 fixed point representation of Pool state delta multiplier
+        int128 minAPY64x64; // 64x64 fixed point representation of minimum APY for capital locked up to underwrite options
         bool isCall; // whether to price "call" or "put" option
     }
 
@@ -27,10 +28,6 @@ library OptionMath {
     int128 private constant CDF_CONST_0 = 0x09109f285df452394; // 2260 / 3989
     int128 private constant CDF_CONST_1 = 0x19abac0ea1da65036; // 6400 / 3989
     int128 private constant CDF_CONST_2 = 0x0d3c84b78b749bd6b; // 3300 / 3989
-
-    // Minimum APY for capital locked up to underwrite options.
-    // The quote will return a minimum price corresponding to this APY
-    int128 internal constant MIN_APY_64x64 = 0x4ccccccccccccccd; // 0.3
 
     /**
      * @notice calculate the rolling EMA variance of an uneven time series
@@ -157,7 +154,7 @@ library OptionMath {
             : args.strike64x64;
 
         int128 minPrice64x64 = intrinsicValue64x64.add(
-            collateralValue64x64.mul(MIN_APY_64x64).mul(
+            collateralValue64x64.mul(args.minAPY64x64).mul(
                 args.timeToMaturity64x64
             )
         );
