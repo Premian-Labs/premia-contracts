@@ -31,7 +31,8 @@ describe('PremiaStaking', () => {
   });
 
   it('should successfully enter with permit', async () => {
-    const deadline = Math.floor(new Date().getTime() / 1000 + 3600);
+    const { timestamp } = await ethers.provider.getBlock('latest');
+    const deadline = timestamp + 3600;
 
     const result = await signERC2612Permit(
       alice.provider,

@@ -6,7 +6,7 @@ import {
 } from '../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { resetHardhat, setTimestamp } from './utils/evm';
+import { increaseTimestamp } from './utils/evm';
 import { signERC2612Permit } from 'eth-permit';
 import { deployV1, IPremiaContracts } from '../scripts/utils/deployV1';
 import { parseEther } from 'ethers/lib/utils';
@@ -21,7 +21,6 @@ const oneMonth = 30 * 24 * 3600;
 
 describe('PremiaFeeDiscount', () => {
   beforeEach(async () => {
-    await resetHardhat();
     [admin, user1, treasury] = await ethers.getSigners();
 
     p = await deployV1(admin, treasury.address, true);
@@ -85,8 +84,8 @@ describe('PremiaFeeDiscount', () => {
     expect(amountWithBonus).to.eq(parseEther('150000'));
     expect(await p.premiaFeeDiscount.getDiscount(user1.address)).to.eq(6250);
 
-    const newTimestamp = new Date().getTime() / 1000 + 91 * 24 * 3600;
-    await setTimestamp(newTimestamp);
+    await increaseTimestamp(91 * 24 * 3600);
+
     await p.premiaFeeDiscount.connect(user1).unstake(parseEther('10000'));
 
     amountWithBonus = await p.premiaFeeDiscount.getStakeAmountWithBonus(
@@ -99,7 +98,9 @@ describe('PremiaFeeDiscount', () => {
 
   it('should stake successfully with permit', async () => {
     await p.xPremia.connect(user1).approve(p.premiaFeeDiscount.address, 0);
-    const deadline = Math.floor(new Date().getTime() / 1000 + 3600);
+
+    const { timestamp } = await ethers.provider.getBlock('latest');
+    const deadline = timestamp + 3600;
 
     const result = await signERC2612Permit(
       user1.provider,
@@ -148,8 +149,8 @@ describe('PremiaFeeDiscount', () => {
     await p.premiaFeeDiscount
       .connect(user1)
       .stake(stakeAmount.div(2), 3 * oneMonth);
-    const newTimestamp = new Date().getTime() / 1000 + oneMonth;
-    await setTimestamp(newTimestamp);
+
+    await increaseTimestamp(oneMonth);
 
     // Fail setting one month stake
     await expect(

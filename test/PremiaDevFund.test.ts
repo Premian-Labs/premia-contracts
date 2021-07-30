@@ -7,7 +7,7 @@ import {
 } from '../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { resetHardhat, setTimestamp } from './utils/evm';
+import { setTimestamp } from './utils/evm';
 import { parseEther } from 'ethers/lib/utils';
 import { ZERO_ADDRESS } from './utils/constants';
 
@@ -17,8 +17,6 @@ let premiaDevFund: PremiaDevFund;
 
 describe('PremiaDevFund', () => {
   beforeEach(async () => {
-    await resetHardhat();
-
     [admin] = await ethers.getSigners();
 
     premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);

@@ -13,7 +13,7 @@ import {
 
 import { describeBehaviorOfPool } from './Pool.behavior';
 import chai, { expect } from 'chai';
-import { increaseTimestamp, resetHardhat, setTimestamp } from '../utils/evm';
+import { increaseTimestamp, setTimestamp } from '../utils/evm';
 import { hexlify, hexZeroPad, parseEther, parseUnits } from 'ethers/lib/utils';
 import {
   DECIMALS_BASE,
@@ -81,7 +81,6 @@ describe('PoolProxy', function () {
   };
 
   beforeEach(async function () {
-    await resetHardhat();
     [owner, lp1, lp2, buyer, thirdParty, feeReceiver] =
       await ethers.getSigners();
 

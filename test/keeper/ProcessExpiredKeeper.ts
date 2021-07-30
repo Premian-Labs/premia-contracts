@@ -7,7 +7,7 @@ import {
   ProcessExpiredKeeper__factory,
 } from '../../typechain';
 import { parseOption, parseUnderlying, PoolUtil } from '../pool/PoolUtil';
-import { increaseTimestamp, resetHardhat } from '../utils/evm';
+import { increaseTimestamp } from '../utils/evm';
 import { ZERO_ADDRESS } from '../utils/constants';
 import { fixedFromFloat, getOptionTokenIds } from '../utils/math';
 
@@ -22,7 +22,6 @@ describe('ProcessExpiredKeeper', () => {
   const spotPrice = 2000;
 
   beforeEach(async () => {
-    await resetHardhat();
     [owner, lp, buyer, feeReceiver] = await ethers.getSigners();
 
     p = await PoolUtil.deploy(

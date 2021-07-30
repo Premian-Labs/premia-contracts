@@ -1,6 +1,6 @@
 import chai, { expect } from 'chai';
 import { PoolUtil } from '../pool/PoolUtil';
-import { increaseTimestamp, mineBlockUntil, resetHardhat } from '../utils/evm';
+import { increaseTimestamp, mineBlockUntil } from '../utils/evm';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
@@ -35,7 +35,6 @@ describe('PremiaMining', () => {
   const totalRewardAmount = 200000;
 
   beforeEach(async () => {
-    await resetHardhat();
     [owner, lp1, lp2, lp3, buyer, feeReceiver] = await ethers.getSigners();
 
     const erc20Factory = new ERC20Mock__factory(owner);
