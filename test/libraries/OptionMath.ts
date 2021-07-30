@@ -250,6 +250,7 @@ describe('OptionMath', function () {
             newPoolState: S1,
             steepness64x64: steepness,
             isCall: true,
+            minAPY64x64: fixedFromFloat(0.3),
           })
         )[0],
       );
@@ -281,6 +282,7 @@ describe('OptionMath', function () {
             newPoolState: S1,
             steepness64x64: steepness,
             isCall: true,
+            minAPY64x64: fixedFromFloat(0.3),
           })
         )[0],
       );

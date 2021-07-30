@@ -37,6 +37,7 @@ export const DECIMALS_UNDERLYING = 8;
 export const SYMBOL_BASE = 'SYMBOL_BASE';
 export const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 export const FEE = 0.01;
+export const MIN_APY = 0.3;
 
 interface PoolUtilArgs {
   premiaDiamond: Premia;
@@ -407,6 +408,13 @@ export class PoolUtil {
         ).toString(),
       );
     }
+  }
+
+  getMinPrice(collateralAmount: number, maturity: number) {
+    return (
+      (collateralAmount * (MIN_APY * (maturity - getCurrentTimestamp()))) /
+      (365 * 24 * 3600)
+    );
   }
 
   getFreeLiqTokenId(isCall: boolean) {
