@@ -413,9 +413,11 @@ export class PoolUtil {
     }
   }
 
-  getMinPrice(collateralAmount: number, maturity: number) {
+  async getMinPrice(collateralAmount: number, maturity: number) {
+    let { timestamp } = await ethers.provider.getBlock('latest');
+
     return (
-      (collateralAmount * (MIN_APY * (maturity - getCurrentTimestamp()))) /
+      (collateralAmount * (MIN_APY * (maturity - timestamp))) /
       (365 * 24 * 3600)
     );
   }

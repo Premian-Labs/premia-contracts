@@ -873,10 +873,10 @@ describe('PoolProxy', function () {
           true,
         );
 
-        console.log(p.getMinPrice(1, maturity));
+        console.log(await p.getMinPrice(1, maturity));
 
         expect(fixedToNumber(q.baseCost64x64)).to.almost(
-          p.getMinPrice(1, maturity),
+          await p.getMinPrice(1, maturity),
         );
       });
 
@@ -914,7 +914,7 @@ describe('PoolProxy', function () {
 
         expect(fixedToNumber(quote.baseCost64x64)).to.almost(
           fixedToNumber(intrinsicValue64x64) +
-            p.getMinPrice(purchaseAmountNb, maturity.toNumber()),
+            (await p.getMinPrice(purchaseAmountNb, maturity.toNumber())),
         );
       });
     });
@@ -963,7 +963,7 @@ describe('PoolProxy', function () {
         );
 
         expect(fixedToNumber(q.baseCost64x64)).to.almost(
-          p.getMinPrice(strike, maturity),
+          await p.getMinPrice(strike, maturity),
         );
       });
 
@@ -1000,10 +1000,10 @@ describe('PoolProxy', function () {
 
         expect(fixedToNumber(quote.baseCost64x64)).to.almost(
           fixedToNumber(intrinsicValue64x64) +
-            p.getMinPrice(
+            (await p.getMinPrice(
               purchaseAmountNb * getStrike(!isCall),
               maturity.toNumber(),
-            ),
+            )),
           0.1,
         );
       });
