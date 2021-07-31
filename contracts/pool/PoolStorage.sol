@@ -198,7 +198,7 @@ library PoolStorage {
 
         address last = desc[address(0)];
 
-        l.liquidityQueueAscending[isCallPool][last] = account;
+        asc[last] = account;
         desc[account] = last;
         desc[address(0)] = account;
     }
