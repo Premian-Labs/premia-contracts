@@ -1,3 +1,4 @@
+import { network } from 'hardhat';
 import {
   ERC20Mock,
   ERC20Mock__factory,
@@ -27,23 +28,40 @@ export async function createUniswap(
   admin: SignerWithAddress,
   premia?: PremiaErc20,
   dai?: ERC20Mock,
-  weth?: WETH9,
 ) {
   if (!dai) {
     dai = await new ERC20Mock__factory(admin).deploy('DAI', 18);
   }
 
-  if (!weth) {
-    weth = await new WETH9__factory(admin).deploy();
-  }
+  let weth;
+  let factory;
+  let router;
 
-  const factory = await new UniswapV2Factory__factory(admin).deploy(
-    admin.address,
-  );
-  const router = await new UniswapV2Router02__factory(admin).deploy(
-    factory.address,
-    weth.address,
-  );
+  if ((network as any).config.forking?.enabled) {
+    weth = WETH9__factory.connect(
+      '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+      admin,
+    );
+
+    factory = UniswapV2Factory__factory.connect(
+      '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f',
+      admin,
+    );
+
+    router = UniswapV2Router02__factory.connect(
+      '0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D',
+      admin,
+    );
+  } else {
+    weth = await new WETH9__factory(admin).deploy();
+
+    factory = await new UniswapV2Factory__factory(admin).deploy(admin.address);
+
+    router = await new UniswapV2Router02__factory(admin).deploy(
+      factory.address,
+      weth.address,
+    );
+  }
 
   const daiWeth = await createUniswapPair(
     admin,

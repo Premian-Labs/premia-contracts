@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { resetHardhat } from './utils/evm';
 import { deployV1, IPremiaContracts } from '../scripts/utils/deployV1';
 import { formatEther, parseEther } from 'ethers/lib/utils';
 import {
@@ -25,8 +24,6 @@ chai.use(chaiAlmost(0.01));
 
 describe('PremiaMaker', () => {
   beforeEach(async () => {
-    await resetHardhat();
-
     [admin, user1, treasury] = await ethers.getSigners();
 
     p = await deployV1(admin, treasury.address, true);

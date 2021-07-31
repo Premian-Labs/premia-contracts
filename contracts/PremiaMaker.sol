@@ -7,9 +7,9 @@ import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {OwnableInternal} from "@solidstate/contracts/access/OwnableInternal.sol";
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
+import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
 
-import {IUniswapV2Router02} from "./uniswapV2/interfaces/IUniswapV2Router02.sol";
-import {IWETH} from "./uniswapV2/interfaces/IWETH.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import {PremiaMakerStorage} from "./PremiaMakerStorage.sol";
 import {IPoolIO} from "./pool/IPoolIO.sol";

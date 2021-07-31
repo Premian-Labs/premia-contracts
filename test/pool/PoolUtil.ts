@@ -18,9 +18,9 @@ import {
   WETH9,
   WETH9__factory,
 } from '../../typechain';
+import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { BigNumber, BigNumberish, ethers } from 'ethers';
-import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
+import { BigNumber, BigNumberish } from 'ethers';
 import { increaseTimestamp } from '../utils/evm';
 import {
   fixedFromFloat,
@@ -44,7 +44,7 @@ interface PoolUtilArgs {
   pool: IPool;
   poolWeth: IPool;
   underlying: ERC20Mock;
-  underlyingWeth: WETH9;
+  weth: WETH9;
   base: ERC20Mock;
   baseOracle: MockContract;
   underlyingOracle: MockContract;
@@ -114,7 +114,7 @@ export class PoolUtil {
   pool: IPool;
   poolWeth: IPool;
   underlying: ERC20Mock;
-  underlyingWeth: WETH9;
+  weth: WETH9;
   base: ERC20Mock;
   baseOracle: MockContract;
   underlyingOracle: MockContract;
@@ -125,7 +125,7 @@ export class PoolUtil {
     this.pool = props.pool;
     this.poolWeth = props.poolWeth;
     this.underlying = props.underlying;
-    this.underlyingWeth = props.underlyingWeth;
+    this.weth = props.weth;
     this.base = props.base;
     this.baseOracle = props.baseOracle;
     this.underlyingOracle = props.underlyingOracle;
@@ -148,7 +148,17 @@ export class PoolUtil {
       DECIMALS_UNDERLYING,
     );
     await underlying.deployed();
-    const underlyingWeth = await new WETH9__factory(deployer).deploy();
+
+    let weth;
+
+    if ((network as any).config.forking?.enabled) {
+      weth = WETH9__factory.connect(
+        '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+        deployer,
+      );
+    } else {
+      weth = await new WETH9__factory(deployer).deploy();
+    }
 
     //
 
@@ -190,7 +200,7 @@ export class PoolUtil {
       deployer,
     );
     const poolWriteImpl = await poolWriteFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -209,7 +219,7 @@ export class PoolUtil {
 
     const poolMockFactory = new PoolMock__factory(deployer);
     const poolMockImpl = await poolMockFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -231,7 +241,7 @@ export class PoolUtil {
       deployer,
     );
     const poolExerciseImpl = await poolExerciseFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -250,7 +260,7 @@ export class PoolUtil {
 
     const poolViewFactory = new PoolView__factory(deployer);
     const poolViewImpl = await poolViewFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -272,7 +282,7 @@ export class PoolUtil {
       deployer,
     );
     const poolIOImpl = await poolIOFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -331,7 +341,7 @@ export class PoolUtil {
 
     tx = await manager.deployPool(
       base.address,
-      underlyingWeth.address,
+      weth.address,
       baseOracle.address,
       underlyingOracle.address,
       fixedFromFloat(100),
@@ -356,7 +366,7 @@ export class PoolUtil {
       pool,
       poolWeth,
       underlying,
-      underlyingWeth,
+      weth,
       base,
       baseOracle,
       underlyingOracle,
@@ -410,9 +420,11 @@ export class PoolUtil {
     }
   }
 
-  getMinPrice(collateralAmount: number, maturity: number) {
+  async getMinPrice(collateralAmount: number, maturity: number) {
+    let { timestamp } = await ethers.provider.getBlock('latest');
+
     return (
-      (collateralAmount * (MIN_APY * (maturity - getCurrentTimestamp()))) /
+      (collateralAmount * (MIN_APY * (maturity - timestamp))) /
       (365 * 24 * 3600)
     );
   }
@@ -549,9 +561,11 @@ export class PoolUtil {
     return quote;
   }
 
-  getMaturity(days: number) {
+  async getMaturity(days: number) {
+    const { timestamp } = await ethers.provider.getBlock('latest');
+
     return BigNumber.from(
-      Math.floor(getCurrentTimestamp() / ONE_DAY) * ONE_DAY + days * ONE_DAY,
+      Math.floor(timestamp / ONE_DAY) * ONE_DAY + days * ONE_DAY,
     );
   }
 }
