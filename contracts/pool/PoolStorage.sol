@@ -319,7 +319,7 @@ library PoolStorage {
         returns (int128 price64x64)
     {
         int256 priceUnderlying = AggregatorInterface(l.underlyingOracle)
-        .latestAnswer();
+            .latestAnswer();
         int256 priceBase = AggregatorInterface(l.baseOracle).latestAnswer();
 
         return ABDKMath64x64.divi(priceUnderlying, priceBase);

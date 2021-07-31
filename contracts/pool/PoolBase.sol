@@ -42,6 +42,10 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
     uint256 internal constant INVERSE_BASIS_POINT = 1e4;
     uint256 internal constant BATCHING_PERIOD = 260;
 
+    // Minimum APY for capital locked up to underwrite options.
+    // The quote will return a minimum price corresponding to this APY
+    int128 internal constant MIN_APY_64x64 = 0x4ccccccccccccccd; // 0.3
+
     constructor(
         address weth,
         address premiaMining,
@@ -188,6 +192,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
                     oldLiquidity64x64,
                     oldLiquidity64x64.sub(contractSize64x64),
                     0x10000000000000000, // 64x64 fixed point representation of 1
+                    MIN_APY_64x64,
                     isCall
                 )
             );

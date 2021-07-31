@@ -845,7 +845,7 @@ describe('PoolProxy', function () {
           true,
         );
 
-        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(117.49);
+        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(117.56);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
@@ -854,10 +854,33 @@ describe('PoolProxy', function () {
           (fixedToNumber(q.baseCost64x64) * spotPrice) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(30.65);
+        ).to.almost(30.67);
       });
 
-      it('should return intrinsic value + 5% if option is priced with instant profit', async () => {
+      it('should return min price based on min apy, if option is priced under', async () => {
+        await p.depositLiquidity(owner, parseUnderlying('10'), true);
+
+        const strike = 3900;
+        const strike64x64 = fixedFromFloat(strike);
+        let { timestamp } = await ethers.provider.getBlock('latest');
+        const maturity = timestamp + 24 * 3600;
+
+        const q = await pool.quote(
+          ZERO_ADDRESS,
+          maturity,
+          strike64x64,
+          parseUnderlying('1'),
+          true,
+        );
+
+        console.log(p.getMinPrice(1, maturity));
+
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(
+          p.getMinPrice(1, maturity),
+        );
+      });
+
+      it('should return intrinsic value + min price if option is priced with instant profit', async () => {
         const isCall = true;
 
         await p.depositLiquidity(
@@ -889,10 +912,9 @@ describe('PoolProxy', function () {
           .mul(BigNumber.from(purchaseAmountNb))
           .div(BigNumber.from(spotPrice));
 
-        expect(quote.baseCost64x64).to.equal(
-          intrinsicValue64x64
-            .mul(BigNumber.from('105'))
-            .div(BigNumber.from('100')),
+        expect(fixedToNumber(quote.baseCost64x64)).to.almost(
+          fixedToNumber(intrinsicValue64x64) +
+            p.getMinPrice(purchaseAmountNb, maturity.toNumber()),
         );
       });
     });
@@ -912,7 +934,7 @@ describe('PoolProxy', function () {
           false,
         );
 
-        expect(fixedToNumber(q.baseCost64x64)).to.almost(189.59);
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(189.66);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
@@ -921,10 +943,31 @@ describe('PoolProxy', function () {
           fixedToNumber(q.baseCost64x64) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(57.48);
+        ).to.almost(57.5);
       });
 
-      it('should return intrinsic value + 5% if option is priced with instant profit', async () => {
+      it('should return min price based on min apy, if option is priced under', async () => {
+        await p.depositLiquidity(owner, parseBase('100000'), false);
+
+        const strike = 1500;
+        const strike64x64 = fixedFromFloat(strike);
+        let { timestamp } = await ethers.provider.getBlock('latest');
+        const maturity = timestamp + 24 * 3600;
+
+        const q = await pool.quote(
+          ZERO_ADDRESS,
+          maturity,
+          strike64x64,
+          parseUnderlying('1'),
+          false,
+        );
+
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(
+          p.getMinPrice(strike, maturity),
+        );
+      });
+
+      it('should return intrinsic value + min price if option is priced with instant profit', async () => {
         const isCall = false;
 
         await p.depositLiquidity(
@@ -955,12 +998,13 @@ describe('PoolProxy', function () {
           .sub(spot64x64)
           .mul(BigNumber.from(purchaseAmountNb));
 
-        // rounding error caused by ABDKMath64x64 operations
-        expect(quote.baseCost64x64).to.be.closeTo(
-          intrinsicValue64x64
-            .mul(BigNumber.from('105'))
-            .div(BigNumber.from('100')),
-          1000,
+        expect(fixedToNumber(quote.baseCost64x64)).to.almost(
+          fixedToNumber(intrinsicValue64x64) +
+            p.getMinPrice(
+              purchaseAmountNb * getStrike(!isCall),
+              maturity.toNumber(),
+            ),
+          0.1,
         );
       });
     });

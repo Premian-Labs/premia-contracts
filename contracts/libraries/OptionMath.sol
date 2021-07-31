@@ -16,6 +16,7 @@ library OptionMath {
         int128 oldPoolState; // 64x64 fixed point representation of current state of the pool
         int128 newPoolState; // 64x64 fixed point representation of state of the pool after trade
         int128 steepness64x64; // 64x64 fixed point representation of Pool state delta multiplier
+        int128 minAPY64x64; // 64x64 fixed point representation of minimum APY for capital locked up to underwrite options
         bool isCall; // whether to price "call" or "put" option
     }
 
@@ -148,11 +149,18 @@ library OptionMath {
             intrinsicValue64x64 = args.strike64x64.sub(args.spot64x64);
         }
 
-        // multiply by 1.05
-        intrinsicValue64x64 = intrinsicValue64x64.mul(0x10ccccccccccccccd);
+        int128 collateralValue64x64 = args.isCall
+            ? args.spot64x64
+            : args.strike64x64;
 
-        if (intrinsicValue64x64 > premiaPrice64x64) {
-            premiaPrice64x64 = intrinsicValue64x64;
+        int128 minPrice64x64 = intrinsicValue64x64.add(
+            collateralValue64x64.mul(args.minAPY64x64).mul(
+                args.timeToMaturity64x64
+            )
+        );
+
+        if (minPrice64x64 > premiaPrice64x64) {
+            premiaPrice64x64 = minPrice64x64;
         }
     }
 
