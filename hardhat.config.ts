@@ -15,6 +15,7 @@ import './tasks/accounts';
 
 Dotenv.config();
 
+const FORK_MODE = process.env.FORK_MODE === 'true';
 const ETH_TEST_KEY = process.env.ETH_TEST_PKEY;
 const ALCHEMY_KEY = process.env.ALCHEMY_KEY;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
@@ -74,10 +75,14 @@ export default {
     hardhat: {
       allowUnlimitedContractSize: true,
       blockGasLimit: 180000000000,
-      forking: {
-        url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-        blockNumber: 12739250,
-      },
+      ...(FORK_MODE
+        ? {
+            forking: {
+              url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
+              blockNumber: 12739250,
+            },
+          }
+        : {}),
     },
 
     mainnet: {

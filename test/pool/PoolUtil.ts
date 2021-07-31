@@ -18,7 +18,7 @@ import {
   WETH9,
   WETH9__factory,
 } from '../../typechain';
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber, BigNumberish } from 'ethers';
 import { increaseTimestamp } from '../utils/evm';
@@ -148,10 +148,17 @@ export class PoolUtil {
       DECIMALS_UNDERLYING,
     );
     await underlying.deployed();
-    const weth = WETH9__factory.connect(
-      '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
-      deployer,
-    );
+
+    let weth;
+
+    if ((network as any).config.forking?.enabled) {
+      weth = WETH9__factory.connect(
+        '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+        deployer,
+      );
+    } else {
+      weth = await new WETH9__factory(deployer).deploy();
+    }
 
     //
 
