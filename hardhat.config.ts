@@ -12,6 +12,7 @@ import 'hardhat-contract-sizer';
 import fs from 'fs';
 
 import './tasks/accounts';
+import './tasks/test';
 
 Dotenv.config();
 
