@@ -139,6 +139,20 @@ contract PoolView is IPoolView, PoolBase {
     }
 
     /**
+     * @notice get deposit cap amounts
+     * @return callTokenCapAmount call pool deposit cap
+     * @return putTokenCapAmount put pool deposit cap
+     */
+    function getCapAmounts()
+        external
+        view
+        override
+        returns (uint256 callTokenCapAmount, uint256 putTokenCapAmount)
+    {
+        return (_getCapAmount(true), _getCapAmount(false));
+    }
+
+    /**
      * @notice get user total value locked
      * @return underlyingTVL user total value locked in call pool (in underlying token amount)
      * @return baseTVL user total value locked in put pool (in base token amount)

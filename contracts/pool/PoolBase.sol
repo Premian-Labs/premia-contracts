@@ -817,6 +817,15 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         minimumAmount = isCall ? l.underlyingMinimum : l.baseMinimum;
     }
 
+    function _getCapAmount(bool isCall)
+        internal
+        view
+        returns (uint256 capAmount)
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        capAmount = isCall ? l.underlyingCap : l.baseCap;
+    }
+
     function _setCLevel(
         PoolStorage.Layout storage l,
         int128 oldLiquidity64x64,
@@ -1012,10 +1021,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         l.userTVL[user][isCallPool] = userTVL + amount;
 
         totalTVL += amount;
-        require(
-            totalTVL <= (isCallPool ? l.underlyingCap : l.baseCap),
-            "deposit cap reached"
-        );
+        require(totalTVL <= _getCapAmount(isCallPool), "deposit cap reached");
         l.totalTVL[isCallPool] = totalTVL;
     }
 

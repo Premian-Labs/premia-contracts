@@ -34,6 +34,11 @@ interface IPoolView {
         view
         returns (uint256 minCallTokenAmount, uint256 minPutTokenAmount);
 
+    function getCapAmounts()
+        external
+        view
+        returns (uint256 callTokenCapAmount, uint256 putTokenCapAmount);
+
     function getUserTVL(address user)
         external
         view
