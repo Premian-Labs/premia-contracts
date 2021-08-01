@@ -61,6 +61,7 @@
     "ethers": "^5.4.1",
     "hardhat": "^2.5.0",
     "hardhat-abi-exporter": "^2.2.1",
+    "hardhat-artifactor": "^0.2.0",
     "hardhat-contract-sizer": "^2.0.3",
     "hardhat-dependency-compiler": "^1.1.1",
     "hardhat-docgen": "^1.1.1",
