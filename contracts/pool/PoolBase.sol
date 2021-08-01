@@ -526,7 +526,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             uint256 balance = balanceOf(underwriter, freeLiqTokenId);
 
             // If dust left, we remove underwriter and skip to next
-            if (balance < _getMinimumAmount(isCall)) {
+            if (balance < _getMinimumAmount(l, isCall)) {
                 l.removeUnderwriter(underwriter, isCall);
                 continue;
             }
@@ -808,21 +808,19 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         }
     }
 
-    function _getMinimumAmount(bool isCall)
+    function _getMinimumAmount(PoolStorage.Layout storage l, bool isCall)
         internal
         view
         returns (uint256 minimumAmount)
     {
-        PoolStorage.Layout storage l = PoolStorage.layout();
         minimumAmount = isCall ? l.underlyingMinimum : l.baseMinimum;
     }
 
-    function _getCapAmount(bool isCall)
+    function _getCapAmount(PoolStorage.Layout storage l, bool isCall)
         internal
         view
         returns (uint256 capAmount)
     {
-        PoolStorage.Layout storage l = PoolStorage.layout();
         capAmount = isCall ? l.underlyingCap : l.baseCap;
     }
 
@@ -1021,7 +1019,10 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         l.userTVL[user][isCallPool] = userTVL + amount;
 
         totalTVL += amount;
-        require(totalTVL <= _getCapAmount(isCallPool), "deposit cap reached");
+        require(
+            totalTVL <= _getCapAmount(l, isCallPool),
+            "deposit cap reached"
+        );
         l.totalTVL[isCallPool] = totalTVL;
     }
 
@@ -1108,7 +1109,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
                 id == BASE_FREE_LIQ_TOKEN_ID
             ) {
                 bool isCallPool = id == UNDERLYING_FREE_LIQ_TOKEN_ID;
-                uint256 minimum = _getMinimumAmount(isCallPool);
+                uint256 minimum = _getMinimumAmount(l, isCallPool);
 
                 if (from != address(0)) {
                     uint256 balance = balanceOf(from, id);
