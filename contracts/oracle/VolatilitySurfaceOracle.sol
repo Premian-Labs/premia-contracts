@@ -11,7 +11,7 @@ import {VolatilitySurfaceOracleStorage} from "./VolatilitySurfaceOracleStorage.s
 import {IVolatilitySurfaceOracle} from "./IVolatilitySurfaceOracle.sol";
 
 /**
- * @title Premia liquidity mining contract, derived from Sushiswap's MasterChef.sol ( https://github.com/sushiswap/sushiswap )
+ * @title Premia volatility surface oracle contract
  */
 contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     using VolatilitySurfaceOracleStorage for VolatilitySurfaceOracleStorage.Layout;
@@ -25,29 +25,9 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128[10] putCoefficients;
     }
 
-    address internal immutable DIAMOND;
-    address internal immutable PREMIA;
-
-    modifier onlyDiamondOrOwner() {
-        require(
-            msg.sender == DIAMOND ||
-                msg.sender == OwnableStorage.layout().owner,
-            "Not diamond or owner"
-        );
-        _;
-    }
-
-    constructor(address _diamond, address _premia) {
-        DIAMOND = _diamond;
-        PREMIA = _premia;
-    }
-
     /// @notice Add relayer to the whitelist so that they can add oracle surfaces.
     /// @param _addr The addresses to add to the whitelist
-    function addWhitelistedRelayer(address[] memory _addr)
-        external
-        onlyDiamondOrOwner
-    {
+    function addWhitelistedRelayer(address[] memory _addr) external onlyOwner {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
 
@@ -60,7 +40,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     /// @param _addr The addresses to remove the whitelist
     function removeWhitelistedRelayer(address[] memory _addr)
         external
-        onlyDiamondOrOwner
+        onlyOwner
     {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
@@ -70,8 +50,8 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         }
     }
 
-    /// @notice Get the list of whitelisted routers
-    /// @return The list of whitelisted routers
+    /// @notice Get the list of whitelisted relayers
+    /// @return The list of whitelisted relayers
     function getWhitelistedRelayers()
         external
         view
@@ -112,7 +92,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     }
 
     function getTimeToMaturity64x64(uint64 maturity)
-        public
+        external
         view
         override
         returns (int128)
@@ -145,7 +125,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 strikeToSpotRatio64x64,
         int128 timeToMaturity64x64,
         int128[] memory volatilitySurface
-    ) internal view returns (int128) {
+    ) internal pure returns (int128) {
         require(volatilitySurface.length == 10, "Invalid vol surface");
 
         int128 maturitySquared64x64 = timeToMaturity64x64.mul(
@@ -184,14 +164,14 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             );
     }
 
-    function getBlackScholesPrice64x64(
+    function _getBlackScholesPrice64x64(
         address baseToken,
         address underlyingToken,
         int128 strike64x64,
         int128 spot64x64,
         int128 timeToMaturity64x64,
         bool isCall
-    ) public view override returns (int128) {
+    ) internal view returns (int128) {
         int128 strikeToSpotRatio = strike64x64.div(spot64x64);
         int128 annualizedVolatility = getAnnualizedVolatility64x64(
             baseToken,
@@ -214,6 +194,25 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             );
     }
 
+    function getBlackScholesPrice64x64(
+        address baseToken,
+        address underlyingToken,
+        int128 strike64x64,
+        int128 spot64x64,
+        int128 timeToMaturity64x64,
+        bool isCall
+    ) external view override returns (int128) {
+        return
+            _getBlackScholesPrice64x64(
+                baseToken,
+                underlyingToken,
+                strike64x64,
+                spot64x64,
+                timeToMaturity64x64,
+                isCall
+            );
+    }
+
     function getBlackScholesPrice(
         address baseToken,
         address underlyingToken,
@@ -224,7 +223,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     ) external view override returns (uint256) {
         return
             ABDKMath64x64.toUInt(
-                getBlackScholesPrice64x64(
+                _getBlackScholesPrice64x64(
                     baseToken,
                     underlyingToken,
                     strike64x64,
