@@ -1,7 +1,6 @@
 import Dotenv from 'dotenv';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
-import './tasks/compile_solidity_compile_jobs';
 import '@typechain/hardhat';
 import 'hardhat-abi-exporter';
 import 'hardhat-artifactor';
@@ -14,6 +13,7 @@ import 'hardhat-contract-sizer';
 import fs from 'fs';
 
 import './tasks/accounts';
+import './tasks/compile_solidity_compile_jobs';
 
 Dotenv.config();
 
