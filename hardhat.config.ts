@@ -13,7 +13,7 @@ import 'hardhat-contract-sizer';
 import fs from 'fs';
 
 import './tasks/accounts';
-import './tasks/compile_solidity_compile_jobs';
+import './tasks/typechain_generate_types';
 
 Dotenv.config();
 
