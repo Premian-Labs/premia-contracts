@@ -3,7 +3,7 @@ import { PoolBase } from '../../typechain';
 import { BigNumber, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ethers } from 'hardhat';
-import { formatTokenId, TokenType } from '../utils/math';
+import { formatTokenId, TokenType } from '@premia/utils';
 
 interface PoolBehaviorArgs {
   deploy: () => Promise<PoolBase>;

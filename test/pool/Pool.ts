@@ -9,8 +9,8 @@ import {
   PoolMock,
   PoolMock__factory,
 } from '../../typechain';
-import { formatTokenId, TokenType } from '../utils/math';
 import { ONE_ADDRESS } from '../utils/constants';
+import { formatTokenId, TokenType } from '@premia/utils';
 
 const fixedFromBigNumber = function (bn: BigNumber) {
   return bn.abs().shl(64).mul(bn.abs().div(bn));

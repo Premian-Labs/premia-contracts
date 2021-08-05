@@ -22,15 +22,15 @@ import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber, BigNumberish } from 'ethers';
 import { increaseTimestamp } from '../utils/evm';
+import { formatUnits, parseEther, parseUnits } from 'ethers/lib/utils';
+import { deployMockContract, MockContract } from 'ethereum-waffle';
+import { diamondCut } from '../../scripts/utils/diamond';
 import {
   fixedFromFloat,
   fixedToNumber,
   formatTokenId,
   TokenType,
-} from '../utils/math';
-import { formatUnits, parseEther, parseUnits } from 'ethers/lib/utils';
-import { deployMockContract, MockContract } from 'ethereum-waffle';
-import { diamondCut } from '../../scripts/utils/diamond';
+} from '@premia/utils';
 
 export const DECIMALS_BASE = 18;
 export const DECIMALS_UNDERLYING = 8;

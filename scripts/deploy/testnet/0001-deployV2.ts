@@ -1,5 +1,4 @@
 import { deployV2, TokenAddresses } from '../../utils/deployV2';
-import { fixedFromFloat } from '../../../test/utils/math';
 import {
   ERC20Mock__factory,
   PremiaErc20__factory,
@@ -8,6 +7,7 @@ import {
 } from '../../../typechain';
 import { ethers } from 'hardhat';
 import { deployV1 } from '../../utils/deployV1';
+import { fixedFromFloat } from '@premia/utils';
 
 async function main() {
   const [deployer] = await ethers.getSigners();
