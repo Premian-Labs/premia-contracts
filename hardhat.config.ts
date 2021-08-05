@@ -3,6 +3,7 @@ import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
 import '@typechain/hardhat';
 import 'hardhat-abi-exporter';
+import 'hardhat-artifactor';
 import 'hardhat-dependency-compiler';
 import 'hardhat-docgen';
 import 'hardhat-gas-reporter';
@@ -12,7 +13,7 @@ import 'hardhat-contract-sizer';
 import fs from 'fs';
 
 import './tasks/accounts';
-import './tasks/test';
+import './tasks/typechain_generate_types';
 
 Dotenv.config();
 

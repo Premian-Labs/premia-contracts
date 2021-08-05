@@ -898,10 +898,10 @@
   resolved "https://registry.yarnpkg.com/@typechain/ethers-v5/-/ethers-v5-7.0.1.tgz#f9ae60ae5bd9e8ea8a996f66244147e8e74034ae"
   integrity sha512-mXEJ7LG0pOYO+MRPkHtbf30Ey9X2KAsU0wkeoVvjQIn7iAY6tB3k3s+82bbmJAUMyENbQ04RDOZit36CgSG6Gg==
 
-"@typechain/hardhat@^2.2.0":
-  version "2.2.0"
-  resolved "https://registry.yarnpkg.com/@typechain/hardhat/-/hardhat-2.2.0.tgz#a3e99b49c215c364c375c554bdce626bb21ecc47"
-  integrity sha512-ICZdbc5QA/bSZEvdAHsEL3/u260ZPIK7WZLNnoGywQNo6A98w7VKQW4DR7hPPMHe1FaSI1LTuIesRQvCUVyT3A==
+"@typechain/hardhat@^2.3.0":
+  version "2.3.0"
+  resolved "https://registry.yarnpkg.com/@typechain/hardhat/-/hardhat-2.3.0.tgz#dc7f29281637b38b77c7c046ae82700703395d0f"
+  integrity sha512-zERrtNol86L4DX60ktnXxP7Cq8rSZHPaQvsChyiQQVuvVs2FTLm24Yi+MYnfsIdbUBIXZG7SxDWhtCF5I0tJNQ==
   dependencies:
     fs-extra "^9.1.0"
 
@@ -5230,6 +5230,11 @@ hardhat-abi-exporter@^2.2.1:
   version "2.2.1"
   resolved "https://registry.yarnpkg.com/hardhat-abi-exporter/-/hardhat-abi-exporter-2.2.1.tgz#98ad242d08987d34416c6315729f36f9d544e4fa"
   integrity sha512-Um7+RPvJEj+OqWjPoPKlTTkO1Akr10pqpgMk8Pw2jz2wrGv5XQBGNW5aQgGVDUosYktUIWDaEhcwwFKbFsir9A==
+
+hardhat-artifactor@^0.2.0:
+  version "0.2.0"
+  resolved "https://registry.yarnpkg.com/hardhat-artifactor/-/hardhat-artifactor-0.2.0.tgz#940c82500653a2623ed89f7dd24dc3bd76de6bb9"
+  integrity sha512-034c0Ye3PjnPbBz6Adz7bNZ7T4LdPTSkjnzsBxToJKiqU4f4CwowFOqwSS0RqO2t9A7w/aWR49pLwbNzpVuDgQ==
 
 hardhat-contract-sizer@^2.0.3:
   version "2.0.3"
