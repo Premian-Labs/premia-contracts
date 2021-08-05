@@ -669,10 +669,10 @@
   resolved "https://registry.yarnpkg.com/@openzeppelin/contracts/-/contracts-4.2.0.tgz#260d921d99356e48013d9d760caaa6cea35dc642"
   integrity sha512-LD4NnkKpHHSMo5z9MvFsG4g1xxZUDqV3A3Futu3nvyfs4wPwXxqOgMaxOoa2PeyGL2VNeSlbxT54enbQzGcgJQ==
 
-"@premia/utils@^0.0.2":
-  version "0.0.2"
-  resolved "https://registry.yarnpkg.com/@premia/utils/-/utils-0.0.2.tgz#4b2975e1d828dfaf88bdc73486faf843e248078c"
-  integrity sha512-wWWSAh+L1diRgKIAfuMv8aCuGLvNctM2jDr39bnGXICzZzxu7Bvrl4KQCPsqFzA3OSfx9eFBG35K2lWxsMb7MQ==
+"@premia/utils@^0.0.3":
+  version "0.0.3"
+  resolved "https://registry.yarnpkg.com/@premia/utils/-/utils-0.0.3.tgz#fa0ed2a1074d933048bfbbf15ed5ba08725cf5ce"
+  integrity sha512-E+yMn2Y9ylj+0mianMh5dz+hx23AUNx+VJnu20MVAkTq9lfWCz9lmNkTEr+dI0ix2se/8R8vfIM+asoV+Rtaag==
   dependencies:
     ethers "^5.4.3"
 
