@@ -9,7 +9,7 @@ import {
 import { parseOption, parseUnderlying, PoolUtil } from '../pool/PoolUtil';
 import { increaseTimestamp } from '../utils/evm';
 import { ZERO_ADDRESS } from '../utils/constants';
-import { fixedFromFloat, getOptionTokenIds } from '../utils/math';
+import { fixedFromFloat, getOptionTokenIds } from '@premia/utils';
 
 describe('ProcessExpiredKeeper', () => {
   let owner: SignerWithAddress;

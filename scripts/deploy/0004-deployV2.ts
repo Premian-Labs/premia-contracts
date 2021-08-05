@@ -1,5 +1,5 @@
 import { deployV2, TokenAddresses } from '../utils/deployV2';
-import { fixedFromFloat } from '../../test/utils/math';
+import { fixedFromFloat } from '@premia/utils';
 
 async function main() {
   const premia = '0x6399C842dD2bE3dE30BF99Bc7D1bBF6Fa3650E70';
@@ -30,7 +30,6 @@ async function main() {
     premiaFeeDiscount,
     tokens,
     oracles,
-    false,
   );
 }
 

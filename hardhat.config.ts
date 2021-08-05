@@ -1,18 +1,20 @@
 import Dotenv from 'dotenv';
+import fs from 'fs';
+// Hardhat plugins
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
 import '@typechain/hardhat';
 import 'hardhat-abi-exporter';
+import 'hardhat-artifactor';
+import 'hardhat-contract-sizer';
 import 'hardhat-dependency-compiler';
 import 'hardhat-docgen';
 import 'hardhat-gas-reporter';
 import 'hardhat-spdx-license-identifier';
 import 'solidity-coverage';
-import 'hardhat-contract-sizer';
-import fs from 'fs';
-
+// tasks and task overrides
 import './tasks/accounts';
-import './tasks/test';
+import './tasks/typechain_generate_types';
 
 Dotenv.config();
 
@@ -112,6 +114,12 @@ export default {
     },
   },
 
+  abiExporter: {
+    path: './abi',
+    clear: true,
+    flat: true,
+  },
+
   dependencyCompiler: {
     paths: [
       '@uniswap/v2-core/contracts/UniswapV2Factory.sol',
@@ -125,6 +133,10 @@ export default {
     clear: true,
   },
 
+  etherscan: {
+    apiKey: ETHERSCAN_KEY,
+  },
+
   gasReporter: {
     enabled: process.env.REPORT_GAS === 'true',
   },
@@ -134,23 +146,9 @@ export default {
     runOnCompile: true,
   },
 
-  abiExporter: {
-    path: './abi',
-    clear: true,
-    flat: true,
-  },
-
   typechain: {
     alwaysGenerateOverloads: true,
   },
-
-  ...(ETHERSCAN_KEY
-    ? {
-        etherscan: {
-          apiKey: ETHERSCAN_KEY,
-        },
-      }
-    : {}),
 
   mocha: {
     timeout: 60000,

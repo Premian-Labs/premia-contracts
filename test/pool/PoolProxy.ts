@@ -29,18 +29,18 @@ import {
   parseUnderlying,
   PoolUtil,
 } from './PoolUtil';
+import { bnToNumber } from '../utils/math';
+import chaiAlmost from 'chai-almost';
+import { BigNumber } from 'ethers';
+import { ZERO_ADDRESS } from '../utils/constants';
+import { describeBehaviorOfProxy } from '@solidstate/spec';
 import {
-  bnToNumber,
   fixedFromFloat,
   fixedToNumber,
   formatTokenId,
   getOptionTokenIds,
   TokenType,
-} from '../utils/math';
-import chaiAlmost from 'chai-almost';
-import { BigNumber } from 'ethers';
-import { ZERO_ADDRESS } from '../utils/constants';
-import { describeBehaviorOfProxy } from '@solidstate/spec';
+} from '@premia/utils';
 
 chai.use(chaiAlmost(0.02));
 

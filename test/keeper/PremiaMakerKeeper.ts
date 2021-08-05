@@ -18,8 +18,8 @@ import {
   IUniswap,
 } from '../utils/uniswap';
 import { deployV1, IPremiaContracts } from '../../scripts/utils/deployV1';
-import { bnToNumber } from '../utils/math';
 import chaiAlmost from 'chai-almost';
+import { bnToNumber } from '../utils/math';
 
 chai.use(chaiAlmost(0.01));
 

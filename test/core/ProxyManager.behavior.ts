@@ -1,12 +1,12 @@
 import { ProxyManager } from '../../typechain';
 import { expect } from 'chai';
 
-interface ProxyBehaviorArgs {
+interface ProxyManagerBehaviorArgs {
   deploy: () => Promise<ProxyManager>;
 }
 
 export function describeBehaviorOfProxyManager(
-  { deploy }: ProxyBehaviorArgs,
+  { deploy }: ProxyManagerBehaviorArgs,
   skips?: string[],
 ) {
   describe('::ProxyManager', function () {

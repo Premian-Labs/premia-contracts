@@ -1,6 +1,5 @@
 import { ethers } from 'hardhat';
 import { parseEther } from 'ethers/lib/utils';
-import { fixedFromFloat } from '../../test/utils/math';
 import {
   OptionMath__factory,
   PoolExercise__factory,
@@ -14,6 +13,7 @@ import {
 } from '../../typechain';
 import { diamondCut } from './diamond';
 import { BigNumber } from 'ethers';
+import { fixedFromFloat } from '@premia/utils';
 
 export interface TokenAddresses {
   ETH: string;
