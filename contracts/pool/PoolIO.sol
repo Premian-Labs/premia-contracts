@@ -57,7 +57,7 @@ contract PoolIO is IPoolIO, PoolBase {
         );
 
         require(
-            l.totalTVL[isCallPool] + amount <= _getCapAmount(l, isCallPool),
+            l.totalTVL[isCallPool] + amount <= _getPoolCapAmount(l, isCallPool),
             "deposit cap reached"
         );
 

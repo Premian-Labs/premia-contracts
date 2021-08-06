@@ -61,8 +61,8 @@ library PoolStorage {
         uint256 baseMinimum;
         uint256 underlyingMinimum;
         // deposit caps
-        uint256 baseCap;
-        uint256 underlyingCap;
+        uint256 basePoolCap;
+        uint256 underlyingPoolCap;
         // market state
         int128 cLevelUnderlying64x64;
         int128 cLevelBase64x64;

@@ -816,12 +816,12 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         minimumAmount = isCall ? l.underlyingMinimum : l.baseMinimum;
     }
 
-    function _getCapAmount(PoolStorage.Layout storage l, bool isCall)
+    function _getPoolCapAmount(PoolStorage.Layout storage l, bool isCall)
         internal
         view
-        returns (uint256 capAmount)
+        returns (uint256 poolCapAmount)
     {
-        capAmount = isCall ? l.underlyingCap : l.baseCap;
+        poolCapAmount = isCall ? l.underlyingPoolCap : l.basePoolCap;
     }
 
     function _setCLevel(

@@ -151,7 +151,7 @@ contract PoolView is IPoolView, PoolBase {
         returns (uint256 callTokenCapAmount, uint256 putTokenCapAmount)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
-        return (_getCapAmount(l, true), _getCapAmount(l, false));
+        return (_getPoolCapAmount(l, true), _getPoolCapAmount(l, false));
     }
 
     /**
