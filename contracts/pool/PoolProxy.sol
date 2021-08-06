@@ -31,6 +31,8 @@ contract PoolProxy is Proxy {
         address underlyingOracle,
         int128 baseMinimum64x64,
         int128 underlyingMinimum64x64,
+        int128 basePoolCap64x64,
+        int128 underlyingPoolCap64x64,
         int128 emaVarianceAnnualized64x64,
         int128 initialCLevel64x64
     ) {
@@ -55,8 +57,19 @@ contract PoolProxy is Proxy {
                 baseMinimum64x64,
                 baseDecimals
             );
+
             l.underlyingMinimum = ABDKMath64x64Token.toDecimals(
                 underlyingMinimum64x64,
+                underlyingDecimals
+            );
+
+            l.basePoolCap = ABDKMath64x64Token.toDecimals(
+                basePoolCap64x64,
+                baseDecimals
+            );
+
+            l.underlyingPoolCap = ABDKMath64x64Token.toDecimals(
+                underlyingPoolCap64x64,
                 underlyingDecimals
             );
 

@@ -326,8 +326,12 @@ export class PoolUtil {
       underlying.address,
       baseOracle.address,
       underlyingOracle.address,
+      // minimum amounts
       fixedFromFloat(100),
       fixedFromFloat(0.1),
+      // deposit caps
+      fixedFromFloat(1000000),
+      fixedFromFloat(1000000),
       fixedFromFloat(1.22 * 1.22),
       100,
     );
@@ -344,8 +348,12 @@ export class PoolUtil {
       weth.address,
       baseOracle.address,
       underlyingOracle.address,
+      // minimum amounts
       fixedFromFloat(100),
       fixedFromFloat(0.1),
+      // deposit caps
+      fixedFromFloat(1000000),
+      fixedFromFloat(1000000),
       fixedFromFloat(1.1),
       100,
     );

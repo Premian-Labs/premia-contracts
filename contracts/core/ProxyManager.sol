@@ -66,6 +66,8 @@ contract ProxyManager is IProxyManager, OwnableInternal {
      * @param underlyingOracle Chainlink price aggregator for underlying
      * @param baseMinimum64x64 64x64 fixed point representation of minimum base currency amount
      * @param underlyingMinimum64x64 64x64 fixed point representation of minimum underlying currency amount
+     * @param basePoolCap64x64 64x64 fixed point representation of pool-wide base currency deposit cap
+     * @param underlyingPoolCap64x64 64x64 fixed point representation of pool-wide underlying currency deposit cap
      * @param miningAllocPoints alloc points attributed per pool (call and put) for liquidity mining
      * TODO: unrestrict
      * @return deployment address
@@ -77,6 +79,8 @@ contract ProxyManager is IProxyManager, OwnableInternal {
         address underlyingOracle,
         int128 baseMinimum64x64,
         int128 underlyingMinimum64x64,
+        int128 basePoolCap64x64,
+        int128 underlyingPoolCap64x64,
         int128 emaVarianceAnnualized64x64,
         uint256 miningAllocPoints
     ) external onlyOwner returns (address) {
@@ -96,6 +100,8 @@ contract ProxyManager is IProxyManager, OwnableInternal {
                 underlyingOracle,
                 baseMinimum64x64,
                 underlyingMinimum64x64,
+                basePoolCap64x64,
+                underlyingPoolCap64x64,
                 emaVarianceAnnualized64x64,
                 INITIAL_C_LEVEL_64x64
             )

@@ -526,7 +526,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             uint256 balance = balanceOf(underwriter, freeLiqTokenId);
 
             // If dust left, we remove underwriter and skip to next
-            if (balance < _getMinimumAmount(isCall)) {
+            if (balance < _getMinimumAmount(l, isCall)) {
                 l.removeUnderwriter(underwriter, isCall);
                 continue;
             }
@@ -808,13 +808,20 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         }
     }
 
-    function _getMinimumAmount(bool isCall)
+    function _getMinimumAmount(PoolStorage.Layout storage l, bool isCall)
         internal
         view
         returns (uint256 minimumAmount)
     {
-        PoolStorage.Layout storage l = PoolStorage.layout();
         minimumAmount = isCall ? l.underlyingMinimum : l.baseMinimum;
+    }
+
+    function _getPoolCapAmount(PoolStorage.Layout storage l, bool isCall)
+        internal
+        view
+        returns (uint256 poolCapAmount)
+    {
+        poolCapAmount = isCall ? l.underlyingPoolCap : l.basePoolCap;
     }
 
     function _setCLevel(
@@ -1009,6 +1016,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             userTVL + amount,
             totalTVL
         );
+
         l.userTVL[user][isCallPool] = userTVL + amount;
         l.totalTVL[isCallPool] = totalTVL + amount;
     }
@@ -1096,7 +1104,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
                 id == BASE_FREE_LIQ_TOKEN_ID
             ) {
                 bool isCallPool = id == UNDERLYING_FREE_LIQ_TOKEN_ID;
-                uint256 minimum = _getMinimumAmount(isCallPool);
+                uint256 minimum = _getMinimumAmount(l, isCallPool);
 
                 if (from != address(0)) {
                     uint256 balance = balanceOf(from, id);

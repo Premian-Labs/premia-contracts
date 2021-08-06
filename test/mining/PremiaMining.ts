@@ -9,7 +9,7 @@ import {
   PremiaFeeDiscount,
   PremiaFeeDiscount__factory,
 } from '../../typechain';
-import { parseEther } from 'ethers/lib/utils';
+import { parseEther, parseUnits } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 
@@ -73,12 +73,21 @@ describe('PremiaMining', () => {
     );
 
     for (const lp of [lp1, lp2, lp3]) {
-      for (const token of [p.underlying, p.base]) {
-        await token.mint(lp.address, parseEther('100'));
-        await token
-          .connect(lp)
-          .approve(p.pool.address, ethers.constants.MaxUint256);
-      }
+      await p.underlying.mint(
+        lp.address,
+        parseUnits('100', p.getTokenDecimals(true)),
+      );
+      await p.underlying
+        .connect(lp)
+        .approve(p.pool.address, ethers.constants.MaxUint256);
+
+      await p.base.mint(
+        lp.address,
+        parseUnits('100', p.getTokenDecimals(false)),
+      );
+      await p.base
+        .connect(lp)
+        .approve(p.pool.address, ethers.constants.MaxUint256);
     }
   });
 
@@ -92,15 +101,21 @@ describe('PremiaMining', () => {
     const { number: initial } = await ethers.provider.getBlock('latest');
 
     await mineBlockUntil(initial + 99);
-    await p.pool.connect(lp1).deposit(parseEther('10'), false);
+    await p.pool
+      .connect(lp1)
+      .deposit(parseUnits('10', p.getTokenDecimals(false)), false);
 
     await mineBlockUntil(initial + 109);
     // LP1 deposits 10 at block 100
-    await p.pool.connect(lp1).deposit(parseEther('10'), true);
+    await p.pool
+      .connect(lp1)
+      .deposit(parseUnits('10', p.getTokenDecimals(true)), true);
 
     // LP2 deposits 20 at block 114
     await mineBlockUntil(initial + 113);
-    await p.pool.connect(lp2).deposit(parseEther('20'), true);
+    await p.pool
+      .connect(lp2)
+      .deposit(parseUnits('20', p.getTokenDecimals(true)), true);
 
     // There is 4 pools with equal alloc points, with premia reward of 4k per block
     // Each pool should get 1k reward per block. Lp1 should therefore have 4 * 1000 pending reward now
@@ -110,12 +125,16 @@ describe('PremiaMining', () => {
 
     // LP3 deposits 30 at block 118
     await mineBlockUntil(initial + 117);
-    await p.pool.connect(lp3).deposit(parseEther('30'), true);
+    await p.pool
+      .connect(lp3)
+      .deposit(parseUnits('30', p.getTokenDecimals(true)), true);
 
     // LP1 deposits 10 more at block 120. At this point :
     //   LP1 should have pending reward of : 4*1000 + 4*1/3*1000 + 2*1/6*1000 = 5666.66
     await mineBlockUntil(initial + 119);
-    await p.pool.connect(lp1).deposit(parseEther('10'), true);
+    await p.pool
+      .connect(lp1)
+      .deposit(parseUnits('10', p.getTokenDecimals(true)), true);
     expect(
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
@@ -127,7 +146,9 @@ describe('PremiaMining', () => {
     // LP2 withdraws 5 LPs at block 130. At this point:
     //     LP2 should have pending reward of: 4*2/3*1000 + 2*2/6*1000 + 10*2/7*1000 = 6190.47
     await mineBlockUntil(initial + 129);
-    await p.pool.connect(lp2).withdraw(parseEther('5'), true);
+    await p.pool
+      .connect(lp2)
+      .withdraw(parseUnits('5', p.getTokenDecimals(true)), true);
     expect(
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp2.address),
@@ -138,13 +159,19 @@ describe('PremiaMining', () => {
     // LP2 withdraws 15 LPs at block 350.
     // LP3 withdraws 30 LPs at block 360.
     await mineBlockUntil(initial + 139);
-    await p.pool.connect(lp1).withdraw(parseEther('20'), true);
+    await p.pool
+      .connect(lp1)
+      .withdraw(parseUnits('20', p.getTokenDecimals(true)), true);
 
     await mineBlockUntil(initial + 149);
-    await p.pool.connect(lp2).withdraw(parseEther('15'), true);
+    await p.pool
+      .connect(lp2)
+      .withdraw(parseUnits('15', p.getTokenDecimals(true)), true);
 
     await mineBlockUntil(initial + 159);
-    await p.pool.connect(lp3).withdraw(parseEther('30'), true);
+    await p.pool
+      .connect(lp3)
+      .withdraw(parseUnits('30', p.getTokenDecimals(true)), true);
 
     expect(bnToNumber(await p.premiaMining.premiaRewardsAvailable())).to.almost(
       totalRewardAmount - 50000,
@@ -191,7 +218,9 @@ describe('PremiaMining', () => {
   it('should stop distributing rewards if available rewards run out', async () => {
     const { number: initial } = await ethers.provider.getBlock('latest');
 
-    await p.pool.connect(lp1).deposit(parseEther('10'), true);
+    await p.pool
+      .connect(lp1)
+      .deposit(parseUnits('10', p.getTokenDecimals(true)), true);
 
     await mineBlockUntil(initial + 300);
 
