@@ -1016,14 +1016,9 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             userTVL + amount,
             totalTVL
         );
-        l.userTVL[user][isCallPool] = userTVL + amount;
 
-        totalTVL += amount;
-        require(
-            totalTVL <= _getCapAmount(l, isCallPool),
-            "deposit cap reached"
-        );
-        l.totalTVL[isCallPool] = totalTVL;
+        l.userTVL[user][isCallPool] = userTVL + amount;
+        l.totalTVL[isCallPool] = totalTVL + amount;
     }
 
     function _subUserTVL(

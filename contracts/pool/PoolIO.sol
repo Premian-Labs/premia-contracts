@@ -56,6 +56,11 @@ contract PoolIO is IPoolIO, PoolBase {
             "divestment imminent"
         );
 
+        require(
+            l.totalTVL[isCallPool] + amount <= _getCapAmount(l, isCallPool),
+            "deposit cap reached"
+        );
+
         _processPendingDeposits(l, isCallPool);
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;
