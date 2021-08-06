@@ -59,13 +59,13 @@ contract PoolIO is IPoolIO, PoolBase {
         uint256 cap = _getPoolCapAmount(l, isCallPool);
 
         require(
-            l.userTVL[msg.sender][isCallPool] + amount <= cap / 10,
-            "individual deposit cap reached"
+            l.totalTVL[isCallPool] + amount <= cap,
+            "pool deposit cap reached"
         );
 
         require(
-            l.totalTVL[isCallPool] + amount <= cap,
-            "pool deposit cap reached"
+            l.userTVL[msg.sender][isCallPool] + amount <= cap / 10,
+            "individual deposit cap reached"
         );
 
         _processPendingDeposits(l, isCallPool);

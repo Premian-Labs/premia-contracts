@@ -1085,6 +1085,40 @@ describe('PoolProxy', function () {
           poolWeth.deposit('200', true, { value: 201 }),
         ).to.be.revertedWith('too much ETH sent');
       });
+
+      it('should revert if pool TVL exceeds limit', async () => {
+        const signers = (await ethers.getSigners()).slice(0, 10);
+
+        for (const signer of signers) {
+          await p.underlying
+            .connect(signer)
+            .mint(signer.address, parseUnderlying((1000000).toString()));
+          await p.underlying
+            .connect(signer)
+            .approve(pool.address, ethers.constants.MaxUint256);
+          await pool
+            .connect(signer)
+            .deposit(parseUnderlying((1000000 / 10).toString()), true);
+        }
+
+        await expect(pool.deposit(1, true)).to.be.revertedWith(
+          'pool deposit cap reached',
+        );
+      });
+
+      it('should revert if user TVL exceeds limit', async () => {
+        await p.underlying.mint(
+          owner.address,
+          parseUnderlying((1000000).toString()),
+        );
+        await p.underlying.approve(pool.address, ethers.constants.MaxUint256);
+
+        await pool.deposit(parseUnderlying((1000000 / 10).toString()), true);
+
+        await expect(pool.deposit(1, true)).to.be.revertedWith(
+          'individual deposit cap reached',
+        );
+      });
     });
 
     describe('put', () => {
