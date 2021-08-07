@@ -170,8 +170,12 @@ export async function deployV2(
     tokens.ETH,
     oracles.DAI,
     oracles.ETH,
+    // minimum amounts
     fixedFromFloat(100),
     fixedFromFloat(0.05),
+    // deposit caps
+    fixedFromFloat(1000000),
+    fixedFromFloat(300),
     fixedFromFloat(1.92),
     100,
   );
@@ -181,8 +185,12 @@ export async function deployV2(
     tokens.ETH,
     oracles.DAI,
     oracles.ETH,
+    // minimum amounts
     fixedFromFloat(100),
     fixedFromFloat(0.05),
+    // deposit caps
+    fixedFromFloat(1000000),
+    fixedFromFloat(300),
     fixedFromFloat(1.92),
     100,
   );
@@ -194,8 +202,12 @@ export async function deployV2(
     tokens.BTC,
     oracles.DAI,
     oracles.BTC,
+    // minimum amounts
     fixedFromFloat(100),
     fixedFromFloat(0.005),
+    // deposit caps
+    fixedFromFloat(1000000),
+    fixedFromFloat(25),
     fixedFromFloat(1.35),
     100,
   );
@@ -205,8 +217,12 @@ export async function deployV2(
     tokens.BTC,
     oracles.DAI,
     oracles.BTC,
+    // minimum amounts
     fixedFromFloat(100),
     fixedFromFloat(0.005),
+    // deposit caps
+    fixedFromFloat(1000000),
+    fixedFromFloat(25),
     fixedFromFloat(1.35),
     100,
   );
@@ -218,8 +234,12 @@ export async function deployV2(
     tokens.LINK,
     oracles.DAI,
     oracles.LINK,
+    // minimum amounts
     fixedFromFloat(100),
     fixedFromFloat(5),
+    // deposit caps
+    fixedFromFloat(1000000),
+    fixedFromFloat(40000),
     fixedFromFloat(3.12),
     100,
   );
@@ -229,8 +249,12 @@ export async function deployV2(
     tokens.LINK,
     oracles.DAI,
     oracles.LINK,
+    // minimum amounts
     fixedFromFloat(100),
     fixedFromFloat(5),
+    // deposit caps
+    fixedFromFloat(1000000),
+    fixedFromFloat(40000),
     fixedFromFloat(3.12),
     100,
   );
