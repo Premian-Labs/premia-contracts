@@ -62,6 +62,8 @@ export async function deployV2(
   const proxyManagerImpl = await proxyManagerFactory.deploy(
     poolDiamond.address,
   );
+  await proxyManagerImpl.deployed();
+
   await diamondCut(
     premiaDiamond,
     proxyManagerImpl.address,
@@ -89,6 +91,8 @@ export async function deployV2(
     premiaFeeDiscount,
     fee64x64,
   );
+  await poolWriteImpl.deployed();
+
   registeredSelectors = registeredSelectors.concat(
     await diamondCut(
       poolDiamond,
@@ -111,6 +115,8 @@ export async function deployV2(
     premiaFeeDiscount,
     fee64x64,
   );
+  await poolExerciseImpl.deployed();
+
   registeredSelectors = registeredSelectors.concat(
     await diamondCut(
       poolDiamond,
@@ -130,6 +136,8 @@ export async function deployV2(
     premiaFeeDiscount,
     fee64x64,
   );
+  await poolViewImpl.deployed();
+
   registeredSelectors = registeredSelectors.concat(
     await diamondCut(
       poolDiamond,
@@ -152,6 +160,8 @@ export async function deployV2(
     premiaFeeDiscount,
     fee64x64,
   );
+  await poolIOImpl.deployed();
+
   registeredSelectors = registeredSelectors.concat(
     await diamondCut(
       poolDiamond,
