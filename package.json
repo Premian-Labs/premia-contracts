@@ -24,7 +24,9 @@
     "compile:force": "hardhat compile --force",
     "postinstall": "yarn compile",
     "deploy": "hardhat deploy",
-    "deploy:rinkeby": "hardhat --network rinkeby deploy",
+    "deploy:kovan": "hardhat run \"./scripts/deploy/testnet/0001-deployV2Kovan.ts\" --network kovan",
+    "deploy:bsc": "hardhat run \"./scripts/deploy/testnet/0002-deployV2BSC.ts\" --network bsc",
+    "deploy:ropsten": "hardhat run \"./scripts/deploy/testnet/0003-deployV2Ropsten.ts\" --network ropsten",
     "test": "hardhat test",
     "contract-size": "yarn run hardhat size-contracts",
     "prepare": "husky install"
