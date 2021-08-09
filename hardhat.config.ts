@@ -20,6 +20,7 @@ Dotenv.config();
 
 const FORK_MODE = process.env.FORK_MODE === 'true';
 const ETH_TEST_KEY = process.env.ETH_TEST_PKEY;
+const BSC_KEY = process.env.BSC_PKEY;
 const ALCHEMY_KEY = process.env.ALCHEMY_KEY;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
 const ETH_MAIN_KEY = fs.readFileSync('./.secret').toString();
@@ -107,6 +108,22 @@ export default {
     kovan: {
       url: `https://eth-kovan.alchemyapi.io/v2/${ALCHEMY_KEY}`,
       accounts: [ETH_TEST_KEY],
+      //gas: 120000000000,
+      blockGasLimit: 120000000000,
+      //gasPrice: 10,
+      timeout: 300000,
+    },
+    ropsten: {
+      url: `https://eth-ropsten.alchemyapi.io/v2/${ALCHEMY_KEY}`,
+      accounts: [ETH_TEST_KEY],
+      //gas: 120000000000,
+      blockGasLimit: 120000000000,
+      //gasPrice: 10,
+      timeout: 300000,
+    },
+    bsc: {
+      url: `https://bsc-dataseed.binance.org/`,
+      accounts: [BSC_KEY],
       //gas: 120000000000,
       blockGasLimit: 120000000000,
       //gasPrice: 10,
