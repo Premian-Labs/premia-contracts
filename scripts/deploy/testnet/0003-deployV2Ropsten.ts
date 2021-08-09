@@ -1,5 +1,5 @@
 import { deployV2, TokenAddresses } from '../../utils/deployV2';
-import { fixedFromFloat } from '../../../test/utils/math';
+import { fixedFromFloat } from '@premia/utils';
 import {
   ERC20Mock__factory,
   PremiaErc20__factory,
@@ -38,7 +38,7 @@ async function main() {
 
   // Ropsten addresses
   const oracles: TokenAddresses = {
-    ETH: '0x882906a758207FeA9F21e0bb7d2f24E561bd0981',
+    ETH: '0x8468b2bDCE073A157E560AA4D9CcF6dB1DB98507',
     DAI: '0xec3cf275cAa57dD8aA5c52e9d5b70809Cb01D421',
     BTC: '0x882906a758207FeA9F21e0bb7d2f24E561bd0981',
     LINK: '0xc21c178fE75aAd2017DA25071c54462e26d8face',

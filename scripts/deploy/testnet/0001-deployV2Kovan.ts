@@ -1,5 +1,5 @@
 import { deployV2, TokenAddresses } from '../../utils/deployV2';
-import { fixedFromFloat } from '../../../test/utils/math';
+import { fixedFromFloat } from '@premia/utils';
 import {
   ERC20Mock__factory,
   PremiaErc20__factory,
