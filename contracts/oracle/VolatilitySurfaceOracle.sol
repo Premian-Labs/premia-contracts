@@ -135,17 +135,17 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             strikeToSpotRatio64x64
         );
 
-        //     c_0 (hist_vol)       + c_1 * maturity                                + c_2 * maturity^2
+        //c_0 (hist_vol) + c_1 * maturity + c_2 * maturity^2
         return
             volatilitySurface[0] +
             volatilitySurface[1].mul(timeToMaturity64x64) +
             volatilitySurface[2].mul(maturitySquared64x64) +
-            //+ c_3 * maturity^3                                                       +  c_4 * strikeToSpot
+            //+ c_3 * maturity^3 + c_4 * strikeToSpot
             volatilitySurface[3].mul(
                 maturitySquared64x64.mul(timeToMaturity64x64)
             ) +
             volatilitySurface[4].mul(strikeToSpotRatio64x64) +
-            //+ c_5 * strikeToSpot^2                               + c_6 * strikeToSpot^3
+            //+ c_5 * strikeToSpot^2 + c_6 * strikeToSpot^3
             volatilitySurface[5].mul(strikeToSpotSquared64x64) +
             volatilitySurface[6].mul(
                 strikeToSpotSquared64x64.mul(strikeToSpotRatio64x64)
@@ -251,12 +251,15 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             l.volatilitySurfaces[surfaceParams.baseToken][
                 surfaceParams.underlyingToken
             ][true] = surfaceParams.callCoefficients;
+
             l.lastUpdateTimestamps[surfaceParams.baseToken][
                 surfaceParams.underlyingToken
             ][true] = block.timestamp;
+
             l.volatilitySurfaces[surfaceParams.baseToken][
                 surfaceParams.underlyingToken
             ][false] = surfaceParams.putCoefficients;
+
             l.lastUpdateTimestamps[surfaceParams.baseToken][
                 surfaceParams.underlyingToken
             ][false] = block.timestamp;
