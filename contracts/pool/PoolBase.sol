@@ -534,7 +534,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             // ToDo : Do we keep this ?
             // if (underwriter == msg.sender) continue;
 
-            if (!l.getReinvestmentStatus(underwriter)) {
+            if (!l.getReinvestmentStatus(underwriter, isCall)) {
                 _burn(underwriter, freeLiqTokenId, balance);
                 _mint(
                     underwriter,
@@ -691,7 +691,9 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             uint256 tvlToSubtract = intervalExerciseValue;
 
             // mint free liquidity tokens for underwriter
-            if (PoolStorage.layout().getReinvestmentStatus(underwriter)) {
+            if (
+                PoolStorage.layout().getReinvestmentStatus(underwriter, isCall)
+            ) {
                 _addToDepositQueue(underwriter, freeLiq - fee, isCall);
                 tvlToSubtract += fee;
             } else {
