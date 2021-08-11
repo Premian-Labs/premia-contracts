@@ -50,4 +50,12 @@ interface IPoolView {
         returns (uint256 underlyingTVL, uint256 baseTVL);
 
     function getPremiaMining() external view returns (address);
+
+    function getDivestmentTimestamps(address account)
+        external
+        view
+        returns (
+            uint256 callDivestmentTimestamp,
+            uint256 putDivestmentTimestamp
+        );
 }
