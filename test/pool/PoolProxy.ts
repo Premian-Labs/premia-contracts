@@ -1014,13 +1014,14 @@ describe('PoolProxy', function () {
     it('todo');
 
     describe('reverts if', () => {
-      it('timestamp is less than one day in future', async () => {
+      it('timestamp is less than one day after last deposit', async () => {
+        await p.depositLiquidity(lp1, parseEther('1000'), false);
         let { timestamp } = await ethers.provider.getBlock('latest');
 
         await ethers.provider.send('evm_setNextBlockTimestamp', [++timestamp]);
 
         await expect(
-          pool.setDivestmentTimestamp(timestamp + 86400 - 1),
+          pool.connect(lp1).setDivestmentTimestamp(timestamp + 86400 - 500),
         ).to.be.revertedWith('liq lock 1d');
 
         await ethers.provider.send('evm_setNextBlockTimestamp', [++timestamp]);
