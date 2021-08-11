@@ -31,7 +31,7 @@ contract PoolIO is IPoolIO, PoolBase {
     /**
      * @notice set timestamp after which reinvestment is disabled
      * @param timestamp timestamp to begin divestment
-     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
+     * @param isCallPool whether we set divestment timestamp for the call pool or put pool
      */
     function setDivestmentTimestamp(uint64 timestamp, bool isCallPool)
         external
