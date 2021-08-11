@@ -71,7 +71,7 @@ library PoolStorage {
         uint256 updatedAt;
         // User -> isCall -> depositedAt
         mapping(address => mapping(bool => uint256)) depositedAt;
-        mapping(address => uint256) divestmentTimestamps;
+        mapping(address => mapping(bool => uint256)) divestmentTimestamps;
         // doubly linked list of free liquidity intervals
         // isCall -> User -> User
         mapping(bool => mapping(address => address)) liquidityQueueAscending;
@@ -174,12 +174,12 @@ library PoolStorage {
             );
     }
 
-    function getReinvestmentStatus(Layout storage l, address account)
-        internal
-        view
-        returns (bool)
-    {
-        uint256 timestamp = l.divestmentTimestamps[account];
+    function getReinvestmentStatus(
+        Layout storage l,
+        address account,
+        bool isCallPool
+    ) internal view returns (bool) {
+        uint256 timestamp = l.divestmentTimestamps[account][isCallPool];
         return timestamp == 0 || timestamp > block.timestamp;
     }
 

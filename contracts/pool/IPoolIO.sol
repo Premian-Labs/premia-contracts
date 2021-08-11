@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 interface IPoolIO {
-    function setDivestmentTimestamp(uint64 timestamp) external;
+    function setDivestmentTimestamp(uint64 timestamp, bool isCallPool) external;
 
     function deposit(uint256 amount, bool isCallPool) external payable;
 

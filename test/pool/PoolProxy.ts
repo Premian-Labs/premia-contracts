@@ -548,7 +548,7 @@ describe('PoolProxy', function () {
 
           await p.pool
             .connect(lp1)
-            .setDivestmentTimestamp(timestamp + 25 * 3600);
+            .setDivestmentTimestamp(timestamp + 25 * 3600, isCall);
           await increaseTimestamp(26 * 3600);
 
           const maturity = await p.getMaturity(10);
@@ -1021,18 +1021,44 @@ describe('PoolProxy', function () {
         await ethers.provider.send('evm_setNextBlockTimestamp', [++timestamp]);
 
         await expect(
-          pool.connect(lp1).setDivestmentTimestamp(timestamp + 86400 - 500),
+          pool
+            .connect(lp1)
+            .setDivestmentTimestamp(timestamp + 86400 - 500, false),
         ).to.be.revertedWith('liq lock 1d');
 
         await ethers.provider.send('evm_setNextBlockTimestamp', [++timestamp]);
 
-        await expect(pool.setDivestmentTimestamp(timestamp + 86400)).not.to.be
-          .reverted;
+        await expect(pool.setDivestmentTimestamp(timestamp + 86400, false)).not
+          .to.be.reverted;
       });
     });
   });
 
   describe('#deposit', function () {
+    it('should reset divestment timestamp', async () => {
+      const { timestamp } = await ethers.provider.getBlock('latest');
+
+      await p.pool
+        .connect(lp1)
+        .setDivestmentTimestamp(timestamp + 25 * 3600, true);
+
+      await p.pool
+        .connect(lp1)
+        .setDivestmentTimestamp(timestamp + 25 * 3600, false);
+
+      await p.depositLiquidity(lp1, parseOption('1', true), true);
+
+      let timestamps = await p.pool.getDivestmentTimestamps(lp1.address);
+      expect(timestamps.callDivestmentTimestamp).to.eq(0);
+      expect(timestamps.putDivestmentTimestamp).to.eq(timestamp + 25 * 3600);
+
+      await p.depositLiquidity(lp1, parseOption('1', false), false);
+
+      timestamps = await p.pool.getDivestmentTimestamps(lp1.address);
+      expect(timestamps.callDivestmentTimestamp).to.eq(0);
+      expect(timestamps.putDivestmentTimestamp).to.eq(0);
+    });
+
     describe('call', () => {
       it('should grant sender share tokens with ERC20 deposit', async () => {
         await p.underlying.mint(owner.address, 100);

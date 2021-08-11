@@ -31,16 +31,19 @@ contract PoolIO is IPoolIO, PoolBase {
     /**
      * @notice set timestamp after which reinvestment is disabled
      * @param timestamp timestamp to begin divestment
+     * @param isCallPool whether we set divestment timestamp for the call pool or put pool
      */
-    function setDivestmentTimestamp(uint64 timestamp) external override {
+    function setDivestmentTimestamp(uint64 timestamp, bool isCallPool)
+        external
+        override
+    {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         require(
-            timestamp >= l.depositedAt[msg.sender][true] + (1 days) &&
-                timestamp >= l.depositedAt[msg.sender][false] + (1 days),
+            timestamp >= l.depositedAt[msg.sender][isCallPool] + (1 days),
             "liq lock 1d"
         );
-        l.divestmentTimestamps[msg.sender] = timestamp;
+        l.divestmentTimestamps[msg.sender][isCallPool] = timestamp;
     }
 
     /**
@@ -55,11 +58,8 @@ contract PoolIO is IPoolIO, PoolBase {
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
-        require(
-            l.divestmentTimestamps[msg.sender] == 0 ||
-                l.divestmentTimestamps[msg.sender] > block.timestamp + (1 days),
-            "divestment imminent"
-        );
+        // Reset gradual divestment timestamp
+        delete l.divestmentTimestamps[msg.sender][isCallPool];
 
         uint256 cap = _getPoolCapAmount(l, isCallPool);
 
