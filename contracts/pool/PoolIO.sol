@@ -55,11 +55,8 @@ contract PoolIO is IPoolIO, PoolBase {
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
-        require(
-            l.divestmentTimestamps[msg.sender] == 0 ||
-                l.divestmentTimestamps[msg.sender] > block.timestamp + (1 days),
-            "divestment imminent"
-        );
+        // Reset gradual divestment timestamp
+        delete l.divestmentTimestamps[msg.sender][isCallPool];
 
         uint256 cap = _getPoolCapAmount(l, isCallPool);
 
