@@ -61,7 +61,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @notice Get amount of premia reward available to distribute
      * @return Amount of premia reward available to distribute
      */
-    function premiaRewardsAvailable() external view returns (uint256) {
+    function premiaRewardsAvailable() external view override returns (uint256) {
         return PremiaMiningStorage.layout().premiaAvailable;
     }
 
@@ -69,7 +69,12 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @notice Get the total allocation points
      * @return Total allocation points
      */
-    function getTotalAllocationPoints() external view returns (uint256) {
+    function getTotalAllocationPoints()
+        external
+        view
+        override
+        returns (uint256)
+    {
         return PremiaMiningStorage.layout().totalAllocPoint;
     }
 
@@ -82,6 +87,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     function getPoolInfo(address pool, bool isCallPool)
         external
         view
+        override
         returns (PremiaMiningStorage.PoolInfo memory)
     {
         return PremiaMiningStorage.layout().poolInfo[pool][isCallPool];
@@ -91,7 +97,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @notice Get the amount of premia emitted per block
      * @return Premia emitted per block
      */
-    function getPremiaPerBlock() external view returns (uint256) {
+    function getPremiaPerBlock() external view override returns (uint256) {
         return PremiaMiningStorage.layout().premiaPerBlock;
     }
 
