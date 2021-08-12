@@ -41,7 +41,7 @@ contract PremiaVesting is Ownable {
     //////////////////////////////////////////////////
 
     /// @notice Withdraw portion of allocation unlocked
-    function withdraw() public onlyOwner {
+    function withdraw() external onlyOwner {
         uint256 timestamp = block.timestamp;
 
         if (timestamp == lastWithdrawalTimestamp) return;
