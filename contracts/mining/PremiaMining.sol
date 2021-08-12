@@ -66,6 +66,33 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     }
 
     /**
+     * @notice Get the total allocation points
+     */
+    function getTotalAllocationPoints() external view returns (uint256) {
+        return PremiaMiningStorage.layout().totalAllocPoint;
+    }
+
+    /**
+     * @notice Get pool info
+     * @param pool address of the pool
+     * @param isCallPool whether we want infos of the CALL pool or the PUT pool
+     */
+    function getPoolInfo(address pool, bool isCallPool)
+        external
+        view
+        returns (PremiaMiningStorage.PoolInfo memory)
+    {
+        return PremiaMiningStorage.layout().poolInfo[pool][isCallPool];
+    }
+
+    /**
+     * @notice Get the amount of premia emitted per block
+     */
+    function getPremiaPerBlock() external view returns (uint256) {
+        return PremiaMiningStorage.layout().premiaPerBlock;
+    }
+
+    /**
      * @notice Set new alloc points for an option pool. Can only be called by the owner.
      * @param _premiaPerBlock Amount of PREMIA per block to allocate as reward accross all pools
      */
