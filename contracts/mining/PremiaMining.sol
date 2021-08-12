@@ -67,6 +67,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
     /**
      * @notice Get the total allocation points
+     * @return Total allocation points
      */
     function getTotalAllocationPoints() external view returns (uint256) {
         return PremiaMiningStorage.layout().totalAllocPoint;
@@ -76,6 +77,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @notice Get pool info
      * @param pool address of the pool
      * @param isCallPool whether we want infos of the CALL pool or the PUT pool
+     * @return Pool info
      */
     function getPoolInfo(address pool, bool isCallPool)
         external
@@ -87,6 +89,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
     /**
      * @notice Get the amount of premia emitted per block
+     * @return Premia emitted per block
      */
     function getPremiaPerBlock() external view returns (uint256) {
         return PremiaMiningStorage.layout().premiaPerBlock;
