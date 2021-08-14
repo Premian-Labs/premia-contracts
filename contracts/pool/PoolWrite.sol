@@ -100,50 +100,6 @@ contract PoolWrite is IPoolWrite, PoolBase {
      * @return baseCost quantity of tokens required to purchase long position
      * @return feeCost quantity of tokens required to pay fees
      */
-    function _purchase(
-        uint64 maturity,
-        int128 strike64x64,
-        uint256 contractSize,
-        bool isCall,
-        uint256 maxCost
-    ) internal returns (uint256 baseCost, uint256 feeCost) {
-        // TODO: specify payment currency
-
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
-        require(maturity >= block.timestamp + (1 days), "exp < 1 day");
-        require(maturity < block.timestamp + (29 days), "exp > 28 days");
-        require(maturity % (1 days) == 0, "exp not end UTC day");
-
-        (int128 newPrice64x64, ) = _update(l);
-
-        require(strike64x64 <= (newPrice64x64 * 3) / 2, "strike > 1.5x spot");
-        require(strike64x64 >= (newPrice64x64 * 3) / 4, "strike < 0.75x spot");
-
-        (baseCost, feeCost) = _purchase(
-            l,
-            maturity,
-            strike64x64,
-            isCall,
-            contractSize,
-            newPrice64x64
-        );
-
-        require(baseCost + feeCost <= maxCost, "excess slipp");
-
-        _pullFrom(msg.sender, _getPoolToken(isCall), baseCost + feeCost);
-    }
-
-    /**
-     * @notice purchase option
-     * @param maturity timestamp of option maturity
-     * @param strike64x64 64x64 fixed point representation of strike price
-     * @param contractSize size of option contract
-     * @param isCall true for call, false for put
-     * @param maxCost maximum acceptable cost after accounting for slippage
-     * @return baseCost quantity of tokens required to purchase long position
-     * @return feeCost quantity of tokens required to pay fees
-     */
     function purchase(
         uint64 maturity,
         int128 strike64x64,
@@ -377,5 +333,49 @@ contract PoolWrite is IPoolWrite, PoolBase {
         returns (int128 newEmaVarianceAnnualized64x64)
     {
         (, newEmaVarianceAnnualized64x64) = _update(PoolStorage.layout());
+    }
+
+    /**
+     * @notice purchase option
+     * @param maturity timestamp of option maturity
+     * @param strike64x64 64x64 fixed point representation of strike price
+     * @param contractSize size of option contract
+     * @param isCall true for call, false for put
+     * @param maxCost maximum acceptable cost after accounting for slippage
+     * @return baseCost quantity of tokens required to purchase long position
+     * @return feeCost quantity of tokens required to pay fees
+     */
+    function _purchase(
+        uint64 maturity,
+        int128 strike64x64,
+        uint256 contractSize,
+        bool isCall,
+        uint256 maxCost
+    ) internal returns (uint256 baseCost, uint256 feeCost) {
+        // TODO: specify payment currency
+
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        require(maturity >= block.timestamp + (1 days), "exp < 1 day");
+        require(maturity < block.timestamp + (29 days), "exp > 28 days");
+        require(maturity % (1 days) == 0, "exp not end UTC day");
+
+        (int128 newPrice64x64, ) = _update(l);
+
+        require(strike64x64 <= (newPrice64x64 * 3) / 2, "strike > 1.5x spot");
+        require(strike64x64 >= (newPrice64x64 * 3) / 4, "strike < 0.75x spot");
+
+        (baseCost, feeCost) = _purchase(
+            l,
+            maturity,
+            strike64x64,
+            isCall,
+            contractSize,
+            newPrice64x64
+        );
+
+        require(baseCost + feeCost <= maxCost, "excess slipp");
+
+        _pullFrom(msg.sender, _getPoolToken(isCall), baseCost + feeCost);
     }
 }
