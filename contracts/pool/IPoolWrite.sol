@@ -3,6 +3,21 @@
 pragma solidity ^0.8.0;
 
 interface IPoolWrite {
+    // sellToken The `sellTokenAddress` field from the 0x API response.
+    // buyToken The `buyTokenAddress` field from the 0x API response.
+    // spender The `allowanceTarget` field from the 0x API response.
+    // swapTarget The `to` field from the 0x API response.
+    // swapTarget The `to` field from the 0x API response.
+    // sellTokenAmount The amount of token to sell.
+    struct SwapArgs {
+        address sellToken;
+        address buyToken;
+        address spender;
+        address swapTarget;
+        uint256 sellTokenAmount;
+        bytes swapCallData;
+    }
+
     function quote(
         address feePayer,
         uint64 maturity,
@@ -25,6 +40,15 @@ interface IPoolWrite {
         uint256 contractSize,
         bool isCall,
         uint256 maxCost
+    ) external payable returns (uint256 baseCost, uint256 feeCost);
+
+    function convertWith0xAndPurchase(
+        uint64 maturity,
+        int128 strike64x64,
+        uint256 contractSize,
+        bool isCall,
+        uint256 maxCost,
+        SwapArgs memory swapArgs
     ) external payable returns (uint256 baseCost, uint256 feeCost);
 
     function writeFrom(
