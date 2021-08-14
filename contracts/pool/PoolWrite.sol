@@ -352,8 +352,6 @@ contract PoolWrite is IPoolWrite, PoolBase {
         bool isCall,
         uint256 maxCost
     ) internal returns (uint256 baseCost, uint256 feeCost) {
-        // TODO: specify payment currency
-
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         require(maturity >= block.timestamp + (1 days), "exp < 1 day");
