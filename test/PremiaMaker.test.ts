@@ -24,6 +24,9 @@ chai.use(chaiAlmost(0.01));
 
 describe('PremiaMaker', () => {
   beforeEach(async () => {
+    // Keep to fix "should make premia successfully" test failing when running all tests
+    await ethers.provider.send('hardhat_reset', []);
+
     [admin, user1, treasury] = await ethers.getSigners();
 
     p = await deployV1(admin, treasury.address, true);
