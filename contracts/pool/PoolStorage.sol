@@ -66,8 +66,10 @@ library PoolStorage {
         uint256 basePoolCap;
         uint256 underlyingPoolCap;
         // market state
-        int128 cLevelUnderlying64x64;
         int128 cLevelBase64x64;
+        int128 cLevelUnderlying64x64;
+        uint256 cLevelBaseUpdatedAt;
+        uint256 cLevelUnderlyingUpdatedAt;
         int128 emaLogReturns64x64;
         int128 emaVarianceAnnualized64x64;
         uint256 updatedAt;
@@ -278,8 +280,10 @@ library PoolStorage {
 
         if (isCallPool) {
             l.cLevelUnderlying64x64 = cLevel64x64;
+            l.cLevelUnderlyingUpdatedAt = block.timestamp;
         } else {
             l.cLevelBase64x64 = cLevel64x64;
+            l.cLevelBaseUpdatedAt = block.timestamp;
         }
     }
 
