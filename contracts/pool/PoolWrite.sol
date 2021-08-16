@@ -8,14 +8,14 @@ import {PoolStorage} from "./PoolStorage.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
-import {PoolBase} from "./PoolBase.sol";
+import {PoolSwap} from "./PoolSwap.sol";
 import {IPoolWrite} from "./IPoolWrite.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolWrite is IPoolWrite, PoolBase {
+contract PoolWrite is IPoolWrite, PoolSwap {
     using SafeERC20 for IERC20;
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -28,7 +28,7 @@ contract PoolWrite is IPoolWrite, PoolBase {
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
-    ) PoolBase(weth, premiaMining, feeReceiver, feeDiscountAddress, fee64x64) {}
+    ) PoolSwap(weth, premiaMining, feeReceiver, feeDiscountAddress, fee64x64) {}
 
     /**
      * @notice calculate price of option contract
@@ -132,152 +132,21 @@ contract PoolWrite is IPoolWrite, PoolBase {
         _pullFrom(msg.sender, _getPoolToken(isCall), baseCost + feeCost);
     }
 
-    /**
-     * @notice swap eth to pay premium of the option and purchase option
-     * @param maturity timestamp of option maturity
-     * @param strike64x64 64x64 fixed point representation of strike price
-     * @param contractSize size of option contract
-     * @param isCall true for call, false for put
-     * @param maxCost maximum acceptable cost after accounting for slippage
-     * @return baseCost quantity of tokens required to purchase long position
-     * @return feeCost quantity of tokens required to pay fees
-     */
-    function convertEthWith0xAndPurchase(
+    function swapAndPurchase(
         uint64 maturity,
         int128 strike64x64,
         uint256 contractSize,
         bool isCall,
         uint256 maxCost,
-        IPoolWrite.SwapArgs memory swapArgs
-    ) external payable override returns (uint256 baseCost, uint256 feeCost) {
-        uint256 sellTokenBalanceBefore = address(this).balance;
-        uint256 buyTokenBalanceBefore = IERC20(swapArgs.buyToken).balanceOf(
-            address(this)
-        );
+        // Swap args
+        uint256 amountOut,
+        uint256 amountInMax,
+        address[] calldata path,
+        bool isSushi
+    ) public payable override returns (uint256 baseCost, uint256 feeCost) {
+        _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
 
-        require(msg.value > 0, "No ETH attached");
-        (bool success, ) = swapArgs.swapTarget.call{value: msg.value}(
-            swapArgs.swapCallData
-        );
-        require(success, "Swap call failed");
-
-        (baseCost, feeCost) = purchase(
-            maturity,
-            strike64x64,
-            contractSize,
-            isCall,
-            maxCost
-        );
-
-        // Refund any ETH left from the swap
-        uint256 sellTokenBalanceAfter = address(this).balance;
-        require(
-            sellTokenBalanceAfter >= sellTokenBalanceBefore,
-            "Not enough eth left"
-        );
-
-        if (sellTokenBalanceAfter > sellTokenBalanceBefore) {
-            payable(msg.sender).transfer(
-                sellTokenBalanceAfter - sellTokenBalanceBefore
-            );
-        }
-
-        uint256 buyTokenBalanceAfter = IERC20(swapArgs.buyToken).balanceOf(
-            address(this)
-        );
-        require(
-            buyTokenBalanceAfter >= buyTokenBalanceBefore,
-            "Not enough buyToken left"
-        );
-        if (buyTokenBalanceAfter > buyTokenBalanceBefore) {
-            IERC20(swapArgs.buyToken).safeTransfer(
-                msg.sender,
-                buyTokenBalanceAfter - buyTokenBalanceBefore
-            );
-        }
-    }
-
-    /**
-     * @notice swap tokens to pay premium of the option and purchase option
-     * @param maturity timestamp of option maturity
-     * @param strike64x64 64x64 fixed point representation of strike price
-     * @param contractSize size of option contract
-     * @param isCall true for call, false for put
-     * @param maxCost maximum acceptable cost after accounting for slippage
-     * @return baseCost quantity of tokens required to purchase long position
-     * @return feeCost quantity of tokens required to pay fees
-     */
-    function convertTokensWith0xAndPurchase(
-        uint64 maturity,
-        int128 strike64x64,
-        uint256 contractSize,
-        bool isCall,
-        uint256 maxCost,
-        IPoolWrite.SwapArgs memory swapArgs
-    ) external payable override returns (uint256 baseCost, uint256 feeCost) {
-        uint256 sellTokenBalanceBefore = IERC20(swapArgs.sellToken).balanceOf(
-            address(this)
-        );
-        uint256 buyTokenBalanceBefore = IERC20(swapArgs.buyToken).balanceOf(
-            address(this)
-        );
-
-        // ERC20
-        require(msg.value == 0, "ETH attached");
-
-        IERC20(swapArgs.sellToken).safeTransferFrom(
-            msg.sender,
-            address(this),
-            swapArgs.maxSellAmount
-        );
-
-        IERC20(swapArgs.sellToken).approve(
-            swapArgs.spender,
-            0xffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
-        );
-
-        (bool success, ) = swapArgs.swapTarget.call(swapArgs.swapCallData);
-        require(success, "Swap call failed");
-
-        IERC20(swapArgs.sellToken).approve(swapArgs.spender, 0);
-
-        (baseCost, feeCost) = purchase(
-            maturity,
-            strike64x64,
-            contractSize,
-            isCall,
-            maxCost
-        );
-
-        // Refund any tokens left from the swap
-        uint256 sellTokenBalanceAfter = IERC20(swapArgs.sellToken).balanceOf(
-            address(this)
-        );
-        require(
-            sellTokenBalanceAfter >= sellTokenBalanceBefore,
-            "Not enough sellToken left"
-        );
-
-        if (sellTokenBalanceAfter > sellTokenBalanceBefore) {
-            IERC20(swapArgs.sellToken).safeTransfer(
-                msg.sender,
-                sellTokenBalanceAfter - sellTokenBalanceBefore
-            );
-        }
-
-        uint256 buyTokenBalanceAfter = IERC20(swapArgs.buyToken).balanceOf(
-            address(this)
-        );
-        require(
-            buyTokenBalanceAfter >= buyTokenBalanceBefore,
-            "Not enough buyToken left"
-        );
-        if (buyTokenBalanceAfter > buyTokenBalanceBefore) {
-            IERC20(swapArgs.buyToken).safeTransfer(
-                msg.sender,
-                buyTokenBalanceAfter - buyTokenBalanceBefore
-            );
-        }
+        return purchase(maturity, strike64x64, contractSize, isCall, maxCost);
     }
 
     /**

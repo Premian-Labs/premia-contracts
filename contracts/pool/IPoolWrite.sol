@@ -41,22 +41,16 @@ interface IPoolWrite {
         uint256 maxCost
     ) external payable returns (uint256 baseCost, uint256 feeCost);
 
-    function convertEthWith0xAndPurchase(
+    function swapAndPurchase(
         uint64 maturity,
         int128 strike64x64,
         uint256 contractSize,
         bool isCall,
         uint256 maxCost,
-        SwapArgs memory swapArgs
-    ) external payable returns (uint256 baseCost, uint256 feeCost);
-
-    function convertTokensWith0xAndPurchase(
-        uint64 maturity,
-        int128 strike64x64,
-        uint256 contractSize,
-        bool isCall,
-        uint256 maxCost,
-        SwapArgs memory swapArgs
+        uint256 amountOut,
+        uint256 amountInMax,
+        address[] calldata path,
+        bool isSushi
     ) external payable returns (uint256 baseCost, uint256 feeCost);
 
     function writeFrom(
