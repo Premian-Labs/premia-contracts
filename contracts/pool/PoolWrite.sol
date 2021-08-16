@@ -109,7 +109,7 @@ contract PoolWrite is IPoolWrite, PoolBase {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         require(maturity >= block.timestamp + (1 days), "exp < 1 day");
-        require(maturity < block.timestamp + (29 days), "exp > 28 days");
+        require(maturity < block.timestamp + (91 days), "exp > 90 days");
         require(maturity % (1 days) == 0, "exp not end UTC day");
 
         (int128 newPrice64x64, ) = _update(l);
