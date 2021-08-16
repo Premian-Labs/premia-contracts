@@ -11,6 +11,8 @@ import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
 
 library PoolStorage {
+    using PoolStorage for PoolStorage.Layout;
+
     enum TokenType {
         UNDERLYING_FREE_LIQ,
         BASE_FREE_LIQ,
@@ -288,7 +290,7 @@ library PoolStorage {
         bool isCallPool
     ) internal view returns (int128) {
         int128 cLevel64x64 = OptionMath.calculateCLevel(
-            isCallPool ? l.cLevelUnderlying64x64 : l.cLevelBase64x64,
+            l.getCLevel(isCallPool),
             oldLiquidity64x64,
             newLiquidity64x64,
             0x8000000000000000 // 64x64 fixed point representation of 0.5
