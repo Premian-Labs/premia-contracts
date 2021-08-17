@@ -31,11 +31,12 @@ library VolatilitySurfaceOracleStorage {
     {
         coefficients = new int256[](10);
 
-        // Value to add to negative numbers
+        // Value to add to negative numbers to cast them to int256
         int256 toAdd = (int256(-1) >> 25) << 25;
 
         assembly {
             let i := 0
+            // Value equal to -1
             let mid := shl(24, 1)
 
             for {
@@ -52,17 +53,17 @@ library VolatilitySurfaceOracleStorage {
                     )
                 )
 
+                // Check if value is a negative number and needs casting
                 if or(eq(coeff, mid), gt(coeff, mid)) {
                     coeff := add(coeff, toAdd)
                 }
 
+                // Store result in the coefficients array
                 mstore(add(coefficients, add(0x20, mul(0x20, i))), coeff)
 
                 i := add(i, 1)
             }
         }
-
-        return coefficients;
     }
 
     function formatVolatilitySurface(int256[10] memory coefficients)
