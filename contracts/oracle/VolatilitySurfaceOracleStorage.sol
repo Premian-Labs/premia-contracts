@@ -80,10 +80,11 @@ library VolatilitySurfaceOracleStorage {
 
             } {
                 let offset := sub(225, mul(25, i))
+                let coeff := mload(add(coefficients, mul(0x20, i)))
 
                 result := add(
                     result,
-                    shl(offset, mload(add(coefficients, mul(0x20, i))))
+                    shl(offset, sub(coeff, shl(25, shr(25, coeff))))
                 )
 
                 i := add(i, 1)
