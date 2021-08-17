@@ -31,8 +31,12 @@ library VolatilitySurfaceOracleStorage {
     {
         coefficients = new int256[](10);
 
+        // Value to add to negative numbers
+        int256 toAdd = (int256(-1) >> 25) << 25;
+
         assembly {
             let i := 0
+            let mid := shl(24, 1)
 
             for {
 
@@ -40,31 +44,22 @@ library VolatilitySurfaceOracleStorage {
 
             } {
                 let offset := sub(225, mul(25, i))
-                mstore(
-                    add(coefficients, add(0x20, mul(0x20, i))),
-                    shr(
-                        offset,
-                        sub(
-                            input,
-                            shl(add(offset, 25), shr(add(offset, 25), input))
-                        )
+                let coeff := shr(
+                    offset,
+                    sub(
+                        input,
+                        shl(add(offset, 25), shr(add(offset, 25), input))
                     )
                 )
 
+                if or(eq(coeff, mid), gt(coeff, mid)) {
+                    coeff := add(coeff, toAdd)
+                }
+
+                mstore(add(coefficients, add(0x20, mul(0x20, i))), coeff)
+
                 i := add(i, 1)
             }
-        }
-
-        // ToDo : Convert to assembly
-        int256 toAdd = (int256(-1) >> 25) << 25;
-        uint256 i = 0;
-
-        while (i < 10) {
-            if (uint256(coefficients[i]) >= uint256(1) << 24) {
-                coefficients[i] += toAdd;
-            }
-
-            i++;
         }
 
         return coefficients;
