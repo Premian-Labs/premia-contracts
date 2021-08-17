@@ -69,16 +69,25 @@ library VolatilitySurfaceOracleStorage {
     function formatVolatilitySurface(int256[10] memory coefficients)
         internal
         view
-        returns (bytes32)
+        returns (bytes32 result)
     {
-        uint256 result = 0;
+        assembly {
+            let i := 0
 
-        uint256 i = 0;
-        while (i < 10) {
-            result += uint256(coefficients[i] << (225 - (i * 25)));
-            i++;
+            for {
+
+            } lt(i, 10) {
+
+            } {
+                let offset := sub(225, mul(25, i))
+
+                result := add(
+                    result,
+                    shl(offset, mload(add(coefficients, mul(0x20, i))))
+                )
+
+                i := add(i, 1)
+            }
         }
-
-        return bytes32(result);
     }
 }
