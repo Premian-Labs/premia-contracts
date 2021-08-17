@@ -1,7 +1,6 @@
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { resetHardhat } from './utils/evm';
 import { deployV1, IPremiaContracts } from '../scripts/utils/deployV1';
 import { formatEther, parseEther } from 'ethers/lib/utils';
 import {
@@ -25,7 +24,8 @@ chai.use(chaiAlmost(0.01));
 
 describe('PremiaMaker', () => {
   beforeEach(async () => {
-    await resetHardhat();
+    // Keep to fix "should make premia successfully" test failing when running all tests
+    await ethers.provider.send('hardhat_reset', []);
 
     [admin, user1, treasury] = await ethers.getSigners();
 

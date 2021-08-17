@@ -1,5 +1,5 @@
 import { deployV2, TokenAddresses } from '../../utils/deployV2';
-import { fixedFromFloat } from '../../../test/utils/math';
+import { fixedFromFloat } from '@premia/utils';
 import {
   ERC20Mock__factory,
   PremiaErc20__factory,
@@ -21,8 +21,10 @@ async function main() {
     premia.address,
   );
 
-  // Kovan addresses
-  const weth = '0xd0A1E359811322d97991E03f863a0C30C2cF029C';
+  // Rinkeby addresses
+  const weth = ethers.utils.getAddress(
+    '0xc778417e063141139fce010982780140aa0cd5ab',
+  );
 
   const eth = await new ERC20Mock__factory(deployer).deploy('ETH', 18);
   const dai = await new ERC20Mock__factory(deployer).deploy('DAI', 18);
@@ -36,12 +38,12 @@ async function main() {
     LINK: link.address,
   };
 
-  // Kovan addresses
+  // Rinkeby addresses
   const oracles: TokenAddresses = {
-    ETH: '0x9326BFA02ADD2366b30bacB125260Af641031331',
-    DAI: '0x777A68032a88E5A84678A77Af2CD65A7b3c0775a',
-    BTC: '0x6135b13325bfC4B00278B4abC5e20bbce2D6580e',
-    LINK: '0x396c5E36DD0a0F5a5D33dae44368D4193f69a1F0',
+    ETH: '0x8A753747A1Fa494EC906cE90E9f37563A8AF630e',
+    DAI: '0x2bA49Aaa16E6afD2a993473cfB70Fa8559B523cF',
+    BTC: '0xECe365B379E1dD183B20fc5f022230C044d51404',
+    LINK: '0xd8bD0a1cB028a31AA859A21A3758685a95dE4623',
   };
 
   const premiaDiamond = await deployV2(

@@ -11,7 +11,7 @@ import {
 } from '../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { resetHardhat, setTimestamp } from './utils/evm';
+import { setTimestamp } from './utils/evm';
 import { parseEther } from 'ethers/lib/utils';
 
 let admin: SignerWithAddress;
@@ -26,8 +26,6 @@ const oneMonth = 3600 * 24 * 30;
 
 describe('PremiaVesting', () => {
   beforeEach(async () => {
-    await resetHardhat();
-
     [admin, user1] = await ethers.getSigners();
 
     const premiaFactory = new ERC20Mock__factory(admin);
@@ -83,8 +81,6 @@ describe('PremiaVesting', () => {
 
 describe('PremiaVestingCancellable', () => {
   beforeEach(async () => {
-    await resetHardhat();
-
     [admin, user1] = await ethers.getSigners();
 
     const premiaFactory = new ERC20Mock__factory(admin);
@@ -178,8 +174,6 @@ describe('PremiaVestingCancellable', () => {
 
 describe('PremiaMultiVesting', () => {
   beforeEach(async () => {
-    await resetHardhat();
-
     [admin, user1, user2] = await ethers.getSigners();
 
     premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
@@ -194,7 +188,7 @@ describe('PremiaMultiVesting', () => {
   });
 
   it('should correctly handle vesting for multiple deposits', async () => {
-    const now = Math.floor(new Date().getTime() / 1000);
+    const { timestamp: now } = await ethers.provider.getBlock('latest');
 
     await premiaMultiVesting
       .connect(admin)

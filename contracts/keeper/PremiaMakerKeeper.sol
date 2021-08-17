@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {IERC1155} from "@solidstate/contracts/token/ERC1155/IERC1155.sol";
+import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import {IKeeperCompatible} from "../interface/IKeeperCompatible.sol";
 import {IPremiaMaker} from "../interface/IPremiaMaker.sol";
-import {IUniswapV2Router02} from "../uniswapV2/interfaces/IUniswapV2Router02.sol";
 import {IProxyManager} from "../core/IProxyManager.sol";
 import {IPoolBase} from "../pool/IPoolBase.sol";
 import {IPoolView} from "../pool/IPoolView.sol";

@@ -41,7 +41,7 @@ contract PremiaStaking is ERC20, ERC20Permit {
         uint8 _v,
         bytes32 _r,
         bytes32 _s
-    ) public {
+    ) external {
         IERC2612(address(premia)).permit(
             msg.sender,
             address(this),
@@ -78,7 +78,7 @@ contract PremiaStaking is ERC20, ERC20Permit {
     /// @notice Leave the staking contract. Claim back your PREMIAs.
     ///         Unlocks the staked + gained Premia and burns xPremia
     /// @param _share The amount of xPremia to burn, to withdraw share of premia
-    function leave(uint256 _share) public {
+    function leave(uint256 _share) external {
         // Gets the amount of xPremia in existence
         uint256 totalShares = totalSupply();
         // Calculates the amount of Premia the xPremia is worth

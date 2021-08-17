@@ -81,7 +81,7 @@ contract PremiaVestingCancellable is Ownable {
         }
     }
 
-    function cancel() public {
+    function cancel() external {
         require(msg.sender == thirdParty, "Not thirdParty");
         require(
             block.timestamp >= endTimestamp - releasePeriod + minReleasePeriod,

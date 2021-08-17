@@ -9,7 +9,6 @@ import {
   UniswapV2Pair,
 } from '../../typechain';
 import { DECIMALS_BASE, DECIMALS_UNDERLYING, PoolUtil } from '../pool/PoolUtil';
-import { resetHardhat } from '../utils/evm';
 import { ZERO_ADDRESS } from '../utils/constants';
 import { parseEther, parseUnits } from 'ethers/lib/utils';
 import {
@@ -19,8 +18,8 @@ import {
   IUniswap,
 } from '../utils/uniswap';
 import { deployV1, IPremiaContracts } from '../../scripts/utils/deployV1';
-import { bnToNumber } from '../utils/math';
 import chaiAlmost from 'chai-almost';
+import { bnToNumber } from '../utils/math';
 
 chai.use(chaiAlmost(0.01));
 
@@ -38,7 +37,6 @@ describe('PremiaMakerKeeper', () => {
   const spotPrice = 2000;
 
   beforeEach(async () => {
-    await resetHardhat();
     [owner, lp, treasury] = await ethers.getSigners();
 
     contracts = await deployV1(owner, treasury.address, true);
@@ -57,12 +55,7 @@ describe('PremiaMakerKeeper', () => {
       p.premiaDiamond.address,
     );
 
-    uniswap = await createUniswap(
-      owner,
-      contracts.premia,
-      undefined,
-      p.underlyingWeth,
-    );
+    uniswap = await createUniswap(owner, contracts.premia, undefined);
 
     pairBase = await createUniswapPair(
       owner,

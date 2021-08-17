@@ -42,6 +42,10 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
     uint256 internal constant INVERSE_BASIS_POINT = 1e4;
     uint256 internal constant BATCHING_PERIOD = 260;
 
+    // Minimum APY for capital locked up to underwrite options.
+    // The quote will return a minimum price corresponding to this APY
+    int128 internal constant MIN_APY_64x64 = 0x4ccccccccccccccd; // 0.3
+
     constructor(
         address weth,
         address premiaMining,
@@ -188,6 +192,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
                     oldLiquidity64x64,
                     oldLiquidity64x64.sub(contractSize64x64),
                     0x10000000000000000, // 64x64 fixed point representation of 1
+                    MIN_APY_64x64,
                     isCall
                 )
             );
@@ -521,7 +526,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             uint256 balance = balanceOf(underwriter, freeLiqTokenId);
 
             // If dust left, we remove underwriter and skip to next
-            if (balance < _getMinimumAmount(isCall)) {
+            if (balance < _getMinimumAmount(l, isCall)) {
                 l.removeUnderwriter(underwriter, isCall);
                 continue;
             }
@@ -529,7 +534,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             // ToDo : Do we keep this ?
             // if (underwriter == msg.sender) continue;
 
-            if (!l.getReinvestmentStatus(underwriter)) {
+            if (!l.getReinvestmentStatus(underwriter, isCall)) {
                 _burn(underwriter, freeLiqTokenId, balance);
                 _mint(
                     underwriter,
@@ -686,7 +691,9 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             uint256 tvlToSubtract = intervalExerciseValue;
 
             // mint free liquidity tokens for underwriter
-            if (PoolStorage.layout().getReinvestmentStatus(underwriter)) {
+            if (
+                PoolStorage.layout().getReinvestmentStatus(underwriter, isCall)
+            ) {
                 _addToDepositQueue(underwriter, freeLiq - fee, isCall);
                 tvlToSubtract += fee;
             } else {
@@ -803,13 +810,20 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         }
     }
 
-    function _getMinimumAmount(bool isCall)
+    function _getMinimumAmount(PoolStorage.Layout storage l, bool isCall)
         internal
         view
         returns (uint256 minimumAmount)
     {
-        PoolStorage.Layout storage l = PoolStorage.layout();
         minimumAmount = isCall ? l.underlyingMinimum : l.baseMinimum;
+    }
+
+    function _getPoolCapAmount(PoolStorage.Layout storage l, bool isCall)
+        internal
+        view
+        returns (uint256 poolCapAmount)
+    {
+        poolCapAmount = isCall ? l.underlyingPoolCap : l.basePoolCap;
     }
 
     function _setCLevel(
@@ -1004,6 +1018,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             userTVL + amount,
             totalTVL
         );
+
         l.userTVL[user][isCallPool] = userTVL + amount;
         l.totalTVL[isCallPool] = totalTVL + amount;
     }
@@ -1091,7 +1106,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
                 id == BASE_FREE_LIQ_TOKEN_ID
             ) {
                 bool isCallPool = id == UNDERLYING_FREE_LIQ_TOKEN_ID;
-                uint256 minimum = _getMinimumAmount(isCallPool);
+                uint256 minimum = _getMinimumAmount(l, isCallPool);
 
                 if (from != address(0)) {
                     uint256 balance = balanceOf(from, id);

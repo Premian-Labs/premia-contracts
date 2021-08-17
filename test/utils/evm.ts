@@ -1,10 +1,6 @@
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { ONE_WEEK } from './constants';
 import { BigNumber } from 'ethers';
-
-export async function resetHardhat() {
-  await ethers.provider.send('hardhat_reset', []);
-}
 
 export async function getBlockNumber() {
   return parseInt(await ethers.provider.send('eth_blockNumber', []));

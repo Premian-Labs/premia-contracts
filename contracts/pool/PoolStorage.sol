@@ -60,6 +60,9 @@ library PoolStorage {
         // minimum amounts
         uint256 baseMinimum;
         uint256 underlyingMinimum;
+        // deposit caps
+        uint256 basePoolCap;
+        uint256 underlyingPoolCap;
         // market state
         int128 cLevelUnderlying64x64;
         int128 cLevelBase64x64;
@@ -68,7 +71,7 @@ library PoolStorage {
         uint256 updatedAt;
         // User -> isCall -> depositedAt
         mapping(address => mapping(bool => uint256)) depositedAt;
-        mapping(address => uint256) divestmentTimestamps;
+        mapping(address => mapping(bool => uint256)) divestmentTimestamps;
         // doubly linked list of free liquidity intervals
         // isCall -> User -> User
         mapping(bool => mapping(address => address)) liquidityQueueAscending;
@@ -171,12 +174,12 @@ library PoolStorage {
             );
     }
 
-    function getReinvestmentStatus(Layout storage l, address account)
-        internal
-        view
-        returns (bool)
-    {
-        uint256 timestamp = l.divestmentTimestamps[account];
+    function getReinvestmentStatus(
+        Layout storage l,
+        address account,
+        bool isCallPool
+    ) internal view returns (bool) {
+        uint256 timestamp = l.divestmentTimestamps[account][isCallPool];
         return timestamp == 0 || timestamp > block.timestamp;
     }
 
@@ -198,7 +201,7 @@ library PoolStorage {
 
         address last = desc[address(0)];
 
-        l.liquidityQueueAscending[isCallPool][last] = account;
+        asc[last] = account;
         desc[account] = last;
         desc[address(0)] = account;
     }
@@ -319,7 +322,7 @@ library PoolStorage {
         returns (int128 price64x64)
     {
         int256 priceUnderlying = AggregatorInterface(l.underlyingOracle)
-        .latestAnswer();
+            .latestAnswer();
         int256 priceBase = AggregatorInterface(l.baseOracle).latestAnswer();
 
         return ABDKMath64x64.divi(priceUnderlying, priceBase);

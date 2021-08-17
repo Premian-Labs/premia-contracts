@@ -135,7 +135,23 @@ contract PoolView is IPoolView, PoolBase {
         override
         returns (uint256 minCallTokenAmount, uint256 minPutTokenAmount)
     {
-        return (_getMinimumAmount(true), _getMinimumAmount(false));
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        return (_getMinimumAmount(l, true), _getMinimumAmount(l, false));
+    }
+
+    /**
+     * @notice get deposit cap amounts
+     * @return callTokenCapAmount call pool deposit cap
+     * @return putTokenCapAmount put pool deposit cap
+     */
+    function getCapAmounts()
+        external
+        view
+        override
+        returns (uint256 callTokenCapAmount, uint256 putTokenCapAmount)
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        return (_getPoolCapAmount(l, true), _getPoolCapAmount(l, false));
     }
 
     /**
@@ -174,5 +190,25 @@ contract PoolView is IPoolView, PoolBase {
      */
     function getPremiaMining() external view override returns (address) {
         return PREMIA_MINING_ADDRESS;
+    }
+
+    /**
+     * @notice get the gradual divestment timestamps of a user
+     * @param account user account
+     * @return callDivestmentTimestamp gradual divestment timestamp of the user for the call pool
+     * @return putDivestmentTimestamp gradual divestment timestamp of the user for the put pool
+     */
+    function getDivestmentTimestamps(address account)
+        external
+        view
+        override
+        returns (
+            uint256 callDivestmentTimestamp,
+            uint256 putDivestmentTimestamp
+        )
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        callDivestmentTimestamp = l.divestmentTimestamps[account][true];
+        putDivestmentTimestamp = l.divestmentTimestamps[account][false];
     }
 }

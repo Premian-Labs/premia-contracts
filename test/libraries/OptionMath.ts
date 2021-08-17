@@ -5,7 +5,8 @@ import {
   OptionMathMock__factory,
   OptionMath__factory,
 } from '../../typechain';
-import { bnToNumber, fixedFromFloat, fixedToNumber } from '../utils/math';
+import { bnToNumber } from '../utils/math';
+import { fixedFromFloat } from '@premia/utils';
 
 /*
   Pricing feed mock:
@@ -250,6 +251,7 @@ describe('OptionMath', function () {
             newPoolState: S1,
             steepness64x64: steepness,
             isCall: true,
+            minAPY64x64: fixedFromFloat(0.3),
           })
         )[0],
       );
@@ -281,6 +283,7 @@ describe('OptionMath', function () {
             newPoolState: S1,
             steepness64x64: steepness,
             isCall: true,
+            minAPY64x64: fixedFromFloat(0.3),
           })
         )[0],
       );

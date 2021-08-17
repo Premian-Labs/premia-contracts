@@ -18,32 +18,33 @@ import {
   WETH9,
   WETH9__factory,
 } from '../../typechain';
+import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { BigNumber, BigNumberish, ethers } from 'ethers';
-import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
+import { BigNumber, BigNumberish } from 'ethers';
 import { increaseTimestamp } from '../utils/evm';
+import { formatUnits, parseEther, parseUnits } from 'ethers/lib/utils';
+import { deployMockContract, MockContract } from 'ethereum-waffle';
+import { diamondCut } from '../../scripts/utils/diamond';
 import {
   fixedFromFloat,
   fixedToNumber,
   formatTokenId,
   TokenType,
-} from '../utils/math';
-import { formatUnits, parseEther, parseUnits } from 'ethers/lib/utils';
-import { deployMockContract, MockContract } from 'ethereum-waffle';
-import { diamondCut } from '../../scripts/utils/diamond';
+} from '@premia/utils';
 
 export const DECIMALS_BASE = 18;
 export const DECIMALS_UNDERLYING = 8;
 export const SYMBOL_BASE = 'SYMBOL_BASE';
 export const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 export const FEE = 0.01;
+export const MIN_APY = 0.3;
 
 interface PoolUtilArgs {
   premiaDiamond: Premia;
   pool: IPool;
   poolWeth: IPool;
   underlying: ERC20Mock;
-  underlyingWeth: WETH9;
+  weth: WETH9;
   base: ERC20Mock;
   baseOracle: MockContract;
   underlyingOracle: MockContract;
@@ -113,7 +114,7 @@ export class PoolUtil {
   pool: IPool;
   poolWeth: IPool;
   underlying: ERC20Mock;
-  underlyingWeth: WETH9;
+  weth: WETH9;
   base: ERC20Mock;
   baseOracle: MockContract;
   underlyingOracle: MockContract;
@@ -124,7 +125,7 @@ export class PoolUtil {
     this.pool = props.pool;
     this.poolWeth = props.poolWeth;
     this.underlying = props.underlying;
-    this.underlyingWeth = props.underlyingWeth;
+    this.weth = props.weth;
     this.base = props.base;
     this.baseOracle = props.baseOracle;
     this.underlyingOracle = props.underlyingOracle;
@@ -147,7 +148,17 @@ export class PoolUtil {
       DECIMALS_UNDERLYING,
     );
     await underlying.deployed();
-    const underlyingWeth = await new WETH9__factory(deployer).deploy();
+
+    let weth;
+
+    if ((network as any).config.forking?.enabled) {
+      weth = WETH9__factory.connect(
+        '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2',
+        deployer,
+      );
+    } else {
+      weth = await new WETH9__factory(deployer).deploy();
+    }
 
     //
 
@@ -189,7 +200,7 @@ export class PoolUtil {
       deployer,
     );
     const poolWriteImpl = await poolWriteFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -208,7 +219,7 @@ export class PoolUtil {
 
     const poolMockFactory = new PoolMock__factory(deployer);
     const poolMockImpl = await poolMockFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -230,7 +241,7 @@ export class PoolUtil {
       deployer,
     );
     const poolExerciseImpl = await poolExerciseFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -249,7 +260,7 @@ export class PoolUtil {
 
     const poolViewFactory = new PoolView__factory(deployer);
     const poolViewImpl = await poolViewFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -271,7 +282,7 @@ export class PoolUtil {
       deployer,
     );
     const poolIOImpl = await poolIOFactory.deploy(
-      underlyingWeth.address,
+      weth.address,
       premiaMining.address,
       feeReceiver,
       premiaFeeDiscount,
@@ -315,8 +326,12 @@ export class PoolUtil {
       underlying.address,
       baseOracle.address,
       underlyingOracle.address,
+      // minimum amounts
       fixedFromFloat(100),
       fixedFromFloat(0.1),
+      // deposit caps
+      fixedFromFloat(1000000),
+      fixedFromFloat(1000000),
       fixedFromFloat(1.22 * 1.22),
       100,
     );
@@ -330,11 +345,15 @@ export class PoolUtil {
 
     tx = await manager.deployPool(
       base.address,
-      underlyingWeth.address,
+      weth.address,
       baseOracle.address,
       underlyingOracle.address,
+      // minimum amounts
       fixedFromFloat(100),
       fixedFromFloat(0.1),
+      // deposit caps
+      fixedFromFloat(1000000),
+      fixedFromFloat(1000000),
       fixedFromFloat(1.1),
       100,
     );
@@ -355,7 +374,7 @@ export class PoolUtil {
       pool,
       poolWeth,
       underlying,
-      underlyingWeth,
+      weth,
       base,
       baseOracle,
       underlyingOracle,
@@ -407,6 +426,15 @@ export class PoolUtil {
         ).toString(),
       );
     }
+  }
+
+  async getMinPrice(collateralAmount: number, maturity: number) {
+    let { timestamp } = await ethers.provider.getBlock('latest');
+
+    return (
+      (collateralAmount * (MIN_APY * (maturity - timestamp))) /
+      (365 * 24 * 3600)
+    );
   }
 
   getFreeLiqTokenId(isCall: boolean) {
@@ -541,9 +569,11 @@ export class PoolUtil {
     return quote;
   }
 
-  getMaturity(days: number) {
+  async getMaturity(days: number) {
+    const { timestamp } = await ethers.provider.getBlock('latest');
+
     return BigNumber.from(
-      Math.floor(getCurrentTimestamp() / ONE_DAY) * ONE_DAY + days * ONE_DAY,
+      Math.floor(timestamp / ONE_DAY) * ONE_DAY + days * ONE_DAY,
     );
   }
 }

@@ -1,6 +1,5 @@
 import { ethers } from 'hardhat';
 import { parseEther } from 'ethers/lib/utils';
-import { fixedFromFloat } from '../../test/utils/math';
 import {
   OptionMath__factory,
   PoolExercise__factory,
@@ -14,6 +13,7 @@ import {
 } from '../../typechain';
 import { diamondCut } from './diamond';
 import { BigNumber } from 'ethers';
+import { fixedFromFloat } from '@premia/utils';
 
 export interface TokenAddresses {
   ETH: string;
@@ -62,6 +62,8 @@ export async function deployV2(
   const proxyManagerImpl = await proxyManagerFactory.deploy(
     poolDiamond.address,
   );
+  await proxyManagerImpl.deployed();
+
   await diamondCut(
     premiaDiamond,
     proxyManagerImpl.address,
@@ -89,6 +91,8 @@ export async function deployV2(
     premiaFeeDiscount,
     fee64x64,
   );
+  await poolWriteImpl.deployed();
+
   registeredSelectors = registeredSelectors.concat(
     await diamondCut(
       poolDiamond,
@@ -111,6 +115,8 @@ export async function deployV2(
     premiaFeeDiscount,
     fee64x64,
   );
+  await poolExerciseImpl.deployed();
+
   registeredSelectors = registeredSelectors.concat(
     await diamondCut(
       poolDiamond,
@@ -130,6 +136,8 @@ export async function deployV2(
     premiaFeeDiscount,
     fee64x64,
   );
+  await poolViewImpl.deployed();
+
   registeredSelectors = registeredSelectors.concat(
     await diamondCut(
       poolDiamond,
@@ -152,6 +160,8 @@ export async function deployV2(
     premiaFeeDiscount,
     fee64x64,
   );
+  await poolIOImpl.deployed();
+
   registeredSelectors = registeredSelectors.concat(
     await diamondCut(
       poolDiamond,
@@ -170,8 +180,12 @@ export async function deployV2(
     tokens.ETH,
     oracles.DAI,
     oracles.ETH,
+    // minimum amounts
     fixedFromFloat(100),
     fixedFromFloat(0.05),
+    // deposit caps
+    fixedFromFloat(1000000),
+    fixedFromFloat(300),
     fixedFromFloat(1.92),
     100,
   );
@@ -181,8 +195,12 @@ export async function deployV2(
     tokens.ETH,
     oracles.DAI,
     oracles.ETH,
+    // minimum amounts
     fixedFromFloat(100),
     fixedFromFloat(0.05),
+    // deposit caps
+    fixedFromFloat(1000000),
+    fixedFromFloat(300),
     fixedFromFloat(1.92),
     100,
   );
@@ -194,8 +212,12 @@ export async function deployV2(
     tokens.BTC,
     oracles.DAI,
     oracles.BTC,
+    // minimum amounts
     fixedFromFloat(100),
     fixedFromFloat(0.005),
+    // deposit caps
+    fixedFromFloat(1000000),
+    fixedFromFloat(25),
     fixedFromFloat(1.35),
     100,
   );
@@ -205,8 +227,12 @@ export async function deployV2(
     tokens.BTC,
     oracles.DAI,
     oracles.BTC,
+    // minimum amounts
     fixedFromFloat(100),
     fixedFromFloat(0.005),
+    // deposit caps
+    fixedFromFloat(1000000),
+    fixedFromFloat(25),
     fixedFromFloat(1.35),
     100,
   );
@@ -218,8 +244,12 @@ export async function deployV2(
     tokens.LINK,
     oracles.DAI,
     oracles.LINK,
+    // minimum amounts
     fixedFromFloat(100),
     fixedFromFloat(5),
+    // deposit caps
+    fixedFromFloat(1000000),
+    fixedFromFloat(40000),
     fixedFromFloat(3.12),
     100,
   );
@@ -229,8 +259,12 @@ export async function deployV2(
     tokens.LINK,
     oracles.DAI,
     oracles.LINK,
+    // minimum amounts
     fixedFromFloat(100),
     fixedFromFloat(5),
+    // deposit caps
+    fixedFromFloat(1000000),
+    fixedFromFloat(40000),
     fixedFromFloat(3.12),
     100,
   );

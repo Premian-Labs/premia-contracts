@@ -13,7 +13,7 @@ import {
 
 import { describeBehaviorOfPool } from './Pool.behavior';
 import chai, { expect } from 'chai';
-import { increaseTimestamp, resetHardhat, setTimestamp } from '../utils/evm';
+import { increaseTimestamp, setTimestamp } from '../utils/evm';
 import { hexlify, hexZeroPad, parseEther, parseUnits } from 'ethers/lib/utils';
 import {
   DECIMALS_BASE,
@@ -29,19 +29,18 @@ import {
   parseUnderlying,
   PoolUtil,
 } from './PoolUtil';
+import { bnToNumber } from '../utils/math';
+import chaiAlmost from 'chai-almost';
+import { BigNumber } from 'ethers';
+import { ZERO_ADDRESS } from '../utils/constants';
+import { describeBehaviorOfProxy } from '@solidstate/spec';
 import {
-  bnToNumber,
   fixedFromFloat,
   fixedToNumber,
   formatTokenId,
   getOptionTokenIds,
   TokenType,
-} from '../utils/math';
-import chaiAlmost from 'chai-almost';
-import { BigNumber } from 'ethers';
-import { ZERO_ADDRESS } from '../utils/constants';
-import { describeBehaviorOfProxy } from '@solidstate/spec';
-import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
+} from '@premia/utils';
 
 chai.use(chaiAlmost(0.02));
 
@@ -82,7 +81,6 @@ describe('PoolProxy', function () {
   };
 
   beforeEach(async function () {
-    await resetHardhat();
     [owner, lp1, lp2, buyer, thirdParty, feeReceiver] =
       await ethers.getSigners();
 
@@ -238,7 +236,7 @@ describe('PoolProxy', function () {
           const amount = parseOption(amountNb.toString(), isCall);
           await p.depositLiquidity(lp1, amount, isCall);
 
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           const purchaseAmountNb = 4;
@@ -252,7 +250,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -341,7 +339,7 @@ describe('PoolProxy', function () {
           const amount = parseOption(amountNb.toString(), isCall);
           await p.depositLiquidity(lp1, amount, isCall);
 
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           const purchaseAmountNb = 4;
@@ -355,7 +353,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -406,7 +404,7 @@ describe('PoolProxy', function () {
           const amount = parseOption(amountNb.toString(), isCall);
           await p.depositLiquidity(lp1, amount, isCall);
 
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           const purchaseAmountNb = 4;
@@ -420,7 +418,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -479,7 +477,7 @@ describe('PoolProxy', function () {
           const strike = getStrike(isCall);
           await p.depositLiquidity(lp1, amount, isCall);
 
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           const purchaseAmountNb = 4;
@@ -493,7 +491,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -546,12 +544,14 @@ describe('PoolProxy', function () {
           await p.depositLiquidity(lp1, amount, isCall);
           await p.depositLiquidity(lp2, amount, isCall);
 
+          const { timestamp } = await ethers.provider.getBlock('latest');
+
           await p.pool
             .connect(lp1)
-            .setDivestmentTimestamp(getCurrentTimestamp() + 25 * 3600);
+            .setDivestmentTimestamp(timestamp + 25 * 3600, isCall);
           await increaseTimestamp(26 * 3600);
 
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           const purchaseAmountNb = 4;
@@ -565,7 +565,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -774,7 +774,9 @@ describe('PoolProxy', function () {
     });
 
     it('should return the first price update available', async () => {
-      const timestamp = 1624783000;
+      let { timestamp } = await ethers.provider.getBlock('latest');
+      timestamp = (Math.floor(timestamp / 3600 / 256) - 1) * 3600 * 256;
+
       let bucket = Math.floor(timestamp / 3600);
 
       let offset = bucket & 255;
@@ -814,7 +816,7 @@ describe('PoolProxy', function () {
 
   describe('#quote', function () {
     it('should revert if no liquidity', async () => {
-      const maturity = p.getMaturity(17);
+      const maturity = await p.getMaturity(17);
       const strike64x64 = fixedFromFloat(spotPrice * 1.25);
 
       await expect(
@@ -843,7 +845,7 @@ describe('PoolProxy', function () {
           true,
         );
 
-        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(117.49);
+        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(117.56);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
@@ -852,7 +854,68 @@ describe('PoolProxy', function () {
           (fixedToNumber(q.baseCost64x64) * spotPrice) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(30.65);
+        ).to.almost(30.67);
+      });
+
+      it('should return min price based on min apy, if option is priced under', async () => {
+        await p.depositLiquidity(owner, parseUnderlying('10'), true);
+
+        const strike = 3900;
+        const strike64x64 = fixedFromFloat(strike);
+        let { timestamp } = await ethers.provider.getBlock('latest');
+        const maturity = timestamp + 24 * 3600;
+
+        const q = await pool.quote(
+          ZERO_ADDRESS,
+          maturity,
+          strike64x64,
+          parseUnderlying('1'),
+          true,
+        );
+
+        console.log(await p.getMinPrice(1, maturity));
+
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(
+          await p.getMinPrice(1, maturity),
+        );
+      });
+
+      it('should return intrinsic value + min price if option is priced with instant profit', async () => {
+        const isCall = true;
+
+        await p.depositLiquidity(
+          owner,
+          parseOption(isCall ? '100' : '100000', isCall),
+          isCall,
+        );
+        await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
+
+        const maturity = await p.getMaturity(10);
+        const strike64x64 = fixedFromFloat(getStrike(!isCall));
+        const purchaseAmountNb = 10;
+        const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+        const quote = await pool.callStatic.quote(
+          buyer.address,
+          maturity,
+          strike64x64,
+          purchaseAmount,
+          isCall,
+        );
+
+        const spot64x64 = fixedFromFloat(spotPrice);
+
+        expect(strike64x64).to.be.lt(spot64x64);
+
+        const intrinsicValue64x64 = spot64x64
+          .sub(strike64x64)
+          .mul(BigNumber.from(purchaseAmountNb))
+          .div(BigNumber.from(spotPrice));
+
+        expect(fixedToNumber(quote.baseCost64x64)).to.almost(
+          fixedToNumber(intrinsicValue64x64) +
+            (await p.getMinPrice(purchaseAmountNb, maturity.toNumber())),
+        );
       });
     });
 
@@ -871,7 +934,7 @@ describe('PoolProxy', function () {
           false,
         );
 
-        expect(fixedToNumber(q.baseCost64x64)).to.almost(189.59);
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(189.66);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
@@ -880,7 +943,69 @@ describe('PoolProxy', function () {
           fixedToNumber(q.baseCost64x64) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(57.48);
+        ).to.almost(57.5);
+      });
+
+      it('should return min price based on min apy, if option is priced under', async () => {
+        await p.depositLiquidity(owner, parseBase('100000'), false);
+
+        const strike = 1500;
+        const strike64x64 = fixedFromFloat(strike);
+        let { timestamp } = await ethers.provider.getBlock('latest');
+        const maturity = timestamp + 24 * 3600;
+
+        const q = await pool.quote(
+          ZERO_ADDRESS,
+          maturity,
+          strike64x64,
+          parseUnderlying('1'),
+          false,
+        );
+
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(
+          await p.getMinPrice(strike, maturity),
+        );
+      });
+
+      it('should return intrinsic value + min price if option is priced with instant profit', async () => {
+        const isCall = false;
+
+        await p.depositLiquidity(
+          owner,
+          parseOption(isCall ? '100' : '100000', isCall),
+          isCall,
+        );
+        await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
+
+        const maturity = await p.getMaturity(10);
+        const strike64x64 = fixedFromFloat(getStrike(!isCall));
+        const purchaseAmountNb = 10;
+        const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+        const quote = await pool.callStatic.quote(
+          buyer.address,
+          maturity,
+          strike64x64,
+          purchaseAmount,
+          isCall,
+        );
+
+        const spot64x64 = fixedFromFloat(spotPrice);
+
+        expect(strike64x64).to.be.gt(spot64x64);
+
+        const intrinsicValue64x64 = strike64x64
+          .sub(spot64x64)
+          .mul(BigNumber.from(purchaseAmountNb));
+
+        expect(fixedToNumber(quote.baseCost64x64)).to.almost(
+          fixedToNumber(intrinsicValue64x64) +
+            (await p.getMinPrice(
+              purchaseAmountNb * getStrike(!isCall),
+              maturity.toNumber(),
+            )),
+          0.1,
+        );
       });
     });
   });
@@ -889,24 +1014,51 @@ describe('PoolProxy', function () {
     it('todo');
 
     describe('reverts if', () => {
-      it('timestamp is less than one day in future', async () => {
+      it('timestamp is less than one day after last deposit', async () => {
+        await p.depositLiquidity(lp1, parseEther('1000'), false);
         let { timestamp } = await ethers.provider.getBlock('latest');
 
         await ethers.provider.send('evm_setNextBlockTimestamp', [++timestamp]);
 
         await expect(
-          pool.setDivestmentTimestamp(timestamp + 86400 - 1),
+          pool
+            .connect(lp1)
+            .setDivestmentTimestamp(timestamp + 86400 - 500, false),
         ).to.be.revertedWith('liq lock 1d');
 
         await ethers.provider.send('evm_setNextBlockTimestamp', [++timestamp]);
 
-        await expect(pool.setDivestmentTimestamp(timestamp + 86400)).not.to.be
-          .reverted;
+        await expect(pool.setDivestmentTimestamp(timestamp + 86400, false)).not
+          .to.be.reverted;
       });
     });
   });
 
   describe('#deposit', function () {
+    it('should reset divestment timestamp', async () => {
+      const { timestamp } = await ethers.provider.getBlock('latest');
+
+      await p.pool
+        .connect(lp1)
+        .setDivestmentTimestamp(timestamp + 25 * 3600, true);
+
+      await p.pool
+        .connect(lp1)
+        .setDivestmentTimestamp(timestamp + 25 * 3600, false);
+
+      await p.depositLiquidity(lp1, parseOption('1', true), true);
+
+      let timestamps = await p.pool.getDivestmentTimestamps(lp1.address);
+      expect(timestamps.callDivestmentTimestamp).to.eq(0);
+      expect(timestamps.putDivestmentTimestamp).to.eq(timestamp + 25 * 3600);
+
+      await p.depositLiquidity(lp1, parseOption('1', false), false);
+
+      timestamps = await p.pool.getDivestmentTimestamps(lp1.address);
+      expect(timestamps.callDivestmentTimestamp).to.eq(0);
+      expect(timestamps.putDivestmentTimestamp).to.eq(0);
+    });
+
     describe('call', () => {
       it('should grant sender share tokens with ERC20 deposit', async () => {
         await p.underlying.mint(owner.address, 100);
@@ -923,13 +1075,10 @@ describe('PoolProxy', function () {
 
       it('should grant sender share tokens with WETH deposit', async () => {
         // Use WETH tokens
-        await p.underlyingWeth.deposit({ value: 100 });
-        await p.underlyingWeth.approve(
-          poolWeth.address,
-          ethers.constants.MaxUint256,
-        );
+        await p.weth.deposit({ value: 100 });
+        await p.weth.approve(poolWeth.address, ethers.constants.MaxUint256);
         await expect(() => poolWeth.deposit('50', true)).to.changeTokenBalance(
-          p.underlyingWeth,
+          p.weth,
           owner,
           -50,
         );
@@ -944,7 +1093,7 @@ describe('PoolProxy', function () {
           poolWeth.deposit('100', true, { value: 50 }),
         ).to.changeEtherBalance(owner, -50);
 
-        expect(await p.underlyingWeth.balanceOf(owner.address)).to.eq(0);
+        expect(await p.weth.balanceOf(owner.address)).to.eq(0);
         expect(
           await poolWeth.balanceOf(owner.address, underlyingFreeLiqToken),
         ).to.eq(350);
@@ -962,6 +1111,40 @@ describe('PoolProxy', function () {
         await expect(
           poolWeth.deposit('200', true, { value: 201 }),
         ).to.be.revertedWith('too much ETH sent');
+      });
+
+      it('should revert if pool TVL exceeds limit', async () => {
+        const signers = (await ethers.getSigners()).slice(0, 10);
+
+        for (const signer of signers) {
+          await p.underlying
+            .connect(signer)
+            .mint(signer.address, parseUnderlying((1000000).toString()));
+          await p.underlying
+            .connect(signer)
+            .approve(pool.address, ethers.constants.MaxUint256);
+          await pool
+            .connect(signer)
+            .deposit(parseUnderlying((1000000 / 10).toString()), true);
+        }
+
+        await expect(pool.deposit(1, true)).to.be.revertedWith(
+          'pool deposit cap reached',
+        );
+      });
+
+      it('should revert if user TVL exceeds limit', async () => {
+        await p.underlying.mint(
+          owner.address,
+          parseUnderlying((1000000).toString()),
+        );
+        await p.underlying.approve(pool.address, ethers.constants.MaxUint256);
+
+        await pool.deposit(parseUnderlying((1000000 / 10).toString()), true);
+
+        await expect(pool.deposit(1, true)).to.be.revertedWith(
+          'individual deposit cap reached',
+        );
       });
     });
 
@@ -1026,7 +1209,7 @@ describe('PoolProxy', function () {
             parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           await expect(
@@ -1048,7 +1231,7 @@ describe('PoolProxy', function () {
             parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
-          const maturity = p.getMaturity(1).sub(ethers.constants.One);
+          const maturity = (await p.getMaturity(1)).sub(ethers.constants.One);
           const strike64x64 = fixedFromFloat(1.5);
 
           await expect(
@@ -1064,37 +1247,13 @@ describe('PoolProxy', function () {
           ).to.be.revertedWith('exp < 1 day');
         });
 
-        it('should revert if option is priced with instant profit', async () => {
-          await p.depositLiquidity(
-            owner,
-            parseOption(isCall ? '100' : '100000', isCall),
-            isCall,
-          );
-          await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
-
-          const maturity = p.getMaturity(10);
-          const strike64x64 = fixedFromFloat(getStrike(!isCall));
-          const purchaseAmountNb = 10;
-          const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
-
-          await expect(
-            pool.quote(
-              buyer.address,
-              maturity,
-              strike64x64,
-              purchaseAmount,
-              isCall,
-            ),
-          ).to.be.revertedWith('price < intrinsic val');
-        });
-
         it('should revert if using a maturity more than 28 days in the future', async () => {
           await p.depositLiquidity(
             owner,
             parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
-          const maturity = p.getMaturity(30);
+          const maturity = await p.getMaturity(30);
           const strike64x64 = fixedFromFloat(1.5);
 
           await expect(
@@ -1116,7 +1275,7 @@ describe('PoolProxy', function () {
             parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
-          const maturity = p.getMaturity(10).add(3600);
+          const maturity = (await p.getMaturity(10)).add(3600);
           const strike64x64 = fixedFromFloat(1.5);
 
           await expect(
@@ -1138,7 +1297,7 @@ describe('PoolProxy', function () {
             parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(spotPrice * 2.01);
 
           await expect(
@@ -1160,7 +1319,7 @@ describe('PoolProxy', function () {
             parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(spotPrice * 0.49);
 
           await expect(
@@ -1182,7 +1341,7 @@ describe('PoolProxy', function () {
             parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           await p
@@ -1213,7 +1372,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           const purchaseAmountNb = 10;
@@ -1227,7 +1386,7 @@ describe('PoolProxy', function () {
             isCall,
           );
 
-          const mintAmount = parseOption('1000', isCall);
+          const mintAmount = parseOption('10000', isCall);
           await p.getToken(isCall).mint(buyer.address, mintAmount);
           await p
             .getToken(isCall)
@@ -1309,7 +1468,7 @@ describe('PoolProxy', function () {
             amountInPool = amountInPool.add(depositAmount);
           }
 
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           // 10 intervals used
@@ -1326,7 +1485,7 @@ describe('PoolProxy', function () {
 
           await p
             .getToken(isCall)
-            .mint(buyer.address, parseOption('1000', isCall));
+            .mint(buyer.address, parseOption('10000', isCall));
           await p
             .getToken(isCall)
             .connect(buyer)
@@ -1393,7 +1552,7 @@ describe('PoolProxy', function () {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
         it('should revert if token is a SHORT token', async () => {
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           await p.purchaseOption(
@@ -1419,7 +1578,7 @@ describe('PoolProxy', function () {
         });
 
         it('should revert if option is not ITM', async () => {
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           await p.purchaseOption(
@@ -1445,7 +1604,7 @@ describe('PoolProxy', function () {
         });
 
         it('should successfully apply staking fee discount on exercise', async () => {
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike = getStrike(isCall);
           const strike64x64 = fixedFromFloat(strike);
           const amountNb = 10;
@@ -1533,7 +1692,7 @@ describe('PoolProxy', function () {
         });
 
         it('should successfully exercise', async () => {
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike = getStrike(isCall);
           const strike64x64 = fixedFromFloat(strike);
           const amountNb = 10;
@@ -1598,7 +1757,7 @@ describe('PoolProxy', function () {
         });
 
         it('should revert when exercising on behalf of user not approved', async () => {
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike = getStrike(isCall);
           const strike64x64 = fixedFromFloat(strike);
           const amountNb = 10;
@@ -1627,7 +1786,7 @@ describe('PoolProxy', function () {
         });
 
         it('should succeed when exercising on behalf of user approved', async () => {
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike = getStrike(isCall);
           const strike64x64 = fixedFromFloat(strike);
           const amountNb = 10;
@@ -1700,7 +1859,7 @@ describe('PoolProxy', function () {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
         it('should revert if option is not expired', async () => {
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           await p.purchaseOption(
@@ -1726,7 +1885,7 @@ describe('PoolProxy', function () {
         });
 
         it('should successfully process expired option OTM', async () => {
-          const maturity = p.getMaturity(20);
+          const maturity = await p.getMaturity(20);
           const strike = getStrike(isCall);
           const strike64x64 = fixedFromFloat(strike);
 
@@ -1801,7 +1960,7 @@ describe('PoolProxy', function () {
         });
 
         it('should successfully process expired option ITM', async () => {
-          const maturity = p.getMaturity(20);
+          const maturity = await p.getMaturity(20);
           const strike = getStrike(isCall);
           const strike64x64 = fixedFromFloat(strike);
 
@@ -1887,7 +2046,7 @@ describe('PoolProxy', function () {
     it('should correctly list existing tokenIds', async () => {
       const isCall = true;
 
-      const maturity = p.getMaturity(20);
+      const maturity = await p.getMaturity(20);
       const strike = getStrike(isCall);
       const strike64x64 = fixedFromFloat(strike);
       const amount = parseUnderlying('1');
@@ -1925,7 +2084,7 @@ describe('PoolProxy', function () {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
         it('should revert if contract size is less than minimum', async () => {
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           await p.purchaseOption(
@@ -1949,7 +2108,7 @@ describe('PoolProxy', function () {
         });
 
         it('should revert if option is expired', async () => {
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           await p.purchaseOption(
@@ -1980,7 +2139,7 @@ describe('PoolProxy', function () {
         });
 
         it('should successfully reassign option to another LP', async () => {
-          const maturity = p.getMaturity(10);
+          const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
           const amount = parseUnderlying('1');
 
@@ -2039,7 +2198,7 @@ describe('PoolProxy', function () {
 
     it('should revert if contract size is less than minimum', async () => {
       const isCall = true;
-      const maturity = p.getMaturity(10);
+      const maturity = await p.getMaturity(10);
       const strike64x64 = fixedFromFloat(getStrike(isCall));
 
       await p.purchaseOption(
@@ -2077,7 +2236,7 @@ describe('PoolProxy', function () {
               owner,
               lp1,
               lp2,
-              p.getMaturity(30),
+              await p.getMaturity(30),
               fixedFromFloat(2),
               amount,
               isCall,
@@ -2091,14 +2250,14 @@ describe('PoolProxy', function () {
             lp1,
             lp1,
             lp2,
-            p.getMaturity(30),
+            await p.getMaturity(30),
             fixedFromFloat(2),
             amount,
             isCall,
           );
 
           const tokenIds = getOptionTokenIds(
-            p.getMaturity(30),
+            await p.getMaturity(30),
             fixedFromFloat(2),
             isCall,
           );
@@ -2121,14 +2280,14 @@ describe('PoolProxy', function () {
             owner,
             lp1,
             lp2,
-            p.getMaturity(30),
+            await p.getMaturity(30),
             fixedFromFloat(2),
             amount,
             isCall,
           );
 
           const tokenIds = getOptionTokenIds(
-            p.getMaturity(30),
+            await p.getMaturity(30),
             fixedFromFloat(2),
             isCall,
           );
@@ -2156,14 +2315,14 @@ describe('PoolProxy', function () {
             lp1,
             lp1,
             lp1,
-            p.getMaturity(30),
+            await p.getMaturity(30),
             fixedFromFloat(2),
             amount,
             isCall,
           );
 
           const tokenIds = getOptionTokenIds(
-            p.getMaturity(30),
+            await p.getMaturity(30),
             fixedFromFloat(2),
             isCall,
           );
