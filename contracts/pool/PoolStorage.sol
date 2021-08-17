@@ -174,7 +174,7 @@ library PoolStorage {
             ABDKMath64x64Token.fromDecimals(
                 ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
                     l.nextDeposits[isCall].totalPendingDeposits,
-                getTokenDecimals(l, isCall)
+                l.getTokenDecimals(isCall)
             );
     }
 
@@ -271,8 +271,7 @@ library PoolStorage {
         int128 newLiquidity64x64,
         bool isCallPool
     ) internal returns (int128 cLevel64x64) {
-        cLevel64x64 = calculateCLevel(
-            l,
+        cLevel64x64 = l.calculateCLevel(
             oldLiquidity64x64,
             newLiquidity64x64,
             isCallPool
