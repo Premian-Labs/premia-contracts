@@ -31,45 +31,28 @@ library VolatilitySurfaceOracleStorage {
     {
         coefficients = new int256[](10);
 
-        // ToDo : Assembly loop
         assembly {
-            mstore(add(coefficients, 0x20), shr(225, input))
-            mstore(
-                add(coefficients, 0x40),
-                shr(200, sub(input, shl(225, shr(225, input))))
-            )
-            mstore(
-                add(coefficients, 0x60),
-                shr(175, sub(input, shl(200, shr(200, input))))
-            )
-            mstore(
-                add(coefficients, 0x80),
-                shr(150, sub(input, shl(175, shr(175, input))))
-            )
-            mstore(
-                add(coefficients, 0xA0),
-                shr(125, sub(input, shl(150, shr(150, input))))
-            )
-            mstore(
-                add(coefficients, 0xC0),
-                shr(100, sub(input, shl(125, shr(125, input))))
-            )
-            mstore(
-                add(coefficients, 0xE0),
-                shr(75, sub(input, shl(100, shr(100, input))))
-            )
-            mstore(
-                add(coefficients, 0x100),
-                shr(50, sub(input, shl(75, shr(75, input))))
-            )
-            mstore(
-                add(coefficients, 0x120),
-                shr(25, sub(input, shl(50, shr(50, input))))
-            )
-            mstore(
-                add(coefficients, 0x140),
-                sub(input, shl(25, shr(25, input)))
-            )
+            let i := 0
+
+            for {
+
+            } lt(i, 10) {
+
+            } {
+                let offset := sub(225, mul(25, i))
+                mstore(
+                    add(coefficients, add(0x20, mul(0x20, i))),
+                    shr(
+                        offset,
+                        sub(
+                            input,
+                            shl(add(offset, 25), shr(add(offset, 25), input))
+                        )
+                    )
+                )
+
+                i := add(i, 1)
+            }
         }
 
         // ToDo : Convert to assembly
