@@ -71,6 +71,14 @@ library VolatilitySurfaceOracleStorage {
         view
         returns (bytes32 result)
     {
+        for (uint256 i = 0; i < 10; i++) {
+            int256 max = 1 << 24;
+            require(
+                coefficients[i] < max && coefficients[i] > -max,
+                "Out of bounds"
+            );
+        }
+
         assembly {
             let i := 0
 

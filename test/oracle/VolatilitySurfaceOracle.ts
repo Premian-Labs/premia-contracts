@@ -8,10 +8,11 @@ import {
   VolatilitySurfaceOracleProxy__factory,
 } from '../../typechain';
 import chaiAlmost from 'chai-almost';
+import { BigNumber } from 'ethers';
 
 chai.use(chaiAlmost(0.01));
 
-describe('PremiaMining', () => {
+describe('VolatilitySurfaceOracle', () => {
   let owner: SignerWithAddress;
   let relayer: SignerWithAddress;
   let user: SignerWithAddress;
@@ -66,6 +67,14 @@ describe('PremiaMining', () => {
       expect(
         await oracle.formatVolatilitySurfaceCoefficients(coefficients as any),
       ).to.eq(coefficientsFormatted);
+    });
+
+    it('should fail if a variable is out of bounds', async () => {
+      const newCoefficients = [...coefficients];
+      newCoefficients[9] = BigNumber.from(1).shl(24).toString();
+      await expect(
+        oracle.formatVolatilitySurfaceCoefficients(newCoefficients as any),
+      ).to.be.revertedWith('Out of bounds');
     });
   });
 });
