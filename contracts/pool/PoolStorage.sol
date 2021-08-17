@@ -291,19 +291,13 @@ library PoolStorage {
         int128 oldLiquidity64x64,
         int128 newLiquidity64x64,
         bool isCallPool
-    ) internal view returns (int128) {
-        int128 cLevel64x64 = OptionMath.calculateCLevel(
+    ) internal view returns (int128 cLevel64x64) {
+        cLevel64x64 = OptionMath.calculateCLevel(
             l.getCLevel(isCallPool),
             oldLiquidity64x64,
             newLiquidity64x64,
             0x8000000000000000 // 64x64 fixed point representation of 0.5
         );
-
-        return
-            cLevel64x64 < 0xcccccccccccccccd
-                ? int128(0xcccccccccccccccd)
-                : cLevel64x64;
-        // 0.8 min
     }
 
     function setOracles(
