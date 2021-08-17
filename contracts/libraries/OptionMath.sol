@@ -115,47 +115,6 @@ library OptionMath {
     }
 
     /**
-     * @notice calculate the decay of C-Level based on heat diffusion function
-     * @param args structured CalculateCLevelDecayArgs
-     * @return cLevelDecayed64x64 C-Level after accounting for decay
-     */
-    function calculateCLevelDecay(CalculateCLevelDecayArgs memory args)
-        internal
-        pure
-        returns (int128 cLevelDecayed64x64)
-    {
-        int128 convFHighU64x64 = (args.utilization64x64 >=
-            args.utilizationUpperBound64x64 &&
-            args.oldCLevel64x64 <= args.cLevelLowerBound64x64)
-            ? ONE_64x64
-            : int128(0);
-
-        int128 convFLowU64x64 = (args.utilization64x64 <=
-            args.utilizationLowerBound64x64 &&
-            args.oldCLevel64x64 >= args.cLevelUpperBound64x64)
-            ? ONE_64x64
-            : int128(0);
-
-        cLevelDecayed64x64 = args
-            .oldCLevel64x64
-            .sub(args.cConvergenceULowerBound64x64.mul(convFLowU64x64))
-            .sub(args.cConvergenceUUpperBound64x64.mul(convFHighU64x64))
-            .mul(
-                convFLowU64x64
-                    .mul(ONE_64x64.sub(args.utilization64x64))
-                    .add(convFHighU64x64.mul(args.utilization64x64))
-                    .mul(ABDKMath64x64.fromUInt(args.timeIntervalsElapsed))
-                    .neg()
-                    .exp()
-            )
-            .add(
-                args.cConvergenceULowerBound64x64.mul(convFLowU64x64).add(
-                    args.cConvergenceULowerBound64x64.mul(convFHighU64x64)
-                )
-            );
-    }
-
-    /**
      * @notice calculate the price of an option using the Premia Finance model
      * @param args arguments of quotePrice
      * @return premiaPrice64x64 64x64 fixed point representation of Premia option price
@@ -215,6 +174,47 @@ library OptionMath {
         if (minPrice64x64 > premiaPrice64x64) {
             premiaPrice64x64 = minPrice64x64;
         }
+    }
+
+    /**
+     * @notice calculate the decay of C-Level based on heat diffusion function
+     * @param args structured CalculateCLevelDecayArgs
+     * @return cLevelDecayed64x64 C-Level after accounting for decay
+     */
+    function calculateCLevelDecay(CalculateCLevelDecayArgs memory args)
+        internal
+        pure
+        returns (int128 cLevelDecayed64x64)
+    {
+        int128 convFHighU64x64 = (args.utilization64x64 >=
+            args.utilizationUpperBound64x64 &&
+            args.oldCLevel64x64 <= args.cLevelLowerBound64x64)
+            ? ONE_64x64
+            : int128(0);
+
+        int128 convFLowU64x64 = (args.utilization64x64 <=
+            args.utilizationLowerBound64x64 &&
+            args.oldCLevel64x64 >= args.cLevelUpperBound64x64)
+            ? ONE_64x64
+            : int128(0);
+
+        cLevelDecayed64x64 = args
+            .oldCLevel64x64
+            .sub(args.cConvergenceULowerBound64x64.mul(convFLowU64x64))
+            .sub(args.cConvergenceUUpperBound64x64.mul(convFHighU64x64))
+            .mul(
+                convFLowU64x64
+                    .mul(ONE_64x64.sub(args.utilization64x64))
+                    .add(convFHighU64x64.mul(args.utilization64x64))
+                    .mul(ABDKMath64x64.fromUInt(args.timeIntervalsElapsed))
+                    .neg()
+                    .exp()
+            )
+            .add(
+                args.cConvergenceULowerBound64x64.mul(convFLowU64x64).add(
+                    args.cConvergenceULowerBound64x64.mul(convFHighU64x64)
+                )
+            );
     }
 
     /**
