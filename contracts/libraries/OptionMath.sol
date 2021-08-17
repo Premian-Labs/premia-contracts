@@ -20,6 +20,18 @@ library OptionMath {
         bool isCall; // whether to price "call" or "put" option
     }
 
+    struct CalculateCLevelDecayArgs {
+        uint256 timeIntervalsElapsed; // quantity of discrete arbitrary intervals elapsed since last update
+        int128 oldCLevel64x64; // C-Level prior to accounting for decay
+        int128 utilization64x64; // pool capital utilization rate
+        int128 utilizationLowerBound64x64;
+        int128 utilizationUpperBound64x64;
+        int128 cLevelLowerBound64x64;
+        int128 cLevelUpperBound64x64;
+        int128 cConvergenceULowerBound64x64;
+        int128 cConvergenceUUpperBound64x64;
+    }
+
     // 64x64 fixed point integer constants
     int128 internal constant ONE_64x64 = 0x10000000000000000;
     int128 internal constant THREE_64x64 = 0x30000000000000000;
@@ -100,6 +112,47 @@ library OptionMath {
                 .neg()
                 .exp()
                 .mul(initialCLevel64x64);
+    }
+
+    /**
+     * @notice calculate the decay of C-Level based on heat diffusion function
+     * @param args structured CalculateCLevelDecayArgs
+     * @return cLevelDecayed64x64 C-Level after accounting for decay
+     */
+    function calculateCLevelDecay(CalculateCLevelDecayArgs memory args)
+        internal
+        pure
+        returns (int128 cLevelDecayed64x64)
+    {
+        int128 convFHighU64x64 = (args.utilization64x64 >=
+            args.utilizationUpperBound64x64 &&
+            args.oldCLevel64x64 <= args.cLevelLowerBound64x64)
+            ? ONE_64x64
+            : int128(0);
+
+        int128 convFLowU64x64 = (args.utilization64x64 <=
+            args.utilizationLowerBound64x64 &&
+            args.oldCLevel64x64 >= args.cLevelUpperBound64x64)
+            ? ONE_64x64
+            : int128(0);
+
+        cLevelDecayed64x64 = args
+            .oldCLevel64x64
+            .sub(args.cConvergenceULowerBound64x64.mul(convFLowU64x64))
+            .sub(args.cConvergenceUUpperBound64x64.mul(convFHighU64x64))
+            .mul(
+                convFLowU64x64
+                    .mul(ONE_64x64.sub(args.utilization64x64))
+                    .add(convFHighU64x64.mul(args.utilization64x64))
+                    .mul(ABDKMath64x64.fromUInt(args.timeIntervalsElapsed))
+                    .neg()
+                    .exp()
+            )
+            .add(
+                args.cConvergenceULowerBound64x64.mul(convFLowU64x64).add(
+                    args.cConvergenceULowerBound64x64.mul(convFHighU64x64)
+                )
+            );
     }
 
     /**

@@ -262,7 +262,47 @@ library PoolStorage {
         view
         returns (int128 cLevel64x64)
     {
-        cLevel64x64 = isCall ? l.cLevelUnderlying64x64 : l.cLevelBase64x64;
+        int128 oldCLevel64x64 = isCall
+            ? l.cLevelUnderlying64x64
+            : l.cLevelBase64x64;
+
+        // TODO: store interval size as constant
+        uint256 timeIntervalsElapsed = (block.timestamp -
+            (isCall ? l.cLevelUnderlyingUpdatedAt : l.cLevelBaseUpdatedAt)) /
+            (2 hours);
+
+        if (timeIntervalsElapsed == 0) {
+            return oldCLevel64x64;
+        }
+
+        uint256 tokenId = formatTokenId(
+            isCall ? TokenType.UNDERLYING_FREE_LIQ : TokenType.BASE_FREE_LIQ,
+            0,
+            0
+        );
+
+        uint256 tvl = l.totalTVL[isCall];
+
+        int128 utilization = ABDKMath64x64.divu(
+            tvl -
+                (ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
+                    l.nextDeposits[isCall].totalPendingDeposits),
+            tvl
+        );
+
+        cLevel64x64 = OptionMath.calculateCLevelDecay(
+            OptionMath.CalculateCLevelDecayArgs(
+                timeIntervalsElapsed,
+                oldCLevel64x64,
+                utilization,
+                0xb333333333333333, // 0.7
+                0xe666666666666666, // 0.9
+                0x10000000000000000, // 1.0
+                0x10000000000000000, // 1.0
+                0xe666666666666666, // 0.9
+                0x56fc2a2c515da32ea // 2e
+            )
+        );
     }
 
     function setCLevel(
