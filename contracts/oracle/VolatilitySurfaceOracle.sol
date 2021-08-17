@@ -265,4 +265,26 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             ][false] = block.timestamp;
         }
     }
+
+    function parseVolatilitySurfaceCoefficients(bytes32 input)
+        public
+        view
+        returns (int256[] memory coefficients)
+    {
+        return
+            VolatilitySurfaceOracleStorage.parseVolatilitySurfaceCoefficients(
+                input
+            );
+    }
+
+    function formatVolatilitySurfaceCoefficients(int256[10] memory coefficients)
+        public
+        view
+        returns (bytes32 result)
+    {
+        return
+            VolatilitySurfaceOracleStorage.formatVolatilitySurfaceCoefficients(
+                coefficients
+            );
+    }
 }
