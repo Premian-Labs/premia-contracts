@@ -5,17 +5,22 @@ pragma solidity ^0.8.0;
 interface IVolatilitySurfaceOracle {
     function getWhitelistedRelayers() external view returns (address[] memory);
 
-    function getVolatilitySurface64x64(
+    function getVolatilitySurfacePacked(
         address baseToken,
         address underlyingToken,
         bool isCall
-    ) external view returns (int128[] memory);
+    ) external view returns (bytes32);
 
-    function getLastUpdateTimestamp(
+    function getVolatilitySurfaceUnpacked(
         address baseToken,
         address underlyingToken,
         bool isCall
-    ) external view returns (uint256);
+    ) external view returns (int256[] memory);
+
+    function getLastUpdateTimestamp(address baseToken, address underlyingToken)
+        external
+        view
+        returns (uint256);
 
     function getTimeToMaturity64x64(uint64 maturity)
         external

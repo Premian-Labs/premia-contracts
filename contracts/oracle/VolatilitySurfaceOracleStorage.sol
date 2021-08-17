@@ -10,9 +10,9 @@ library VolatilitySurfaceOracleStorage {
 
     struct Layout {
         // Base token -> Underlying token -> Is Call vs. Put -> Polynomial coefficients
-        mapping(address => mapping(address => mapping(bool => int128[]))) volatilitySurfaces;
-        // Base token -> Underlying token -> Is Call vs. Put -> Last update timestamp
-        mapping(address => mapping(address => mapping(bool => uint256))) lastUpdateTimestamps;
+        mapping(address => mapping(address => mapping(bool => bytes32))) volatilitySurfaces;
+        // Base token -> Underlying token -> Last update timestamp
+        mapping(address => mapping(address => uint256)) lastUpdateTimestamps;
         // Relayer addresses which can be trusted to provide accurate option trades
         EnumerableSet.AddressSet whitelistedRelayers;
     }
