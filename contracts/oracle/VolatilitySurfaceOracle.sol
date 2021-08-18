@@ -34,8 +34,10 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         bytes32 putCoefficients
     );
 
-    /// @notice Add relayer to the whitelist so that they can add oracle surfaces.
-    /// @param _addr The addresses to add to the whitelist
+    /**
+     * @notice Add relayer to the whitelist so that they can add oracle surfaces.
+     * @param _addr The addresses to add to the whitelist
+     */
     function addWhitelistedRelayer(address[] memory _addr) external onlyOwner {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
@@ -45,8 +47,10 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         }
     }
 
-    /// @notice Remove relayer from the whitelist so that they cannot add oracle surfaces.
-    /// @param _addr The addresses to remove the whitelist
+    /**
+     * @notice Remove relayer from the whitelist so that they cannot add oracle surfaces.
+     * @param _addr The addresses to remove the whitelist
+     */
     function removeWhitelistedRelayer(address[] memory _addr)
         external
         onlyOwner
@@ -59,8 +63,10 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         }
     }
 
-    /// @notice Get the list of whitelisted relayers
-    /// @return The list of whitelisted relayers
+    /**
+     * @notice Get the list of whitelisted relayers
+     * @return The list of whitelisted relayers
+     */
     function getWhitelistedRelayers()
         external
         view
@@ -80,6 +86,12 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         return result;
     }
 
+    /**
+     * @notice Get the volatility surface data of a token pair
+     * @param baseToken The base token of the pair
+     * @param underlyingToken The underlying token of the pair
+     * @return The volatility surface data
+     */
     function getVolatilitySurface(address baseToken, address underlyingToken)
         external
         view
@@ -91,6 +103,13 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         return l.volatilitySurfaces[baseToken][underlyingToken];
     }
 
+    /**
+     * @notice Get unpacked volatility surface coefficients
+     * @param baseToken The base token of the pair
+     * @param underlyingToken The underlying token of the pair
+     * @param isCall Whether it is for call or put
+     * @return The unpacked coefficients of the volatility surface
+     */
     function getVolatilitySurfaceCoefficientsUnpacked(
         address baseToken,
         address underlyingToken,
@@ -111,6 +130,11 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             );
     }
 
+    /**
+     * @notice Get time to maturity in years, as a 64x64 fixed point representation
+     * @param maturity Maturity timestamp
+     * @return Time to maturity (in years), as a 64x64 fixed point representation
+     */
     function getTimeToMaturity64x64(uint64 maturity)
         external
         view
@@ -120,6 +144,15 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         return ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
     }
 
+    /**
+     * @notice Get annualized volatility as a 64x64 fixed point representation
+     * @param baseToken The base token of the pair
+     * @param underlyingToken The underlying token of the pair
+     * @param strikeToSpotRatio64x64 Strike to spot ratio, as a 64x64 fixed point representation
+     * @param timeToMaturity64x64 Time to maturity (in years), as a 64x64 fixed point representation
+     * @param isCall Whether it is for call or put
+     * @return Annualized volatility, as a 64x64 fixed point representation
+     */
     function getAnnualizedVolatility64x64(
         address baseToken,
         address underlyingToken,
@@ -225,6 +258,16 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             );
     }
 
+    /**
+     * @notice Get Black Scholes price as a 64x64 fixed point representation
+     * @param baseToken The base token of the pair
+     * @param underlyingToken The underlying token of the pair
+     * @param strike64x64 Strike, as a64x64 fixed point representation
+     * @param spot64x64 Spot price, as a 64x64 fixed point representation
+     * @param timeToMaturity64x64 Time to maturity (in years), as a 64x64 fixed point representation
+     * @param isCall Whether it is for call or put
+     * @return Black scholes price, as a 64x64 fixed point representation
+     */
     function getBlackScholesPrice64x64(
         address baseToken,
         address underlyingToken,
@@ -244,6 +287,16 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             );
     }
 
+    /**
+     * @notice Get Black Scholes price as an uint256 with 18 decimals
+     * @param baseToken The base token of the pair
+     * @param underlyingToken The underlying token of the pair
+     * @param strike64x64 Strike, as a64x64 fixed point representation
+     * @param spot64x64 Spot price, as a 64x64 fixed point representation
+     * @param timeToMaturity64x64 Time to maturity (in years), as a 64x64 fixed point representation
+     * @param isCall Whether it is for call or put
+     * @return Black scholes price, as an uint256 with 18 decimals
+     */
     function getBlackScholesPrice(
         address baseToken,
         address underlyingToken,
@@ -266,6 +319,10 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             );
     }
 
+    /**
+     * @notice Update a list of volatility surfaces
+     * @param surfaces List of volatility surfaces to update
+     */
     function updateVolatilitySurfaces(
         VolatilitySurfaceInputParams[] memory surfaces
     ) external {
@@ -297,6 +354,11 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         }
     }
 
+    /**
+     * @notice Unpack volatility surface coefficients from a bytes43
+     * @param input Packed volatility surface coefficients to unpack
+     * @return coefficients The unpacked coefficients of the volatility surface
+     */
     function parseVolatilitySurfaceCoefficients(bytes32 input)
         external
         view
@@ -308,6 +370,11 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             );
     }
 
+    /**
+     * @notice Pack volatility surface coefficients into a single bytes32
+     * @param coefficients Coefficients of the volatility surface to pack
+     * @return result The packed coefficients of the volatility surface
+     */
     function formatVolatilitySurfaceCoefficients(int256[10] memory coefficients)
         external
         view
