@@ -212,7 +212,7 @@ library OptionMath {
             )
             .add(
                 args.cConvergenceULowerBound64x64.mul(convFLowU64x64).add(
-                    args.cConvergenceULowerBound64x64.mul(convFHighU64x64)
+                    args.cConvergenceUUpperBound64x64.mul(convFHighU64x64)
                 )
             );
     }
