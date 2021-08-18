@@ -44,7 +44,7 @@ library VolatilitySurfaceOracleStorage {
 
     function parseVolatilitySurfaceCoefficients(bytes32 input)
         internal
-        view
+        pure
         returns (int256[] memory coefficients)
     {
         coefficients = new int256[](10);
@@ -86,7 +86,7 @@ library VolatilitySurfaceOracleStorage {
 
     function formatVolatilitySurfaceCoefficients(int256[10] memory coefficients)
         internal
-        view
+        pure
         returns (bytes32 result)
     {
         for (uint256 i = 0; i < 10; i++) {

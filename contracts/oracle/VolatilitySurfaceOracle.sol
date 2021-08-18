@@ -18,16 +18,16 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     using EnumerableSet for EnumerableSet.AddressSet;
     using ABDKMath64x64 for int128;
 
-    uint256 internal C0_DECIMALS = 3;
-    uint256 internal C1_DECIMALS = 5;
-    uint256 internal C2_DECIMALS = 7;
-    uint256 internal C3_DECIMALS = 8;
-    uint256 internal C4_DECIMALS = 3;
-    uint256 internal C5_DECIMALS = 5;
-    uint256 internal C6_DECIMALS = 4;
-    uint256 internal C7_DECIMALS = 4;
-    uint256 internal C8_DECIMALS = 7;
-    uint256 internal C9_DECIMALS = 6;
+    uint256 internal constant C0_DECIMALS = 4;
+    uint256 internal constant C1_DECIMALS = 5;
+    uint256 internal constant C2_DECIMALS = 7;
+    uint256 internal constant C3_DECIMALS = 8;
+    uint256 internal constant C4_DECIMALS = 3;
+    uint256 internal constant C5_DECIMALS = 5;
+    uint256 internal constant C6_DECIMALS = 4;
+    uint256 internal constant C7_DECIMALS = 4;
+    uint256 internal constant C8_DECIMALS = 7;
+    uint256 internal constant C9_DECIMALS = 6;
 
     struct VolatilitySurfaceInputParams {
         address baseToken;
@@ -145,7 +145,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      */
     function getCoefficientsDecimals()
         external
-        view
+        pure
         returns (uint256[] memory result)
     {
         result = new uint256[](10);
@@ -210,7 +210,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 strikeToSpotRatio64x64,
         int128 timeToMaturity64x64,
         int256[] memory volatilitySurface
-    ) internal view returns (int128) {
+    ) internal pure returns (int128) {
         require(volatilitySurface.length == 10, "Invalid vol surface");
 
         int128 maturitySquared64x64 = timeToMaturity64x64.mul(
@@ -398,7 +398,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      */
     function parseVolatilitySurfaceCoefficients(bytes32 input)
         external
-        view
+        pure
         returns (int256[] memory coefficients)
     {
         return
@@ -414,7 +414,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      */
     function formatVolatilitySurfaceCoefficients(int256[10] memory coefficients)
         external
-        view
+        pure
         returns (bytes32 result)
     {
         return
