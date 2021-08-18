@@ -332,7 +332,6 @@ export class PoolUtil {
       // deposit caps
       fixedFromFloat(1000000),
       fixedFromFloat(1000000),
-      fixedFromFloat(1.22 * 1.22),
       100,
     );
 
@@ -354,7 +353,6 @@ export class PoolUtil {
       // deposit caps
       fixedFromFloat(1000000),
       fixedFromFloat(1000000),
-      fixedFromFloat(1.1),
       100,
     );
 

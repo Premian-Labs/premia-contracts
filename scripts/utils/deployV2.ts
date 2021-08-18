@@ -186,7 +186,6 @@ export async function deployV2(
     // deposit caps
     fixedFromFloat(1000000),
     fixedFromFloat(300),
-    fixedFromFloat(1.92),
     100,
   );
 
@@ -201,7 +200,6 @@ export async function deployV2(
     // deposit caps
     fixedFromFloat(1000000),
     fixedFromFloat(300),
-    fixedFromFloat(1.92),
     100,
   );
 
@@ -218,7 +216,6 @@ export async function deployV2(
     // deposit caps
     fixedFromFloat(1000000),
     fixedFromFloat(25),
-    fixedFromFloat(1.35),
     100,
   );
 
@@ -233,7 +230,6 @@ export async function deployV2(
     // deposit caps
     fixedFromFloat(1000000),
     fixedFromFloat(25),
-    fixedFromFloat(1.35),
     100,
   );
 
@@ -250,7 +246,6 @@ export async function deployV2(
     // deposit caps
     fixedFromFloat(1000000),
     fixedFromFloat(40000),
-    fixedFromFloat(3.12),
     100,
   );
 
@@ -265,7 +260,6 @@ export async function deployV2(
     // deposit caps
     fixedFromFloat(1000000),
     fixedFromFloat(40000),
-    fixedFromFloat(3.12),
     100,
   );
 
