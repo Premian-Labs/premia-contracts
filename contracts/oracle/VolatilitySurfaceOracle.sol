@@ -253,7 +253,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         bool isCall
     ) external view override returns (uint256) {
         return
-            ABDKMath64x64.toUInt(
+            ABDKMath64x64.mulu(
                 _getBlackScholesPrice64x64(
                     baseToken,
                     underlyingToken,
@@ -261,7 +261,8 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
                     spot64x64,
                     timeToMaturity64x64,
                     isCall
-                )
+                ),
+                10**18
             );
     }
 
