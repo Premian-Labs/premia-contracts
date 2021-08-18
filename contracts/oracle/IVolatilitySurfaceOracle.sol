@@ -12,16 +12,11 @@ interface IVolatilitySurfaceOracle {
         view
         returns (VolatilitySurfaceOracleStorage.Update memory);
 
-    function getVolatilitySurfaceUnpacked(
+    function getVolatilitySurfaceCoefficientsUnpacked(
         address baseToken,
         address underlyingToken,
         bool isCall
     ) external view returns (int256[] memory);
-
-    function getLastUpdateTimestamp(address baseToken, address underlyingToken)
-        external
-        view
-        returns (uint256);
 
     function getTimeToMaturity64x64(uint64 maturity)
         external

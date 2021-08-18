@@ -91,7 +91,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         return l.volatilitySurfaces[baseToken][underlyingToken];
     }
 
-    function getVolatilitySurfaceUnpacked(
+    function getVolatilitySurfaceCoefficientsUnpacked(
         address baseToken,
         address underlyingToken,
         bool isCall
@@ -109,18 +109,6 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             VolatilitySurfaceOracleStorage.parseVolatilitySurfaceCoefficients(
                 valuePacked
             );
-    }
-
-    function getLastUpdateTimestamp(address baseToken, address underlyingToken)
-        external
-        view
-        override
-        returns (uint256)
-    {
-        return
-            VolatilitySurfaceOracleStorage
-            .layout()
-            .volatilitySurfaces[baseToken][underlyingToken].updatedAt;
     }
 
     function getTimeToMaturity64x64(uint64 maturity)
