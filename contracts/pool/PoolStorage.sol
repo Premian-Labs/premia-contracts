@@ -34,9 +34,15 @@ library PoolStorage {
         uint64 maturity; // timestamp of option maturity
         int128 strike64x64; // 64x64 fixed point representation of strike price
         int128 spot64x64; // 64x64 fixed point representation of spot price
-        int128 emaVarianceAnnualized64x64; // 64x64 fixed point representation of annualized variance
         uint256 contractSize; // size of option contract
         bool isCall; // true for call, false for put
+    }
+
+    struct QuoteResultInternal {
+        int128 baseCost64x64; // 64x64 fixed point representation of option cost denominated in underlying currency (without fee)
+        int128 feeCost64x64; // 64x64 fixed point representation of option fee cost denominated in underlying currency for call, or base currency for put
+        int128 cLevel64x64; // 64x64 fixed point representation of C-Level of Pool after purchase
+        int128 slippageCoefficient64x64; // 64x64 fixed point representation of slippage coefficient for given order size
     }
 
     struct BatchData {
@@ -66,8 +72,6 @@ library PoolStorage {
         // market state
         int128 cLevelUnderlying64x64;
         int128 cLevelBase64x64;
-        int128 emaLogReturns64x64;
-        int128 emaVarianceAnnualized64x64;
         uint256 updatedAt;
         // User -> isCall -> depositedAt
         mapping(address => mapping(bool => uint256)) depositedAt;

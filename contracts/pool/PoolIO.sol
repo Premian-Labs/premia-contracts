@@ -21,12 +21,22 @@ contract PoolIO is IPoolIO, PoolBase {
     using PoolStorage for PoolStorage.Layout;
 
     constructor(
+        address ivolOracle,
         address weth,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
-    ) PoolBase(weth, premiaMining, feeReceiver, feeDiscountAddress, fee64x64) {}
+    )
+        PoolBase(
+            ivolOracle,
+            weth,
+            premiaMining,
+            feeReceiver,
+            feeDiscountAddress,
+            fee64x64
+        )
+    {}
 
     /**
      * @notice set timestamp after which reinvestment is disabled
@@ -157,7 +167,7 @@ contract PoolIO is IPoolIO, PoolBase {
         )
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
-        (int128 newPrice64x64, ) = _update(l);
+        int128 newPrice64x64 = _update(l);
 
         (
             PoolStorage.TokenType tokenType,
@@ -204,7 +214,7 @@ contract PoolIO is IPoolIO, PoolBase {
 
         PoolStorage.Layout storage l = PoolStorage.layout();
 
-        (int128 newPrice64x64, ) = _update(l);
+        int128 newPrice64x64 = _update(l);
 
         baseCosts = new uint256[](tokenIds.length);
         feeCosts = new uint256[](tokenIds.length);
