@@ -56,6 +56,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         address feeDiscountAddress,
         int128 fee64x64
     ) {
+        IVOL_ORACLE_ADDRESS = ivolOracle;
         WETH_ADDRESS = weth;
         PREMIA_MINING_ADDRESS = premiaMining;
         FEE_RECEIVER_ADDRESS = feeReceiver;
