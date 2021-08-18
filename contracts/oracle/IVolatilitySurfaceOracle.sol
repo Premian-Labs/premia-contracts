@@ -2,14 +2,15 @@
 
 pragma solidity ^0.8.0;
 
+import {VolatilitySurfaceOracleStorage} from "./VolatilitySurfaceOracleStorage.sol";
+
 interface IVolatilitySurfaceOracle {
     function getWhitelistedRelayers() external view returns (address[] memory);
 
-    function getVolatilitySurfacePacked(
-        address baseToken,
-        address underlyingToken,
-        bool isCall
-    ) external view returns (bytes32);
+    function getVolatilitySurface(address baseToken, address underlyingToken)
+        external
+        view
+        returns (VolatilitySurfaceOracleStorage.Update memory);
 
     function getVolatilitySurfaceUnpacked(
         address baseToken,

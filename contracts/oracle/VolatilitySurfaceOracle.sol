@@ -80,14 +80,15 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         return result;
     }
 
-    function getVolatilitySurfacePacked(
-        address baseToken,
-        address underlyingToken,
-        bool isCall
-    ) external view override returns (bytes32) {
+    function getVolatilitySurface(address baseToken, address underlyingToken)
+        external
+        view
+        override
+        returns (VolatilitySurfaceOracleStorage.Update memory)
+    {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
-        return l.volatilitySurfaces[baseToken][underlyingToken][isCall];
+        return l.volatilitySurfaces[baseToken][underlyingToken];
     }
 
     function getVolatilitySurfaceUnpacked(
@@ -97,9 +98,16 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     ) external view override returns (int256[] memory) {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
+
+        bytes32 valuePacked = l.getCoefficients(
+            baseToken,
+            underlyingToken,
+            isCall
+        );
+
         return
             VolatilitySurfaceOracleStorage.parseVolatilitySurfaceCoefficients(
-                l.volatilitySurfaces[baseToken][underlyingToken][isCall]
+                valuePacked
             );
     }
 
@@ -110,9 +118,9 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         returns (uint256)
     {
         return
-            VolatilitySurfaceOracleStorage.layout().lastUpdateTimestamps[
-                baseToken
-            ][underlyingToken];
+            VolatilitySurfaceOracleStorage
+            .layout()
+            .volatilitySurfaces[baseToken][underlyingToken].updatedAt;
     }
 
     function getTimeToMaturity64x64(uint64 maturity)
@@ -135,7 +143,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             storage l = VolatilitySurfaceOracleStorage.layout();
         int256[] memory volatilitySurface = VolatilitySurfaceOracleStorage
             .parseVolatilitySurfaceCoefficients(
-                l.volatilitySurfaces[baseToken][underlyingToken][isCall]
+                l.getCoefficients(baseToken, underlyingToken, isCall)
             );
 
         return
@@ -162,42 +170,40 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
 
         //c_0 (hist_vol) + c_1 * maturity + c_2 * maturity^2
         return
-            _getCoefficient64x64(volatilitySurface[0]) +
-            _getCoefficient64x64(volatilitySurface[1]).mul(
-                timeToMaturity64x64
-            ) +
-            _getCoefficient64x64(volatilitySurface[2]).mul(
+            _toCoefficient64x64(volatilitySurface[0]) +
+            _toCoefficient64x64(volatilitySurface[1]).mul(timeToMaturity64x64) +
+            _toCoefficient64x64(volatilitySurface[2]).mul(
                 maturitySquared64x64
             ) +
             //+ c_3 * maturity^3 + c_4 * strikeToSpot
-            _getCoefficient64x64(volatilitySurface[3]).mul(
+            _toCoefficient64x64(volatilitySurface[3]).mul(
                 maturitySquared64x64.mul(timeToMaturity64x64)
             ) +
-            _getCoefficient64x64(volatilitySurface[4]).mul(
+            _toCoefficient64x64(volatilitySurface[4]).mul(
                 strikeToSpotRatio64x64
             ) +
             //+ c_5 * strikeToSpot^2 + c_6 * strikeToSpot^3
-            _getCoefficient64x64(volatilitySurface[5]).mul(
+            _toCoefficient64x64(volatilitySurface[5]).mul(
                 strikeToSpotSquared64x64
             ) +
-            _getCoefficient64x64(volatilitySurface[6]).mul(
+            _toCoefficient64x64(volatilitySurface[6]).mul(
                 strikeToSpotSquared64x64.mul(strikeToSpotRatio64x64)
             ) +
             //+ c_7 * maturity * strikeToSpot
-            _getCoefficient64x64(volatilitySurface[7]).mul(
+            _toCoefficient64x64(volatilitySurface[7]).mul(
                 timeToMaturity64x64.mul(strikeToSpotRatio64x64)
             ) +
             //+ c_8 * strikeToSpot^2 * maturity
-            _getCoefficient64x64(volatilitySurface[8]).mul(
+            _toCoefficient64x64(volatilitySurface[8]).mul(
                 strikeToSpotSquared64x64.mul(timeToMaturity64x64)
             ) +
             //+ c_9 * maturity^2 * strikeToSpot
-            _getCoefficient64x64(volatilitySurface[9]).mul(
+            _toCoefficient64x64(volatilitySurface[9]).mul(
                 maturitySquared64x64.mul(strikeToSpotRatio64x64)
             );
     }
 
-    function _getCoefficient64x64(int256 value) internal pure returns (int128) {
+    function _toCoefficient64x64(int256 value) internal pure returns (int128) {
         return ABDKMath64x64.divi(value, int256(10**COEFFICIENT_DECIMALS));
     }
 
@@ -286,16 +292,12 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             VolatilitySurfaceInputParams memory surfaceParams = surfaces[i];
 
             l.volatilitySurfaces[surfaceParams.baseToken][
-                surfaceParams.underlyingToken
-            ][true] = surfaceParams.callCoefficients;
-
-            l.volatilitySurfaces[surfaceParams.baseToken][
-                surfaceParams.underlyingToken
-            ][false] = surfaceParams.putCoefficients;
-
-            l.lastUpdateTimestamps[surfaceParams.baseToken][
-                surfaceParams.underlyingToken
-            ] = block.timestamp;
+                    surfaceParams.underlyingToken
+                ] = VolatilitySurfaceOracleStorage.Update({
+                updatedAt: block.timestamp,
+                callCoefficients: surfaceParams.callCoefficients,
+                putCoefficients: surfaceParams.putCoefficients
+            });
 
             emit UpdateCoefficients(
                 surfaceParams.baseToken,

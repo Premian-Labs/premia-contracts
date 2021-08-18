@@ -8,11 +8,15 @@ library VolatilitySurfaceOracleStorage {
     bytes32 internal constant STORAGE_SLOT =
         keccak256("premia.contracts.storage.VolatilitySurfaceOracle");
 
+    struct Update {
+        uint256 updatedAt;
+        bytes32 callCoefficients;
+        bytes32 putCoefficients;
+    }
+
     struct Layout {
-        // Base token -> Underlying token -> Is Call vs. Put -> Polynomial coefficients
-        mapping(address => mapping(address => mapping(bool => bytes32))) volatilitySurfaces;
-        // Base token -> Underlying token -> Last update timestamp
-        mapping(address => mapping(address => uint256)) lastUpdateTimestamps;
+        // Base token -> Underlying token -> Update
+        mapping(address => mapping(address => Update)) volatilitySurfaces;
         // Relayer addresses which can be trusted to provide accurate option trades
         EnumerableSet.AddressSet whitelistedRelayers;
     }
@@ -22,6 +26,20 @@ library VolatilitySurfaceOracleStorage {
         assembly {
             l.slot := slot
         }
+    }
+
+    function getCoefficients(
+        Layout storage l,
+        address baseToken,
+        address underlyingToken,
+        bool isCall
+    ) internal view returns (bytes32) {
+        return
+            isCall
+                ? l
+                .volatilitySurfaces[baseToken][underlyingToken].callCoefficients
+                : l
+                .volatilitySurfaces[baseToken][underlyingToken].putCoefficients;
     }
 
     function parseVolatilitySurfaceCoefficients(bytes32 input)
