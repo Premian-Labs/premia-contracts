@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import {
+  ProxyUpgradeableOwnable__factory,
   VolatilitySurfaceOracle__factory,
-  VolatilitySurfaceOracleProxy__factory,
 } from '../../typechain';
 
 async function main() {
@@ -15,9 +15,9 @@ async function main() {
     `VolatilitySurfaceOracle implementation deployed at ${implementation.address}`,
   );
 
-  const proxy = await new VolatilitySurfaceOracleProxy__factory(
-    deployer,
-  ).deploy(implementation.address);
+  const proxy = await new ProxyUpgradeableOwnable__factory(deployer).deploy(
+    implementation.address,
+  );
 
   console.log(
     `VolatilitySurfaceOracle proxy deployed at ${proxy.address} (Args : ${implementation.address} )`,
