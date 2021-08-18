@@ -27,6 +27,13 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         bytes32 putCoefficients;
     }
 
+    event UpdateCoefficients(
+        address indexed baseToken,
+        address indexed underlyingToken,
+        bytes32 callCoefficients,
+        bytes32 putCoefficients
+    );
+
     /// @notice Add relayer to the whitelist so that they can add oracle surfaces.
     /// @param _addr The addresses to add to the whitelist
     function addWhitelistedRelayer(address[] memory _addr) external onlyOwner {
@@ -289,6 +296,13 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             l.lastUpdateTimestamps[surfaceParams.baseToken][
                 surfaceParams.underlyingToken
             ] = block.timestamp;
+
+            emit UpdateCoefficients(
+                surfaceParams.baseToken,
+                surfaceParams.underlyingToken,
+                surfaceParams.callCoefficients,
+                surfaceParams.putCoefficients
+            );
         }
     }
 
