@@ -18,7 +18,16 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     using EnumerableSet for EnumerableSet.AddressSet;
     using ABDKMath64x64 for int128;
 
-    uint256 internal constant COEFFICIENT_DECIMALS = 3;
+    uint256 internal C0_DECIMALS = 3;
+    uint256 internal C1_DECIMALS = 5;
+    uint256 internal C2_DECIMALS = 7;
+    uint256 internal C3_DECIMALS = 8;
+    uint256 internal C4_DECIMALS = 3;
+    uint256 internal C5_DECIMALS = 5;
+    uint256 internal C6_DECIMALS = 4;
+    uint256 internal C7_DECIMALS = 4;
+    uint256 internal C8_DECIMALS = 7;
+    uint256 internal C9_DECIMALS = 6;
 
     struct VolatilitySurfaceInputParams {
         address baseToken;
@@ -131,6 +140,28 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     }
 
     /**
+     * @notice Get amount of decimals for each coefficient
+     * @return result Amount of decimals to use for each coefficient
+     */
+    function getCoefficientsDecimals()
+        external
+        view
+        returns (uint256[] memory result)
+    {
+        result = new uint256[](10);
+        result[0] = C0_DECIMALS;
+        result[1] = C1_DECIMALS;
+        result[2] = C2_DECIMALS;
+        result[3] = C3_DECIMALS;
+        result[4] = C4_DECIMALS;
+        result[5] = C5_DECIMALS;
+        result[6] = C6_DECIMALS;
+        result[7] = C7_DECIMALS;
+        result[8] = C8_DECIMALS;
+        result[9] = C9_DECIMALS;
+    }
+
+    /**
      * @notice Get time to maturity in years, as a 64x64 fixed point representation
      * @param maturity Maturity timestamp
      * @return Time to maturity (in years), as a 64x64 fixed point representation
@@ -179,7 +210,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 strikeToSpotRatio64x64,
         int128 timeToMaturity64x64,
         int256[] memory volatilitySurface
-    ) internal pure returns (int128) {
+    ) internal view returns (int128) {
         require(volatilitySurface.length == 10, "Invalid vol surface");
 
         int128 maturitySquared64x64 = timeToMaturity64x64.mul(
@@ -191,41 +222,47 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
 
         //c_0 (hist_vol) + c_1 * maturity + c_2 * maturity^2
         return
-            _toCoefficient64x64(volatilitySurface[0]) +
-            _toCoefficient64x64(volatilitySurface[1]).mul(timeToMaturity64x64) +
-            _toCoefficient64x64(volatilitySurface[2]).mul(
+            _toCoefficient64x64(volatilitySurface[0], C0_DECIMALS) +
+            _toCoefficient64x64(volatilitySurface[1], C1_DECIMALS).mul(
+                timeToMaturity64x64
+            ) +
+            _toCoefficient64x64(volatilitySurface[2], C2_DECIMALS).mul(
                 maturitySquared64x64
             ) +
             //+ c_3 * maturity^3 + c_4 * strikeToSpot
-            _toCoefficient64x64(volatilitySurface[3]).mul(
+            _toCoefficient64x64(volatilitySurface[3], C3_DECIMALS).mul(
                 maturitySquared64x64.mul(timeToMaturity64x64)
             ) +
-            _toCoefficient64x64(volatilitySurface[4]).mul(
+            _toCoefficient64x64(volatilitySurface[4], C4_DECIMALS).mul(
                 strikeToSpotRatio64x64
             ) +
             //+ c_5 * strikeToSpot^2 + c_6 * strikeToSpot^3
-            _toCoefficient64x64(volatilitySurface[5]).mul(
+            _toCoefficient64x64(volatilitySurface[5], C5_DECIMALS).mul(
                 strikeToSpotSquared64x64
             ) +
-            _toCoefficient64x64(volatilitySurface[6]).mul(
+            _toCoefficient64x64(volatilitySurface[6], C6_DECIMALS).mul(
                 strikeToSpotSquared64x64.mul(strikeToSpotRatio64x64)
             ) +
             //+ c_7 * maturity * strikeToSpot
-            _toCoefficient64x64(volatilitySurface[7]).mul(
+            _toCoefficient64x64(volatilitySurface[7], C7_DECIMALS).mul(
                 timeToMaturity64x64.mul(strikeToSpotRatio64x64)
             ) +
             //+ c_8 * strikeToSpot^2 * maturity
-            _toCoefficient64x64(volatilitySurface[8]).mul(
+            _toCoefficient64x64(volatilitySurface[8], C8_DECIMALS).mul(
                 strikeToSpotSquared64x64.mul(timeToMaturity64x64)
             ) +
             //+ c_9 * maturity^2 * strikeToSpot
-            _toCoefficient64x64(volatilitySurface[9]).mul(
+            _toCoefficient64x64(volatilitySurface[9], C9_DECIMALS).mul(
                 maturitySquared64x64.mul(strikeToSpotRatio64x64)
             );
     }
 
-    function _toCoefficient64x64(int256 value) internal pure returns (int128) {
-        return ABDKMath64x64.divi(value, int256(10**COEFFICIENT_DECIMALS));
+    function _toCoefficient64x64(int256 value, uint256 decimals)
+        internal
+        pure
+        returns (int128)
+    {
+        return ABDKMath64x64.divi(value, int256(10**decimals));
     }
 
     function _getBlackScholesPrice64x64(
