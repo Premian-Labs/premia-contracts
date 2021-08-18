@@ -269,7 +269,7 @@ library PoolStorage {
         // TODO: store interval size as constant
         uint256 timeIntervalsElapsed = (block.timestamp -
             (isCall ? l.cLevelUnderlyingUpdatedAt : l.cLevelBaseUpdatedAt)) /
-            (2 hours);
+            (4 hours);
 
         if (timeIntervalsElapsed == 0) {
             return oldCLevel64x64;
