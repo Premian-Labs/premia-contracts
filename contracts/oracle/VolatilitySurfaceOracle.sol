@@ -182,7 +182,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      * @param strikeToSpotRatio64x64 Strike to spot ratio, as a 64x64 fixed point representation
      * @param timeToMaturity64x64 Time to maturity (in years), as a 64x64 fixed point representation
      * @param isCall Whether it is for call or put
-     * @return Annualized volatility, as a 64x64 fixed point representation
+     * @return Annualized volatility, as a 64x64 fixed point representation. 1 = 100%
      */
     function getAnnualizedVolatility64x64(
         address baseToken,
@@ -222,39 +222,39 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
 
         //c_0 (hist_vol) + c_1 * maturity + c_2 * maturity^2
         return
-            _toCoefficient64x64(volatilitySurface[0], C0_DECIMALS) +
-            _toCoefficient64x64(volatilitySurface[1], C1_DECIMALS).mul(
-                timeToMaturity64x64
-            ) +
-            _toCoefficient64x64(volatilitySurface[2], C2_DECIMALS).mul(
-                maturitySquared64x64
-            ) +
-            //+ c_3 * maturity^3 + c_4 * strikeToSpot
-            _toCoefficient64x64(volatilitySurface[3], C3_DECIMALS).mul(
-                maturitySquared64x64.mul(timeToMaturity64x64)
-            ) +
-            _toCoefficient64x64(volatilitySurface[4], C4_DECIMALS).mul(
-                strikeToSpotRatio64x64
-            ) +
-            //+ c_5 * strikeToSpot^2 + c_6 * strikeToSpot^3
-            _toCoefficient64x64(volatilitySurface[5], C5_DECIMALS).mul(
-                strikeToSpotSquared64x64
-            ) +
-            _toCoefficient64x64(volatilitySurface[6], C6_DECIMALS).mul(
-                strikeToSpotSquared64x64.mul(strikeToSpotRatio64x64)
-            ) +
-            //+ c_7 * maturity * strikeToSpot
-            _toCoefficient64x64(volatilitySurface[7], C7_DECIMALS).mul(
-                timeToMaturity64x64.mul(strikeToSpotRatio64x64)
-            ) +
-            //+ c_8 * strikeToSpot^2 * maturity
-            _toCoefficient64x64(volatilitySurface[8], C8_DECIMALS).mul(
-                strikeToSpotSquared64x64.mul(timeToMaturity64x64)
-            ) +
-            //+ c_9 * maturity^2 * strikeToSpot
-            _toCoefficient64x64(volatilitySurface[9], C9_DECIMALS).mul(
-                maturitySquared64x64.mul(strikeToSpotRatio64x64)
-            );
+            (_toCoefficient64x64(volatilitySurface[0], C0_DECIMALS) +
+                _toCoefficient64x64(volatilitySurface[1], C1_DECIMALS).mul(
+                    timeToMaturity64x64
+                ) +
+                _toCoefficient64x64(volatilitySurface[2], C2_DECIMALS).mul(
+                    maturitySquared64x64
+                ) +
+                //+ c_3 * maturity^3 + c_4 * strikeToSpot
+                _toCoefficient64x64(volatilitySurface[3], C3_DECIMALS).mul(
+                    maturitySquared64x64.mul(timeToMaturity64x64)
+                ) +
+                _toCoefficient64x64(volatilitySurface[4], C4_DECIMALS).mul(
+                    strikeToSpotRatio64x64
+                ) +
+                //+ c_5 * strikeToSpot^2 + c_6 * strikeToSpot^3
+                _toCoefficient64x64(volatilitySurface[5], C5_DECIMALS).mul(
+                    strikeToSpotSquared64x64
+                ) +
+                _toCoefficient64x64(volatilitySurface[6], C6_DECIMALS).mul(
+                    strikeToSpotSquared64x64.mul(strikeToSpotRatio64x64)
+                ) +
+                //+ c_7 * maturity * strikeToSpot
+                _toCoefficient64x64(volatilitySurface[7], C7_DECIMALS).mul(
+                    timeToMaturity64x64.mul(strikeToSpotRatio64x64)
+                ) +
+                //+ c_8 * strikeToSpot^2 * maturity
+                _toCoefficient64x64(volatilitySurface[8], C8_DECIMALS).mul(
+                    strikeToSpotSquared64x64.mul(timeToMaturity64x64)
+                ) +
+                //+ c_9 * maturity^2 * strikeToSpot
+                _toCoefficient64x64(volatilitySurface[9], C9_DECIMALS).mul(
+                    maturitySquared64x64.mul(strikeToSpotRatio64x64)
+                )).div(0x640000000000000000); // Divide by 100, so that value of 1 = 100% volatility
     }
 
     function _toCoefficient64x64(int256 value, uint256 decimals)
