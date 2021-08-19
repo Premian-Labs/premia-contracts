@@ -27,8 +27,20 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64
-    ) PoolSwap(weth, premiaMining, feeReceiver, feeDiscountAddress, fee64x64) {}
+        int128 fee64x64,
+        address uniswapV2Factory,
+        address sushiswapFactory
+    )
+        PoolSwap(
+            weth,
+            premiaMining,
+            feeReceiver,
+            feeDiscountAddress,
+            fee64x64,
+            uniswapV2Factory,
+            sushiswapFactory
+        )
+    {}
 
     /**
      * @notice calculate price of option contract

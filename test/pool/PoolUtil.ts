@@ -31,6 +31,7 @@ import {
   formatTokenId,
   TokenType,
 } from '@premia/utils';
+import { ZERO_ADDRESS } from '../utils/constants';
 
 export const DECIMALS_BASE = 18;
 export const DECIMALS_UNDERLYING = 8;
@@ -138,6 +139,7 @@ export class PoolUtil {
     priceUnderlying: number,
     feeReceiver: string,
     premiaFeeDiscount: string,
+    uniswapV2Factory?: string,
   ) {
     const erc20Factory = new ERC20Mock__factory(deployer);
 
@@ -205,6 +207,8 @@ export class PoolUtil {
       feeReceiver,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
+      uniswapV2Factory ?? ZERO_ADDRESS,
+      ZERO_ADDRESS,
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(

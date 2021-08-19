@@ -22,18 +22,21 @@ contract PoolSwap is PoolBase {
     using EnumerableSet for EnumerableSet.UintSet;
     using PoolStorage for PoolStorage.Layout;
 
-    address constant UNISWAP_FACTORY =
-        0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f;
-    address constant SUSHISWAP_FACTORY =
-        0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac;
+    address internal immutable UNISWAP_V2_FACTORY;
+    address internal immutable SUSHISWAP_FACTORY;
 
     constructor(
         address weth,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64
-    ) PoolBase(weth, premiaMining, feeReceiver, feeDiscountAddress, fee64x64) {}
+        int128 fee64x64,
+        address uniswapV2Factory,
+        address sushiswapFactory
+    ) PoolBase(weth, premiaMining, feeReceiver, feeDiscountAddress, fee64x64) {
+        UNISWAP_V2_FACTORY = uniswapV2Factory;
+        SUSHISWAP_FACTORY = sushiswapFactory;
+    }
 
     // calculates the CREATE2 address for a pair without making any external calls
     function _pairFor(
@@ -159,7 +162,7 @@ contract PoolSwap is PoolBase {
                 : (amountOut, uint256(0));
             address to = i < path.length - 2
                 ? _pairFor(
-                    isSushi ? SUSHISWAP_FACTORY : UNISWAP_FACTORY,
+                    isSushi ? SUSHISWAP_FACTORY : UNISWAP_V2_FACTORY,
                     output,
                     path[i + 2],
                     isSushi
@@ -167,7 +170,7 @@ contract PoolSwap is PoolBase {
                 : _to;
             IUniswapV2Pair(
                 _pairFor(
-                    isSushi ? SUSHISWAP_FACTORY : UNISWAP_FACTORY,
+                    isSushi ? SUSHISWAP_FACTORY : UNISWAP_V2_FACTORY,
                     input,
                     output,
                     isSushi
@@ -183,7 +186,7 @@ contract PoolSwap is PoolBase {
         bool isSushi
     ) internal returns (uint256[] memory amounts) {
         amounts = _getAmountsIn(
-            isSushi ? SUSHISWAP_FACTORY : UNISWAP_FACTORY,
+            isSushi ? SUSHISWAP_FACTORY : UNISWAP_V2_FACTORY,
             amountOut,
             path,
             isSushi
@@ -196,7 +199,7 @@ contract PoolSwap is PoolBase {
             path[0],
             msg.sender,
             _pairFor(
-                isSushi ? SUSHISWAP_FACTORY : UNISWAP_FACTORY,
+                isSushi ? SUSHISWAP_FACTORY : UNISWAP_V2_FACTORY,
                 path[0],
                 path[1],
                 isSushi
