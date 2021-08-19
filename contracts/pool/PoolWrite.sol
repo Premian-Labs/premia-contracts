@@ -132,6 +132,20 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         _pullFrom(msg.sender, _getPoolToken(isCall), baseCost + feeCost);
     }
 
+    /**
+     * @notice swap tokens and purchase option
+     * @param maturity timestamp of option maturity
+     * @param strike64x64 64x64 fixed point representation of strike price
+     * @param contractSize size of option contract
+     * @param isCall true for call, false for put
+     * @param maxCost maximum acceptable cost after accounting for slippage
+     * @param amountOut amount out of tokens requested
+     * @param amountInMax amount in max of tokens
+     * @param path swap path
+     * @param isSushi whether we use sushi or uniV2 for the swap
+     * @return baseCost quantity of tokens required to purchase long position
+     * @return feeCost quantity of tokens required to pay fees
+     */
     function swapAndPurchase(
         uint64 maturity,
         int128 strike64x64,
