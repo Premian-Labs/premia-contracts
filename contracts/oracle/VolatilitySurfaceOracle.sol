@@ -23,11 +23,11 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     uint256 internal constant C2_DECIMALS = 7;
     uint256 internal constant C3_DECIMALS = 8;
     uint256 internal constant C4_DECIMALS = 3;
-    uint256 internal constant C5_DECIMALS = 5;
+    uint256 internal constant C5_DECIMALS = 4;
     uint256 internal constant C6_DECIMALS = 4;
-    uint256 internal constant C7_DECIMALS = 4;
-    uint256 internal constant C8_DECIMALS = 7;
-    uint256 internal constant C9_DECIMALS = 6;
+    uint256 internal constant C7_DECIMALS = 5;
+    uint256 internal constant C8_DECIMALS = 6;
+    uint256 internal constant C9_DECIMALS = 7;
 
     struct VolatilitySurfaceInputParams {
         address baseToken;
