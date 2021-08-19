@@ -11,6 +11,7 @@ import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
 
 library PoolStorage {
+    using ABDKMath64x64 for int128;
     using PoolStorage for PoolStorage.Layout;
 
     enum TokenType {
@@ -267,11 +268,23 @@ library PoolStorage {
             : l.cLevelBase64x64;
 
         // TODO: store interval size as constant
-        int128 timeIntervalsElapsed64x64 = ABDKMath64x64.divu(
-            block.timestamp -
-                (isCall ? l.cLevelUnderlyingUpdatedAt : l.cLevelBaseUpdatedAt),
-            4 hours
-        );
+        int128 timeIntervalsElapsed64x64 = ABDKMath64x64
+            .divu(
+                block.timestamp -
+                    (
+                        isCall
+                            ? l.cLevelUnderlyingUpdatedAt
+                            : l.cLevelBaseUpdatedAt
+                    ),
+                4 hours
+            )
+            .sub(OptionMath.ONE_64x64);
+
+        // do not apply C decay if less than one interval has elapsed
+
+        if (timeIntervalsElapsed64x64 < 0) {
+            return oldCLevel64x64;
+        }
 
         uint256 tokenId = formatTokenId(
             isCall ? TokenType.UNDERLYING_FREE_LIQ : TokenType.BASE_FREE_LIQ,
