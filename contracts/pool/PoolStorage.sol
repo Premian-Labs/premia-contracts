@@ -50,6 +50,9 @@ library PoolStorage {
     bytes32 internal constant STORAGE_SLOT =
         keccak256("premia.contracts.storage.Pool");
 
+    uint256 private constant C_DECAY_BUFFER = 24 hours;
+    uint256 private constant C_DECAY_INTERVAL = 4 hours;
+
     struct Layout {
         // ERC20 token addresses
         address base;
@@ -267,24 +270,21 @@ library PoolStorage {
             ? l.cLevelUnderlying64x64
             : l.cLevelBase64x64;
 
-        // TODO: store interval size as constant
-        int128 timeIntervalsElapsed64x64 = ABDKMath64x64
-            .divu(
-                block.timestamp -
-                    (
-                        isCall
-                            ? l.cLevelUnderlyingUpdatedAt
-                            : l.cLevelBaseUpdatedAt
-                    ),
-                4 hours
-            )
-            .sub(OptionMath.ONE_64x64);
+        uint256 timeElapsed = block.timestamp -
+            (isCall ? l.cLevelUnderlyingUpdatedAt : l.cLevelBaseUpdatedAt);
 
-        // do not apply C decay if less than one interval has elapsed
+        // do not apply C decay if less than 24 hours have elapsed
 
-        if (timeIntervalsElapsed64x64 < 0) {
+        if (timeElapsed > C_DECAY_BUFFER) {
+            timeElapsed -= C_DECAY_BUFFER;
+        } else {
             return oldCLevel64x64;
         }
+
+        int128 timeIntervalsElapsed64x64 = ABDKMath64x64.divu(
+            timeElapsed,
+            C_DECAY_INTERVAL
+        );
 
         uint256 tokenId = formatTokenId(
             isCall ? TokenType.UNDERLYING_FREE_LIQ : TokenType.BASE_FREE_LIQ,
