@@ -267,13 +267,11 @@ library PoolStorage {
             : l.cLevelBase64x64;
 
         // TODO: store interval size as constant
-        uint256 timeIntervalsElapsed = (block.timestamp -
-            (isCall ? l.cLevelUnderlyingUpdatedAt : l.cLevelBaseUpdatedAt)) /
-            (4 hours);
-
-        if (timeIntervalsElapsed == 0) {
-            return oldCLevel64x64;
-        }
+        int128 timeIntervalsElapsed64x64 = ABDKMath64x64.divu(
+            block.timestamp -
+                (isCall ? l.cLevelUnderlyingUpdatedAt : l.cLevelBaseUpdatedAt),
+            4 hours
+        );
 
         uint256 tokenId = formatTokenId(
             isCall ? TokenType.UNDERLYING_FREE_LIQ : TokenType.BASE_FREE_LIQ,
@@ -292,7 +290,7 @@ library PoolStorage {
 
         cLevel64x64 = OptionMath.calculateCLevelDecay(
             OptionMath.CalculateCLevelDecayArgs(
-                timeIntervalsElapsed,
+                timeIntervalsElapsed64x64,
                 oldCLevel64x64,
                 utilization,
                 0xb333333333333333, // 0.7

@@ -236,14 +236,14 @@ describe('OptionMath', function () {
 
     it('calculates c level decay (neutral if high utilisation, high c-value)', async function () {
       const oldCLevel64x64 = fixedFromFloat(2);
-      const timeIntervalsElapsed = 10;
+      const timeIntervalsElapsed64x64 = fixedFromFloat(10);
       const utilization64x64 = fixedFromFloat(0.99);
 
       const expected = bnToNumber(oldCLevel64x64);
       const result = bnToNumber(
         await instance.callStatic.calculateCLevelDecay({
           oldCLevel64x64,
-          timeIntervalsElapsed,
+          timeIntervalsElapsed64x64,
           utilization64x64,
           utilizationLowerBound64x64,
           utilizationUpperBound64x64,
@@ -259,14 +259,14 @@ describe('OptionMath', function () {
 
     it('calculates c level decay (neutral if low utilisation, low c-value)', async function () {
       const oldCLevel64x64 = fixedFromFloat(0.9);
-      const timeIntervalsElapsed = 2;
+      const timeIntervalsElapsed64x64 = fixedFromFloat(2);
       const utilization64x64 = fixedFromFloat(0.6);
 
       const expected = bnToNumber(oldCLevel64x64);
       const result = bnToNumber(
         await instance.callStatic.calculateCLevelDecay({
           oldCLevel64x64,
-          timeIntervalsElapsed,
+          timeIntervalsElapsed64x64,
           utilization64x64,
           utilizationLowerBound64x64,
           utilizationUpperBound64x64,
@@ -282,14 +282,14 @@ describe('OptionMath', function () {
 
     it('calculates c level decay (converges to lower bound if low utilisation, high c-value)', async function () {
       const oldCLevel64x64 = fixedFromFloat(2.78);
-      const timeIntervalsElapsed = 24;
+      const timeIntervalsElapsed64x64 = fixedFromFloat(24);
       const utilization64x64 = fixedFromFloat(0.5);
 
       const expected = bnToNumber(cConvergenceULowerBound64x64);
       const result = bnToNumber(
         await instance.callStatic.calculateCLevelDecay({
           oldCLevel64x64,
-          timeIntervalsElapsed,
+          timeIntervalsElapsed64x64,
           utilization64x64,
           utilizationLowerBound64x64,
           utilizationUpperBound64x64,
@@ -305,14 +305,14 @@ describe('OptionMath', function () {
 
     it('calculates c level decay (converges to upper bound if high utilisation, low c-value)', async function () {
       const oldCLevel64x64 = fixedFromFloat(0.2);
-      const timeIntervalsElapsed = 24;
+      const timeIntervalsElapsed64x64 = fixedFromFloat(24);
       const utilization64x64 = fixedFromFloat(0.99);
 
       const expected = bnToNumber(cConvergenceUUpperBound64x64);
       const result = bnToNumber(
         await instance.callStatic.calculateCLevelDecay({
           oldCLevel64x64,
-          timeIntervalsElapsed,
+          timeIntervalsElapsed64x64,
           utilization64x64,
           utilizationLowerBound64x64,
           utilizationUpperBound64x64,

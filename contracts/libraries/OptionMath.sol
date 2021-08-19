@@ -21,9 +21,9 @@ library OptionMath {
     }
 
     struct CalculateCLevelDecayArgs {
-        uint256 timeIntervalsElapsed; // quantity of discrete arbitrary intervals elapsed since last update
-        int128 oldCLevel64x64; // C-Level prior to accounting for decay
-        int128 utilization64x64; // pool capital utilization rate
+        int128 timeIntervalsElapsed64x64; // 64x64 fixed point representation of quantity of discrete arbitrary intervals elapsed since last update
+        int128 oldCLevel64x64; // 64x64 fixed point representation of C-Level prior to accounting for decay
+        int128 utilization64x64; // 64x64 fixed point representation of pool capital utilization rate
         int128 utilizationLowerBound64x64;
         int128 utilizationUpperBound64x64;
         int128 cLevelLowerBound64x64;
@@ -206,7 +206,7 @@ library OptionMath {
                 convFLowU64x64
                     .mul(ONE_64x64.sub(args.utilization64x64))
                     .add(convFHighU64x64.mul(args.utilization64x64))
-                    .mul(ABDKMath64x64.fromUInt(args.timeIntervalsElapsed))
+                    .mul(args.timeIntervalsElapsed64x64)
                     .neg()
                     .exp()
             )
