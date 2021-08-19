@@ -187,6 +187,7 @@ describe('OptionMath', function () {
 
       expect(expected / result).to.be.closeTo(1, 0.001);
     });
+
     it('calculates European PUT option price', async function () {
       const variance = fixedFromFloat(0.16);
       const price = input_t[1];
@@ -219,6 +220,107 @@ describe('OptionMath', function () {
           maturity,
           true,
         ),
+      );
+
+      expect(expected / result).to.be.closeTo(1, 0.001);
+    });
+  });
+
+  describe('#calculateCLevelDecay', function () {
+    const utilizationLowerBound64x64 = fixedFromFloat(0.7);
+    const utilizationUpperBound64x64 = fixedFromFloat(0.9);
+    const cLevelLowerBound64x64 = fixedFromFloat(1);
+    const cLevelUpperBound64x64 = fixedFromFloat(1);
+    const cConvergenceULowerBound64x64 = fixedFromFloat(0.9);
+    const cConvergenceUUpperBound64x64 = fixedFromFloat(5.4365636569);
+
+    it('calculates c level decay (neutral if high utilisation, high c-value)', async function () {
+      const oldCLevel64x64 = fixedFromFloat(2);
+      const timeIntervalsElapsed64x64 = fixedFromFloat(10);
+      const utilization64x64 = fixedFromFloat(0.99);
+
+      const expected = bnToNumber(oldCLevel64x64);
+      const result = bnToNumber(
+        await instance.callStatic.calculateCLevelDecay({
+          oldCLevel64x64,
+          timeIntervalsElapsed64x64,
+          utilization64x64,
+          utilizationLowerBound64x64,
+          utilizationUpperBound64x64,
+          cLevelLowerBound64x64,
+          cLevelUpperBound64x64,
+          cConvergenceULowerBound64x64,
+          cConvergenceUUpperBound64x64,
+        }),
+      );
+
+      expect(expected / result).to.be.closeTo(1, 0.001);
+    });
+
+    it('calculates c level decay (neutral if low utilisation, low c-value)', async function () {
+      const oldCLevel64x64 = fixedFromFloat(0.9);
+      const timeIntervalsElapsed64x64 = fixedFromFloat(2);
+      const utilization64x64 = fixedFromFloat(0.6);
+
+      const expected = bnToNumber(oldCLevel64x64);
+      const result = bnToNumber(
+        await instance.callStatic.calculateCLevelDecay({
+          oldCLevel64x64,
+          timeIntervalsElapsed64x64,
+          utilization64x64,
+          utilizationLowerBound64x64,
+          utilizationUpperBound64x64,
+          cLevelLowerBound64x64,
+          cLevelUpperBound64x64,
+          cConvergenceULowerBound64x64,
+          cConvergenceUUpperBound64x64,
+        }),
+      );
+
+      expect(expected / result).to.be.closeTo(1, 0.001);
+    });
+
+    it('calculates c level decay (converges to lower bound if low utilisation, high c-value)', async function () {
+      const oldCLevel64x64 = fixedFromFloat(2.78);
+      const timeIntervalsElapsed64x64 = fixedFromFloat(24);
+      const utilization64x64 = fixedFromFloat(0.5);
+
+      const expected = bnToNumber(cConvergenceULowerBound64x64);
+      const result = bnToNumber(
+        await instance.callStatic.calculateCLevelDecay({
+          oldCLevel64x64,
+          timeIntervalsElapsed64x64,
+          utilization64x64,
+          utilizationLowerBound64x64,
+          utilizationUpperBound64x64,
+          cLevelLowerBound64x64,
+          cLevelUpperBound64x64,
+          cConvergenceULowerBound64x64,
+          cConvergenceUUpperBound64x64,
+        }),
+      );
+
+      expect(expected / result).to.be.closeTo(1, 0.001);
+    });
+
+    it('calculates c level decay (converges to upper bound if high utilisation, low c-value)', async function () {
+      const oldCLevel64x64 = fixedFromFloat(0.2);
+      const timeIntervalsElapsed64x64 = fixedFromFloat(24);
+      const utilization64x64 = fixedFromFloat(0.99);
+
+      const expected = bnToNumber(cConvergenceUUpperBound64x64);
+      const result = bnToNumber(
+        await instance.callStatic.calculateCLevelDecay({
+          oldCLevel64x64,
+          timeIntervalsElapsed64x64,
+          utilization64x64,
+          utilizationLowerBound64x64,
+          utilizationUpperBound64x64,
+          cLevelLowerBound64x64,
+          cLevelUpperBound64x64,
+          cConvergenceULowerBound64x64,
+          cConvergenceUUpperBound64x64,
+        }),
       );
 
       expect(expected / result).to.be.closeTo(1, 0.001);
@@ -258,6 +360,7 @@ describe('OptionMath', function () {
 
       expect(expected / result).to.be.closeTo(1, 0.001);
     });
+
     it('calculates European CALL option price quote at steepness 0.5', async function () {
       const variance = fixedFromFloat(0.16);
       const price = input_t[1];

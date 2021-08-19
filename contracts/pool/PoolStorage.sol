@@ -11,6 +11,9 @@ import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
 
 library PoolStorage {
+    using ABDKMath64x64 for int128;
+    using PoolStorage for PoolStorage.Layout;
+
     enum TokenType {
         UNDERLYING_FREE_LIQ,
         BASE_FREE_LIQ,
@@ -64,8 +67,10 @@ library PoolStorage {
         uint256 basePoolCap;
         uint256 underlyingPoolCap;
         // market state
-        int128 cLevelUnderlying64x64;
         int128 cLevelBase64x64;
+        int128 cLevelUnderlying64x64;
+        uint256 cLevelBaseUpdatedAt;
+        uint256 cLevelUnderlyingUpdatedAt;
         int128 emaLogReturns64x64;
         int128 emaVarianceAnnualized64x64;
         uint256 updatedAt;
@@ -170,7 +175,7 @@ library PoolStorage {
             ABDKMath64x64Token.fromDecimals(
                 ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
                     l.nextDeposits[isCall].totalPendingDeposits,
-                getTokenDecimals(l, isCall)
+                l.getTokenDecimals(isCall)
             );
     }
 
@@ -258,7 +263,57 @@ library PoolStorage {
         view
         returns (int128 cLevel64x64)
     {
-        cLevel64x64 = isCall ? l.cLevelUnderlying64x64 : l.cLevelBase64x64;
+        int128 oldCLevel64x64 = isCall
+            ? l.cLevelUnderlying64x64
+            : l.cLevelBase64x64;
+
+        // TODO: store interval size as constant
+        int128 timeIntervalsElapsed64x64 = ABDKMath64x64
+            .divu(
+                block.timestamp -
+                    (
+                        isCall
+                            ? l.cLevelUnderlyingUpdatedAt
+                            : l.cLevelBaseUpdatedAt
+                    ),
+                4 hours
+            )
+            .sub(OptionMath.ONE_64x64);
+
+        // do not apply C decay if less than one interval has elapsed
+
+        if (timeIntervalsElapsed64x64 < 0) {
+            return oldCLevel64x64;
+        }
+
+        uint256 tokenId = formatTokenId(
+            isCall ? TokenType.UNDERLYING_FREE_LIQ : TokenType.BASE_FREE_LIQ,
+            0,
+            0
+        );
+
+        uint256 tvl = l.totalTVL[isCall];
+
+        int128 utilization = ABDKMath64x64.divu(
+            tvl -
+                (ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
+                    l.nextDeposits[isCall].totalPendingDeposits),
+            tvl
+        );
+
+        cLevel64x64 = OptionMath.calculateCLevelDecay(
+            OptionMath.CalculateCLevelDecayArgs(
+                timeIntervalsElapsed64x64,
+                oldCLevel64x64,
+                utilization,
+                0xb333333333333333, // 0.7
+                0xe666666666666666, // 0.9
+                0x10000000000000000, // 1.0
+                0x10000000000000000, // 1.0
+                0xe666666666666666, // 0.9
+                0x56fc2a2c515da32ea // 2e
+            )
+        );
     }
 
     function setCLevel(
@@ -267,8 +322,7 @@ library PoolStorage {
         int128 newLiquidity64x64,
         bool isCallPool
     ) internal returns (int128 cLevel64x64) {
-        cLevel64x64 = calculateCLevel(
-            l,
+        cLevel64x64 = l.calculateCLevel(
             oldLiquidity64x64,
             newLiquidity64x64,
             isCallPool
@@ -276,8 +330,10 @@ library PoolStorage {
 
         if (isCallPool) {
             l.cLevelUnderlying64x64 = cLevel64x64;
+            l.cLevelUnderlyingUpdatedAt = block.timestamp;
         } else {
             l.cLevelBase64x64 = cLevel64x64;
+            l.cLevelBaseUpdatedAt = block.timestamp;
         }
     }
 
@@ -286,19 +342,13 @@ library PoolStorage {
         int128 oldLiquidity64x64,
         int128 newLiquidity64x64,
         bool isCallPool
-    ) internal view returns (int128) {
-        int128 cLevel64x64 = OptionMath.calculateCLevel(
-            isCallPool ? l.cLevelUnderlying64x64 : l.cLevelBase64x64,
+    ) internal view returns (int128 cLevel64x64) {
+        cLevel64x64 = OptionMath.calculateCLevel(
+            l.getCLevel(isCallPool),
             oldLiquidity64x64,
             newLiquidity64x64,
             0x8000000000000000 // 64x64 fixed point representation of 0.5
         );
-
-        return
-            cLevel64x64 < 0xcccccccccccccccd
-                ? int128(0xcccccccccccccccd)
-                : cLevel64x64;
-        // 0.8 min
     }
 
     function setOracles(

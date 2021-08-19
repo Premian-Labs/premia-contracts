@@ -96,4 +96,10 @@ contract OptionMathMock {
                 isCall
             );
     }
+
+    function calculateCLevelDecay(
+        OptionMath.CalculateCLevelDecayArgs memory args
+    ) external pure returns (int128 cLevelDecayed64x64) {
+        return OptionMath.calculateCLevelDecay(args);
+    }
 }
