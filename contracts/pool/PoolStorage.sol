@@ -278,7 +278,7 @@ library PoolStorage {
                     ),
                 4 hours
             )
-            .sub(OptionMath.ONE_64x64);
+            .sub(0x60000000000000000); // 6*4 = 24h before decay starts
 
         // do not apply C decay if less than one interval has elapsed
 
