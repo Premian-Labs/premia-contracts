@@ -267,24 +267,22 @@ library PoolStorage {
             ? l.cLevelUnderlying64x64
             : l.cLevelBase64x64;
 
-        // TODO: store interval size as constant
-        int128 timeIntervalsElapsed64x64 = ABDKMath64x64
-            .divu(
-                block.timestamp -
-                    (
-                        isCall
-                            ? l.cLevelUnderlyingUpdatedAt
-                            : l.cLevelBaseUpdatedAt
-                    ),
-                4 hours
-            )
-            .sub(0x60000000000000000); // 6*4 = 24h before decay starts
+        uint256 timeElapsed = block.timestamp -
+            (isCall ? l.cLevelUnderlyingUpdatedAt : l.cLevelBaseUpdatedAt);
 
-        // do not apply C decay if less than one interval has elapsed
+        // do not apply C decay if less than 24 hours have elapsed
 
-        if (timeIntervalsElapsed64x64 < 0) {
+        if (timeElapsed > 24 hours) {
+            timeElapsed -= 24 hours;
+        } else {
             return oldCLevel64x64;
         }
+
+        // TODO: store interval size and buffer as constants
+        int128 timeIntervalsElapsed64x64 = ABDKMath64x64.divu(
+            timeElapsed,
+            4 hours
+        );
 
         uint256 tokenId = formatTokenId(
             isCall ? TokenType.UNDERLYING_FREE_LIQ : TokenType.BASE_FREE_LIQ,
