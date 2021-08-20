@@ -326,7 +326,10 @@ export class PoolUtil {
 
     //////////////////////////////////////////////
 
-    const poolViewFactory = new PoolView__factory(deployer);
+    const poolViewFactory = new PoolView__factory(
+      { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath.address },
+      deployer,
+    );
     const poolViewImpl = await poolViewFactory.deploy(
       ivolOracle.address,
       weth.address,

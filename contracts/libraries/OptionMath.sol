@@ -137,7 +137,7 @@ library OptionMath {
      * @return cLevelDecayed64x64 C-Level after accounting for decay
      */
     function calculateCLevelDecay(CalculateCLevelDecayArgs memory args)
-        internal
+        external
         pure
         returns (int128 cLevelDecayed64x64)
     {
