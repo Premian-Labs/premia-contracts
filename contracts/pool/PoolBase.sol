@@ -857,7 +857,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
     {
         uint256 updatedAt = l.updatedAt;
 
-        if (l.updatedAt == block.timestamp) {
+        if (updatedAt == block.timestamp) {
             return (
                 l.getPriceUpdate(block.timestamp),
                 l.emaVarianceAnnualized64x64
@@ -921,7 +921,8 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         )
     {
         uint256 updatedAt = l.updatedAt;
-        require(l.updatedAt != block.timestamp, "alrdy updated");
+
+        require(updatedAt != block.timestamp, "alrdy updated");
 
         int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
         newPrice64x64 = l.fetchPriceUpdate();

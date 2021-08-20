@@ -82,6 +82,8 @@ contract PoolProxy is Proxy {
             l.emaVarianceAnnualized64x64 = emaVarianceAnnualized64x64;
 
             l.updatedAt = block.timestamp;
+            l.cLevelBaseUpdatedAt = block.timestamp;
+            l.cLevelUnderlyingUpdatedAt = block.timestamp;
         }
 
         {
