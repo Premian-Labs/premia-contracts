@@ -23,6 +23,7 @@ abstract contract PoolSwap is PoolBase {
     address internal immutable SUSHISWAP_FACTORY;
 
     constructor(
+        address ivolOracle,
         address weth,
         address premiaMining,
         address feeReceiver,
@@ -30,7 +31,16 @@ abstract contract PoolSwap is PoolBase {
         int128 fee64x64,
         address uniswapV2Factory,
         address sushiswapFactory
-    ) PoolBase(weth, premiaMining, feeReceiver, feeDiscountAddress, fee64x64) {
+    )
+        PoolBase(
+            ivolOracle,
+            weth,
+            premiaMining,
+            feeReceiver,
+            feeDiscountAddress,
+            fee64x64
+        )
+    {
         UNISWAP_V2_FACTORY = uniswapV2Factory;
         SUSHISWAP_FACTORY = sushiswapFactory;
     }
