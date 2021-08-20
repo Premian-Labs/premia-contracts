@@ -62,5 +62,5 @@ interface IPoolWrite {
         bool isCall
     ) external payable returns (uint256 longTokenId, uint256 shortTokenId);
 
-    function update() external returns (int128 newEmaVarianceAnnualized64x64);
+    function update() external;
 }

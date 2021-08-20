@@ -10,6 +10,8 @@ import {
   PoolWrite__factory,
   Premia__factory,
   ProxyManager__factory,
+  VolatilitySurfaceOracle__factory,
+  ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
 import { diamondCut } from './diamond';
 import { BigNumber } from 'ethers';
@@ -39,6 +41,17 @@ export async function deployV2(
 
   const premiaDiamond = await new Premia__factory(deployer).deploy();
   const poolDiamond = await new Premia__factory(deployer).deploy();
+
+  const ivolOracleImpl = await new VolatilitySurfaceOracle__factory(
+    deployer,
+  ).deploy();
+  const ivolOracleProxy = await new ProxyUpgradeableOwnable__factory(
+    deployer,
+  ).deploy(ivolOracleImpl.address);
+  const ivolOracle = VolatilitySurfaceOracle__factory.connect(
+    ivolOracleProxy.address,
+    deployer,
+  );
 
   //
 
@@ -85,6 +98,7 @@ export async function deployV2(
     deployer,
   );
   const poolWriteImpl = await poolWriteFactory.deploy(
+    ivolOracle.address,
     tokens.ETH,
     premiaMining.address,
     feeReceiver,
@@ -111,6 +125,7 @@ export async function deployV2(
     deployer,
   );
   const poolExerciseImpl = await poolExerciseFactory.deploy(
+    ivolOracle.address,
     tokens.ETH,
     premiaMining.address,
     feeReceiver,
@@ -132,6 +147,7 @@ export async function deployV2(
 
   const poolViewFactory = new PoolView__factory(deployer);
   const poolViewImpl = await poolViewFactory.deploy(
+    ivolOracle.address,
     tokens.ETH,
     premiaMining.address,
     feeReceiver,
@@ -156,6 +172,7 @@ export async function deployV2(
     deployer,
   );
   const poolIOImpl = await poolIOFactory.deploy(
+    ivolOracle.address,
     tokens.ETH,
     premiaMining.address,
     feeReceiver,
@@ -188,7 +205,6 @@ export async function deployV2(
     // deposit caps
     fixedFromFloat(1000000),
     fixedFromFloat(300),
-    fixedFromFloat(1.92),
     100,
   );
 
@@ -203,7 +219,6 @@ export async function deployV2(
     // deposit caps
     fixedFromFloat(1000000),
     fixedFromFloat(300),
-    fixedFromFloat(1.92),
     100,
   );
 
@@ -220,7 +235,6 @@ export async function deployV2(
     // deposit caps
     fixedFromFloat(1000000),
     fixedFromFloat(25),
-    fixedFromFloat(1.35),
     100,
   );
 
@@ -235,7 +249,6 @@ export async function deployV2(
     // deposit caps
     fixedFromFloat(1000000),
     fixedFromFloat(25),
-    fixedFromFloat(1.35),
     100,
   );
 
@@ -252,7 +265,6 @@ export async function deployV2(
     // deposit caps
     fixedFromFloat(1000000),
     fixedFromFloat(40000),
-    fixedFromFloat(3.12),
     100,
   );
 
@@ -267,7 +279,6 @@ export async function deployV2(
     // deposit caps
     fixedFromFloat(1000000),
     fixedFromFloat(40000),
-    fixedFromFloat(3.12),
     100,
   );
 
@@ -291,6 +302,9 @@ export async function deployV2(
   console.log('Deployer: ', deployer.address);
   console.log('PoolDiamond: ', poolDiamond.address);
   console.log('PremiaDiamond: ', premiaDiamond.address);
+
+  console.log('IVOL oracle implementation: ', ivolOracleImpl.address);
+  console.log('IVOL oracle: ', ivolOracle.address);
 
   return premiaDiamond.address;
 }
