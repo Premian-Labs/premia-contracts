@@ -44,7 +44,7 @@ contract OptionMathMock {
         return OptionMath._N(x);
     }
 
-    function bsPrice(
+    function blackScholesPrice(
         int128 variance,
         int128 strike,
         int128 price,
@@ -52,12 +52,18 @@ contract OptionMathMock {
         bool isCall
     ) external pure returns (int128) {
         return
-            OptionMath._bsPrice(
+            OptionMath._blackScholesPrice(
                 variance,
                 strike,
                 price,
                 timeToMaturity,
                 isCall
             );
+    }
+
+    function calculateCLevelDecay(
+        OptionMath.CalculateCLevelDecayArgs memory args
+    ) external pure returns (int128 cLevelDecayed64x64) {
+        return OptionMath.calculateCLevelDecay(args);
     }
 }

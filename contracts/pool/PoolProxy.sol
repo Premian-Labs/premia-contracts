@@ -79,6 +79,8 @@ contract PoolProxy is Proxy {
             l.setPriceUpdate(block.timestamp, newPrice64x64);
 
             l.updatedAt = block.timestamp;
+            l.cLevelBaseUpdatedAt = block.timestamp;
+            l.cLevelUnderlyingUpdatedAt = block.timestamp;
         }
 
         {

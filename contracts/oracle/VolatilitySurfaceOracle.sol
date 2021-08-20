@@ -23,11 +23,11 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     uint256 internal constant C2_DECIMALS = 7;
     uint256 internal constant C3_DECIMALS = 8;
     uint256 internal constant C4_DECIMALS = 3;
-    uint256 internal constant C5_DECIMALS = 5;
+    uint256 internal constant C5_DECIMALS = 4;
     uint256 internal constant C6_DECIMALS = 4;
-    uint256 internal constant C7_DECIMALS = 4;
-    uint256 internal constant C8_DECIMALS = 7;
-    uint256 internal constant C9_DECIMALS = 6;
+    uint256 internal constant C7_DECIMALS = 5;
+    uint256 internal constant C8_DECIMALS = 6;
+    uint256 internal constant C9_DECIMALS = 7;
 
     struct VolatilitySurfaceInputParams {
         address baseToken;
@@ -39,8 +39,8 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     event UpdateCoefficients(
         address indexed baseToken,
         address indexed underlyingToken,
-        bytes32 callCoefficients,
-        bytes32 putCoefficients
+        bytes32 callCoefficients, // Coefficients must be packed using formatVolatilitySurfaceCoefficients
+        bytes32 putCoefficients // Coefficients must be packed using formatVolatilitySurfaceCoefficients
     );
 
     /**
@@ -258,7 +258,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
                 maturitySquared64x64.mul(strikeToSpotRatio64x64)
             );
 
-        return annualizedVolatility64x64.div(0x640000000000000000); // Divide by 100, so that value of 1 = 100% volatility
+        return annualizedVolatility64x64 / 100; // Divide by 100, so that value of 1 = 100% volatility
     }
 
     function _toCoefficient64x64(int256 value, uint256 decimals)
@@ -290,7 +290,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         );
 
         return
-            OptionMath._bsPrice(
+            OptionMath._blackScholesPrice(
                 annualizedVariance,
                 strike64x64,
                 spot64x64,
@@ -347,17 +347,14 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         bool isCall
     ) external view override returns (uint256) {
         return
-            ABDKMath64x64.mulu(
-                _getBlackScholesPrice64x64(
-                    baseToken,
-                    underlyingToken,
-                    strike64x64,
-                    spot64x64,
-                    timeToMaturity64x64,
-                    isCall
-                ),
-                10**18
-            );
+            _getBlackScholesPrice64x64(
+                baseToken,
+                underlyingToken,
+                strike64x64,
+                spot64x64,
+                timeToMaturity64x64,
+                isCall
+            ).mulu(10**18);
     }
 
     /**
@@ -413,6 +410,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
 
     /**
      * @notice Pack volatility surface coefficients into a single bytes32
+     * @dev This function is used to pack the coefficients into a single variable, which is then used as input in `updateVolatilitySurfaces`
      * @param coefficients Coefficients of the volatility surface to pack
      * @return result The packed coefficients of the volatility surface
      */
