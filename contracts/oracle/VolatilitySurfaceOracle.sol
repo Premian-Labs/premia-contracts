@@ -258,7 +258,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
                 maturitySquared64x64.mul(strikeToSpotRatio64x64)
             );
 
-        return annualizedVolatility64x64.div(0x640000000000000000); // Divide by 100, so that value of 1 = 100% volatility
+        return annualizedVolatility64x64 / 100; // Divide by 100, so that value of 1 = 100% volatility
     }
 
     function _toCoefficient64x64(int256 value, uint256 decimals)
