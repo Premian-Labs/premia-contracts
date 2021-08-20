@@ -1257,13 +1257,13 @@ describe('PoolProxy', function () {
           ).to.be.revertedWith('exp < 1 day');
         });
 
-        it('should revert if using a maturity more than 28 days in the future', async () => {
+        it('should revert if using a maturity more than 90 days in the future', async () => {
           await p.depositLiquidity(
             owner,
             parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
-          const maturity = await p.getMaturity(30);
+          const maturity = await p.getMaturity(92);
           const strike64x64 = fixedFromFloat(1.5);
 
           await expect(
@@ -1276,7 +1276,7 @@ describe('PoolProxy', function () {
                 isCall,
                 parseOption('100', isCall),
               ),
-          ).to.be.revertedWith('exp > 28 days');
+          ).to.be.revertedWith('exp > 90 days');
         });
 
         it('should revert if using a maturity not corresponding to end of UTC day', async () => {
