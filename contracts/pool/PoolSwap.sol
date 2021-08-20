@@ -2,7 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 import {PoolStorage} from "./PoolStorage.sol";
 
 import {IUniswapV2Pair} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
@@ -18,8 +17,6 @@ import {PoolBase} from "./PoolBase.sol";
 abstract contract PoolSwap is PoolBase {
     using SafeERC20 for IERC20;
     using ABDKMath64x64 for int128;
-    using EnumerableSet for EnumerableSet.AddressSet;
-    using EnumerableSet for EnumerableSet.UintSet;
     using PoolStorage for PoolStorage.Layout;
 
     address internal immutable UNISWAP_V2_FACTORY;
@@ -75,22 +72,6 @@ abstract contract PoolSwap is PoolBase {
             ? (tokenA, tokenB)
             : (tokenB, tokenA);
         require(token0 != address(0), "UniswapV2Library: ZERO_ADDRESS");
-    }
-
-    function _safeTransferFrom(
-        address token,
-        address from,
-        address to,
-        uint256 value
-    ) internal {
-        // bytes4(keccak256(bytes('transferFrom(address,address,uint256)')));
-        (bool success, bytes memory data) = token.call(
-            abi.encodeWithSelector(0x23b872dd, from, to, value)
-        );
-        require(
-            success && (data.length == 0 || abi.decode(data, (bool))),
-            "TransferHelper: TRANSFER_FROM_FAILED"
-        );
     }
 
     // performs chained getAmountIn calculations on any number of pairs
@@ -195,8 +176,7 @@ abstract contract PoolSwap is PoolBase {
             amounts[0] <= amountInMax,
             "UniswapV2Router: EXCESSIVE_INPUT_AMOUNT"
         );
-        _safeTransferFrom(
-            path[0],
+        IERC20(path[0]).safeTransferFrom(
             msg.sender,
             _pairFor(
                 isSushi ? SUSHISWAP_FACTORY : UNISWAP_V2_FACTORY,
