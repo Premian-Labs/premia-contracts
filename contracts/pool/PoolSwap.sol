@@ -15,7 +15,7 @@ import {PoolBase} from "./PoolBase.sol";
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolSwap is PoolBase {
+abstract contract PoolSwap is PoolBase {
     using SafeERC20 for IERC20;
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
