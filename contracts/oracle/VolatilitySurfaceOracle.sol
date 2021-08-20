@@ -39,8 +39,8 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     event UpdateCoefficients(
         address indexed baseToken,
         address indexed underlyingToken,
-        bytes32 callCoefficients,
-        bytes32 putCoefficients
+        bytes32 callCoefficients, // Coefficients must be packed using formatVolatilitySurfaceCoefficients
+        bytes32 putCoefficients // Coefficients must be packed using formatVolatilitySurfaceCoefficients
     );
 
     /**
@@ -410,6 +410,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
 
     /**
      * @notice Pack volatility surface coefficients into a single bytes32
+     * @dev This function is used to pack the coefficients into a single variable, which is then used as input in `updateVolatilitySurfaces`
      * @param coefficients Coefficients of the volatility surface to pack
      * @return result The packed coefficients of the volatility surface
      */
