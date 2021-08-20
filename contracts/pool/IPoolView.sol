@@ -14,10 +14,6 @@ interface IPoolView {
 
     function getCLevel64x64(bool isCall) external view returns (int128);
 
-    function getEmaLogReturns64x64() external view returns (int128);
-
-    function getEmaVarianceAnnualized64x64() external view returns (int128);
-
     function getPrice(uint256 timestamp) external view returns (int128);
 
     function getParametersForTokenId(uint256 tokenId)

@@ -15,6 +15,7 @@ import {OptionMath} from "../libraries/OptionMath.sol";
 import {IPremiaFeeDiscount} from "../interface/IPremiaFeeDiscount.sol";
 import {IPoolEvents} from "./IPoolEvents.sol";
 import {IPremiaMining} from "../mining/IPremiaMining.sol";
+import {IVolatilitySurfaceOracle} from "../oracle/IVolatilitySurfaceOracle.sol";
 
 /**
  * @title Premia option pool
@@ -30,6 +31,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
     address internal immutable PREMIA_MINING_ADDRESS;
     address public immutable FEE_RECEIVER_ADDRESS;
     address internal immutable FEE_DISCOUNT_ADDRESS;
+    address internal immutable IVOL_ORACLE_ADDRESS;
 
     int128 internal immutable FEE_64x64;
 
@@ -47,12 +49,14 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
     int128 internal constant MIN_APY_64x64 = 0x4ccccccccccccccd; // 0.3
 
     constructor(
+        address ivolOracle,
         address weth,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
     ) {
+        IVOL_ORACLE_ADDRESS = ivolOracle;
         WETH_ADDRESS = weth;
         PREMIA_MINING_ADDRESS = premiaMining;
         FEE_RECEIVER_ADDRESS = feeReceiver;
@@ -117,20 +121,12 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
     /**
      * @notice calculate price of option contract
      * @param args structured quote arguments
-     * @return baseCost64x64 64x64 fixed point representation of option cost denominated in underlying currency (without fee)
-     * @return feeCost64x64 64x64 fixed point representation of option fee cost denominated in underlying currency for call, or base currency for put
-     * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
-     * @return slippageCoefficient64x64 64x64 fixed point representation of slippage coefficient for given order size
+     * @return result quote result
      */
     function _quote(PoolStorage.QuoteArgsInternal memory args)
         internal
         view
-        returns (
-            int128 baseCost64x64,
-            int128 feeCost64x64,
-            int128 cLevel64x64,
-            int128 slippageCoefficient64x64
-        )
+        returns (PoolStorage.QuoteResultInternal memory result)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -159,13 +155,13 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             require(oldLiquidity64x64 > 0, "no liq");
 
             if (pendingDeposits64x64 > 0) {
-                cLevel64x64 = l.calculateCLevel(
+                result.cLevel64x64 = l.calculateCLevel(
                     oldLiquidity64x64.sub(pendingDeposits64x64),
                     oldLiquidity64x64,
                     isCall
                 );
             } else {
-                cLevel64x64 = l.getCLevel(isCall);
+                result.cLevel64x64 = l.getCLevel(isCall);
             }
         }
 
@@ -176,19 +172,32 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         // assert(spot64x64 > 0);
         // assert(timeToMaturity64x64 > 0);
 
-        int128 price64x64;
+        int128 timeToMaturity64x64 = ABDKMath64x64.divu(
+            args.maturity - block.timestamp,
+            365 days
+        );
 
-        (price64x64, cLevel64x64, slippageCoefficient64x64) = OptionMath
-            .quotePrice(
+        int128 annualizedVolatility64x64 = IVolatilitySurfaceOracle(
+            IVOL_ORACLE_ADDRESS
+        ).getAnnualizedVolatility64x64(
+                l.base,
+                l.underlying,
+                args.strike64x64.div(args.spot64x64),
+                timeToMaturity64x64,
+                isCall
+            );
+
+        (
+            int128 price64x64,
+            int128 cLevel64x64,
+            int128 slippageCoefficient64x64
+        ) = OptionMath.quotePrice(
                 OptionMath.QuoteArgs(
-                    args.emaVarianceAnnualized64x64,
+                    annualizedVolatility64x64.mul(annualizedVolatility64x64),
                     args.strike64x64,
                     args.spot64x64,
-                    ABDKMath64x64.divu(
-                        args.maturity - block.timestamp,
-                        365 days
-                    ),
-                    cLevel64x64,
+                    timeToMaturity64x64,
+                    result.cLevel64x64,
                     oldLiquidity64x64,
                     oldLiquidity64x64.sub(contractSize64x64),
                     0x10000000000000000, // 64x64 fixed point representation of 1
@@ -197,16 +206,18 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
                 )
             );
 
-        baseCost64x64 = isCall
+        result.baseCost64x64 = isCall
             ? price64x64.mul(contractSize64x64).div(args.spot64x64)
             : price64x64.mul(contractSize64x64);
-        feeCost64x64 = baseCost64x64.mul(FEE_64x64);
+        result.feeCost64x64 = result.baseCost64x64.mul(FEE_64x64);
+        result.cLevel64x64 = cLevel64x64;
+        result.slippageCoefficient64x64 = slippageCoefficient64x64;
 
         int128 discount = ABDKMath64x64.divu(
             _getFeeDiscount(args.feePayer),
             INVERSE_BASIS_POINT
         );
-        feeCost64x64 -= feeCost64x64.mul(discount);
+        result.feeCost64x64 -= result.feeCost64x64.mul(discount);
     }
 
     /**
@@ -279,27 +290,25 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         int128 cLevel64x64;
 
         {
-            int128 baseCost64x64;
-            int128 feeCost64x64;
-
-            (baseCost64x64, feeCost64x64, cLevel64x64, ) = _quote(
+            PoolStorage.QuoteResultInternal memory quote = _quote(
                 PoolStorage.QuoteArgsInternal(
                     msg.sender,
                     maturity,
                     strike64x64,
                     newPrice64x64,
-                    l.emaVarianceAnnualized64x64,
                     contractSize,
                     isCall
                 )
             );
 
+            cLevel64x64 = quote.cLevel64x64;
+
             baseCost = ABDKMath64x64Token.toDecimals(
-                baseCost64x64,
+                quote.baseCost64x64,
                 l.getTokenDecimals(isCall)
             );
             feeCost = ABDKMath64x64Token.toDecimals(
-                feeCost64x64,
+                quote.feeCost64x64,
                 l.getTokenDecimals(isCall)
             );
         }
@@ -420,7 +429,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
 
         PoolStorage.Layout storage l = PoolStorage.layout();
 
-        (int128 spot64x64, ) = _update(l);
+        int128 spot64x64 = _update(l);
 
         if (maturity < block.timestamp) {
             spot64x64 = l.getPriceUpdateAfter(maturity);
@@ -849,100 +858,25 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
      * @notice calculate and store updated market state
      * @param l storage layout struct
      * @return newPrice64x64 64x64 fixed point representation of current spot price
-     * @return newEmaVarianceAnnualized64x64 64x64 fixed point representation of annualized EMA of variance
      */
     function _update(PoolStorage.Layout storage l)
         internal
-        returns (int128 newPrice64x64, int128 newEmaVarianceAnnualized64x64)
+        returns (int128 newPrice64x64)
     {
-        uint256 updatedAt = l.updatedAt;
-
-        if (updatedAt == block.timestamp) {
-            return (
-                l.getPriceUpdate(block.timestamp),
-                l.emaVarianceAnnualized64x64
-            );
+        if (l.updatedAt == block.timestamp) {
+            return (l.getPriceUpdate(block.timestamp));
         }
 
-        int128 logReturns64x64;
-        int128 oldEmaLogReturns64x64;
-        int128 newEmaLogReturns64x64;
-        int128 oldEmaVarianceAnnualized64x64;
-
-        (
-            newPrice64x64,
-            logReturns64x64,
-            oldEmaLogReturns64x64,
-            newEmaLogReturns64x64,
-            oldEmaVarianceAnnualized64x64,
-            newEmaVarianceAnnualized64x64
-        ) = _calculateUpdate(l);
+        newPrice64x64 = l.fetchPriceUpdate();
 
         if (l.getPriceUpdate(block.timestamp) == 0) {
             l.setPriceUpdate(block.timestamp, newPrice64x64);
         }
 
-        l.emaLogReturns64x64 = newEmaLogReturns64x64;
-        l.emaVarianceAnnualized64x64 = newEmaVarianceAnnualized64x64;
         l.updatedAt = block.timestamp;
 
         _processPendingDeposits(l, true);
         _processPendingDeposits(l, false);
-
-        emit UpdateVariance(
-            oldEmaLogReturns64x64,
-            oldEmaVarianceAnnualized64x64 / (365 * 24),
-            logReturns64x64,
-            updatedAt,
-            newEmaVarianceAnnualized64x64
-        );
-    }
-
-    /**
-     * @notice fetch price data from oracle and calculate variance
-     * @param l storage layout struct
-     * @return newPrice64x64 64x64 fixed point representation of current spot price
-     * @return logReturns64x64 64x64 fixed point representation of natural log of rate of return for current period
-     * @return oldEmaLogReturns64x64 64x64 fixed point representation of old EMA of natural log of rate of returns
-     * @return newEmaLogReturns64x64 64x64 fixed point representation of new EMA of natural log of rate of returns
-     * @return oldEmaVarianceAnnualized64x64 64x64 fixed point representation of old annualized EMA of variance
-     * @return newEmaVarianceAnnualized64x64 64x64 fixed point representation of new annualized EMA of variance
-     */
-    function _calculateUpdate(PoolStorage.Layout storage l)
-        internal
-        view
-        returns (
-            int128 newPrice64x64,
-            int128 logReturns64x64,
-            int128 oldEmaLogReturns64x64,
-            int128 newEmaLogReturns64x64,
-            int128 oldEmaVarianceAnnualized64x64,
-            int128 newEmaVarianceAnnualized64x64
-        )
-    {
-        uint256 updatedAt = l.updatedAt;
-
-        require(updatedAt != block.timestamp, "alrdy updated");
-
-        int128 oldPrice64x64 = l.getPriceUpdate(updatedAt);
-        newPrice64x64 = l.fetchPriceUpdate();
-
-        logReturns64x64 = newPrice64x64.div(oldPrice64x64).ln();
-        oldEmaLogReturns64x64 = l.emaLogReturns64x64;
-        oldEmaVarianceAnnualized64x64 = l.emaVarianceAnnualized64x64;
-
-        int128 newEmaVariance64x64;
-
-        (newEmaLogReturns64x64, newEmaVariance64x64) = OptionMath
-            .unevenRollingEmaVariance(
-                oldEmaLogReturns64x64,
-                oldEmaVarianceAnnualized64x64 / (365 * 24),
-                logReturns64x64,
-                updatedAt,
-                block.timestamp
-            );
-
-        newEmaVarianceAnnualized64x64 = newEmaVariance64x64 * (365 * 24);
     }
 
     /**

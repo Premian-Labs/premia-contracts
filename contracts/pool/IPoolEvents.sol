@@ -56,12 +56,4 @@ interface IPoolEvents {
         int128 oldLiquidity64x64,
         int128 newLiquidity64x64
     );
-
-    event UpdateVariance(
-        int128 oldEmaLogReturns64x64,
-        int128 oldEmaVariance64x64,
-        int128 logReturns64x64,
-        uint256 oldTimestamp,
-        int128 emaVarianceAnnualized64x64
-    );
 }

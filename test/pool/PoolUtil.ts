@@ -17,6 +17,9 @@ import {
   ProxyManager__factory,
   WETH9,
   WETH9__factory,
+  VolatilitySurfaceOracle,
+  ProxyUpgradeableOwnable__factory,
+  VolatilitySurfaceOracle__factory,
 } from '../../typechain';
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -49,6 +52,7 @@ interface PoolUtilArgs {
   baseOracle: MockContract;
   underlyingOracle: MockContract;
   premiaMining: PremiaMining;
+  ivolOracle: VolatilitySurfaceOracle;
 }
 
 const ONE_DAY = 3600 * 24;
@@ -119,6 +123,7 @@ export class PoolUtil {
   baseOracle: MockContract;
   underlyingOracle: MockContract;
   premiaMining: PremiaMining;
+  ivolOracle: VolatilitySurfaceOracle;
 
   constructor(props: PoolUtilArgs) {
     this.premiaDiamond = props.premiaDiamond;
@@ -130,6 +135,7 @@ export class PoolUtil {
     this.baseOracle = props.baseOracle;
     this.underlyingOracle = props.underlyingOracle;
     this.premiaMining = props.premiaMining;
+    this.ivolOracle = props.ivolOracle;
   }
 
   static async deploy(
@@ -163,9 +169,64 @@ export class PoolUtil {
     //
 
     const optionMath = await new OptionMath__factory(deployer).deploy();
-
     const premiaDiamond = await new Premia__factory(deployer).deploy();
     const poolDiamond = await new Premia__factory(deployer).deploy();
+
+    const ivolOracleImpl = await new VolatilitySurfaceOracle__factory(
+      deployer,
+    ).deploy();
+    const ivolOracleProxy = await new ProxyUpgradeableOwnable__factory(
+      deployer,
+    ).deploy(ivolOracleImpl.address);
+    const ivolOracle = VolatilitySurfaceOracle__factory.connect(
+      ivolOracleProxy.address,
+      deployer,
+    );
+    await ivolOracle.addWhitelistedRelayer([deployer.address]);
+
+    // Set coefficients for IVOL oracle
+
+    const callCoefficients = [
+      66.13224588553439, 0.5016335530303326, 0.00024794729107828023,
+      -0.00001252615948696122, 31.691783501616406, -0.3231359705060762,
+      0.01844886762687511, -0.36571273750619837, -0.003794721255223829,
+      0.0015410795834495232,
+    ];
+
+    const putCoefficients = [
+      452.13268592044506, -5.157765245468974, 0.03061344985675325,
+      -0.00005802183766289717, -693.0263287794035, 350.2806123602123,
+      -16.630912821250963, 6.883572119363676, -1.7641242522788132,
+      -0.021305491994832955,
+    ];
+
+    const decimals = await ivolOracle.getCoefficientsDecimals();
+
+    const callCoefficientsInt = callCoefficients.map((el, idx) =>
+      Math.floor(el * 10 ** decimals[idx].toNumber()).toString(),
+    );
+
+    const putCoefficientsInt = putCoefficients.map((el, idx) =>
+      Math.floor(el * 10 ** decimals[idx].toNumber()).toString(),
+    );
+
+    const callCoefficientsPacked =
+      await ivolOracle.formatVolatilitySurfaceCoefficients(
+        callCoefficientsInt as any,
+      );
+    const putCoefficientsPacked =
+      await ivolOracle.formatVolatilitySurfaceCoefficients(
+        putCoefficientsInt as any,
+      );
+
+    await ivolOracle.updateVolatilitySurfaces([
+      {
+        baseToken: base.address,
+        underlyingToken: underlying.address,
+        callCoefficients: callCoefficientsPacked,
+        putCoefficients: putCoefficientsPacked,
+      },
+    ]);
 
     //
 
@@ -200,6 +261,7 @@ export class PoolUtil {
       deployer,
     );
     const poolWriteImpl = await poolWriteFactory.deploy(
+      ivolOracle.address,
       weth.address,
       premiaMining.address,
       feeReceiver,
@@ -219,6 +281,7 @@ export class PoolUtil {
 
     const poolMockFactory = new PoolMock__factory(deployer);
     const poolMockImpl = await poolMockFactory.deploy(
+      ivolOracle.address,
       weth.address,
       premiaMining.address,
       feeReceiver,
@@ -241,6 +304,7 @@ export class PoolUtil {
       deployer,
     );
     const poolExerciseImpl = await poolExerciseFactory.deploy(
+      ivolOracle.address,
       weth.address,
       premiaMining.address,
       feeReceiver,
@@ -260,6 +324,7 @@ export class PoolUtil {
 
     const poolViewFactory = new PoolView__factory(deployer);
     const poolViewImpl = await poolViewFactory.deploy(
+      ivolOracle.address,
       weth.address,
       premiaMining.address,
       feeReceiver,
@@ -282,6 +347,7 @@ export class PoolUtil {
       deployer,
     );
     const poolIOImpl = await poolIOFactory.deploy(
+      ivolOracle.address,
       weth.address,
       premiaMining.address,
       feeReceiver,
@@ -332,7 +398,6 @@ export class PoolUtil {
       // deposit caps
       fixedFromFloat(1000000),
       fixedFromFloat(1000000),
-      fixedFromFloat(1.22 * 1.22),
       100,
     );
 
@@ -354,7 +419,6 @@ export class PoolUtil {
       // deposit caps
       fixedFromFloat(1000000),
       fixedFromFloat(1000000),
-      fixedFromFloat(1.1),
       100,
     );
 
@@ -379,6 +443,7 @@ export class PoolUtil {
       baseOracle,
       underlyingOracle,
       premiaMining: premiaMining,
+      ivolOracle,
     });
   }
 

@@ -38,6 +38,7 @@ describe('Pool', function () {
     instance = await new PoolMock__factory(owner).deploy(
       ethers.constants.AddressZero,
       ethers.constants.AddressZero,
+      ethers.constants.AddressZero,
       ONE_ADDRESS,
       ethers.constants.AddressZero,
       fixedFromFloat(0.01),

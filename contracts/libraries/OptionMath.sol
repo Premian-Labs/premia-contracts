@@ -8,7 +8,7 @@ library OptionMath {
     using ABDKMath64x64 for int128;
 
     struct QuoteArgs {
-        int128 emaVarianceAnnualized64x64; // 64x64 fixed point representation of annualized EMA of variance
+        int128 varianceAnnualized64x64; // 64x64 fixed point representation of annualized variance
         int128 strike64x64; // 64x64 fixed point representation of strike price
         int128 spot64x64; // 64x64 fixed point representation of spot price
         int128 timeToMaturity64x64; // 64x64 fixed point representation of duration of option contract (in years)
@@ -40,51 +40,6 @@ library OptionMath {
     int128 private constant CDF_CONST_0 = 0x09109f285df452394; // 2260 / 3989
     int128 private constant CDF_CONST_1 = 0x19abac0ea1da65036; // 6400 / 3989
     int128 private constant CDF_CONST_2 = 0x0d3c84b78b749bd6b; // 3300 / 3989
-
-    /**
-     * @notice calculate the rolling EMA variance of an uneven time series
-     * @param oldEmaLogReturns64x64 64x64 fixed point representation of previous EMA
-     * @param oldEmaVariance64x64 64x64 fixed point representation of previous variance
-     * @param logReturns64x64 64x64 fixed point representation of natural log of rate of return for current period
-     * @param oldTimestamp timestamp of previous update
-     * @param newTimestamp current timestamp
-     * @return emaLogReturns64x64 64x64 fixed point representation of EMA of natural log of rate of returns
-     * @return emaVariance64x64 64x64 fixed point representation of EMA of variance
-     */
-    function unevenRollingEmaVariance(
-        int128 oldEmaLogReturns64x64,
-        int128 oldEmaVariance64x64,
-        int128 logReturns64x64,
-        uint256 oldTimestamp,
-        uint256 newTimestamp
-    )
-        external
-        pure
-        returns (int128 emaLogReturns64x64, int128 emaVariance64x64)
-    {
-        int128 delta64x64 = ABDKMath64x64.divu(
-            newTimestamp - oldTimestamp,
-            1 hours
-        );
-        int128 omega64x64 = _decay(oldTimestamp, newTimestamp);
-        emaLogReturns64x64 = _unevenRollingEma(
-            oldEmaLogReturns64x64,
-            logReturns64x64,
-            oldTimestamp,
-            newTimestamp
-        );
-
-        // v = (1 - decay) * var_prev + (decay * (current - m_prev) * (current - m)) / delta_t
-        emaVariance64x64 = ONE_64x64
-            .sub(omega64x64)
-            .mul(oldEmaVariance64x64)
-            .add(
-                omega64x64
-                    .mul(logReturns64x64.sub(oldEmaLogReturns64x64))
-                    .mul(logReturns64x64.sub(emaLogReturns64x64))
-                    .div(delta64x64)
-            );
-    }
 
     /**
      * @notice recalculate C-Level based on change in liquidity
@@ -137,7 +92,7 @@ library OptionMath {
         int128 tradingDelta64x64 = deltaPoolState64x64.neg().exp();
 
         int128 blackScholesPrice64x64 = _blackScholesPrice(
-            args.emaVarianceAnnualized64x64,
+            args.varianceAnnualized64x64,
             args.strike64x64,
             args.spot64x64,
             args.timeToMaturity64x64,
@@ -235,28 +190,6 @@ library OptionMath {
     }
 
     /**
-     * @notice calculate the rolling EMA of an uneven time series
-     * @param oldEmaLogReturns64x64 64x64 fixed point representation of previous EMA
-     * @param logReturns64x64 64x64 fixed point representation of natural log of rate of return for current period
-     * @param oldTimestamp timestamp of previous update
-     * @param newTimestamp current timestamp
-     * @return 64x64 fixed point representation of EMA
-     */
-    function _unevenRollingEma(
-        int128 oldEmaLogReturns64x64,
-        int128 logReturns64x64,
-        uint256 oldTimestamp,
-        uint256 newTimestamp
-    ) internal pure returns (int128) {
-        int128 decay64x64 = _decay(oldTimestamp, newTimestamp);
-
-        return
-            logReturns64x64.mul(decay64x64).add(
-                ONE_64x64.sub(decay64x64).mul(oldEmaLogReturns64x64)
-            );
-    }
-
-    /**
      * @notice calculate Choudhury’s approximation of the Black-Scholes CDF
      * @param input64x64 64x64 fixed point representation of random variable
      * @return 64x64 fixed point representation of the approximated CDF of x
@@ -276,7 +209,7 @@ library OptionMath {
 
     /**
      * @notice calculate the price of an option using the Black-Scholes model
-     * @param emaVarianceAnnualized64x64 64x64 fixed point representation of annualized EMA of variance
+     * @param varianceAnnualized64x64 64x64 fixed point representation of annualized variance
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param spot64x64 64x64 fixed point representation of spot price
      * @param timeToMaturity64x64 64x64 fixed point representation of duration of option contract (in years)
@@ -284,14 +217,14 @@ library OptionMath {
      * @return 64x64 fixed point representation of Black-Scholes option price
      */
     function _blackScholesPrice(
-        int128 emaVarianceAnnualized64x64,
+        int128 varianceAnnualized64x64,
         int128 strike64x64,
         int128 spot64x64,
         int128 timeToMaturity64x64,
         bool isCall
     ) internal pure returns (int128) {
         int128 cumulativeVariance64x64 = timeToMaturity64x64.mul(
-            emaVarianceAnnualized64x64
+            varianceAnnualized64x64
         );
         int128 cumulativeVarianceSqrt64x64 = cumulativeVariance64x64.sqrt();
 

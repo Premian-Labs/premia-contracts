@@ -5,27 +5,6 @@ pragma solidity ^0.8.0;
 import {OptionMath} from "../libraries/OptionMath.sol";
 
 contract OptionMathMock {
-    function unevenRollingEmaVariance(
-        int128 oldEmaLogReturns64x64,
-        int128 oldEmaVariance64x64,
-        int128 logReturns64x64,
-        uint256 oldTimestamp,
-        uint256 newTimestamp
-    )
-        external
-        pure
-        returns (int128 emaLogReturns64x64, int128 emaVariance64x64)
-    {
-        return
-            OptionMath.unevenRollingEmaVariance(
-                oldEmaLogReturns64x64,
-                oldEmaVariance64x64,
-                logReturns64x64,
-                oldTimestamp,
-                newTimestamp
-            );
-    }
-
     function calculateCLevel(
         int128 initialCLevel64x64,
         int128 oldPoolState64x64,
@@ -59,21 +38,6 @@ contract OptionMathMock {
         returns (int128)
     {
         return OptionMath._decay(oldTimestamp, newTimestamp);
-    }
-
-    function unevenRollingEma(
-        int128 oldEma64x64,
-        int128 logReturns64x64,
-        uint256 oldTimestamp,
-        uint256 newTimestamp
-    ) external pure returns (int128) {
-        return
-            OptionMath._unevenRollingEma(
-                oldEma64x64,
-                logReturns64x64,
-                oldTimestamp,
-                newTimestamp
-            );
     }
 
     function N(int128 x) external pure returns (int128) {

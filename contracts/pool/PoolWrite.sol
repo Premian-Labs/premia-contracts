@@ -20,12 +20,22 @@ contract PoolWrite is IPoolWrite, PoolBase {
     using PoolStorage for PoolStorage.Layout;
 
     constructor(
+        address ivolOracle,
         address weth,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
-    ) PoolBase(weth, premiaMining, feeReceiver, feeDiscountAddress, fee64x64) {}
+    )
+        PoolBase(
+            ivolOracle,
+            weth,
+            premiaMining,
+            feeReceiver,
+            feeDiscountAddress,
+            fee64x64
+        )
+    {}
 
     /**
      * @notice calculate price of option contract
@@ -57,33 +67,30 @@ contract PoolWrite is IPoolWrite, PoolBase {
         )
     {
         int128 spot64x64;
-        int128 emaVarianceAnnualized64x64;
 
         PoolStorage.Layout storage l = PoolStorage.layout();
         if (l.updatedAt != block.timestamp) {
-            (spot64x64, , , , , emaVarianceAnnualized64x64) = _calculateUpdate(
-                PoolStorage.layout()
-            );
+            spot64x64 = l.fetchPriceUpdate();
         } else {
             spot64x64 = l.getPriceUpdate(block.timestamp);
-            emaVarianceAnnualized64x64 = l.emaVarianceAnnualized64x64;
         }
 
-        (
-            baseCost64x64,
-            feeCost64x64,
-            cLevel64x64,
-            slippageCoefficient64x64
-        ) = _quote(
+        PoolStorage.QuoteResultInternal memory quoteResult = _quote(
             PoolStorage.QuoteArgsInternal(
                 feePayer,
                 maturity,
                 strike64x64,
                 spot64x64,
-                emaVarianceAnnualized64x64,
                 contractSize,
                 isCall
             )
+        );
+
+        return (
+            quoteResult.baseCost64x64,
+            quoteResult.feeCost64x64,
+            quoteResult.cLevel64x64,
+            quoteResult.slippageCoefficient64x64
         );
     }
 
@@ -112,7 +119,7 @@ contract PoolWrite is IPoolWrite, PoolBase {
         require(maturity < block.timestamp + (29 days), "exp > 28 days");
         require(maturity % (1 days) == 0, "exp not end UTC day");
 
-        (int128 newPrice64x64, ) = _update(l);
+        int128 newPrice64x64 = _update(l);
 
         require(strike64x64 <= (newPrice64x64 * 3) / 2, "strike > 1.5x spot");
         require(strike64x64 >= (newPrice64x64 * 3) / 4, "strike < 0.75x spot");
@@ -200,11 +207,7 @@ contract PoolWrite is IPoolWrite, PoolBase {
     /**
      * @notice Update pool data
      */
-    function update()
-        external
-        override
-        returns (int128 newEmaVarianceAnnualized64x64)
-    {
-        (, newEmaVarianceAnnualized64x64) = _update(PoolStorage.layout());
+    function update() external override {
+        _update(PoolStorage.layout());
     }
 }
