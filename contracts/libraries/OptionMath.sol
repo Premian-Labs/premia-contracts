@@ -136,7 +136,7 @@ library OptionMath {
             .mul(args.steepness64x64);
         int128 tradingDelta64x64 = deltaPoolState64x64.neg().exp();
 
-        int128 bsPrice64x64 = _bsPrice(
+        int128 blackScholesPrice64x64 = _blackScholesPrice(
             args.emaVarianceAnnualized64x64,
             args.strike64x64,
             args.spot64x64,
@@ -149,7 +149,7 @@ library OptionMath {
             deltaPoolState64x64
         );
 
-        premiaPrice64x64 = bsPrice64x64.mul(cLevel64x64).mul(
+        premiaPrice64x64 = blackScholesPrice64x64.mul(cLevel64x64).mul(
             slippageCoefficient64x64
         );
 
@@ -283,7 +283,7 @@ library OptionMath {
      * @param isCall whether to price "call" or "put" option
      * @return 64x64 fixed point representation of Black-Scholes option price
      */
-    function _bsPrice(
+    function _blackScholesPrice(
         int128 emaVarianceAnnualized64x64,
         int128 strike64x64,
         int128 spot64x64,

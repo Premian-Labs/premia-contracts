@@ -6,6 +6,7 @@ typechain
 todoList.txt
 .env
 .env.local
+.DS_Store
 
 coverage/
 coverage.json

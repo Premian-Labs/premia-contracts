@@ -168,7 +168,7 @@ describe('OptionMath', function () {
     });
   });
 
-  describe('#bsPrice', function () {
+  describe('#blackScholesPrice', function () {
     it('calculates European CALL option price', async function () {
       const variance = fixedFromFloat(0.16);
       const price = input_t[1];
@@ -176,7 +176,7 @@ describe('OptionMath', function () {
       const maturity = fixedFromFloat(28 / 365);
       const expected = bnToNumber(fixedFromFloat(4013.677084809402));
       const result = bnToNumber(
-        await instance.callStatic.bsPrice(
+        await instance.callStatic.blackScholesPrice(
           variance,
           strike,
           price,
@@ -195,7 +195,7 @@ describe('OptionMath', function () {
       const maturity = fixedFromFloat(28 / 365);
       const expected = bnToNumber(fixedFromFloat(4123.964016283215));
       const result = bnToNumber(
-        await instance.callStatic.bsPrice(
+        await instance.callStatic.blackScholesPrice(
           variance,
           strike,
           price,
@@ -213,7 +213,7 @@ describe('OptionMath', function () {
       const maturity = fixedFromFloat(10 / 365);
       const expected = bnToNumber(fixedFromFloat(30.69));
       const result = bnToNumber(
-        await instance.callStatic.bsPrice(
+        await instance.callStatic.blackScholesPrice(
           variance,
           strike,
           price,
