@@ -5,15 +5,18 @@ pragma solidity ^0.8.0;
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 import {PoolStorage} from "./PoolStorage.sol";
 
+import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
+import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
-import {PoolBase} from "./PoolBase.sol";
+import {PoolSwap} from "./PoolSwap.sol";
 import {IPoolWrite} from "./IPoolWrite.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolWrite is IPoolWrite, PoolBase {
+contract PoolWrite is IPoolWrite, PoolSwap {
+    using SafeERC20 for IERC20;
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -25,15 +28,19 @@ contract PoolWrite is IPoolWrite, PoolBase {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64
+        int128 fee64x64,
+        address uniswapV2Factory,
+        address sushiswapFactory
     )
-        PoolBase(
+        PoolSwap(
             ivolOracle,
             weth,
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            fee64x64
+            fee64x64,
+            uniswapV2Factory,
+            sushiswapFactory
         )
     {}
 
@@ -95,7 +102,7 @@ contract PoolWrite is IPoolWrite, PoolBase {
     }
 
     /**
-     * @notice purchase call option
+     * @notice purchase option
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param contractSize size of option contract
@@ -110,9 +117,7 @@ contract PoolWrite is IPoolWrite, PoolBase {
         uint256 contractSize,
         bool isCall,
         uint256 maxCost
-    ) external payable override returns (uint256 baseCost, uint256 feeCost) {
-        // TODO: specify payment currency
-
+    ) public payable override returns (uint256 baseCost, uint256 feeCost) {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         require(maturity >= block.timestamp + (1 days), "exp < 1 day");
@@ -139,7 +144,38 @@ contract PoolWrite is IPoolWrite, PoolBase {
     }
 
     /**
-     * @notice write call option without using liquidity from the pool on behalf of another address
+     * @notice swap tokens and purchase option
+     * @param maturity timestamp of option maturity
+     * @param strike64x64 64x64 fixed point representation of strike price
+     * @param contractSize size of option contract
+     * @param isCall true for call, false for put
+     * @param maxCost maximum acceptable cost after accounting for slippage
+     * @param amountOut amount out of tokens requested
+     * @param amountInMax amount in max of tokens
+     * @param path swap path
+     * @param isSushi whether we use sushi or uniV2 for the swap
+     * @return baseCost quantity of tokens required to purchase long position
+     * @return feeCost quantity of tokens required to pay fees
+     */
+    function swapAndPurchase(
+        uint64 maturity,
+        int128 strike64x64,
+        uint256 contractSize,
+        bool isCall,
+        uint256 maxCost,
+        // Swap args
+        uint256 amountOut,
+        uint256 amountInMax,
+        address[] calldata path,
+        bool isSushi
+    ) public payable override returns (uint256 baseCost, uint256 feeCost) {
+        _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
+
+        return purchase(maturity, strike64x64, contractSize, isCall, maxCost);
+    }
+
+    /**
+     * @notice write option without using liquidity from the pool on behalf of another address
      * @param underwriter underwriter of the option from who collateral will be deposited
      * @param longReceiver address who will receive the long token (Can be the underwriter)
      * @param maturity timestamp of option maturity
