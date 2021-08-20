@@ -15,12 +15,22 @@ contract PoolMock is PoolBase {
     using PoolStorage for PoolStorage.Layout;
 
     constructor(
+        address ivolOracle,
         address weth,
         address premiaMining,
         address feeReceiver,
         address feeDiscount,
         int128 fee64x64
-    ) PoolBase(weth, premiaMining, feeReceiver, feeDiscount, fee64x64) {}
+    )
+        PoolBase(
+            ivolOracle,
+            weth,
+            premiaMining,
+            feeReceiver,
+            feeDiscount,
+            fee64x64
+        )
+    {}
 
     function formatTokenId(
         PoolStorage.TokenType tokenType,

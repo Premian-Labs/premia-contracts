@@ -17,12 +17,22 @@ contract PoolView is IPoolView, PoolBase {
     using PoolStorage for PoolStorage.Layout;
 
     constructor(
+        address ivolOracle,
         address weth,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 fee64x64
-    ) PoolBase(weth, premiaMining, feeReceiver, feeDiscountAddress, fee64x64) {}
+    )
+        PoolBase(
+            ivolOracle,
+            weth,
+            premiaMining,
+            feeReceiver,
+            feeDiscountAddress,
+            fee64x64
+        )
+    {}
 
     /**
      * @notice get pool settings
@@ -71,27 +81,6 @@ contract PoolView is IPoolView, PoolBase {
         returns (int128)
     {
         return PoolStorage.layout().getCLevel(isCall);
-    }
-
-    /**
-     * @notice get ema log returns
-     * @return 64x64 fixed point representation of natural log of rate of return for current period
-     */
-    function getEmaLogReturns64x64() external view override returns (int128) {
-        return PoolStorage.layout().emaLogReturns64x64;
-    }
-
-    /**
-     * @notice get ema variance annualized
-     * @return 64x64 fixed point representation of ema variance annualized
-     */
-    function getEmaVarianceAnnualized64x64()
-        external
-        view
-        override
-        returns (int128)
-    {
-        return PoolStorage.layout().emaVarianceAnnualized64x64;
     }
 
     /**

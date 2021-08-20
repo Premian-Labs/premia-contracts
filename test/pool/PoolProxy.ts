@@ -845,7 +845,7 @@ describe('PoolProxy', function () {
           true,
         );
 
-        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(117.56);
+        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(69.15);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
@@ -854,7 +854,7 @@ describe('PoolProxy', function () {
           (fixedToNumber(q.baseCost64x64) * spotPrice) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(30.67);
+        ).to.almost(18.04);
       });
 
       it('should return min price based on min apy, if option is priced under', async () => {
@@ -890,7 +890,7 @@ describe('PoolProxy', function () {
         );
         await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
 
-        const maturity = await p.getMaturity(10);
+        const maturity = await p.getMaturity(5);
         const strike64x64 = fixedFromFloat(getStrike(!isCall));
         const purchaseAmountNb = 10;
         const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -934,7 +934,7 @@ describe('PoolProxy', function () {
           false,
         );
 
-        expect(fixedToNumber(q.baseCost64x64)).to.almost(189.66);
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(80.098);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
@@ -943,7 +943,7 @@ describe('PoolProxy', function () {
           fixedToNumber(q.baseCost64x64) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(57.5);
+        ).to.almost(24.287);
       });
 
       it('should return min price based on min apy, if option is priced under', async () => {
@@ -977,7 +977,7 @@ describe('PoolProxy', function () {
         );
         await poolMock.setCLevel(isCall, fixedFromFloat('0.1'));
 
-        const maturity = await p.getMaturity(10);
+        const maturity = await p.getMaturity(5);
         const strike64x64 = fixedFromFloat(getStrike(!isCall));
         const purchaseAmountNb = 10;
         const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());

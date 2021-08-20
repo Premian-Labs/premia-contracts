@@ -33,7 +33,6 @@ contract PoolProxy is Proxy {
         int128 underlyingMinimum64x64,
         int128 basePoolCap64x64,
         int128 underlyingPoolCap64x64,
-        int128 emaVarianceAnnualized64x64,
         int128 initialCLevel64x64
     ) {
         DIAMOND = diamond;
@@ -79,9 +78,9 @@ contract PoolProxy is Proxy {
             int128 newPrice64x64 = l.fetchPriceUpdate();
             l.setPriceUpdate(block.timestamp, newPrice64x64);
 
-            l.emaVarianceAnnualized64x64 = emaVarianceAnnualized64x64;
-
             l.updatedAt = block.timestamp;
+            l.cLevelBaseUpdatedAt = block.timestamp;
+            l.cLevelUnderlyingUpdatedAt = block.timestamp;
         }
 
         {

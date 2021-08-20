@@ -81,7 +81,6 @@ contract ProxyManager is IProxyManager, OwnableInternal {
         int128 underlyingMinimum64x64,
         int128 basePoolCap64x64,
         int128 underlyingPoolCap64x64,
-        int128 emaVarianceAnnualized64x64,
         uint256 miningAllocPoints
     ) external onlyOwner returns (address) {
         ProxyManagerStorage.Layout storage l = ProxyManagerStorage.layout();
@@ -102,7 +101,6 @@ contract ProxyManager is IProxyManager, OwnableInternal {
                 underlyingMinimum64x64,
                 basePoolCap64x64,
                 underlyingPoolCap64x64,
-                emaVarianceAnnualized64x64,
                 INITIAL_C_LEVEL_64x64
             )
         );
