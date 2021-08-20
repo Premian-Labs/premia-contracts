@@ -290,7 +290,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         );
 
         return
-            OptionMath._bsPrice(
+            OptionMath._blackScholesPrice(
                 annualizedVariance,
                 strike64x64,
                 spot64x64,
