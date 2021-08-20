@@ -845,7 +845,7 @@ describe('PoolProxy', function () {
           true,
         );
 
-        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(69.15);
+        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(70.94);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
@@ -854,7 +854,7 @@ describe('PoolProxy', function () {
           (fixedToNumber(q.baseCost64x64) * spotPrice) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(18.04);
+        ).to.almost(18.509);
       });
 
       it('should return min price based on min apy, if option is priced under', async () => {
@@ -934,7 +934,7 @@ describe('PoolProxy', function () {
           false,
         );
 
-        expect(fixedToNumber(q.baseCost64x64)).to.almost(80.098);
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(129.58);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
@@ -943,7 +943,7 @@ describe('PoolProxy', function () {
           fixedToNumber(q.baseCost64x64) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(24.287);
+        ).to.almost(39.29);
       });
 
       it('should return min price based on min apy, if option is priced under', async () => {
