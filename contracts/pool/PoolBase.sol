@@ -255,6 +255,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
     /**
      * @notice purchase call option
      * @param l storage layout struct
+     * @param account recipient of purchased option
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param isCall true for call, false for put
@@ -265,6 +266,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
      */
     function _purchase(
         PoolStorage.Layout storage l,
+        address account,
         uint64 maturity,
         int128 strike64x64,
         bool isCall,
@@ -294,7 +296,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         {
             PoolStorage.QuoteResultInternal memory quote = _quote(
                 PoolStorage.QuoteArgsInternal(
-                    msg.sender,
+                    account,
                     maturity,
                     strike64x64,
                     newPrice64x64,
@@ -327,7 +329,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         );
 
         // mint long option token for buyer
-        _mint(msg.sender, longTokenId, contractSize);
+        _mint(account, longTokenId, contractSize);
 
         int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
         // burn free liquidity tokens from other underwriters
@@ -344,7 +346,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         );
 
         emit Purchase(
-            msg.sender,
+            account,
             longTokenId,
             contractSize,
             baseCost,
@@ -384,6 +386,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
     {
         (baseCost, feeCost) = _purchase(
             l,
+            account,
             maturity,
             strike64x64,
             isCall,
