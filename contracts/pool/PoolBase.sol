@@ -222,12 +222,14 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
 
     /**
      * @notice burn corresponding long and short option tokens
+     * @param account holder of tokens to annihilate
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param isCall true for call, false for put
      * @param contractSize quantity of option contract tokens to annihilate
      */
     function _annihilate(
+        address account,
         uint64 maturity,
         int128 strike64x64,
         bool isCall,
@@ -244,8 +246,8 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             strike64x64
         );
 
-        _burn(msg.sender, longTokenId, contractSize);
-        _burn(msg.sender, shortTokenId, contractSize);
+        _burn(account, longTokenId, contractSize);
+        _burn(account, shortTokenId, contractSize);
 
         emit Annihilate(shortTokenId, contractSize);
     }
@@ -253,6 +255,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
     /**
      * @notice purchase call option
      * @param l storage layout struct
+     * @param account recipient of purchased option
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param isCall true for call, false for put
@@ -263,6 +266,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
      */
     function _purchase(
         PoolStorage.Layout storage l,
+        address account,
         uint64 maturity,
         int128 strike64x64,
         bool isCall,
@@ -292,7 +296,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         {
             PoolStorage.QuoteResultInternal memory quote = _quote(
                 PoolStorage.QuoteArgsInternal(
-                    msg.sender,
+                    account,
                     maturity,
                     strike64x64,
                     newPrice64x64,
@@ -325,11 +329,18 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         );
 
         // mint long option token for buyer
-        _mint(msg.sender, longTokenId, contractSize);
+        _mint(account, longTokenId, contractSize);
 
         int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
         // burn free liquidity tokens from other underwriters
-        _mintShortTokenLoop(l, contractSize, baseCost, shortTokenId, isCall);
+        _mintShortTokenLoop(
+            l,
+            account,
+            contractSize,
+            baseCost,
+            shortTokenId,
+            isCall
+        );
         int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
 
         _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
@@ -342,7 +353,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
         );
 
         emit Purchase(
-            msg.sender,
+            account,
             longTokenId,
             contractSize,
             baseCost,
@@ -354,6 +365,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
     /**
      * @notice reassign short position to new underwriter
      * @param l storage layout struct
+     * @param account holder of positions to be reassigned
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param isCall true for call, false for put
@@ -365,6 +377,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
      */
     function _reassign(
         PoolStorage.Layout storage l,
+        address account,
         uint64 maturity,
         int128 strike64x64,
         bool isCall,
@@ -380,13 +393,15 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
     {
         (baseCost, feeCost) = _purchase(
             l,
+            account,
             maturity,
             strike64x64,
             isCall,
             contractSize,
             newPrice64x64
         );
-        _annihilate(maturity, strike64x64, isCall, contractSize);
+
+        _annihilate(account, maturity, strike64x64, isCall, contractSize);
 
         uint256 annihilateAmount = isCall
             ? contractSize
@@ -513,12 +528,12 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
 
     function _mintShortTokenLoop(
         PoolStorage.Layout storage l,
+        address buyer,
         uint256 contractSize,
         uint256 premium,
         uint256 shortTokenId,
         bool isCall
     ) internal {
-        address underwriter;
         uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCall);
         (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
@@ -526,12 +541,8 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             ? contractSize
             : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
 
-        mapping(address => address) storage queue = l.liquidityQueueAscending[
-            isCall
-        ];
-
         while (toPay > 0) {
-            underwriter = queue[address(0)];
+            address underwriter = l.liquidityQueueAscending[isCall][address(0)];
             uint256 balance = balanceOf(underwriter, freeLiqTokenId);
 
             // If dust left, we remove underwriter and skip to next
@@ -539,9 +550,6 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
                 l.removeUnderwriter(underwriter, isCall);
                 continue;
             }
-
-            // ToDo : Do we keep this ?
-            // if (underwriter == msg.sender) continue;
 
             if (!l.getReinvestmentStatus(underwriter, isCall)) {
                 _burn(underwriter, freeLiqTokenId, balance);
@@ -593,7 +601,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
 
             emit Underwrite(
                 underwriter,
-                msg.sender,
+                buyer,
                 shortTokenId,
                 toPay == 0 ? contractSize : intervalContractSize,
                 intervalPremium,
