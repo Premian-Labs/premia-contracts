@@ -333,7 +333,14 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
 
         int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
         // burn free liquidity tokens from other underwriters
-        _mintShortTokenLoop(l, contractSize, baseCost, shortTokenId, isCall);
+        _mintShortTokenLoop(
+            l,
+            account,
+            contractSize,
+            baseCost,
+            shortTokenId,
+            isCall
+        );
         int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
 
         _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
@@ -521,12 +528,12 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
 
     function _mintShortTokenLoop(
         PoolStorage.Layout storage l,
+        address buyer,
         uint256 contractSize,
         uint256 premium,
         uint256 shortTokenId,
         bool isCall
     ) internal {
-        address underwriter;
         uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCall);
         (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
@@ -534,12 +541,8 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             ? contractSize
             : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
 
-        mapping(address => address) storage queue = l.liquidityQueueAscending[
-            isCall
-        ];
-
         while (toPay > 0) {
-            underwriter = queue[address(0)];
+            address underwriter = l.liquidityQueueAscending[isCall][address(0)];
             uint256 balance = balanceOf(underwriter, freeLiqTokenId);
 
             // If dust left, we remove underwriter and skip to next
@@ -601,7 +604,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
 
             emit Underwrite(
                 underwriter,
-                msg.sender,
+                buyer,
                 shortTokenId,
                 toPay == 0 ? contractSize : intervalContractSize,
                 intervalPremium,
