@@ -178,6 +178,7 @@ contract PoolIO is IPoolIO, PoolBase {
             tokenType == PoolStorage.TokenType.LONG_CALL;
         (baseCost, feeCost, amountOut) = _reassign(
             l,
+            msg.sender,
             maturity,
             strike64x64,
             isCall,
@@ -231,6 +232,7 @@ contract PoolIO is IPoolIO, PoolBase {
             uint256 contractSize = contractSizes[i];
             (baseCosts[i], feeCosts[i], amountOut) = _reassign(
                 l,
+                msg.sender,
                 maturity,
                 strike64x64,
                 isCall,

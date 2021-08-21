@@ -356,6 +356,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
     /**
      * @notice reassign short position to new underwriter
      * @param l storage layout struct
+     * @param account holder of positions to be reassigned
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param isCall true for call, false for put
@@ -367,6 +368,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
      */
     function _reassign(
         PoolStorage.Layout storage l,
+        address account,
         uint64 maturity,
         int128 strike64x64,
         bool isCall,
@@ -389,7 +391,7 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             newPrice64x64
         );
 
-        _annihilate(msg.sender, maturity, strike64x64, isCall, contractSize);
+        _annihilate(account, maturity, strike64x64, isCall, contractSize);
 
         uint256 annihilateAmount = isCall
             ? contractSize
