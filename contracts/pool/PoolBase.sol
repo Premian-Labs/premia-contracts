@@ -222,12 +222,14 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
 
     /**
      * @notice burn corresponding long and short option tokens
+     * @param account holder of tokens to annihilate
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param isCall true for call, false for put
      * @param contractSize quantity of option contract tokens to annihilate
      */
     function _annihilate(
+        address account,
         uint64 maturity,
         int128 strike64x64,
         bool isCall,
@@ -244,8 +246,8 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             strike64x64
         );
 
-        _burn(msg.sender, longTokenId, contractSize);
-        _burn(msg.sender, shortTokenId, contractSize);
+        _burn(account, longTokenId, contractSize);
+        _burn(account, shortTokenId, contractSize);
 
         emit Annihilate(shortTokenId, contractSize);
     }
@@ -386,7 +388,8 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
             contractSize,
             newPrice64x64
         );
-        _annihilate(maturity, strike64x64, isCall, contractSize);
+
+        _annihilate(msg.sender, maturity, strike64x64, isCall, contractSize);
 
         uint256 annihilateAmount = isCall
             ? contractSize
