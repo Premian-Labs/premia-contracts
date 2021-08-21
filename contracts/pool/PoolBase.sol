@@ -551,9 +551,6 @@ contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
                 continue;
             }
 
-            // ToDo : Do we keep this ?
-            // if (underwriter == msg.sender) continue;
-
             if (!l.getReinvestmentStatus(underwriter, isCall)) {
                 _burn(underwriter, freeLiqTokenId, balance);
                 _mint(
