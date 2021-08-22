@@ -3,18 +3,11 @@
 pragma solidity ^0.8.0;
 
 interface IPoolWrite {
-    // sellToken The `sellTokenAddress` field from the 0x API response.
-    // buyToken The `buyTokenAddress` field from the 0x API response.
-    // spender The `allowanceTarget` field from the 0x API response.
-    // swapTarget The `to` field from the 0x API response.
-    // maxSellAmount The maximum amount of tokens to sell : `guaranteedPrice` field from the 0x API response multiplied by `buyTokenAmount`
     struct SwapArgs {
-        address sellToken;
-        address buyToken;
-        address spender;
-        address swapTarget;
-        uint256 maxSellAmount;
-        bytes swapCallData;
+        uint256 amountOut; // mount out of tokens requested. If 0, we will swap exact amount necessary to pay the quote
+        uint256 amountInMax; // amount in max of tokens
+        address[] path; // swap path
+        bool isSushi; // whether we use sushi or uniV2 for the swap
     }
 
     function quote(
@@ -47,10 +40,7 @@ interface IPoolWrite {
         uint256 contractSize,
         bool isCall,
         uint256 maxCost,
-        uint256 amountOut,
-        uint256 amountInMax,
-        address[] calldata path,
-        bool isSushi
+        SwapArgs memory swapArgs
     ) external payable returns (uint256 baseCost, uint256 feeCost);
 
     function writeFrom(

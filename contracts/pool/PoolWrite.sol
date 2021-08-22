@@ -8,6 +8,7 @@ import {PoolStorage} from "./PoolStorage.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
+import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {PoolSwap} from "./PoolSwap.sol";
 import {IPoolWrite} from "./IPoolWrite.sol";
 
@@ -151,10 +152,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
      * @param contractSize size of option contract
      * @param isCall true for call, false for put
      * @param maxCost maximum acceptable cost after accounting for slippage
-     * @param amountOut amount out of tokens requested
-     * @param amountInMax amount in max of tokens
-     * @param path swap path
-     * @param isSushi whether we use sushi or uniV2 for the swap
+     * @param swapArgs swap arguments
      * @return baseCost quantity of tokens required to purchase long position
      * @return feeCost quantity of tokens required to pay fees
      */
@@ -164,13 +162,41 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         uint256 contractSize,
         bool isCall,
         uint256 maxCost,
-        // Swap args
-        uint256 amountOut,
-        uint256 amountInMax,
-        address[] calldata path,
-        bool isSushi
+        IPoolWrite.SwapArgs memory swapArgs
     ) public payable override returns (uint256 baseCost, uint256 feeCost) {
-        _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
+        if (swapArgs.amountOut == 0) {
+            PoolStorage.Layout storage l = PoolStorage.layout();
+
+            int128 newPrice64x64 = _update(l);
+
+            PoolStorage.QuoteResultInternal memory purchaseQuote = _quote(
+                PoolStorage.QuoteArgsInternal(
+                    msg.sender,
+                    maturity,
+                    strike64x64,
+                    newPrice64x64,
+                    contractSize,
+                    isCall
+                )
+            );
+
+            swapArgs.amountOut =
+                ABDKMath64x64Token.toDecimals(
+                    purchaseQuote.baseCost64x64,
+                    l.getTokenDecimals(isCall)
+                ) +
+                ABDKMath64x64Token.toDecimals(
+                    purchaseQuote.feeCost64x64,
+                    l.getTokenDecimals(isCall)
+                );
+        }
+
+        _swapTokensForExactTokens(
+            swapArgs.amountOut,
+            swapArgs.amountInMax,
+            swapArgs.path,
+            swapArgs.isSushi
+        );
 
         return purchase(maturity, strike64x64, contractSize, isCall, maxCost);
     }
