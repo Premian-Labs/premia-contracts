@@ -164,6 +164,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         uint256 maxCost,
         IPoolWrite.SwapArgs memory swapArgs
     ) public payable override returns (uint256 baseCost, uint256 feeCost) {
+        // If no amountOut has been passed, we swap the exact amount required to pay the quote
         if (swapArgs.amountOut == 0) {
             PoolStorage.Layout storage l = PoolStorage.layout();
 
