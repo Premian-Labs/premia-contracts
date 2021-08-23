@@ -17,6 +17,9 @@ import { diamondCut } from './diamond';
 import { BigNumber } from 'ethers';
 import { fixedFromFloat } from '@premia/utils';
 
+const UNISWAP_V2_FACTORY = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
+const SUSHISWAP_FACTORY = '0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac';
+
 export interface TokenAddresses {
   ETH: string;
   DAI: string;
@@ -104,8 +107,8 @@ export async function deployV2(
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
-    '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f',
-    '0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac',
+    UNISWAP_V2_FACTORY,
+    SUSHISWAP_FACTORY,
   );
   await poolWriteImpl.deployed();
 
@@ -181,6 +184,8 @@ export async function deployV2(
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
+    UNISWAP_V2_FACTORY,
+    SUSHISWAP_FACTORY,
   );
   await poolIOImpl.deployed();
 
