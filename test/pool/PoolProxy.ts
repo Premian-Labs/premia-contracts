@@ -1640,22 +1640,12 @@ describe('PoolProxy', function () {
               purchaseAmount,
               isCall,
               p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
-              {
-                amountOut: p.getMaxCost(
-                  quote.baseCost64x64,
-                  quote.feeCost64x64,
-                  isCall,
-                ),
-                amountInMax: parseEther('10000'),
-                path: isCall
-                  ? [p.base.address, uniswap.weth.address, p.underlying.address]
-                  : [
-                      p.underlying.address,
-                      uniswap.weth.address,
-                      p.base.address,
-                    ],
-                isSushi: false,
-              },
+              p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+              parseEther('10000'),
+              isCall
+                ? [p.base.address, uniswap.weth.address, p.underlying.address]
+                : [p.underlying.address, uniswap.weth.address, p.base.address],
+              false,
             );
 
           const newBalance = await p.getToken(isCall).balanceOf(buyer.address);
@@ -1794,18 +1784,12 @@ describe('PoolProxy', function () {
               purchaseAmount,
               isCall,
               p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
-              {
-                amountOut: '0',
-                amountInMax: parseEther('10000'),
-                path: isCall
-                  ? [p.base.address, uniswap.weth.address, p.underlying.address]
-                  : [
-                      p.underlying.address,
-                      uniswap.weth.address,
-                      p.base.address,
-                    ],
-                isSushi: false,
-              },
+              '0',
+              parseEther('10000'),
+              isCall
+                ? [p.base.address, uniswap.weth.address, p.underlying.address]
+                : [p.underlying.address, uniswap.weth.address, p.base.address],
+              false,
             );
 
           const newBalance = await p.getToken(isCall).balanceOf(buyer.address);

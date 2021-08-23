@@ -3,13 +3,6 @@
 pragma solidity ^0.8.0;
 
 interface IPoolWrite {
-    struct SwapArgs {
-        uint256 amountOut; // mount out of tokens requested. If 0, we will swap exact amount necessary to pay the quote
-        uint256 amountInMax; // amount in max of tokens
-        address[] path; // swap path
-        bool isSushi; // whether we use sushi or uniV2 for the swap
-    }
-
     function quote(
         address feePayer,
         uint64 maturity,
@@ -40,7 +33,10 @@ interface IPoolWrite {
         uint256 contractSize,
         bool isCall,
         uint256 maxCost,
-        SwapArgs memory swapArgs
+        uint256 amountOut,
+        uint256 amountInMax,
+        address[] calldata path,
+        bool isSushi
     ) external payable returns (uint256 baseCost, uint256 feeCost);
 
     function writeFrom(

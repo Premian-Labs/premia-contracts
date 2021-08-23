@@ -173,7 +173,7 @@ abstract contract PoolSwap is PoolBase {
     function _swapTokensForExactTokens(
         uint256 amountOut,
         uint256 amountInMax,
-        address[] memory path,
+        address[] calldata path,
         bool isSushi
     ) internal returns (uint256[] memory amounts) {
         amounts = _getAmountsIn(

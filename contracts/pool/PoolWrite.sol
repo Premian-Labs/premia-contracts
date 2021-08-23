@@ -152,7 +152,10 @@ contract PoolWrite is IPoolWrite, PoolSwap {
      * @param contractSize size of option contract
      * @param isCall true for call, false for put
      * @param maxCost maximum acceptable cost after accounting for slippage
-     * @param swapArgs swap arguments
+     * @param amountOut amount out of tokens requested. If 0, we will swap exact amount necessary to pay the quote
+     * @param amountInMax amount in max of tokens
+     * @param path swap path
+     * @param isSushi whether we use sushi or uniV2 for the swap
      * @return baseCost quantity of tokens required to purchase long position
      * @return feeCost quantity of tokens required to pay fees
      */
@@ -162,37 +165,36 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         uint256 contractSize,
         bool isCall,
         uint256 maxCost,
-        IPoolWrite.SwapArgs memory swapArgs
+        uint256 amountOut,
+        uint256 amountInMax,
+        address[] calldata path,
+        bool isSushi
     ) public payable override returns (uint256 baseCost, uint256 feeCost) {
         // If no amountOut has been passed, we swap the exact amount required to pay the quote
-        if (swapArgs.amountOut == 0) {
+        if (amountOut == 0) {
             PoolStorage.Layout storage l = PoolStorage.layout();
 
             int128 newPrice64x64 = _update(l);
 
+            PoolStorage.QuoteArgsInternal memory quoteArgs;
+            quoteArgs.feePayer = msg.sender;
+            quoteArgs.maturity = maturity;
+            quoteArgs.strike64x64 = strike64x64;
+            quoteArgs.spot64x64 = newPrice64x64;
+            quoteArgs.contractSize = contractSize;
+            quoteArgs.isCall = isCall;
+
             PoolStorage.QuoteResultInternal memory purchaseQuote = _quote(
-                PoolStorage.QuoteArgsInternal(
-                    msg.sender,
-                    maturity,
-                    strike64x64,
-                    newPrice64x64,
-                    contractSize,
-                    isCall
-                )
+                quoteArgs
             );
 
-            swapArgs.amountOut = ABDKMath64x64Token.toDecimals(
+            amountOut = ABDKMath64x64Token.toDecimals(
                 purchaseQuote.baseCost64x64.add(purchaseQuote.feeCost64x64),
                 l.getTokenDecimals(isCall)
             );
         }
 
-        _swapTokensForExactTokens(
-            swapArgs.amountOut,
-            swapArgs.amountInMax,
-            swapArgs.path,
-            swapArgs.isSushi
-        );
+        _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
 
         return purchase(maturity, strike64x64, contractSize, isCall, maxCost);
     }
