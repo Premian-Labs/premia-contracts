@@ -1704,6 +1704,141 @@ describe('PoolProxy', function () {
           );
           expect(await pool.balanceOf(buyer.address, tokenId.short)).to.eq(0);
         });
+
+        it('should successfully swaps tokens and purchase an option without dust left', async () => {
+          const pairBase = await createUniswapPair(
+            owner,
+            uniswap.factory,
+            p.base.address,
+            uniswap.weth.address,
+          );
+
+          const pairUnderlying = await createUniswapPair(
+            owner,
+            uniswap.factory,
+            p.underlying.address,
+            uniswap.weth.address,
+          );
+
+          await depositUniswapLiquidity(
+            lp2,
+            uniswap.weth.address,
+            pairBase,
+            (await pairBase.token0()) === uniswap.weth.address
+              ? parseUnits('100', 18)
+              : parseUnits('100000', DECIMALS_BASE),
+            (await pairBase.token1()) === uniswap.weth.address
+              ? parseUnits('100', 18)
+              : parseUnits('100000', DECIMALS_BASE),
+          );
+
+          await depositUniswapLiquidity(
+            lp2,
+            uniswap.weth.address,
+            pairUnderlying,
+            (await pairUnderlying.token0()) === uniswap.weth.address
+              ? parseUnits('100', 18)
+              : parseUnits('100', DECIMALS_UNDERLYING),
+            (await pairUnderlying.token1()) === uniswap.weth.address
+              ? parseUnits('100', 18)
+              : parseUnits('100', DECIMALS_UNDERLYING),
+          );
+
+          await p.depositLiquidity(
+            lp1,
+            parseOption(isCall ? '100' : '100000', isCall),
+            isCall,
+          );
+
+          const maturity = await p.getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(isCall));
+
+          const purchaseAmountNb = 10;
+          const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+          const quote = await pool.quote(
+            buyer.address,
+            maturity,
+            strike64x64,
+            purchaseAmount,
+            isCall,
+          );
+
+          const mintAmount = parseOption(!isCall ? '1' : '10000', !isCall);
+
+          await p.getToken(!isCall).mint(buyer.address, mintAmount);
+          await p
+            .getToken(isCall)
+            .connect(buyer)
+            .approve(pool.address, ethers.constants.MaxUint256);
+          await p
+            .getToken(!isCall)
+            .connect(buyer)
+            .approve(pool.address, ethers.constants.MaxUint256);
+
+          await pool
+            .connect(buyer)
+            .swapAndPurchase(
+              maturity,
+              strike64x64,
+              purchaseAmount,
+              isCall,
+              p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+              '0',
+              parseEther('10000'),
+              isCall
+                ? [p.base.address, uniswap.weth.address, p.underlying.address]
+                : [p.underlying.address, uniswap.weth.address, p.base.address],
+              false,
+            );
+
+          const newBalance = await p.getToken(isCall).balanceOf(buyer.address);
+
+          expect(bnToNumber(newBalance, getTokenDecimals(isCall))).to.almost(0);
+
+          const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
+
+          if (isCall) {
+            expect(
+              bnToNumber(
+                await pool.balanceOf(lp1.address, p.getFreeLiqTokenId(isCall)),
+                DECIMALS_UNDERLYING,
+              ),
+            ).to.almost(
+              100 - purchaseAmountNb + fixedToNumber(quote.baseCost64x64),
+            );
+          } else {
+            expect(
+              bnToNumber(
+                await pool.balanceOf(lp1.address, p.getFreeLiqTokenId(isCall)),
+                DECIMALS_BASE,
+              ),
+            ).to.almost(
+              100000 -
+                purchaseAmountNb * getStrike(isCall) +
+                fixedToNumber(quote.baseCost64x64),
+            );
+          }
+
+          expect(
+            bnToNumber(
+              await pool.balanceOf(
+                feeReceiver.address,
+                p.getReservedLiqTokenId(isCall),
+              ),
+            ),
+          ).to.almost(fixedToNumber(quote.feeCost64x64));
+
+          expect(await pool.balanceOf(lp1.address, tokenId.long)).to.eq(0);
+          expect(await pool.balanceOf(lp1.address, tokenId.short)).to.eq(
+            purchaseAmount,
+          );
+
+          expect(await pool.balanceOf(buyer.address, tokenId.long)).to.eq(
+            purchaseAmount,
+          );
+          expect(await pool.balanceOf(buyer.address, tokenId.short)).to.eq(0);
+        });
       });
     }
   });

@@ -3,20 +3,6 @@
 pragma solidity ^0.8.0;
 
 interface IPoolWrite {
-    // sellToken The `sellTokenAddress` field from the 0x API response.
-    // buyToken The `buyTokenAddress` field from the 0x API response.
-    // spender The `allowanceTarget` field from the 0x API response.
-    // swapTarget The `to` field from the 0x API response.
-    // maxSellAmount The maximum amount of tokens to sell : `guaranteedPrice` field from the 0x API response multiplied by `buyTokenAmount`
-    struct SwapArgs {
-        address sellToken;
-        address buyToken;
-        address spender;
-        address swapTarget;
-        uint256 maxSellAmount;
-        bytes swapCallData;
-    }
-
     function quote(
         address feePayer,
         uint64 maturity,
