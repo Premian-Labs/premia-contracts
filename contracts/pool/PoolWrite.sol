@@ -181,15 +181,10 @@ contract PoolWrite is IPoolWrite, PoolSwap {
                 )
             );
 
-            swapArgs.amountOut =
-                ABDKMath64x64Token.toDecimals(
-                    purchaseQuote.baseCost64x64,
-                    l.getTokenDecimals(isCall)
-                ) +
-                ABDKMath64x64Token.toDecimals(
-                    purchaseQuote.feeCost64x64,
-                    l.getTokenDecimals(isCall)
-                );
+            swapArgs.amountOut = ABDKMath64x64Token.toDecimals(
+                purchaseQuote.baseCost64x64.add(purchaseQuote.feeCost64x64),
+                l.getTokenDecimals(isCall)
+            );
         }
 
         _swapTokensForExactTokens(
