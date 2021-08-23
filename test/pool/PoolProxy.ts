@@ -1142,20 +1142,6 @@ describe('PoolProxy', function () {
           'pool deposit cap reached',
         );
       });
-
-      it('should revert if user TVL exceeds limit', async () => {
-        await p.underlying.mint(
-          owner.address,
-          parseUnderlying((1000000).toString()),
-        );
-        await p.underlying.approve(pool.address, ethers.constants.MaxUint256);
-
-        await pool.deposit(parseUnderlying((1000000 / 10).toString()), true);
-
-        await expect(pool.deposit(1, true)).to.be.revertedWith(
-          'individual deposit cap reached',
-        );
-      });
     });
 
     describe('put', () => {

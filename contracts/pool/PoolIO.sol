@@ -78,11 +78,6 @@ contract PoolIO is IPoolIO, PoolBase {
             "pool deposit cap reached"
         );
 
-        require(
-            l.userTVL[msg.sender][isCallPool] + amount <= cap / 10,
-            "individual deposit cap reached"
-        );
-
         _processPendingDeposits(l, isCallPool);
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;
