@@ -16,12 +16,13 @@ import {IPremiaFeeDiscount} from "../interface/IPremiaFeeDiscount.sol";
 import {IPoolEvents} from "./IPoolEvents.sol";
 import {IPremiaMining} from "../mining/IPremiaMining.sol";
 import {IVolatilitySurfaceOracle} from "../oracle/IVolatilitySurfaceOracle.sol";
+import {Multicall} from "./Multicall.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
+contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165, Multicall {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
