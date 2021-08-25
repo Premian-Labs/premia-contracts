@@ -56,7 +56,7 @@ library PoolStorage {
     bytes32 internal constant STORAGE_SLOT =
         keccak256("premia.contracts.storage.Pool");
 
-    uint256 private constant C_DECAY_BUFFER = 24 hours;
+    uint256 private constant C_DECAY_BUFFER = 12 hours;
     uint256 private constant C_DECAY_INTERVAL = 4 hours;
 
     struct Layout {
