@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import {ERC165} from "@solidstate/contracts/introspection/ERC165.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155Enumerable, EnumerableSet, ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/ERC1155Enumerable.sol";
+import {Multicall} from "@solidstate/contracts/utils/Multicall.sol";
 import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
 
 import {PoolStorage} from "./PoolStorage.sol";
@@ -21,7 +22,7 @@ import {IVolatilitySurfaceOracle} from "../oracle/IVolatilitySurfaceOracle.sol";
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165 {
+contract PoolBase is IPoolEvents, ERC1155Enumerable, ERC165, Multicall {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;

@@ -748,24 +748,24 @@
   dependencies:
     antlr4ts "^0.5.0-alpha.4"
 
-"@solidstate/contracts@^0.0.20":
-  version "0.0.20"
-  resolved "https://registry.yarnpkg.com/@solidstate/contracts/-/contracts-0.0.20.tgz#dbb49a3afa237af83fb2b6feb234a6caa6759b64"
-  integrity sha512-QgzznQLz403rWgdPqhr+/PLPg81tcBXkj0x2mwA7Nja9VgFpggo68aGQeRizzQ0+pb/+1J5GycwSEgBRGccL5Q==
+"@solidstate/contracts@^0.0.21":
+  version "0.0.21"
+  resolved "https://registry.yarnpkg.com/@solidstate/contracts/-/contracts-0.0.21.tgz#31c0dd12887be380c1505f0c9227d0df3d329373"
+  integrity sha512-do7lf0aqMFAkRiuIG5q9GeMx9EEr6IfZD7oMVqwjBnPSSSvIo1KZOCQbElb8Y6DBxqeBW4JHaT1dD8G2HoyYtQ==
 
-"@solidstate/library@^0.0.20":
-  version "0.0.20"
-  resolved "https://registry.yarnpkg.com/@solidstate/library/-/library-0.0.20.tgz#d941bd32dfee1f2cbd273ae6e8a6107e329d3fdd"
-  integrity sha512-sRwmDwKQXUHuHWWHLMTILnsVfXnrjW694jsUVC8VT6tZXvWZfa2+mqjaLpjmX7GZ7YVkdE5B33jUPN+2Fvn41A==
+"@solidstate/library@^0.0.21":
+  version "0.0.21"
+  resolved "https://registry.yarnpkg.com/@solidstate/library/-/library-0.0.21.tgz#6b0d39e79bc6debe01b1ba75ff0db6ed8035bb99"
+  integrity sha512-Rj0QcToKFktyfSxHEnv+dptpzFRUldBUa0syylitj7UDVHOPMoXthqGNSmBLeJLDzoTUnDmgPHrKwj1foSNldA==
   dependencies:
     eth-permit "^0.1.10"
 
-"@solidstate/spec@^0.0.20":
-  version "0.0.20"
-  resolved "https://registry.yarnpkg.com/@solidstate/spec/-/spec-0.0.20.tgz#9648fe58f876d459ca7f188921e2ca948a23d40d"
-  integrity sha512-kMLD7mTQ61ZLk2elhSxwjNjBikJyJceSRDjF/XhvwduEhvJ5n/yugw/3SOeGMHjHL1KxS0aoiJdrxzf4g3pjnQ==
+"@solidstate/spec@^0.0.21":
+  version "0.0.21"
+  resolved "https://registry.yarnpkg.com/@solidstate/spec/-/spec-0.0.21.tgz#0d6a2bea83b99295a1592acb3a2d73c1b0996eb8"
+  integrity sha512-VH8sESCBLE1c4RTJonJVxrVWwqmAXdx33iJZoac37rs67SuOBt1FbsPmsH+QBEeWLhHG1ocrSgSd/AdhtcOo5Q==
   dependencies:
-    "@solidstate/library" "^0.0.20"
+    "@solidstate/library" "^0.0.21"
 
 "@szmarczak/http-timer@^1.1.2":
   version "1.1.2"
