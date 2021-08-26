@@ -55,7 +55,7 @@ abstract contract PoolSwap is PoolBase {
 
     function balanceOfBatch(address[] calldata, uint256[] calldata)
         public
-        view
+        pure
         override
         returns (uint256[] memory)
     {
@@ -68,17 +68,17 @@ abstract contract PoolSwap is PoolBase {
         uint256[] calldata,
         uint256[] calldata,
         bytes calldata
-    ) public override {
+    ) public pure override {
         revert("unimplemented");
     }
 
-    function totalHolders(uint256) public view override returns (uint256) {
+    function totalHolders(uint256) public pure override returns (uint256) {
         revert("unimplemented");
     }
 
     function accountsByToken(uint256)
         public
-        view
+        pure
         override
         returns (address[] memory)
     {
@@ -87,7 +87,7 @@ abstract contract PoolSwap is PoolBase {
 
     function tokensByAccount(address)
         public
-        view
+        pure
         override
         returns (uint256[] memory)
     {
