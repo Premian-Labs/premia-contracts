@@ -7,6 +7,15 @@ interface IPoolIO {
 
     function deposit(uint256 amount, bool isCallPool) external payable;
 
+    function swapAndDeposit(
+        uint256 amount,
+        bool isCallPool,
+        uint256 amountOut,
+        uint256 amountInMax,
+        address[] calldata path,
+        bool isSushi
+    ) external payable;
+
     function withdraw(uint256 amount, bool isCallPool) external;
 
     function reassign(uint256 tokenId, uint256 contractSize)

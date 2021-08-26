@@ -360,6 +360,8 @@ export class PoolUtil {
       feeReceiver,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
+      uniswapV2Factory ?? ZERO_ADDRESS,
+      ZERO_ADDRESS,
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(

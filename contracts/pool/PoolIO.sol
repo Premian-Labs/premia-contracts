@@ -3,18 +3,18 @@
 pragma solidity ^0.8.0;
 
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
-import {PoolStorage} from "./PoolStorage.sol";
-
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
+
 import {IPoolIO} from "./IPoolIO.sol";
-import {PoolBase} from "./PoolBase.sol";
+import {PoolSwap} from "./PoolSwap.sol";
+import {PoolStorage} from "./PoolStorage.sol";
 import {IPremiaMining} from "../mining/IPremiaMining.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolIO is IPoolIO, PoolBase {
+contract PoolIO is IPoolIO, PoolSwap {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -26,17 +26,71 @@ contract PoolIO is IPoolIO, PoolBase {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64
+        int128 fee64x64,
+        address uniswapV2Factory,
+        address sushiswapFactory
     )
-        PoolBase(
+        PoolSwap(
             ivolOracle,
             weth,
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            fee64x64
+            fee64x64,
+            uniswapV2Factory,
+            sushiswapFactory
         )
     {}
+
+    // TODO: implement more flexible solution in SolidState
+    // functions bypassed in diamond facet to prevent excessive contract size
+    // cannot bypass the following:
+    // * balanceOf
+    // * setApprovalForAll
+    // * isApprovedForAll
+    // * safeTransferFrom
+    // * totalSupply
+
+    function balanceOfBatch(address[] calldata, uint256[] calldata)
+        public
+        pure
+        override
+        returns (uint256[] memory)
+    {
+        revert("unimplemented");
+    }
+
+    function safeBatchTransferFrom(
+        address,
+        address,
+        uint256[] calldata,
+        uint256[] calldata,
+        bytes calldata
+    ) public pure override {
+        revert("unimplemented");
+    }
+
+    function totalHolders(uint256) public pure override returns (uint256) {
+        revert("unimplemented");
+    }
+
+    function accountsByToken(uint256)
+        public
+        pure
+        override
+        returns (address[] memory)
+    {
+        revert("unimplemented");
+    }
+
+    function tokensByAccount(address)
+        public
+        pure
+        override
+        returns (uint256[] memory)
+    {
+        revert("unimplemented");
+    }
 
     /**
      * @notice set timestamp after which reinvestment is disabled
@@ -61,11 +115,7 @@ contract PoolIO is IPoolIO, PoolBase {
      * @param amount quantity of underlying currency to deposit
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
      */
-    function deposit(uint256 amount, bool isCallPool)
-        external
-        payable
-        override
-    {
+    function deposit(uint256 amount, bool isCallPool) public payable override {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         // Reset gradual divestment timestamp
@@ -87,6 +137,34 @@ contract PoolIO is IPoolIO, PoolBase {
         _addToDepositQueue(msg.sender, amount, isCallPool);
 
         emit Deposit(msg.sender, isCallPool, amount);
+    }
+
+    /**
+     * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
+     * @param amount quantity of underlying currency to deposit
+     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
+
+     * @param amountOut amount out of tokens requested. If 0, we will swap exact amount necessary to pay the quote
+     * @param amountInMax amount in max of tokens
+     * @param path swap path
+     * @param isSushi whether we use sushi or uniV2 for the swap
+     */
+    function swapAndDeposit(
+        uint256 amount,
+        bool isCallPool,
+        uint256 amountOut,
+        uint256 amountInMax,
+        address[] calldata path,
+        bool isSushi
+    ) external payable override {
+        // If no amountOut has been passed, we swap the exact deposit amount specified
+        if (amountOut == 0) {
+            amountOut = amount;
+        }
+
+        _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
+
+        deposit(amount, isCallPool);
     }
 
     /**
