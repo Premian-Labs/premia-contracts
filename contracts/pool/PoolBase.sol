@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 import {ERC165} from "@solidstate/contracts/introspection/ERC165.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155Enumerable, EnumerableSet, ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/ERC1155Enumerable.sol";
+import {Multicall} from "@solidstate/contracts/utils/Multicall.sol";
 import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
 
 import {PoolStorage} from "./PoolStorage.sol";
@@ -16,7 +17,6 @@ import {IPremiaFeeDiscount} from "../interface/IPremiaFeeDiscount.sol";
 import {IPoolEvents} from "./IPoolEvents.sol";
 import {IPremiaMining} from "../mining/IPremiaMining.sol";
 import {IVolatilitySurfaceOracle} from "../oracle/IVolatilitySurfaceOracle.sol";
-import {Multicall} from "./Multicall.sol";
 
 /**
  * @title Premia option pool
