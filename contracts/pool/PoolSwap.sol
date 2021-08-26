@@ -45,55 +45,6 @@ abstract contract PoolSwap is PoolBase {
         SUSHISWAP_FACTORY = sushiswapFactory;
     }
 
-    // TODO: implement more flexible solution in SolidState
-    // cannot bypass the following:
-    // balanceOf
-    // setApprovalForAll
-    // isApprovedForAll
-    // safeTransferFrom
-    // totalSupply
-
-    function balanceOfBatch(address[] calldata, uint256[] calldata)
-        public
-        pure
-        override
-        returns (uint256[] memory)
-    {
-        revert("unimplemented");
-    }
-
-    function safeBatchTransferFrom(
-        address,
-        address,
-        uint256[] calldata,
-        uint256[] calldata,
-        bytes calldata
-    ) public pure override {
-        revert("unimplemented");
-    }
-
-    function totalHolders(uint256) public pure override returns (uint256) {
-        revert("unimplemented");
-    }
-
-    function accountsByToken(uint256)
-        public
-        pure
-        override
-        returns (address[] memory)
-    {
-        revert("unimplemented");
-    }
-
-    function tokensByAccount(address)
-        public
-        pure
-        override
-        returns (uint256[] memory)
-    {
-        revert("unimplemented");
-    }
-
     // calculates the CREATE2 address for a pair without making any external calls
     function _pairFor(
         address factory,

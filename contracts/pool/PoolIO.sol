@@ -42,6 +42,55 @@ contract PoolIO is IPoolIO, PoolSwap {
         )
     {}
 
+    // TODO: implement more flexible solution in SolidState
+    // cannot bypass the following:
+    // balanceOf
+    // setApprovalForAll
+    // isApprovedForAll
+    // safeTransferFrom
+    // totalSupply
+
+    function balanceOfBatch(address[] calldata, uint256[] calldata)
+        public
+        pure
+        override
+        returns (uint256[] memory)
+    {
+        revert("unimplemented");
+    }
+
+    function safeBatchTransferFrom(
+        address,
+        address,
+        uint256[] calldata,
+        uint256[] calldata,
+        bytes calldata
+    ) public pure override {
+        revert("unimplemented");
+    }
+
+    function totalHolders(uint256) public pure override returns (uint256) {
+        revert("unimplemented");
+    }
+
+    function accountsByToken(uint256)
+        public
+        pure
+        override
+        returns (address[] memory)
+    {
+        revert("unimplemented");
+    }
+
+    function tokensByAccount(address)
+        public
+        pure
+        override
+        returns (uint256[] memory)
+    {
+        revert("unimplemented");
+    }
+
     /**
      * @notice set timestamp after which reinvestment is disabled
      * @param timestamp timestamp to begin divestment
