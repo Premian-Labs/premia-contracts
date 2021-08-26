@@ -43,12 +43,13 @@ contract PoolIO is IPoolIO, PoolSwap {
     {}
 
     // TODO: implement more flexible solution in SolidState
+    // functions bypassed in diamond facet to prevent excessive contract size
     // cannot bypass the following:
-    // balanceOf
-    // setApprovalForAll
-    // isApprovedForAll
-    // safeTransferFrom
-    // totalSupply
+    // * balanceOf
+    // * setApprovalForAll
+    // * isApprovedForAll
+    // * safeTransferFrom
+    // * totalSupply
 
     function balanceOfBatch(address[] calldata, uint256[] calldata)
         public
