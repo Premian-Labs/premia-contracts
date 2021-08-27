@@ -1287,14 +1287,18 @@ describe('PoolProxy', function () {
           ).to.be.revertedWith('exp not end UTC day');
         });
 
-        it('should revert if using a strike > 1.5x spot', async () => {
+        it('should revert if using a strike that is too high', async () => {
+          const multiplier = isCall ? 2 : 1.2;
+
           await p.depositLiquidity(
             owner,
             parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
           const maturity = await p.getMaturity(10);
-          const strike64x64 = fixedFromFloat(spotPrice * 2.01);
+          const strike64x64 = fixedFromFloat(spotPrice * multiplier).add(
+            ethers.constants.One,
+          );
 
           await expect(
             pool
@@ -1306,17 +1310,21 @@ describe('PoolProxy', function () {
                 isCall,
                 parseOption('100', isCall),
               ),
-          ).to.be.revertedWith('strike > 1.5x spot');
+          ).to.be.revertedWith('strike out of range');
         });
 
-        it('should revert if using a strike < 0.75x spot', async () => {
+        it('should revert if using a strike that is too low', async () => {
+          const multiplier = isCall ? 0.8 : 0.5;
+
           await p.depositLiquidity(
             owner,
             parseOption(isCall ? '100' : '100000', isCall),
             isCall,
           );
           const maturity = await p.getMaturity(10);
-          const strike64x64 = fixedFromFloat(spotPrice * 0.49);
+          const strike64x64 = fixedFromFloat(spotPrice * multiplier).sub(
+            ethers.constants.One,
+          );
 
           await expect(
             pool
@@ -1328,7 +1336,7 @@ describe('PoolProxy', function () {
                 isCall,
                 parseOption('100', isCall),
               ),
-          ).to.be.revertedWith('strike < 0.75x spot');
+          ).to.be.revertedWith('strike out of range');
         });
 
         it('should revert if cost is above max cost', async () => {
