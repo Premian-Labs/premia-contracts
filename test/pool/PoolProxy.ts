@@ -1310,7 +1310,7 @@ describe('PoolProxy', function () {
                 isCall,
                 parseOption('100', isCall),
               ),
-          ).to.be.revertedWith('strike too high');
+          ).to.be.revertedWith('strike out of range');
         });
 
         it('should revert if using a strike is too low', async () => {
@@ -1336,7 +1336,7 @@ describe('PoolProxy', function () {
                 isCall,
                 parseOption('100', isCall),
               ),
-          ).to.be.revertedWith('strike too low');
+          ).to.be.revertedWith('strike out of range');
         });
 
         it('should revert if cost is above max cost', async () => {

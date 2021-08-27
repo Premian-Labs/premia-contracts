@@ -128,14 +128,17 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         int128 newPrice64x64 = _update(l);
 
         if (isCall) {
-            require(strike64x64 <= newPrice64x64 << 1, "strike too high");
-            require(strike64x64 >= (newPrice64x64 * 8) / 10, "strike too low");
+            require(strike64x64 <= newPrice64x64 << 1, "strike out of range");
+            require(
+                strike64x64 >= (newPrice64x64 * 8) / 10,
+                "strike out of range"
+            );
         } else {
             require(
                 strike64x64 <= (newPrice64x64 * 12) / 10,
-                "strike too high"
+                "strike out of range"
             );
-            require(strike64x64 >= newPrice64x64 >> 1, "strike too low");
+            require(strike64x64 >= newPrice64x64 >> 1, "strike out of range");
         }
 
         (baseCost, feeCost) = _purchase(
