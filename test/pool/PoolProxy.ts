@@ -1287,7 +1287,7 @@ describe('PoolProxy', function () {
           ).to.be.revertedWith('exp not end UTC day');
         });
 
-        it('should revert if using a strike is too high', async () => {
+        it('should revert if using a strike that is too high', async () => {
           const multiplier = isCall ? 2 : 1.2;
 
           await p.depositLiquidity(
@@ -1313,7 +1313,7 @@ describe('PoolProxy', function () {
           ).to.be.revertedWith('strike out of range');
         });
 
-        it('should revert if using a strike is too low', async () => {
+        it('should revert if using a strike that is too low', async () => {
           const multiplier = isCall ? 0.8 : 0.5;
 
           await p.depositLiquidity(
