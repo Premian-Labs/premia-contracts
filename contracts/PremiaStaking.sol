@@ -6,10 +6,9 @@ import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import {ERC20} from "@solidstate/contracts/token/ERC20/ERC20.sol";
-import {ERC20Permit} from "@solidstate/contracts/token/ERC20/ERC20Permit.sol";
-import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol";
-
-import {IERC2612} from "@solidstate/contracts/token/ERC20/IERC2612.sol";
+import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/metadata/ERC20MetadataStorage.sol";
+import {ERC20Permit} from "@solidstate/contracts/token/ERC20/permit/ERC20Permit.sol";
+import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 
 /// @author SushiSwap
 /// @notice This contract handles swapping to and from xPremia, PremiaSwap's staking token.

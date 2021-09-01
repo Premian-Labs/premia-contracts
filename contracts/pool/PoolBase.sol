@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import {ERC165} from "@solidstate/contracts/introspection/ERC165.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
-import {ERC1155Enumerable, EnumerableSet, ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/ERC1155Enumerable.sol";
+import {ERC1155Enumerable, EnumerableSet, ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
 import {Multicall} from "@solidstate/contracts/utils/Multicall.sol";
 import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
 

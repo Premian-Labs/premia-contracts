@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 import {AggregatorInterface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorInterface.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
-import {EnumerableSet, ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/ERC1155EnumerableStorage.sol";
+import {EnumerableSet, ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155EnumerableStorage.sol";
 
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";

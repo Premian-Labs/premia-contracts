@@ -9,7 +9,7 @@ import {SafeCast} from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 import {ReentrancyGuard} from "@solidstate/contracts/utils/ReentrancyGuard.sol";
-import {IERC2612} from "@solidstate/contracts/token/ERC20/IERC2612.sol";
+import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 
 import {INewPremiaFeeDiscount} from "./interface/INewPremiaFeeDiscount.sol";
 
