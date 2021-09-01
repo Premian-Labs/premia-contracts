@@ -74,7 +74,7 @@ contract PremiaMakerKeeper is IKeeperCompatible, Ownable {
 
             PoolStorage.PoolSettings memory pSettings = IPoolView(pool)
                 .getPoolSettings();
-            address feeReceiver = IPoolBase(pool).FEE_RECEIVER_ADDRESS();
+            address feeReceiver = IPoolView(pool).getFeeReceiverAddress();
 
             uint256 baseEthValue;
             uint256 underlyingEthValue;

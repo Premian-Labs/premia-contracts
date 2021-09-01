@@ -35,6 +35,15 @@ contract PoolView is IPoolView, PoolBase {
     {}
 
     /**
+     * @notice get fee receiver address
+     * @dev called by PremiaMakerKeeper
+     * @return fee receiver address
+     */
+    function getFeeReceiverAddress() external view override returns (address) {
+        return FEE_RECEIVER_ADDRESS;
+    }
+
+    /**
      * @notice get pool settings
      * @return pool settings
      */
