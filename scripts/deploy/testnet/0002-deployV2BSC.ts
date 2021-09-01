@@ -47,7 +47,7 @@ async function main() {
   const premiaDiamond = await deployV2(
     wbnb,
     premia.address,
-    fixedFromFloat(0.1),
+    fixedFromFloat(0.01),
     contracts.premiaMaker.address,
     contracts.premiaFeeDiscount.address,
     tokens,
