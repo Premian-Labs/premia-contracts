@@ -234,7 +234,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             uint256 amountOutPut
         )
     {
-        require(tokenIds.length == contractSizes.length, "TODO");
+        require(tokenIds.length == contractSizes.length, "diff array length");
 
         PoolStorage.Layout storage l = PoolStorage.layout();
 
