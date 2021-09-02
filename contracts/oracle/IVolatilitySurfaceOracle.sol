@@ -26,7 +26,7 @@ interface IVolatilitySurfaceOracle {
     function getAnnualizedVolatility64x64(
         address baseToken,
         address underlyingToken,
-        int128 strikeToSpotRatio,
+        int128 moneyness64x64,
         int128 timeToMaturity64x64,
         bool isCall
     ) external view returns (int128);
