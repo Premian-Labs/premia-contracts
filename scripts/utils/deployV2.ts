@@ -6,6 +6,7 @@ import {
   PoolIO__factory,
   PremiaMining__factory,
   PremiaMiningProxy__factory,
+  PoolBase__factory,
   PoolView__factory,
   PoolWrite__factory,
   Premia__factory,
@@ -95,6 +96,28 @@ export async function deployV2(
   let registeredSelectors = [
     poolDiamond.interface.getSighash('supportsInterface(bytes4)'),
   ];
+
+  const poolBaseFactory = new PoolBase__factory(deployer);
+  const poolBaseImpl = await poolBaseFactory.deploy(
+    ivolOracle.address,
+    tokens.ETH,
+    premiaMining.address,
+    feeReceiver,
+    premiaFeeDiscount,
+    fee64x64,
+  );
+  await poolBaseImpl.deployed();
+
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolBaseImpl.address,
+      poolBaseFactory,
+      registeredSelectors,
+    ),
+  );
+
+  //////////////////////////////////////////////
 
   const poolWriteFactory = new PoolWrite__factory(
     { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath.address },

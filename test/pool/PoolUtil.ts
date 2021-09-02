@@ -9,6 +9,7 @@ import {
   PremiaMining,
   PremiaMining__factory,
   PremiaMiningProxy__factory,
+  PoolBase__factory,
   PoolMock__factory,
   PoolView__factory,
   PoolWrite__factory,
@@ -257,6 +258,28 @@ export class PoolUtil {
     let registeredSelectors = [
       poolDiamond.interface.getSighash('supportsInterface(bytes4)'),
     ];
+
+    const poolBaseFactory = new PoolBase__factory(deployer);
+    const poolBaseImpl = await poolBaseFactory.deploy(
+      ivolOracle.address,
+      weth.address,
+      premiaMining.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+    await poolBaseImpl.deployed();
+
+    registeredSelectors = registeredSelectors.concat(
+      await diamondCut(
+        poolDiamond,
+        poolBaseImpl.address,
+        poolBaseFactory,
+        registeredSelectors,
+      ),
+    );
+
+    //////////////////////////////////////////////
 
     const poolWriteFactory = new PoolWrite__factory(
       { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath.address },
