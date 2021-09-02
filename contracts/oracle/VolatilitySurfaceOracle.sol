@@ -179,7 +179,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      * @notice Get annualized volatility as a 64x64 fixed point representation
      * @param baseToken The base token of the pair
      * @param underlyingToken The underlying token of the pair
-     * @param strikeToSpotRatio64x64 Strike to spot ratio, as a 64x64 fixed point representation
+     * @param moneyness64x64 The moneyness, as a 64x64 fixed point representation
      * @param timeToMaturity64x64 Time to maturity (in years), as a 64x64 fixed point representation
      * @param isCall Whether it is for call or put
      * @return Annualized volatility, as a 64x64 fixed point representation. 1 = 100%
@@ -187,7 +187,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     function getAnnualizedVolatility64x64(
         address baseToken,
         address underlyingToken,
-        int128 strikeToSpotRatio64x64,
+        int128 moneyness64x64,
         int128 timeToMaturity64x64,
         bool isCall
     ) public view override returns (int128) {
@@ -200,14 +200,14 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
 
         return
             _getAnnualizedVolatility64x64(
-                strikeToSpotRatio64x64,
+                moneyness64x64,
                 timeToMaturity64x64,
                 volatilitySurface
             );
     }
 
     function _getAnnualizedVolatility64x64(
-        int128 strikeToSpotRatio64x64,
+        int128 moneyness64x64,
         int128 timeToMaturity64x64,
         int256[] memory volatilitySurface
     ) internal pure returns (int128) {
@@ -216,9 +216,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 maturitySquared64x64 = timeToMaturity64x64.mul(
             timeToMaturity64x64
         );
-        int128 strikeToSpotSquared64x64 = strikeToSpotRatio64x64.mul(
-            strikeToSpotRatio64x64
-        );
+        int128 moneynessSquared64x64 = moneyness64x64.mul(moneyness64x64);
 
         //c_0 (hist_vol) + c_1 * maturity + c_2 * maturity^2
         int128 annualizedVolatility64x64 = _toCoefficient64x64(
@@ -236,26 +234,26 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
                 maturitySquared64x64.mul(timeToMaturity64x64)
             ) +
             _toCoefficient64x64(volatilitySurface[4], C4_DECIMALS).mul(
-                strikeToSpotRatio64x64
+                moneyness64x64
             ) +
             //+ c_5 * strikeToSpot^2 + c_6 * strikeToSpot^3
             _toCoefficient64x64(volatilitySurface[5], C5_DECIMALS).mul(
-                strikeToSpotSquared64x64
+                moneynessSquared64x64
             ) +
             _toCoefficient64x64(volatilitySurface[6], C6_DECIMALS).mul(
-                strikeToSpotSquared64x64.mul(strikeToSpotRatio64x64)
+                moneynessSquared64x64.mul(moneyness64x64)
             ) +
             //+ c_7 * maturity * strikeToSpot
             _toCoefficient64x64(volatilitySurface[7], C7_DECIMALS).mul(
-                timeToMaturity64x64.mul(strikeToSpotRatio64x64)
+                timeToMaturity64x64.mul(moneyness64x64)
             ) +
             //+ c_8 * strikeToSpot^2 * maturity
             _toCoefficient64x64(volatilitySurface[8], C8_DECIMALS).mul(
-                strikeToSpotSquared64x64.mul(timeToMaturity64x64)
+                moneynessSquared64x64.mul(timeToMaturity64x64)
             ) +
             //+ c_9 * maturity^2 * strikeToSpot
             _toCoefficient64x64(volatilitySurface[9], C9_DECIMALS).mul(
-                maturitySquared64x64.mul(strikeToSpotRatio64x64)
+                maturitySquared64x64.mul(moneyness64x64)
             );
 
         return annualizedVolatility64x64 / 100; // Divide by 100, so that value of 1 = 100% volatility
@@ -277,11 +275,13 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 timeToMaturity64x64,
         bool isCall
     ) internal view returns (int128) {
-        int128 strikeToSpotRatio = strike64x64.div(spot64x64);
+        int128 moneyness64x64 = isCall
+            ? spot64x64.div(strike64x64)
+            : strike64x64.div(spot64x64);
         int128 annualizedVolatility = getAnnualizedVolatility64x64(
             baseToken,
             underlyingToken,
-            strikeToSpotRatio,
+            moneyness64x64,
             timeToMaturity64x64,
             isCall
         );
