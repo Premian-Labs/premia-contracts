@@ -127,6 +127,10 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         view
         returns (PoolStorage.QuoteResultInternal memory result)
     {
+        require(
+            args.strike64x64 > 0 && args.spot64x64 > 0 && args.maturity > 0,
+            "invalid args"
+        );
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
@@ -178,6 +182,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 timeToMaturity64x64,
                 isCall
             );
+
+        require(annualizedVolatility64x64 > 0, "vol = 0");
 
         (
             int128 price64x64,
