@@ -88,9 +88,6 @@ library PoolStorage {
         // isCall -> User -> User
         mapping(bool => mapping(address => address)) liquidityQueueAscending;
         mapping(bool => mapping(address => address)) liquidityQueueDescending;
-        // TODO: enforced interval size for maturity (maturity % interval == 0)
-        // updatable by owner
-
         // minimum resolution price bucket => price
         mapping(uint256 => int128) bucketPrices64x64;
         // sequence id (minimum resolution price bucket / 256) => price update sequence
@@ -125,11 +122,6 @@ library PoolStorage {
         uint64 maturity,
         int128 strike64x64
     ) internal pure returns (uint256 tokenId) {
-        // TODO: fix probably Hardhat issue related to usage of assembly
-        // assembly {
-        //   tokenId := add(shl(248, tokenType), add(shl(128, maturity), strike64x64))
-        // }
-
         tokenId =
             (uint256(tokenType) << 248) +
             (uint256(maturity) << 128) +

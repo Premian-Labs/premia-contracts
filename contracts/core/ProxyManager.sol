@@ -69,7 +69,6 @@ contract ProxyManager is IProxyManager, OwnableInternal {
      * @param basePoolCap64x64 64x64 fixed point representation of pool-wide base currency deposit cap
      * @param underlyingPoolCap64x64 64x64 fixed point representation of pool-wide underlying currency deposit cap
      * @param miningAllocPoints alloc points attributed per pool (call and put) for liquidity mining
-     * TODO: unrestrict
      * @return deployment address
      */
     function deployPool(
