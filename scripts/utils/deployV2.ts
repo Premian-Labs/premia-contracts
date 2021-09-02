@@ -36,8 +36,12 @@ export async function deployV2(
   premiaFeeDiscount: string,
   tokens: TokenAddresses,
   oracles: TokenAddresses,
+  sushiswapFactoryOverride?: string,
 ) {
   const [deployer] = await ethers.getSigners();
+
+  const getSushiswapFactory = () =>
+    sushiswapFactoryOverride ?? SUSHISWAP_FACTORY;
 
   //
 
@@ -131,7 +135,7 @@ export async function deployV2(
     premiaFeeDiscount,
     fee64x64,
     UNISWAP_V2_FACTORY,
-    SUSHISWAP_FACTORY,
+    getSushiswapFactory(),
   );
   await poolWriteImpl.deployed();
 
@@ -208,7 +212,7 @@ export async function deployV2(
     premiaFeeDiscount,
     fee64x64,
     UNISWAP_V2_FACTORY,
-    SUSHISWAP_FACTORY,
+    getSushiswapFactory(),
   );
   await poolIOImpl.deployed();
 

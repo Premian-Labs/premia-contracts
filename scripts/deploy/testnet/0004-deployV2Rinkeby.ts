@@ -54,6 +54,7 @@ async function main() {
     contracts.premiaFeeDiscount.address,
     tokens,
     oracles,
+    '0xc35DADB65012eC5796536bD9864eD8773aBc74C4',
   );
 
   const premiaMakerKeeper = await new PremiaMakerKeeper__factory(
