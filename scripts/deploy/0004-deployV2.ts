@@ -1,3 +1,4 @@
+import { ethers } from 'hardhat';
 import { deployV2, TokenAddresses } from '../utils/deployV2';
 import { fixedFromFloat } from '@premia/utils';
 
@@ -19,7 +20,7 @@ async function main() {
   };
 
   // ToDo : Set after new upgradable PremiaMaker is deployed
-  const premiaMaker = '0x0';
+  const premiaMaker = ethers.constants.AddressZero;
   const premiaFeeDiscount = '0xF5aae75D1AD6fDD62Cce66137F2674c96FEda854';
 
   await deployV2(
