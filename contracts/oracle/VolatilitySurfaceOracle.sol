@@ -276,8 +276,8 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         bool isCall
     ) internal view returns (int128) {
         int128 moneyness64x64 = isCall
-            ? strike64x64.div(spot64x64)
-            : spot64x64.div(strike64x64);
+            ? spot64x64.div(strike64x64)
+            : strike64x64.div(spot64x64);
         int128 annualizedVolatility = getAnnualizedVolatility64x64(
             baseToken,
             underlyingToken,
