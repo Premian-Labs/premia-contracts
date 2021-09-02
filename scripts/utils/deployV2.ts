@@ -6,6 +6,7 @@ import {
   PoolIO__factory,
   PremiaMining__factory,
   PremiaMiningProxy__factory,
+  PoolBase__factory,
   PoolView__factory,
   PoolWrite__factory,
   Premia__factory,
@@ -35,8 +36,12 @@ export async function deployV2(
   premiaFeeDiscount: string,
   tokens: TokenAddresses,
   oracles: TokenAddresses,
+  sushiswapFactoryOverride?: string,
 ) {
   const [deployer] = await ethers.getSigners();
+
+  const getSushiswapFactory = () =>
+    sushiswapFactoryOverride ?? SUSHISWAP_FACTORY;
 
   //
 
@@ -96,6 +101,28 @@ export async function deployV2(
     poolDiamond.interface.getSighash('supportsInterface(bytes4)'),
   ];
 
+  const poolBaseFactory = new PoolBase__factory(deployer);
+  const poolBaseImpl = await poolBaseFactory.deploy(
+    ivolOracle.address,
+    tokens.ETH,
+    premiaMining.address,
+    feeReceiver,
+    premiaFeeDiscount,
+    fee64x64,
+  );
+  await poolBaseImpl.deployed();
+
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolBaseImpl.address,
+      poolBaseFactory,
+      registeredSelectors,
+    ),
+  );
+
+  //////////////////////////////////////////////
+
   const poolWriteFactory = new PoolWrite__factory(
     { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath.address },
     deployer,
@@ -108,7 +135,7 @@ export async function deployV2(
     premiaFeeDiscount,
     fee64x64,
     UNISWAP_V2_FACTORY,
-    SUSHISWAP_FACTORY,
+    getSushiswapFactory(),
   );
   await poolWriteImpl.deployed();
 
@@ -185,7 +212,7 @@ export async function deployV2(
     premiaFeeDiscount,
     fee64x64,
     UNISWAP_V2_FACTORY,
-    SUSHISWAP_FACTORY,
+    getSushiswapFactory(),
   );
   await poolIOImpl.deployed();
 

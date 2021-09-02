@@ -8,13 +8,13 @@ import {IUniswapV2Pair} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pa
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
-import {PoolBase} from "./PoolBase.sol";
+import {PoolInternal} from "./PoolInternal.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-abstract contract PoolSwap is PoolBase {
+abstract contract PoolSwap is PoolInternal {
     using SafeERC20 for IERC20;
     using ABDKMath64x64 for int128;
     using PoolStorage for PoolStorage.Layout;
@@ -32,7 +32,7 @@ abstract contract PoolSwap is PoolBase {
         address uniswapV2Factory,
         address sushiswapFactory
     )
-        PoolBase(
+        PoolInternal(
             ivolOracle,
             weth,
             premiaMining,

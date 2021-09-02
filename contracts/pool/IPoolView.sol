@@ -5,6 +5,8 @@ pragma solidity ^0.8.0;
 import {PoolStorage} from "./PoolStorage.sol";
 
 interface IPoolView {
+    function getFeeReceiverAddress() external view returns (address);
+
     function getPoolSettings()
         external
         view

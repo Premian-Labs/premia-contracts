@@ -2,14 +2,16 @@
 
 pragma solidity ^0.8.0;
 
-import {PoolBase} from "./PoolBase.sol";
+import {ERC1155BaseStorage} from "@solidstate/contracts/token/ERC1155/base/ERC1155BaseStorage.sol";
+
+import {PoolInternal} from "./PoolInternal.sol";
 import {IPoolExercise} from "./IPoolExercise.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolExercise is IPoolExercise, PoolBase {
+contract PoolExercise is IPoolExercise, PoolInternal {
     constructor(
         address ivolOracle,
         address weth,
@@ -18,7 +20,7 @@ contract PoolExercise is IPoolExercise, PoolBase {
         address feeDiscountAddress,
         int128 fee64x64
     )
-        PoolBase(
+        PoolInternal(
             ivolOracle,
             weth,
             premiaMining,
@@ -40,7 +42,12 @@ contract PoolExercise is IPoolExercise, PoolBase {
         uint256 contractSize
     ) external override {
         if (msg.sender != holder) {
-            require(isApprovedForAll(holder, msg.sender), "not approved");
+            require(
+                ERC1155BaseStorage.layout().operatorApprovals[holder][
+                    msg.sender
+                ],
+                "not approved"
+            );
         }
 
         _exercise(holder, longTokenId, contractSize);

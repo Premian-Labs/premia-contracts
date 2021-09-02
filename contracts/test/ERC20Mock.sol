@@ -3,8 +3,8 @@
 pragma solidity ^0.8.0;
 
 import {ERC20} from "@solidstate/contracts/token/ERC20/ERC20.sol";
-import {ERC20Permit} from "@solidstate/contracts/token/ERC20/ERC20Permit.sol";
-import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/ERC20MetadataStorage.sol";
+import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/metadata/ERC20MetadataStorage.sol";
+import {ERC20Permit} from "@solidstate/contracts/token/ERC20/permit/ERC20Permit.sol";
 
 contract ERC20Mock is ERC20, ERC20Permit {
     constructor(string memory symbol, uint8 decimals) {

@@ -9,7 +9,6 @@ import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUn
 import {IKeeperCompatible} from "../interface/IKeeperCompatible.sol";
 import {IPremiaMaker} from "../interface/IPremiaMaker.sol";
 import {IProxyManager} from "../core/IProxyManager.sol";
-import {IPoolBase} from "../pool/IPoolBase.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
 import {PoolStorage} from "../pool/PoolStorage.sol";
 
@@ -74,7 +73,7 @@ contract PremiaMakerKeeper is IKeeperCompatible, Ownable {
 
             PoolStorage.PoolSettings memory pSettings = IPoolView(pool)
                 .getPoolSettings();
-            address feeReceiver = IPoolBase(pool).FEE_RECEIVER_ADDRESS();
+            address feeReceiver = IPoolView(pool).getFeeReceiverAddress();
 
             uint256 baseEthValue;
             uint256 underlyingEthValue;
