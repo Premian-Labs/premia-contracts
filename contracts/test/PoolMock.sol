@@ -37,7 +37,6 @@ contract PoolMock is PoolBase {
         uint64 maturity,
         int128 strikePrice
     ) external pure returns (uint256) {
-        // TODO: move to dedicated test contract
         return PoolStorage.formatTokenId(tokenType, maturity, strikePrice);
     }
 
@@ -50,7 +49,6 @@ contract PoolMock is PoolBase {
             int128
         )
     {
-        // TODO: move to dedicated test contract
         return PoolStorage.parseTokenId(tokenId);
     }
 

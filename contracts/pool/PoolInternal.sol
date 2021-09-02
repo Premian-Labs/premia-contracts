@@ -127,6 +127,10 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         view
         returns (PoolStorage.QuoteResultInternal memory result)
     {
+        require(
+            args.strike64x64 > 0 && args.spot64x64 > 0 && args.maturity > 0,
+            "invalid args"
+        );
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
@@ -164,13 +168,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             }
         }
 
-        // TODO: validate values without spending gas
-        // assert(oldLiquidity64x64 >= newLiquidity64x64);
-        // assert(variance64x64 > 0);
-        // assert(strike64x64 > 0);
-        // assert(spot64x64 > 0);
-        // assert(timeToMaturity64x64 > 0);
-
         int128 timeToMaturity64x64 = ABDKMath64x64.divu(
             args.maturity - block.timestamp,
             365 days
@@ -185,6 +182,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 timeToMaturity64x64,
                 isCall
             );
+
+        require(annualizedVolatility64x64 > 0, "vol = 0");
 
         (
             int128 price64x64,
@@ -944,7 +943,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 tokenId,
         uint256 amount
     ) internal {
-        // TODO: incorporate into SolidState
         _mint(account, tokenId, amount, "");
     }
 
@@ -1009,8 +1007,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         bytes memory data
     ) internal virtual override {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
-
-        // TODO: use linked list for ERC1155Enumerable
 
         PoolStorage.Layout storage l = PoolStorage.layout();
 

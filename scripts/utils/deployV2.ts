@@ -227,8 +227,6 @@ export async function deployV2(
 
   //////////////////////////////////////////////
 
-  // ToDo : Deploy test tokens pools for testnet
-
   const wethPoolAddress = await proxyManager.callStatic.deployPool(
     tokens.DAI,
     tokens.ETH,
