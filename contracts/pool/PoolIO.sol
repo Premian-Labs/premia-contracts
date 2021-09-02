@@ -42,56 +42,6 @@ contract PoolIO is IPoolIO, PoolSwap {
         )
     {}
 
-    // TODO: implement more flexible solution in SolidState
-    // functions bypassed in diamond facet to prevent excessive contract size
-    // cannot bypass the following:
-    // * balanceOf
-    // * setApprovalForAll
-    // * isApprovedForAll
-    // * safeTransferFrom
-    // * totalSupply
-
-    function balanceOfBatch(address[] calldata, uint256[] calldata)
-        public
-        pure
-        override
-        returns (uint256[] memory)
-    {
-        revert("unimplemented");
-    }
-
-    function safeBatchTransferFrom(
-        address,
-        address,
-        uint256[] calldata,
-        uint256[] calldata,
-        bytes calldata
-    ) public pure override {
-        revert("unimplemented");
-    }
-
-    function totalHolders(uint256) public pure override returns (uint256) {
-        revert("unimplemented");
-    }
-
-    function accountsByToken(uint256)
-        public
-        pure
-        override
-        returns (address[] memory)
-    {
-        revert("unimplemented");
-    }
-
-    function tokensByAccount(address)
-        public
-        pure
-        override
-        returns (uint256[] memory)
-    {
-        revert("unimplemented");
-    }
-
     /**
      * @notice set timestamp after which reinvestment is disabled
      * @param timestamp timestamp to begin divestment
@@ -188,7 +138,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             uint256 reservedLiqTokenId = _getReservedLiquidityTokenId(
                 isCallPool
             );
-            uint256 reservedLiquidity = balanceOf(
+            uint256 reservedLiquidity = _balanceOf(
                 msg.sender,
                 reservedLiqTokenId
             );
@@ -349,7 +299,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             uint256 amountOutPut
         )
     {
-        uint256 balance = balanceOf(
+        uint256 balance = _balanceOf(
             msg.sender,
             _getFreeLiquidityTokenId(isCallPool)
         );

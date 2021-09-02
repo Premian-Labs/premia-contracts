@@ -2,14 +2,15 @@
 
 pragma solidity ^0.8.0;
 
-import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
-import {PoolStorage} from "./PoolStorage.sol";
-
-import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
-import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
+import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
+import {ERC1155BaseStorage} from "@solidstate/contracts/token/ERC1155/base/ERC1155BaseStorage.sol";
+import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
+import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
+
 import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {PoolSwap} from "./PoolSwap.sol";
+import {PoolStorage} from "./PoolStorage.sol";
 import {IPoolWrite} from "./IPoolWrite.sol";
 
 /**
@@ -236,7 +237,9 @@ contract PoolWrite is IPoolWrite, PoolSwap {
     {
         require(
             msg.sender == underwriter ||
-                isApprovedForAll(underwriter, msg.sender),
+                ERC1155BaseStorage.layout().operatorApprovals[underwriter][
+                    msg.sender
+                ],
             "not approved"
         );
 
