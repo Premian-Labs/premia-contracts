@@ -11,10 +11,16 @@ contract PremiaBondingCurveDeprecation is IPremiaBondingCurveUpgrade {
 
     address internal immutable PREMIA;
     address internal immutable TIMELOCK;
+    address internal immutable TREASURY;
 
-    constructor(address _premia, address _timelock) {
+    constructor(
+        address _premia,
+        address _timelock,
+        address _treasury
+    ) {
         PREMIA = _premia;
         TIMELOCK = _timelock;
+        TREASURY = _treasury;
     }
 
     function initialize(
@@ -24,5 +30,11 @@ contract PremiaBondingCurveDeprecation is IPremiaBondingCurveUpgrade {
     ) external payable override {
         // Send PREMIA to timelocked contract
         IERC20(PREMIA).safeTransfer(TIMELOCK, _premiaBalance);
+
+        if (msg.value > 0) {
+            // Send with data to avoid multisig contract to reject transfer
+            (bool sent, ) = payable(TREASURY).call{value: msg.value}("0x1");
+            require(sent, "ETH transfer failed");
+        }
     }
 }

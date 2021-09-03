@@ -1,6 +1,5 @@
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
 import {
-  ERC20Mock,
   IPremiaBondingCurve,
   IPremiaBondingCurve__factory,
   PremiaBondingCurveDeprecation,
@@ -12,8 +11,12 @@ import {
 } from '../typechain';
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { increaseTimestamp } from './utils/evm';
+import { getEthBalance, increaseTimestamp } from './utils/evm';
 import { formatEther, parseEther } from 'ethers/lib/utils';
+import chaiAlmost from 'chai-almost';
+import { bnToNumber } from './utils/math';
+
+chai.use(chaiAlmost(0.1));
 
 let multisig: SignerWithAddress;
 let premia: PremiaErc20;
@@ -56,7 +59,7 @@ describe('PremiaDevFund', () => {
 
     deprecationContract = await new PremiaBondingCurveDeprecation__factory(
       multisig,
-    ).deploy(premia.address, timelock.address);
+    ).deploy(premia.address, timelock.address, multisig.address);
   });
 
   it('should correctly deprecate bonding curve', async () => {
@@ -71,7 +74,7 @@ describe('PremiaDevFund', () => {
     // Go through the 7 days delay for the upgrade
     await increaseTimestamp(7 * 24 * 3600 + 10);
 
-    await bondingCurve.connect(multisig).doUpgrade({ gasLimit: 5000000 });
+    await bondingCurve.connect(multisig).doUpgrade();
 
     expect(
       await premia.connect(multisig).balanceOf(bondingCurve.address),
@@ -80,5 +83,36 @@ describe('PremiaDevFund', () => {
     expect(await premia.connect(multisig).balanceOf(timelock.address)).to.eq(
       parseEther('25000000'),
     );
+
+    expect(await getEthBalance(bondingCurve.address)).to.eq(0);
+  });
+
+  it('should correctly transfer ETH from bonding curve to treasury', async () => {
+    await network.provider.request({
+      method: 'hardhat_setBalance',
+      params: [bondingCurve.address, parseEther('10').toHexString()],
+    });
+
+    console.log(formatEther(await getEthBalance(multisig.address)));
+    console.log(formatEther(await getEthBalance(bondingCurve.address)));
+
+    await bondingCurve
+      .connect(multisig)
+      .startUpgrade(deprecationContract.address);
+
+    expect(
+      await premia.connect(multisig).balanceOf(bondingCurve.address),
+    ).to.eq(parseEther('25000000'));
+
+    // Go through the 7 days delay for the upgrade
+    await increaseTimestamp(7 * 24 * 3600 + 10);
+
+    const balance = await getEthBalance(multisig.address);
+    await bondingCurve.connect(multisig).doUpgrade();
+
+    expect(bnToNumber(await getEthBalance(multisig.address))).to.almost(
+      bnToNumber(balance) + 10,
+    );
+    expect(await getEthBalance(bondingCurve.address)).to.eq(0);
   });
 });
