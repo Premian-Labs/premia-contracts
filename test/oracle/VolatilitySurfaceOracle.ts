@@ -81,14 +81,15 @@ describe('VolatilitySurfaceOracle', () => {
   });
 
   // Plot coefficients
-  // https://storage.cloud.google.com/ivol-interpolation/ivol_surface_BTC_CALL_2021-08-21-18%3A01%3A41.html
+  // https://storage.cloud.google.com/ivol-interpolation/ivol_surface_BTC_call_2021-09-04-19%3A03%3A27.html
   describe('#getAnnualizedVolatility64x64', () => {
     const callCoefficients = [
-      573259, 79175, -82771, 2973, 12430, 79726, -281, -31181, -61379, 21505,
+      2644535, -265142, 117631, 2066, -306628, 1337745, -158075, 346900,
+      -296267, -177178,
     ];
     const putCoefficients = [
-      4507234, -571066, 336376, -4661, -705933, 4058762, -800272, 713995,
-      -1262768, -274367,
+      3764197, -479590, 331665, -7534, -499437, 2119770, -96456, 552099,
+      -1125939, -200552,
     ];
     const baseToken = '0x0000000000000000000000000000000000000001';
     const underlyingToken = '0x0000000000000000000000000000000000000002';
@@ -119,38 +120,38 @@ describe('VolatilitySurfaceOracle', () => {
     it('should correctly apply coefficients to obtain IVOL CALL surface', async () => {
       await prepareContractEnv();
 
-      const strikeToSpotRatio = fixedFromFloat(1.3);
+      const moneyness = fixedFromFloat(1.1);
       const timeToMaturity = fixedFromFloat(14);
       const isCall = true;
 
       const result = await oracle.getAnnualizedVolatility64x64(
         baseToken,
         underlyingToken,
-        strikeToSpotRatio,
+        moneyness,
         timeToMaturity,
         isCall,
       );
-      const expected = bnToNumber(fixedFromFloat(0.898));
+      const expected = bnToNumber(fixedFromFloat(0.7784));
 
       expect(expected / bnToNumber(result)).to.be.closeTo(1, 0.001);
     });
 
-    // https://storage.cloud.google.com/ivol-interpolation/ivol_surface_BTC_PUT_2021-08-21-18%3A01%3A41.html
+    // https://storage.cloud.google.com/ivol-interpolation/ivol_surface_BTC_put_2021-09-04-19%3A06%3A20.html
     it('should correctly apply coefficients to obtain IVOL PUT surface', async () => {
       await prepareContractEnv();
 
-      const strikeToSpotRatio = fixedFromFloat(0.2);
-      const timeToMaturity = fixedFromFloat(14);
+      const moneyness = fixedFromFloat(0.8);
+      const timeToMaturity = fixedFromFloat(60);
       const isCall = false;
 
       const result = await oracle.getAnnualizedVolatility64x64(
         baseToken,
         underlyingToken,
-        strikeToSpotRatio,
+        moneyness,
         timeToMaturity,
         isCall,
       );
-      const expected = bnToNumber(fixedFromFloat(2.7));
+      const expected = bnToNumber(fixedFromFloat(0.8691));
 
       expect(expected / bnToNumber(result)).to.be.closeTo(1, 0.001);
     });
