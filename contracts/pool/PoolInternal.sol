@@ -910,24 +910,28 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @param from address from which tokens are pulled from
      * @param token ERC20 token address
      * @param amount quantity of token to transfer
+     * @param skipWethDeposit if false, will not try to deposit weth from attach eth
      */
     function _pullFrom(
         address from,
         address token,
-        uint256 amount
+        uint256 amount,
+        bool skipWethDeposit
     ) internal {
-        if (token == WETH_ADDRESS) {
-            if (msg.value > 0) {
-                require(msg.value <= amount, "too much ETH sent");
+        if (!skipWethDeposit) {
+            if (token == WETH_ADDRESS) {
+                if (msg.value > 0) {
+                    require(msg.value <= amount, "too much ETH sent");
 
-                unchecked {
-                    amount -= msg.value;
+                    unchecked {
+                        amount -= msg.value;
+                    }
+
+                    IWETH(WETH_ADDRESS).deposit{value: msg.value}();
                 }
-
-                IWETH(WETH_ADDRESS).deposit{value: msg.value}();
+            } else {
+                require(msg.value == 0, "not WETH deposit");
             }
-        } else {
-            require(msg.value == 0, "not WETH deposit");
         }
 
         if (amount > 0) {

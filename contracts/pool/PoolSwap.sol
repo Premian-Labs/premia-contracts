@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import {PoolStorage} from "./PoolStorage.sol";
 
+import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
 import {IUniswapV2Pair} from "@uniswap/v2-core/contracts/interfaces/IUniswapV2Pair.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
@@ -197,5 +198,48 @@ abstract contract PoolSwap is PoolInternal {
             amounts[0]
         );
         _swap(amounts, path, msg.sender, isSushi);
+    }
+
+    function _swapETHForExactTokens(
+        uint256 amountOut,
+        address[] calldata path,
+        bool isSushi
+    ) internal returns (uint256[] memory amounts) {
+        require(path[0] == WETH_ADDRESS, "UniswapV2Router: INVALID_PATH");
+        amounts = _getAmountsIn(
+            isSushi ? SUSHISWAP_FACTORY : UNISWAP_V2_FACTORY,
+            amountOut,
+            path,
+            isSushi
+        );
+        require(
+            amounts[0] <= msg.value,
+            "UniswapV2Router: EXCESSIVE_INPUT_AMOUNT"
+        );
+        IWETH(WETH_ADDRESS).deposit{value: amounts[0]}();
+        assert(
+            IWETH(WETH_ADDRESS).transfer(
+                _pairFor(
+                    isSushi ? SUSHISWAP_FACTORY : UNISWAP_V2_FACTORY,
+                    path[0],
+                    path[1],
+                    isSushi
+                ),
+                amounts[0]
+            )
+        );
+
+        _swap(amounts, path, msg.sender, isSushi);
+
+        // refund dust eth, if any
+        if (msg.value > amounts[0]) {
+            (bool success, ) = payable(msg.sender).call{
+                value: msg.value - amounts[0]
+            }(new bytes(0));
+            require(
+                success,
+                "TransferHelper::safeTransferETH: ETH transfer failed"
+            );
+        }
     }
 }

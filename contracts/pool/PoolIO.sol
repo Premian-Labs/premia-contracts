@@ -65,7 +65,25 @@ contract PoolIO is IPoolIO, PoolSwap {
      * @param amount quantity of underlying currency to deposit
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
      */
-    function deposit(uint256 amount, bool isCallPool) public payable override {
+    function deposit(uint256 amount, bool isCallPool)
+        external
+        payable
+        override
+    {
+        _deposit(amount, isCallPool, false);
+    }
+
+    /**
+     * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
+     * @param amount quantity of underlying currency to deposit
+     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
+     * @param skipWethDeposit if false, will not try to deposit weth from attach eth
+     */
+    function _deposit(
+        uint256 amount,
+        bool isCallPool,
+        bool skipWethDeposit
+    ) internal {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         // Reset gradual divestment timestamp
@@ -82,7 +100,12 @@ contract PoolIO is IPoolIO, PoolSwap {
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;
         _addUserTVL(l, msg.sender, isCallPool, amount);
-        _pullFrom(msg.sender, _getPoolToken(isCallPool), amount);
+        _pullFrom(
+            msg.sender,
+            _getPoolToken(isCallPool),
+            amount,
+            skipWethDeposit
+        );
 
         _addToDepositQueue(msg.sender, amount, isCallPool);
 
@@ -112,9 +135,13 @@ contract PoolIO is IPoolIO, PoolSwap {
             amountOut = amount;
         }
 
-        _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
+        if (msg.value > 0) {
+            _swapETHForExactTokens(amountOut, path, isSushi);
+        } else {
+            _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
+        }
 
-        deposit(amount, isCallPool);
+        _deposit(amount, isCallPool, true);
     }
 
     /**

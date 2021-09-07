@@ -119,7 +119,37 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         uint256 contractSize,
         bool isCall,
         uint256 maxCost
-    ) public payable override returns (uint256 baseCost, uint256 feeCost) {
+    ) external payable override returns (uint256 baseCost, uint256 feeCost) {
+        return
+            _purchase(
+                maturity,
+                strike64x64,
+                contractSize,
+                isCall,
+                maxCost,
+                false
+            );
+    }
+
+    /**
+     * @notice purchase option
+     * @param maturity timestamp of option maturity
+     * @param strike64x64 64x64 fixed point representation of strike price
+     * @param contractSize size of option contract
+     * @param isCall true for call, false for put
+     * @param maxCost maximum acceptable cost after accounting for slippage
+     * @param skipWethDeposit if false, will not try to deposit weth from attach eth
+     * @return baseCost quantity of tokens required to purchase long position
+     * @return feeCost quantity of tokens required to pay fees
+     */
+    function _purchase(
+        uint64 maturity,
+        int128 strike64x64,
+        uint256 contractSize,
+        bool isCall,
+        uint256 maxCost,
+        bool skipWethDeposit
+    ) internal returns (uint256 baseCost, uint256 feeCost) {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         require(maturity >= block.timestamp + (1 days), "exp < 1 day");
@@ -154,7 +184,12 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         require(baseCost + feeCost <= maxCost, "excess slipp");
 
-        _pullFrom(msg.sender, _getPoolToken(isCall), baseCost + feeCost);
+        _pullFrom(
+            msg.sender,
+            _getPoolToken(isCall),
+            baseCost + feeCost,
+            skipWethDeposit
+        );
     }
 
     /**
@@ -206,9 +241,21 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             );
         }
 
-        _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
+        if (msg.value > 0) {
+            _swapETHForExactTokens(amountOut, path, isSushi);
+        } else {
+            _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
+        }
 
-        return purchase(maturity, strike64x64, contractSize, isCall, maxCost);
+        return
+            _purchase(
+                maturity,
+                strike64x64,
+                contractSize,
+                isCall,
+                maxCost,
+                true
+            );
     }
 
     /**
@@ -251,7 +298,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
                 strike64x64.mulu(contractSize)
             );
 
-        _pullFrom(underwriter, token, tokenAmount);
+        _pullFrom(underwriter, token, tokenAmount, false);
 
         longTokenId = PoolStorage.formatTokenId(
             _getTokenType(isCall, true),
