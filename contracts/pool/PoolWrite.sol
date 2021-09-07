@@ -217,6 +217,13 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         address[] calldata path,
         bool isSushi
     ) public payable override returns (uint256 baseCost, uint256 feeCost) {
+        // If value is passed, amountInMax must be 0, as the value wont be used
+        // If amountInMax is not 0, user wants to do a swap from an ERC20, and therefore no value should be attached
+        require(
+            msg.value == 0 || amountInMax == 0,
+            "value and amountInMax passed"
+        );
+
         // If no amountOut has been passed, we swap the exact amount required to pay the quote
         if (amountOut == 0) {
             PoolStorage.Layout storage l = PoolStorage.layout();

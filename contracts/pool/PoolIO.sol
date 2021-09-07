@@ -130,6 +130,13 @@ contract PoolIO is IPoolIO, PoolSwap {
         address[] calldata path,
         bool isSushi
     ) external payable override {
+        // If value is passed, amountInMax must be 0, as the value wont be used
+        // If amountInMax is not 0, user wants to do a swap from an ERC20, and therefore no value should be attached
+        require(
+            msg.value == 0 || amountInMax == 0,
+            "value and amountInMax passed"
+        );
+
         // If no amountOut has been passed, we swap the exact deposit amount specified
         if (amountOut == 0) {
             amountOut = amount;
