@@ -65,7 +65,25 @@ contract PoolIO is IPoolIO, PoolSwap {
      * @param amount quantity of underlying currency to deposit
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
      */
-    function deposit(uint256 amount, bool isCallPool) public payable override {
+    function deposit(uint256 amount, bool isCallPool)
+        external
+        payable
+        override
+    {
+        _deposit(amount, isCallPool, false);
+    }
+
+    /**
+     * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
+     * @param amount quantity of underlying currency to deposit
+     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
+     * @param skipWethDeposit if false, will not try to deposit weth from attach eth
+     */
+    function _deposit(
+        uint256 amount,
+        bool isCallPool,
+        bool skipWethDeposit
+    ) internal {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         // Reset gradual divestment timestamp
@@ -82,7 +100,12 @@ contract PoolIO is IPoolIO, PoolSwap {
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;
         _addUserTVL(l, msg.sender, isCallPool, amount);
-        _pullFrom(msg.sender, _getPoolToken(isCallPool), amount);
+        _pullFrom(
+            msg.sender,
+            _getPoolToken(isCallPool),
+            amount,
+            skipWethDeposit
+        );
 
         _addToDepositQueue(msg.sender, amount, isCallPool);
 
@@ -107,14 +130,25 @@ contract PoolIO is IPoolIO, PoolSwap {
         address[] calldata path,
         bool isSushi
     ) external payable override {
+        // If value is passed, amountInMax must be 0, as the value wont be used
+        // If amountInMax is not 0, user wants to do a swap from an ERC20, and therefore no value should be attached
+        require(
+            msg.value == 0 || amountInMax == 0,
+            "value and amountInMax passed"
+        );
+
         // If no amountOut has been passed, we swap the exact deposit amount specified
         if (amountOut == 0) {
             amountOut = amount;
         }
 
-        _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
+        if (msg.value > 0) {
+            _swapETHForExactTokens(amountOut, path, isSushi);
+        } else {
+            _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
+        }
 
-        deposit(amount, isCallPool);
+        _deposit(amount, isCallPool, true);
     }
 
     /**
