@@ -147,6 +147,7 @@ export class PoolUtil {
     feeReceiver: string,
     premiaFeeDiscount: string,
     uniswapV2Factory?: string,
+    wethAddress?: string,
   ) {
     const erc20Factory = new ERC20Mock__factory(deployer);
 
@@ -166,7 +167,9 @@ export class PoolUtil {
         deployer,
       );
     } else {
-      weth = await new WETH9__factory(deployer).deploy();
+      weth = wethAddress
+        ? WETH9__factory.connect(wethAddress, deployer)
+        : await new WETH9__factory(deployer).deploy();
     }
 
     //
