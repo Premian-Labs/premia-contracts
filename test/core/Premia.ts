@@ -78,7 +78,10 @@ describe('Premia', function () {
 
   describeBehaviorOfDiamond(
     {
-      deploy: async () => instance,
+      deploy: async () => {
+        (instance as any).getAddress = () => instance.address;
+        return instance;
+      },
       getOwner: async () => owner,
       getNomineeOwner: async () => nomineeOwner,
       getNonOwner: async () => nobody,
