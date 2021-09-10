@@ -1983,6 +1983,158 @@ describe('PoolProxy', function () {
     }
   });
 
+  describe('#swapAndDeposit', function () {
+    for (const isCall of [true, false]) {
+      describe(isCall ? 'call' : 'put', () => {
+        it('should successfully swaps tokens and purchase an option', async () => {
+          const pairBase = await createUniswapPair(
+            owner,
+            uniswap.factory,
+            p.base.address,
+            uniswap.weth.address,
+          );
+
+          const pairUnderlying = await createUniswapPair(
+            owner,
+            uniswap.factory,
+            p.underlying.address,
+            uniswap.weth.address,
+          );
+
+          await depositUniswapLiquidity(
+            lp2,
+            uniswap.weth.address,
+            pairBase,
+            (await pairBase.token0()) === uniswap.weth.address
+              ? parseUnits('100', 18)
+              : parseUnits('100000', DECIMALS_BASE),
+            (await pairBase.token1()) === uniswap.weth.address
+              ? parseUnits('100', 18)
+              : parseUnits('100000', DECIMALS_BASE),
+          );
+
+          await depositUniswapLiquidity(
+            lp2,
+            uniswap.weth.address,
+            pairUnderlying,
+            (await pairUnderlying.token0()) === uniswap.weth.address
+              ? parseUnits('100', 18)
+              : parseUnits('100', DECIMALS_UNDERLYING),
+            (await pairUnderlying.token1()) === uniswap.weth.address
+              ? parseUnits('100', 18)
+              : parseUnits('100', DECIMALS_UNDERLYING),
+          );
+
+          const mintAmount = parseOption(!isCall ? '1000' : '100000', !isCall);
+          await p.getToken(!isCall).mint(buyer.address, mintAmount);
+          await p
+            .getToken(isCall)
+            .connect(buyer)
+            .approve(pool.address, ethers.constants.MaxUint256);
+          await p
+            .getToken(!isCall)
+            .connect(buyer)
+            .approve(pool.address, ethers.constants.MaxUint256);
+
+          const amount = isCall
+            ? parseOption('0.1', isCall)
+            : parseOption('1000', isCall);
+
+          await pool
+            .connect(buyer)
+            .swapAndDeposit(
+              amount,
+              isCall,
+              0,
+              parseEther('10000'),
+              isCall
+                ? [p.base.address, uniswap.weth.address, p.underlying.address]
+                : [p.underlying.address, uniswap.weth.address, p.base.address],
+              false,
+            );
+
+          expect(
+            await p.pool.balanceOf(buyer.address, p.getFreeLiqTokenId(isCall)),
+          ).to.eq(amount);
+        });
+
+        it('should successfully swaps tokens and purchase an option with ETH', async () => {
+          const pairBase = await createUniswapPair(
+            owner,
+            uniswap.factory,
+            p.base.address,
+            uniswap.weth.address,
+          );
+
+          const pairUnderlying = await createUniswapPair(
+            owner,
+            uniswap.factory,
+            p.underlying.address,
+            uniswap.weth.address,
+          );
+
+          await depositUniswapLiquidity(
+            lp2,
+            uniswap.weth.address,
+            pairBase,
+            (await pairBase.token0()) === uniswap.weth.address
+              ? parseUnits('100', 18)
+              : parseUnits('100000', DECIMALS_BASE),
+            (await pairBase.token1()) === uniswap.weth.address
+              ? parseUnits('100', 18)
+              : parseUnits('100000', DECIMALS_BASE),
+          );
+
+          await depositUniswapLiquidity(
+            lp2,
+            uniswap.weth.address,
+            pairUnderlying,
+            (await pairUnderlying.token0()) === uniswap.weth.address
+              ? parseUnits('100', 18)
+              : parseUnits('100', DECIMALS_UNDERLYING),
+            (await pairUnderlying.token1()) === uniswap.weth.address
+              ? parseUnits('100', 18)
+              : parseUnits('100', DECIMALS_UNDERLYING),
+          );
+
+          const mintAmount = parseOption(!isCall ? '1000' : '100000', !isCall);
+
+          await p.getToken(!isCall).mint(buyer.address, mintAmount);
+          await p
+            .getToken(isCall)
+            .connect(buyer)
+            .approve(pool.address, ethers.constants.MaxUint256);
+          await p
+            .getToken(!isCall)
+            .connect(buyer)
+            .approve(pool.address, ethers.constants.MaxUint256);
+
+          const amount = isCall
+            ? parseOption('0.1', isCall)
+            : parseOption('1000', isCall);
+
+          await pool
+            .connect(buyer)
+            .swapAndDeposit(
+              amount,
+              isCall,
+              0,
+              0,
+              isCall
+                ? [uniswap.weth.address, p.underlying.address]
+                : [uniswap.weth.address, p.base.address],
+              false,
+              { value: parseEther('2') },
+            );
+
+          expect(
+            await p.pool.balanceOf(buyer.address, p.getFreeLiqTokenId(isCall)),
+          ).to.eq(amount);
+        });
+      });
+    }
+  });
+
   describe('#exerciseFrom', function () {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
