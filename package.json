@@ -57,6 +57,7 @@
     "@uniswap/v2-core": "^1.0.1",
     "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "abdk-libraries-solidity": "3.0.0",
+    "base64-sol": "^1.0.1",
     "chai": "^4.3.4",
     "chai-almost": "^1.0.1",
     "dotenv": "^10.0.0",
