@@ -21,6 +21,9 @@ import {
   VolatilitySurfaceOracle,
   ProxyUpgradeableOwnable__factory,
   VolatilitySurfaceOracle__factory,
+  PremiaOptionNFTDisplay__factory,
+  NFTDisplay__factory,
+  NFTSVG__factory,
 } from '../../typechain';
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -250,6 +253,21 @@ export class PoolUtil {
       deployer,
     );
 
+    const nftSVGLib = await new NFTSVG__factory(deployer).deploy();
+
+    const nftDisplayLib = await new NFTDisplay__factory(
+      { ['contracts/libraries/NFTSVG.sol:NFTSVG']: nftSVGLib.address },
+      deployer,
+    ).deploy();
+
+    const nftDisplay = await new PremiaOptionNFTDisplay__factory(
+      {
+        ['contracts/libraries/NFTDisplay.sol:NFTDisplay']:
+          nftDisplayLib.address,
+      },
+      deployer,
+    ).deploy();
+
     //
 
     const proxyManagerFactory = new ProxyManager__factory(deployer);
@@ -357,6 +375,7 @@ export class PoolUtil {
       deployer,
     );
     const poolViewImpl = await poolViewFactory.deploy(
+      nftDisplay.address,
       ivolOracle.address,
       weth.address,
       premiaMining.address,

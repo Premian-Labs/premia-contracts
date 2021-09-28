@@ -13,6 +13,9 @@ import {
   ProxyManager__factory,
   VolatilitySurfaceOracle__factory,
   ProxyUpgradeableOwnable__factory,
+  NFTSVG__factory,
+  NFTDisplay__factory,
+  PremiaOptionNFTDisplay__factory,
 } from '../../typechain';
 import { diamondCut } from './diamond';
 import { BigNumber } from 'ethers';
@@ -76,6 +79,20 @@ export async function deployV2(
     premiaMiningProxy.address,
     deployer,
   );
+
+  const nftSVGLib = await new NFTSVG__factory(deployer).deploy();
+
+  const nftDisplayLib = await new NFTDisplay__factory(
+    { ['contracts/libraries/NFTSVG.sol:NFTSVG']: nftSVGLib.address },
+    deployer,
+  ).deploy();
+
+  const nftDisplay = await new PremiaOptionNFTDisplay__factory(
+    {
+      ['contracts/libraries/NFTDisplay.sol:NFTDisplay']: nftDisplayLib.address,
+    },
+    deployer,
+  ).deploy();
 
   //
 
@@ -180,6 +197,7 @@ export async function deployV2(
     deployer,
   );
   const poolViewImpl = await poolViewFactory.deploy(
+    nftDisplay.address,
     ivolOracle.address,
     tokens.ETH,
     premiaMining.address,

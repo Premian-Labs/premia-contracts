@@ -8,7 +8,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {IPool} from "./pool/IPool.sol";
 import {PoolStorage} from "./pool/PoolStorage.sol";
 import {NFTDisplay} from "./libraries/NFTDisplay.sol";
-import {IPremiaOptionNFTDisplay} from "./IPremiaOptionNFTDisplay.sol";
+import {IPremiaOptionNFTDisplay} from "./interface/IPremiaOptionNFTDisplay.sol";
 
 contract PremiaOptionNFTDisplay is IPremiaOptionNFTDisplay {
     using Strings for uint256;
