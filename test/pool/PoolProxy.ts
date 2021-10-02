@@ -1118,10 +1118,10 @@ describe('PoolProxy', function () {
         ).to.be.revertedWith('not WETH deposit');
       });
 
-      it('should revert if user send too much ETH with a WETH deposit', async () => {
-        await expect(
-          poolWeth.deposit('200', true, { value: 201 }),
-        ).to.be.revertedWith('too much ETH sent');
+      it('should refund excess if user send too much ETH with a WETH deposit', async () => {
+        await expect(() =>
+          poolWeth.connect(owner).deposit('200', true, { value: 201 }),
+        ).to.changeEtherBalance(owner, -200);
       });
 
       it('should revert if pool TVL exceeds limit', async () => {
