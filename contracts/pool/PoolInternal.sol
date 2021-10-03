@@ -921,13 +921,23 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         if (!skipWethDeposit) {
             if (token == WETH_ADDRESS) {
                 if (msg.value > 0) {
-                    require(msg.value <= amount, "too much ETH sent");
+                    if (msg.value > amount) {
+                        IWETH(WETH_ADDRESS).deposit{value: amount}();
 
-                    unchecked {
-                        amount -= msg.value;
+                        (bool success, ) = payable(msg.sender).call{
+                            value: msg.value - amount
+                        }("");
+
+                        require(success, "ETH refund failed");
+
+                        amount = 0;
+                    } else {
+                        unchecked {
+                            amount -= msg.value;
+                        }
+
+                        IWETH(WETH_ADDRESS).deposit{value: msg.value}();
                     }
-
-                    IWETH(WETH_ADDRESS).deposit{value: msg.value}();
                 }
             } else {
                 require(msg.value == 0, "not WETH deposit");
