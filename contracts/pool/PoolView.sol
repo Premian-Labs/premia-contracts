@@ -8,6 +8,8 @@ import {PoolStorage} from "./PoolStorage.sol";
 import {IPoolView} from "./IPoolView.sol";
 import {PoolInternal} from "./PoolInternal.sol";
 
+import {IPremiaOptionNFTDisplay} from "../interface/IPremiaOptionNFTDisplay.sol";
+
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
@@ -16,7 +18,10 @@ contract PoolView is IPoolView, PoolInternal {
     using EnumerableSet for EnumerableSet.UintSet;
     using PoolStorage for PoolStorage.Layout;
 
+    address internal immutable NFT_DISPLAY_ADDRESS;
+
     constructor(
+        address nftDisplay,
         address ivolOracle,
         address weth,
         address premiaMining,
@@ -32,7 +37,9 @@ contract PoolView is IPoolView, PoolInternal {
             feeDiscountAddress,
             fee64x64
         )
-    {}
+    {
+        NFT_DISPLAY_ADDRESS = nftDisplay;
+    }
 
     /**
      * @notice get fee receiver address
@@ -208,5 +215,23 @@ contract PoolView is IPoolView, PoolInternal {
         PoolStorage.Layout storage l = PoolStorage.layout();
         callDivestmentTimestamp = l.divestmentTimestamps[account][true];
         putDivestmentTimestamp = l.divestmentTimestamps[account][false];
+    }
+
+    /**
+     * @notice Returns an URI for a given token ID
+     * @param tokenId an option token id
+     * @return The token URI
+     */
+    function tokenURI(uint256 tokenId)
+        external
+        view
+        override
+        returns (string memory)
+    {
+        return
+            IPremiaOptionNFTDisplay(NFT_DISPLAY_ADDRESS).tokenURI(
+                address(this),
+                tokenId
+            );
     }
 }
