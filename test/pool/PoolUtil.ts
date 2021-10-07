@@ -228,14 +228,12 @@ export class PoolUtil {
         putCoefficientsInt as any,
       );
 
-    await ivolOracle.updateVolatilitySurfaces([
-      {
-        baseToken: base.address,
-        underlyingToken: underlying.address,
-        callCoefficients: callCoefficientsPacked,
-        putCoefficients: putCoefficientsPacked,
-      },
-    ]);
+    await ivolOracle.updateVolatilitySurfaces(
+      [base.address],
+      [underlying.address],
+      [callCoefficientsPacked],
+      [putCoefficientsPacked],
+    );
 
     //
 
