@@ -105,16 +105,14 @@ describe('VolatilitySurfaceOracle', () => {
           putCoefficients as any,
         );
 
-      const coefficients = [
-        {
-          baseToken: baseToken,
-          underlyingToken: underlyingToken,
-          callCoefficients: callCoefficientsHex,
-          putCoefficients: putCoefficientsHex,
-        },
-      ];
-
-      await oracle.connect(relayer).updateVolatilitySurfaces(coefficients);
+      await oracle
+        .connect(relayer)
+        .updateVolatilitySurfaces(
+          [baseToken],
+          [underlyingToken],
+          [callCoefficientsHex],
+          [putCoefficientsHex],
+        );
     };
 
     it('should correctly apply coefficients to obtain IVOL CALL surface', async () => {
