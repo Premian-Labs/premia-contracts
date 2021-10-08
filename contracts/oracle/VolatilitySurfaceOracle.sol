@@ -29,13 +29,6 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     uint256 internal constant C8_DECIMALS = 6;
     uint256 internal constant C9_DECIMALS = 7;
 
-    struct VolatilitySurfaceInputParams {
-        address baseToken;
-        address underlyingToken;
-        bytes32 callCoefficients;
-        bytes32 putCoefficients;
-    }
-
     event UpdateCoefficients(
         address indexed baseToken,
         address indexed underlyingToken,
@@ -359,11 +352,25 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
 
     /**
      * @notice Update a list of volatility surfaces
-     * @param surfaces List of volatility surfaces to update
+     * @param baseTokens List of base tokens
+     * @param underlyingTokens List of underlying tokens
+     * @param callCoefficients List of call coefficients
+     * @param putCoefficients List of put coefficients
      */
     function updateVolatilitySurfaces(
-        VolatilitySurfaceInputParams[] memory surfaces
+        address[] memory baseTokens,
+        address[] memory underlyingTokens,
+        bytes32[] memory callCoefficients,
+        bytes32[] memory putCoefficients
     ) external {
+        uint256 length = baseTokens.length;
+        require(
+            length == underlyingTokens.length &&
+                length == callCoefficients.length &&
+                length == putCoefficients.length,
+            "Wrong array length"
+        );
+
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
 
@@ -372,22 +379,20 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             "Relayer not whitelisted"
         );
 
-        for (uint256 i = 0; i < surfaces.length; i++) {
-            VolatilitySurfaceInputParams memory surfaceParams = surfaces[i];
-
-            l.volatilitySurfaces[surfaceParams.baseToken][
-                    surfaceParams.underlyingToken
+        for (uint256 i = 0; i < length; i++) {
+            l.volatilitySurfaces[baseTokens[i]][
+                    underlyingTokens[i]
                 ] = VolatilitySurfaceOracleStorage.Update({
                 updatedAt: block.timestamp,
-                callCoefficients: surfaceParams.callCoefficients,
-                putCoefficients: surfaceParams.putCoefficients
+                callCoefficients: callCoefficients[i],
+                putCoefficients: putCoefficients[i]
             });
 
             emit UpdateCoefficients(
-                surfaceParams.baseToken,
-                surfaceParams.underlyingToken,
-                surfaceParams.callCoefficients,
-                surfaceParams.putCoefficients
+                baseTokens[i],
+                underlyingTokens[i],
+                callCoefficients[i],
+                putCoefficients[i]
             );
         }
     }
