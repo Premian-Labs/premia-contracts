@@ -60,4 +60,6 @@ interface IPoolIO {
     function claimRewards(bool isCallPool) external;
 
     function updateMiningPools() external;
+
+    function setBuyBackEnabled(bool state) external;
 }

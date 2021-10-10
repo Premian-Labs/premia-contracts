@@ -57,5 +57,7 @@ interface IPoolView {
             uint256 putDivestmentTimestamp
         );
 
+    function isBuyBackEnabled(address account) external view returns (bool);
+
     function tokenURI(uint256 tokenId) external view returns (string memory);
 }

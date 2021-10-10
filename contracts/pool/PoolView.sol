@@ -217,6 +217,15 @@ contract PoolView is IPoolView, PoolInternal {
         putDivestmentTimestamp = l.divestmentTimestamps[account][false];
     }
 
+    function isBuyBackEnabled(address account)
+        external
+        view
+        override
+        returns (bool)
+    {
+        return PoolStorage.layout().isBuyBackEnabled[account];
+    }
+
     /**
      * @notice Returns an URI for a given token ID
      * @param tokenId an option token id

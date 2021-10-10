@@ -425,4 +425,9 @@ contract PoolIO is IPoolIO, PoolSwap {
             l.totalTVL[false]
         );
     }
+
+    function setBuyBackEnabled(bool state) external override {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        l.isBuyBackEnabled[msg.sender] = state;
+    }
 }

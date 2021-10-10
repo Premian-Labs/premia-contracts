@@ -101,6 +101,8 @@ library PoolStorage {
         mapping(address => mapping(bool => uint256)) userTVL;
         // isCallPool -> total value locked
         mapping(bool => uint256) totalTVL;
+        // User => isBuyBackEnabled
+        mapping(address => bool) isBuyBackEnabled;
     }
 
     function layout() internal pure returns (Layout storage l) {
