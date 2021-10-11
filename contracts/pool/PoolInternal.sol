@@ -328,6 +328,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             strike64x64
         );
 
+        _updateCLevelAverage(l, longTokenId, contractSize, cLevel64x64);
+
         // mint long option token for buyer
         _mint(account, longTokenId, contractSize);
 
@@ -1001,6 +1003,28 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
         l.userTVL[user][isCallPool] = userTVL - amount;
         l.totalTVL[isCallPool] = totalTVL - amount;
+    }
+
+    function _updateCLevelAverage(
+        PoolStorage.Layout storage l,
+        uint256 longTokenId,
+        uint256 contractSize,
+        int128 cLevel64x64
+    ) internal {
+        int128 supply64x64 = ABDKMath64x64.divu(
+            ERC1155EnumerableStorage.layout().totalSupply[longTokenId],
+            10**l.underlyingDecimals
+        );
+        int128 contractSize64x64 = ABDKMath64x64.divu(
+            contractSize,
+            10**l.underlyingDecimals
+        );
+
+        l.avgCLevel64x64[longTokenId] = l
+            .avgCLevel64x64[longTokenId]
+            .mul(supply64x64)
+            .add(cLevel64x64.mul(contractSize64x64))
+            .div(supply64x64.add(contractSize64x64));
     }
 
     /**

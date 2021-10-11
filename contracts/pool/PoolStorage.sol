@@ -101,8 +101,10 @@ library PoolStorage {
         mapping(address => mapping(bool => uint256)) userTVL;
         // isCallPool -> total value locked
         mapping(bool => uint256) totalTVL;
-        // User => isBuyBackEnabled
+        // User -> isBuyBackEnabled
         mapping(address => bool) isBuyBackEnabled;
+        // TokenID -> averageC
+        mapping(uint256 => int128) avgCLevel64x64;
     }
 
     function layout() internal pure returns (Layout storage l) {
