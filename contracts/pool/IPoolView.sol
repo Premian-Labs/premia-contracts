@@ -59,5 +59,10 @@ interface IPoolView {
 
     function isBuyBackEnabled(address account) external view returns (bool);
 
+    function getBuyers(uint256 shortTokenId)
+        external
+        view
+        returns (address[] memory buyers, uint256[] memory amounts);
+
     function tokenURI(uint256 tokenId) external view returns (string memory);
 }

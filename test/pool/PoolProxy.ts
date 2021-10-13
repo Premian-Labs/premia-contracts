@@ -2967,4 +2967,38 @@ describe('PoolProxy', function () {
       ).to.be.revertedWith('liq lock 1d');
     });
   });
+
+  describe('#getBuyers', () => {
+    it('should return list of underwriters with buyback enabled', async () => {
+      const maturity = await p.getMaturity(10);
+      const isCall = true;
+      const strike64x64 = fixedFromFloat(getStrike(isCall));
+
+      const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
+
+      await poolMock.mint(lp1.address, tokenId.short, parseUnderlying('1'));
+      await poolMock.mint(lp2.address, tokenId.short, parseUnderlying('2'));
+      await poolMock.mint(
+        thirdParty.address,
+        tokenId.short,
+        parseUnderlying('3'),
+      );
+      await poolMock.mint(buyer.address, tokenId.short, parseUnderlying('4'));
+      await poolMock.mint(
+        feeReceiver.address,
+        tokenId.short,
+        parseUnderlying('5'),
+      );
+
+      await pool.connect(lp2).setBuyBackEnabled(true);
+      await pool.connect(buyer).setBuyBackEnabled(true);
+
+      const result = await pool.getBuyers(tokenId.short);
+      expect(result.buyers).to.deep.eq([lp2.address, buyer.address]);
+      expect(result.amounts).to.deep.eq([
+        parseUnderlying('2'),
+        parseUnderlying('4'),
+      ]);
+    });
+  });
 });
