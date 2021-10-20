@@ -8,7 +8,9 @@ import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 import {ERC20Permit} from "@solidstate/contracts/token/ERC20/permit/ERC20Permit.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-contract PremiaStaking is ERC20, ERC20Permit {
+import "./IPremiaStaking.sol";
+
+contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     using SafeERC20 for IERC20;
 
     address private immutable PREMIA;
@@ -18,12 +20,7 @@ contract PremiaStaking is ERC20, ERC20Permit {
     }
 
     /**
-     * @notice stake PREMIA using IERC2612 permit
-     * @param amount quantity of PREMIA to stake
-     * @param deadline timestamp after which permit will fail
-     * @param v signature "v" value
-     * @param r signature "r" value
-     * @param s signature "s" value
+     * @inheritdoc IPremiaStaking
      */
     function enterWithPermit(
         uint256 amount,
@@ -31,7 +28,7 @@ contract PremiaStaking is ERC20, ERC20Permit {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external {
+    ) external override {
         IERC2612(PREMIA).permit(
             msg.sender,
             address(this),
@@ -45,10 +42,9 @@ contract PremiaStaking is ERC20, ERC20Permit {
     }
 
     /**
-     * @notice stake PREMIA in exchange for xPremia
-     * @param amount quantity of PREMIA to stake
+     * @inheritdoc IPremiaStaking
      */
-    function enter(uint256 amount) public {
+    function enter(uint256 amount) public override {
         // Gets the amount of Premia locked in the contract
         uint256 totalPremia = IERC20(PREMIA).balanceOf(address(this));
         // Gets the amount of xPremia in existence
@@ -67,10 +63,9 @@ contract PremiaStaking is ERC20, ERC20Permit {
     }
 
     /**
-     * @notice burn xPremia in exchange for staked PREMIA
-     * @param amount quantity of xPremia to unstake
+     * @inheritdoc IPremiaStaking
      */
-    function leave(uint256 amount) external {
+    function leave(uint256 amount) external override {
         // Gets the amount of xPremia in existence
         uint256 totalShares = totalSupply();
         // Calculates the amount of Premia the xPremia is worth
