@@ -10,8 +10,7 @@ library VolatilitySurfaceOracleStorage {
 
     struct Update {
         uint256 updatedAt;
-        bytes32 callCoefficients;
-        bytes32 putCoefficients;
+        bytes32 coefficients;
     }
 
     struct Layout {
@@ -28,46 +27,32 @@ library VolatilitySurfaceOracleStorage {
         }
     }
 
-    function getCoefficients(
-        Layout storage l,
-        address baseToken,
-        address underlyingToken,
-        bool isCall
-    ) internal view returns (bytes32) {
-        return
-            isCall
-                ? l
-                .volatilitySurfaces[baseToken][underlyingToken].callCoefficients
-                : l
-                .volatilitySurfaces[baseToken][underlyingToken].putCoefficients;
-    }
-
     function parseVolatilitySurfaceCoefficients(bytes32 input)
         internal
         pure
         returns (int256[] memory coefficients)
     {
-        coefficients = new int256[](10);
+        coefficients = new int256[](6);
 
         // Value to add to negative numbers to cast them to int256
-        int256 toAdd = (int256(-1) >> 25) << 25;
+        int256 toAdd = (int256(-1) >> 42) << 42;
 
         assembly {
             let i := 0
             // Value equal to -1
-            let mid := shl(24, 1)
+            let mid := shl(41, 1)
 
             for {
 
-            } lt(i, 10) {
+            } lt(i, 6) {
 
             } {
-                let offset := sub(225, mul(25, i))
+                let offset := sub(210, mul(42, i))
                 let coeff := shr(
                     offset,
                     sub(
                         input,
-                        shl(add(offset, 25), shr(add(offset, 25), input))
+                        shl(add(offset, 42), shr(add(offset, 42), input))
                     )
                 )
 
@@ -84,13 +69,13 @@ library VolatilitySurfaceOracleStorage {
         }
     }
 
-    function formatVolatilitySurfaceCoefficients(int256[10] memory coefficients)
+    function formatVolatilitySurfaceCoefficients(int256[6] memory coefficients)
         internal
         pure
         returns (bytes32 result)
     {
-        for (uint256 i = 0; i < 10; i++) {
-            int256 max = 1 << 24;
+        for (uint256 i = 0; i < 6; i++) {
+            int256 max = 1 << 41;
             require(
                 coefficients[i] < max && coefficients[i] > -max,
                 "Out of bounds"
@@ -102,15 +87,15 @@ library VolatilitySurfaceOracleStorage {
 
             for {
 
-            } lt(i, 10) {
+            } lt(i, 6) {
 
             } {
-                let offset := sub(225, mul(25, i))
+                let offset := sub(210, mul(42, i))
                 let coeff := mload(add(coefficients, mul(0x20, i)))
 
                 result := add(
                     result,
-                    shl(offset, sub(coeff, shl(25, shr(25, coeff))))
+                    shl(offset, sub(coeff, shl(42, shr(42, coeff))))
                 )
 
                 i := add(i, 1)
