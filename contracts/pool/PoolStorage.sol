@@ -345,6 +345,10 @@ library PoolStorage {
             newLiquidity64x64,
             0x8000000000000000 // 64x64 fixed point representation of 0.5
         );
+
+        if (cLevel64x64 < 0xb333333333333333) {
+            cLevel64x64 = int128(0xb333333333333333); // 64x64 fixed point representation of 0.7
+        }
     }
 
     function setOracles(
