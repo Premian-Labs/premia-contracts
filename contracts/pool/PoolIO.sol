@@ -396,12 +396,16 @@ contract PoolIO is IPoolIO, PoolSwap {
     }
 
     function claimRewards(bool isCallPool) external override {
+        claimRewards(msg.sender, isCallPool);
+    }
+
+    function claimRewards(address account, bool isCallPool) public override {
         PoolStorage.Layout storage l = PoolStorage.layout();
-        uint256 userTVL = l.userTVL[msg.sender][isCallPool];
+        uint256 userTVL = l.userTVL[account][isCallPool];
         uint256 totalTVL = l.totalTVL[isCallPool];
 
         IPremiaMining(PREMIA_MINING_ADDRESS).claim(
-            msg.sender,
+            account,
             address(this),
             isCallPool,
             userTVL,
