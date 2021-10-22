@@ -395,7 +395,6 @@ export class PoolUtil {
 
     const poolSettingsFactory = new PoolSettings__factory(deployer);
     const poolSettingsImpl = await poolSettingsFactory.deploy(
-      deployer.address,
       ivolOracle.address,
       weth.address,
       premiaMining.address,

@@ -221,7 +221,6 @@ export async function deployV2(
 
   const poolSettingsFactory = new PoolSettings__factory(deployer);
   const poolSettingsImpl = await poolSettingsFactory.deploy(
-    deployer.address,
     ivolOracle.address,
     tokens.ETH,
     premiaMining.address,

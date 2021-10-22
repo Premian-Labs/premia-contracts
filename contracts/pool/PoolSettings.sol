@@ -2,6 +2,9 @@
 
 pragma solidity ^0.8.0;
 
+import {IERC173} from "@solidstate/contracts/access/IERC173.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
+
 import {PoolStorage} from "./PoolStorage.sol";
 
 import {IPoolSettings} from "./IPoolSettings.sol";
@@ -14,10 +17,7 @@ import {PoolInternal} from "./PoolInternal.sol";
 contract PoolSettings is IPoolSettings, PoolInternal {
     using PoolStorage for PoolStorage.Layout;
 
-    address internal immutable MULTISIG;
-
     constructor(
-        address multisig,
         address ivolOracle,
         address weth,
         address premiaMining,
@@ -33,19 +33,20 @@ contract PoolSettings is IPoolSettings, PoolInternal {
             feeDiscountAddress,
             fee64x64
         )
-    {
-        MULTISIG = multisig;
-    }
+    {}
 
-    modifier onlyMultisig() {
-        require(msg.sender == MULTISIG, "Not multisig");
+    modifier onlyOwner() {
+        require(
+            msg.sender == IERC173(OwnableStorage.layout().owner).owner(),
+            "Not owner"
+        );
         _;
     }
 
     function setPoolCaps(uint256 basePoolCap, uint256 underlyingPoolCap)
         external
         override
-        onlyMultisig
+        onlyOwner
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
         l.basePoolCap = basePoolCap;
