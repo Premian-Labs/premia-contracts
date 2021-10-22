@@ -9,8 +9,6 @@ import {
 } from '../../typechain';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
-import { fixedFromFloat } from '@premia/utils';
-import { bnToNumber } from '../utils/math';
 
 chai.use(chaiAlmost(0.01));
 
@@ -24,8 +22,8 @@ describe('VolatilitySurfaceOracle', () => {
   const coefficientsFormatted =
     '0x00004e39fe17a216e3e08d84627da56b60f41e819453f79b02b4cb97c837c2a8';
   const coefficients = [
-    1.4545867790119862, 0.839159148341129, -0.05957422656606383,
-    0.02004706385514592, 0.14895038484273854, 0.034026549310791646,
+    0.839159148341129, -0.05957422656606383, 0.02004706385514592,
+    0.14895038484273854, 0.034026549310791646,
   ].map((el) => Math.floor(el * 10 ** 10).toString());
 
   console.log(coefficients);
@@ -67,7 +65,7 @@ describe('VolatilitySurfaceOracle', () => {
 
     it('should fail if a variable is out of bounds', async () => {
       const newCoefficients = [...coefficients];
-      newCoefficients[5] = BigNumber.from(1).shl(42).toString();
+      newCoefficients[4] = BigNumber.from(1).shl(51).toString();
       await expect(
         oracle.formatVolatilitySurfaceCoefficients(newCoefficients as any),
       ).to.be.revertedWith('Out of bounds');
@@ -78,8 +76,8 @@ describe('VolatilitySurfaceOracle', () => {
   // https://storage.cloud.google.com/ivol-interpolation/ivol_surface_BTC_call_2021-09-04-19%3A03%3A27.html
   describe('#getAnnualizedVolatility64x64', () => {
     const coefficients = [
-      1.4545867790119862, 0.839159148341129, -0.05957422656606383,
-      0.02004706385514592, 0.14895038484273854, 0.034026549310791646,
+      0.839159148341129, -0.05957422656606383, 0.02004706385514592,
+      0.14895038484273854, 0.034026549310791646,
     ].map((el) => Math.floor(el * 10 ** 10));
     const baseToken = '0x0000000000000000000000000000000000000001';
     const underlyingToken = '0x0000000000000000000000000000000000000002';

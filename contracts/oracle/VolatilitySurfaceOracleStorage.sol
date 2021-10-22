@@ -8,6 +8,12 @@ library VolatilitySurfaceOracleStorage {
     bytes32 internal constant STORAGE_SLOT =
         keccak256("premia.contracts.storage.VolatilitySurfaceOracle");
 
+    uint256 internal constant COEFF_BITS = 51;
+    uint256 internal constant COEFF_BITS_MINUS_ONE = 50;
+    uint256 internal constant COEFF_AMOUNT = 5;
+    // START_BIT = COEFF_BITS * (COEFF_AMOUNT - 1)
+    uint256 internal constant START_BIT = 204;
+
     struct Update {
         uint256 updatedAt;
         bytes32 coefficients;
@@ -32,27 +38,30 @@ library VolatilitySurfaceOracleStorage {
         pure
         returns (int256[] memory coefficients)
     {
-        coefficients = new int256[](6);
+        coefficients = new int256[](COEFF_AMOUNT);
 
         // Value to add to negative numbers to cast them to int256
-        int256 toAdd = (int256(-1) >> 42) << 42;
+        int256 toAdd = (int256(-1) >> COEFF_BITS) << COEFF_BITS;
 
         assembly {
             let i := 0
             // Value equal to -1
-            let mid := shl(41, 1)
+            let mid := shl(COEFF_BITS_MINUS_ONE, 1)
 
             for {
 
-            } lt(i, 6) {
+            } lt(i, COEFF_AMOUNT) {
 
             } {
-                let offset := sub(210, mul(42, i))
+                let offset := sub(START_BIT, mul(COEFF_BITS, i))
                 let coeff := shr(
                     offset,
                     sub(
                         input,
-                        shl(add(offset, 42), shr(add(offset, 42), input))
+                        shl(
+                            add(offset, COEFF_BITS),
+                            shr(add(offset, COEFF_BITS), input)
+                        )
                     )
                 )
 
@@ -69,13 +78,13 @@ library VolatilitySurfaceOracleStorage {
         }
     }
 
-    function formatVolatilitySurfaceCoefficients(int256[6] memory coefficients)
+    function formatVolatilitySurfaceCoefficients(int256[5] memory coefficients)
         internal
         pure
         returns (bytes32 result)
     {
-        for (uint256 i = 0; i < 6; i++) {
-            int256 max = 1 << 41;
+        for (uint256 i = 0; i < COEFF_AMOUNT; i++) {
+            int256 max = int256(1 << COEFF_BITS_MINUS_ONE);
             require(
                 coefficients[i] < max && coefficients[i] > -max,
                 "Out of bounds"
@@ -87,15 +96,18 @@ library VolatilitySurfaceOracleStorage {
 
             for {
 
-            } lt(i, 6) {
+            } lt(i, COEFF_AMOUNT) {
 
             } {
-                let offset := sub(210, mul(42, i))
+                let offset := sub(START_BIT, mul(COEFF_BITS, i))
                 let coeff := mload(add(coefficients, mul(0x20, i)))
 
                 result := add(
                     result,
-                    shl(offset, sub(coeff, shl(42, shr(42, coeff))))
+                    shl(
+                        offset,
+                        sub(coeff, shl(COEFF_BITS, shr(COEFF_BITS, coeff)))
+                    )
                 )
 
                 i := add(i, 1)

@@ -18,7 +18,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     using EnumerableSet for EnumerableSet.AddressSet;
     using ABDKMath64x64 for int128;
 
-    uint256 internal constant DECIMALS = 10;
+    uint256 internal constant DECIMALS = 12;
 
     event UpdateCoefficients(
         address indexed baseToken,
@@ -184,9 +184,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             _toCoefficient64x64(volatilitySurface[3]).mul(
                 adjustedLogMoneyness64x64.mul(adjustedLogMoneyness64x64)
             ) +
-            _toCoefficient64x64(volatilitySurface[4]).mul(
-                timeToMaturity64x64 //** _toCoefficient64x64(volatilitySurface[0]) // ToDo
-            ) +
+            _toCoefficient64x64(volatilitySurface[4]).mul(timeToMaturity64x64) +
             _toCoefficient64x64(volatilitySurface[5])
                 .mul(adjustedLogMoneyness64x64)
                 .mul(timeToMaturity64x64);
@@ -346,7 +344,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      * @param coefficients Coefficients of the volatility surface to pack
      * @return result The packed coefficients of the volatility surface
      */
-    function formatVolatilitySurfaceCoefficients(int256[6] memory coefficients)
+    function formatVolatilitySurfaceCoefficients(int256[5] memory coefficients)
         external
         pure
         returns (bytes32 result)
