@@ -24,6 +24,7 @@ import {
   PremiaOptionNFTDisplay__factory,
   NFTDisplay__factory,
   NFTSVG__factory,
+  PoolSettings__factory,
 } from '../../typechain';
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -386,6 +387,27 @@ export class PoolUtil {
         poolDiamond,
         poolViewImpl.address,
         poolViewFactory,
+        registeredSelectors,
+      ),
+    );
+
+    //////////////////////////////////////////////
+
+    const poolSettingsFactory = new PoolSettings__factory(deployer);
+    const poolSettingsImpl = await poolSettingsFactory.deploy(
+      deployer.address,
+      ivolOracle.address,
+      weth.address,
+      premiaMining.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+    registeredSelectors = registeredSelectors.concat(
+      await diamondCut(
+        poolDiamond,
+        poolSettingsImpl.address,
+        poolSettingsFactory,
         registeredSelectors,
       ),
     );
