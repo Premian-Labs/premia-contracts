@@ -201,9 +201,9 @@ describe('PremiaMining', () => {
       ),
     ).to.almost(60000);
 
-    await p.pool.connect(lp1).claimRewards(true);
-    await p.pool.connect(lp2).claimRewards(true);
-    await p.pool.connect(lp3).claimRewards(true);
+    await p.pool.connect(lp1)['claimRewards(bool)'](true);
+    await p.pool.connect(lp2)['claimRewards(bool)'](true);
+    await p.pool.connect(lp3)['claimRewards(bool)'](true);
     await expect(bnToNumber(await premia.balanceOf(lp1.address))).to.almost(
       11600.73,
     );
@@ -228,7 +228,7 @@ describe('PremiaMining', () => {
       await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
     ).to.eq(parseEther(totalRewardAmount.toString()));
 
-    await p.pool.connect(lp1).claimRewards(true);
+    await p.pool.connect(lp1)['claimRewards(bool)'](true);
     expect(await p.premiaMining.premiaRewardsAvailable()).to.eq(0);
     expect(await premia.balanceOf(lp1.address)).to.eq(
       parseEther(totalRewardAmount.toString()),

@@ -59,5 +59,7 @@ interface IPoolIO {
 
     function claimRewards(bool isCallPool) external;
 
+    function claimRewards(address account, bool isCallPool) external;
+
     function updateMiningPools() external;
 }
