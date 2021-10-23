@@ -2,9 +2,6 @@
 
 pragma solidity ^0.8.0;
 
-import {IERC173} from "@solidstate/contracts/access/IERC173.sol";
-import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
-
 import {PoolStorage} from "./PoolStorage.sol";
 
 import {IPoolSettings} from "./IPoolSettings.sol";
@@ -35,18 +32,10 @@ contract PoolSettings is IPoolSettings, PoolInternal {
         )
     {}
 
-    modifier onlyOwner() {
-        require(
-            msg.sender == IERC173(OwnableStorage.layout().owner).owner(),
-            "Not owner"
-        );
-        _;
-    }
-
     function setPoolCaps(uint256 basePoolCap, uint256 underlyingPoolCap)
         external
         override
-        onlyOwner
+        onlyProtocolOwner
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
         l.basePoolCap = basePoolCap;

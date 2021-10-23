@@ -2971,7 +2971,7 @@ describe('PoolProxy', function () {
   describe('#setPoolCaps', () =>
     it('should updates pool caps if owner', async () => {
       expect(pool.connect(lp1).setPoolCaps('123', '456')).to.be.revertedWith(
-        'Not owner',
+        'Not protocol owner',
       );
 
       await pool.connect(owner).setPoolCaps('123', '456');
