@@ -2967,4 +2967,16 @@ describe('PoolProxy', function () {
       ).to.be.revertedWith('liq lock 1d');
     });
   });
+
+  describe('#setPoolCaps', () =>
+    it('should updates pool caps if owner', async () => {
+      expect(pool.connect(lp1).setPoolCaps('123', '456')).to.be.revertedWith(
+        'Not protocol owner',
+      );
+
+      await pool.connect(owner).setPoolCaps('123', '456');
+      const caps = await pool.getCapAmounts();
+      expect(caps.callTokenCapAmount).to.eq('456');
+      expect(caps.putTokenCapAmount).to.eq('123');
+    }));
 });

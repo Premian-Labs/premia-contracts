@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.0;
 
+import {IERC173} from "@solidstate/contracts/access/IERC173.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155EnumerableInternal, ERC1155EnumerableStorage, EnumerableSet} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
 import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
@@ -84,6 +86,14 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             0,
             0
         );
+    }
+
+    modifier onlyProtocolOwner() {
+        require(
+            msg.sender == IERC173(OwnableStorage.layout().owner).owner(),
+            "Not protocol owner"
+        );
+        _;
     }
 
     function _getFeeDiscount(address feePayer)

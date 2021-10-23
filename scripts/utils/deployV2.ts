@@ -16,6 +16,7 @@ import {
   NFTSVG__factory,
   NFTDisplay__factory,
   PremiaOptionNFTDisplay__factory,
+  PoolSettings__factory,
 } from '../../typechain';
 import { diamondCut } from './diamond';
 import { BigNumber } from 'ethers';
@@ -212,6 +213,26 @@ export async function deployV2(
       poolDiamond,
       poolViewImpl.address,
       poolViewFactory,
+      registeredSelectors,
+    ),
+  );
+
+  //////////////////////////////////////////////
+
+  const poolSettingsFactory = new PoolSettings__factory(deployer);
+  const poolSettingsImpl = await poolSettingsFactory.deploy(
+    ivolOracle.address,
+    tokens.ETH,
+    premiaMining.address,
+    feeReceiver,
+    premiaFeeDiscount,
+    fee64x64,
+  );
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolSettingsImpl.address,
+      poolSettingsFactory,
       registeredSelectors,
     ),
   );
