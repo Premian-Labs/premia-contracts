@@ -9,6 +9,8 @@ import {
 } from '../../typechain';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
+import { fixedFromFloat } from '@premia/utils';
+import { bnToNumber } from '../utils/math';
 
 chai.use(chaiAlmost(0.01));
 
@@ -72,12 +74,13 @@ describe('VolatilitySurfaceOracle', () => {
     });
   });
 
-  // Plot coefficients
-  // https://storage.cloud.google.com/ivol-interpolation/ivol_surface_BTC_call_2021-09-04-19%3A03%3A27.html
   describe('#getAnnualizedVolatility64x64', () => {
     const coefficients = [
-      0.839159148341129, -0.05957422656606383, 0.02004706385514592,
-      0.14895038484273854, 0.034026549310791646,
+      0.839159148341129, // intercept
+      -0.05957422656606383, // M
+      0.02004706385514592, // M^2
+      0.14895038484273854, // tau
+      0.034026549310791646, // M*tau
     ].map((el) => Math.floor(el * 10 ** 12));
     const baseToken = '0x0000000000000000000000000000000000000001';
     const underlyingToken = '0x0000000000000000000000000000000000000002';
@@ -96,43 +99,30 @@ describe('VolatilitySurfaceOracle', () => {
         );
     };
 
-    // it('should correctly apply coefficients to obtain IVOL CALL surface', async () => {
-    //   await prepareContractEnv();
-    //
-    //   const moneyness = fixedFromFloat(1.1);
-    //   const timeToMaturity = fixedFromFloat(14);
-    //   const isCall = true;
-    //
-    //   const result = await oracle.getAnnualizedVolatility64x64(
-    //     baseToken,
-    //     underlyingToken,
-    //     moneyness,
-    //     timeToMaturity,
-    //     isCall,
-    //   );
-    //   const expected = bnToNumber(fixedFromFloat(0.7784));
-    //
-    //   expect(expected / bnToNumber(result)).to.be.closeTo(1, 0.001);
-    // });
-    //
-    // // https://storage.cloud.google.com/ivol-interpolation/ivol_surface_BTC_put_2021-09-04-19%3A06%3A20.html
-    // it('should correctly apply coefficients to obtain IVOL PUT surface', async () => {
-    //   await prepareContractEnv();
-    //
-    //   const moneyness = fixedFromFloat(0.8);
-    //   const timeToMaturity = fixedFromFloat(60);
-    //   const isCall = false;
-    //
-    //   const result = await oracle.getAnnualizedVolatility64x64(
-    //     baseToken,
-    //     underlyingToken,
-    //     moneyness,
-    //     timeToMaturity,
-    //     isCall,
-    //   );
-    //   const expected = bnToNumber(fixedFromFloat(0.8691));
-    //
-    //   expect(expected / bnToNumber(result)).to.be.closeTo(1, 0.001);
-    // });
+    it('should correctly apply coefficients to obtain IVOL surface', async () => {
+      await prepareContractEnv();
+
+      const spot = fixedFromFloat(60000);
+      const strike = fixedFromFloat(48000);
+      const timeToMaturity = fixedFromFloat(30 / 365);
+
+      // 0.839159148341129 -
+      // 0.05957422656606383 * ln(60000 / 48000) / (30/365)^0.5 +
+      // 0.02004706385514592 * (ln(60000 / 48000) / (30/365)^0.5) ^ 2 +
+      // 0.14895038484273854 * (30/365)
+      // 0.034026549310791646 * ln(60000 / 48000) / (30/365)^0.5 * (30/365) =
+      // 0.8193541663
+
+      const result = await oracle.getAnnualizedVolatility64x64(
+        baseToken,
+        underlyingToken,
+        spot,
+        strike,
+        timeToMaturity,
+      );
+      const expected = bnToNumber(fixedFromFloat(0.8193541663));
+
+      expect(expected / bnToNumber(result)).to.be.closeTo(1, 0.001);
+    });
   });
 });

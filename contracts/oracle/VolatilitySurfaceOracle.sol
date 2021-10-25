@@ -177,15 +177,15 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         );
 
         return
-            _toCoefficient64x64(volatilitySurface[1]) +
-            _toCoefficient64x64(volatilitySurface[2]).mul(
+            _toCoefficient64x64(volatilitySurface[0]) +
+            _toCoefficient64x64(volatilitySurface[1]).mul(
                 adjustedLogMoneyness64x64
             ) +
-            _toCoefficient64x64(volatilitySurface[3]).mul(
+            _toCoefficient64x64(volatilitySurface[2]).mul(
                 adjustedLogMoneyness64x64.mul(adjustedLogMoneyness64x64)
             ) +
-            _toCoefficient64x64(volatilitySurface[4]).mul(timeToMaturity64x64) +
-            _toCoefficient64x64(volatilitySurface[5])
+            _toCoefficient64x64(volatilitySurface[3]).mul(timeToMaturity64x64) +
+            _toCoefficient64x64(volatilitySurface[4])
                 .mul(adjustedLogMoneyness64x64)
                 .mul(timeToMaturity64x64);
     }
