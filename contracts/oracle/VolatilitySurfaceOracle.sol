@@ -169,7 +169,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 timeToMaturity64x64,
         int256[] memory volatilitySurface
     ) internal pure returns (int128) {
-        require(volatilitySurface.length == 6, "Invalid vol surface");
+        require(volatilitySurface.length == 5, "Invalid vol surface");
 
         // Time adjusted log moneyness
         int128 adjustedLogMoneyness64x64 = spot64x64.div(strike64x64).ln().div(
