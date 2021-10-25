@@ -24,7 +24,7 @@ describe('VolatilitySurfaceOracle', () => {
   const coefficients = [
     0.839159148341129, -0.05957422656606383, 0.02004706385514592,
     0.14895038484273854, 0.034026549310791646,
-  ].map((el) => Math.floor(el * 10 ** 10).toString());
+  ].map((el) => Math.floor(el * 10 ** 12).toString());
 
   console.log(coefficients);
 
@@ -78,7 +78,7 @@ describe('VolatilitySurfaceOracle', () => {
     const coefficients = [
       0.839159148341129, -0.05957422656606383, 0.02004706385514592,
       0.14895038484273854, 0.034026549310791646,
-    ].map((el) => Math.floor(el * 10 ** 10));
+    ].map((el) => Math.floor(el * 10 ** 12));
     const baseToken = '0x0000000000000000000000000000000000000001';
     const underlyingToken = '0x0000000000000000000000000000000000000002';
 
