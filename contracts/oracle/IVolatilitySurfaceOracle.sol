@@ -14,7 +14,8 @@ interface IVolatilitySurfaceOracle {
 
     function getVolatilitySurfaceCoefficientsUnpacked(
         address baseToken,
-        address underlyingToken
+        address underlyingToken,
+        bool isCall
     ) external view returns (int256[] memory);
 
     function getTimeToMaturity64x64(uint64 maturity)
@@ -27,7 +28,8 @@ interface IVolatilitySurfaceOracle {
         address underlyingToken,
         int128 spot64x64,
         int128 strike64x64,
-        int128 timeToMaturity64x64
+        int128 timeToMaturity64x64,
+        bool isCall
     ) external view returns (int128);
 
     function getBlackScholesPrice64x64(

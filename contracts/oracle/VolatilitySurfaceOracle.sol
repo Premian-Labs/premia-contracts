@@ -23,7 +23,8 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     event UpdateCoefficients(
         address indexed baseToken,
         address indexed underlyingToken,
-        bytes32 coefficients // Coefficients must be packed using formatVolatilitySurfaceCoefficients
+        bytes32 callCoefficients, // Coefficients must be packed using formatVolatilitySurfaceCoefficients
+        bytes32 putCoefficients // Coefficients must be packed using formatVolatilitySurfaceCoefficients
     );
 
     /**
@@ -99,17 +100,22 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      * @notice Get unpacked volatility surface coefficients
      * @param baseToken The base token of the pair
      * @param underlyingToken The underlying token of the pair
+     * @param isCall whether it is for call or put
      * @return The unpacked coefficients of the volatility surface
      */
     function getVolatilitySurfaceCoefficientsUnpacked(
         address baseToken,
-        address underlyingToken
+        address underlyingToken,
+        bool isCall
     ) external view override returns (int256[] memory) {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
 
-        bytes32 valuePacked = l
-        .volatilitySurfaces[baseToken][underlyingToken].coefficients;
+        bytes32 valuePacked = l.getCoefficients(
+            baseToken,
+            underlyingToken,
+            isCall
+        );
 
         return
             VolatilitySurfaceOracleStorage.parseVolatilitySurfaceCoefficients(
@@ -138,6 +144,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      * @param spot64x64 The spot, as a 64x64 fixed point representation
      * @param strike64x64 The strike, as a 64x64 fixed point representation
      * @param timeToMaturity64x64 Time to maturity (in years), as a 64x64 fixed point representation
+     * @param isCall whether it is for call or put
      * @return Annualized volatility, as a 64x64 fixed point representation. 1 = 100%
      */
     function getAnnualizedVolatility64x64(
@@ -145,13 +152,14 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         address underlyingToken,
         int128 spot64x64,
         int128 strike64x64,
-        int128 timeToMaturity64x64
+        int128 timeToMaturity64x64,
+        bool isCall
     ) public view override returns (int128) {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
         int256[] memory volatilitySurface = VolatilitySurfaceOracleStorage
             .parseVolatilitySurfaceCoefficients(
-                l.volatilitySurfaces[baseToken][underlyingToken].coefficients
+                l.getCoefficients(baseToken, underlyingToken, isCall)
             );
 
         return
@@ -207,7 +215,8 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             underlyingToken,
             strike64x64,
             spot64x64,
-            timeToMaturity64x64
+            timeToMaturity64x64,
+            isCall
         );
         int128 annualizedVariance = annualizedVolatility.mul(
             annualizedVolatility
@@ -285,16 +294,20 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      * @notice Update a list of volatility surfaces
      * @param baseTokens List of base tokens
      * @param underlyingTokens List of underlying tokens
-     * @param coefficients List of coefficients
+     * @param callCoefficients List of call coefficients
+     * @param putCoefficients List of put coefficients
      */
     function updateVolatilitySurfaces(
         address[] memory baseTokens,
         address[] memory underlyingTokens,
-        bytes32[] memory coefficients
+        bytes32[] memory callCoefficients,
+        bytes32[] memory putCoefficients
     ) external {
         uint256 length = baseTokens.length;
         require(
-            length == underlyingTokens.length && length == coefficients.length,
+            length == underlyingTokens.length &&
+                length == callCoefficients.length &&
+                length == putCoefficients.length,
             "Wrong array length"
         );
 
@@ -311,13 +324,15 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
                     underlyingTokens[i]
                 ] = VolatilitySurfaceOracleStorage.Update({
                 updatedAt: block.timestamp,
-                coefficients: coefficients[i]
+                callCoefficients: callCoefficients[i],
+                putCoefficients: putCoefficients[i]
             });
 
             emit UpdateCoefficients(
                 baseTokens[i],
                 underlyingTokens[i],
-                coefficients[i]
+                callCoefficients[i],
+                putCoefficients[i]
             );
         }
     }

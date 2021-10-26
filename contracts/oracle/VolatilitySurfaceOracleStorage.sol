@@ -16,7 +16,8 @@ library VolatilitySurfaceOracleStorage {
 
     struct Update {
         uint256 updatedAt;
-        bytes32 coefficients;
+        bytes32 callCoefficients;
+        bytes32 putCoefficients;
     }
 
     struct Layout {
@@ -31,6 +32,16 @@ library VolatilitySurfaceOracleStorage {
         assembly {
             l.slot := slot
         }
+    }
+
+    function getCoefficients(
+        Layout storage l,
+        address baseToken,
+        address underlyingToken,
+        bool isCall
+    ) internal view returns (bytes32) {
+        Update storage u = l.volatilitySurfaces[baseToken][underlyingToken];
+        return isCall ? u.callCoefficients : u.putCoefficients;
     }
 
     function parseVolatilitySurfaceCoefficients(bytes32 input)
