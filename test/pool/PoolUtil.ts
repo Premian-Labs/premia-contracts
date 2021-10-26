@@ -209,14 +209,12 @@ export class PoolUtil {
       -0.021305491994832955,
     ];
 
-    const decimals = await ivolOracle.getCoefficientsDecimals();
-
-    const callCoefficientsInt = callCoefficients.map((el, idx) =>
-      Math.floor(el * 10 ** decimals[idx].toNumber()).toString(),
+    const callCoefficientsInt = callCoefficients.map((el) =>
+      parseUnits(el.toFixed(12), '12'),
     );
 
-    const putCoefficientsInt = putCoefficients.map((el, idx) =>
-      Math.floor(el * 10 ** decimals[idx].toNumber()).toString(),
+    const putCoefficientsInt = putCoefficients.map((el) =>
+      parseUnits(el.toFixed(12), '12'),
     );
 
     const callCoefficientsPacked =

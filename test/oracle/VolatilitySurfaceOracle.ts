@@ -96,6 +96,7 @@ describe('VolatilitySurfaceOracle', () => {
           [baseToken],
           [underlyingToken],
           [coefficientsHex],
+          [coefficientsHex],
         );
     };
 
@@ -105,6 +106,7 @@ describe('VolatilitySurfaceOracle', () => {
       const spot = fixedFromFloat(60000);
       const strike = fixedFromFloat(48000);
       const timeToMaturity = fixedFromFloat(30 / 365);
+      const isCall = true;
 
       // 0.839159148341129 -
       // 0.05957422656606383 * ln(60000 / 48000) / (30/365)^0.5 +
@@ -119,6 +121,7 @@ describe('VolatilitySurfaceOracle', () => {
         spot,
         strike,
         timeToMaturity,
+        isCall,
       );
       const expected = bnToNumber(fixedFromFloat(0.8193541663));
 
