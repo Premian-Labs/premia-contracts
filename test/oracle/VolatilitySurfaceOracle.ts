@@ -75,44 +75,88 @@ describe('VolatilitySurfaceOracle', () => {
   });
 
   describe('#getAnnualizedVolatility64x64', () => {
-    const coefficients = [
-      0.839159148341129, // intercept
-      -0.05957422656606383, // M
-      0.02004706385514592, // M^2
-      0.14895038484273854, // tau
-      0.034026549310791646, // M*tau
+    // ETH surface regression primer
+    const callCoefficients = [
+      0.9342809639050504, // intercept
+      -0.13731127641216775, // M
+      -0.00027206354505048273, // M^2
+      0.8094657778778461, // tau
+      0.06639676877520312, // M*tau
     ].map((el) => Math.floor(el * 10 ** 12));
+
+    const putCoefficients = [
+      0.9488628859710304, // intercept
+      -0.0022579889490061756, // M
+      0.051032234969060786, // M^2
+      0.7054000097435406, // tau
+      -0.1671058362938298, // M*tau
+    ].map((el) => Math.floor(el * 10 ** 12));
+
     const baseToken = '0x0000000000000000000000000000000000000001';
     const underlyingToken = '0x0000000000000000000000000000000000000002';
 
     const prepareContractEnv = async () => {
-      const coefficientsHex = await oracle.formatVolatilitySurfaceCoefficients(
-        coefficients as any,
-      );
+      const callCoefficientsHex =
+        await oracle.formatVolatilitySurfaceCoefficients(
+          callCoefficients as any,
+        );
+
+      const putCoefficientsHex =
+        await oracle.formatVolatilitySurfaceCoefficients(
+          putCoefficients as any,
+        );
 
       await oracle
         .connect(relayer)
         .updateVolatilitySurfaces(
           [baseToken],
           [underlyingToken],
-          [coefficientsHex],
-          [coefficientsHex],
+          [callCoefficientsHex],
+          [putCoefficientsHex],
         );
     };
 
-    it('should correctly apply coefficients to obtain IVOL surface', async () => {
+    it('should correctly apply coefficients to obtain call IVOL surface', async () => {
+      await prepareContractEnv();
+
+      const spot = fixedFromFloat(48000);
+      const strike = fixedFromFloat(60000);
+      const timeToMaturity = fixedFromFloat(30 / 365);
+      const isCall = true;
+
+      // 0.9342809639050504 -
+      // 0.13731127641216775 * ln(48000 / 60000) / (30/365)^0.5 -
+      // 0.00027206354505048273 * (ln(48000 / 60000) / (30/365)^0.5) ^ 2 +
+      // 0.8094657778778461 * (30/365) +
+      // 0.06639676877520312 * ln(48000 / 60000) / (30/365)^0.5 * (30/365) =
+      // 1.1032750138
+
+      const result = await oracle.getAnnualizedVolatility64x64(
+        baseToken,
+        underlyingToken,
+        spot,
+        strike,
+        timeToMaturity,
+        isCall,
+      );
+      const expected = bnToNumber(fixedFromFloat(1.1032750138));
+
+      expect(expected / bnToNumber(result)).to.be.closeTo(1, 0.001);
+    });
+
+    it('should correctly apply coefficients to obtain put IVOL surface', async () => {
       await prepareContractEnv();
 
       const spot = fixedFromFloat(60000);
       const strike = fixedFromFloat(48000);
       const timeToMaturity = fixedFromFloat(30 / 365);
-      const isCall = true;
+      const isCall = false;
 
-      // 0.839159148341129 -
-      // 0.05957422656606383 * ln(60000 / 48000) / (30/365)^0.5 +
-      // 0.02004706385514592 * (ln(60000 / 48000) / (30/365)^0.5) ^ 2 +
-      // 0.14895038484273854 * (30/365)
-      // 0.034026549310791646 * ln(60000 / 48000) / (30/365)^0.5 * (30/365) =
+      // 0.9488628859710304 -
+      // 0.0022579889490061756 * ln(60000 / 48000) / (30/365)^0.5 +
+      // 0.051032234969060786 * (ln(60000 / 48000) / (30/365)^0.5) ^ 2 +
+      // 0.7054000097435406 * (30/365) -
+      // 0.1671058362938298 * ln(60000 / 48000) / (30/365)^0.5 * (30/365) =
       // 0.8193541663
 
       const result = await oracle.getAnnualizedVolatility64x64(
@@ -123,7 +167,7 @@ describe('VolatilitySurfaceOracle', () => {
         timeToMaturity,
         isCall,
       );
-      const expected = bnToNumber(fixedFromFloat(0.8193541663));
+      const expected = bnToNumber(fixedFromFloat(1.0253092887));
 
       expect(expected / bnToNumber(result)).to.be.closeTo(1, 0.001);
     });
