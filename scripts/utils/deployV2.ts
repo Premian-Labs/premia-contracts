@@ -228,6 +228,8 @@ export async function deployV2(
     premiaFeeDiscount,
     fee64x64,
   );
+  await poolSettingsImpl.deployed();
+
   registeredSelectors = registeredSelectors.concat(
     await diamondCut(
       poolDiamond,
