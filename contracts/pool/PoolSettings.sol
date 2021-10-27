@@ -41,4 +41,14 @@ contract PoolSettings is IPoolSettings, PoolInternal {
         l.basePoolCap = basePoolCap;
         l.underlyingPoolCap = underlyingPoolCap;
     }
+
+    function setMinimumAmounts(uint256 baseMinimum, uint256 underlyingMinimum)
+        external
+        override
+        onlyProtocolOwner
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        l.baseMinimum = baseMinimum;
+        l.underlyingMinimum = underlyingMinimum;
+    }
 }
