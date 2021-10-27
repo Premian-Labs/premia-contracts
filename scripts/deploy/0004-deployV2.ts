@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { deployV2, TokenAddresses } from '../utils/deployV2';
+import { deployV2, TokenAddresses, TokenAmounts } from '../utils/deployV2';
 import { fixedFromFloat } from '@premia/utils';
 
 async function main() {
@@ -19,6 +19,20 @@ async function main() {
     LINK: '0x2c1d072e956AFFC0D435Cb7AC38EF18d24d9127c',
   };
 
+  const minimums: TokenAmounts = {
+    DAI: '100',
+    ETH: '0.05',
+    BTC: '0.005',
+    LINK: '5',
+  };
+
+  const caps: TokenAmounts = {
+    DAI: '10000',
+    ETH: '2.5',
+    BTC: '0.15',
+    LINK: '300',
+  };
+
   // ToDo : Set after new upgradable PremiaMaker is deployed
   const premiaMaker = ethers.constants.AddressZero;
   const premiaFeeDiscount = '0xF5aae75D1AD6fDD62Cce66137F2674c96FEda854';
@@ -31,6 +45,8 @@ async function main() {
     premiaFeeDiscount,
     tokens,
     oracles,
+    minimums,
+    caps,
   );
 }
 
