@@ -68,15 +68,10 @@ contract PoolSettings is IPoolSettings, PoolInternal {
         onlyProtocolOwner
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
-        int128 liquidity64x64 = l.totalFreeLiquiditySupply64x64(isCallPool);
 
-        if (isCallPool) {
-            l.cLevelUnderlying64x64 = cLevel64x64;
-            l.cLevelUnderlyingUpdatedAt = block.timestamp;
-        } else {
-            l.cLevelBase64x64 = cLevel64x64;
-            l.cLevelBaseUpdatedAt = block.timestamp;
-        }
+        l.setCLevel(cLevel64x64, isCallPool);
+
+        int128 liquidity64x64 = l.totalFreeLiquiditySupply64x64(isCallPool);
 
         emit UpdateCLevel(
             isCallPool,
