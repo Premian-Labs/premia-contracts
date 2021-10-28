@@ -856,11 +856,11 @@ describe('PoolProxy', function () {
           true,
         );
 
-        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(49.25);
+        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(24.62);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
-        expect(fixedToNumber(q.cLevel64x64)).to.almost(3.64);
+        expect(fixedToNumber(q.cLevel64x64)).to.almost(1.82);
         expect(
           (fixedToNumber(q.baseCost64x64) * spotPrice) /
             fixedToNumber(q.cLevel64x64) /
@@ -945,11 +945,11 @@ describe('PoolProxy', function () {
           false,
         );
 
-        expect(fixedToNumber(q.baseCost64x64)).to.almost(69.36);
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(34.68);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
-        expect(fixedToNumber(q.cLevel64x64)).to.almost(3.29);
+        expect(fixedToNumber(q.cLevel64x64)).to.almost(1.64);
         expect(
           fixedToNumber(q.baseCost64x64) /
             fixedToNumber(q.cLevel64x64) /

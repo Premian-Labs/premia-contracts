@@ -76,6 +76,7 @@ library PoolStorage {
         uint256 basePoolCap;
         uint256 underlyingPoolCap;
         // market state
+        int128 steepness64x64;
         int128 cLevelBase64x64;
         int128 cLevelUnderlying64x64;
         uint256 cLevelBaseUpdatedAt;
@@ -343,7 +344,7 @@ library PoolStorage {
             l.getCLevel(isCallPool),
             oldLiquidity64x64,
             newLiquidity64x64,
-            0x8000000000000000 // 64x64 fixed point representation of 0.5
+            l.steepness64x64 // 64x64 fixed point representation of 0.5
         );
 
         if (cLevel64x64 < 0xb333333333333333) {
