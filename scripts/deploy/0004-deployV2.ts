@@ -20,7 +20,7 @@ async function main() {
   };
 
   const minimums: TokenAmounts = {
-    DAI: '100',
+    DAI: '200',
     ETH: '0.05',
     BTC: '0.005',
     LINK: '5',
