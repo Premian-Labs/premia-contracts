@@ -345,7 +345,7 @@ library PoolStorage {
             l.getCLevel(isCallPool),
             oldLiquidity64x64,
             newLiquidity64x64,
-            l.steepness64x64 // 64x64 fixed point representation of 0.5
+            l.steepness64x64
         );
 
         if (cLevel64x64 < 0xb333333333333333) {

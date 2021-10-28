@@ -23,6 +23,7 @@ contract ProxyManager is IProxyManager, OwnableInternal {
 
     // 64x64 fixed point representation of 1e
     int128 private constant INITIAL_C_LEVEL_64x64 = 0x2b7e151628aed2a6b;
+    // 64x64 fixed point representation of 0.5
     int128 private constant INITIAL_STEEPNESS_64x64 = 0x8000000000000000;
 
     event DeployPool(
