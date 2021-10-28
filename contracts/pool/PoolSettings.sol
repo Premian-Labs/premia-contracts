@@ -51,4 +51,37 @@ contract PoolSettings is IPoolSettings, PoolInternal {
         l.baseMinimum = baseMinimum;
         l.underlyingMinimum = underlyingMinimum;
     }
+
+    function setSteepness64x64(int128 steepness64x64)
+        external
+        override
+        onlyProtocolOwner
+    {
+        PoolStorage.layout().steepness64x64 = steepness64x64;
+        emit UpdateSteepness(steepness64x64);
+    }
+
+    function setCLevel64x64(int128 cLevel64x64, bool isCallPool)
+        external
+        override
+        onlyProtocolOwner
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        int128 liquidity64x64 = l.totalFreeLiquiditySupply64x64(isCallPool);
+
+        if (isCallPool) {
+            l.cLevelUnderlying64x64 = cLevel64x64;
+            l.cLevelUnderlyingUpdatedAt = block.timestamp;
+        } else {
+            l.cLevelBase64x64 = cLevel64x64;
+            l.cLevelBaseUpdatedAt = block.timestamp;
+        }
+
+        emit UpdateCLevel(
+            isCallPool,
+            cLevel64x64,
+            liquidity64x64,
+            liquidity64x64
+        );
+    }
 }

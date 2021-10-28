@@ -100,6 +100,14 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
+     * @notice get steepness
+     * @return 64x64 fixed point representation of C steepness of Pool
+     */
+    function getSteepness64x64() external view override returns (int128) {
+        return PoolStorage.layout().steepness64x64;
+    }
+
+    /**
      * @notice get price at timestamp
      * @return price at timestamp
      */
