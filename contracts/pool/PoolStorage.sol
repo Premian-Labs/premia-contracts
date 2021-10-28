@@ -325,6 +325,14 @@ library PoolStorage {
             isCallPool
         );
 
+        l.setCLevel(cLevel64x64, isCallPool);
+    }
+
+    function setCLevel(
+        Layout storage l,
+        int128 cLevel64x64,
+        bool isCallPool
+    ) internal {
         if (isCallPool) {
             l.cLevelUnderlying64x64 = cLevel64x64;
             l.cLevelUnderlyingUpdatedAt = block.timestamp;
