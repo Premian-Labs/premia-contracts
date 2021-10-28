@@ -33,8 +33,7 @@ async function main() {
     LINK: '300',
   };
 
-  // ToDo : Set after new upgradable PremiaMaker is deployed
-  const premiaMaker = ethers.constants.AddressZero;
+  const premiaMaker = '0x31A000980E3516956e9418477a203B2dA4EE6eD8';
   const premiaFeeDiscount = '0xF5aae75D1AD6fDD62Cce66137F2674c96FEda854';
 
   await deployV2(
