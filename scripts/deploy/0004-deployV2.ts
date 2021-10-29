@@ -33,7 +33,7 @@ async function main() {
     LINK: '300',
   };
 
-  const premiaMaker = '0x31A000980E3516956e9418477a203B2dA4EE6eD8';
+  const premiaMaker = '0xC4B2C51f969e0713E799De73b7f130Fb7Bb604CF';
   const premiaFeeDiscount = '0xF5aae75D1AD6fDD62Cce66137F2674c96FEda854';
 
   await deployV2(
