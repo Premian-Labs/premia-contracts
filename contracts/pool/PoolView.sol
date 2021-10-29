@@ -231,7 +231,7 @@ contract PoolView is IPoolView, PoolInternal {
      * @param tokenId an option token id
      * @return The token URI
      */
-    function tokenURI(uint256 tokenId)
+    function uri(uint256 tokenId)
         external
         view
         override

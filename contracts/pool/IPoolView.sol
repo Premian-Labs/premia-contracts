@@ -59,5 +59,5 @@ interface IPoolView {
             uint256 putDivestmentTimestamp
         );
 
-    function tokenURI(uint256 tokenId) external view returns (string memory);
+    function uri(uint256 tokenId) external view returns (string memory);
 }
