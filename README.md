@@ -82,3 +82,12 @@ Generate a code coverage report using `solidity-coverage`:
 ```bash
 yarn run hardhat coverage
 ```
+
+## Licensing
+
+The primary license for Premia contracts is the Business Source License 1.1 (`BUSL-1.1`), see [`LICENSE`](./LICENSE).
+
+### Exceptions
+
+- Interfaces are licensed under `LGPL-3.0-or-later` (as indicated in their SPDX headers), see [`LICENSE_LGPL`](./LICENSE_LGPL)
+- All files in `contracts/test` remain unlicensed.
