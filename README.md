@@ -35,3 +35,47 @@ https://premia.finance
 | `PremiaVesting` | `0xdF69C895E7490d90b14A278Add8Aa4eC844a696a` | [🔗](https://etherscan.io/address/0xdF69C895E7490d90b14A278Add8Aa4eC844a696a) |
 | `PremiaVesting` | `0xD3C8Ce2793c60c9e8464FC08Ec7691613057c43C` | [🔗](https://etherscan.io/address/0xD3C8Ce2793c60c9e8464FC08Ec7691613057c43C) |
 | `PremiaVesting` | `0x1ede971F31f7630baE9f14d349273621A5145381` | [🔗](https://etherscan.io/address/0x1ede971F31f7630baE9f14d349273621A5145381) |
+
+## Development
+
+Install dependencies via Yarn:
+
+```bash
+yarn install
+```
+
+Setup Husky to format code on commit:
+
+```bash
+yarn prepare
+```
+
+Create a `.env` file with the following values defined:
+
+| Key | Description |
+|-|-|
+| `FORK_MODE` | if `true`, tests will be run against a mainnet fork |
+| `ALCHEMY_KEY` | [Alchemy](https://www.alchemy.com/) API key for node connectivity |
+| `ETH_TEST_PKEY` | private key for use on Rinkeby testnet |
+| `ETH_MAIN_KEY` | private key for use on Ethereum mainnet |
+| `BSC_PKEY` | private key for use on Binance Smart Chain |
+
+### Testing
+
+Test contracts via Hardhat:
+
+```bash
+yarn run hardhat test
+```
+
+Activate gas usage reporting by setting the `REPORT_GAS` environment variable to `"true"`:
+
+```bash
+REPORT_GAS=true yarn run hardhat test
+```
+
+Generate a code coverage report using `solidity-coverage`:
+
+```bash
+yarn run hardhat coverage
+```
