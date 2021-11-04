@@ -1,4 +1,4 @@
-# Premia - Options Platform
+# Premia - Next-Generation Options AMM
 
 https://premia.finance
 
