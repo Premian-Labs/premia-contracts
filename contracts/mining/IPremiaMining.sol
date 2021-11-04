@@ -16,7 +16,7 @@ interface IPremiaMining {
         view
         returns (PremiaMiningStorage.PoolInfo memory);
 
-    function getPremiaPerBlock() external view returns (uint256);
+    function getPremiaPerYear() external view returns (uint256);
 
     function addPool(address _pool, uint256 _allocPoints) external;
 
