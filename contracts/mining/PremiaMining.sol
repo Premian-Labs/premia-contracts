@@ -208,6 +208,12 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         PremiaMiningStorage.PoolInfo storage pool = l.poolInfo[_pool][
             _isCallPool
         ];
+
+        // To avoid display high reward amount on contract upgrade from block to timestamp
+        if (pool.lastRewardTimestamp == 0) {
+            return 0;
+        }
+
         PremiaMiningStorage.UserInfo storage user = l.userInfo[_pool][
             _isCallPool
         ][_user];
@@ -261,6 +267,12 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         PremiaMiningStorage.PoolInfo storage pool = l.poolInfo[_pool][
             _isCallPool
         ];
+
+        // To ensure pool updates correctly, on contract upgrade from block to timestamp
+        if (pool.lastRewardTimestamp == 0) {
+            pool.lastRewardTimestamp = block.timestamp;
+            return;
+        }
 
         if (block.timestamp <= pool.lastRewardTimestamp) {
             return;
