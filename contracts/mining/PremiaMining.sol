@@ -22,7 +22,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     address internal immutable DIAMOND;
     address internal immutable PREMIA;
 
-    uint256 private constant ONE_YEAR = 3600 * 24 * 365;
+    uint256 private constant ONE_YEAR = 365 days;
 
     event Claim(
         address indexed user,
