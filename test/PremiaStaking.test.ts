@@ -2,6 +2,8 @@ import { expect } from 'chai';
 import {
   PremiaStaking,
   PremiaStaking__factory,
+  PremiaStakingProxy,
+  PremiaStakingProxy__factory,
   ERC20Mock,
   ERC20Mock__factory,
 } from '../typechain';
@@ -14,6 +16,7 @@ let alice: SignerWithAddress;
 let bob: SignerWithAddress;
 let carol: SignerWithAddress;
 let premia: ERC20Mock;
+let premiaStakingImplementation: PremiaStaking;
 let premiaStaking: PremiaStaking;
 
 describe('PremiaStaking', () => {
@@ -21,8 +24,17 @@ describe('PremiaStaking', () => {
     [admin, alice, bob, carol] = await ethers.getSigners();
 
     premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
-    premiaStaking = await new PremiaStaking__factory(admin).deploy(
-      premia.address,
+    premiaStakingImplementation = await new PremiaStaking__factory(
+      admin,
+    ).deploy(premia.address);
+
+    const premiaStakingProxy = await new PremiaStakingProxy__factory(
+      admin,
+    ).deploy(premiaStakingImplementation.address);
+
+    premiaStaking = PremiaStaking__factory.connect(
+      premiaStakingProxy.address,
+      admin,
     );
 
     await premia.mint(alice.address, '100');
