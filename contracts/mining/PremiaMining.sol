@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
+// For further clarification please see https://license.premia.legal
 
 pragma solidity ^0.8.0;
 
@@ -8,6 +9,7 @@ import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 
 import {PremiaMiningStorage} from "./PremiaMiningStorage.sol";
 import {IPremiaMining} from "./IPremiaMining.sol";
+import {IPoolIO} from "../pool/IPoolIO.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
 
 /**
@@ -373,6 +375,24 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         _safePremiaTransfer(_user, reward);
 
         emit Claim(_user, _pool, _isCallPool, reward);
+    }
+
+    /**
+     * @notice Trigger reward distribution by multiple pools
+     * @param account address whose rewards to claim
+     * @param pools list of pools to call
+     * @param isCall list of bools indicating whether each pool is call pool
+     */
+    function multiClaim(
+        address account,
+        address[] calldata pools,
+        bool[] calldata isCall
+    ) external {
+        require(pools.length == isCall.length);
+
+        for (uint256 i; i < pools.length; i++) {
+            IPoolIO(pools[i]).claimRewards(account, isCall[i]);
+        }
     }
 
     /**

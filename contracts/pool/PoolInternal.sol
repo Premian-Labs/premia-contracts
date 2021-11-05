@@ -1,7 +1,10 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
+// For further clarification please see https://license.premia.legal
 
 pragma solidity ^0.8.0;
 
+import {IERC173} from "@solidstate/contracts/access/IERC173.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155EnumerableInternal, ERC1155EnumerableStorage, EnumerableSet} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
 import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
@@ -84,6 +87,14 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             0,
             0
         );
+    }
+
+    modifier onlyProtocolOwner() {
+        require(
+            msg.sender == IERC173(OwnableStorage.layout().owner).owner(),
+            "Not protocol owner"
+        );
+        _;
     }
 
     function _getFeeDiscount(address feePayer)
@@ -178,7 +189,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         ).getAnnualizedVolatility64x64(
                 l.base,
                 l.underlying,
-                args.strike64x64.div(args.spot64x64),
+                args.spot64x64,
+                args.strike64x64,
                 timeToMaturity64x64,
                 isCall
             );

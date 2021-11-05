@@ -856,16 +856,16 @@ describe('PoolProxy', function () {
           true,
         );
 
-        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(70.94);
+        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(24.62);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
-        expect(fixedToNumber(q.cLevel64x64)).to.almost(3.64);
+        expect(fixedToNumber(q.cLevel64x64)).to.almost(1.82);
         expect(
           (fixedToNumber(q.baseCost64x64) * spotPrice) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(18.509);
+        ).to.almost(12.85);
       });
 
       it('should return min price based on min apy, if option is priced under', async () => {
@@ -945,16 +945,16 @@ describe('PoolProxy', function () {
           false,
         );
 
-        expect(fixedToNumber(q.baseCost64x64)).to.almost(129.58);
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(34.68);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
-        expect(fixedToNumber(q.cLevel64x64)).to.almost(3.29);
+        expect(fixedToNumber(q.cLevel64x64)).to.almost(1.64);
         expect(
           fixedToNumber(q.baseCost64x64) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(39.29);
+        ).to.almost(21.03);
       });
 
       it('should return min price based on min apy, if option is priced under', async () => {
@@ -2967,4 +2967,16 @@ describe('PoolProxy', function () {
       ).to.be.revertedWith('liq lock 1d');
     });
   });
+
+  describe('#setPoolCaps', () =>
+    it('should updates pool caps if owner', async () => {
+      expect(pool.connect(lp1).setPoolCaps('123', '456')).to.be.revertedWith(
+        'Not protocol owner',
+      );
+
+      await pool.connect(owner).setPoolCaps('123', '456');
+      const caps = await pool.getCapAmounts();
+      expect(caps.callTokenCapAmount).to.eq('456');
+      expect(caps.putTokenCapAmount).to.eq('123');
+    }));
 });

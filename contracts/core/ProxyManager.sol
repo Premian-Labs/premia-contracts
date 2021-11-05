@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
+// For further clarification please see https://license.premia.legal
 
 pragma solidity ^0.8.0;
 
@@ -20,8 +21,10 @@ contract ProxyManager is IProxyManager, OwnableInternal {
 
     address private immutable DIAMOND;
 
-    // 64x64 fixed point representation of 2e
-    int128 private constant INITIAL_C_LEVEL_64x64 = 0x56fc2a2c515da32ea;
+    // 64x64 fixed point representation of 1e
+    int128 private constant INITIAL_C_LEVEL_64x64 = 0x2b7e151628aed2a6b;
+    // 64x64 fixed point representation of 0.5
+    int128 private constant INITIAL_STEEPNESS_64x64 = 0x8000000000000000;
 
     event DeployPool(
         address indexed base,
@@ -100,7 +103,8 @@ contract ProxyManager is IProxyManager, OwnableInternal {
                 underlyingMinimum64x64,
                 basePoolCap64x64,
                 underlyingPoolCap64x64,
-                INITIAL_C_LEVEL_64x64
+                INITIAL_C_LEVEL_64x64,
+                INITIAL_STEEPNESS_64x64
             )
         );
         l.setPool(base, underlying, underlyingOracle);

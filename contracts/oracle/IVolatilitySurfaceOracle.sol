@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: LGPL-3.0-or-later
 
 pragma solidity ^0.8.0;
 
@@ -26,7 +26,8 @@ interface IVolatilitySurfaceOracle {
     function getAnnualizedVolatility64x64(
         address baseToken,
         address underlyingToken,
-        int128 moneyness64x64,
+        int128 spot64x64,
+        int128 strike64x64,
         int128 timeToMaturity64x64,
         bool isCall
     ) external view returns (int128);

@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
+// For further clarification please see https://license.premia.legal
 
 pragma solidity ^0.8.0;
 
@@ -97,6 +98,14 @@ contract PoolView is IPoolView, PoolInternal {
         returns (int128)
     {
         return PoolStorage.layout().getCLevel(isCall);
+    }
+
+    /**
+     * @notice get steepness
+     * @return 64x64 fixed point representation of C steepness of Pool
+     */
+    function getSteepness64x64() external view override returns (int128) {
+        return PoolStorage.layout().steepness64x64;
     }
 
     /**
@@ -222,7 +231,7 @@ contract PoolView is IPoolView, PoolInternal {
      * @param tokenId an option token id
      * @return The token URI
      */
-    function tokenURI(uint256 tokenId)
+    function uri(uint256 tokenId)
         external
         view
         override

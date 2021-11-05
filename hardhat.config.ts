@@ -29,7 +29,7 @@ export default {
   solidity: {
     compilers: [
       {
-        version: '0.8.7',
+        version: '0.8.9',
         settings: {
           optimizer: {
             enabled: true,
@@ -94,7 +94,7 @@ export default {
       accounts: [ETH_MAIN_KEY],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
-      gasPrice: 100000000000,
+      // gasPrice: 100000000000,
       timeout: 100000,
     },
     rinkeby: {
@@ -165,6 +165,7 @@ export default {
 
   typechain: {
     alwaysGenerateOverloads: true,
+    outDir: 'typechain',
   },
 
   mocha: {

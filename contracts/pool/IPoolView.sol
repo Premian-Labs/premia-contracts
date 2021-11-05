@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: LGPL-3.0-or-later
 
 pragma solidity ^0.8.0;
 
@@ -15,6 +15,8 @@ interface IPoolView {
     function getTokenIds() external view returns (uint256[] memory);
 
     function getCLevel64x64(bool isCall) external view returns (int128);
+
+    function getSteepness64x64() external view returns (int128);
 
     function getPrice(uint256 timestamp) external view returns (int128);
 
@@ -57,5 +59,5 @@ interface IPoolView {
             uint256 putDivestmentTimestamp
         );
 
-    function tokenURI(uint256 tokenId) external view returns (string memory);
+    function uri(uint256 tokenId) external view returns (string memory);
 }

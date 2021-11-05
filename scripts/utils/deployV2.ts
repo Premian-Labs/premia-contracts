@@ -16,9 +16,10 @@ import {
   NFTSVG__factory,
   NFTDisplay__factory,
   PremiaOptionNFTDisplay__factory,
+  PoolSettings__factory,
 } from '../../typechain';
 import { diamondCut } from './diamond';
-import { BigNumber } from 'ethers';
+import { BigNumber, BigNumberish } from 'ethers';
 import { fixedFromFloat } from '@premia/utils';
 
 const UNISWAP_V2_FACTORY = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
@@ -31,6 +32,13 @@ export interface TokenAddresses {
   LINK: string;
 }
 
+export interface TokenAmounts {
+  ETH: BigNumberish;
+  DAI: BigNumberish;
+  BTC: BigNumberish;
+  LINK: BigNumberish;
+}
+
 export async function deployV2(
   weth: string,
   premia: string,
@@ -39,6 +47,8 @@ export async function deployV2(
   premiaFeeDiscount: string,
   tokens: TokenAddresses,
   oracles: TokenAddresses,
+  minAmounts: TokenAmounts,
+  capAmounts: TokenAmounts,
   sushiswapFactoryOverride?: string,
 ) {
   const [deployer] = await ethers.getSigners();
@@ -49,7 +59,6 @@ export async function deployV2(
   //
 
   const optionMath = await new OptionMath__factory(deployer).deploy();
-
   const premiaDiamond = await new Premia__factory(deployer).deploy();
   const poolDiamond = await new Premia__factory(deployer).deploy();
 
@@ -64,6 +73,14 @@ export async function deployV2(
     deployer,
   );
 
+  console.log(`Option math : ${optionMath.address}`);
+  console.log(`Premia Diamond : ${premiaDiamond.address}`);
+  console.log(`Pool Diamond : ${poolDiamond.address}`);
+  console.log(`IVOL oracle implementation : ${ivolOracleImpl.address}`);
+  console.log(
+    `IVOL oracle : ${ivolOracleProxy.address} (${ivolOracleImpl.address})`,
+  );
+
   //
 
   const premiaMiningImpl = await new PremiaMining__factory(deployer).deploy(
@@ -73,11 +90,18 @@ export async function deployV2(
 
   const premiaMiningProxy = await new PremiaMiningProxy__factory(
     deployer,
-  ).deploy(premiaMiningImpl.address, parseEther('10'));
+  ).deploy(premiaMiningImpl.address, parseEther('0.5'));
 
   const premiaMining = PremiaMining__factory.connect(
     premiaMiningProxy.address,
     deployer,
+  );
+
+  console.log(`Premia Mining implementation : ${premiaMiningImpl.address}`);
+  console.log(
+    `Premia Mining : ${premiaMiningProxy.address} (${
+      premiaMiningImpl.address
+    } / ${parseEther('0.5')})`,
   );
 
   const nftSVGLib = await new NFTSVG__factory(deployer).deploy();
@@ -94,6 +118,14 @@ export async function deployV2(
     deployer,
   ).deploy();
 
+  console.log(`NFT SVG : ${nftSVGLib.address}`);
+  console.log(
+    `NFT Display : ${nftSVGLib.address} (NFTSVG: ${nftSVGLib.address})`,
+  );
+  console.log(
+    `Option display : ${nftDisplay.address} (NFTDisplay: ${nftDisplayLib.address})`,
+  );
+
   //
 
   const proxyManagerFactory = new ProxyManager__factory(deployer);
@@ -101,6 +133,10 @@ export async function deployV2(
     poolDiamond.address,
   );
   await proxyManagerImpl.deployed();
+
+  console.log(
+    `Proxy Manager : ${proxyManagerImpl.address} (${poolDiamond.address})`,
+  );
 
   await diamondCut(
     premiaDiamond,
@@ -129,6 +165,10 @@ export async function deployV2(
   );
   await poolBaseImpl.deployed();
 
+  console.log(
+    `PoolBase Implementation : ${poolBaseImpl.address} (${ivolOracle.address}, ${tokens.ETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64})`,
+  );
+
   registeredSelectors = registeredSelectors.concat(
     await diamondCut(
       poolDiamond,
@@ -156,6 +196,16 @@ export async function deployV2(
   );
   await poolWriteImpl.deployed();
 
+  console.log(
+    `PoolWrite Implementation : ${poolWriteImpl.address} (${
+      ivolOracle.address
+    }, ${tokens.ETH}, ${
+      premiaMining.address
+    }, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${UNISWAP_V2_FACTORY}, ${getSushiswapFactory()}) (OptionMath: ${
+      optionMath.address
+    })`,
+  );
+
   registeredSelectors = registeredSelectors.concat(
     await diamondCut(
       poolDiamond,
@@ -180,6 +230,10 @@ export async function deployV2(
     fee64x64,
   );
   await poolExerciseImpl.deployed();
+
+  console.log(
+    `PoolExercise Implementation : ${poolExerciseImpl.address} (${ivolOracle.address}, ${tokens.ETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}) (OptionMath: ${optionMath.address})`,
+  );
 
   registeredSelectors = registeredSelectors.concat(
     await diamondCut(
@@ -207,11 +261,41 @@ export async function deployV2(
   );
   await poolViewImpl.deployed();
 
+  console.log(
+    `PoolView Implementation : ${poolViewImpl.address} (${nftDisplay.address}, ${ivolOracle.address}, ${tokens.ETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}) (OptionMath: ${optionMath.address})`,
+  );
+
   registeredSelectors = registeredSelectors.concat(
     await diamondCut(
       poolDiamond,
       poolViewImpl.address,
       poolViewFactory,
+      registeredSelectors,
+    ),
+  );
+
+  //////////////////////////////////////////////
+
+  const poolSettingsFactory = new PoolSettings__factory(deployer);
+  const poolSettingsImpl = await poolSettingsFactory.deploy(
+    ivolOracle.address,
+    tokens.ETH,
+    premiaMining.address,
+    feeReceiver,
+    premiaFeeDiscount,
+    fee64x64,
+  );
+  await poolSettingsImpl.deployed();
+
+  console.log(
+    `PoolSettings Implementation : ${poolSettingsImpl.address} (${nftDisplay.address}, ${ivolOracle.address}, ${tokens.ETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64})`,
+  );
+
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolSettingsImpl.address,
+      poolSettingsFactory,
       registeredSelectors,
     ),
   );
@@ -234,6 +318,16 @@ export async function deployV2(
   );
   await poolIOImpl.deployed();
 
+  console.log(
+    `PoolIO Implementation : ${poolIOImpl.address} (${ivolOracle.address}, ${
+      tokens.ETH
+    }, ${
+      premiaMining.address
+    }, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${UNISWAP_V2_FACTORY}, ${getSushiswapFactory()}) (OptionMath: ${
+      optionMath.address
+    })`,
+  );
+
   registeredSelectors = registeredSelectors.concat(
     await diamondCut(
       poolDiamond,
@@ -245,17 +339,27 @@ export async function deployV2(
 
   //////////////////////////////////////////////
 
+  const minDai = fixedFromFloat(minAmounts.DAI);
+  const minWeth = fixedFromFloat(minAmounts.ETH);
+  const minWbtc = fixedFromFloat(minAmounts.BTC);
+  const minLink = fixedFromFloat(minAmounts.LINK);
+
+  const capDai = fixedFromFloat(capAmounts.DAI);
+  const capWeth = fixedFromFloat(capAmounts.ETH);
+  const capWbtc = fixedFromFloat(capAmounts.BTC);
+  const capLink = fixedFromFloat(capAmounts.LINK);
+
   const wethPoolAddress = await proxyManager.callStatic.deployPool(
     tokens.DAI,
     tokens.ETH,
     oracles.DAI,
     oracles.ETH,
     // minimum amounts
-    fixedFromFloat(100),
-    fixedFromFloat(0.05),
+    minDai,
+    minWeth,
     // deposit caps
-    fixedFromFloat(1000000),
-    fixedFromFloat(300),
+    capDai,
+    capWeth,
     100,
   );
 
@@ -265,12 +369,18 @@ export async function deployV2(
     oracles.DAI,
     oracles.ETH,
     // minimum amounts
-    fixedFromFloat(100),
-    fixedFromFloat(0.05),
+    minDai,
+    minWeth,
     // deposit caps
-    fixedFromFloat(1000000),
-    fixedFromFloat(300),
+    capDai,
+    capWeth,
     100,
+  );
+
+  console.log(
+    `WETH/DAI pool : ${wethPoolAddress} (${tokens.DAI}, ${tokens.ETH}, ${
+      oracles.DAI
+    }, ${oracles.ETH}, ${minDai}, ${minWeth}, ${capDai}, ${capWeth}, ${100})`,
   );
 
   await poolTx.wait(1);
@@ -281,11 +391,11 @@ export async function deployV2(
     oracles.DAI,
     oracles.BTC,
     // minimum amounts
-    fixedFromFloat(100),
-    fixedFromFloat(0.005),
+    minDai,
+    minWbtc,
     // deposit caps
-    fixedFromFloat(1000000),
-    fixedFromFloat(25),
+    capDai,
+    capWbtc,
     100,
   );
 
@@ -295,12 +405,18 @@ export async function deployV2(
     oracles.DAI,
     oracles.BTC,
     // minimum amounts
-    fixedFromFloat(100),
-    fixedFromFloat(0.005),
+    minDai,
+    minWbtc,
     // deposit caps
-    fixedFromFloat(1000000),
-    fixedFromFloat(25),
+    capDai,
+    capWbtc,
     100,
+  );
+
+  console.log(
+    `WBTC/DAI pool : ${wbtcPoolAddress} (${tokens.DAI}, ${tokens.BTC}, ${
+      oracles.DAI
+    }, ${oracles.BTC}, ${minDai}, ${minWbtc}, ${capDai}, ${capWbtc}, ${100})`,
   );
 
   await poolTx.wait(1);
@@ -311,11 +427,11 @@ export async function deployV2(
     oracles.DAI,
     oracles.LINK,
     // minimum amounts
-    fixedFromFloat(100),
-    fixedFromFloat(5),
+    minDai,
+    minLink,
     // deposit caps
-    fixedFromFloat(1000000),
-    fixedFromFloat(40000),
+    capDai,
+    capLink,
     100,
   );
 
@@ -325,15 +441,23 @@ export async function deployV2(
     oracles.DAI,
     oracles.LINK,
     // minimum amounts
-    fixedFromFloat(100),
-    fixedFromFloat(5),
+    minDai,
+    minLink,
     // deposit caps
-    fixedFromFloat(1000000),
-    fixedFromFloat(40000),
+    capDai,
+    capLink,
     100,
   );
 
+  console.log(
+    `LINK/DAI pool : ${linkPoolAddress} (${tokens.DAI}, ${tokens.LINK}, ${
+      oracles.DAI
+    }, ${oracles.LINK}, ${minDai}, ${minLink}, ${capDai}, ${capLink}, ${100})`,
+  );
+
   await poolTx.wait(1);
+
+  console.log('\n\n------------------------------------------------\n\n');
 
   console.log('daiToken', tokens.DAI);
   console.log('wethToken', tokens.ETH);

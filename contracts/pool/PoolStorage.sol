@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
+// For further clarification please see https://license.premia.legal
 
 pragma solidity ^0.8.0;
 
@@ -76,6 +77,7 @@ library PoolStorage {
         uint256 basePoolCap;
         uint256 underlyingPoolCap;
         // market state
+        int128 steepness64x64;
         int128 cLevelBase64x64;
         int128 cLevelUnderlying64x64;
         uint256 cLevelBaseUpdatedAt;
@@ -324,6 +326,14 @@ library PoolStorage {
             isCallPool
         );
 
+        l.setCLevel(cLevel64x64, isCallPool);
+    }
+
+    function setCLevel(
+        Layout storage l,
+        int128 cLevel64x64,
+        bool isCallPool
+    ) internal {
         if (isCallPool) {
             l.cLevelUnderlying64x64 = cLevel64x64;
             l.cLevelUnderlyingUpdatedAt = block.timestamp;
@@ -343,8 +353,12 @@ library PoolStorage {
             l.getCLevel(isCallPool),
             oldLiquidity64x64,
             newLiquidity64x64,
-            0x8000000000000000 // 64x64 fixed point representation of 0.5
+            l.steepness64x64
         );
+
+        if (cLevel64x64 < 0xb333333333333333) {
+            cLevel64x64 = int128(0xb333333333333333); // 64x64 fixed point representation of 0.7
+        }
     }
 
     function setOracles(
