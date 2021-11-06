@@ -134,16 +134,14 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
         l.poolInfo[_pool][true] = PremiaMiningStorage.PoolInfo({
             allocPoint: _allocPoints,
-            lastRewardBlock: 0, // DEPRECATED
-            accPremiaPerShare: 0,
-            lastRewardTimestamp: block.timestamp
+            lastRewardTimestamp: block.timestamp,
+            accPremiaPerShare: 0
         });
 
         l.poolInfo[_pool][false] = PremiaMiningStorage.PoolInfo({
             allocPoint: _allocPoints,
-            lastRewardBlock: 0, // DEPRECATED
-            accPremiaPerShare: 0,
-            lastRewardTimestamp: block.timestamp
+            lastRewardTimestamp: block.timestamp,
+            accPremiaPerShare: 0
         });
 
         emit UpdatePoolAlloc(_pool, _allocPoints);
@@ -209,11 +207,6 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
             _isCallPool
         ];
 
-        // To avoid display high reward amount on contract upgrade from block to timestamp
-        if (pool.lastRewardTimestamp == 0) {
-            return 0;
-        }
-
         PremiaMiningStorage.UserInfo storage user = l.userInfo[_pool][
             _isCallPool
         ][_user];
@@ -267,12 +260,6 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         PremiaMiningStorage.PoolInfo storage pool = l.poolInfo[_pool][
             _isCallPool
         ];
-
-        // To ensure pool updates correctly, on contract upgrade from block to timestamp
-        if (pool.lastRewardTimestamp == 0) {
-            pool.lastRewardTimestamp = block.timestamp;
-            return;
-        }
 
         if (block.timestamp <= pool.lastRewardTimestamp) {
             return;
@@ -402,11 +389,34 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         address account,
         address[] calldata pools,
         bool[] calldata isCall
-    ) external {
+    ) external override {
         require(pools.length == isCall.length);
 
         for (uint256 i; i < pools.length; i++) {
             IPoolIO(pools[i]).claimRewards(account, isCall[i]);
+        }
+    }
+
+    /**
+     * @notice Upgrade contract from using blocks to timestamps
+     * @param _pools Pools to upgrade
+     */
+    function upgrade(address[] memory _pools) external {
+        require(msg.sender == address(this), "Not this");
+
+        PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
+
+        for (uint256 i; i < _pools.length; i++) {
+            for (uint256 isCallPool; isCallPool < 2; isCallPool++) {
+                PremiaMiningStorage.PoolInfo storage pool = l.poolInfo[
+                    _pools[i]
+                ][isCallPool == 1];
+
+                if (pool.lastRewardTimestamp > 0) {
+                    pool.lastRewardTimestamp = block.timestamp;
+                    return;
+                }
+            }
         }
     }
 
