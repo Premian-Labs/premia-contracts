@@ -291,25 +291,23 @@ describe('PremiaMining', () => {
       multisig,
     );
 
+    // Update + disable pools mining
+    for (const poolAddress of optionPools) {
+      const pool = IPool__factory.connect(poolAddress, multisig);
+      await pool.updateMiningPools();
+    }
+
+    // Call to setPremiaPerBlock(uint256) to disable rewards
+    await multisig.call({
+      to: mainnetMining.address,
+      data: '0xd4c8777b0000000000000000000000000000000000000000000000000000000000000000',
+    });
+
     const ethPool = IPool__factory.connect(optionPools[0], multisig);
     await ethPool.setPoolCaps(parseEther('1000000'), parseEther('20000'));
     await ethPool.deposit(parseEther('10000'), true, {
       value: parseEther('10000'),
     });
-
-    // Update + disable pools mining
-    for (const poolAddress of optionPools) {
-      const pool = IPool__factory.connect(poolAddress, multisig);
-      await pool.updateMiningPools();
-
-      // Call to setPoolAllocPoints(address,uint256)
-      await multisig.call({
-        to: mainnetMining.address,
-        data: `0xf83716f9000000000000000000000000${poolAddress.slice(
-          2,
-        )}0000000000000000000000000000000000000000000000000000000000000000`,
-      });
-    }
 
     await increaseTimestamp(oneDay * 20);
 
@@ -322,7 +320,7 @@ describe('PremiaMining', () => {
           multisig.address,
         ),
       ),
-    ).to.be.lessThan(0.5); // Some error margin because we had to deposit before disabling the pools to prevent tx to revert
+    ).to.be.lessThan(0.1);
 
     const premiaMiningImpl = await new PremiaMining__factory(multisig).deploy(
       '0x4F273F4Efa9ECF5Dd245a338FAd9fe0BAb63B350',
@@ -334,7 +332,7 @@ describe('PremiaMining', () => {
 
     await mainnetMining
       .connect(multisig)
-      .upgrade(optionPools, ['100', '100', '100'], parseEther('365000'));
+      .upgrade(optionPools, parseEther('365000'));
 
     // Ensure rewards now works
     await increaseTimestamp(oneDay * 6);
@@ -347,6 +345,6 @@ describe('PremiaMining', () => {
           multisig.address,
         ),
       ),
-    ).to.almost(978.12);
+    ).to.almost(978.04);
   });
 });

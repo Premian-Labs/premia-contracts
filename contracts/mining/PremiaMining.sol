@@ -406,11 +406,11 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @param _pools Pools to upgrade
      * @param _premiaPerYear Amount of premia distributed per year
      */
-    function upgrade(
-        address[] memory _pools,
-        uint256[] memory _poolAllocPoints,
-        uint256 _premiaPerYear
-    ) external override onlyDiamondOrOwner {
+    function upgrade(address[] memory _pools, uint256 _premiaPerYear)
+        external
+        override
+        onlyDiamondOrOwner
+    {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
 
         l.premiaPerYear = _premiaPerYear;
@@ -426,8 +426,6 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
                 }
             }
         }
-
-        setPoolAllocPoints(_pools, _poolAllocPoints);
     }
 
     /**

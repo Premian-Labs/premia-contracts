@@ -61,9 +61,5 @@ interface IPremiaMining {
         bool[] calldata isCall
     ) external;
 
-    function upgrade(
-        address[] memory _pools,
-        uint256[] memory _poolAllocPoints,
-        uint256 _premiaPerYear
-    ) external;
+    function upgrade(address[] memory _pools, uint256 _premiaPerYear) external;
 }
