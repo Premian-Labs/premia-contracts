@@ -1,13 +1,16 @@
 import chai, { expect } from 'chai';
 import { PoolUtil } from '../pool/PoolUtil';
 import { increaseTimestamp, mineBlockUntil } from '../utils/evm';
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   ERC20Mock,
   ERC20Mock__factory,
+  IPool__factory,
   PremiaFeeDiscount,
   PremiaFeeDiscount__factory,
+  PremiaMining__factory,
+  PremiaMiningProxy__factory,
 } from '../../typechain';
 import { parseEther, parseUnits } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
@@ -18,6 +21,9 @@ chai.use(chaiAlmost(0.05));
 const oneDay = 24 * 3600;
 const oneMonth = 30 * oneDay;
 
+const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`;
+const blockNumber = 13569795;
+
 describe('PremiaMining', () => {
   let owner: SignerWithAddress;
   let lp1: SignerWithAddress;
@@ -25,6 +31,7 @@ describe('PremiaMining', () => {
   let lp3: SignerWithAddress;
   let buyer: SignerWithAddress;
   let feeReceiver: SignerWithAddress;
+  let multisig: SignerWithAddress;
 
   let premia: ERC20Mock;
   let xPremia: ERC20Mock;
@@ -36,6 +43,19 @@ describe('PremiaMining', () => {
   const totalRewardAmount = 200000;
 
   beforeEach(async () => {
+    await ethers.provider.send('hardhat_reset', [
+      { forking: { jsonRpcUrl, blockNumber } },
+    ]);
+
+    // Impersonate multisig
+    await network.provider.request({
+      method: 'hardhat_impersonateAccount',
+      params: ['0xc22FAe86443aEed038A4ED887bbA8F5035FD12F0'],
+    });
+    multisig = await ethers.getSigner(
+      '0xc22FAe86443aEed038A4ED887bbA8F5035FD12F0',
+    );
+
     [owner, lp1, lp2, lp3, buyer, feeReceiver] = await ethers.getSigners();
 
     const erc20Factory = new ERC20Mock__factory(owner);
@@ -253,5 +273,80 @@ describe('PremiaMining', () => {
         await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
       ),
     ).to.almost(250);
+  });
+
+  it('should successfully upgrade old PremiaMining contract', async () => {
+    const optionPools = [
+      '0xa4492fcDa2520cB68657d220f4D4aE3116359C10',
+      '0x1B63334f7bfDf0D753AB3101EB6d02B278db8852',
+      '0xFDD2FC2c73032AE1501eF4B19E499F2708F34657',
+    ];
+
+    const mainnetMining = PremiaMining__factory.connect(
+      '0x9aBB27581c2E46A114F8C367355851e0580e9703',
+      multisig,
+    );
+    const proxy = PremiaMiningProxy__factory.connect(
+      '0x9aBB27581c2E46A114F8C367355851e0580e9703',
+      multisig,
+    );
+
+    const ethPool = IPool__factory.connect(optionPools[0], multisig);
+    await ethPool.setPoolCaps(parseEther('1000000'), parseEther('20000'));
+    await ethPool.deposit(parseEther('10000'), true, {
+      value: parseEther('10000'),
+    });
+
+    // Update + disable pools mining
+    for (const poolAddress of optionPools) {
+      const pool = IPool__factory.connect(poolAddress, multisig);
+      await pool.updateMiningPools();
+
+      // Call to setPoolAllocPoints(address,uint256)
+      await multisig.call({
+        to: mainnetMining.address,
+        data: `0xf83716f9000000000000000000000000${poolAddress.slice(
+          2,
+        )}0000000000000000000000000000000000000000000000000000000000000000`,
+      });
+    }
+
+    await increaseTimestamp(oneDay * 20);
+
+    // Ensure mining rewards are now disabled
+    expect(
+      bnToNumber(
+        await mainnetMining.pendingPremia(
+          ethPool.address,
+          true,
+          multisig.address,
+        ),
+      ),
+    ).to.be.lessThan(0.5); // Some error margin because we had to deposit before disabling the pools to prevent tx to revert
+
+    const premiaMiningImpl = await new PremiaMining__factory(multisig).deploy(
+      '0x4F273F4Efa9ECF5Dd245a338FAd9fe0BAb63B350',
+      '0x6399c842dd2be3de30bf99bc7d1bbf6fa3650e70',
+    );
+
+    // Upgrade contract
+    await proxy.setImplementation(premiaMiningImpl.address);
+
+    await mainnetMining
+      .connect(multisig)
+      .upgrade(optionPools, ['100', '100', '100'], parseEther('365000'));
+
+    // Ensure rewards now works
+    await increaseTimestamp(oneDay * 6);
+
+    expect(
+      bnToNumber(
+        await mainnetMining.pendingPremia(
+          ethPool.address,
+          true,
+          multisig.address,
+        ),
+      ),
+    ).to.almost(978.12);
   });
 });

@@ -20,7 +20,10 @@ interface IPremiaMining {
 
     function addPool(address _pool, uint256 _allocPoints) external;
 
-    function setPoolAllocPoints(address _pool, uint256 _allocPoints) external;
+    function setPoolAllocPoints(
+        address[] memory _pools,
+        uint256[] memory _allocPoints
+    ) external;
 
     function pendingPremia(
         address _pool,
@@ -56,5 +59,11 @@ interface IPremiaMining {
         address account,
         address[] calldata pools,
         bool[] calldata isCall
+    ) external;
+
+    function upgrade(
+        address[] memory _pools,
+        uint256[] memory _poolAllocPoints,
+        uint256 _premiaPerYear
     ) external;
 }

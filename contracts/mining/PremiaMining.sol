@@ -149,32 +149,36 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
     /**
      * @notice Set new alloc points for an option pool. Can only be called by the owner or premia diamond
-     * @param _pool Address of option pool contract
-     * @param _allocPoints Weight of this pool in the reward calculation
+     * @param _pools List of addresses of option pool contract
+     * @param _allocPoints List of weight of each pool in reward calculations
      */
-    function setPoolAllocPoints(address _pool, uint256 _allocPoints)
-        external
-        override
-        onlyDiamondOrOwner
-    {
+    function setPoolAllocPoints(
+        address[] memory _pools,
+        uint256[] memory _allocPoints
+    ) public override onlyDiamondOrOwner {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
 
-        require(
-            l.poolInfo[_pool][true].lastRewardTimestamp > 0 &&
-                l.poolInfo[_pool][false].lastRewardTimestamp > 0,
-            "Pool does not exists"
-        );
+        for (uint256 i; i < _pools.length; i++) {
+            address pool = _pools[i];
+            uint256 allocPoints = _allocPoints[i];
 
-        l.totalAllocPoint =
-            l.totalAllocPoint -
-            l.poolInfo[_pool][true].allocPoint -
-            l.poolInfo[_pool][false].allocPoint +
-            (_allocPoints * 2);
+            require(
+                l.poolInfo[pool][true].lastRewardTimestamp > 0 &&
+                    l.poolInfo[pool][false].lastRewardTimestamp > 0,
+                "Pool does not exists"
+            );
 
-        l.poolInfo[_pool][true].allocPoint = _allocPoints;
-        l.poolInfo[_pool][false].allocPoint = _allocPoints;
+            l.totalAllocPoint =
+                l.totalAllocPoint -
+                l.poolInfo[pool][true].allocPoint -
+                l.poolInfo[pool][false].allocPoint +
+                (allocPoints * 2);
 
-        emit UpdatePoolAlloc(_pool, _allocPoints);
+            l.poolInfo[pool][true].allocPoint = allocPoints;
+            l.poolInfo[pool][false].allocPoint = allocPoints;
+
+            emit UpdatePoolAlloc(pool, allocPoints);
+        }
     }
 
     /**
@@ -400,11 +404,16 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     /**
      * @notice Upgrade contract from using blocks to timestamps
      * @param _pools Pools to upgrade
+     * @param _premiaPerYear Amount of premia distributed per year
      */
-    function upgrade(address[] memory _pools) external {
-        require(msg.sender == address(this), "Not this");
-
+    function upgrade(
+        address[] memory _pools,
+        uint256[] memory _poolAllocPoints,
+        uint256 _premiaPerYear
+    ) external override onlyDiamondOrOwner {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
+
+        l.premiaPerYear = _premiaPerYear;
 
         for (uint256 i; i < _pools.length; i++) {
             for (uint256 isCallPool; isCallPool < 2; isCallPool++) {
@@ -414,10 +423,11 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
                 if (pool.lastRewardTimestamp > 0) {
                     pool.lastRewardTimestamp = block.timestamp;
-                    return;
                 }
             }
         }
+
+        setPoolAllocPoints(_pools, _poolAllocPoints);
     }
 
     /**
