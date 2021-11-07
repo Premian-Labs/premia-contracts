@@ -298,7 +298,7 @@ describe('PremiaMining', () => {
     }
 
     // Call to setPremiaPerBlock(uint256) to disable rewards
-    await multisig.call({
+    await multisig.sendTransaction({
       to: mainnetMining.address,
       data: '0xd4c8777b0000000000000000000000000000000000000000000000000000000000000000',
     });
@@ -320,7 +320,7 @@ describe('PremiaMining', () => {
           multisig.address,
         ),
       ),
-    ).to.be.lessThan(0.1);
+    ).to.eq(0);
 
     const premiaMiningImpl = await new PremiaMining__factory(multisig).deploy(
       '0x4F273F4Efa9ECF5Dd245a338FAd9fe0BAb63B350',
