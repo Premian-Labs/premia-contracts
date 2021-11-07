@@ -10,7 +10,7 @@ library PremiaMiningStorage {
     // Info of each pool.
     struct PoolInfo {
         uint256 allocPoint; // How many allocation points assigned to this pool. PREMIA to distribute per block.
-        uint256 lastRewardTimestamp; // Last timestamp that PREMIA distribution occurs (Replaced lastRewardBlock)
+        uint256 lastRewardTimestamp; // Last timestamp that PREMIA distribution occurs
         uint256 accPremiaPerShare; // Accumulated PREMIA per share, times 1e12. See below.
     }
 
