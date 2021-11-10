@@ -54,12 +54,4 @@ interface IPremiaMining {
         uint256 _userTVLNew,
         uint256 _totalTVL
     ) external;
-
-    function multiClaim(
-        address account,
-        address[] calldata pools,
-        bool[] calldata isCall
-    ) external;
-
-    function upgrade(address[] memory _pools, uint256 _premiaPerYear) external;
 }

@@ -217,9 +217,11 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         uint256 accPremiaPerShare = pool.accPremiaPerShare;
 
         if (block.timestamp > pool.lastRewardTimestamp && TVL != 0) {
-            uint256 premiaReward = ((((block.timestamp -
-                pool.lastRewardTimestamp) * l.premiaPerYear) / ONE_YEAR) *
-                pool.allocPoint) / l.totalAllocPoint;
+            uint256 premiaReward = (((block.timestamp -
+                pool.lastRewardTimestamp) * l.premiaPerYear) *
+                pool.allocPoint) /
+                l.totalAllocPoint /
+                ONE_YEAR;
 
             // If we are running out of rewards to distribute, distribute whats left
             if (premiaReward > l.premiaAvailable) {
@@ -274,8 +276,10 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
             return;
         }
 
-        uint256 premiaReward = ((((block.timestamp - pool.lastRewardTimestamp) *
-            l.premiaPerYear) / ONE_YEAR) * pool.allocPoint) / l.totalAllocPoint;
+        uint256 premiaReward = (((block.timestamp - pool.lastRewardTimestamp) *
+            l.premiaPerYear) * pool.allocPoint) /
+            l.totalAllocPoint /
+            ONE_YEAR;
 
         // If we are running out of rewards to distribute, distribute whats left
         if (premiaReward > l.premiaAvailable) {
@@ -393,7 +397,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         address account,
         address[] calldata pools,
         bool[] calldata isCall
-    ) external override {
+    ) external {
         require(pools.length == isCall.length);
 
         for (uint256 i; i < pools.length; i++) {
@@ -408,7 +412,6 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      */
     function upgrade(address[] memory _pools, uint256 _premiaPerYear)
         external
-        override
         onlyDiamondOrOwner
     {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
