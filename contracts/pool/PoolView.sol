@@ -9,6 +9,9 @@ import {PoolStorage} from "./PoolStorage.sol";
 import {IPoolView} from "./IPoolView.sol";
 import {PoolInternal} from "./PoolInternal.sol";
 
+import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
+import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
+
 import {IPremiaOptionNFTDisplay} from "../interface/IPremiaOptionNFTDisplay.sol";
 
 /**
@@ -16,6 +19,7 @@ import {IPremiaOptionNFTDisplay} from "../interface/IPremiaOptionNFTDisplay.sol"
  * @dev deployed standalone and referenced by PoolProxy
  */
 contract PoolView is IPoolView, PoolInternal {
+    using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.UintSet;
     using PoolStorage for PoolStorage.Layout;
 
@@ -97,7 +101,32 @@ contract PoolView is IPoolView, PoolInternal {
         override
         returns (int128)
     {
-        return PoolStorage.layout().getCLevel(isCall);
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
+        int128 pendingDeposits64x64;
+
+        if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
+            pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
+                batchData.totalPendingDeposits,
+                l.getTokenDecimals(isCall)
+            );
+        }
+
+        int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(
+            pendingDeposits64x64
+        );
+
+        if (oldLiquidity64x64 > 0 && pendingDeposits64x64 > 0) {
+            return
+                l.calculateCLevel(
+                    oldLiquidity64x64.sub(pendingDeposits64x64),
+                    oldLiquidity64x64,
+                    isCall
+                );
+        } else {
+            return l.getCLevel(isCall);
+        }
     }
 
     /**
