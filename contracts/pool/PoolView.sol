@@ -119,9 +119,12 @@ contract PoolView is IPoolView, PoolInternal {
 
         if (oldLiquidity64x64 > 0 && pendingDeposits64x64 > 0) {
             return
-                l.calculateCLevel(
-                    oldLiquidity64x64.sub(pendingDeposits64x64),
-                    oldLiquidity64x64,
+                l.calculateCLevelDecay(
+                    l.calculateCLevel(
+                        oldLiquidity64x64.sub(pendingDeposits64x64),
+                        oldLiquidity64x64,
+                        isCall
+                    ),
                     isCall
                 );
         } else {

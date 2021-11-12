@@ -268,6 +268,14 @@ library PoolStorage {
             ? l.cLevelUnderlying64x64
             : l.cLevelBase64x64;
 
+        return calculateCLevelDecay(l, oldCLevel64x64, isCall);
+    }
+
+    function calculateCLevelDecay(
+        Layout storage l,
+        int128 oldCLevel64x64,
+        bool isCall
+    ) internal view returns (int128 cLevel64x64) {
         uint256 timeElapsed = block.timestamp -
             (isCall ? l.cLevelUnderlyingUpdatedAt : l.cLevelBaseUpdatedAt);
 
@@ -299,19 +307,20 @@ library PoolStorage {
             tvl
         );
 
-        cLevel64x64 = OptionMath.calculateCLevelDecay(
-            OptionMath.CalculateCLevelDecayArgs(
-                timeIntervalsElapsed64x64,
-                oldCLevel64x64,
-                utilization,
-                0xb333333333333333, // 0.7
-                0xe666666666666666, // 0.9
-                0x10000000000000000, // 1.0
-                0x10000000000000000, // 1.0
-                0xe666666666666666, // 0.9
-                0x56fc2a2c515da32ea // 2e
-            )
-        );
+        return
+            OptionMath.calculateCLevelDecay(
+                OptionMath.CalculateCLevelDecayArgs(
+                    timeIntervalsElapsed64x64,
+                    oldCLevel64x64,
+                    utilization,
+                    0xb333333333333333, // 0.7
+                    0xe666666666666666, // 0.9
+                    0x10000000000000000, // 1.0
+                    0x10000000000000000, // 1.0
+                    0xe666666666666666, // 0.9
+                    0x56fc2a2c515da32ea // 2e
+                )
+            );
     }
 
     function setCLevel(
