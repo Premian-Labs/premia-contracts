@@ -329,7 +329,7 @@ library PoolStorage {
         int128 newLiquidity64x64,
         bool isCallPool
     ) internal returns (int128 cLevel64x64) {
-        cLevel64x64 = l.calculateCLevel(
+        cLevel64x64 = l.calculateNewCLevel64x64(
             oldLiquidity64x64,
             newLiquidity64x64,
             isCallPool
@@ -352,7 +352,7 @@ library PoolStorage {
         }
     }
 
-    function calculateCLevel(
+    function calculateNewCLevel64x64(
         Layout storage l,
         int128 oldLiquidity64x64,
         int128 newLiquidity64x64,
