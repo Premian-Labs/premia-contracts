@@ -128,7 +128,7 @@ contract PoolView is IPoolView, PoolInternal {
                     isCall
                 );
         } else {
-            return l.getCLevel(isCall);
+            return l.getCLevel64x64(isCall);
         }
     }
 

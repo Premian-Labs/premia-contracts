@@ -175,7 +175,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     isCall
                 );
             } else {
-                result.cLevel64x64 = l.getCLevel(isCall);
+                result.cLevel64x64 = l.getCLevel64x64(isCall);
             }
         }
 

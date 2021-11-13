@@ -259,7 +259,7 @@ library PoolStorage {
         return asc[account] != address(0) || desc[address(0)] == account;
     }
 
-    function getCLevel(Layout storage l, bool isCall)
+    function getCLevel64x64(Layout storage l, bool isCall)
         internal
         view
         returns (int128 cLevel64x64)
@@ -359,7 +359,7 @@ library PoolStorage {
         bool isCallPool
     ) internal view returns (int128 cLevel64x64) {
         cLevel64x64 = OptionMath.calculateCLevel(
-            l.getCLevel(isCallPool),
+            l.getCLevel64x64(isCallPool),
             oldLiquidity64x64,
             newLiquidity64x64,
             l.steepness64x64
