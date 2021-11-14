@@ -273,6 +273,31 @@ library PoolStorage {
         cLevel64x64 = isCall ? l.cLevelUnderlying64x64 : l.cLevelBase64x64;
     }
 
+    /**
+     * @notice get current C-Level, accounting for unrealized decay and pending deposits
+     * @param l storage layout struct
+     * @param isCall whether query is for call or put pool
+     * @return cLevel64x64 64x64 fixed point representation of C-Level
+     */
+    function getAdjustedCLevel64x64(Layout storage l, bool isCall)
+        internal
+        view
+        returns (int128 cLevel64x64)
+    {
+        cLevel64x64 = l.getRawCLevel64x64(isCall);
+
+        // account for C-Level decay
+
+        cLevel64x64 = l.calculateCLevelDecay(cLevel64x64, isCall);
+
+        // account for pending deposits
+
+        (cLevel64x64, ) = l.calculateCLevelDepositAdjustment(
+            cLevel64x64,
+            isCall
+        );
+    }
+
     function getCLevel64x64(Layout storage l, bool isCall)
         internal
         view
