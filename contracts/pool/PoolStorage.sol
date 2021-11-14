@@ -273,12 +273,13 @@ library PoolStorage {
 
     function calculateNewCLevel64x64(
         Layout storage l,
+        int128 oldCLevel64x64,
         int128 oldLiquidity64x64,
         int128 newLiquidity64x64,
         bool isCallPool
     ) internal view returns (int128 cLevel64x64) {
         cLevel64x64 = OptionMath.calculateCLevel(
-            l.getCLevel64x64(isCallPool),
+            oldCLevel64x64,
             oldLiquidity64x64,
             newLiquidity64x64,
             l.steepness64x64
@@ -348,6 +349,7 @@ library PoolStorage {
         bool isCallPool
     ) internal returns (int128 cLevel64x64) {
         cLevel64x64 = l.calculateNewCLevel64x64(
+            l.getCLevel64x64(isCallPool),
             oldLiquidity64x64,
             newLiquidity64x64,
             isCallPool
