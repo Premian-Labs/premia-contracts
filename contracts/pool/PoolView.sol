@@ -92,7 +92,8 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice get C Level
+     * @notice get current C-Level, accounting for unrealized decay and pending deposits
+     * @param isCall whether query is for call or put pool
      * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
      */
     function getCLevel64x64(bool isCall)
