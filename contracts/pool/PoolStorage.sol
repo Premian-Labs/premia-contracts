@@ -282,7 +282,7 @@ library PoolStorage {
     function getAdjustedCLevel64x64(Layout storage l, bool isCall)
         internal
         view
-        returns (int128 cLevel64x64)
+        returns (int128 cLevel64x64, int128 liquidity64x64)
     {
         cLevel64x64 = l.getRawCLevel64x64(isCall);
 
@@ -292,7 +292,7 @@ library PoolStorage {
 
         // account for pending deposits
 
-        (cLevel64x64, ) = l.calculateCLevelDepositAdjustment(
+        (cLevel64x64, liquidity64x64) = l.calculateCLevelDepositAdjustment(
             cLevel64x64,
             isCall
         );
