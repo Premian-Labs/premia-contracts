@@ -268,7 +268,7 @@ library PoolStorage {
             ? l.cLevelUnderlying64x64
             : l.cLevelBase64x64;
 
-        return calculateCLevelDecay(l, oldCLevel64x64, isCall);
+        return l.calculateCLevelDecay(oldCLevel64x64, isCall);
     }
 
     function calculateNewCLevel64x64(
