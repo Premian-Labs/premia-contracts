@@ -271,6 +271,24 @@ library PoolStorage {
         return calculateCLevelDecay(l, oldCLevel64x64, isCall);
     }
 
+    function calculateNewCLevel64x64(
+        Layout storage l,
+        int128 oldLiquidity64x64,
+        int128 newLiquidity64x64,
+        bool isCallPool
+    ) internal view returns (int128 cLevel64x64) {
+        cLevel64x64 = OptionMath.calculateCLevel(
+            l.getCLevel64x64(isCallPool),
+            oldLiquidity64x64,
+            newLiquidity64x64,
+            l.steepness64x64
+        );
+
+        if (cLevel64x64 < 0xb333333333333333) {
+            cLevel64x64 = int128(0xb333333333333333); // 64x64 fixed point representation of 0.7
+        }
+    }
+
     function calculateCLevelDecay(
         Layout storage l,
         int128 oldCLevel64x64,
@@ -349,24 +367,6 @@ library PoolStorage {
         } else {
             l.cLevelBase64x64 = cLevel64x64;
             l.cLevelBaseUpdatedAt = block.timestamp;
-        }
-    }
-
-    function calculateNewCLevel64x64(
-        Layout storage l,
-        int128 oldLiquidity64x64,
-        int128 newLiquidity64x64,
-        bool isCallPool
-    ) internal view returns (int128 cLevel64x64) {
-        cLevel64x64 = OptionMath.calculateCLevel(
-            l.getCLevel64x64(isCallPool),
-            oldLiquidity64x64,
-            newLiquidity64x64,
-            l.steepness64x64
-        );
-
-        if (cLevel64x64 < 0xb333333333333333) {
-            cLevel64x64 = int128(0xb333333333333333); // 64x64 fixed point representation of 0.7
         }
     }
 
