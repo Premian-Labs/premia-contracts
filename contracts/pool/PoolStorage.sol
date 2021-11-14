@@ -302,13 +302,11 @@ library PoolStorage {
         }
     }
 
-    function calculateCLevelDepositAdjustment(Layout storage l, bool isCall)
-        internal
-        view
-        returns (int128 cLevel64x64, int128 liquidity64x64)
-    {
-        int128 storedCLevel64x64 = l.getCLevel64x64(isCall);
-
+    function calculateCLevelDepositAdjustment(
+        Layout storage l,
+        int128 oldCLevel64x64,
+        bool isCall
+    ) internal view returns (int128 cLevel64x64, int128 liquidity64x64) {
         PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
         int128 pendingDeposits64x64;
 
@@ -325,13 +323,13 @@ library PoolStorage {
 
         if (liquidity64x64 > 0 && pendingDeposits64x64 > 0) {
             cLevel64x64 = l.calculateCLevelLiquidityChangeAdjustment(
-                storedCLevel64x64,
+                oldCLevel64x64,
                 liquidity64x64.sub(pendingDeposits64x64),
                 liquidity64x64,
                 isCall
             );
         } else {
-            cLevel64x64 = storedCLevel64x64;
+            cLevel64x64 = oldCLevel64x64;
         }
     }
 
