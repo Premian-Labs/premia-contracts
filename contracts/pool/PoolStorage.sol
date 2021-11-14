@@ -290,6 +290,39 @@ library PoolStorage {
         }
     }
 
+    function calculateCLevelDepositAdjustment(Layout storage l, bool isCall)
+        internal
+        view
+        returns (int128 cLevel64x64, int128 liquidity64x64)
+    {
+        int128 storedCLevel64x64 = l.getCLevel64x64(isCall);
+
+        PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
+        int128 pendingDeposits64x64;
+
+        if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
+            pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
+                batchData.totalPendingDeposits,
+                l.getTokenDecimals(isCall)
+            );
+        }
+
+        liquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(
+            pendingDeposits64x64
+        );
+
+        if (liquidity64x64 > 0 && pendingDeposits64x64 > 0) {
+            cLevel64x64 = l.calculateNewCLevel64x64(
+                storedCLevel64x64,
+                liquidity64x64.sub(pendingDeposits64x64),
+                liquidity64x64,
+                isCall
+            );
+        } else {
+            cLevel64x64 = storedCLevel64x64;
+        }
+    }
+
     function calculateCLevelDecay(
         Layout storage l,
         int128 oldCLevel64x64,

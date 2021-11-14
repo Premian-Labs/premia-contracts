@@ -150,35 +150,10 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
         bool isCall = args.isCall;
 
-        int128 oldLiquidity64x64;
+        (int128 adjustedCLevel64x64, int128 oldLiquidity64x64) = l
+            .calculateCLevelDepositAdjustment(isCall);
 
-        {
-            PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
-            int128 pendingDeposits64x64;
-
-            if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
-                pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
-                    batchData.totalPendingDeposits,
-                    l.getTokenDecimals(isCall)
-                );
-            }
-
-            oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(
-                pendingDeposits64x64
-            );
-            require(oldLiquidity64x64 > 0, "no liq");
-
-            if (pendingDeposits64x64 > 0) {
-                result.cLevel64x64 = l.calculateNewCLevel64x64(
-                    l.getCLevel64x64(isCall),
-                    oldLiquidity64x64.sub(pendingDeposits64x64),
-                    oldLiquidity64x64,
-                    isCall
-                );
-            } else {
-                result.cLevel64x64 = l.getCLevel64x64(isCall);
-            }
-        }
+        require(oldLiquidity64x64 > 0, "no liq");
 
         int128 timeToMaturity64x64 = ABDKMath64x64.divu(
             args.maturity - block.timestamp,
@@ -208,7 +183,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     args.strike64x64,
                     args.spot64x64,
                     timeToMaturity64x64,
-                    result.cLevel64x64,
+                    adjustedCLevel64x64,
                     oldLiquidity64x64,
                     oldLiquidity64x64.sub(contractSize64x64),
                     0x10000000000000000, // 64x64 fixed point representation of 1
