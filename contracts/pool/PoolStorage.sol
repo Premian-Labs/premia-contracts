@@ -283,7 +283,7 @@ library PoolStorage {
         return l.calculateCLevelDecay(oldCLevel64x64, isCall);
     }
 
-    function calculateNewCLevel64x64(
+    function calculateCLevelLiquidityChangeAdjustment(
         Layout storage l,
         int128 oldCLevel64x64,
         int128 oldLiquidity64x64,
@@ -324,7 +324,7 @@ library PoolStorage {
         );
 
         if (liquidity64x64 > 0 && pendingDeposits64x64 > 0) {
-            cLevel64x64 = l.calculateNewCLevel64x64(
+            cLevel64x64 = l.calculateCLevelLiquidityChangeAdjustment(
                 storedCLevel64x64,
                 liquidity64x64.sub(pendingDeposits64x64),
                 liquidity64x64,
@@ -393,7 +393,7 @@ library PoolStorage {
         int128 newLiquidity64x64,
         bool isCallPool
     ) internal returns (int128 cLevel64x64) {
-        cLevel64x64 = l.calculateNewCLevel64x64(
+        cLevel64x64 = l.calculateCLevelLiquidityChangeAdjustment(
             l.getCLevel64x64(isCallPool),
             oldLiquidity64x64,
             newLiquidity64x64,
