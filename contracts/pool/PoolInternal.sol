@@ -303,37 +303,33 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             );
         }
 
-        int128 cLevel64x64;
+        PoolStorage.QuoteResultInternal memory quote = _quote(
+            PoolStorage.QuoteArgsInternal(
+                account,
+                maturity,
+                strike64x64,
+                newPrice64x64,
+                contractSize,
+                isCall
+            )
+        );
 
-        {
-            PoolStorage.QuoteResultInternal memory quote = _quote(
-                PoolStorage.QuoteArgsInternal(
-                    account,
-                    maturity,
-                    strike64x64,
-                    newPrice64x64,
-                    contractSize,
-                    isCall
-                )
-            );
+        baseCost = ABDKMath64x64Token.toDecimals(
+            quote.baseCost64x64,
+            l.getTokenDecimals(isCall)
+        );
 
-            cLevel64x64 = quote.cLevel64x64;
-
-            baseCost = ABDKMath64x64Token.toDecimals(
-                quote.baseCost64x64,
-                l.getTokenDecimals(isCall)
-            );
-            feeCost = ABDKMath64x64Token.toDecimals(
-                quote.feeCost64x64,
-                l.getTokenDecimals(isCall)
-            );
-        }
+        feeCost = ABDKMath64x64Token.toDecimals(
+            quote.feeCost64x64,
+            l.getTokenDecimals(isCall)
+        );
 
         uint256 longTokenId = PoolStorage.formatTokenId(
             _getTokenType(isCall, true),
             maturity,
             strike64x64
         );
+
         uint256 shortTokenId = PoolStorage.formatTokenId(
             _getTokenType(isCall, false),
             maturity,
