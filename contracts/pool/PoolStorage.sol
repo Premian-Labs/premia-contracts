@@ -288,7 +288,7 @@ library PoolStorage {
 
         // account for C-Level decay
 
-        cLevel64x64 = l.calculateCLevelDecay(cLevel64x64, isCall);
+        cLevel64x64 = l.applyCLevelDecayAdjustment(cLevel64x64, isCall);
 
         // account for pending deposits
 
@@ -307,7 +307,7 @@ library PoolStorage {
         );
 
         if (liquidity64x64 > 0 && pendingDeposits64x64 > 0) {
-            cLevel64x64 = l.calculateCLevelLiquidityChangeAdjustment(
+            cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
                 cLevel64x64,
                 liquidity64x64.sub(pendingDeposits64x64),
                 liquidity64x64,
@@ -323,29 +323,10 @@ library PoolStorage {
     {
         int128 oldCLevel64x64 = l.getRawCLevel64x64(isCall);
 
-        return l.calculateCLevelDecay(oldCLevel64x64, isCall);
+        return l.applyCLevelDecayAdjustment(oldCLevel64x64, isCall);
     }
 
-    function calculateCLevelLiquidityChangeAdjustment(
-        Layout storage l,
-        int128 oldCLevel64x64,
-        int128 oldLiquidity64x64,
-        int128 newLiquidity64x64,
-        bool isCallPool
-    ) internal view returns (int128 cLevel64x64) {
-        cLevel64x64 = OptionMath.calculateCLevel(
-            oldCLevel64x64,
-            oldLiquidity64x64,
-            newLiquidity64x64,
-            l.steepness64x64
-        );
-
-        if (cLevel64x64 < 0xb333333333333333) {
-            cLevel64x64 = int128(0xb333333333333333); // 64x64 fixed point representation of 0.7
-        }
-    }
-
-    function calculateCLevelDecay(
+    function applyCLevelDecayAdjustment(
         Layout storage l,
         int128 oldCLevel64x64,
         bool isCall
@@ -397,13 +378,32 @@ library PoolStorage {
             );
     }
 
+    function applyCLevelLiquidityChangeAdjustment(
+        Layout storage l,
+        int128 oldCLevel64x64,
+        int128 oldLiquidity64x64,
+        int128 newLiquidity64x64,
+        bool isCallPool
+    ) internal view returns (int128 cLevel64x64) {
+        cLevel64x64 = OptionMath.calculateCLevel(
+            oldCLevel64x64,
+            oldLiquidity64x64,
+            newLiquidity64x64,
+            l.steepness64x64
+        );
+
+        if (cLevel64x64 < 0xb333333333333333) {
+            cLevel64x64 = int128(0xb333333333333333); // 64x64 fixed point representation of 0.7
+        }
+    }
+
     function setCLevel(
         Layout storage l,
         int128 oldLiquidity64x64,
         int128 newLiquidity64x64,
         bool isCallPool
     ) internal returns (int128 cLevel64x64) {
-        cLevel64x64 = l.calculateCLevelLiquidityChangeAdjustment(
+        cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
             l.getCLevel64x64(isCallPool),
             oldLiquidity64x64,
             newLiquidity64x64,
