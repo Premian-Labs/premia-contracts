@@ -161,6 +161,12 @@ library PoolStorage {
         decimals = isCall ? l.underlyingDecimals : l.baseDecimals;
     }
 
+    /**
+     * @notice get the total supply of free liquidity tokens, minus pending deposits
+     * @param l storage layout struct
+     * @param isCall whether query is for call or put pool
+     * @return 64x64 fixed point representation of total free liquidity
+     */
     function totalFreeLiquiditySupply64x64(Layout storage l, bool isCall)
         internal
         view
