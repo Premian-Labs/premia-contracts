@@ -292,10 +292,28 @@ library PoolStorage {
 
         // account for pending deposits
 
-        (cLevel64x64, liquidity64x64) = l.calculateCLevelDepositAdjustment(
-            cLevel64x64,
-            isCall
+        PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
+        int128 pendingDeposits64x64;
+
+        if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
+            pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
+                batchData.totalPendingDeposits,
+                l.getTokenDecimals(isCall)
+            );
+        }
+
+        liquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(
+            pendingDeposits64x64
         );
+
+        if (liquidity64x64 > 0 && pendingDeposits64x64 > 0) {
+            cLevel64x64 = l.calculateCLevelLiquidityChangeAdjustment(
+                cLevel64x64,
+                liquidity64x64.sub(pendingDeposits64x64),
+                liquidity64x64,
+                isCall
+            );
+        }
     }
 
     function getCLevel64x64(Layout storage l, bool isCall)
@@ -324,37 +342,6 @@ library PoolStorage {
 
         if (cLevel64x64 < 0xb333333333333333) {
             cLevel64x64 = int128(0xb333333333333333); // 64x64 fixed point representation of 0.7
-        }
-    }
-
-    function calculateCLevelDepositAdjustment(
-        Layout storage l,
-        int128 oldCLevel64x64,
-        bool isCall
-    ) internal view returns (int128 cLevel64x64, int128 liquidity64x64) {
-        PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
-        int128 pendingDeposits64x64;
-
-        if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
-            pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
-                batchData.totalPendingDeposits,
-                l.getTokenDecimals(isCall)
-            );
-        }
-
-        liquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(
-            pendingDeposits64x64
-        );
-
-        if (liquidity64x64 > 0 && pendingDeposits64x64 > 0) {
-            cLevel64x64 = l.calculateCLevelLiquidityChangeAdjustment(
-                oldCLevel64x64,
-                liquidity64x64.sub(pendingDeposits64x64),
-                liquidity64x64,
-                isCall
-            );
-        } else {
-            cLevel64x64 = oldCLevel64x64;
         }
     }
 
