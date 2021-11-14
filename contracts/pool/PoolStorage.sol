@@ -259,14 +259,26 @@ library PoolStorage {
         return asc[account] != address(0) || desc[address(0)] == account;
     }
 
+    /**
+     * @notice get current C-Level, without accounting for pending adjustments
+     * @param l storage layout struct
+     * @param isCall whether query is for call or put pool
+     * @return cLevel64x64 64x64 fixed point representation of C-Level
+     */
+    function getRawCLevel64x64(Layout storage l, bool isCall)
+        internal
+        view
+        returns (int128 cLevel64x64)
+    {
+        cLevel64x64 = isCall ? l.cLevelUnderlying64x64 : l.cLevelBase64x64;
+    }
+
     function getCLevel64x64(Layout storage l, bool isCall)
         internal
         view
         returns (int128 cLevel64x64)
     {
-        int128 oldCLevel64x64 = isCall
-            ? l.cLevelUnderlying64x64
-            : l.cLevelBase64x64;
+        int128 oldCLevel64x64 = l.getRawCLevel64x64(isCall);
 
         return l.calculateCLevelDecay(oldCLevel64x64, isCall);
     }
