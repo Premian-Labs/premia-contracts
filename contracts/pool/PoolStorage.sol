@@ -316,16 +316,6 @@ library PoolStorage {
         }
     }
 
-    function getCLevel64x64(Layout storage l, bool isCall)
-        internal
-        view
-        returns (int128 cLevel64x64)
-    {
-        int128 oldCLevel64x64 = l.getRawCLevel64x64(isCall);
-
-        return l.applyCLevelDecayAdjustment(oldCLevel64x64, isCall);
-    }
-
     function applyCLevelDecayAdjustment(
         Layout storage l,
         int128 oldCLevel64x64,
@@ -403,8 +393,13 @@ library PoolStorage {
         int128 newLiquidity64x64,
         bool isCallPool
     ) internal returns (int128 cLevel64x64) {
+        int128 oldCLevel64x64 = l.applyCLevelDecayAdjustment(
+            l.getRawCLevel64x64(isCallPool),
+            isCallPool
+        );
+
         cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
-            l.getCLevel64x64(isCallPool),
+            oldCLevel64x64,
             oldLiquidity64x64,
             newLiquidity64x64,
             isCallPool
