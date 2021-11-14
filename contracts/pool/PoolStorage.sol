@@ -398,7 +398,7 @@ library PoolStorage {
     }
 
     /**
-     * @notice set price update for current hourly bucket
+     * @notice set price update for hourly bucket corresponding to given timestamp
      * @param l storage layout struct
      * @param timestamp timestamp to update
      * @param price64x64 64x64 fixed point representation of price
