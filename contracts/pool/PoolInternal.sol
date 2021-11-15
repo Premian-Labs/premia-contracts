@@ -150,15 +150,11 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
         bool isCall = args.isCall;
 
-        int128 adjustedCLevel64x64 = l.applyCLevelPendingDepositAdjustment(
-            l.getAdjustedCLevel64x64(isCall),
-            isCall
-        );
-
-        int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall) +
-            ABDKMath64x64Token.fromDecimals(
-                l.nextDeposits[isCall].totalPendingDeposits,
-                l.getTokenDecimals(isCall)
+        (int128 adjustedCLevel64x64, int128 oldLiquidity64x64) = l
+            .applyCLevelPendingDepositAdjustment(
+                l.getAdjustedCLevel64x64(isCall),
+                l.totalFreeLiquiditySupply64x64(isCall),
+                isCall
             );
 
         require(oldLiquidity64x64 > 0, "no liq");
