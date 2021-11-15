@@ -150,34 +150,14 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
         bool isCall = args.isCall;
 
-        int128 oldLiquidity64x64;
-
-        {
-            PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
-            int128 pendingDeposits64x64;
-
-            if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
-                pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
-                    batchData.totalPendingDeposits,
-                    l.getTokenDecimals(isCall)
-                );
-            }
-
-            oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(
-                pendingDeposits64x64
+        (int128 adjustedCLevel64x64, int128 oldLiquidity64x64) = l
+            .applyCLevelPendingDepositAdjustment(
+                l.getDecayAdjustedCLevel64x64(isCall),
+                l.totalFreeLiquiditySupply64x64(isCall),
+                isCall
             );
-            require(oldLiquidity64x64 > 0, "no liq");
 
-            if (pendingDeposits64x64 > 0) {
-                result.cLevel64x64 = l.calculateCLevel(
-                    oldLiquidity64x64.sub(pendingDeposits64x64),
-                    oldLiquidity64x64,
-                    isCall
-                );
-            } else {
-                result.cLevel64x64 = l.getCLevel(isCall);
-            }
-        }
+        require(oldLiquidity64x64 > 0, "no liq");
 
         int128 timeToMaturity64x64 = ABDKMath64x64.divu(
             args.maturity - block.timestamp,
@@ -207,7 +187,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     args.strike64x64,
                     args.spot64x64,
                     timeToMaturity64x64,
-                    result.cLevel64x64,
+                    adjustedCLevel64x64,
                     oldLiquidity64x64,
                     oldLiquidity64x64.sub(contractSize64x64),
                     0x10000000000000000, // 64x64 fixed point representation of 1
@@ -303,37 +283,33 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             );
         }
 
-        int128 cLevel64x64;
+        PoolStorage.QuoteResultInternal memory quote = _quote(
+            PoolStorage.QuoteArgsInternal(
+                account,
+                maturity,
+                strike64x64,
+                newPrice64x64,
+                contractSize,
+                isCall
+            )
+        );
 
-        {
-            PoolStorage.QuoteResultInternal memory quote = _quote(
-                PoolStorage.QuoteArgsInternal(
-                    account,
-                    maturity,
-                    strike64x64,
-                    newPrice64x64,
-                    contractSize,
-                    isCall
-                )
-            );
+        baseCost = ABDKMath64x64Token.toDecimals(
+            quote.baseCost64x64,
+            l.getTokenDecimals(isCall)
+        );
 
-            cLevel64x64 = quote.cLevel64x64;
-
-            baseCost = ABDKMath64x64Token.toDecimals(
-                quote.baseCost64x64,
-                l.getTokenDecimals(isCall)
-            );
-            feeCost = ABDKMath64x64Token.toDecimals(
-                quote.feeCost64x64,
-                l.getTokenDecimals(isCall)
-            );
-        }
+        feeCost = ABDKMath64x64Token.toDecimals(
+            quote.feeCost64x64,
+            l.getTokenDecimals(isCall)
+        );
 
         uint256 longTokenId = PoolStorage.formatTokenId(
             _getTokenType(isCall, true),
             maturity,
             strike64x64
         );
+
         uint256 shortTokenId = PoolStorage.formatTokenId(
             _getTokenType(isCall, false),
             maturity,
@@ -864,11 +840,17 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         int128 newLiquidity64x64,
         bool isCallPool
     ) internal {
-        int128 cLevel64x64 = l.setCLevel(
+        int128 oldCLevel64x64 = l.getDecayAdjustedCLevel64x64(isCallPool);
+
+        int128 cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
+            oldCLevel64x64,
             oldLiquidity64x64,
             newLiquidity64x64,
             isCallPool
         );
+
+        l.setCLevel(cLevel64x64, isCallPool);
+
         emit UpdateCLevel(
             isCallPool,
             cLevel64x64,

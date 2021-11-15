@@ -239,7 +239,7 @@ export class PoolUtil {
 
     const premiaMiningProxy = await new PremiaMiningProxy__factory(
       deployer,
-    ).deploy(premiaMiningImpl.address, parseEther('4000'));
+    ).deploy(premiaMiningImpl.address, parseEther('365000'));
 
     const premiaMining = PremiaMining__factory.connect(
       premiaMiningProxy.address,
