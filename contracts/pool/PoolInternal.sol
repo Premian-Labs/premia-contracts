@@ -844,11 +844,17 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         int128 newLiquidity64x64,
         bool isCallPool
     ) internal {
-        int128 cLevel64x64 = l.setCLevel(
+        int128 oldCLevel64x64 = l.getAdjustedCLevel64x64(isCallPool);
+
+        int128 cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
+            oldCLevel64x64,
             oldLiquidity64x64,
             newLiquidity64x64,
             isCallPool
         );
+
+        l.setCLevel(cLevel64x64, isCallPool);
+
         emit UpdateCLevel(
             isCallPool,
             cLevel64x64,

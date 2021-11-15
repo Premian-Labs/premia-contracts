@@ -423,31 +423,6 @@ library PoolStorage {
     }
 
     /**
-     * @notice update C-Level based on change in liquidity
-     * @param oldLiquidity64x64 64x64 fixed point representation of previous liquidity
-     * @param newLiquidity64x64 64x64 fixed point representation of current liquidity
-     * @param isCallPool whether to update C-Level for call or put pool
-     * @return cLevel64x64 64x64 fixed point representation of C-Level
-     */
-    function setCLevel(
-        Layout storage l,
-        int128 oldLiquidity64x64,
-        int128 newLiquidity64x64,
-        bool isCallPool
-    ) internal returns (int128 cLevel64x64) {
-        int128 oldCLevel64x64 = l.getAdjustedCLevel64x64(isCallPool);
-
-        cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
-            oldCLevel64x64,
-            oldLiquidity64x64,
-            newLiquidity64x64,
-            isCallPool
-        );
-
-        l.setCLevel(cLevel64x64, isCallPool);
-    }
-
-    /**
      * @notice set C-Level to arbitrary pre-calculated value
      * @param cLevel64x64 new C-Level of pool
      * @param isCallPool whether to update C-Level for call or put pool
