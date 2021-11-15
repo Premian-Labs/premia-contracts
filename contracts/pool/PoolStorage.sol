@@ -389,8 +389,7 @@ library PoolStorage {
             cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
                 oldCLevel64x64,
                 oldLiquidity64x64,
-                liquidity64x64,
-                isCall
+                liquidity64x64
             );
         } else {
             cLevel64x64 = oldCLevel64x64;
@@ -404,19 +403,14 @@ library PoolStorage {
      * @param oldCLevel64x64 64x64 fixed point representation pool C-Level before accounting for liquidity change
      * @param oldLiquidity64x64 64x64 fixed point representation of previous liquidity
      * @param newLiquidity64x64 64x64 fixed point representation of current liquidity
-     * @param isCallPool whether to update C-Level for call or put pool
      * @return cLevel64x64 64x64 fixed point representation of C-Level
      */
     function applyCLevelLiquidityChangeAdjustment(
         Layout storage l,
         int128 oldCLevel64x64,
         int128 oldLiquidity64x64,
-        int128 newLiquidity64x64,
-        bool isCallPool
+        int128 newLiquidity64x64
     ) internal view returns (int128 cLevel64x64) {
-        // suppress compiler warning (variable will be used in future update)
-        isCallPool = isCallPool;
-
         cLevel64x64 = OptionMath.calculateCLevel(
             oldCLevel64x64,
             oldLiquidity64x64,
