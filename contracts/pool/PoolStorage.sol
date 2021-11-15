@@ -280,12 +280,12 @@ library PoolStorage {
     }
 
     /**
-     * @notice get current C-Level, accounting for unrealized decay and pending deposits
+     * @notice get current C-Level, accounting for unrealized decay
      * @param l storage layout struct
      * @param isCall whether query is for call or put pool
      * @return cLevel64x64 64x64 fixed point representation of C-Level
      */
-    function getAdjustedCLevel64x64(Layout storage l, bool isCall)
+    function getDecayAdjustedCLevel64x64(Layout storage l, bool isCall)
         internal
         view
         returns (int128 cLevel64x64)

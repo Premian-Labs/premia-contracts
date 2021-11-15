@@ -104,7 +104,7 @@ contract PoolView is IPoolView, PoolInternal {
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
         (cLevel64x64, ) = l.applyCLevelPendingDepositAdjustment(
-            l.getAdjustedCLevel64x64(isCall),
+            l.getDecayAdjustedCLevel64x64(isCall),
             l.totalFreeLiquiditySupply64x64(isCall),
             isCall
         );
