@@ -295,12 +295,6 @@ library PoolStorage {
 
         // account for C-Level decay
         cLevel64x64 = l.applyCLevelDecayAdjustment(cLevel64x64, isCall);
-
-        // account for pending deposits
-        cLevel64x64 = l.applyCLevelPendingDepositAdjustment(
-            cLevel64x64,
-            isCall
-        );
     }
 
     /**
@@ -441,10 +435,7 @@ library PoolStorage {
         int128 newLiquidity64x64,
         bool isCallPool
     ) internal returns (int128 cLevel64x64) {
-        int128 oldCLevel64x64 = l.applyCLevelDecayAdjustment(
-            l.getRawCLevel64x64(isCallPool),
-            isCallPool
-        );
+        int128 oldCLevel64x64 = l.getAdjustedCLevel64x64(isCallPool);
 
         cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
             oldCLevel64x64,

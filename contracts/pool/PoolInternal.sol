@@ -150,7 +150,10 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
         bool isCall = args.isCall;
 
-        int128 adjustedCLevel64x64 = l.getAdjustedCLevel64x64(isCall);
+        int128 adjustedCLevel64x64 = l.applyCLevelPendingDepositAdjustment(
+            l.getAdjustedCLevel64x64(isCall),
+            isCall
+        );
 
         int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall) +
             ABDKMath64x64Token.fromDecimals(
