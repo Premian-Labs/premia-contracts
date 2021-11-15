@@ -304,7 +304,7 @@ library PoolStorage {
     }
 
     /**
-     * @notice calculate updated C-Level, accounting for time-based decay
+     * @notice calculate updated C-Level, accounting for unrealized decay
      * @param l storage layout struct
      * @param oldCLevel64x64 64x64 fixed point representation pool C-Level before accounting for decay
      * @param isCall whether query is for call or put pool
@@ -362,6 +362,13 @@ library PoolStorage {
             );
     }
 
+    /**
+     * @notice calculate updated C-Level, accounting for pending deposits
+     * @param l storage layout struct
+     * @param oldCLevel64x64 64x64 fixed point representation pool C-Level before accounting for liquidity change
+     * @param isCall whether to update C-Level for call or put pool
+     * @return cLevel64x64 64x64 fixed point representation of C-Level
+     */
     function applyCLevelPendingDepositAdjustment(
         Layout storage l,
         int128 oldCLevel64x64,
@@ -399,6 +406,7 @@ library PoolStorage {
      * @param oldCLevel64x64 64x64 fixed point representation pool C-Level before accounting for liquidity change
      * @param oldLiquidity64x64 64x64 fixed point representation of previous liquidity
      * @param newLiquidity64x64 64x64 fixed point representation of current liquidity
+     * @param isCallPool whether to update C-Level for call or put pool
      * @return cLevel64x64 64x64 fixed point representation of C-Level
      */
     function applyCLevelLiquidityChangeAdjustment(
