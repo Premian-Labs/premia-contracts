@@ -284,43 +284,23 @@ library PoolStorage {
      * @param l storage layout struct
      * @param isCall whether query is for call or put pool
      * @return cLevel64x64 64x64 fixed point representation of C-Level
-     * @return liquidity64x64 64x64 fixed point representation of updated free liquidity
      */
     function getAdjustedCLevel64x64(Layout storage l, bool isCall)
         internal
         view
-        returns (int128 cLevel64x64, int128 liquidity64x64)
+        returns (int128 cLevel64x64)
     {
+        // get raw C-Level from storage
         cLevel64x64 = l.getRawCLevel64x64(isCall);
 
         // account for C-Level decay
-
         cLevel64x64 = l.applyCLevelDecayAdjustment(cLevel64x64, isCall);
 
         // account for pending deposits
-
-        PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
-        int128 pendingDeposits64x64;
-
-        if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
-            pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
-                batchData.totalPendingDeposits,
-                l.getTokenDecimals(isCall)
-            );
-        }
-
-        liquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(
-            pendingDeposits64x64
+        cLevel64x64 = l.applyCLevelPendingDepositAdjustment(
+            cLevel64x64,
+            isCall
         );
-
-        if (liquidity64x64 > 0 && pendingDeposits64x64 > 0) {
-            cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
-                cLevel64x64,
-                liquidity64x64.sub(pendingDeposits64x64),
-                liquidity64x64,
-                isCall
-            );
-        }
     }
 
     /**
@@ -380,6 +360,37 @@ library PoolStorage {
                     0x56fc2a2c515da32ea // 2e
                 )
             );
+    }
+
+    function applyCLevelPendingDepositAdjustment(
+        Layout storage l,
+        int128 oldCLevel64x64,
+        bool isCall
+    ) internal view returns (int128 cLevel64x64) {
+        cLevel64x64 = oldCLevel64x64;
+
+        PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
+        int128 pendingDeposits64x64;
+
+        if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
+            pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
+                batchData.totalPendingDeposits,
+                l.getTokenDecimals(isCall)
+            );
+        }
+
+        int128 liquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(
+            pendingDeposits64x64
+        );
+
+        if (liquidity64x64 > 0 && pendingDeposits64x64 > 0) {
+            cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
+                cLevel64x64,
+                liquidity64x64.sub(pendingDeposits64x64),
+                liquidity64x64,
+                isCall
+            );
+        }
     }
 
     /**
