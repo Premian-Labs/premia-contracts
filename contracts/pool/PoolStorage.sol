@@ -379,22 +379,22 @@ library PoolStorage {
         PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
         int128 pendingDeposits64x64;
 
-        if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
+        if (
+            batchData.totalPendingDeposits > 0 &&
+            batchData.eta != 0 &&
+            block.timestamp >= batchData.eta
+        ) {
             pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
                 batchData.totalPendingDeposits,
                 l.getTokenDecimals(isCall)
             );
-        }
 
-        int128 liquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(
-            pendingDeposits64x64
-        );
+            int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
 
-        if (liquidity64x64 > 0 && pendingDeposits64x64 > 0) {
             cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
                 cLevel64x64,
-                liquidity64x64.sub(pendingDeposits64x64),
-                liquidity64x64,
+                oldLiquidity64x64,
+                oldLiquidity64x64.add(pendingDeposits64x64),
                 isCall
             );
         }
