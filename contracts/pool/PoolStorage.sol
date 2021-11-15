@@ -414,6 +414,9 @@ library PoolStorage {
         int128 newLiquidity64x64,
         bool isCallPool
     ) internal view returns (int128 cLevel64x64) {
+        // suppress compiler warning (variable will be used in future update)
+        isCallPool = isCallPool;
+
         cLevel64x64 = OptionMath.calculateCLevel(
             oldCLevel64x64,
             oldLiquidity64x64,
