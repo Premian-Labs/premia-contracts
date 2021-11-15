@@ -92,44 +92,22 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice get C Level
-     * @return 64x64 fixed point representation of C-Level of Pool after purchase
+     * @notice get current C-Level, accounting for unrealized decay and pending deposits
+     * @param isCall whether query is for call or put pool
+     * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
      */
     function getCLevel64x64(bool isCall)
         external
         view
         override
-        returns (int128)
+        returns (int128 cLevel64x64)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
-
-        PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
-        int128 pendingDeposits64x64;
-
-        if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
-            pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
-                batchData.totalPendingDeposits,
-                l.getTokenDecimals(isCall)
-            );
-        }
-
-        int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(
-            pendingDeposits64x64
+        (cLevel64x64, ) = l.applyCLevelPendingDepositAdjustment(
+            l.getDecayAdjustedCLevel64x64(isCall),
+            l.totalFreeLiquiditySupply64x64(isCall),
+            isCall
         );
-
-        if (oldLiquidity64x64 > 0 && pendingDeposits64x64 > 0) {
-            return
-                l.calculateCLevelDecay(
-                    l.calculateCLevel(
-                        oldLiquidity64x64.sub(pendingDeposits64x64),
-                        oldLiquidity64x64,
-                        isCall
-                    ),
-                    isCall
-                );
-        } else {
-            return l.getCLevel(isCall);
-        }
     }
 
     /**
