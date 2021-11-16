@@ -422,7 +422,15 @@ library PoolStorage {
             : l.steepnessBase64x64;
 
         // fallback to deprecated storage value if side-specific value is not set
-        if (steepness64x64 == 0) steepness64x64 = l._deprecated_steepness64x64;
+        if (steepness64x64 == 0) {
+            steepness64x64 = l._deprecated_steepness64x64;
+
+            if (isCallPool) {
+                l.steepnessUnderlying64x64 = steepness64x64;
+            } else {
+                l.steepnessBase64x64 = steepness64x64;
+            }
+        }
 
         cLevel64x64 = OptionMath.calculateCLevel(
             oldCLevel64x64,
