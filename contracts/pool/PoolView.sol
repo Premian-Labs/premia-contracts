@@ -9,9 +9,6 @@ import {PoolStorage} from "./PoolStorage.sol";
 import {IPoolView} from "./IPoolView.sol";
 import {PoolInternal} from "./PoolInternal.sol";
 
-import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
-import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
-
 import {IPremiaOptionNFTDisplay} from "../interface/IPremiaOptionNFTDisplay.sol";
 
 /**
@@ -19,7 +16,6 @@ import {IPremiaOptionNFTDisplay} from "../interface/IPremiaOptionNFTDisplay.sol"
  * @dev deployed standalone and referenced by PoolProxy
  */
 contract PoolView is IPoolView, PoolInternal {
-    using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.UintSet;
     using PoolStorage for PoolStorage.Layout;
 
