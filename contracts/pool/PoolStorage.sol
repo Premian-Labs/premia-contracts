@@ -265,15 +265,50 @@ library PoolStorage {
         return asc[account] != address(0) || desc[address(0)] == account;
     }
 
-    function getCLevel(Layout storage l, bool isCall)
+    /**
+     * @notice get current C-Level, without accounting for pending adjustments
+     * @param l storage layout struct
+     * @param isCall whether query is for call or put pool
+     * @return cLevel64x64 64x64 fixed point representation of C-Level
+     */
+    function getRawCLevel64x64(Layout storage l, bool isCall)
         internal
         view
         returns (int128 cLevel64x64)
     {
-        int128 oldCLevel64x64 = isCall
-            ? l.cLevelUnderlying64x64
-            : l.cLevelBase64x64;
+        cLevel64x64 = isCall ? l.cLevelUnderlying64x64 : l.cLevelBase64x64;
+    }
 
+    /**
+     * @notice get current C-Level, accounting for unrealized decay
+     * @param l storage layout struct
+     * @param isCall whether query is for call or put pool
+     * @return cLevel64x64 64x64 fixed point representation of C-Level
+     */
+    function getDecayAdjustedCLevel64x64(Layout storage l, bool isCall)
+        internal
+        view
+        returns (int128 cLevel64x64)
+    {
+        // get raw C-Level from storage
+        cLevel64x64 = l.getRawCLevel64x64(isCall);
+
+        // account for C-Level decay
+        cLevel64x64 = l.applyCLevelDecayAdjustment(cLevel64x64, isCall);
+    }
+
+    /**
+     * @notice calculate updated C-Level, accounting for unrealized decay
+     * @param l storage layout struct
+     * @param oldCLevel64x64 64x64 fixed point representation pool C-Level before accounting for decay
+     * @param isCall whether query is for call or put pool
+     * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after accounting for decay
+     */
+    function applyCLevelDecayAdjustment(
+        Layout storage l,
+        int128 oldCLevel64x64,
+        bool isCall
+    ) internal view returns (int128 cLevel64x64) {
         uint256 timeElapsed = block.timestamp -
             (isCall ? l.cLevelUnderlyingUpdatedAt : l.cLevelBaseUpdatedAt);
 
@@ -305,36 +340,94 @@ library PoolStorage {
             tvl
         );
 
-        cLevel64x64 = OptionMath.calculateCLevelDecay(
-            OptionMath.CalculateCLevelDecayArgs(
-                timeIntervalsElapsed64x64,
-                oldCLevel64x64,
-                utilization,
-                0xb333333333333333, // 0.7
-                0xe666666666666666, // 0.9
-                0x10000000000000000, // 1.0
-                0x10000000000000000, // 1.0
-                0xe666666666666666, // 0.9
-                0x56fc2a2c515da32ea // 2e
-            )
-        );
+        return
+            OptionMath.calculateCLevelDecay(
+                OptionMath.CalculateCLevelDecayArgs(
+                    timeIntervalsElapsed64x64,
+                    oldCLevel64x64,
+                    utilization,
+                    0xb333333333333333, // 0.7
+                    0xe666666666666666, // 0.9
+                    0x10000000000000000, // 1.0
+                    0x10000000000000000, // 1.0
+                    0xe666666666666666, // 0.9
+                    0x56fc2a2c515da32ea // 2e
+                )
+            );
     }
 
-    function setCLevel(
+    /**
+     * @notice calculate updated C-Level, accounting for pending deposits
+     * @param l storage layout struct
+     * @param oldCLevel64x64 64x64 fixed point representation pool C-Level before accounting for liquidity change
+     * @param oldLiquidity64x64 64x64 fixed point representation of previous liquidity
+     * @param isCall whether to update C-Level for call or put pool
+     * @return cLevel64x64 64x64 fixed point representation of C-Level
+     * @return liquidity64x64 64x64 fixed point representation of new liquidity amount
+     */
+    function applyCLevelPendingDepositAdjustment(
         Layout storage l,
+        int128 oldCLevel64x64,
         int128 oldLiquidity64x64,
-        int128 newLiquidity64x64,
-        bool isCallPool
-    ) internal returns (int128 cLevel64x64) {
-        cLevel64x64 = l.calculateCLevel(
+        bool isCall
+    ) internal view returns (int128 cLevel64x64, int128 liquidity64x64) {
+        PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
+        int128 pendingDeposits64x64;
+
+        if (
+            batchData.totalPendingDeposits > 0 &&
+            batchData.eta != 0 &&
+            block.timestamp >= batchData.eta
+        ) {
+            pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
+                batchData.totalPendingDeposits,
+                l.getTokenDecimals(isCall)
+            );
+
+            liquidity64x64 = oldLiquidity64x64.add(pendingDeposits64x64);
+
+            cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
+                oldCLevel64x64,
+                oldLiquidity64x64,
+                liquidity64x64
+            );
+        } else {
+            cLevel64x64 = oldCLevel64x64;
+            liquidity64x64 = oldLiquidity64x64;
+        }
+    }
+
+    /**
+     * @notice calculate updated C-Level, accounting for change in liquidity
+     * @param l storage layout struct
+     * @param oldCLevel64x64 64x64 fixed point representation pool C-Level before accounting for liquidity change
+     * @param oldLiquidity64x64 64x64 fixed point representation of previous liquidity
+     * @param newLiquidity64x64 64x64 fixed point representation of current liquidity
+     * @return cLevel64x64 64x64 fixed point representation of C-Level
+     */
+    function applyCLevelLiquidityChangeAdjustment(
+        Layout storage l,
+        int128 oldCLevel64x64,
+        int128 oldLiquidity64x64,
+        int128 newLiquidity64x64
+    ) internal view returns (int128 cLevel64x64) {
+        cLevel64x64 = OptionMath.calculateCLevel(
+            oldCLevel64x64,
             oldLiquidity64x64,
             newLiquidity64x64,
-            isCallPool
+            l.steepness64x64
         );
 
-        l.setCLevel(cLevel64x64, isCallPool);
+        if (cLevel64x64 < 0xb333333333333333) {
+            cLevel64x64 = int128(0xb333333333333333); // 64x64 fixed point representation of 0.7
+        }
     }
 
+    /**
+     * @notice set C-Level to arbitrary pre-calculated value
+     * @param cLevel64x64 new C-Level of pool
+     * @param isCallPool whether to update C-Level for call or put pool
+     */
     function setCLevel(
         Layout storage l,
         int128 cLevel64x64,
@@ -346,24 +439,6 @@ library PoolStorage {
         } else {
             l.cLevelBase64x64 = cLevel64x64;
             l.cLevelBaseUpdatedAt = block.timestamp;
-        }
-    }
-
-    function calculateCLevel(
-        Layout storage l,
-        int128 oldLiquidity64x64,
-        int128 newLiquidity64x64,
-        bool isCallPool
-    ) internal view returns (int128 cLevel64x64) {
-        cLevel64x64 = OptionMath.calculateCLevel(
-            l.getCLevel(isCallPool),
-            oldLiquidity64x64,
-            newLiquidity64x64,
-            l.steepness64x64
-        );
-
-        if (cLevel64x64 < 0xb333333333333333) {
-            cLevel64x64 = int128(0xb333333333333333); // 64x64 fixed point representation of 0.7
         }
     }
 
