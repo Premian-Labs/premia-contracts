@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IPremiaStaking {
+interface IPremiaStakingOld {
     /**
      * @notice stake PREMIA using IERC2612 permit
      * @param amount quantity of PREMIA to stake
@@ -11,7 +11,7 @@ interface IPremiaStaking {
      * @param r signature "r" value
      * @param s signature "s" value
      */
-    function depositWithPermit(
+    function enterWithPermit(
         uint256 amount,
         uint256 deadline,
         uint8 v,
@@ -23,22 +23,11 @@ interface IPremiaStaking {
      * @notice stake PREMIA in exchange for xPremia
      * @param amount quantity of PREMIA to stake
      */
-    function deposit(uint256 amount) external;
+    function enter(uint256 amount) external;
 
     /**
-     * @notice Initiate the withdrawal process by burning xPremia, starting the delay period
+     * @notice burn xPremia in exchange for staked PREMIA
      * @param amount quantity of xPremia to unstake
      */
-    function startWithdraw(uint256 amount) external;
-
-    /**
-     * @notice withdraw PREMIA after withdrawal delay has passed
-     */
-    function withdraw() external;
-
-    /**
-     * @notice get current withdrawal delay
-     * @return withdrawal delay
-     */
-    function getWithdrawalDelay() external view returns (uint256);
+    function leave(uint256 amount) external;
 }
