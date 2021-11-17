@@ -134,7 +134,7 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         override
         returns (uint256)
     {
-        return (_getStakedPremiaAmount() * 1e8) / _totalSupply();
+        return (_getStakedPremiaAmount() * 1e18) / _totalSupply();
     }
 
     /**
