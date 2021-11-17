@@ -59,7 +59,7 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         uint256 totalPremia = _getStakedPremiaAmount();
 
         // Gets the amount of xPremia in existence
-        uint256 totalShares = totalSupply();
+        uint256 totalShares = _totalSupply();
         // If no xPremia exists, mint it 1:1 to the amount put in
         if (totalShares == 0 || totalPremia == 0) {
             _mint(msg.sender, amount);
@@ -83,7 +83,7 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
         // Gets the amount of xPremia in existence
-        uint256 totalShares = totalSupply();
+        uint256 totalShares = _totalSupply();
 
         // Calculates the amount of Premia the xPremia is worth
         uint256 what = (amount * _getStakedPremiaAmount()) / totalShares;
@@ -134,7 +134,7 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         override
         returns (uint256)
     {
-        return (_getStakedPremiaAmount() * 1e8) / totalSupply();
+        return (_getStakedPremiaAmount() * 1e8) / _totalSupply();
     }
 
     /**
