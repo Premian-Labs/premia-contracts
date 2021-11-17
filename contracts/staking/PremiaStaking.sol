@@ -55,11 +55,8 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
      * @inheritdoc IPremiaStaking
      */
     function deposit(uint256 amount) public override {
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-
         // Gets the amount of Premia locked in the contract
-        uint256 totalPremia = IERC20(PREMIA).balanceOf(address(this)) -
-            l.pendingWithdrawal;
+        uint256 totalPremia = _getStakedPremiaAmount();
 
         // Gets the amount of xPremia in existence
         uint256 totalShares = totalSupply();
@@ -72,6 +69,7 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
             uint256 what = (amount * totalShares) / totalPremia;
             _mint(msg.sender, what);
         }
+
         // Lock the Premia in the contract
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
 
@@ -84,13 +82,11 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     function startWithdraw(uint256 amount) external override {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
-        uint256 totalPremia = IERC20(PREMIA).balanceOf(address(this)) -
-            l.pendingWithdrawal;
         // Gets the amount of xPremia in existence
         uint256 totalShares = totalSupply();
 
         // Calculates the amount of Premia the xPremia is worth
-        uint256 what = (amount * totalPremia) / totalShares;
+        uint256 what = (amount * _getStakedPremiaAmount()) / totalShares;
         _burn(msg.sender, amount);
         l.pendingWithdrawal += what;
 
@@ -125,7 +121,31 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getWithdrawalDelay() external view returns (uint256) {
+    function getWithdrawalDelay() external view override returns (uint256) {
         return PremiaStakingStorage.layout().withdrawalDelay;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getXPremiaToPremiaRatio()
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return (_getStakedPremiaAmount() * 1e8) / totalSupply();
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getStakedPremiaAmount() external view override returns (uint256) {
+        return _getStakedPremiaAmount();
+    }
+
+    function _getStakedPremiaAmount() internal view returns (uint256) {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        return IERC20(PREMIA).balanceOf(address(this)) - l.pendingWithdrawal;
     }
 }

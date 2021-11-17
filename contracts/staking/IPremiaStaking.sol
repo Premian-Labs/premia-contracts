@@ -41,4 +41,16 @@ interface IPremiaStaking {
      * @return withdrawal delay
      */
     function getWithdrawalDelay() external view returns (uint256);
+
+    /**
+     * @notice get the xPREMIA : PREMIA ratio (with 8 decimals)
+     * @return xPREMIA : PREMIA ratio (with 8 decimals)
+     */
+    function getXPremiaToPremiaRatio() external view returns (uint256);
+
+    /**
+     * @notice get the amount of PREMIA staked (subtracting all pending withdrawals)
+     * @return amount of PREMIA staked
+     */
+    function getStakedPremiaAmount() external view returns (uint256);
 }
