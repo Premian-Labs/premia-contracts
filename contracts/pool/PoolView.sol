@@ -88,16 +88,22 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice get C Level
-     * @return 64x64 fixed point representation of C-Level of Pool after purchase
+     * @notice get current C-Level, accounting for unrealized decay and pending deposits
+     * @param isCall whether query is for call or put pool
+     * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
      */
     function getCLevel64x64(bool isCall)
         external
         view
         override
-        returns (int128)
+        returns (int128 cLevel64x64)
     {
-        return PoolStorage.layout().getCLevel(isCall);
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        (cLevel64x64, ) = l.applyCLevelPendingDepositAdjustment(
+            l.getDecayAdjustedCLevel64x64(isCall),
+            l.totalFreeLiquiditySupply64x64(isCall),
+            isCall
+        );
     }
 
     /**

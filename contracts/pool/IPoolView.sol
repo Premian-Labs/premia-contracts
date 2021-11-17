@@ -2,9 +2,11 @@
 
 pragma solidity ^0.8.0;
 
+import {IERC1155Metadata} from "@solidstate/contracts/token/ERC1155/metadata/IERC1155Metadata.sol";
+
 import {PoolStorage} from "./PoolStorage.sol";
 
-interface IPoolView {
+interface IPoolView is IERC1155Metadata {
     function getFeeReceiverAddress() external view returns (address);
 
     function getPoolSettings()
@@ -58,6 +60,4 @@ interface IPoolView {
             uint256 callDivestmentTimestamp,
             uint256 putDivestmentTimestamp
         );
-
-    function uri(uint256 tokenId) external view returns (string memory);
 }

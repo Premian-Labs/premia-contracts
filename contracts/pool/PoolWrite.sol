@@ -155,7 +155,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         require(maturity >= block.timestamp + (1 days), "exp < 1 day");
         require(maturity < block.timestamp + (91 days), "exp > 90 days");
-        require(maturity % (1 days) == 0, "exp not end UTC day");
+        require(maturity % (8 hours) == 0, "exp must be 8-hour increment");
 
         int128 newPrice64x64 = _update(l);
 
