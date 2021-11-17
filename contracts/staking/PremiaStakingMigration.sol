@@ -8,8 +8,8 @@ import {ERC20BaseInternal} from "@solidstate/contracts/token/ERC20/base/ERC20Bas
 import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./IPremiaStakingOld.sol";
-import "./IPremiaStaking.sol";
+import {IPremiaStakingOld} from "./IPremiaStakingOld.sol";
+import {IPremiaStaking} from "./IPremiaStaking.sol";
 
 contract PremiaStakingMigration is ERC20BaseInternal {
     using SafeERC20 for IERC20;

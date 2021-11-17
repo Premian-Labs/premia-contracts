@@ -6,7 +6,7 @@ pragma solidity ^0.8.0;
 import {ProxyUpgradeableOwnable} from "../ProxyUpgradeableOwnable.sol";
 import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/metadata/ERC20MetadataStorage.sol";
 
-import "./PremiaStakingStorage.sol";
+import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 
 contract PremiaStakingProxy is ProxyUpgradeableOwnable {
     using ERC20MetadataStorage for ERC20MetadataStorage.Layout;

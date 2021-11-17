@@ -9,8 +9,8 @@ import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 import {ERC20Permit} from "@solidstate/contracts/token/ERC20/permit/ERC20Permit.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./IPremiaStaking.sol";
-import "./PremiaStakingStorage.sol";
+import {IPremiaStaking} from "./IPremiaStaking.sol";
+import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 
 contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     using SafeERC20 for IERC20;
