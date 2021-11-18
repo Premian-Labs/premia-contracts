@@ -9,6 +9,24 @@ interface IFeeDiscount {
     }
 
     /**
+     * @notice Stake using IERC2612 permit
+     * @param _amount The amount of xPremia to stake
+     * @param _period The lockup period (in seconds)
+     * @param _deadline Deadline after which permit will fail
+     * @param _v V
+     * @param _r R
+     * @param _s S
+     */
+    function stakeWithPermit(
+        uint256 _amount,
+        uint256 _period,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external;
+
+    /**
      * @notice Lockup xPremia for protocol fee discounts
      *          Longer period of locking will apply a multiplier on the amount staked, in the fee discount calculation
      * @param _amount The amount of xPremia to stake

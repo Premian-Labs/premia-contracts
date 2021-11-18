@@ -4,8 +4,9 @@
 pragma solidity ^0.8.0;
 
 import {SafeCast} from "@solidstate/contracts/utils/SafeCast.sol";
+import {IERC20, SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
+import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 
-import {PremiaStaking} from "./PremiaStaking.sol";
 import {FeeDiscountStorage} from "./FeeDiscountStorage.sol";
 import {IFeeDiscount} from "./IFeeDiscount.sol";
 
@@ -13,9 +14,11 @@ import {IFeeDiscount} from "./IFeeDiscount.sol";
  * @author Premia
  * @title A contract allowing you to lock xPremia to get Premia protocol fee discounts
  */
-contract FeeDiscount is IFeeDiscount, PremiaStaking {
+contract FeeDiscount is IFeeDiscount {
+    using SafeERC20 for IERC20;
     using SafeCast for uint256;
 
+    address internal immutable xPREMIA;
     uint256 internal constant INVERSE_BASIS_POINT = 1e4;
 
     ////////////
@@ -32,10 +35,10 @@ contract FeeDiscount is IFeeDiscount, PremiaStaking {
 
     //////////////////////////////////////////////////
 
-    constructor(address premia) PremiaStaking(premia) {}
+    constructor(address xPremia) {
+        xPREMIA = xPremia;
+    }
 
-    //////////////////////////////////////////////////
-    //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
     //////////
@@ -45,7 +48,34 @@ contract FeeDiscount is IFeeDiscount, PremiaStaking {
     /**
      * @inheritdoc IFeeDiscount
      */
+    function stakeWithPermit(
+        uint256 _amount,
+        uint256 _period,
+        uint256 _deadline,
+        uint8 _v,
+        bytes32 _r,
+        bytes32 _s
+    ) external {
+        IERC2612(address(xPREMIA)).permit(
+            msg.sender,
+            address(this),
+            _amount,
+            _deadline,
+            _v,
+            _r,
+            _s
+        );
+        _stake(_amount, _period);
+    }
+
+    /**
+     * @inheritdoc IFeeDiscount
+     */
     function stake(uint256 _amount, uint256 _period) external override {
+        _stake(_amount, _period);
+    }
+
+    function _stake(uint256 _amount, uint256 _period) internal {
         FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
 
         require(
@@ -60,7 +90,7 @@ contract FeeDiscount is IFeeDiscount, PremiaStaking {
             "Cannot add stake with lower stake period"
         );
 
-        _transfer(msg.sender, address(this), _amount);
+        _transferPremia(msg.sender, address(this), _amount);
         user.balance = user.balance + _amount;
         user.lockedUntil = lockedUntil.toUint64();
         user.stakePeriod = _period.toUint64();
@@ -80,7 +110,7 @@ contract FeeDiscount is IFeeDiscount, PremiaStaking {
         require(user.lockedUntil <= block.timestamp, "Stake still locked");
 
         user.balance -= _amount;
-        _transfer(address(this), msg.sender, _amount);
+        _transferPremia(address(this), msg.sender, _amount);
 
         emit Unstaked(msg.sender, _amount);
     }
@@ -230,5 +260,23 @@ contract FeeDiscount is IFeeDiscount, PremiaStaking {
         if (_period == 360 days) return 20000; // x2
 
         return 0;
+    }
+
+    /**
+     * @notice transfer tokens from holder to recipient
+     * @param holder owner of tokens to be transferred
+     * @param recipient beneficiary of transfer
+     * @param amount quantity of tokens transferred
+     */
+    function _transferPremia(
+        address holder,
+        address recipient,
+        uint256 amount
+    ) internal virtual {
+        if (holder == address(this)) {
+            IERC20(xPREMIA).safeTransfer(recipient, amount);
+        } else {
+            IERC20(xPREMIA).safeTransferFrom(holder, recipient, amount);
+        }
     }
 }
