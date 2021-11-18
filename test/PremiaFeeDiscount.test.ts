@@ -41,7 +41,7 @@ describe('PremiaFeeDiscount', () => {
     await p.premia
       .connect(user1)
       .increaseAllowance(p.xPremia.address, stakeAmount);
-    await p.xPremia.connect(user1).enter(stakeAmount);
+    await p.xPremia.connect(user1).deposit(stakeAmount);
     await p.xPremia
       .connect(user1)
       .increaseAllowance(p.premiaFeeDiscount.address, stakeAmount);
