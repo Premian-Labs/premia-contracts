@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeCast} from "@solidstate/contracts/utils/SafeCast.sol";
+import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 
 import {PremiaStaking} from "./PremiaStaking.sol";
 import {FeeDiscount} from "./FeeDiscount.sol";
@@ -74,6 +75,37 @@ contract PremiaStakingWithFeeDiscount is PremiaStaking, FeeDiscount {
         if (_stakePeriod > stakePeriod) {
             userInfo.stakePeriod = stakePeriod.toUint64();
         }
+    }
+
+    /**
+     * @notice Migrate old xPremia to new xPremia using IERC2612 permit
+     * @param amount Amount of old xPremia to migrate
+     * @param deadline Deadline after which permit will fail
+     * @param v V
+     * @param r R
+     * @param s S
+     */
+    function migrateWithoutLockWithPermit(
+        uint256 amount,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external returns (uint256 premiaDeposited, uint256 xPremiaMinted) {
+        IERC2612(address(OLD_STAKING)).permit(
+            msg.sender,
+            address(this),
+            amount,
+            deadline,
+            v,
+            r,
+            s
+        );
+        (premiaDeposited, xPremiaMinted) = _migrateWithoutLock(
+            amount,
+            msg.sender
+        );
+        emit Deposit(msg.sender, premiaDeposited);
     }
 
     /**
