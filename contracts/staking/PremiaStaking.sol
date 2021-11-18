@@ -102,9 +102,11 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     function withdraw() external override {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
+        uint256 startDate = l.withdrawals[msg.sender].startDate;
+
+        require(startDate > 0, "No pending withdrawal");
         require(
-            block.timestamp >
-                l.withdrawals[msg.sender].startDate + l.withdrawalDelay,
+            block.timestamp > startDate + l.withdrawalDelay,
             "Withdrawal still pending"
         );
 
