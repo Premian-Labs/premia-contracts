@@ -5,8 +5,6 @@ import {
   FeeDiscount__factory,
   PremiaErc20,
   PremiaErc20__factory,
-  PremiaFeeDiscount,
-  PremiaFeeDiscount__factory,
   PremiaMaker,
   PremiaMaker__factory,
   PremiaStakingProxy__factory,

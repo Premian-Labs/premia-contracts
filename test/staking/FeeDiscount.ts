@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { PremiaFeeDiscount, ERC20Mock } from '../../typechain';
+import { ERC20Mock } from '../../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { increaseTimestamp } from '../utils/evm';
