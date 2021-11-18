@@ -5,17 +5,17 @@ pragma solidity ^0.8.0;
 
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 
-import {IPremiaFeeDiscount} from "./interface/IPremiaFeeDiscount.sol";
+import {IFeeDiscount} from "./staking/IFeeDiscount.sol";
 
 contract PremiaVoteProxy {
     IERC20 public premia;
     IERC20 public xPremia;
-    IPremiaFeeDiscount public premiaFeeDiscount;
+    IFeeDiscount public premiaFeeDiscount;
 
     constructor(
         IERC20 _premia,
         IERC20 _xPremia,
-        IPremiaFeeDiscount _premiaFeeDiscount
+        IFeeDiscount _premiaFeeDiscount
     ) {
         premia = _premia;
         xPremia = _xPremia;
