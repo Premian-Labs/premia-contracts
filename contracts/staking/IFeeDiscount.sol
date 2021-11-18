@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.0;
 
+import {FeeDiscountStorage} from "./FeeDiscountStorage.sol";
+
 interface IFeeDiscount {
     struct StakeLevel {
         uint256 amount; // Amount to stake
@@ -78,4 +80,14 @@ interface IFeeDiscount {
     function getStakePeriodMultiplier(uint256 _period)
         external
         returns (uint256);
+
+    /**
+     * @notice Get staking infos of a user
+     * @param _user The user address for which to get staking infos
+     * @return The staking infos of the user
+     */
+    function getUserInfo(address _user)
+        external
+        view
+        returns (FeeDiscountStorage.UserInfo memory);
 }

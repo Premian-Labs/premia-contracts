@@ -209,6 +209,18 @@ contract FeeDiscount is IFeeDiscount {
         return _getStakePeriodMultiplier(_period);
     }
 
+    /**
+     * @inheritdoc IFeeDiscount
+     */
+    function getUserInfo(address _user)
+        external
+        view
+        override
+        returns (FeeDiscountStorage.UserInfo memory)
+    {
+        return FeeDiscountStorage.layout().userInfo[_user];
+    }
+
     //////////////////////////////////////////////////
 
     //////////////
