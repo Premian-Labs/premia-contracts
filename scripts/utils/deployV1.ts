@@ -15,6 +15,7 @@ import {
   ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { ZERO_ADDRESS } from '../../test/utils/constants';
 
 export async function deployV1(
   deployer: SignerWithAddress,
@@ -47,7 +48,7 @@ export async function deployV1(
 
   const xPremiaImpl = await new PremiaStakingWithFeeDiscount__factory(
     deployer,
-  ).deploy(premia.address);
+  ).deploy(premia.address, ZERO_ADDRESS, ZERO_ADDRESS);
   const xPremiaProxy = await new PremiaStakingProxy__factory(deployer).deploy(
     xPremiaImpl.address,
   );

@@ -62,22 +62,32 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         // Gets the amount of Premia locked in the contract
         uint256 totalPremia = _getStakedPremiaAmount();
 
-        // Gets the amount of xPremia in existence
-        uint256 totalShares = _totalSupply();
-        // If no xPremia exists, mint it 1:1 to the amount put in
-        if (totalShares == 0 || totalPremia == 0) {
-            _mint(msg.sender, amount);
-        }
-        // Calculate and mint the amount of xPremia the Premia is worth. The ratio will change overtime, as xPremia is burned/minted and Premia deposited + gained from fees / withdrawn.
-        else {
-            uint256 what = (amount * totalShares) / totalPremia;
-            _mint(msg.sender, what);
-        }
+        _mintShares(msg.sender, amount, totalPremia);
 
         // Lock the Premia in the contract
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
 
         emit Deposit(msg.sender, amount);
+    }
+
+    function _mintShares(
+        address to,
+        uint256 amount,
+        uint256 totalPremia
+    ) internal returns (uint256) {
+        // Gets the amount of xPremia in existence
+        uint256 totalShares = _totalSupply();
+        // If no xPremia exists, mint it 1:1 to the amount put in
+        if (totalShares == 0 || totalPremia == 0) {
+            _mint(to, amount);
+            return amount;
+        }
+        // Calculate and mint the amount of xPremia the Premia is worth. The ratio will change overtime, as xPremia is burned/minted and Premia deposited + gained from fees / withdrawn.
+        else {
+            uint256 what = (amount * totalShares) / totalPremia;
+            _mint(to, what);
+            return what;
+        }
     }
 
     /**
