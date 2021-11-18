@@ -10,6 +10,7 @@ import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { signERC2612Permit } from 'eth-permit';
 import { increaseTimestamp } from '../utils/evm';
+import { parseEther } from 'ethers/lib/utils';
 
 let admin: SignerWithAddress;
 let alice: SignerWithAddress;
@@ -143,7 +144,9 @@ describe('PremiaStaking', () => {
     // Bob deposits 50 more PREMIAs. She should receive 50*50/100 = 25 shares.
     await premiaStaking.connect(bob).deposit('50');
 
-    expect(await premiaStaking.getXPremiaToPremiaRatio()).to.eq(2);
+    expect(await premiaStaking.getXPremiaToPremiaRatio()).to.eq(
+      parseEther('2'),
+    );
 
     aliceBalance = await premiaStaking.balanceOf(alice.address);
     bobBalance = await premiaStaking.balanceOf(bob.address);
@@ -167,7 +170,9 @@ describe('PremiaStaking', () => {
     // Pending withdrawals should not count anymore as staked
     await premia.connect(admin).transfer(premiaStaking.address, '100');
 
-    expect(await premiaStaking.getXPremiaToPremiaRatio()).to.eq(4);
+    expect(await premiaStaking.getXPremiaToPremiaRatio()).to.eq(
+      parseEther('4'),
+    );
 
     await increaseTimestamp(10 * ONE_DAY + 1);
     await premiaStaking.connect(alice).withdraw();
