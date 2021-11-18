@@ -141,6 +141,8 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
 
     function getPendingWithdrawal(address user)
         external
+        view
+        override
         returns (PremiaStakingStorage.Withdrawal memory)
     {
         return PremiaStakingStorage.layout().withdrawals[user];

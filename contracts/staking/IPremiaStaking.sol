@@ -56,6 +56,7 @@ interface IPremiaStaking {
      */
     function getPendingWithdrawal(address user)
         external
+        view
         returns (PremiaStakingStorage.Withdrawal memory);
 
     /**
