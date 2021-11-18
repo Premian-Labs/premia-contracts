@@ -57,5 +57,5 @@ interface IPoolEvents {
         int128 newLiquidity64x64
     );
 
-    event UpdateSteepness(int128 steepness64x64);
+    event UpdateSteepness(int128 steepness64x64, bool isCallPool);
 }

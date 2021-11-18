@@ -74,7 +74,8 @@ contract PoolProxy is Proxy {
                 underlyingDecimals
             );
 
-            l.steepness64x64 = initialSteepness64x64;
+            l.steepnessBase64x64 = initialSteepness64x64;
+            l.steepnessUnderlying64x64 = initialSteepness64x64;
             l.cLevelBase64x64 = initialCLevel64x64;
             l.cLevelUnderlying64x64 = initialCLevel64x64;
 

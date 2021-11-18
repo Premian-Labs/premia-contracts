@@ -110,8 +110,17 @@ contract PoolView is IPoolView, PoolInternal {
      * @notice get steepness
      * @return 64x64 fixed point representation of C steepness of Pool
      */
-    function getSteepness64x64() external view override returns (int128) {
-        return PoolStorage.layout().steepness64x64;
+    function getSteepness64x64(bool isCallPool)
+        external
+        view
+        override
+        returns (int128)
+    {
+        if (isCallPool) {
+            return PoolStorage.layout().steepnessUnderlying64x64;
+        } else {
+            return PoolStorage.layout().steepnessBase64x64;
+        }
     }
 
     /**
