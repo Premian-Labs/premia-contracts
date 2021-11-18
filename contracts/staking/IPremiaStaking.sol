@@ -2,6 +2,8 @@
 
 pragma solidity ^0.8.0;
 
+import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
+
 interface IPremiaStaking {
     /**
      * @notice stake PREMIA using IERC2612 permit
@@ -47,6 +49,14 @@ interface IPremiaStaking {
      * @return xPREMIA : PREMIA ratio (with 18 decimals)
      */
     function getXPremiaToPremiaRatio() external view returns (uint256);
+
+    /**
+     * @notice get pending withdrawal data of a user
+     * @return withdrawal data (premia amount and startDate)
+     */
+    function getPendingWithdrawal(address user)
+        external
+        returns (PremiaStakingStorage.Withdrawal memory);
 
     /**
      * @notice get the amount of PREMIA staked (subtracting all pending withdrawals)

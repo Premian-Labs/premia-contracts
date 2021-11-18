@@ -8,8 +8,8 @@ library PremiaStakingStorage {
         keccak256("premia.contracts.staking.PremiaStaking");
 
     struct Withdrawal {
-        uint256 amount;
-        uint256 startDate;
+        uint256 amount; // Premia amount
+        uint256 startDate; // Will unlock at startDate + withdrawalDelay
     }
 
     struct Layout {
