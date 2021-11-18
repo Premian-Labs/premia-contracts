@@ -15,7 +15,7 @@ import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     using SafeERC20 for IERC20;
 
-    address private immutable PREMIA;
+    address internal immutable PREMIA;
 
     event Deposit(address indexed user, uint256 amount);
     event StartWithdrawal(
@@ -48,13 +48,17 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
             r,
             s
         );
-        deposit(amount);
+        _deposit(amount);
     }
 
     /**
      * @inheritdoc IPremiaStaking
      */
-    function deposit(uint256 amount) public override {
+    function deposit(uint256 amount) external override {
+        _deposit(amount);
+    }
+
+    function _deposit(uint256 amount) internal {
         // Gets the amount of Premia locked in the contract
         uint256 totalPremia = _getStakedPremiaAmount();
 
