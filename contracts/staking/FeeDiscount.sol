@@ -3,7 +3,6 @@
 
 pragma solidity ^0.8.0;
 
-import {OwnableInternal} from "@solidstate/contracts/access/OwnableInternal.sol";
 import {SafeCast} from "@solidstate/contracts/utils/SafeCast.sol";
 
 import {PremiaStaking} from "./PremiaStaking.sol";
@@ -14,7 +13,7 @@ import {IFeeDiscount} from "./IFeeDiscount.sol";
  * @author Premia
  * @title A contract allowing you to lock xPremia to get Premia protocol fee discounts
  */
-contract FeeDiscount is IFeeDiscount, PremiaStaking, OwnableInternal {
+contract FeeDiscount is IFeeDiscount, PremiaStaking {
     using SafeCast for uint256;
 
     uint256 internal constant INVERSE_BASIS_POINT = 1e4;
@@ -39,58 +38,6 @@ contract FeeDiscount is IFeeDiscount, PremiaStaking, OwnableInternal {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    ///////////
-    // Admin //
-    ///////////
-
-    /**
-     * @notice Set a stake period multiplier
-     * @param _secondsLocked The length (in seconds) that the stake will be locked for
-     * @param _multiplier The multiplier (In basis points) that users will get from choosing this staking period
-     */
-    function setStakePeriod(uint256 _secondsLocked, uint256 _multiplier)
-        external
-        onlyOwner
-    {
-        FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
-
-        if (_isInArray(_secondsLocked, l.existingStakePeriods)) {
-            l.existingStakePeriods.push(_secondsLocked);
-        }
-
-        l.stakePeriods[_secondsLocked] = _multiplier;
-    }
-
-    /**
-     * @notice Set new amounts and discounts values for stake levels
-     * @dev Previous stake levels will be removed and replace by the new ones given
-     * @param _stakeLevels The new stake levels to set
-     */
-    function setStakeLevels(FeeDiscountStorage.StakeLevel[] memory _stakeLevels)
-        external
-        onlyOwner
-    {
-        FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
-
-        for (uint256 i = 0; i < _stakeLevels.length; i++) {
-            if (i > 0) {
-                require(
-                    _stakeLevels[i].amount > _stakeLevels[i - 1].amount &&
-                        _stakeLevels[i].discount > _stakeLevels[i - 1].discount,
-                    "Wrong stake level"
-                );
-            }
-        }
-
-        delete l.stakeLevels;
-
-        for (uint256 i = 0; i < _stakeLevels.length; i++) {
-            l.stakeLevels.push(_stakeLevels[i]);
-        }
-    }
-
-    //////////////////////////////////////////////////
-
     //////////
     // Main //
     //////////
@@ -101,7 +48,10 @@ contract FeeDiscount is IFeeDiscount, PremiaStaking, OwnableInternal {
     function stake(uint256 _amount, uint256 _period) external override {
         FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
 
-        require(l.stakePeriods[_period] > 0, "Stake period does not exists");
+        require(
+            _getStakePeriodMultiplier(_period) > 0,
+            "Stake period does not exists"
+        );
         FeeDiscountStorage.UserInfo storage user = l.userInfo[msg.sender];
 
         uint256 lockedUntil = block.timestamp + _period;
@@ -127,11 +77,7 @@ contract FeeDiscount is IFeeDiscount, PremiaStaking, OwnableInternal {
         FeeDiscountStorage.UserInfo storage user = l.userInfo[msg.sender];
 
         // We allow unstake if the stakePeriod that the user used has been disabled
-        require(
-            l.stakePeriods[user.stakePeriod] == 0 ||
-                user.lockedUntil <= block.timestamp,
-            "Stake still locked"
-        );
+        require(user.lockedUntil <= block.timestamp, "Stake still locked");
 
         user.balance -= _amount;
         _transfer(address(this), msg.sender, _amount);
@@ -148,13 +94,6 @@ contract FeeDiscount is IFeeDiscount, PremiaStaking, OwnableInternal {
     /**
      * @inheritdoc IFeeDiscount
      */
-    function stakeLevelsLength() external view override returns (uint256) {
-        return FeeDiscountStorage.layout().stakeLevels.length;
-    }
-
-    /**
-     * @inheritdoc IFeeDiscount
-     */
     function getStakeAmountWithBonus(address _user)
         public
         view
@@ -165,7 +104,7 @@ contract FeeDiscount is IFeeDiscount, PremiaStaking, OwnableInternal {
 
         FeeDiscountStorage.UserInfo memory user = l.userInfo[_user];
         return
-            (user.balance * l.stakePeriods[user.stakePeriod]) /
+            (user.balance * _getStakePeriodMultiplier(user.stakePeriod)) /
             INVERSE_BASIS_POINT;
     }
 
@@ -178,11 +117,12 @@ contract FeeDiscount is IFeeDiscount, PremiaStaking, OwnableInternal {
         override
         returns (uint256)
     {
-        FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
         uint256 userBalance = getStakeAmountWithBonus(_user);
 
-        for (uint256 i = 0; i < l.stakeLevels.length; i++) {
-            FeeDiscountStorage.StakeLevel memory level = l.stakeLevels[i];
+        IFeeDiscount.StakeLevel[] memory stakeLevels = _getStakeLevels();
+
+        for (uint256 i = 0; i < stakeLevels.length; i++) {
+            IFeeDiscount.StakeLevel memory level = stakeLevels[i];
 
             if (userBalance < level.amount) {
                 uint256 amountPrevLevel;
@@ -190,8 +130,8 @@ contract FeeDiscount is IFeeDiscount, PremiaStaking, OwnableInternal {
 
                 // If stake is lower, user is in this level, and we need to LERP with prev level to get discount value
                 if (i > 0) {
-                    amountPrevLevel = l.stakeLevels[i - 1].amount;
-                    discountPrevLevel = l.stakeLevels[i - 1].discount;
+                    amountPrevLevel = stakeLevels[i - 1].amount;
+                    discountPrevLevel = stakeLevels[i - 1].discount;
                 } else {
                     // If this is the first level, prev level is 0 / 0
                     amountPrevLevel = 0;
@@ -212,7 +152,31 @@ contract FeeDiscount is IFeeDiscount, PremiaStaking, OwnableInternal {
         }
 
         // If no match found it means user is >= max possible stake, and therefore has max discount possible
-        return l.stakeLevels[l.stakeLevels.length - 1].discount;
+        return stakeLevels[stakeLevels.length - 1].discount;
+    }
+
+    /**
+     * @inheritdoc IFeeDiscount
+     */
+    function getStakeLevels()
+        external
+        pure
+        override
+        returns (IFeeDiscount.StakeLevel[] memory stakeLevels)
+    {
+        return _getStakeLevels();
+    }
+
+    /**
+     * @inheritdoc IFeeDiscount
+     */
+    function getStakePeriodMultiplier(uint256 _period)
+        external
+        pure
+        override
+        returns (uint256)
+    {
+        return _getStakePeriodMultiplier(_period);
     }
 
     //////////////////////////////////////////////////
@@ -240,5 +204,31 @@ contract FeeDiscount is IFeeDiscount, PremiaStaking, OwnableInternal {
         }
 
         return false;
+    }
+
+    function _getStakeLevels()
+        internal
+        pure
+        returns (IFeeDiscount.StakeLevel[] memory stakeLevels)
+    {
+        stakeLevels = new IFeeDiscount.StakeLevel[](4);
+
+        stakeLevels[0] = IFeeDiscount.StakeLevel(5000 * 1e18, 2500); // -25%
+        stakeLevels[1] = IFeeDiscount.StakeLevel(50000 * 1e18, 5000); // -50%
+        stakeLevels[2] = IFeeDiscount.StakeLevel(250000 * 1e18, 7500); // -75%
+        stakeLevels[3] = IFeeDiscount.StakeLevel(500000 * 1e18, 9500); // -95%
+    }
+
+    function _getStakePeriodMultiplier(uint256 _period)
+        internal
+        pure
+        returns (uint256)
+    {
+        if (_period == 30 days) return 10000; // x1
+        if (_period == 90 days) return 12500; // x1.25
+        if (_period == 180 days) return 15000; // x1.5
+        if (_period == 360 days) return 20000; // x2
+
+        return 0;
     }
 }

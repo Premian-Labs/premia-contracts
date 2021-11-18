@@ -3,6 +3,11 @@
 pragma solidity ^0.8.0;
 
 interface IFeeDiscount {
+    struct StakeLevel {
+        uint256 amount; // Amount to stake
+        uint256 discount; // Discount when amount is reached
+    }
+
     /**
      * @notice Lockup xPremia for protocol fee discounts
      *          Longer period of locking will apply a multiplier on the amount staked, in the fee discount calculation
@@ -22,12 +27,6 @@ interface IFeeDiscount {
     //////////
 
     /**
-     * @notice Get number of stake levels
-     * @return The amount of stake levels
-     */
-    function stakeLevelsLength() external view returns (uint256);
-
-    /**
      * Calculate the stake amount of a user, after applying the bonus from the lockup period chosen
      * @param _user The user from which to query the stake amount
      * @return The user stake amount after applying the bonus
@@ -44,4 +43,21 @@ interface IFeeDiscount {
      *         Ex : 1000 = 10% fee discount
      */
     function getDiscount(address _user) external view returns (uint256);
+
+    /**
+     * @notice Get stake levels
+     * @return Stake levels
+     *         Ex : 2500 = -25%
+     */
+    function getStakeLevels() external returns (StakeLevel[] memory);
+
+    /**
+     * @notice Get stake period multiplier
+     * @param _period The duration (in seconds) for which tokens are locked
+     * @return The multiplier for this staking period
+     *         Ex : 20000 = x2
+     */
+    function getStakePeriodMultiplier(uint256 _period)
+        external
+        returns (uint256);
 }

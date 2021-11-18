@@ -13,20 +13,9 @@ library FeeDiscountStorage {
         uint64 lockedUntil; // Timestamp at which the lock ends
     }
 
-    struct StakeLevel {
-        uint256 amount; // Amount to stake
-        uint256 discount; // Discount when amount is reached
-    }
-
     struct Layout {
         // User data with xPREMIA balance staked and date at which lock ends
         mapping(address => UserInfo) userInfo;
-        // Available xPREMIA lockup periods with their bonus (seconds lockup => multiplier (x1 = 1e4))
-        mapping(uint256 => uint256) stakePeriods;
-        // List of all existing xPREMIA stake periods
-        uint256[] existingStakePeriods;
-        // xPREMIA staking levels
-        StakeLevel[] stakeLevels;
     }
 
     function layout() internal pure returns (Layout storage l) {
