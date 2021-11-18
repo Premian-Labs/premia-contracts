@@ -61,18 +61,18 @@ contract PremiaStakingWithFeeDiscount is PremiaStaking, FeeDiscount {
         emit Deposit(user, premiaDeposited);
 
         FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
-        FeeDiscountStorage.UserInfo storage userInfo = l.userInfo[msg.sender];
+        FeeDiscountStorage.UserInfo storage userInfo = l.userInfo[user];
 
         uint64 _lockedUntil = lockedUntil.toUint64();
         uint64 _stakePeriod = stakePeriod.toUint64();
 
         userInfo.balance += xPremiaMinted;
 
-        if (_lockedUntil > lockedUntil) {
+        if (_lockedUntil > userInfo.lockedUntil) {
             userInfo.lockedUntil = lockedUntil.toUint64();
         }
 
-        if (_stakePeriod > stakePeriod) {
+        if (_stakePeriod > userInfo.stakePeriod) {
             userInfo.stakePeriod = stakePeriod.toUint64();
         }
     }
