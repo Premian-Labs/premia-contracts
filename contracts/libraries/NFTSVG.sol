@@ -3,10 +3,10 @@
 
 pragma solidity ^0.8.0;
 
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {UintUtils} from "@solidstate/contracts/utils/UintUtils.sol";
 
 library NFTSVG {
-    using Strings for uint256;
+    using UintUtils for uint256;
 
     string constant ETH_COLOR_A = "#FFFFFF";
     string constant WBTC_COLOR_A = "#E2753B";
