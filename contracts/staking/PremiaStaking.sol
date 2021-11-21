@@ -58,8 +58,8 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         }
         // Calculate and mint the amount of xPremia the Premia is worth. The ratio will change overtime, as xPremia is burned/minted and Premia deposited + gained from fees / withdrawn.
         else {
-            uint256 what = (amount * totalShares) / totalPremia;
-            _mint(msg.sender, what);
+            uint256 shares = (amount * totalShares) / totalPremia;
+            _mint(msg.sender, shares);
         }
 
         // Lock the Premia in the contract
@@ -78,14 +78,15 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         uint256 totalShares = _totalSupply();
 
         // Calculates the amount of Premia the xPremia is worth
-        uint256 what = (amount * _getStakedPremiaAmount()) / totalShares;
+        uint256 premiaAmount = (amount * _getStakedPremiaAmount()) /
+            totalShares;
         _burn(msg.sender, amount);
-        l.pendingWithdrawal += what;
+        l.pendingWithdrawal += premiaAmount;
 
-        l.withdrawals[msg.sender].amount += what;
+        l.withdrawals[msg.sender].amount += premiaAmount;
         l.withdrawals[msg.sender].startDate = block.timestamp;
 
-        emit StartWithdrawal(msg.sender, what, block.timestamp);
+        emit StartWithdrawal(msg.sender, premiaAmount, block.timestamp);
     }
 
     /**
