@@ -123,6 +123,13 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
+    function setWithdrawalDelay(uint256 delay) external override {
+        PremiaStakingStorage.layout().withdrawalDelay = delay;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
     function getXPremiaToPremiaRatio()
         external
         view
