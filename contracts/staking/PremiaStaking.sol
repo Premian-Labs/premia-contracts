@@ -17,14 +17,6 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
 
     address private immutable PREMIA;
 
-    event Deposit(address indexed user, uint256 amount);
-    event StartWithdrawal(
-        address indexed user,
-        uint256 premiaAmount,
-        uint256 startDate
-    );
-    event Withdrawal(address indexed user, uint256 amount);
-
     constructor(address premia) {
         PREMIA = premia;
     }

@@ -5,6 +5,14 @@ pragma solidity ^0.8.0;
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 
 interface IPremiaStaking {
+    event Deposit(address indexed user, uint256 amount);
+    event StartWithdrawal(
+        address indexed user,
+        uint256 premiaAmount,
+        uint256 startDate
+    );
+    event Withdrawal(address indexed user, uint256 amount);
+
     /**
      * @notice stake PREMIA using IERC2612 permit
      * @param amount quantity of PREMIA to stake
