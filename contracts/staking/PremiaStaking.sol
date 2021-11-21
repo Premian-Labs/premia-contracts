@@ -143,9 +143,16 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         external
         view
         override
-        returns (PremiaStakingStorage.Withdrawal memory)
+        returns (
+            uint256 amount,
+            uint256 startDate,
+            uint256 unlockDate
+        )
     {
-        return PremiaStakingStorage.layout().withdrawals[user];
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        amount = l.withdrawals[user].amount;
+        startDate = l.withdrawals[user].startDate;
+        unlockDate = startDate + l.withdrawalDelay;
     }
 
     /**
