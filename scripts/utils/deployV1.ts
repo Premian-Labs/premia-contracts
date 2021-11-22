@@ -1,17 +1,19 @@
 import {
   ERC20Mock,
   ERC20Mock__factory,
+  FeeDiscount,
+  FeeDiscount__factory,
   PremiaErc20,
   PremiaErc20__factory,
-  PremiaFeeDiscount,
-  PremiaFeeDiscount__factory,
   PremiaMaker,
   PremiaMaker__factory,
-  PremiaStaking,
-  PremiaStaking__factory,
+  PremiaStakingProxy__factory,
+  PremiaStakingWithFeeDiscount,
+  PremiaStakingWithFeeDiscount__factory,
   ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { ZERO_ADDRESS } from '../../test/utils/constants';
 
 export async function deployV1(
   deployer: SignerWithAddress,
@@ -42,12 +44,21 @@ export async function deployV1(
 
   //
 
-  const xPremia = await new PremiaStaking__factory(deployer).deploy(
-    premia.address,
+  const xPremiaImpl = await new PremiaStakingWithFeeDiscount__factory(
+    deployer,
+  ).deploy(premia.address, ZERO_ADDRESS, ZERO_ADDRESS);
+  const xPremiaProxy = await new PremiaStakingProxy__factory(deployer).deploy(
+    xPremiaImpl.address,
   );
+
+  const xPremia = PremiaStakingWithFeeDiscount__factory.connect(
+    xPremiaImpl.address,
+    deployer,
+  );
+
   if (log) {
     console.log(
-      `PremiaStaking deployed at ${xPremia.address} (Args : ${premia.address})`,
+      `PremiaStaking deployed at ${xPremiaProxy.address} (Args : ${xPremiaImpl.address})`,
     );
   }
 
@@ -72,12 +83,20 @@ export async function deployV1(
     );
   }
 
-  const premiaFeeDiscount = await new PremiaFeeDiscount__factory(
+  const feeDiscountStandaloneImpl = await new FeeDiscount__factory(
     deployer,
   ).deploy(xPremia.address);
+  const feeDiscountStandaloneProxy = await new ProxyUpgradeableOwnable__factory(
+    deployer,
+  ).deploy(feeDiscountStandaloneImpl.address);
+  const feeDiscountStandalone = FeeDiscount__factory.connect(
+    feeDiscountStandaloneProxy.address,
+    deployer,
+  );
+
   if (log) {
     console.log(
-      `PremiaFeeDiscount deployed at ${premiaFeeDiscount.address} (Args : ${xPremia.address})`,
+      `PremiaFeeDiscount deployed at ${feeDiscountStandalone.address} (Args : ${xPremia.address})`,
     );
   }
 
@@ -85,13 +104,13 @@ export async function deployV1(
     premia,
     premiaMaker,
     xPremia,
-    premiaFeeDiscount,
+    feeDiscountStandalone,
   };
 }
 
 export interface IPremiaContracts {
   premia: PremiaErc20 | ERC20Mock;
-  xPremia: PremiaStaking;
-  premiaFeeDiscount: PremiaFeeDiscount;
+  xPremia: PremiaStakingWithFeeDiscount;
+  feeDiscountStandalone: FeeDiscount;
   premiaMaker: PremiaMaker;
 }

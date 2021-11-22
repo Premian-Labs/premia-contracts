@@ -15,7 +15,7 @@ import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     using SafeERC20 for IERC20;
 
-    address private immutable PREMIA;
+    address internal immutable PREMIA;
 
     constructor(address premia) {
         PREMIA = premia;
@@ -40,32 +40,46 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
             r,
             s
         );
-        deposit(amount);
+        _deposit(amount);
     }
 
     /**
      * @inheritdoc IPremiaStaking
      */
-    function deposit(uint256 amount) public override {
+    function deposit(uint256 amount) external override {
+        _deposit(amount);
+    }
+
+    function _deposit(uint256 amount) internal {
         // Gets the amount of Premia locked in the contract
         uint256 totalPremia = _getStakedPremiaAmount();
 
-        // Gets the amount of xPremia in existence
-        uint256 totalShares = _totalSupply();
-        // If no xPremia exists, mint it 1:1 to the amount put in
-        if (totalShares == 0 || totalPremia == 0) {
-            _mint(msg.sender, amount);
-        }
-        // Calculate and mint the amount of xPremia the Premia is worth. The ratio will change overtime, as xPremia is burned/minted and Premia deposited + gained from fees / withdrawn.
-        else {
-            uint256 shares = (amount * totalShares) / totalPremia;
-            _mint(msg.sender, shares);
-        }
+        _mintShares(msg.sender, amount, totalPremia);
 
         // Lock the Premia in the contract
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
 
         emit Deposit(msg.sender, amount);
+    }
+
+    function _mintShares(
+        address to,
+        uint256 amount,
+        uint256 totalPremia
+    ) internal returns (uint256) {
+        // Gets the amount of xPremia in existence
+        uint256 totalShares = _totalSupply();
+        // If no xPremia exists, mint it 1:1 to the amount put in
+        if (totalShares == 0 || totalPremia == 0) {
+            _mint(to, amount);
+            return amount;
+        }
+        // Calculate and mint the amount of xPremia the Premia is worth. The ratio will change overtime, as xPremia is burned/minted and Premia deposited + gained from fees / withdrawn.
+        else {
+            uint256 shares = (amount * totalShares) / totalPremia;
+            _mint(to, shares);
+            return shares;
+        }
     }
 
     /**
