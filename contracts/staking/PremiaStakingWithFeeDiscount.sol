@@ -12,8 +12,13 @@ import {FeeDiscount} from "./FeeDiscount.sol";
 import {FeeDiscountStorage} from "./FeeDiscountStorage.sol";
 
 import {IPremiaStakingOld} from "./IPremiaStakingOld.sol";
+import {IPremiaStakingWithFeeDiscount} from "./IPremiaStakingWithFeeDiscount.sol";
 
-contract PremiaStakingWithFeeDiscount is PremiaStaking, FeeDiscount {
+contract PremiaStakingWithFeeDiscount is
+    IPremiaStakingWithFeeDiscount,
+    PremiaStaking,
+    FeeDiscount
+{
     using SafeCast for uint256;
 
     // The old PremiaFeeDiscount contract
