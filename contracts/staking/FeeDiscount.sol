@@ -21,20 +21,6 @@ contract FeeDiscount is IFeeDiscount {
     address internal immutable xPREMIA;
     uint256 internal constant INVERSE_BASIS_POINT = 1e4;
 
-    ////////////
-    // Events //
-    ////////////
-
-    event Staked(
-        address indexed user,
-        uint256 amount,
-        uint256 stakePeriod,
-        uint256 lockedUntil
-    );
-    event Unstaked(address indexed user, uint256 amount);
-
-    //////////////////////////////////////////////////
-
     constructor(address xPremia) {
         xPREMIA = xPremia;
     }

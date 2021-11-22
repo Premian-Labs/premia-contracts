@@ -5,6 +5,14 @@ pragma solidity ^0.8.0;
 import {FeeDiscountStorage} from "./FeeDiscountStorage.sol";
 
 interface IFeeDiscount {
+    event Staked(
+        address indexed user,
+        uint256 amount,
+        uint256 stakePeriod,
+        uint256 lockedUntil
+    );
+    event Unstaked(address indexed user, uint256 amount);
+
     struct StakeLevel {
         uint256 amount; // Amount to stake
         uint256 discount; // Discount when amount is reached
