@@ -35,59 +35,59 @@ contract FeeDiscount is IFeeDiscount {
      * @inheritdoc IFeeDiscount
      */
     function stakeWithPermit(
-        uint256 _amount,
-        uint256 _period,
-        uint256 _deadline,
-        uint8 _v,
-        bytes32 _r,
-        bytes32 _s
+        uint256 amount,
+        uint256 period,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
     ) external {
         IERC2612(address(xPREMIA)).permit(
             msg.sender,
             address(this),
-            _amount,
-            _deadline,
-            _v,
-            _r,
-            _s
+            amount,
+            deadline,
+            v,
+            r,
+            s
         );
-        _stake(_amount, _period);
+        _stake(amount, period);
     }
 
     /**
      * @inheritdoc IFeeDiscount
      */
-    function stake(uint256 _amount, uint256 _period) external override {
-        _stake(_amount, _period);
+    function stake(uint256 amount, uint256 period) external override {
+        _stake(amount, period);
     }
 
-    function _stake(uint256 _amount, uint256 _period) internal {
+    function _stake(uint256 amount, uint256 period) internal {
         FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
 
         require(
-            _getStakePeriodMultiplier(_period) > 0,
+            _getStakePeriodMultiplier(period) > 0,
             "Stake period does not exists"
         );
         FeeDiscountStorage.UserInfo storage user = l.userInfo[msg.sender];
 
-        uint256 lockedUntil = block.timestamp + _period;
+        uint256 lockedUntil = block.timestamp + period;
         require(
             lockedUntil > user.lockedUntil,
             "Cannot add stake with lower stake period"
         );
 
-        _transferPremia(msg.sender, address(this), _amount);
-        user.balance = user.balance + _amount;
+        _transferPremia(msg.sender, address(this), amount);
+        user.balance = user.balance + amount;
         user.lockedUntil = lockedUntil.toUint64();
-        user.stakePeriod = _period.toUint64();
+        user.stakePeriod = period.toUint64();
 
-        emit Staked(msg.sender, _amount, _period, lockedUntil);
+        emit Staked(msg.sender, amount, period, lockedUntil);
     }
 
     /**
      * @inheritdoc IFeeDiscount
      */
-    function unstake(uint256 _amount) external override {
+    function unstake(uint256 amount) external override {
         FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
 
         FeeDiscountStorage.UserInfo storage user = l.userInfo[msg.sender];
@@ -95,10 +95,10 @@ contract FeeDiscount is IFeeDiscount {
         // We allow unstake if the stakePeriod that the user used has been disabled
         require(user.lockedUntil <= block.timestamp, "Stake still locked");
 
-        user.balance -= _amount;
-        _transferPremia(address(this), msg.sender, _amount);
+        user.balance -= amount;
+        _transferPremia(address(this), msg.sender, amount);
 
-        emit Unstaked(msg.sender, _amount);
+        emit Unstaked(msg.sender, amount);
     }
 
     //////////////////////////////////////////////////
@@ -110,7 +110,7 @@ contract FeeDiscount is IFeeDiscount {
     /**
      * @inheritdoc IFeeDiscount
      */
-    function getStakeAmountWithBonus(address _user)
+    function getStakeAmountWithBonus(address user)
         public
         view
         override
@@ -118,22 +118,23 @@ contract FeeDiscount is IFeeDiscount {
     {
         FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
 
-        FeeDiscountStorage.UserInfo memory user = l.userInfo[_user];
+        FeeDiscountStorage.UserInfo memory userInfo = l.userInfo[user];
         return
-            (user.balance * _getStakePeriodMultiplier(user.stakePeriod)) /
+            (userInfo.balance *
+                _getStakePeriodMultiplier(userInfo.stakePeriod)) /
             INVERSE_BASIS_POINT;
     }
 
     /**
      * @inheritdoc IFeeDiscount
      */
-    function getDiscount(address _user)
+    function getDiscount(address user)
         external
         view
         override
         returns (uint256)
     {
-        uint256 userBalance = getStakeAmountWithBonus(_user);
+        uint256 userBalance = getStakeAmountWithBonus(user);
 
         IFeeDiscount.StakeLevel[] memory stakeLevels = _getStakeLevels();
 
@@ -186,25 +187,25 @@ contract FeeDiscount is IFeeDiscount {
     /**
      * @inheritdoc IFeeDiscount
      */
-    function getStakePeriodMultiplier(uint256 _period)
+    function getStakePeriodMultiplier(uint256 period)
         external
         pure
         override
         returns (uint256)
     {
-        return _getStakePeriodMultiplier(_period);
+        return _getStakePeriodMultiplier(period);
     }
 
     /**
      * @inheritdoc IFeeDiscount
      */
-    function getUserInfo(address _user)
+    function getUserInfo(address user)
         external
         view
         override
         returns (FeeDiscountStorage.UserInfo memory)
     {
-        return FeeDiscountStorage.layout().userInfo[_user];
+        return FeeDiscountStorage.layout().userInfo[user];
     }
 
     //////////////////////////////////////////////////
@@ -215,18 +216,18 @@ contract FeeDiscount is IFeeDiscount {
 
     /**
      * @notice Utility function to check if a value is inside an array
-     * @param _value The value to look for
-     * @param _array The array to check
+     * @param value The value to look for
+     * @param array The array to check
      * @return Whether the value is in the array or not
      */
-    function _isInArray(uint256 _value, uint256[] memory _array)
+    function _isInArray(uint256 value, uint256[] memory array)
         internal
         pure
         returns (bool)
     {
-        uint256 length = _array.length;
+        uint256 length = array.length;
         for (uint256 i = 0; i < length; ++i) {
-            if (_array[i] == _value) {
+            if (array[i] == value) {
                 return true;
             }
         }
@@ -247,15 +248,15 @@ contract FeeDiscount is IFeeDiscount {
         stakeLevels[3] = IFeeDiscount.StakeLevel(500000 * 1e18, 9500); // -95%
     }
 
-    function _getStakePeriodMultiplier(uint256 _period)
+    function _getStakePeriodMultiplier(uint256 period)
         internal
         pure
         returns (uint256)
     {
-        if (_period == 30 days) return 10000; // x1
-        if (_period == 90 days) return 12500; // x1.25
-        if (_period == 180 days) return 15000; // x1.5
-        if (_period == 360 days) return 20000; // x2
+        if (period == 30 days) return 10000; // x1
+        if (period == 90 days) return 12500; // x1.25
+        if (period == 180 days) return 15000; // x1.5
+        if (period == 360 days) return 20000; // x2
 
         return 0;
     }

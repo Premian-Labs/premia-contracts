@@ -20,35 +20,35 @@ interface IFeeDiscount {
 
     /**
      * @notice Stake using IERC2612 permit
-     * @param _amount The amount of xPremia to stake
-     * @param _period The lockup period (in seconds)
-     * @param _deadline Deadline after which permit will fail
-     * @param _v V
-     * @param _r R
-     * @param _s S
+     * @param amount The amount of xPremia to stake
+     * @param period The lockup period (in seconds)
+     * @param deadline Deadline after which permit will fail
+     * @param v V
+     * @param r R
+     * @param s S
      */
     function stakeWithPermit(
-        uint256 _amount,
-        uint256 _period,
-        uint256 _deadline,
-        uint8 _v,
-        bytes32 _r,
-        bytes32 _s
+        uint256 amount,
+        uint256 period,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
     ) external;
 
     /**
      * @notice Lockup xPremia for protocol fee discounts
      *          Longer period of locking will apply a multiplier on the amount staked, in the fee discount calculation
-     * @param _amount The amount of xPremia to stake
-     * @param _period The lockup period (in seconds)
+     * @param amount The amount of xPremia to stake
+     * @param period The lockup period (in seconds)
      */
-    function stake(uint256 _amount, uint256 _period) external;
+    function stake(uint256 amount, uint256 period) external;
 
     /**
      * @notice Unstake xPremia (If lockup period has ended)
-     * @param _amount The amount of xPremia to unstake
+     * @param amount The amount of xPremia to unstake
      */
-    function unstake(uint256 _amount) external;
+    function unstake(uint256 amount) external;
 
     //////////
     // View //
@@ -56,21 +56,21 @@ interface IFeeDiscount {
 
     /**
      * Calculate the stake amount of a user, after applying the bonus from the lockup period chosen
-     * @param _user The user from which to query the stake amount
+     * @param user The user from which to query the stake amount
      * @return The user stake amount after applying the bonus
      */
-    function getStakeAmountWithBonus(address _user)
+    function getStakeAmountWithBonus(address user)
         external
         view
         returns (uint256);
 
     /**
      * @notice Calculate the % of fee discount for user, based on his stake
-     * @param _user The _user for which the discount is for
+     * @param user The _user for which the discount is for
      * @return Percentage of protocol fee discount (in basis point)
      *         Ex : 1000 = 10% fee discount
      */
-    function getDiscount(address _user) external view returns (uint256);
+    function getDiscount(address user) external view returns (uint256);
 
     /**
      * @notice Get stake levels
@@ -81,20 +81,20 @@ interface IFeeDiscount {
 
     /**
      * @notice Get stake period multiplier
-     * @param _period The duration (in seconds) for which tokens are locked
+     * @param period The duration (in seconds) for which tokens are locked
      * @return The multiplier for this staking period
      *         Ex : 20000 = x2
      */
-    function getStakePeriodMultiplier(uint256 _period)
+    function getStakePeriodMultiplier(uint256 period)
         external
         returns (uint256);
 
     /**
      * @notice Get staking infos of a user
-     * @param _user The user address for which to get staking infos
+     * @param user The user address for which to get staking infos
      * @return The staking infos of the user
      */
-    function getUserInfo(address _user)
+    function getUserInfo(address user)
         external
         view
         returns (FeeDiscountStorage.UserInfo memory);
