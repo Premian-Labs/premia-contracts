@@ -8,7 +8,8 @@ import {ERC20BaseInternal} from "@solidstate/contracts/token/ERC20/base/ERC20Bas
 import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./IPremiaStaking.sol";
+import {IPremiaStakingOld} from "./IPremiaStakingOld.sol";
+import {IPremiaStaking} from "./IPremiaStaking.sol";
 
 contract PremiaStakingMigration is ERC20BaseInternal {
     using SafeERC20 for IERC20;
@@ -56,11 +57,11 @@ contract PremiaStakingMigration is ERC20BaseInternal {
         IERC20(XPREMIA_OLD).safeTransferFrom(msg.sender, address(this), amount);
 
         uint256 oldPremiaBalance = IERC20(PREMIA).balanceOf(address(this));
-        IPremiaStaking(XPREMIA_OLD).leave(amount);
+        IPremiaStakingOld(XPREMIA_OLD).leave(amount);
         uint256 newPremiaBalance = IERC20(PREMIA).balanceOf(address(this));
 
         uint256 oldXPremiaBalance = _balanceOf(address(this));
-        IPremiaStaking(address(this)).enter(
+        IPremiaStaking(address(this)).deposit(
             newPremiaBalance - oldPremiaBalance
         );
         uint256 newXPremiaBalance = _balanceOf(address(this));
