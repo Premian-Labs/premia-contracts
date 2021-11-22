@@ -111,18 +111,12 @@ contract FeeDiscount is IFeeDiscount {
      * @inheritdoc IFeeDiscount
      */
     function getStakeAmountWithBonus(address user)
-        public
+        external
         view
         override
         returns (uint256)
     {
-        FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
-
-        FeeDiscountStorage.UserInfo memory userInfo = l.userInfo[user];
-        return
-            (userInfo.balance *
-                _getStakePeriodMultiplier(userInfo.stakePeriod)) /
-            INVERSE_BASIS_POINT;
+        return _getStakeAmountWithBonus(user);
     }
 
     /**
@@ -134,7 +128,7 @@ contract FeeDiscount is IFeeDiscount {
         override
         returns (uint256)
     {
-        uint256 userBalance = getStakeAmountWithBonus(user);
+        uint256 userBalance = _getStakeAmountWithBonus(user);
 
         IFeeDiscount.StakeLevel[] memory stakeLevels = _getStakeLevels();
 
@@ -259,6 +253,20 @@ contract FeeDiscount is IFeeDiscount {
         if (period == 360 days) return 20000; // x2
 
         return 0;
+    }
+
+    function _getStakeAmountWithBonus(address user)
+        internal
+        view
+        returns (uint256)
+    {
+        FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
+
+        FeeDiscountStorage.UserInfo memory userInfo = l.userInfo[user];
+        return
+            (userInfo.balance *
+                _getStakePeriodMultiplier(userInfo.stakePeriod)) /
+            INVERSE_BASIS_POINT;
     }
 
     /**
