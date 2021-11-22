@@ -17,14 +17,6 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
 
     address internal immutable PREMIA;
 
-    event Deposit(address indexed user, uint256 amount);
-    event StartWithdrawal(
-        address indexed user,
-        uint256 premiaAmount,
-        uint256 startDate
-    );
-    event Withdrawal(address indexed user, uint256 amount);
-
     constructor(address premia) {
         PREMIA = premia;
     }
@@ -84,9 +76,9 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         }
         // Calculate and mint the amount of xPremia the Premia is worth. The ratio will change overtime, as xPremia is burned/minted and Premia deposited + gained from fees / withdrawn.
         else {
-            uint256 what = (amount * totalShares) / totalPremia;
-            _mint(to, what);
-            return what;
+            uint256 shares = (amount * totalShares) / totalPremia;
+            _mint(to, shares);
+            return shares;
         }
     }
 
@@ -100,14 +92,15 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         uint256 totalShares = _totalSupply();
 
         // Calculates the amount of Premia the xPremia is worth
-        uint256 what = (amount * _getStakedPremiaAmount()) / totalShares;
+        uint256 premiaAmount = (amount * _getStakedPremiaAmount()) /
+            totalShares;
         _burn(msg.sender, amount);
-        l.pendingWithdrawal += what;
+        l.pendingWithdrawal += premiaAmount;
 
-        l.withdrawals[msg.sender].amount += what;
+        l.withdrawals[msg.sender].amount += premiaAmount;
         l.withdrawals[msg.sender].startDate = block.timestamp;
 
-        emit StartWithdrawal(msg.sender, what, block.timestamp);
+        emit StartWithdrawal(msg.sender, premiaAmount, block.timestamp);
     }
 
     /**
@@ -144,6 +137,13 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
+    function setWithdrawalDelay(uint256 delay) external override {
+        PremiaStakingStorage.layout().withdrawalDelay = delay;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
     function getXPremiaToPremiaRatio()
         external
         view
@@ -157,9 +157,16 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         external
         view
         override
-        returns (PremiaStakingStorage.Withdrawal memory)
+        returns (
+            uint256 amount,
+            uint256 startDate,
+            uint256 unlockDate
+        )
     {
-        return PremiaStakingStorage.layout().withdrawals[user];
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        amount = l.withdrawals[user].amount;
+        startDate = l.withdrawals[user].startDate;
+        unlockDate = startDate + l.withdrawalDelay;
     }
 
     /**

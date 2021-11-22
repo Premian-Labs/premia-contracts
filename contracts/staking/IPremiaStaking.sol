@@ -5,6 +5,14 @@ pragma solidity ^0.8.0;
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 
 interface IPremiaStaking {
+    event Deposit(address indexed user, uint256 amount);
+    event StartWithdrawal(
+        address indexed user,
+        uint256 premiaAmount,
+        uint256 startDate
+    );
+    event Withdrawal(address indexed user, uint256 amount);
+
     /**
      * @notice stake PREMIA using IERC2612 permit
      * @param amount quantity of PREMIA to stake
@@ -45,6 +53,12 @@ interface IPremiaStaking {
     function getWithdrawalDelay() external view returns (uint256);
 
     /**
+     * @notice set current withdrawal delay
+     * @param delay withdrawal delay
+     */
+    function setWithdrawalDelay(uint256 delay) external;
+
+    /**
      * @notice get the xPREMIA : PREMIA ratio (with 18 decimals)
      * @return xPREMIA : PREMIA ratio (with 18 decimals)
      */
@@ -52,12 +66,18 @@ interface IPremiaStaking {
 
     /**
      * @notice get pending withdrawal data of a user
-     * @return withdrawal data (premia amount and startDate)
+     * @return amount pending withdrawal amount
+     * @return startDate start timestamp of withdrawal
+     * @return unlockDate timestamp at which withdrawal becomes available
      */
     function getPendingWithdrawal(address user)
         external
         view
-        returns (PremiaStakingStorage.Withdrawal memory);
+        returns (
+            uint256 amount,
+            uint256 startDate,
+            uint256 unlockDate
+        );
 
     /**
      * @notice get the amount of PREMIA staked (subtracting all pending withdrawals)
