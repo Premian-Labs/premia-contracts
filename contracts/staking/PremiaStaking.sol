@@ -9,12 +9,13 @@ import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 import {ERC20Permit} from "@solidstate/contracts/token/ERC20/permit/ERC20Permit.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 
-import "./IPremiaStaking.sol";
+import {IPremiaStaking} from "./IPremiaStaking.sol";
+import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 
 contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     using SafeERC20 for IERC20;
 
-    address private immutable PREMIA;
+    address internal immutable PREMIA;
 
     constructor(address premia) {
         PREMIA = premia;
@@ -23,7 +24,7 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function enterWithPermit(
+    function depositWithPermit(
         uint256 amount,
         uint256 deadline,
         uint8 v,
@@ -39,40 +40,144 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
             r,
             s
         );
-        enter(amount);
+        _deposit(amount);
     }
 
     /**
      * @inheritdoc IPremiaStaking
      */
-    function enter(uint256 amount) public override {
+    function deposit(uint256 amount) external override {
+        _deposit(amount);
+    }
+
+    function _deposit(uint256 amount) internal {
         // Gets the amount of Premia locked in the contract
-        uint256 totalPremia = IERC20(PREMIA).balanceOf(address(this));
+        uint256 totalPremia = _getStakedPremiaAmount();
+
+        _mintShares(msg.sender, amount, totalPremia);
+
+        // Lock the Premia in the contract
+        IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
+
+        emit Deposit(msg.sender, amount);
+    }
+
+    function _mintShares(
+        address to,
+        uint256 amount,
+        uint256 totalPremia
+    ) internal returns (uint256) {
         // Gets the amount of xPremia in existence
-        uint256 totalShares = totalSupply();
+        uint256 totalShares = _totalSupply();
         // If no xPremia exists, mint it 1:1 to the amount put in
         if (totalShares == 0 || totalPremia == 0) {
-            _mint(msg.sender, amount);
+            _mint(to, amount);
+            return amount;
         }
         // Calculate and mint the amount of xPremia the Premia is worth. The ratio will change overtime, as xPremia is burned/minted and Premia deposited + gained from fees / withdrawn.
         else {
-            uint256 what = (amount * totalShares) / totalPremia;
-            _mint(msg.sender, what);
+            uint256 shares = (amount * totalShares) / totalPremia;
+            _mint(to, shares);
+            return shares;
         }
-        // Lock the Premia in the contract
-        IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     /**
      * @inheritdoc IPremiaStaking
      */
-    function leave(uint256 amount) external override {
+    function startWithdraw(uint256 amount) external override {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+
         // Gets the amount of xPremia in existence
-        uint256 totalShares = totalSupply();
+        uint256 totalShares = _totalSupply();
+
         // Calculates the amount of Premia the xPremia is worth
-        uint256 what = (amount * IERC20(PREMIA).balanceOf(address(this))) /
+        uint256 premiaAmount = (amount * _getStakedPremiaAmount()) /
             totalShares;
         _burn(msg.sender, amount);
-        IERC20(PREMIA).safeTransfer(msg.sender, what);
+        l.pendingWithdrawal += premiaAmount;
+
+        l.withdrawals[msg.sender].amount += premiaAmount;
+        l.withdrawals[msg.sender].startDate = block.timestamp;
+
+        emit StartWithdrawal(msg.sender, premiaAmount, block.timestamp);
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function withdraw() external override {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+
+        uint256 startDate = l.withdrawals[msg.sender].startDate;
+
+        require(startDate > 0, "No pending withdrawal");
+        require(
+            block.timestamp > startDate + l.withdrawalDelay,
+            "Withdrawal still pending"
+        );
+
+        uint256 amount = l.withdrawals[msg.sender].amount;
+
+        l.pendingWithdrawal -= amount;
+        delete l.withdrawals[msg.sender];
+
+        IERC20(PREMIA).safeTransfer(msg.sender, amount);
+
+        emit Withdrawal(msg.sender, amount);
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getWithdrawalDelay() external view override returns (uint256) {
+        return PremiaStakingStorage.layout().withdrawalDelay;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function setWithdrawalDelay(uint256 delay) external override {
+        PremiaStakingStorage.layout().withdrawalDelay = delay;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getXPremiaToPremiaRatio()
+        external
+        view
+        override
+        returns (uint256)
+    {
+        return (_getStakedPremiaAmount() * 1e18) / _totalSupply();
+    }
+
+    function getPendingWithdrawal(address user)
+        external
+        view
+        override
+        returns (
+            uint256 amount,
+            uint256 startDate,
+            uint256 unlockDate
+        )
+    {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        amount = l.withdrawals[user].amount;
+        startDate = l.withdrawals[user].startDate;
+        unlockDate = startDate + l.withdrawalDelay;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getStakedPremiaAmount() external view override returns (uint256) {
+        return _getStakedPremiaAmount();
+    }
+
+    function _getStakedPremiaAmount() internal view returns (uint256) {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        return IERC20(PREMIA).balanceOf(address(this)) - l.pendingWithdrawal;
     }
 }

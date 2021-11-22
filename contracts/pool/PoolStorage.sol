@@ -77,7 +77,7 @@ library PoolStorage {
         uint256 basePoolCap;
         uint256 underlyingPoolCap;
         // market state
-        int128 steepness64x64;
+        int128 _deprecated_steepness64x64;
         int128 cLevelBase64x64;
         int128 cLevelUnderlying64x64;
         uint256 cLevelBaseUpdatedAt;
@@ -103,6 +103,9 @@ library PoolStorage {
         mapping(address => mapping(bool => uint256)) userTVL;
         // isCallPool -> total value locked
         mapping(bool => uint256) totalTVL;
+        // steepness values
+        int128 steepnessBase64x64;
+        int128 steepnessUnderlying64x64;
     }
 
     function layout() internal pure returns (Layout storage l) {
@@ -389,7 +392,8 @@ library PoolStorage {
             cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
                 oldCLevel64x64,
                 oldLiquidity64x64,
-                liquidity64x64
+                liquidity64x64,
+                isCall
             );
         } else {
             cLevel64x64 = oldCLevel64x64;
@@ -403,19 +407,28 @@ library PoolStorage {
      * @param oldCLevel64x64 64x64 fixed point representation pool C-Level before accounting for liquidity change
      * @param oldLiquidity64x64 64x64 fixed point representation of previous liquidity
      * @param newLiquidity64x64 64x64 fixed point representation of current liquidity
+     * @param isCallPool whether to update C-Level for call or put pool
      * @return cLevel64x64 64x64 fixed point representation of C-Level
      */
     function applyCLevelLiquidityChangeAdjustment(
         Layout storage l,
         int128 oldCLevel64x64,
         int128 oldLiquidity64x64,
-        int128 newLiquidity64x64
+        int128 newLiquidity64x64,
+        bool isCallPool
     ) internal view returns (int128 cLevel64x64) {
+        int128 steepness64x64 = isCallPool
+            ? l.steepnessUnderlying64x64
+            : l.steepnessBase64x64;
+
+        // fallback to deprecated storage value if side-specific value is not set
+        if (steepness64x64 == 0) steepness64x64 = l._deprecated_steepness64x64;
+
         cLevel64x64 = OptionMath.calculateCLevel(
             oldCLevel64x64,
             oldLiquidity64x64,
             newLiquidity64x64,
-            l.steepness64x64
+            steepness64x64
         );
 
         if (cLevel64x64 < 0xb333333333333333) {
