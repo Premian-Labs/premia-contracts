@@ -11,12 +11,12 @@ import {IPremiaStaking} from "./staking/IPremiaStaking.sol";
 contract PremiaVoteProxy {
     address internal PREMIA;
     address internal xPREMIA;
-    IFeeDiscount internal FEE_DISCOUNT;
+    address internal FEE_DISCOUNT;
 
     constructor(
         address _premia,
         address _xPremia,
-        IFeeDiscount _feeDiscount
+        address _feeDiscount
     ) {
         PREMIA = _premia;
         xPREMIA = _xPremia;
@@ -43,7 +43,7 @@ contract PremiaVoteProxy {
         uint256 _votes = IERC20(PREMIA).balanceOf(_voter);
 
         uint256 totalXPremia = IERC20(xPREMIA).balanceOf(_voter) +
-            FEE_DISCOUNT.getUserInfo(_voter).balance;
+            IFeeDiscount(FEE_DISCOUNT).getUserInfo(_voter).balance;
 
         uint256 xPremiaToPremiaRatio = IPremiaStaking(xPREMIA)
             .getXPremiaToPremiaRatio();
