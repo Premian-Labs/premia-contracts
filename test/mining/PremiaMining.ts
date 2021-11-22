@@ -6,11 +6,12 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   ERC20Mock,
   ERC20Mock__factory,
+  FeeDiscount,
+  FeeDiscount__factory,
   IPool__factory,
-  PremiaFeeDiscount,
-  PremiaFeeDiscount__factory,
   PremiaMining__factory,
   PremiaMiningProxy__factory,
+  ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
 import { parseEther, parseUnits } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
@@ -35,7 +36,7 @@ describe('PremiaMining', () => {
 
   let premia: ERC20Mock;
   let xPremia: ERC20Mock;
-  let premiaFeeDiscount: PremiaFeeDiscount;
+  let feeDiscount: FeeDiscount;
 
   let p: PoolUtil;
 
@@ -61,28 +62,20 @@ describe('PremiaMining', () => {
     const erc20Factory = new ERC20Mock__factory(owner);
     premia = await erc20Factory.deploy('PREMIA', 18);
     xPremia = await erc20Factory.deploy('xPREMIA', 18);
-    premiaFeeDiscount = await new PremiaFeeDiscount__factory(owner).deploy(
+    const feeDiscountImpl = await new FeeDiscount__factory(owner).deploy(
       xPremia.address,
     );
-
-    await premiaFeeDiscount.setStakeLevels([
-      { amount: parseEther('5000'), discount: 2500 }, // -25%
-      { amount: parseEther('50000'), discount: 5000 }, // -50%
-      { amount: parseEther('250000'), discount: 7500 }, // -75%
-      { amount: parseEther('500000'), discount: 9500 }, // -95%
-    ]);
-
-    await premiaFeeDiscount.setStakePeriod(oneMonth, 10000);
-    await premiaFeeDiscount.setStakePeriod(3 * oneMonth, 12500);
-    await premiaFeeDiscount.setStakePeriod(6 * oneMonth, 15000);
-    await premiaFeeDiscount.setStakePeriod(12 * oneMonth, 20000);
+    const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
+      owner,
+    ).deploy(feeDiscountImpl.address);
+    feeDiscount = FeeDiscount__factory.connect(feeDiscountProxy.address, owner);
 
     p = await PoolUtil.deploy(
       owner,
       premia.address,
       spotPrice,
       feeReceiver.address,
-      premiaFeeDiscount.address,
+      feeDiscount.address,
     );
 
     await premia.mint(owner.address, parseEther(totalRewardAmount.toString()));

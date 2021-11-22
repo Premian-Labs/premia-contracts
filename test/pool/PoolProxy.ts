@@ -3,12 +3,13 @@ import { ethers } from 'hardhat';
 import {
   ERC20Mock,
   ERC20Mock__factory,
+  FeeDiscount,
+  FeeDiscount__factory,
   IPool,
   PoolMock,
   PoolMock__factory,
-  PremiaFeeDiscount,
-  PremiaFeeDiscount__factory,
   Proxy__factory,
+  ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
 
 import { describeBehaviorOfPool } from './Pool.behavior';
@@ -62,7 +63,7 @@ describe('PoolProxy', function () {
   let uniswap: IUniswap;
 
   let xPremia: ERC20Mock;
-  let premiaFeeDiscount: PremiaFeeDiscount;
+  let feeDiscount: FeeDiscount;
 
   let pool: IPool;
   let poolMock: PoolMock;
@@ -97,21 +98,14 @@ describe('PoolProxy', function () {
 
     premia = await erc20Factory.deploy('PREMIA', 18);
     xPremia = await erc20Factory.deploy('xPREMIA', 18);
-    premiaFeeDiscount = await new PremiaFeeDiscount__factory(owner).deploy(
+
+    const feeDiscountImpl = await new FeeDiscount__factory(owner).deploy(
       xPremia.address,
     );
-
-    await premiaFeeDiscount.setStakeLevels([
-      { amount: parseEther('5000'), discount: 2500 }, // -25%
-      { amount: parseEther('50000'), discount: 5000 }, // -50%
-      { amount: parseEther('250000'), discount: 7500 }, // -75%
-      { amount: parseEther('500000'), discount: 9500 }, // -95%
-    ]);
-
-    await premiaFeeDiscount.setStakePeriod(oneMonth, 10000);
-    await premiaFeeDiscount.setStakePeriod(3 * oneMonth, 12500);
-    await premiaFeeDiscount.setStakePeriod(6 * oneMonth, 15000);
-    await premiaFeeDiscount.setStakePeriod(12 * oneMonth, 20000);
+    const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
+      owner,
+    ).deploy(feeDiscountImpl.address);
+    feeDiscount = FeeDiscount__factory.connect(feeDiscountProxy.address, owner);
 
     uniswap = await createUniswap(owner);
 
@@ -120,7 +114,7 @@ describe('PoolProxy', function () {
       premia.address,
       spotPrice,
       feeReceiver.address,
-      premiaFeeDiscount.address,
+      feeDiscount.address,
       uniswap.factory.address,
       uniswap.weth.address,
     );
@@ -2216,23 +2210,17 @@ describe('PoolProxy', function () {
           await xPremia.mint(lp1.address, parseEther('50000'));
           await xPremia
             .connect(buyer)
-            .approve(premiaFeeDiscount.address, ethers.constants.MaxUint256);
+            .approve(feeDiscount.address, ethers.constants.MaxUint256);
           await xPremia
             .connect(lp1)
-            .approve(premiaFeeDiscount.address, ethers.constants.MaxUint256);
-          await premiaFeeDiscount
-            .connect(buyer)
-            .stake(parseEther('5000'), oneMonth);
-          await premiaFeeDiscount
-            .connect(lp1)
-            .stake(parseEther('50000'), oneMonth);
+            .approve(feeDiscount.address, ethers.constants.MaxUint256);
+          await feeDiscount.connect(buyer).stake(parseEther('5000'), oneMonth);
+          await feeDiscount.connect(lp1).stake(parseEther('50000'), oneMonth);
 
           //
 
-          expect(await premiaFeeDiscount.getDiscount(buyer.address)).to.eq(
-            2500,
-          );
-          expect(await premiaFeeDiscount.getDiscount(lp1.address)).to.eq(5000);
+          expect(await feeDiscount.getDiscount(buyer.address)).to.eq(2500);
+          expect(await feeDiscount.getDiscount(lp1.address)).to.eq(5000);
 
           const longTokenId = formatTokenId({
             tokenType: p.getLong(isCall),
