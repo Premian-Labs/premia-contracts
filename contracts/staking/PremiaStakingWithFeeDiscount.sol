@@ -35,7 +35,7 @@ contract PremiaStakingWithFeeDiscount is
         OLD_STAKING = oldStaking;
     }
 
-    function _transferPremia(
+    function _transferXPremia(
         address holder,
         address recipient,
         uint256 amount

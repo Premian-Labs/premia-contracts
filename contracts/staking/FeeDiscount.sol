@@ -76,7 +76,7 @@ contract FeeDiscount is IFeeDiscount {
             "Cannot add stake with lower stake period"
         );
 
-        _transferPremia(msg.sender, address(this), amount);
+        _transferXPremia(msg.sender, address(this), amount);
         user.balance = user.balance + amount;
         user.lockedUntil = lockedUntil.toUint64();
         user.stakePeriod = period.toUint64();
@@ -96,7 +96,7 @@ contract FeeDiscount is IFeeDiscount {
         require(user.lockedUntil <= block.timestamp, "Stake still locked");
 
         user.balance -= amount;
-        _transferPremia(address(this), msg.sender, amount);
+        _transferXPremia(address(this), msg.sender, amount);
 
         emit Unstaked(msg.sender, amount);
     }
@@ -267,7 +267,7 @@ contract FeeDiscount is IFeeDiscount {
      * @param recipient beneficiary of transfer
      * @param amount quantity of tokens transferred
      */
-    function _transferPremia(
+    function _transferXPremia(
         address holder,
         address recipient,
         uint256 amount
