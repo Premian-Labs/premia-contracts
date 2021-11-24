@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import {
+  PremiaStakingProxy__factory,
   PremiaStakingWithFeeDiscount__factory,
-  ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
 
 async function main() {
@@ -21,7 +21,7 @@ async function main() {
     `PremiaStakingWithFeeDiscount impl : ${impl.address} (Args: ${premia} / ${oldFeeDiscount} / ${oldStaking})`,
   );
 
-  const proxy = await new ProxyUpgradeableOwnable__factory(deployer).deploy(
+  const proxy = await new PremiaStakingProxy__factory(deployer).deploy(
     impl.address,
   );
 
