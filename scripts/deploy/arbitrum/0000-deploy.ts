@@ -69,10 +69,10 @@ async function main() {
   };
 
   const caps: TokenAmounts = {
-    DAI: '0',
-    ETH: '0',
-    BTC: '0',
-    LINK: '0',
+    DAI: '10000',
+    ETH: '2.5',
+    BTC: '0.15',
+    LINK: '300',
   };
 
   const ivolOracleProxyAddress = '0xC4B2C51f969e0713E799De73b7f130Fb7Bb604CF';
