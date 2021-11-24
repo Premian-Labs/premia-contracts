@@ -3,6 +3,7 @@ import {
   ERC20Mock__factory,
   FeeCollector__factory,
   FeeDiscount__factory,
+  ProxyUpgradeableOwnable__factory,
 } from '../../../typechain';
 import { deployV2, TokenAddresses, TokenAmounts } from '../../utils/deployV2';
 import { fixedFromFloat } from '@premia/utils';
@@ -18,20 +19,31 @@ async function main() {
   );
   console.log(`Placeholder deployed at ${xPremiaPlaceholder.address}`);
 
-  const feeCollector = await new FeeCollector__factory(deployer).deploy(
+  const feeCollectorImpl = await new FeeCollector__factory(deployer).deploy(
     treasury,
   );
 
+  const feeCollectorProxy = await new ProxyUpgradeableOwnable__factory(
+    deployer,
+  ).deploy(feeCollectorImpl.address);
+
   console.log(
-    `FeeCollector deployed at ${feeCollector.address} (Args: ${treasury})`,
+    `FeeCollector impl deployed at ${feeCollectorImpl.address} (Args: ${treasury})`,
   );
 
-  const feeDiscount = await new FeeDiscount__factory(deployer).deploy(
+  console.log(`FeeCollector proxy deployed at ${feeCollectorProxy.address})`);
+
+  const feeDiscountImpl = await new FeeDiscount__factory(deployer).deploy(
     xPremiaPlaceholder.address,
   );
   console.log(
-    `FeeDiscount deployed at ${feeDiscount.address} (Args: ${xPremiaPlaceholder.address})`,
+    `FeeDiscount impl deployed at ${feeDiscountImpl.address} (Args: ${xPremiaPlaceholder.address})`,
   );
+
+  const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
+    deployer,
+  ).deploy(feeDiscountImpl.address);
+  console.log(`FeeDiscount proxy deployed at ${feeDiscountProxy.address})`);
 
   const premia = '0x51fc0f6660482ea73330e414efd7808811a57fa2';
 
@@ -70,8 +82,8 @@ async function main() {
     tokens.ETH,
     premia,
     fixedFromFloat(0.03),
-    feeCollector.address,
-    feeDiscount.address,
+    feeCollectorProxy.address,
+    feeDiscountProxy.address,
     tokens,
     oracles,
     minimums,
