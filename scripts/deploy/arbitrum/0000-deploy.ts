@@ -64,6 +64,7 @@ async function main() {
   };
 
   const ivolOracleProxyAddress = '0xC4B2C51f969e0713E799De73b7f130Fb7Bb604CF';
+  const sushiswapFactory = '0xc35DADB65012eC5796536bD9864eD8773aBc74C4';
 
   await deployV2(
     tokens.ETH,
@@ -75,7 +76,7 @@ async function main() {
     oracles,
     minimums,
     caps,
-    undefined,
+    sushiswapFactory,
     ivolOracleProxyAddress,
   );
 }
