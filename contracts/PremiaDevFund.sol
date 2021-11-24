@@ -6,8 +6,8 @@ pragma solidity ^0.8.0;
 import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 
-import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
+import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 
 /// @author Premia
 /// @title 3 days timelock contract for dev fund
