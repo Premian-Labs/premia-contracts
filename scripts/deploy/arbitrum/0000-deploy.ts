@@ -13,11 +13,7 @@ async function main() {
 
   const treasury = '0xa079C6B032133b95Cf8b3d273D27eeb6B110a469';
 
-  const xPremiaPlaceholder = await new ERC20Mock__factory(deployer).deploy(
-    'xPREMIA PLACEHOLDER',
-    18,
-  );
-  console.log(`Placeholder deployed at ${xPremiaPlaceholder.address}`);
+  const xPremia = '0x0d7d0eFdCbfe5466b387e127709F24603920f671';
 
   const feeCollectorImpl = await new FeeCollector__factory(deployer).deploy(
     treasury,
@@ -34,10 +30,10 @@ async function main() {
   console.log(`FeeCollector proxy deployed at ${feeCollectorProxy.address})`);
 
   const feeDiscountImpl = await new FeeDiscount__factory(deployer).deploy(
-    xPremiaPlaceholder.address,
+    xPremia,
   );
   console.log(
-    `FeeDiscount impl deployed at ${feeDiscountImpl.address} (Args: ${xPremiaPlaceholder.address})`,
+    `FeeDiscount impl deployed at ${feeDiscountImpl.address} (Args: ${xPremia})`,
   );
 
   const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
