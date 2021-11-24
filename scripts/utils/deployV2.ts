@@ -50,6 +50,7 @@ export async function deployV2(
   minAmounts: TokenAmounts,
   capAmounts: TokenAmounts,
   sushiswapFactoryOverride?: string,
+  ivolOracleProxyAddress?: string,
 ) {
   const [deployer] = await ethers.getSigners();
 
@@ -62,23 +63,27 @@ export async function deployV2(
   const premiaDiamond = await new Premia__factory(deployer).deploy();
   const poolDiamond = await new Premia__factory(deployer).deploy();
 
-  const ivolOracleImpl = await new VolatilitySurfaceOracle__factory(
-    deployer,
-  ).deploy();
-  const ivolOracleProxy = await new ProxyUpgradeableOwnable__factory(
-    deployer,
-  ).deploy(ivolOracleImpl.address);
+  if (!ivolOracleProxyAddress) {
+    const ivolOracleImpl = await new VolatilitySurfaceOracle__factory(
+      deployer,
+    ).deploy();
+    const ivolOracleProxy = await new ProxyUpgradeableOwnable__factory(
+      deployer,
+    ).deploy(ivolOracleImpl.address);
+    ivolOracleProxyAddress = ivolOracleProxy.address;
+  }
+
   const ivolOracle = VolatilitySurfaceOracle__factory.connect(
-    ivolOracleProxy.address,
+    ivolOracleProxyAddress,
     deployer,
   );
 
   console.log(`Option math : ${optionMath.address}`);
   console.log(`Premia Diamond : ${premiaDiamond.address}`);
   console.log(`Pool Diamond : ${poolDiamond.address}`);
-  console.log(`IVOL oracle implementation : ${ivolOracleImpl.address}`);
+  console.log(`IVOL oracle implementation : ${ivolOracleProxyAddress}`);
   console.log(
-    `IVOL oracle : ${ivolOracleProxy.address} (${ivolOracleImpl.address})`,
+    `IVOL oracle : ${ivolOracleProxyAddress} (${ivolOracleProxyAddress})`,
   );
 
   //
@@ -478,7 +483,7 @@ export async function deployV2(
   console.log('PoolDiamond: ', poolDiamond.address);
   console.log('PremiaDiamond: ', premiaDiamond.address);
 
-  console.log('IVOL oracle implementation: ', ivolOracleImpl.address);
+  console.log('IVOL oracle implementation: ', ivolOracleProxyAddress);
   console.log('IVOL oracle: ', ivolOracle.address);
 
   return premiaDiamond.address;
