@@ -475,23 +475,25 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             // burn long option tokens from sender
             _burn(holder, longTokenId, contractSize);
 
+            uint256 fee;
+
             if (exerciseValue > 0) {
-                uint256 fee = _getFeeWithDiscount(
+                fee = _getFeeWithDiscount(
                     holder,
                     FEE_64x64.mulu(exerciseValue)
                 );
                 totalFee += fee;
 
                 _pushTo(holder, _getPoolToken(isCall), exerciseValue - fee);
-
-                emit Exercise(
-                    holder,
-                    longTokenId,
-                    contractSize,
-                    exerciseValue,
-                    fee
-                );
             }
+
+            emit Exercise(
+                holder,
+                longTokenId,
+                contractSize,
+                exerciseValue,
+                fee
+            );
         }
 
         totalFee += _burnShortTokenLoop(
