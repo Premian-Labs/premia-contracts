@@ -122,7 +122,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         uint256 maxCost
     ) external payable override returns (uint256 baseCost, uint256 feeCost) {
         return
-            _purchase(
+            _verifyAndPurchase(
                 maturity,
                 strike64x64,
                 contractSize,
@@ -133,7 +133,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
     }
 
     /**
-     * @notice purchase option
+     * @notice verify parameters, purchase option, and transfer payment into contract
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param contractSize size of option contract
@@ -143,7 +143,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
      * @return baseCost quantity of tokens required to purchase long position
      * @return feeCost quantity of tokens required to pay fees
      */
-    function _purchase(
+    function _verifyAndPurchase(
         uint64 maturity,
         int128 strike64x64,
         uint256 contractSize,
@@ -256,7 +256,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         }
 
         return
-            _purchase(
+            _verifyAndPurchase(
                 maturity,
                 strike64x64,
                 contractSize,
