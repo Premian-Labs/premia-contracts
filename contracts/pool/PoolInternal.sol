@@ -241,7 +241,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     }
 
     /**
-     * @notice purchase call option
+     * @notice purchase option
      * @param l storage layout struct
      * @param account recipient of purchased option
      * @param maturity timestamp of option maturity
@@ -397,7 +397,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     }
 
     /**
-     * @notice exercise call option on behalf of holder
+     * @notice exercise option on behalf of holder
      * @dev used for processing of expired options if passed holder is zero address
      * @param holder owner of long option tokens to exercise
      * @param longTokenId long option token id
