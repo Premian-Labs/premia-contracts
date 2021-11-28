@@ -33,6 +33,9 @@ contract PoolSettings is IPoolSettings, PoolInternal {
         )
     {}
 
+    /**
+     * @inheritdoc IPoolSettings
+     */
     function setPoolCaps(uint256 basePoolCap, uint256 underlyingPoolCap)
         external
         override
@@ -43,6 +46,9 @@ contract PoolSettings is IPoolSettings, PoolInternal {
         l.underlyingPoolCap = underlyingPoolCap;
     }
 
+    /**
+     * @inheritdoc IPoolSettings
+     */
     function setMinimumAmounts(uint256 baseMinimum, uint256 underlyingMinimum)
         external
         override
@@ -53,6 +59,9 @@ contract PoolSettings is IPoolSettings, PoolInternal {
         l.underlyingMinimum = underlyingMinimum;
     }
 
+    /**
+     * @inheritdoc IPoolSettings
+     */
     function setSteepness64x64(int128 steepness64x64, bool isCallPool)
         external
         override
@@ -67,6 +76,9 @@ contract PoolSettings is IPoolSettings, PoolInternal {
         emit UpdateSteepness(steepness64x64, isCallPool);
     }
 
+    /**
+     * @inheritdoc IPoolSettings
+     */
     function setCLevel64x64(int128 cLevel64x64, bool isCallPool)
         external
         override
