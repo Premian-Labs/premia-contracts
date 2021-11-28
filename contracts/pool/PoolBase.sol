@@ -34,6 +34,9 @@ contract PoolBase is PoolInternal, ERC1155Enumerable, ERC165, Multicall {
         )
     {}
 
+    /**
+     * @notice see IPoolBase; inheritance not possible due to linearization issues
+     */
     function name() external view returns (string memory) {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
