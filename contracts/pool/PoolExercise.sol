@@ -32,10 +32,7 @@ contract PoolExercise is IPoolExercise, PoolInternal {
     {}
 
     /**
-     * @notice exercise option on behalf of holder
-     * @param holder owner of long option tokens to exercise
-     * @param longTokenId long option token id
-     * @param contractSize quantity of tokens to exercise
+     * @inheritdoc IPoolExercise
      */
     function exerciseFrom(
         address holder,
@@ -55,9 +52,7 @@ contract PoolExercise is IPoolExercise, PoolInternal {
     }
 
     /**
-     * @notice process expired option, freeing liquidity and distributing profits
-     * @param longTokenId long option token id
-     * @param contractSize quantity of tokens to process
+     * @inheritdoc IPoolExercise
      */
     function processExpired(uint256 longTokenId, uint256 contractSize)
         external

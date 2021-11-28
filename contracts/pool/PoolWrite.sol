@@ -48,16 +48,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
     {}
 
     /**
-     * @notice calculate price of option contract
-     * @param feePayer address of the fee payer
-     * @param maturity timestamp of option maturity
-     * @param strike64x64 64x64 fixed point representation of strike price
-     * @param contractSize size of option contract
-     * @param isCall true for call, false for put
-     * @return baseCost64x64 64x64 fixed point representation of option cost denominated in underlying currency (without fee)
-     * @return feeCost64x64 64x64 fixed point representation of option fee cost denominated in underlying currency for call, or base currency for put
-     * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
-     * @return slippageCoefficient64x64 64x64 fixed point representation of slippage coefficient for given order size
+     * @inheritdoc IPoolWrite
      */
     function quote(
         address feePayer,
@@ -105,14 +96,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
     }
 
     /**
-     * @notice purchase option
-     * @param maturity timestamp of option maturity
-     * @param strike64x64 64x64 fixed point representation of strike price
-     * @param contractSize size of option contract
-     * @param isCall true for call, false for put
-     * @param maxCost maximum acceptable cost after accounting for slippage
-     * @return baseCost quantity of tokens required to purchase long position
-     * @return feeCost quantity of tokens required to pay fees
+     * @inheritdoc IPoolWrite
      */
     function purchase(
         uint64 maturity,
@@ -194,18 +178,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
     }
 
     /**
-     * @notice swap tokens and purchase option
-     * @param maturity timestamp of option maturity
-     * @param strike64x64 64x64 fixed point representation of strike price
-     * @param contractSize size of option contract
-     * @param isCall true for call, false for put
-     * @param maxCost maximum acceptable cost after accounting for slippage
-     * @param amountOut amount out of tokens requested. If 0, we will swap exact amount necessary to pay the quote
-     * @param amountInMax amount in max of tokens
-     * @param path swap path
-     * @param isSushi whether we use sushi or uniV2 for the swap
-     * @return baseCost quantity of tokens required to purchase long position
-     * @return feeCost quantity of tokens required to pay fees
+     * @inheritdoc IPoolWrite
      */
     function swapAndPurchase(
         uint64 maturity,
@@ -267,15 +240,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
     }
 
     /**
-     * @notice write option without using liquidity from the pool on behalf of another address
-     * @param underwriter underwriter of the option from who collateral will be deposited
-     * @param longReceiver address who will receive the long token (Can be the underwriter)
-     * @param maturity timestamp of option maturity
-     * @param strike64x64 64x64 fixed point representation of strike price
-     * @param contractSize quantity of option contract tokens to exercise
-     * @param isCall whether this is a call or a put
-     * @return longTokenId token id of the long call
-     * @return shortTokenId token id of the short call
+     * @inheritdoc IPoolWrite
      */
     function writeFrom(
         address underwriter,
@@ -335,7 +300,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
     }
 
     /**
-     * @notice Update pool data
+     * @inheritdoc IPoolWrite
      */
     function update() external override {
         _update(PoolStorage.layout());
