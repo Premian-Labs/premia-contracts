@@ -117,67 +117,6 @@ contract PoolWrite is IPoolWrite, PoolSwap {
     }
 
     /**
-     * @notice verify parameters, purchase option, and transfer payment into contract
-     * @param maturity timestamp of option maturity
-     * @param strike64x64 64x64 fixed point representation of strike price
-     * @param contractSize size of option contract
-     * @param isCall true for call, false for put
-     * @param maxCost maximum acceptable cost after accounting for slippage
-     * @param skipWethDeposit if false, will not try to deposit weth from attach eth
-     * @return baseCost quantity of tokens required to purchase long position
-     * @return feeCost quantity of tokens required to pay fees
-     */
-    function _verifyAndPurchase(
-        uint64 maturity,
-        int128 strike64x64,
-        uint256 contractSize,
-        bool isCall,
-        uint256 maxCost,
-        bool skipWethDeposit
-    ) internal returns (uint256 baseCost, uint256 feeCost) {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
-        require(maturity >= block.timestamp + (1 days), "exp < 1 day");
-        require(maturity < block.timestamp + (91 days), "exp > 90 days");
-        require(maturity % (8 hours) == 0, "exp must be 8-hour increment");
-
-        int128 newPrice64x64 = _update(l);
-
-        if (isCall) {
-            require(
-                strike64x64 <= newPrice64x64 << 1 &&
-                    strike64x64 >= (newPrice64x64 * 8) / 10,
-                "strike out of range"
-            );
-        } else {
-            require(
-                strike64x64 <= (newPrice64x64 * 12) / 10 &&
-                    strike64x64 >= newPrice64x64 >> 1,
-                "strike out of range"
-            );
-        }
-
-        (baseCost, feeCost) = _purchase(
-            l,
-            msg.sender,
-            maturity,
-            strike64x64,
-            isCall,
-            contractSize,
-            newPrice64x64
-        );
-
-        require(baseCost + feeCost <= maxCost, "excess slipp");
-
-        _pullFrom(
-            msg.sender,
-            _getPoolToken(isCall),
-            baseCost + feeCost,
-            skipWethDeposit
-        );
-    }
-
-    /**
      * @inheritdoc IPoolWrite
      */
     function swapAndPurchase(
@@ -304,5 +243,66 @@ contract PoolWrite is IPoolWrite, PoolSwap {
      */
     function update() external override {
         _update(PoolStorage.layout());
+    }
+
+    /**
+     * @notice verify parameters, purchase option, and transfer payment into contract
+     * @param maturity timestamp of option maturity
+     * @param strike64x64 64x64 fixed point representation of strike price
+     * @param contractSize size of option contract
+     * @param isCall true for call, false for put
+     * @param maxCost maximum acceptable cost after accounting for slippage
+     * @param skipWethDeposit if false, will not try to deposit weth from attach eth
+     * @return baseCost quantity of tokens required to purchase long position
+     * @return feeCost quantity of tokens required to pay fees
+     */
+    function _verifyAndPurchase(
+        uint64 maturity,
+        int128 strike64x64,
+        uint256 contractSize,
+        bool isCall,
+        uint256 maxCost,
+        bool skipWethDeposit
+    ) internal returns (uint256 baseCost, uint256 feeCost) {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        require(maturity >= block.timestamp + (1 days), "exp < 1 day");
+        require(maturity < block.timestamp + (91 days), "exp > 90 days");
+        require(maturity % (8 hours) == 0, "exp must be 8-hour increment");
+
+        int128 newPrice64x64 = _update(l);
+
+        if (isCall) {
+            require(
+                strike64x64 <= newPrice64x64 << 1 &&
+                    strike64x64 >= (newPrice64x64 * 8) / 10,
+                "strike out of range"
+            );
+        } else {
+            require(
+                strike64x64 <= (newPrice64x64 * 12) / 10 &&
+                    strike64x64 >= newPrice64x64 >> 1,
+                "strike out of range"
+            );
+        }
+
+        (baseCost, feeCost) = _purchase(
+            l,
+            msg.sender,
+            maturity,
+            strike64x64,
+            isCall,
+            contractSize,
+            newPrice64x64
+        );
+
+        require(baseCost + feeCost <= maxCost, "excess slipp");
+
+        _pullFrom(
+            msg.sender,
+            _getPoolToken(isCall),
+            baseCost + feeCost,
+            skipWethDeposit
+        );
     }
 }
