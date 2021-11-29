@@ -406,32 +406,6 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     }
 
     /**
-     * @notice Upgrade contract from using blocks to timestamps
-     * @param _pools Pools to upgrade
-     * @param _premiaPerYear Amount of premia distributed per year
-     */
-    function upgrade(address[] memory _pools, uint256 _premiaPerYear)
-        external
-        onlyDiamondOrOwner
-    {
-        PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
-
-        l.premiaPerYear = _premiaPerYear;
-
-        for (uint256 i; i < _pools.length; i++) {
-            for (uint256 isCallPool; isCallPool < 2; isCallPool++) {
-                PremiaMiningStorage.PoolInfo storage pool = l.poolInfo[
-                    _pools[i]
-                ][isCallPool == 1];
-
-                if (pool.lastRewardTimestamp > 0) {
-                    pool.lastRewardTimestamp = block.timestamp;
-                }
-            }
-        }
-    }
-
-    /**
      * @notice Safe premia transfer function, just in case if rounding error causes pool to not have enough PREMIA.
      * @param _to Address where to transfer the Premia
      * @param _amount Amount of tokens to transfer

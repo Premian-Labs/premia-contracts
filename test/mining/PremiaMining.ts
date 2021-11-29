@@ -8,9 +8,6 @@ import {
   ERC20Mock__factory,
   FeeDiscount,
   FeeDiscount__factory,
-  IPool__factory,
-  PremiaMining__factory,
-  PremiaMiningProxy__factory,
   ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
 import { parseEther, parseUnits } from 'ethers/lib/utils';
@@ -266,78 +263,5 @@ describe('PremiaMining', () => {
         await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
       ),
     ).to.almost(250);
-  });
-
-  it('should successfully upgrade old PremiaMining contract', async () => {
-    const optionPools = [
-      '0xa4492fcDa2520cB68657d220f4D4aE3116359C10',
-      '0x1B63334f7bfDf0D753AB3101EB6d02B278db8852',
-      '0xFDD2FC2c73032AE1501eF4B19E499F2708F34657',
-    ];
-
-    const mainnetMining = PremiaMining__factory.connect(
-      '0x9aBB27581c2E46A114F8C367355851e0580e9703',
-      multisig,
-    );
-    const proxy = PremiaMiningProxy__factory.connect(
-      '0x9aBB27581c2E46A114F8C367355851e0580e9703',
-      multisig,
-    );
-
-    // Update + disable pools mining
-    for (const poolAddress of optionPools) {
-      const pool = IPool__factory.connect(poolAddress, multisig);
-      await pool.updateMiningPools();
-    }
-
-    // Call to setPremiaPerBlock(uint256) to disable rewards
-    await multisig.sendTransaction({
-      to: mainnetMining.address,
-      data: '0xd4c8777b0000000000000000000000000000000000000000000000000000000000000000',
-    });
-
-    const ethPool = IPool__factory.connect(optionPools[0], multisig);
-    await ethPool.setPoolCaps(parseEther('1000000'), parseEther('20000'));
-    await ethPool.deposit(parseEther('10000'), true, {
-      value: parseEther('10000'),
-    });
-
-    await increaseTimestamp(oneDay * 20);
-
-    // Ensure mining rewards are now disabled
-    expect(
-      bnToNumber(
-        await mainnetMining.pendingPremia(
-          ethPool.address,
-          true,
-          multisig.address,
-        ),
-      ),
-    ).to.eq(0);
-
-    const premiaMiningImpl = await new PremiaMining__factory(multisig).deploy(
-      '0x4F273F4Efa9ECF5Dd245a338FAd9fe0BAb63B350',
-      '0x6399c842dd2be3de30bf99bc7d1bbf6fa3650e70',
-    );
-
-    // Upgrade contract
-    await proxy.setImplementation(premiaMiningImpl.address);
-
-    await mainnetMining
-      .connect(multisig)
-      .upgrade(optionPools, parseEther('365000'));
-
-    // Ensure rewards now works
-    await increaseTimestamp(oneDay * 6);
-
-    expect(
-      bnToNumber(
-        await mainnetMining.pendingPremia(
-          ethPool.address,
-          true,
-          multisig.address,
-        ),
-      ),
-    ).to.almost(978.04);
   });
 });
