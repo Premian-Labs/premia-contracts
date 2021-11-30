@@ -1111,7 +1111,91 @@ export function describeBehaviorOfPoolWrite(
     });
 
     describe('#writeFrom', () => {
-      it('todo');
+      for (const isCall of [true, false]) {
+        describe(isCall ? 'call' : 'put', () => {
+          it('should revert if trying to manually underwrite an option from a non approved operator', async () => {
+            const amount = parseUnderlying('1');
+            await expect(
+              p.writeOption(
+                owner,
+                lp1,
+                lp2,
+                await p.getMaturity(30),
+                fixedFromFloat(2),
+                amount,
+                isCall,
+              ),
+            ).to.be.revertedWith('not approved');
+          });
+
+          it('should successfully manually underwrite an option without use of an external operator', async () => {
+            const amount = parseUnderlying('1');
+            await p.writeOption(
+              lp1,
+              lp1,
+              lp2,
+              await p.getMaturity(30),
+              fixedFromFloat(2),
+              amount,
+              isCall,
+            );
+
+            const tokenIds = getOptionTokenIds(
+              await p.getMaturity(30),
+              fixedFromFloat(2),
+              isCall,
+            );
+
+            expect(await p.getToken(isCall).balanceOf(lp1.address)).to.eq(0);
+            expect(await instance.balanceOf(lp1.address, tokenIds.long)).to.eq(
+              0,
+            );
+            expect(await instance.balanceOf(lp2.address, tokenIds.long)).to.eq(
+              amount,
+            );
+            expect(await instance.balanceOf(lp1.address, tokenIds.short)).to.eq(
+              amount,
+            );
+            expect(await instance.balanceOf(lp2.address, tokenIds.short)).to.eq(
+              0,
+            );
+          });
+
+          it('should successfully manually underwrite an option with use of an external operator', async () => {
+            const amount = parseUnderlying('1');
+            await instance.connect(lp1).setApprovalForAll(owner.address, true);
+            await p.writeOption(
+              owner,
+              lp1,
+              lp2,
+              await p.getMaturity(30),
+              fixedFromFloat(2),
+              amount,
+              isCall,
+            );
+
+            const tokenIds = getOptionTokenIds(
+              await p.getMaturity(30),
+              fixedFromFloat(2),
+              isCall,
+            );
+
+            expect(await p.getToken(isCall).balanceOf(lp1.address)).to.eq(0);
+            expect(await instance.balanceOf(lp1.address, tokenIds.long)).to.eq(
+              0,
+            );
+            expect(await instance.balanceOf(lp2.address, tokenIds.long)).to.eq(
+              amount,
+            );
+            expect(await instance.balanceOf(lp1.address, tokenIds.short)).to.eq(
+              amount,
+            );
+            expect(await instance.balanceOf(lp2.address, tokenIds.short)).to.eq(
+              0,
+            );
+          });
+        });
+      }
     });
 
     describe('#update', () => {
