@@ -88,7 +88,6 @@ export default {
           }
         : {}),
     },
-
     mainnet: {
       url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
       accounts: [ETH_MAIN_KEY],
@@ -120,6 +119,22 @@ export default {
       blockGasLimit: 120000000000,
       //gasPrice: 10,
       timeout: 300000,
+    },
+    arbitrum: {
+      url: `https://arb1.arbitrum.io/rpc`,
+      accounts: [ETH_MAIN_KEY],
+      //gas: 120000000000,
+      // blockGasLimit: 120000000000,
+      //gasPrice: 10,
+      timeout: 300000,
+    },
+    rinkebyArbitrum: {
+      url: `https://rinkeby.arbitrum.io/rpc`,
+      accounts: [ETH_MAIN_KEY],
+      //gas: 120000000000,
+      // blockGasLimit: 120000000000,
+      // gasPrice: 100000000000,
+      timeout: 100000,
     },
     bsc: {
       url: `https://bsc-dataseed.binance.org/`,
