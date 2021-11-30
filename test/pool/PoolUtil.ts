@@ -59,6 +59,7 @@ interface PoolUtilArgs {
   underlyingOracle: MockContract;
   premiaMining: PremiaMining;
   ivolOracle: VolatilitySurfaceOracle;
+  feeReceiver: any;
 }
 
 const ONE_DAY = 3600 * 24;
@@ -130,6 +131,7 @@ export class PoolUtil {
   underlyingOracle: MockContract;
   premiaMining: PremiaMining;
   ivolOracle: VolatilitySurfaceOracle;
+  feeReceiver: any;
 
   constructor(props: PoolUtilArgs) {
     this.premiaDiamond = props.premiaDiamond;
@@ -142,13 +144,14 @@ export class PoolUtil {
     this.underlyingOracle = props.underlyingOracle;
     this.premiaMining = props.premiaMining;
     this.ivolOracle = props.ivolOracle;
+    this.feeReceiver = props.feeReceiver;
   }
 
   static async deploy(
     deployer: SignerWithAddress,
     premia: string,
     priceUnderlying: number,
-    feeReceiver: string,
+    feeReceiver: any,
     premiaFeeDiscount: string,
     uniswapV2Factory?: string,
     wethAddress?: string,
@@ -278,7 +281,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
     );
@@ -303,7 +306,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
       uniswapV2Factory ?? ZERO_ADDRESS,
@@ -325,7 +328,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
     );
@@ -348,7 +351,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
     );
@@ -372,7 +375,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
     );
@@ -392,7 +395,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
     );
@@ -415,7 +418,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
       uniswapV2Factory ?? ZERO_ADDRESS,
@@ -511,6 +514,7 @@ export class PoolUtil {
       underlyingOracle,
       premiaMining: premiaMining,
       ivolOracle,
+      feeReceiver,
     });
   }
 

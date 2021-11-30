@@ -56,7 +56,7 @@ export function describeBehaviorOfPoolWrite(
     let uniswap: IUniswap;
 
     before(async () => {
-      [owner, buyer, lp1, lp2, feeReceiver] = await ethers.getSigners();
+      [owner, buyer, lp1, lp2] = await ethers.getSigners();
     });
 
     beforeEach(async () => {
@@ -64,6 +64,7 @@ export function describeBehaviorOfPoolWrite(
       // TODO: don't
       p = await getPoolUtil();
       uniswap = await createUniswap(owner);
+      feeReceiver = p.feeReceiver;
     });
 
     describe('#quote', function () {

@@ -119,7 +119,7 @@ describe('PoolProxy', function () {
       owner,
       premia.address,
       spotPrice,
-      feeReceiver.address,
+      feeReceiver,
       feeDiscount.address,
       uniswap.factory.address,
       uniswap.weth.address,
