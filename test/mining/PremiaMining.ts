@@ -228,12 +228,6 @@ describe('PremiaMining', () => {
 
     await increaseTimestamp(4 * 200 * oneDay + oneDay);
 
-    console.log(
-      bnToNumber(
-        await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
-      ),
-    );
-
     expect(
       await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
     ).to.eq(parseEther(totalRewardAmount.toString()));

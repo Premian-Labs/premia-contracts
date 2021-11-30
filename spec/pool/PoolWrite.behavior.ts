@@ -125,8 +125,6 @@ export function describeBehaviorOfPoolWrite(
             true,
           );
 
-          console.log(await p.getMinPrice(1, maturity));
-
           expect(fixedToNumber(q.baseCost64x64)).to.almost(
             await p.getMinPrice(1, maturity),
           );
