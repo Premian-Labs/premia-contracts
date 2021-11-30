@@ -49,10 +49,10 @@ import {
 
 const ONE_MONTH = 30 * 24 * 3600;
 
-export function describeBehaviorOfPoolExercise(
-  { deploy, getPoolUtil }: PoolExerciseBehaviorArgs,
-  skips?: string[],
-) {
+export function describeBehaviorOfPoolExercise({
+  deploy,
+  getPoolUtil,
+}: PoolExerciseBehaviorArgs) {
   describe('::PoolExercise', () => {
     let owner: SignerWithAddress;
     let buyer: SignerWithAddress;

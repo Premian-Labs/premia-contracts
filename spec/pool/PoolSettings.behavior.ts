@@ -26,10 +26,11 @@ interface PoolSettingsBehaviorArgs {
   getNonProtocolOwner: () => Promise<SignerWithAddress>;
 }
 
-export function describeBehaviorOfPoolSettings(
-  { deploy, getProtocolOwner, getNonProtocolOwner }: PoolSettingsBehaviorArgs,
-  skips?: string[],
-) {
+export function describeBehaviorOfPoolSettings({
+  deploy,
+  getProtocolOwner,
+  getNonProtocolOwner,
+}: PoolSettingsBehaviorArgs) {
   describe('::PoolSettings', () => {
     let protocolOwner: SignerWithAddress;
     let nonProtocolOwner: SignerWithAddress;

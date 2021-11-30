@@ -38,10 +38,10 @@ interface PoolIOBehaviorArgs {
   getPoolUtil: () => Promise<PoolUtil>;
 }
 
-export function describeBehaviorOfPoolIO(
-  { deploy, getPoolUtil }: PoolIOBehaviorArgs,
-  skips?: string[],
-) {
+export function describeBehaviorOfPoolIO({
+  deploy,
+  getPoolUtil,
+}: PoolIOBehaviorArgs) {
   describe('::PoolIO', () => {
     let owner: SignerWithAddress;
     let buyer: SignerWithAddress;

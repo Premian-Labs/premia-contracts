@@ -31,10 +31,10 @@ interface PoolViewBehaviorArgs {
   getPoolUtil: () => Promise<PoolUtil>;
 }
 
-export function describeBehaviorOfPoolView(
-  { deploy, getPoolUtil }: PoolViewBehaviorArgs,
-  skips?: string[],
-) {
+export function describeBehaviorOfPoolView({
+  deploy,
+  getPoolUtil,
+}: PoolViewBehaviorArgs) {
   describe('::PoolView', () => {
     let buyer: SignerWithAddress;
     let lp1: SignerWithAddress;

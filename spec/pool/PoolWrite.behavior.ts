@@ -40,10 +40,10 @@ import {
   IUniswap,
 } from '../../test/utils/uniswap';
 
-export function describeBehaviorOfPoolWrite(
-  { deploy, getPoolUtil }: PoolWriteBehaviorArgs,
-  skips?: string[],
-) {
+export function describeBehaviorOfPoolWrite({
+  deploy,
+  getPoolUtil,
+}: PoolWriteBehaviorArgs) {
   describe('::PoolWrite', () => {
     let owner: SignerWithAddress;
     let buyer: SignerWithAddress;
