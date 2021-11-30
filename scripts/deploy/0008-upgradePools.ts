@@ -12,7 +12,7 @@ function printFacets(implAddress: string, factory: any) {
   const facetCuts = [
     {
       target: implAddress,
-      action: 2,
+      action: 1,
       selectors: Object.keys(factory.interface.functions).map((fn) =>
         factory.interface.getSighash(fn),
       ),
