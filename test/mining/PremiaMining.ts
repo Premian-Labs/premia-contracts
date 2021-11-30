@@ -71,7 +71,7 @@ describe('PremiaMining', () => {
       owner,
       premia.address,
       spotPrice,
-      feeReceiver.address,
+      feeReceiver,
       feeDiscount.address,
     );
 
