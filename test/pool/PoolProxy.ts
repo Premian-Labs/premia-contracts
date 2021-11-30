@@ -178,64 +178,6 @@ describe('PoolProxy', function () {
     getPoolUtil: async () => p,
   });
 
-  describe('liquidity queue', () => {
-    it('should add/remove from queue properly', async () => {
-      let queue: number[] = [];
-
-      const formatAddress = (value: number) => {
-        return hexZeroPad(hexlify(value), 20);
-      };
-      const removeAddress = async (value: number) => {
-        await poolMock.removeUnderwriter(formatAddress(value), true);
-        queue = queue.filter((el) => el !== value);
-        expect(await poolMock.getUnderwriter()).to.eq(
-          formatAddress(queue.length ? queue[0] : 0),
-        );
-      };
-      const addAddress = async (value: number) => {
-        await poolMock.addUnderwriter(formatAddress(value), true);
-
-        if (!queue.includes(value)) {
-          queue.push(value);
-        }
-
-        expect(await poolMock.getUnderwriter()).to.eq(formatAddress(queue[0]));
-      };
-
-      let i = 1;
-      while (i <= 9) {
-        await addAddress(i);
-        i++;
-      }
-
-      await removeAddress(3);
-      await removeAddress(5);
-      await addAddress(3);
-      await addAddress(3);
-      await addAddress(3);
-      await removeAddress(1);
-      await removeAddress(6);
-      await removeAddress(6);
-      await removeAddress(9);
-      await addAddress(3);
-      await addAddress(3);
-      await addAddress(9);
-      await addAddress(5);
-      await addAddress(queue[0]);
-      await addAddress(queue[0]);
-      await addAddress(queue[queue.length - 1]);
-      await addAddress(queue[queue.length - 1]);
-      await removeAddress(queue[queue.length - 1]);
-      await removeAddress(queue[queue.length - 1]);
-
-      while (queue.length) {
-        await removeAddress(queue[0]);
-      }
-
-      expect(await poolMock.getUnderwriter()).to.eq(ZERO_ADDRESS);
-    });
-  });
-
   describe('user TVL', () => {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
