@@ -84,16 +84,6 @@ contract PoolMock is PoolBase {
         return PoolStorage.layout().liquidityQueueAscending[true][address(0)];
     }
 
-    function setCLevel(bool isCall, int128 cLevel64x64) external {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
-        if (isCall) {
-            l.cLevelUnderlying64x64 = cLevel64x64;
-        } else {
-            l.cLevelBase64x64 = cLevel64x64;
-        }
-    }
-
     function getPriceUpdateAfter(uint256 timestamp)
         external
         view
