@@ -1,5 +1,5 @@
 import { expect } from 'chai';
-import { describeBehaviorOfPool } from './Pool.behavior';
+import { describeBehaviorOfPoolBase } from '../../spec/pool/PoolBase.behavior';
 import { BigNumber } from 'ethers';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -45,7 +45,7 @@ describe('Pool', function () {
     );
   });
 
-  describeBehaviorOfPool(
+  describeBehaviorOfPoolBase(
     {
       deploy: async () => instance,
       mintERC1155: (recipient, tokenId, amount) =>

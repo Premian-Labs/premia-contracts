@@ -1,11 +1,27 @@
+import { ethers } from 'hardhat';
+import { expect } from 'chai';
 import { describeBehaviorOfERC1155Enumerable } from '@solidstate/spec';
 import { PoolBase } from '../../typechain';
 import { BigNumber, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { ethers } from 'hardhat';
 import { formatTokenId, TokenType } from '@premia/utils';
 
-interface PoolBehaviorArgs {
+import {
+  DECIMALS_BASE,
+  DECIMALS_UNDERLYING,
+  FEE,
+  formatOption,
+  formatOptionToNb,
+  formatUnderlying,
+  getExerciseValue,
+  getTokenDecimals,
+  parseBase,
+  parseOption,
+  parseUnderlying,
+  PoolUtil,
+} from '../../test/pool/PoolUtil';
+
+interface PoolBaseBehaviorArgs {
   deploy: () => Promise<PoolBase>;
   mintERC1155: (
     address: string,
@@ -19,11 +35,11 @@ interface PoolBehaviorArgs {
   ) => Promise<ContractTransaction>;
 }
 
-export function describeBehaviorOfPool(
-  { deploy, mintERC1155, burnERC1155 }: PoolBehaviorArgs,
+export function describeBehaviorOfPoolBase(
+  { deploy, mintERC1155, burnERC1155 }: PoolBaseBehaviorArgs,
   skips?: string[],
 ) {
-  describe('::Pool', function () {
+  describe('::PoolBase', () => {
     let deployer: SignerWithAddress;
     let instance: PoolBase;
 
@@ -31,7 +47,7 @@ export function describeBehaviorOfPool(
       [deployer] = await ethers.getSigners();
     });
 
-    beforeEach(async function () {
+    beforeEach(async () => {
       instance = await deploy();
     });
 
@@ -50,5 +66,11 @@ export function describeBehaviorOfPool(
       },
       skips,
     );
+
+    // TODO: ERC165 behavior
+
+    describe('#name', () => {
+      it('returns token collection name');
+    });
   });
 }
