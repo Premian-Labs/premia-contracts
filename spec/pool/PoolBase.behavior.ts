@@ -23,6 +23,7 @@ import {
 
 interface PoolBaseBehaviorArgs {
   deploy: () => Promise<PoolBase>;
+  getPoolUtil: () => Promise<PoolUtil>;
   mintERC1155: (
     address: string,
     id: BigNumber,
@@ -36,19 +37,22 @@ interface PoolBaseBehaviorArgs {
 }
 
 export function describeBehaviorOfPoolBase(
-  { deploy, mintERC1155, burnERC1155 }: PoolBaseBehaviorArgs,
+  { deploy, getPoolUtil, mintERC1155, burnERC1155 }: PoolBaseBehaviorArgs,
   skips?: string[],
 ) {
   describe('::PoolBase', () => {
-    let deployer: SignerWithAddress;
+    let owner: SignerWithAddress;
     let instance: PoolBase;
+    let p: PoolUtil;
 
     before(async () => {
-      [deployer] = await ethers.getSigners();
+      [owner] = await ethers.getSigners();
     });
 
     beforeEach(async () => {
       instance = await deploy();
+      // TODO: don't
+      p = await getPoolUtil();
     });
 
     describeBehaviorOfERC1155Enumerable(
@@ -71,6 +75,40 @@ export function describeBehaviorOfPoolBase(
 
     describe('#name', () => {
       it('returns token collection name');
+    });
+
+    describe('#safeTransferFrom', () => {
+      it('reverts if tokenId corresponds to locked free liquidity', async () => {
+        await p.depositLiquidity(owner, parseOption('100', true), true);
+
+        expect(
+          instance
+            .connect(owner)
+            .safeTransferFrom(
+              owner.address,
+              owner.address,
+              p.getFreeLiqTokenId(true),
+              '1',
+              ethers.utils.randomBytes(0),
+            ),
+        ).to.be.revertedWith('liq lock 1d');
+      });
+
+      it('reverts if tokenId corresponds to locked reserved liquidity', async () => {
+        await p.depositLiquidity(owner, parseOption('100', true), true);
+
+        expect(
+          instance
+            .connect(owner)
+            .safeTransferFrom(
+              owner.address,
+              owner.address,
+              p.getReservedLiqTokenId(true),
+              '1',
+              ethers.utils.randomBytes(0),
+            ),
+        ).to.be.revertedWith('liq lock 1d');
+      });
     });
   });
 }

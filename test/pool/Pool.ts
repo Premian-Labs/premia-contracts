@@ -45,16 +45,17 @@ describe('Pool', function () {
     );
   });
 
-  describeBehaviorOfPoolBase(
-    {
-      deploy: async () => instance,
-      mintERC1155: (recipient, tokenId, amount) =>
-        instance['mint(address,uint256,uint256)'](recipient, tokenId, amount),
-      burnERC1155: (recipient, tokenId, amount) =>
-        instance['burn(address,uint256,uint256)'](recipient, tokenId, amount),
-    },
-    ['#supportsInterface'],
-  );
+  // describeBehaviorOfPoolBase(
+  //   {
+  //     deploy: async () => instance,
+  //     getPoolUtil: async () => p,
+  //     mintERC1155: (recipient, tokenId, amount) =>
+  //       instance['mint(address,uint256,uint256)'](recipient, tokenId, amount),
+  //     burnERC1155: (recipient, tokenId, amount) =>
+  //       instance['burn(address,uint256,uint256)'](recipient, tokenId, amount),
+  //   },
+  //   ['#supportsInterface'],
+  // );
 
   describe('__internal', function () {
     describe('#_formatTokenId', function () {

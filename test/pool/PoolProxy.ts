@@ -141,6 +141,7 @@ describe('PoolProxy', function () {
   describeBehaviorOfPoolBase(
     {
       deploy: async () => instance,
+      getPoolUtil: async () => p,
       // mintERC1155: (recipient, tokenId, amount) =>
       //   instance['mint(address,uint256,uint256)'](recipient, tokenId, amount),
       // burnERC1155: (recipient, tokenId, amount) =>
@@ -921,39 +922,5 @@ describe('PoolProxy', function () {
         });
       });
     }
-  });
-
-  describe('#safeTransferFrom', () => {
-    it('reverts if tokenId corresponds to locked free liquidity', async () => {
-      await p.depositLiquidity(owner, parseOption('100', true), true);
-
-      expect(
-        pool
-          .connect(owner)
-          .safeTransferFrom(
-            owner.address,
-            owner.address,
-            p.getFreeLiqTokenId(true),
-            '1',
-            ethers.utils.randomBytes(0),
-          ),
-      ).to.be.revertedWith('liq lock 1d');
-    });
-
-    it('reverts if tokenId corresponds to locked reserved liquidity', async () => {
-      await p.depositLiquidity(owner, parseOption('100', true), true);
-
-      expect(
-        pool
-          .connect(owner)
-          .safeTransferFrom(
-            owner.address,
-            owner.address,
-            p.getReservedLiqTokenId(true),
-            '1',
-            ethers.utils.randomBytes(0),
-          ),
-      ).to.be.revertedWith('liq lock 1d');
-    });
   });
 });
