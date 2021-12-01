@@ -177,8 +177,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         int128 collateral64x64 = contractSize64x64;
         if (!isCall) {
-            int128 strike64x64 = args.strike64x64;
-            collateral64x64 = collateral64x64.mul(strike64x64);
+            collateral64x64 = collateral64x64.mul(args.strike64x64);
         }
 
         (
