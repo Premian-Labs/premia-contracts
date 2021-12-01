@@ -141,15 +141,15 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             "invalid args"
         );
 
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
         int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
             args.contractSize,
-            PoolStorage.layout().underlyingDecimals
+            l.underlyingDecimals
         );
-        bool isCall = args.isCall;
 
-        (int128 adjustedCLevel64x64, int128 oldLiquidity64x64) = PoolStorage
-            .layout()
-            .getRealCLevel64x64(isCall);
+        (int128 adjustedCLevel64x64, int128 oldLiquidity64x64) = l
+            .getRealCLevel64x64(args.isCall);
 
         require(oldLiquidity64x64 > 0, "no liq");
 
@@ -161,20 +161,19 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         int128 annualizedVolatility64x64 = IVolatilitySurfaceOracle(
             IVOL_ORACLE_ADDRESS
         ).getAnnualizedVolatility64x64(
-                PoolStorage.layout().base,
-                PoolStorage.layout().underlying,
+                l.base,
+                l.underlying,
                 args.spot64x64,
                 args.strike64x64,
                 timeToMaturity64x64,
-                isCall
+                args.isCall
             );
 
         require(annualizedVolatility64x64 > 0, "vol = 0");
 
-        int128 collateral64x64 = contractSize64x64;
-        if (!isCall) {
-            collateral64x64 = collateral64x64.mul(args.strike64x64);
-        }
+        int128 collateral64x64 = args.isCall
+            ? contractSize64x64
+            : contractSize64x64.mul(args.strike64x64);
 
         (
             int128 price64x64,
@@ -191,11 +190,11 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     oldLiquidity64x64.sub(collateral64x64),
                     0x10000000000000000, // 64x64 fixed point representation of 1
                     MIN_APY_64x64,
-                    isCall
+                    args.isCall
                 )
             );
 
-        result.baseCost64x64 = isCall
+        result.baseCost64x64 = args.isCall
             ? price64x64.mul(contractSize64x64).div(args.spot64x64)
             : price64x64.mul(contractSize64x64);
         result.feeCost64x64 = result.baseCost64x64.mul(FEE_64x64);
