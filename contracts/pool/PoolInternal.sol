@@ -149,7 +149,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         (int128 adjustedCLevel64x64, int128 oldLiquidity64x64) = PoolStorage
             .layout()
-            .applyCLevelPendingDepositAdjustment(isCall);
+            .getRealCLevel64x64(isCall);
 
         require(oldLiquidity64x64 > 0, "no liq");
 

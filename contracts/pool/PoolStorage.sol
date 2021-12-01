@@ -301,6 +301,48 @@ library PoolStorage {
     }
 
     /**
+     * @notice get updated C-Level, accounting for decay and pending deposits
+     * @param l storage layout struct
+     * @param isCall whether to update C-Level for call or put pool
+     * @return cLevel64x64 64x64 fixed point representation of C-Level
+     * @return liquidity64x64 64x64 fixed point representation of new liquidity amount
+     */
+    function getRealCLevel64x64(Layout storage l, bool isCall)
+        internal
+        view
+        returns (int128 cLevel64x64, int128 liquidity64x64)
+    {
+        PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
+        int128 pendingDeposits64x64;
+
+        int128 oldCLevel64x64 = l.getDecayAdjustedCLevel64x64(isCall);
+        int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
+
+        if (
+            batchData.totalPendingDeposits > 0 &&
+            batchData.eta != 0 &&
+            block.timestamp >= batchData.eta
+        ) {
+            pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
+                batchData.totalPendingDeposits,
+                l.getTokenDecimals(isCall)
+            );
+
+            liquidity64x64 = oldLiquidity64x64.add(pendingDeposits64x64);
+
+            cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
+                oldCLevel64x64,
+                oldLiquidity64x64,
+                liquidity64x64,
+                isCall
+            );
+        } else {
+            cLevel64x64 = oldCLevel64x64;
+            liquidity64x64 = oldLiquidity64x64;
+        }
+    }
+
+    /**
      * @notice calculate updated C-Level, accounting for unrealized decay
      * @param l storage layout struct
      * @param oldCLevel64x64 64x64 fixed point representation pool C-Level before accounting for decay
@@ -357,48 +399,6 @@ library PoolStorage {
                     0x56fc2a2c515da32ea // 2e
                 )
             );
-    }
-
-    /**
-     * @notice calculate updated C-Level, accounting for pending deposits
-     * @param l storage layout struct
-     * @param isCall whether to update C-Level for call or put pool
-     * @return cLevel64x64 64x64 fixed point representation of C-Level
-     * @return liquidity64x64 64x64 fixed point representation of new liquidity amount
-     */
-    function applyCLevelPendingDepositAdjustment(Layout storage l, bool isCall)
-        internal
-        view
-        returns (int128 cLevel64x64, int128 liquidity64x64)
-    {
-        PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
-        int128 pendingDeposits64x64;
-
-        int128 oldCLevel64x64 = l.getDecayAdjustedCLevel64x64(isCall);
-        int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
-
-        if (
-            batchData.totalPendingDeposits > 0 &&
-            batchData.eta != 0 &&
-            block.timestamp >= batchData.eta
-        ) {
-            pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
-                batchData.totalPendingDeposits,
-                l.getTokenDecimals(isCall)
-            );
-
-            liquidity64x64 = oldLiquidity64x64.add(pendingDeposits64x64);
-
-            cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
-                oldCLevel64x64,
-                oldLiquidity64x64,
-                liquidity64x64,
-                isCall
-            );
-        } else {
-            cLevel64x64 = oldCLevel64x64;
-            liquidity64x64 = oldLiquidity64x64;
-        }
     }
 
     /**
