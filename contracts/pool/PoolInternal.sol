@@ -187,7 +187,11 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     timeToMaturity64x64,
                     adjustedCLevel64x64,
                     oldLiquidity64x64,
-                    oldLiquidity64x64.sub(contractSize64x64),
+                    oldLiquidity64x64.sub(
+                        isCall
+                            ? contractSize64x64
+                            : contractSize64x64.mul(args.strike64x64)
+                    ),
                     0x10000000000000000, // 64x64 fixed point representation of 1
                     MIN_APY_64x64,
                     isCall
