@@ -91,8 +91,7 @@ contract PoolView is IPoolView, PoolInternal {
         override
         returns (int128 cLevel64x64)
     {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        (cLevel64x64, ) = l.getRealCLevel64x64(isCall);
+        (cLevel64x64, ) = PoolStorage.layout().getRealCLevel64x64(isCall);
     }
 
     /**
