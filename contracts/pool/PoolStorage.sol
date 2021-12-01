@@ -313,7 +313,6 @@ library PoolStorage {
         returns (int128 cLevel64x64, int128 liquidity64x64)
     {
         PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
-        int128 pendingDeposits64x64;
 
         int128 oldCLevel64x64 = l.getDecayAdjustedCLevel64x64(isCall);
         int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
@@ -323,7 +322,7 @@ library PoolStorage {
             batchData.eta != 0 &&
             block.timestamp >= batchData.eta
         ) {
-            pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
+            int128 pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
                 batchData.totalPendingDeposits,
                 l.getTokenDecimals(isCall)
             );
