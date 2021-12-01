@@ -301,13 +301,13 @@ library PoolStorage {
     }
 
     /**
-     * @notice get updated C-Level, accounting for decay and pending deposits
+     * @notice get updated C-Level and pool liquidity level, accounting for decay and pending deposits
      * @param l storage layout struct
      * @param isCall whether to update C-Level for call or put pool
      * @return cLevel64x64 64x64 fixed point representation of C-Level
      * @return liquidity64x64 64x64 fixed point representation of new liquidity amount
      */
-    function getRealCLevel64x64(Layout storage l, bool isCall)
+    function getRealPoolState(Layout storage l, bool isCall)
         internal
         view
         returns (int128 cLevel64x64, int128 liquidity64x64)
