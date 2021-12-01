@@ -322,12 +322,12 @@ library PoolStorage {
             batchData.eta != 0 &&
             block.timestamp >= batchData.eta
         ) {
-            int128 pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
-                batchData.totalPendingDeposits,
-                l.getTokenDecimals(isCall)
-            );
-
-            liquidity64x64 = oldLiquidity64x64.add(pendingDeposits64x64);
+            liquidity64x64 = ABDKMath64x64Token
+                .fromDecimals(
+                    batchData.totalPendingDeposits,
+                    l.getTokenDecimals(isCall)
+                )
+                .add(oldLiquidity64x64);
 
             cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
                 oldCLevel64x64,
