@@ -91,12 +91,7 @@ contract PoolView is IPoolView, PoolInternal {
         override
         returns (int128 cLevel64x64)
     {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        (cLevel64x64, ) = l.applyCLevelPendingDepositAdjustment(
-            l.getDecayAdjustedCLevel64x64(isCall),
-            l.totalFreeLiquiditySupply64x64(isCall),
-            isCall
-        );
+        (cLevel64x64, ) = PoolStorage.layout().getRealPoolState(isCall);
     }
 
     /**
