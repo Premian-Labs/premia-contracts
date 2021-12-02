@@ -4,7 +4,8 @@ https://premia.finance
 
 ## Deployments
 
-[Ethereum Mainnet](./docs/deployments/Ethereum.md)
+[Ethereum Mainnet](./docs/deployments/ETHEREUM.md)
+[Arbitrum](./docs/deployments/ARBITRUM.md)
 
 ## Development
 
