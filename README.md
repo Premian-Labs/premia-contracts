@@ -4,8 +4,10 @@ https://premia.finance
 
 ## Deployments
 
-[Ethereum Mainnet](./docs/deployments/ETHEREUM.md)
-[Arbitrum](./docs/deployments/ARBITRUM.md)
+| Network          |                                      |
+| ---------------- | ------------------------------------ |
+| Ethereum Mainnet | [📜](./docs/deployments/ETHEREUM.md) |
+| Arbitrum Mainnet | [📜](./docs/deployments/ARBITRUM.md) |
 
 ## Development
 
