@@ -314,7 +314,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             strike64x64
         );
 
-        _updateCLevelAverage(l, longTokenId, contractSize, cLevel64x64);
+        _updateCLevelAverage(l, longTokenId, contractSize, quote.cLevel64x64);
 
         // mint long option token for buyer
         _mint(account, longTokenId, contractSize);
