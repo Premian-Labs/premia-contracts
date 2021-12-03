@@ -211,19 +211,19 @@ contract PoolView is IPoolView, PoolInternal {
                 isCallPool
             ];
 
-            address last = asc[address(0)];
+            address depositor = asc[address(0)];
 
-            while (last != account) {
+            while (depositor != account) {
                 liquidityBeforePosition += _balanceOf(
-                    last,
+                    depositor,
                     _getFreeLiquidityTokenId(isCallPool)
                 );
 
-                last = asc[last];
+                depositor = asc[depositor];
             }
 
             positionSize = _balanceOf(
-                last,
+                depositor,
                 _getFreeLiquidityTokenId(isCallPool)
             );
         }
