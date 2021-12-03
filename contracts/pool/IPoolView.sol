@@ -112,12 +112,12 @@ interface IPoolView is IERC1155Metadata {
 
     /**
      * @notice get position in the liquidity queue of the Pool
-     * @param isCallPool whether query is for call or put pool
      * @param account account address whose liquidity position to query
+     * @param isCallPool whether query is for call or put pool
      * @return liquidityBeforePosition total available liquidity before account's liquidity queue
      * @return positionSize size of the account's liquidity queue position
      */
-    function getLiquidityQueuePosition(bool isCallPool, address account)
+    function getLiquidityQueuePosition(address account, bool isCallPool)
         external
         view
         returns (uint256 liquidityBeforePosition, uint256 positionSize);

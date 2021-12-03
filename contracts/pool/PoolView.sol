@@ -194,7 +194,7 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getLiquidityQueuePosition(bool isCallPool, address account)
+    function getLiquidityQueuePosition(address account, bool isCallPool)
         external
         view
         override
