@@ -3,6 +3,7 @@
 
 pragma solidity ^0.8.0;
 
+import {ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 
 import {IPremiaOptionNFTDisplay} from "../interface/IPremiaOptionNFTDisplay.sol";
@@ -188,6 +189,47 @@ contract PoolView is IPoolView, PoolInternal {
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
         return (l.totalTVL[true], l.totalTVL[false]);
+    }
+
+    /**
+     * @inheritdoc IPoolView
+     */
+    function getLiquidityQueuePosition(bool isCallPool, address account)
+        external
+        view
+        override
+        returns (uint256 liquidityBeforePosition, uint256 positionSize)
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        mapping(address => address) storage asc = l.liquidityQueueAscending[
+            isCallPool
+        ];
+        mapping(address => address) storage desc = l.liquidityQueueDescending[
+            isCallPool
+        ];
+
+        if (!PoolStorage._isInQueue(account, asc, desc)) {
+            liquidityBeforePosition = ERC1155EnumerableStorage
+                .layout()
+                .totalSupply[_getFreeLiquidityTokenId(isCallPool)];
+        } else {
+            address last = asc[address(0)];
+
+            while (last != account) {
+                liquidityBeforePosition += _balanceOf(
+                    last,
+                    _getFreeLiquidityTokenId(isCallPool)
+                );
+
+                last = asc[last];
+            }
+
+            positionSize = _balanceOf(
+                last,
+                _getFreeLiquidityTokenId(isCallPool)
+            );
+        }
     }
 
     /**

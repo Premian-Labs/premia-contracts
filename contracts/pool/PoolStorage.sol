@@ -264,7 +264,7 @@ library PoolStorage {
         address account,
         mapping(address => address) storage asc,
         mapping(address => address) storage desc
-    ) private view returns (bool) {
+    ) public view returns (bool) {
         return asc[account] != address(0) || desc[address(0)] == account;
     }
 
