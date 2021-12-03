@@ -209,7 +209,7 @@ contract PoolView is IPoolView, PoolInternal {
             isCallPool
         ];
 
-        if (!PoolStorage._isInQueue(account, asc, desc)) {
+        if (!PoolStorage.isInQueue(account, asc, desc)) {
             liquidityBeforePosition = ERC1155EnumerableStorage
                 .layout()
                 .totalSupply[_getFreeLiquidityTokenId(isCallPool)];

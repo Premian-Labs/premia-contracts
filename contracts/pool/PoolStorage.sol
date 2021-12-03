@@ -212,7 +212,7 @@ library PoolStorage {
             isCallPool
         ];
 
-        if (_isInQueue(account, asc, desc)) return;
+        if (isInQueue(account, asc, desc)) return;
 
         address last = desc[address(0)];
 
@@ -235,7 +235,7 @@ library PoolStorage {
             isCallPool
         ];
 
-        if (!_isInQueue(account, asc, desc)) return;
+        if (!isInQueue(account, asc, desc)) return;
 
         address prev = desc[account];
         address next = asc[account];
@@ -257,14 +257,14 @@ library PoolStorage {
             isCallPool
         ];
 
-        return _isInQueue(account, asc, desc);
+        return isInQueue(account, asc, desc);
     }
 
-    function _isInQueue(
+    function isInQueue(
         address account,
         mapping(address => address) storage asc,
         mapping(address => address) storage desc
-    ) public view returns (bool) {
+    ) internal view returns (bool) {
         return asc[account] != address(0) || desc[address(0)] == account;
     }
 
