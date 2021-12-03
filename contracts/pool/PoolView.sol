@@ -201,10 +201,10 @@ contract PoolView is IPoolView, PoolInternal {
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
+        uint256 tokenId = _getFreeLiquidityTokenId(isCallPool);
+
         if (!l.isInQueue(account, isCallPool)) {
-            liquidityBeforePosition = _totalSupply(
-                _getFreeLiquidityTokenId(isCallPool)
-            );
+            liquidityBeforePosition = _totalSupply(tokenId);
         } else {
             mapping(address => address) storage asc = l.liquidityQueueAscending[
                 isCallPool
@@ -213,18 +213,11 @@ contract PoolView is IPoolView, PoolInternal {
             address depositor = asc[address(0)];
 
             while (depositor != account) {
-                liquidityBeforePosition += _balanceOf(
-                    depositor,
-                    _getFreeLiquidityTokenId(isCallPool)
-                );
-
+                liquidityBeforePosition += _balanceOf(depositor, tokenId);
                 depositor = asc[depositor];
             }
 
-            positionSize = _balanceOf(
-                depositor,
-                _getFreeLiquidityTokenId(isCallPool)
-            );
+            positionSize = _balanceOf(depositor, tokenId);
         }
     }
 
