@@ -202,18 +202,15 @@ contract PoolView is IPoolView, PoolInternal {
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
-        mapping(address => address) storage asc = l.liquidityQueueAscending[
-            isCallPool
-        ];
-        mapping(address => address) storage desc = l.liquidityQueueDescending[
-            isCallPool
-        ];
-
-        if (!PoolStorage.isInQueue(account, asc, desc)) {
+        if (!l.isInQueue(account, isCallPool)) {
             liquidityBeforePosition = ERC1155EnumerableStorage
                 .layout()
                 .totalSupply[_getFreeLiquidityTokenId(isCallPool)];
         } else {
+            mapping(address => address) storage asc = l.liquidityQueueAscending[
+                isCallPool
+            ];
+
             address last = asc[address(0)];
 
             while (last != account) {
