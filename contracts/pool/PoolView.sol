@@ -3,7 +3,6 @@
 
 pragma solidity ^0.8.0;
 
-import {ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 
 import {IPremiaOptionNFTDisplay} from "../interface/IPremiaOptionNFTDisplay.sol";
@@ -203,9 +202,9 @@ contract PoolView is IPoolView, PoolInternal {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         if (!l.isInQueue(account, isCallPool)) {
-            liquidityBeforePosition = ERC1155EnumerableStorage
-                .layout()
-                .totalSupply[_getFreeLiquidityTokenId(isCallPool)];
+            liquidityBeforePosition = _totalSupply(
+                _getFreeLiquidityTokenId(isCallPool)
+            );
         } else {
             mapping(address => address) storage asc = l.liquidityQueueAscending[
                 isCallPool
