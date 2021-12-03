@@ -112,6 +112,8 @@ interface IPoolView is IERC1155Metadata {
 
     /**
      * @notice get position in the liquidity queue of the Pool
+     * @param isCallPool whether query is for call or put pool
+     * @param account account address whose liquidity position to query
      * @return liquidityBeforePosition total available liquidity before account's liquidity queue
      * @return positionSize size of the account's liquidity queue position
      */
@@ -121,7 +123,7 @@ interface IPoolView is IERC1155Metadata {
         returns (uint256 liquidityBeforePosition, uint256 positionSize);
 
     /**
-     * @notice get the addres of PremiaMining contract
+     * @notice get the address of PremiaMining contract
      * @return address of PremiaMining contract
      */
     function getPremiaMining() external view returns (address);
