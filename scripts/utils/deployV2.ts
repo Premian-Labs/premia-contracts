@@ -102,7 +102,9 @@ export async function deployV2(
     deployer,
   );
 
-  console.log(`Premia Mining implementation : ${premiaMiningImpl.address}`);
+  console.log(
+    `Premia Mining implementation : ${premiaMiningImpl.address} (Args: ${premiaDiamond.address} / ${premia})`,
+  );
   console.log(
     `Premia Mining : ${premiaMiningProxy.address} (${
       premiaMiningImpl.address
@@ -125,7 +127,7 @@ export async function deployV2(
 
   console.log(`NFT SVG : ${nftSVGLib.address}`);
   console.log(
-    `NFT Display : ${nftSVGLib.address} (NFTSVG: ${nftSVGLib.address})`,
+    `NFT Display : ${nftDisplayLib.address} (NFTSVG: ${nftSVGLib.address})`,
   );
   console.log(
     `Option display : ${nftDisplay.address} (NFTDisplay: ${nftDisplayLib.address})`,
@@ -293,7 +295,7 @@ export async function deployV2(
   await poolSettingsImpl.deployed();
 
   console.log(
-    `PoolSettings Implementation : ${poolSettingsImpl.address} (${nftDisplay.address}, ${ivolOracle.address}, ${tokens.ETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64})`,
+    `PoolSettings Implementation : ${poolSettingsImpl.address} (${ivolOracle.address}, ${tokens.ETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
