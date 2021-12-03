@@ -1,16 +1,16 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
+// For further clarification please see https://license.premia.legal
 
 pragma solidity ^0.8.0;
 
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {UintUtils} from "@solidstate/contracts/utils/UintUtils.sol";
 import {Base64} from "base64-sol/base64.sol";
 
 import {NFTSVG} from "./NFTSVG.sol";
 
 library NFTDisplay {
-    using Strings for uint256;
-    using Strings for uint256;
+    using UintUtils for uint256;
     using ABDKMath64x64 for int128;
 
     uint256 constant SECONDS_PER_DAY = 24 * 60 * 60;

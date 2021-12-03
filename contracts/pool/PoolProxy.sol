@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
+// For further clarification please see https://license.premia.legal
 
 pragma solidity ^0.8.0;
 
@@ -33,7 +34,8 @@ contract PoolProxy is Proxy {
         int128 underlyingMinimum64x64,
         int128 basePoolCap64x64,
         int128 underlyingPoolCap64x64,
-        int128 initialCLevel64x64
+        int128 initialCLevel64x64,
+        int128 initialSteepness64x64
     ) {
         DIAMOND = diamond;
         OwnableStorage.layout().owner = msg.sender;
@@ -72,6 +74,8 @@ contract PoolProxy is Proxy {
                 underlyingDecimals
             );
 
+            l.steepnessBase64x64 = initialSteepness64x64;
+            l.steepnessUnderlying64x64 = initialSteepness64x64;
             l.cLevelBase64x64 = initialCLevel64x64;
             l.cLevelUnderlying64x64 = initialCLevel64x64;
 

@@ -24,6 +24,7 @@ import {
   PremiaOptionNFTDisplay__factory,
   NFTDisplay__factory,
   NFTSVG__factory,
+  PoolSettings__factory,
 } from '../../typechain';
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -196,27 +197,21 @@ export class PoolUtil {
     // Set coefficients for IVOL oracle
 
     const callCoefficients = [
-      66.13224588553439, 0.5016335530303326, 0.00024794729107828023,
-      -0.00001252615948696122, 31.691783501616406, -0.3231359705060762,
-      0.01844886762687511, -0.36571273750619837, -0.003794721255223829,
-      0.0015410795834495232,
+      0.839159148341129, -0.05957422656606383, 0.02004706385514592,
+      0.14895038484273854, 0.034026549310791646,
     ];
 
     const putCoefficients = [
-      452.13268592044506, -5.157765245468974, 0.03061344985675325,
-      -0.00005802183766289717, -693.0263287794035, 350.2806123602123,
-      -16.630912821250963, 6.883572119363676, -1.7641242522788132,
-      -0.021305491994832955,
+      0.839159148341129, -0.05957422656606383, 0.02004706385514592,
+      0.14895038484273854, 0.034026549310791646,
     ];
 
-    const decimals = await ivolOracle.getCoefficientsDecimals();
-
-    const callCoefficientsInt = callCoefficients.map((el, idx) =>
-      Math.floor(el * 10 ** decimals[idx].toNumber()).toString(),
+    const callCoefficientsInt = callCoefficients.map((el) =>
+      parseUnits(el.toFixed(12), '12'),
     );
 
-    const putCoefficientsInt = putCoefficients.map((el, idx) =>
-      Math.floor(el * 10 ** decimals[idx].toNumber()).toString(),
+    const putCoefficientsInt = putCoefficients.map((el) =>
+      parseUnits(el.toFixed(12), '12'),
     );
 
     const callCoefficientsPacked =
@@ -244,7 +239,7 @@ export class PoolUtil {
 
     const premiaMiningProxy = await new PremiaMiningProxy__factory(
       deployer,
-    ).deploy(premiaMiningImpl.address, parseEther('4000'));
+    ).deploy(premiaMiningImpl.address, parseEther('365000'));
 
     const premiaMining = PremiaMining__factory.connect(
       premiaMiningProxy.address,
@@ -386,6 +381,26 @@ export class PoolUtil {
         poolDiamond,
         poolViewImpl.address,
         poolViewFactory,
+        registeredSelectors,
+      ),
+    );
+
+    //////////////////////////////////////////////
+
+    const poolSettingsFactory = new PoolSettings__factory(deployer);
+    const poolSettingsImpl = await poolSettingsFactory.deploy(
+      ivolOracle.address,
+      weth.address,
+      premiaMining.address,
+      feeReceiver,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE),
+    );
+    registeredSelectors = registeredSelectors.concat(
+      await diamondCut(
+        poolDiamond,
+        poolSettingsImpl.address,
+        poolSettingsFactory,
         registeredSelectors,
       ),
     );

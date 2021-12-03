@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: LGPL-3.0-or-later
 
 pragma solidity ^0.8.0;
 
@@ -16,11 +16,14 @@ interface IPremiaMining {
         view
         returns (PremiaMiningStorage.PoolInfo memory);
 
-    function getPremiaPerBlock() external view returns (uint256);
+    function getPremiaPerYear() external view returns (uint256);
 
     function addPool(address _pool, uint256 _allocPoints) external;
 
-    function setPoolAllocPoints(address _pool, uint256 _allocPoints) external;
+    function setPoolAllocPoints(
+        address[] memory _pools,
+        uint256[] memory _allocPoints
+    ) external;
 
     function pendingPremia(
         address _pool,

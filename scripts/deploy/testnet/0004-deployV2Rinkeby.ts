@@ -1,4 +1,4 @@
-import { deployV2, TokenAddresses } from '../../utils/deployV2';
+import { deployV2, TokenAddresses, TokenAmounts } from '../../utils/deployV2';
 import { fixedFromFloat } from '@premia/utils';
 import {
   ERC20Mock__factory,
@@ -46,6 +46,20 @@ async function main() {
     LINK: '0xd8bD0a1cB028a31AA859A21A3758685a95dE4623',
   };
 
+  const minimums: TokenAmounts = {
+    DAI: '100',
+    ETH: '0.05',
+    BTC: '0.005',
+    LINK: '5',
+  };
+
+  const caps: TokenAmounts = {
+    DAI: '1000000',
+    ETH: '300',
+    BTC: '25',
+    LINK: '40000',
+  };
+
   const premiaDiamond = await deployV2(
     weth,
     premia.address,
@@ -54,6 +68,8 @@ async function main() {
     contracts.premiaFeeDiscount.address,
     tokens,
     oracles,
+    minimums,
+    caps,
     '0xc35DADB65012eC5796536bD9864eD8773aBc74C4',
   );
 

@@ -1,16 +1,16 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
+// For further clarification please see https://license.premia.legal
 
 pragma solidity ^0.8.0;
 
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 import {ERC1155BaseStorage} from "@solidstate/contracts/token/ERC1155/base/ERC1155BaseStorage.sol";
 import {ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155EnumerableStorage.sol";
-import {PoolStorage} from "./PoolStorage.sol";
-
-import {IPoolView} from "./IPoolView.sol";
-import {PoolInternal} from "./PoolInternal.sol";
 
 import {IPremiaOptionNFTDisplay} from "../interface/IPremiaOptionNFTDisplay.sol";
+import {IPoolView, IERC1155Metadata} from "./IPoolView.sol";
+import {PoolInternal} from "./PoolInternal.sol";
+import {PoolStorage} from "./PoolStorage.sol";
 
 /**
  * @title Premia option pool
@@ -45,17 +45,14 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice get fee receiver address
-     * @dev called by PremiaMakerKeeper
-     * @return fee receiver address
+     * @inheritdoc IPoolView
      */
     function getFeeReceiverAddress() external view override returns (address) {
         return FEE_RECEIVER_ADDRESS;
     }
 
     /**
-     * @notice get pool settings
-     * @return pool settings
+     * @inheritdoc IPoolView
      */
     function getPoolSettings()
         external
@@ -74,8 +71,7 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice get the list of all existing token ids
-     * @return list of all existing token ids
+     * @inheritdoc IPoolView
      */
     function getTokenIds() external view override returns (uint256[] memory) {
         PoolStorage.Layout storage l = PoolStorage.layout();
@@ -90,21 +86,35 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice get C Level
-     * @return 64x64 fixed point representation of C-Level of Pool after purchase
+     * @inheritdoc IPoolView
      */
     function getCLevel64x64(bool isCall)
         external
         view
         override
-        returns (int128)
+        returns (int128 cLevel64x64)
     {
-        return PoolStorage.layout().getCLevel(isCall);
+        (cLevel64x64, ) = PoolStorage.layout().getRealPoolState(isCall);
     }
 
     /**
-     * @notice get price at timestamp
-     * @return price at timestamp
+     * @inheritdoc IPoolView
+     */
+    function getSteepness64x64(bool isCallPool)
+        external
+        view
+        override
+        returns (int128)
+    {
+        if (isCallPool) {
+            return PoolStorage.layout().steepnessUnderlying64x64;
+        } else {
+            return PoolStorage.layout().steepnessBase64x64;
+        }
+    }
+
+    /**
+     * @inheritdoc IPoolView
      */
     function getPrice(uint256 timestamp)
         external
@@ -116,8 +126,7 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice get parameters for token id
-     * @return parameters for token id
+     * @inheritdoc IPoolView
      */
     function getParametersForTokenId(uint256 tokenId)
         external
@@ -133,9 +142,7 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice get minimum purchase and interval amounts
-     * @return minCallTokenAmount minimum call pool amount
-     * @return minPutTokenAmount minimum put pool amount
+     * @inheritdoc IPoolView
      */
     function getMinimumAmounts()
         external
@@ -148,9 +155,7 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice get deposit cap amounts
-     * @return callTokenCapAmount call pool deposit cap
-     * @return putTokenCapAmount put pool deposit cap
+     * @inheritdoc IPoolView
      */
     function getCapAmounts()
         external
@@ -163,9 +168,7 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice get user total value locked
-     * @return underlyingTVL user total value locked in call pool (in underlying token amount)
-     * @return baseTVL user total value locked in put pool (in base token amount)
+     * @inheritdoc IPoolView
      */
     function getUserTVL(address user)
         external
@@ -178,9 +181,7 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice get total value locked
-     * @return underlyingTVL total value locked in call pool (in underlying token amount)
-     * @return baseTVL total value locked in put pool (in base token amount)
+     * @inheritdoc IPoolView
      */
     function getTotalTVL()
         external
@@ -193,18 +194,14 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice get the addres of PremiaMining contract
-     * @return address of PremiaMining contract
+     * @inheritdoc IPoolView
      */
     function getPremiaMining() external view override returns (address) {
         return PREMIA_MINING_ADDRESS;
     }
 
     /**
-     * @notice get the gradual divestment timestamps of a user
-     * @param account user account
-     * @return callDivestmentTimestamp gradual divestment timestamp of the user for the call pool
-     * @return putDivestmentTimestamp gradual divestment timestamp of the user for the put pool
+     * @inheritdoc IPoolView
      */
     function getDivestmentTimestamps(address account)
         external
@@ -276,11 +273,10 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice Returns an URI for a given token ID
-     * @param tokenId an option token id
-     * @return The token URI
+     * @inheritdoc IERC1155Metadata
+     * @dev SVG generated via external PremiaOptionNFTDisplay contract
      */
-    function tokenURI(uint256 tokenId)
+    function uri(uint256 tokenId)
         external
         view
         override

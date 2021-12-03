@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
+// For further clarification please see https://license.premia.legal
 
 pragma solidity ^0.8.0;
 
@@ -8,6 +9,7 @@ import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 
 import {PremiaMiningStorage} from "./PremiaMiningStorage.sol";
 import {IPremiaMining} from "./IPremiaMining.sol";
+import {IPoolIO} from "../pool/IPoolIO.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
 
 /**
@@ -19,6 +21,8 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
     address internal immutable DIAMOND;
     address internal immutable PREMIA;
+
+    uint256 private constant ONE_YEAR = 365 days;
 
     event Claim(
         address indexed user,
@@ -94,19 +98,19 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     }
 
     /**
-     * @notice Get the amount of premia emitted per block
-     * @return Premia emitted per block
+     * @notice Get the amount of premia emitted per year
+     * @return Premia emitted per year
      */
-    function getPremiaPerBlock() external view override returns (uint256) {
-        return PremiaMiningStorage.layout().premiaPerBlock;
+    function getPremiaPerYear() external view override returns (uint256) {
+        return PremiaMiningStorage.layout().premiaPerYear;
     }
 
     /**
      * @notice Set new alloc points for an option pool. Can only be called by the owner.
-     * @param _premiaPerBlock Amount of PREMIA per block to allocate as reward accross all pools
+     * @param _premiaPerYear Amount of PREMIA per year to allocate as reward across all pools
      */
-    function setPremiaPerBlock(uint256 _premiaPerBlock) external onlyOwner {
-        PremiaMiningStorage.layout().premiaPerBlock = _premiaPerBlock;
+    function setPremiaPerYear(uint256 _premiaPerYear) external onlyOwner {
+        PremiaMiningStorage.layout().premiaPerYear = _premiaPerYear;
     }
 
     /**
@@ -121,8 +125,8 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
         require(
-            l.poolInfo[_pool][true].lastRewardBlock == 0 &&
-                l.poolInfo[_pool][false].lastRewardBlock == 0,
+            l.poolInfo[_pool][true].lastRewardTimestamp == 0 &&
+                l.poolInfo[_pool][false].lastRewardTimestamp == 0,
             "Pool exists"
         );
 
@@ -130,13 +134,13 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
         l.poolInfo[_pool][true] = PremiaMiningStorage.PoolInfo({
             allocPoint: _allocPoints,
-            lastRewardBlock: block.number,
+            lastRewardTimestamp: block.timestamp,
             accPremiaPerShare: 0
         });
 
         l.poolInfo[_pool][false] = PremiaMiningStorage.PoolInfo({
             allocPoint: _allocPoints,
-            lastRewardBlock: block.number,
+            lastRewardTimestamp: block.timestamp,
             accPremiaPerShare: 0
         });
 
@@ -145,32 +149,36 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
     /**
      * @notice Set new alloc points for an option pool. Can only be called by the owner or premia diamond
-     * @param _pool Address of option pool contract
-     * @param _allocPoints Weight of this pool in the reward calculation
+     * @param _pools List of addresses of option pool contract
+     * @param _allocPoints List of weight of each pool in reward calculations
      */
-    function setPoolAllocPoints(address _pool, uint256 _allocPoints)
-        external
-        override
-        onlyDiamondOrOwner
-    {
+    function setPoolAllocPoints(
+        address[] memory _pools,
+        uint256[] memory _allocPoints
+    ) public override onlyDiamondOrOwner {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
 
-        require(
-            l.poolInfo[_pool][true].lastRewardBlock > 0 &&
-                l.poolInfo[_pool][false].lastRewardBlock > 0,
-            "Pool does not exists"
-        );
+        for (uint256 i; i < _pools.length; i++) {
+            address pool = _pools[i];
+            uint256 allocPoints = _allocPoints[i];
 
-        l.totalAllocPoint =
-            l.totalAllocPoint -
-            l.poolInfo[_pool][true].allocPoint -
-            l.poolInfo[_pool][false].allocPoint +
-            (_allocPoints * 2);
+            require(
+                l.poolInfo[pool][true].lastRewardTimestamp > 0 &&
+                    l.poolInfo[pool][false].lastRewardTimestamp > 0,
+                "Pool does not exists"
+            );
 
-        l.poolInfo[_pool][true].allocPoint = _allocPoints;
-        l.poolInfo[_pool][false].allocPoint = _allocPoints;
+            l.totalAllocPoint =
+                l.totalAllocPoint -
+                l.poolInfo[pool][true].allocPoint -
+                l.poolInfo[pool][false].allocPoint +
+                (allocPoints * 2);
 
-        emit UpdatePoolAlloc(_pool, _allocPoints);
+            l.poolInfo[pool][true].allocPoint = allocPoints;
+            l.poolInfo[pool][false].allocPoint = allocPoints;
+
+            emit UpdatePoolAlloc(pool, allocPoints);
+        }
     }
 
     /**
@@ -202,15 +210,18 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         PremiaMiningStorage.PoolInfo storage pool = l.poolInfo[_pool][
             _isCallPool
         ];
+
         PremiaMiningStorage.UserInfo storage user = l.userInfo[_pool][
             _isCallPool
         ][_user];
         uint256 accPremiaPerShare = pool.accPremiaPerShare;
 
-        if (block.number > pool.lastRewardBlock && TVL != 0) {
-            uint256 premiaReward = ((block.number - pool.lastRewardBlock) *
-                l.premiaPerBlock *
-                pool.allocPoint) / l.totalAllocPoint;
+        if (block.timestamp > pool.lastRewardTimestamp && TVL != 0) {
+            uint256 premiaReward = (((block.timestamp -
+                pool.lastRewardTimestamp) * l.premiaPerYear) *
+                pool.allocPoint) /
+                l.totalAllocPoint /
+                ONE_YEAR;
 
             // If we are running out of rewards to distribute, distribute whats left
             if (premiaReward > l.premiaAvailable) {
@@ -256,18 +267,19 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
             _isCallPool
         ];
 
-        if (block.number <= pool.lastRewardBlock) {
+        if (block.timestamp <= pool.lastRewardTimestamp) {
             return;
         }
 
         if (_totalTVL == 0) {
-            pool.lastRewardBlock = block.number;
+            pool.lastRewardTimestamp = block.timestamp;
             return;
         }
 
-        uint256 premiaReward = ((block.number - pool.lastRewardBlock) *
-            l.premiaPerBlock *
-            pool.allocPoint) / l.totalAllocPoint;
+        uint256 premiaReward = (((block.timestamp - pool.lastRewardTimestamp) *
+            l.premiaPerYear) * pool.allocPoint) /
+            l.totalAllocPoint /
+            ONE_YEAR;
 
         // If we are running out of rewards to distribute, distribute whats left
         if (premiaReward > l.premiaAvailable) {
@@ -276,7 +288,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
         l.premiaAvailable -= premiaReward;
         pool.accPremiaPerShare += (premiaReward * 1e12) / _totalTVL;
-        pool.lastRewardBlock = block.number;
+        pool.lastRewardTimestamp = block.timestamp;
     }
 
     /**
@@ -373,6 +385,24 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         _safePremiaTransfer(_user, reward);
 
         emit Claim(_user, _pool, _isCallPool, reward);
+    }
+
+    /**
+     * @notice Trigger reward distribution by multiple pools
+     * @param account address whose rewards to claim
+     * @param pools list of pools to call
+     * @param isCall list of bools indicating whether each pool is call pool
+     */
+    function multiClaim(
+        address account,
+        address[] calldata pools,
+        bool[] calldata isCall
+    ) external {
+        require(pools.length == isCall.length);
+
+        for (uint256 i; i < pools.length; i++) {
+            IPoolIO(pools[i]).claimRewards(account, isCall[i]);
+        }
     }
 
     /**

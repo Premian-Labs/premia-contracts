@@ -1,9 +1,10 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
+// For further clarification please see https://license.premia.legal
 
 pragma solidity ^0.8.0;
 
 import {IERC20Metadata} from "@solidstate/contracts/token/ERC20/metadata/IERC20Metadata.sol";
-import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {UintUtils} from "@solidstate/contracts/utils/UintUtils.sol";
 
 import {IPool} from "./pool/IPool.sol";
 import {PoolStorage} from "./pool/PoolStorage.sol";
@@ -11,7 +12,7 @@ import {NFTDisplay} from "./libraries/NFTDisplay.sol";
 import {IPremiaOptionNFTDisplay} from "./interface/IPremiaOptionNFTDisplay.sol";
 
 contract PremiaOptionNFTDisplay is IPremiaOptionNFTDisplay {
-    using Strings for uint256;
+    using UintUtils for uint256;
 
     function tokenURI(address _pool, uint256 _tokenId)
         external

@@ -1,21 +1,26 @@
 import chai, { expect } from 'chai';
 import { PoolUtil } from '../pool/PoolUtil';
 import { increaseTimestamp, mineBlockUntil } from '../utils/evm';
-import { ethers } from 'hardhat';
+import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   ERC20Mock,
   ERC20Mock__factory,
-  PremiaFeeDiscount,
-  PremiaFeeDiscount__factory,
+  FeeDiscount,
+  FeeDiscount__factory,
+  ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
 import { parseEther, parseUnits } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 
-chai.use(chaiAlmost(0.01));
+chai.use(chaiAlmost(0.05));
 
-const oneMonth = 30 * 24 * 3600;
+const oneDay = 24 * 3600;
+const oneMonth = 30 * oneDay;
+
+const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`;
+const blockNumber = 13569795;
 
 describe('PremiaMining', () => {
   let owner: SignerWithAddress;
@@ -24,10 +29,11 @@ describe('PremiaMining', () => {
   let lp3: SignerWithAddress;
   let buyer: SignerWithAddress;
   let feeReceiver: SignerWithAddress;
+  let multisig: SignerWithAddress;
 
   let premia: ERC20Mock;
   let xPremia: ERC20Mock;
-  let premiaFeeDiscount: PremiaFeeDiscount;
+  let feeDiscount: FeeDiscount;
 
   let p: PoolUtil;
 
@@ -35,33 +41,38 @@ describe('PremiaMining', () => {
   const totalRewardAmount = 200000;
 
   beforeEach(async () => {
+    await ethers.provider.send('hardhat_reset', [
+      { forking: { jsonRpcUrl, blockNumber } },
+    ]);
+
+    // Impersonate multisig
+    await network.provider.request({
+      method: 'hardhat_impersonateAccount',
+      params: ['0xc22FAe86443aEed038A4ED887bbA8F5035FD12F0'],
+    });
+    multisig = await ethers.getSigner(
+      '0xc22FAe86443aEed038A4ED887bbA8F5035FD12F0',
+    );
+
     [owner, lp1, lp2, lp3, buyer, feeReceiver] = await ethers.getSigners();
 
     const erc20Factory = new ERC20Mock__factory(owner);
     premia = await erc20Factory.deploy('PREMIA', 18);
     xPremia = await erc20Factory.deploy('xPREMIA', 18);
-    premiaFeeDiscount = await new PremiaFeeDiscount__factory(owner).deploy(
+    const feeDiscountImpl = await new FeeDiscount__factory(owner).deploy(
       xPremia.address,
     );
-
-    await premiaFeeDiscount.setStakeLevels([
-      { amount: parseEther('5000'), discount: 2500 }, // -25%
-      { amount: parseEther('50000'), discount: 5000 }, // -50%
-      { amount: parseEther('250000'), discount: 7500 }, // -75%
-      { amount: parseEther('500000'), discount: 9500 }, // -95%
-    ]);
-
-    await premiaFeeDiscount.setStakePeriod(oneMonth, 10000);
-    await premiaFeeDiscount.setStakePeriod(3 * oneMonth, 12500);
-    await premiaFeeDiscount.setStakePeriod(6 * oneMonth, 15000);
-    await premiaFeeDiscount.setStakePeriod(12 * oneMonth, 20000);
+    const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
+      owner,
+    ).deploy(feeDiscountImpl.address);
+    feeDiscount = FeeDiscount__factory.connect(feeDiscountProxy.address, owner);
 
     p = await PoolUtil.deploy(
       owner,
       premia.address,
       spotPrice,
       feeReceiver.address,
-      premiaFeeDiscount.address,
+      feeDiscount.address,
     );
 
     await premia.mint(owner.address, parseEther(totalRewardAmount.toString()));
@@ -100,38 +111,37 @@ describe('PremiaMining', () => {
   it('should distribute PREMIA properly for each LP', async () => {
     const { number: initial } = await ethers.provider.getBlock('latest');
 
-    await mineBlockUntil(initial + 99);
     await p.pool
       .connect(lp1)
       .deposit(parseUnits('10', p.getTokenDecimals(false)), false);
 
-    await mineBlockUntil(initial + 109);
-    // LP1 deposits 10 at block 100
+    await increaseTimestamp(oneDay);
+
     await p.pool
       .connect(lp1)
       .deposit(parseUnits('10', p.getTokenDecimals(true)), true);
 
-    // LP2 deposits 20 at block 114
-    await mineBlockUntil(initial + 113);
+    await increaseTimestamp(2 * oneDay);
+
     await p.pool
       .connect(lp2)
       .deposit(parseUnits('20', p.getTokenDecimals(true)), true);
 
-    // There is 4 pools with equal alloc points, with premia reward of 4k per block
-    // Each pool should get 1k reward per block. Lp1 should therefore have 4 * 1000 pending reward now
+    // There is 4 pools with equal alloc points, with premia reward of 1k per day
+    // Each pool should get 250 reward per day. Lp1 should therefore have 2 * 250 pending reward now
     expect(
-      await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
-    ).to.eq(parseEther('4000'));
+      bnToNumber(
+        await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
+      ),
+    ).to.almost(500);
 
-    // LP3 deposits 30 at block 118
-    await mineBlockUntil(initial + 117);
+    await increaseTimestamp(3 * oneDay);
     await p.pool
       .connect(lp3)
       .deposit(parseUnits('30', p.getTokenDecimals(true)), true);
 
-    // LP1 deposits 10 more at block 120. At this point :
-    //   LP1 should have pending reward of : 4*1000 + 4*1/3*1000 + 2*1/6*1000 = 5666.66
-    await mineBlockUntil(initial + 119);
+    // LP1 should have pending reward of : 2*250 + 3*1/3*250 + 2*1/6*250 = 833.33
+    await increaseTimestamp(2 * oneDay);
     await p.pool
       .connect(lp1)
       .deposit(parseUnits('10', p.getTokenDecimals(true)), true);
@@ -139,13 +149,10 @@ describe('PremiaMining', () => {
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
       ),
-    ).to.almost(5666.66);
+    ).to.almost(833.33);
 
-    await increaseTimestamp(25 * 3600);
-
-    // LP2 withdraws 5 LPs at block 130. At this point:
-    //     LP2 should have pending reward of: 4*2/3*1000 + 2*2/6*1000 + 10*2/7*1000 = 6190.47
-    await mineBlockUntil(initial + 129);
+    // LP2 should have pending reward of: 3*2/3*250 + 2*2/6*250 + 5*2/7*250 = 1023.81
+    await increaseTimestamp(5 * oneDay);
     await p.pool
       .connect(lp2)
       .withdraw(parseUnits('5', p.getTokenDecimals(true)), true);
@@ -153,65 +160,62 @@ describe('PremiaMining', () => {
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp2.address),
       ),
-    ).to.almost(6190.47);
+    ).to.almost(1023.81);
 
-    // LP1 withdraws 20 LPs at block 340.
-    // LP2 withdraws 15 LPs at block 350.
-    // LP3 withdraws 30 LPs at block 360.
-    await mineBlockUntil(initial + 139);
+    await increaseTimestamp(oneDay);
     await p.pool
       .connect(lp1)
       .withdraw(parseUnits('20', p.getTokenDecimals(true)), true);
 
-    await mineBlockUntil(initial + 149);
+    await increaseTimestamp(oneDay);
     await p.pool
       .connect(lp2)
       .withdraw(parseUnits('15', p.getTokenDecimals(true)), true);
 
-    await mineBlockUntil(initial + 159);
+    await increaseTimestamp(oneDay);
     await p.pool
       .connect(lp3)
       .withdraw(parseUnits('30', p.getTokenDecimals(true)), true);
 
     expect(bnToNumber(await p.premiaMining.premiaRewardsAvailable())).to.almost(
-      totalRewardAmount - 50000,
+      totalRewardAmount - 15000 / 4,
     );
 
-    // LP1 should have: 5666 + 10*2/7*1000 + 10*2/6.5*1000 = 11600.73
+    // LP1 should have: 833.33 + 5*2/7*250 + 1*2/6.5*250 = 1267.4
     expect(
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
       ),
-    ).to.almost(11600.73);
-    // LP2 should have: 6190 + 10*1.5/6.5 * 1000 + 10*1.5/4.5*1000 = 11831.5
+    ).to.almost(1267.4);
+    // LP2 should have: 1023.81 + 1*1.5/6.5 * 250 + 1*1.5/4.5*250 = 1164.84
     expect(
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp2.address),
       ),
-    ).to.almost(11831.5);
-    // LP3 should have: 2*3/6*1000 + 10*3/7*1000 + 10*3/6.5*1000 + 10*3/4.5*1000 + 10*1000 = 26567.76
+    ).to.almost(1164.84);
+    // LP3 should have: 2*3/6*250 + 5*3/7*250 + 1*3/6.5*250 + 1*3/4.5*250 + 1*250 = 1317.77
     expect(
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp3.address),
       ),
-    ).to.almost(26567.76);
+    ).to.almost(1317.77);
     expect(
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, false, lp1.address),
       ),
-    ).to.almost(60000);
+    ).to.almost(4000);
 
-    await p.pool.connect(lp1).claimRewards(true);
-    await p.pool.connect(lp2).claimRewards(true);
-    await p.pool.connect(lp3).claimRewards(true);
+    await p.pool.connect(lp1)['claimRewards(bool)'](true);
+    await p.pool.connect(lp2)['claimRewards(bool)'](true);
+    await p.pool.connect(lp3)['claimRewards(bool)'](true);
     await expect(bnToNumber(await premia.balanceOf(lp1.address))).to.almost(
-      11600.73,
+      1267.4,
     );
     await expect(bnToNumber(await premia.balanceOf(lp2.address))).to.almost(
-      11831.5,
+      1164.84,
     );
     await expect(bnToNumber(await premia.balanceOf(lp3.address))).to.almost(
-      26567.76,
+      1317.77,
     );
   });
 
@@ -222,13 +226,19 @@ describe('PremiaMining', () => {
       .connect(lp1)
       .deposit(parseUnits('10', p.getTokenDecimals(true)), true);
 
-    await mineBlockUntil(initial + 300);
+    await increaseTimestamp(4 * 200 * oneDay + oneDay);
+
+    console.log(
+      bnToNumber(
+        await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
+      ),
+    );
 
     expect(
       await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
     ).to.eq(parseEther(totalRewardAmount.toString()));
 
-    await p.pool.connect(lp1).claimRewards(true);
+    await p.pool.connect(lp1)['claimRewards(bool)'](true);
     expect(await p.premiaMining.premiaRewardsAvailable()).to.eq(0);
     expect(await premia.balanceOf(lp1.address)).to.eq(
       parseEther(totalRewardAmount.toString()),
@@ -247,11 +257,11 @@ describe('PremiaMining', () => {
       .connect(owner)
       .addPremiaRewards(parseEther(totalRewardAmount.toString()));
 
-    await mineBlockUntil(initial + 360);
+    await increaseTimestamp(oneDay);
     expect(
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
       ),
-    ).to.almost(10000);
+    ).to.almost(250);
   });
 });

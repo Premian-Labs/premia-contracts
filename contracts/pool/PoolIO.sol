@@ -1,4 +1,5 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
+// For further clarification please see https://license.premia.legal
 
 pragma solidity ^0.8.0;
 
@@ -43,9 +44,7 @@ contract PoolIO is IPoolIO, PoolSwap {
     {}
 
     /**
-     * @notice set timestamp after which reinvestment is disabled
-     * @param timestamp timestamp to begin divestment
-     * @param isCallPool whether we set divestment timestamp for the call pool or put pool
+     * @inheritdoc IPoolIO
      */
     function setDivestmentTimestamp(uint64 timestamp, bool isCallPool)
         external
@@ -61,9 +60,7 @@ contract PoolIO is IPoolIO, PoolSwap {
     }
 
     /**
-     * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
-     * @param amount quantity of underlying currency to deposit
-     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
+     * @inheritdoc IPoolIO
      */
     function deposit(uint256 amount, bool isCallPool)
         external
@@ -74,53 +71,7 @@ contract PoolIO is IPoolIO, PoolSwap {
     }
 
     /**
-     * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
-     * @param amount quantity of underlying currency to deposit
-     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
-     * @param skipWethDeposit if false, will not try to deposit weth from attach eth
-     */
-    function _deposit(
-        uint256 amount,
-        bool isCallPool,
-        bool skipWethDeposit
-    ) internal {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
-        // Reset gradual divestment timestamp
-        delete l.divestmentTimestamps[msg.sender][isCallPool];
-
-        uint256 cap = _getPoolCapAmount(l, isCallPool);
-
-        require(
-            l.totalTVL[isCallPool] + amount <= cap,
-            "pool deposit cap reached"
-        );
-
-        _processPendingDeposits(l, isCallPool);
-
-        l.depositedAt[msg.sender][isCallPool] = block.timestamp;
-        _addUserTVL(l, msg.sender, isCallPool, amount);
-        _pullFrom(
-            msg.sender,
-            _getPoolToken(isCallPool),
-            amount,
-            skipWethDeposit
-        );
-
-        _addToDepositQueue(msg.sender, amount, isCallPool);
-
-        emit Deposit(msg.sender, isCallPool, amount);
-    }
-
-    /**
-     * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
-     * @param amount quantity of underlying currency to deposit
-     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
-
-     * @param amountOut amount out of tokens requested. If 0, we will swap exact amount necessary to pay the quote
-     * @param amountInMax amount in max of tokens
-     * @param path swap path
-     * @param isSushi whether we use sushi or uniV2 for the swap
+     * @inheritdoc IPoolIO
      */
     function swapAndDeposit(
         uint256 amount,
@@ -152,9 +103,7 @@ contract PoolIO is IPoolIO, PoolSwap {
     }
 
     /**
-     * @notice redeem pool share tokens for underlying asset
-     * @param amount quantity of share tokens to redeem
-     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
+     * @inheritdoc IPoolIO
      */
     function withdraw(uint256 amount, bool isCallPool) public override {
         PoolStorage.Layout storage l = PoolStorage.layout();
@@ -207,12 +156,7 @@ contract PoolIO is IPoolIO, PoolSwap {
     }
 
     /**
-     * @notice reassign short position to new underwriter
-     * @param tokenId ERC1155 token id (long or short)
-     * @param contractSize quantity of option contract tokens to reassign
-     * @return baseCost quantity of tokens required to reassign short position
-     * @return feeCost quantity of tokens required to pay fees
-     * @return amountOut quantity of liquidity freed and transferred to owner
+     * @inheritdoc IPoolIO
      */
     function reassign(uint256 tokenId, uint256 contractSize)
         external
@@ -247,13 +191,7 @@ contract PoolIO is IPoolIO, PoolSwap {
     }
 
     /**
-     * @notice reassign set of short position to new underwriter
-     * @param tokenIds array of ERC1155 token ids (long or short)
-     * @param contractSizes array of quantities of option contract tokens to reassign
-     * @return baseCosts quantities of tokens required to reassign each short position
-     * @return feeCosts quantities of tokens required to pay fees
-     * @return amountOutCall quantity of call pool liquidity freed and transferred to owner
-     * @return amountOutPut quantity of put pool liquidity freed and transferred to owner
+     * @inheritdoc IPoolIO
      */
     function reassignBatch(
         uint256[] calldata tokenIds,
@@ -310,14 +248,7 @@ contract PoolIO is IPoolIO, PoolSwap {
     }
 
     /**
-     * @notice withdraw all free liquidity and reassign set of short position to new underwriter
-     * @param isCallPool true for call, false for put
-     * @param tokenIds array of ERC1155 token ids (long or short)
-     * @param contractSizes array of quantities of option contract tokens to reassign
-     * @return baseCosts quantities of tokens required to reassign each short position
-     * @return feeCosts quantities of tokens required to pay fees
-     * @return amountOutCall quantity of call pool liquidity freed and transferred to owner
-     * @return amountOutPut quantity of put pool liquidity freed and transferred to owner
+     * @inheritdoc IPoolIO
      */
     function withdrawAllAndReassignBatch(
         bool isCallPool,
@@ -349,9 +280,7 @@ contract PoolIO is IPoolIO, PoolSwap {
     }
 
     /**
-     * @notice transfer accumulated fees to the fee receiver
-     * @return amountOutCall quantity of underlying tokens transferred
-     * @return amountOutPut quantity of base tokens transferred
+     * @inheritdoc IPoolIO
      */
     function withdrawFees()
         external
@@ -365,9 +294,7 @@ contract PoolIO is IPoolIO, PoolSwap {
     }
 
     /**
-     * @notice burn corresponding long and short option tokens and withdraw collateral
-     * @param tokenId ERC1155 token id (long or short)
-     * @param contractSize quantity of option contract tokens to annihilate
+     * @inheritdoc IPoolIO
      */
     function annihilate(uint256 tokenId, uint256 contractSize)
         external
@@ -395,13 +322,23 @@ contract PoolIO is IPoolIO, PoolSwap {
         );
     }
 
+    /**
+     * @inheritdoc IPoolIO
+     */
     function claimRewards(bool isCallPool) external override {
+        claimRewards(msg.sender, isCallPool);
+    }
+
+    /**
+     * @inheritdoc IPoolIO
+     */
+    function claimRewards(address account, bool isCallPool) public override {
         PoolStorage.Layout storage l = PoolStorage.layout();
-        uint256 userTVL = l.userTVL[msg.sender][isCallPool];
+        uint256 userTVL = l.userTVL[account][isCallPool];
         uint256 totalTVL = l.totalTVL[isCallPool];
 
         IPremiaMining(PREMIA_MINING_ADDRESS).claim(
-            msg.sender,
+            account,
             address(this),
             isCallPool,
             userTVL,
@@ -410,6 +347,9 @@ contract PoolIO is IPoolIO, PoolSwap {
         );
     }
 
+    /**
+     * @inheritdoc IPoolIO
+     */
     function updateMiningPools() external override {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -424,6 +364,45 @@ contract PoolIO is IPoolIO, PoolSwap {
             false,
             l.totalTVL[false]
         );
+    }
+
+    /**
+     * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
+     * @param amount quantity of underlying currency to deposit
+     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
+     * @param skipWethDeposit if false, will not try to deposit weth from attach eth
+     */
+    function _deposit(
+        uint256 amount,
+        bool isCallPool,
+        bool skipWethDeposit
+    ) internal {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        // Reset gradual divestment timestamp
+        delete l.divestmentTimestamps[msg.sender][isCallPool];
+
+        uint256 cap = _getPoolCapAmount(l, isCallPool);
+
+        require(
+            l.totalTVL[isCallPool] + amount <= cap,
+            "pool deposit cap reached"
+        );
+
+        _processPendingDeposits(l, isCallPool);
+
+        l.depositedAt[msg.sender][isCallPool] = block.timestamp;
+        _addUserTVL(l, msg.sender, isCallPool, amount);
+        _pullFrom(
+            msg.sender,
+            _getPoolToken(isCallPool),
+            amount,
+            skipWethDeposit
+        );
+
+        _addToDepositQueue(msg.sender, amount, isCallPool);
+
+        emit Deposit(msg.sender, isCallPool, amount);
     }
 
     function setBuyBackEnabled(bool state) external override {

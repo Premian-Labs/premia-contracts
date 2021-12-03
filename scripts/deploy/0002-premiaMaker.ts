@@ -8,7 +8,7 @@ async function main() {
   const [deployer] = await ethers.getSigners();
 
   const premia = '0x6399C842dD2bE3dE30BF99Bc7D1bBF6Fa3650E70';
-  const premiaStaking = '0x16f9D564Df80376C61AC914205D3fDfF7057d610';
+  const premiaStaking = '0xF1bB87563A122211d40d393eBf1c633c330377F9';
   const treasury = '0xc22FAe86443aEed038A4ED887bbA8F5035FD12F0';
 
   let uniswapRouters = [

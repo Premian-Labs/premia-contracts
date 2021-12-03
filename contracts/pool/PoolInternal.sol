@@ -1,7 +1,10 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: BUSL-1.1
+// For further clarification please see https://license.premia.legal
 
 pragma solidity ^0.8.0;
 
+import {IERC173} from "@solidstate/contracts/access/IERC173.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155EnumerableInternal, ERC1155EnumerableStorage, EnumerableSet} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
 import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
@@ -11,7 +14,7 @@ import {PoolStorage} from "./PoolStorage.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
-import {IPremiaFeeDiscount} from "../interface/IPremiaFeeDiscount.sol";
+import {IFeeDiscount} from "../staking/IFeeDiscount.sol";
 import {IPoolEvents} from "./IPoolEvents.sol";
 import {IPremiaMining} from "../mining/IPremiaMining.sol";
 import {IVolatilitySurfaceOracle} from "../oracle/IVolatilitySurfaceOracle.sol";
@@ -86,15 +89,21 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
     }
 
+    modifier onlyProtocolOwner() {
+        require(
+            msg.sender == IERC173(OwnableStorage.layout().owner).owner(),
+            "Not protocol owner"
+        );
+        _;
+    }
+
     function _getFeeDiscount(address feePayer)
         internal
         view
         returns (uint256 discount)
     {
         if (FEE_DISCOUNT_ADDRESS != address(0)) {
-            discount = IPremiaFeeDiscount(FEE_DISCOUNT_ADDRESS).getDiscount(
-                feePayer
-            );
+            discount = IFeeDiscount(FEE_DISCOUNT_ADDRESS).getDiscount(feePayer);
         }
     }
 
@@ -131,42 +140,18 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             args.strike64x64 > 0 && args.spot64x64 > 0 && args.maturity > 0,
             "invalid args"
         );
+
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
             args.contractSize,
             l.underlyingDecimals
         );
-        bool isCall = args.isCall;
 
-        int128 oldLiquidity64x64;
+        (int128 adjustedCLevel64x64, int128 oldLiquidity64x64) = l
+            .getRealPoolState(args.isCall);
 
-        {
-            PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
-            int128 pendingDeposits64x64;
-
-            if (batchData.eta != 0 && block.timestamp >= batchData.eta) {
-                pendingDeposits64x64 = ABDKMath64x64Token.fromDecimals(
-                    batchData.totalPendingDeposits,
-                    l.getTokenDecimals(isCall)
-                );
-            }
-
-            oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall).add(
-                pendingDeposits64x64
-            );
-            require(oldLiquidity64x64 > 0, "no liq");
-
-            if (pendingDeposits64x64 > 0) {
-                result.cLevel64x64 = l.calculateCLevel(
-                    oldLiquidity64x64.sub(pendingDeposits64x64),
-                    oldLiquidity64x64,
-                    isCall
-                );
-            } else {
-                result.cLevel64x64 = l.getCLevel(isCall);
-            }
-        }
+        require(oldLiquidity64x64 > 0, "no liq");
 
         int128 timeToMaturity64x64 = ABDKMath64x64.divu(
             args.maturity - block.timestamp,
@@ -178,12 +163,17 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         ).getAnnualizedVolatility64x64(
                 l.base,
                 l.underlying,
-                args.strike64x64.div(args.spot64x64),
+                args.spot64x64,
+                args.strike64x64,
                 timeToMaturity64x64,
-                isCall
+                args.isCall
             );
 
         require(annualizedVolatility64x64 > 0, "vol = 0");
+
+        int128 collateral64x64 = args.isCall
+            ? contractSize64x64
+            : contractSize64x64.mul(args.strike64x64);
 
         (
             int128 price64x64,
@@ -195,16 +185,16 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     args.strike64x64,
                     args.spot64x64,
                     timeToMaturity64x64,
-                    result.cLevel64x64,
+                    adjustedCLevel64x64,
                     oldLiquidity64x64,
-                    oldLiquidity64x64.sub(contractSize64x64),
+                    oldLiquidity64x64.sub(collateral64x64),
                     0x10000000000000000, // 64x64 fixed point representation of 1
                     MIN_APY_64x64,
-                    isCall
+                    args.isCall
                 )
             );
 
-        result.baseCost64x64 = isCall
+        result.baseCost64x64 = args.isCall
             ? price64x64.mul(contractSize64x64).div(args.spot64x64)
             : price64x64.mul(contractSize64x64);
         result.feeCost64x64 = result.baseCost64x64.mul(FEE_64x64);
@@ -251,7 +241,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     }
 
     /**
-     * @notice purchase call option
+     * @notice purchase option
      * @param l storage layout struct
      * @param account recipient of purchased option
      * @param maturity timestamp of option maturity
@@ -291,37 +281,33 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             );
         }
 
-        int128 cLevel64x64;
+        PoolStorage.QuoteResultInternal memory quote = _quote(
+            PoolStorage.QuoteArgsInternal(
+                account,
+                maturity,
+                strike64x64,
+                newPrice64x64,
+                contractSize,
+                isCall
+            )
+        );
 
-        {
-            PoolStorage.QuoteResultInternal memory quote = _quote(
-                PoolStorage.QuoteArgsInternal(
-                    account,
-                    maturity,
-                    strike64x64,
-                    newPrice64x64,
-                    contractSize,
-                    isCall
-                )
-            );
+        baseCost = ABDKMath64x64Token.toDecimals(
+            quote.baseCost64x64,
+            l.getTokenDecimals(isCall)
+        );
 
-            cLevel64x64 = quote.cLevel64x64;
-
-            baseCost = ABDKMath64x64Token.toDecimals(
-                quote.baseCost64x64,
-                l.getTokenDecimals(isCall)
-            );
-            feeCost = ABDKMath64x64Token.toDecimals(
-                quote.feeCost64x64,
-                l.getTokenDecimals(isCall)
-            );
-        }
+        feeCost = ABDKMath64x64Token.toDecimals(
+            quote.feeCost64x64,
+            l.getTokenDecimals(isCall)
+        );
 
         uint256 longTokenId = PoolStorage.formatTokenId(
             _getTokenType(isCall, true),
             maturity,
             strike64x64
         );
+
         uint256 shortTokenId = PoolStorage.formatTokenId(
             _getTokenType(isCall, false),
             maturity,
@@ -413,7 +399,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     }
 
     /**
-     * @notice exercise call option on behalf of holder
+     * @notice exercise option on behalf of holder
      * @dev used for processing of expired options if passed holder is zero address
      * @param holder owner of long option tokens to exercise
      * @param longTokenId long option token id
@@ -491,23 +477,25 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             // burn long option tokens from sender
             _burn(holder, longTokenId, contractSize);
 
+            uint256 fee;
+
             if (exerciseValue > 0) {
-                uint256 fee = _getFeeWithDiscount(
+                fee = _getFeeWithDiscount(
                     holder,
                     FEE_64x64.mulu(exerciseValue)
                 );
                 totalFee += fee;
 
                 _pushTo(holder, _getPoolToken(isCall), exerciseValue - fee);
-
-                emit Exercise(
-                    holder,
-                    longTokenId,
-                    contractSize,
-                    exerciseValue,
-                    fee
-                );
             }
+
+            emit Exercise(
+                holder,
+                longTokenId,
+                contractSize,
+                exerciseValue,
+                fee
+            );
         }
 
         totalFee += _burnShortTokenLoop(
@@ -854,11 +842,17 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         int128 newLiquidity64x64,
         bool isCallPool
     ) internal {
-        int128 cLevel64x64 = l.setCLevel(
+        int128 oldCLevel64x64 = l.getDecayAdjustedCLevel64x64(isCallPool);
+
+        int128 cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
+            oldCLevel64x64,
             oldLiquidity64x64,
             newLiquidity64x64,
             isCallPool
         );
+
+        l.setCLevel(cLevel64x64, isCallPool);
+
         emit UpdateCLevel(
             isCallPool,
             cLevel64x64,

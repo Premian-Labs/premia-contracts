@@ -3,12 +3,13 @@ import { ethers } from 'hardhat';
 import {
   ERC20Mock,
   ERC20Mock__factory,
+  FeeDiscount,
+  FeeDiscount__factory,
   IPool,
   PoolMock,
   PoolMock__factory,
-  PremiaFeeDiscount,
-  PremiaFeeDiscount__factory,
   Proxy__factory,
+  ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
 
 import { describeBehaviorOfPool } from './Pool.behavior';
@@ -62,7 +63,7 @@ describe('PoolProxy', function () {
   let uniswap: IUniswap;
 
   let xPremia: ERC20Mock;
-  let premiaFeeDiscount: PremiaFeeDiscount;
+  let feeDiscount: FeeDiscount;
 
   let pool: IPool;
   let poolMock: PoolMock;
@@ -97,21 +98,14 @@ describe('PoolProxy', function () {
 
     premia = await erc20Factory.deploy('PREMIA', 18);
     xPremia = await erc20Factory.deploy('xPREMIA', 18);
-    premiaFeeDiscount = await new PremiaFeeDiscount__factory(owner).deploy(
+
+    const feeDiscountImpl = await new FeeDiscount__factory(owner).deploy(
       xPremia.address,
     );
-
-    await premiaFeeDiscount.setStakeLevels([
-      { amount: parseEther('5000'), discount: 2500 }, // -25%
-      { amount: parseEther('50000'), discount: 5000 }, // -50%
-      { amount: parseEther('250000'), discount: 7500 }, // -75%
-      { amount: parseEther('500000'), discount: 9500 }, // -95%
-    ]);
-
-    await premiaFeeDiscount.setStakePeriod(oneMonth, 10000);
-    await premiaFeeDiscount.setStakePeriod(3 * oneMonth, 12500);
-    await premiaFeeDiscount.setStakePeriod(6 * oneMonth, 15000);
-    await premiaFeeDiscount.setStakePeriod(12 * oneMonth, 20000);
+    const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
+      owner,
+    ).deploy(feeDiscountImpl.address);
+    feeDiscount = FeeDiscount__factory.connect(feeDiscountProxy.address, owner);
 
     uniswap = await createUniswap(owner);
 
@@ -120,7 +114,7 @@ describe('PoolProxy', function () {
       premia.address,
       spotPrice,
       feeReceiver.address,
-      premiaFeeDiscount.address,
+      feeDiscount.address,
       uniswap.factory.address,
       uniswap.weth.address,
     );
@@ -856,16 +850,16 @@ describe('PoolProxy', function () {
           true,
         );
 
-        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(70.94);
+        expect(fixedToNumber(q.baseCost64x64) * spotPrice).to.almost(24.62);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
-        expect(fixedToNumber(q.cLevel64x64)).to.almost(3.64);
+        expect(fixedToNumber(q.cLevel64x64)).to.almost(1.82);
         expect(
           (fixedToNumber(q.baseCost64x64) * spotPrice) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(18.509);
+        ).to.almost(12.85);
       });
 
       it('should return min price based on min apy, if option is priced under', async () => {
@@ -945,16 +939,16 @@ describe('PoolProxy', function () {
           false,
         );
 
-        expect(fixedToNumber(q.baseCost64x64)).to.almost(129.58);
+        expect(fixedToNumber(q.baseCost64x64)).to.almost(45.14);
         expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
           fixedToNumber(q.baseCost64x64) * 0.01,
         );
-        expect(fixedToNumber(q.cLevel64x64)).to.almost(3.29);
+        expect(fixedToNumber(q.cLevel64x64)).to.almost(1.96);
         expect(
           fixedToNumber(q.baseCost64x64) /
             fixedToNumber(q.cLevel64x64) /
             fixedToNumber(q.slippageCoefficient64x64),
-        ).to.almost(39.29);
+        ).to.almost(21.03);
       });
 
       it('should return min price based on min apy, if option is priced under', async () => {
@@ -990,7 +984,7 @@ describe('PoolProxy', function () {
 
         const maturity = await p.getMaturity(5);
         const strike64x64 = fixedFromFloat(getStrike(!isCall));
-        const purchaseAmountNb = 10;
+        const purchaseAmountNb = 5;
         const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
         const quote = await pool.callStatic.quote(
@@ -1266,7 +1260,7 @@ describe('PoolProxy', function () {
           ).to.be.revertedWith('exp > 90 days');
         });
 
-        it('should revert if using a maturity not corresponding to end of UTC day', async () => {
+        it('should revert if using a maturity not corresponding to 8-hour increment', async () => {
           await p.depositLiquidity(
             owner,
             parseOption(isCall ? '100' : '100000', isCall),
@@ -1285,7 +1279,7 @@ describe('PoolProxy', function () {
                 isCall,
                 parseOption('100', isCall),
               ),
-          ).to.be.revertedWith('exp not end UTC day');
+          ).to.be.revertedWith('exp must be 8-hour increment');
         });
 
         it('should revert if using a strike that is too high', async () => {
@@ -2216,23 +2210,17 @@ describe('PoolProxy', function () {
           await xPremia.mint(lp1.address, parseEther('50000'));
           await xPremia
             .connect(buyer)
-            .approve(premiaFeeDiscount.address, ethers.constants.MaxUint256);
+            .approve(feeDiscount.address, ethers.constants.MaxUint256);
           await xPremia
             .connect(lp1)
-            .approve(premiaFeeDiscount.address, ethers.constants.MaxUint256);
-          await premiaFeeDiscount
-            .connect(buyer)
-            .stake(parseEther('5000'), oneMonth);
-          await premiaFeeDiscount
-            .connect(lp1)
-            .stake(parseEther('50000'), oneMonth);
+            .approve(feeDiscount.address, ethers.constants.MaxUint256);
+          await feeDiscount.connect(buyer).stake(parseEther('5000'), oneMonth);
+          await feeDiscount.connect(lp1).stake(parseEther('50000'), oneMonth);
 
           //
 
-          expect(await premiaFeeDiscount.getDiscount(buyer.address)).to.eq(
-            2500,
-          );
-          expect(await premiaFeeDiscount.getDiscount(lp1.address)).to.eq(5000);
+          expect(await feeDiscount.getDiscount(buyer.address)).to.eq(2500);
+          expect(await feeDiscount.getDiscount(lp1.address)).to.eq(5000);
 
           const longTokenId = formatTokenId({
             tokenType: p.getLong(isCall),
@@ -2967,6 +2955,18 @@ describe('PoolProxy', function () {
       ).to.be.revertedWith('liq lock 1d');
     });
   });
+
+  describe('#setPoolCaps', () =>
+    it('should updates pool caps if owner', async () => {
+      expect(pool.connect(lp1).setPoolCaps('123', '456')).to.be.revertedWith(
+        'Not protocol owner',
+      );
+
+      await pool.connect(owner).setPoolCaps('123', '456');
+      const caps = await pool.getCapAmounts();
+      expect(caps.callTokenCapAmount).to.eq('456');
+      expect(caps.putTokenCapAmount).to.eq('123');
+    }));
 
   describe('#getBuyers', () => {
     it('should return list of underwriters with buyback enabled', async () => {
