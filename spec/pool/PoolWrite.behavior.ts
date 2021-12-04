@@ -191,7 +191,7 @@ export function describeBehaviorOfPoolWrite({
 
           expect(fixedToNumber(q.baseCost64x64)).to.almost(45.14);
           expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
-            fixedToNumber(q.baseCost64x64) * 0.01,
+            fixedToNumber(q.baseCost64x64) * 0.03,
           );
           expect(fixedToNumber(q.cLevel64x64)).to.almost(1.98);
           expect(
