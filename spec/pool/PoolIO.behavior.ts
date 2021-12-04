@@ -36,11 +36,13 @@ import {
 interface PoolIOBehaviorArgs {
   deploy: () => Promise<IPool>;
   getPoolUtil: () => Promise<PoolUtil>;
+  getUniswap: () => Promise<IUniswap>;
 }
 
 export function describeBehaviorOfPoolIO({
   deploy,
   getPoolUtil,
+  getUniswap,
 }: PoolIOBehaviorArgs) {
   describe('::PoolIO', () => {
     let owner: SignerWithAddress;
@@ -59,7 +61,7 @@ export function describeBehaviorOfPoolIO({
       instance = await deploy();
       // TODO: don't
       p = await getPoolUtil();
-      uniswap = await createUniswap(owner);
+      uniswap = await getUniswap();
     });
 
     describe('#setDivestmentTimestamp', () => {

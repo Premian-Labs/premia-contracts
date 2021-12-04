@@ -162,6 +162,7 @@ describe('PoolProxy', function () {
   describeBehaviorOfPoolIO({
     deploy: async () => instance,
     getPoolUtil: async () => p,
+    getUniswap: async () => uniswap,
   });
 
   describeBehaviorOfPoolSettings({
@@ -178,6 +179,7 @@ describe('PoolProxy', function () {
   describeBehaviorOfPoolWrite({
     deploy: async () => instance,
     getPoolUtil: async () => p,
+    getUniswap: async () => uniswap,
   });
 
   describe('user TVL', () => {

@@ -14,6 +14,13 @@ import {
 import { bnToNumber } from '../../test/utils/math';
 
 import {
+  createUniswap,
+  createUniswapPair,
+  depositUniswapLiquidity,
+  IUniswap,
+} from '../../test/utils/uniswap';
+
+import {
   DECIMALS_BASE,
   DECIMALS_UNDERLYING,
   FEE,
@@ -31,18 +38,13 @@ import {
 interface PoolWriteBehaviorArgs {
   deploy: () => Promise<IPool>;
   getPoolUtil: () => Promise<PoolUtil>;
+  getUniswap: () => Promise<IUniswap>;
 }
-
-import {
-  createUniswap,
-  createUniswapPair,
-  depositUniswapLiquidity,
-  IUniswap,
-} from '../../test/utils/uniswap';
 
 export function describeBehaviorOfPoolWrite({
   deploy,
   getPoolUtil,
+  getUniswap,
 }: PoolWriteBehaviorArgs) {
   describe('::PoolWrite', () => {
     let owner: SignerWithAddress;
@@ -63,7 +65,7 @@ export function describeBehaviorOfPoolWrite({
       instance = await deploy();
       // TODO: don't
       p = await getPoolUtil();
-      uniswap = await createUniswap(owner);
+      uniswap = await getUniswap();
       feeReceiver = p.feeReceiver;
     });
 
