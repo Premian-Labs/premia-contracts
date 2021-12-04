@@ -45,7 +45,7 @@ export const DECIMALS_BASE = 18;
 export const DECIMALS_UNDERLYING = 8;
 export const SYMBOL_BASE = 'SYMBOL_BASE';
 export const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
-export const FEE = 0.01;
+export const FEE = 0.03;
 export const MIN_APY = 0.3;
 
 interface PoolUtilArgs {
