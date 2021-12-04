@@ -3,7 +3,6 @@ import { expect } from 'chai';
 import {
   IPool,
   FeeDiscount,
-  FeeDiscount__factory,
   ERC20Mock,
   ERC20Mock__factory,
   ProxyUpgradeableOwnable__factory,
@@ -37,6 +36,8 @@ import {
 
 interface PoolExerciseBehaviorArgs {
   deploy: () => Promise<IPool>;
+  getFeeDiscount: () => Promise<FeeDiscount>;
+  getXPremia: () => Promise<ERC20Mock>;
   getPoolUtil: () => Promise<PoolUtil>;
 }
 
@@ -51,6 +52,8 @@ const ONE_MONTH = 30 * 24 * 3600;
 
 export function describeBehaviorOfPoolExercise({
   deploy,
+  getFeeDiscount,
+  getXPremia,
   getPoolUtil,
 }: PoolExerciseBehaviorArgs) {
   describe('::PoolExercise', () => {
@@ -65,9 +68,6 @@ export function describeBehaviorOfPoolExercise({
     let p: PoolUtil;
     let uniswap: IUniswap;
 
-    let xPremia: ERC20Mock;
-    let feeDiscount: FeeDiscount;
-
     before(async () => {
       [owner, buyer, lp1, lp2, thirdParty, feeReceiver] =
         await ethers.getSigners();
@@ -78,19 +78,6 @@ export function describeBehaviorOfPoolExercise({
       // TODO: don't
       p = await getPoolUtil();
       uniswap = await createUniswap(owner);
-
-      xPremia = await new ERC20Mock__factory(owner).deploy('xPREMIA', 18);
-
-      const feeDiscountImpl = await new FeeDiscount__factory(owner).deploy(
-        xPremia.address,
-      );
-      const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
-        owner,
-      ).deploy(feeDiscountImpl.address);
-      feeDiscount = FeeDiscount__factory.connect(
-        feeDiscountProxy.address,
-        owner,
-      );
     });
 
     describe('#exerciseFrom', function () {
@@ -172,6 +159,9 @@ export function describeBehaviorOfPoolExercise({
               strike64x64,
               isCall,
             );
+
+            const feeDiscount = await getFeeDiscount();
+            const xPremia = await getXPremia();
 
             // Stake xPremia for fee discount
             await xPremia.mint(buyer.address, ethers.utils.parseEther('5000'));

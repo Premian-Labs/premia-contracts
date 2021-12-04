@@ -154,6 +154,8 @@ describe('PoolProxy', function () {
 
   describeBehaviorOfPoolExercise({
     deploy: async () => instance,
+    getFeeDiscount: async () => feeDiscount,
+    getXPremia: async () => xPremia,
     getPoolUtil: async () => p,
   });
 
