@@ -2967,4 +2967,40 @@ describe('PoolProxy', function () {
       expect(caps.callTokenCapAmount).to.eq('456');
       expect(caps.putTokenCapAmount).to.eq('123');
     }));
+
+  describe('#getLiquidityQueuePosition', () => {
+    it('should correctly return liquidity queue position', async () => {
+      const signers = await ethers.getSigners();
+
+      await p.depositLiquidity(signers[0], parseUnderlying('100'), true);
+      await p.depositLiquidity(signers[1], parseUnderlying('50'), true);
+      await p.depositLiquidity(signers[2], parseUnderlying('75'), true);
+      await p.depositLiquidity(signers[3], parseUnderlying('200'), true);
+
+      await p.depositLiquidity(signers[0], parseBase('10000'), false);
+      await p.depositLiquidity(signers[1], parseBase('5000'), false);
+      await p.depositLiquidity(signers[2], parseBase('7500'), false);
+      await p.depositLiquidity(signers[3], parseBase('20000'), false);
+
+      let result = await pool.getLiquidityQueuePosition(
+        signers[2].address,
+        true,
+      );
+      expect(result.liquidityBeforePosition).to.eq(parseUnderlying('150'));
+      expect(result.positionSize).to.eq(parseUnderlying('75'));
+
+      result = await pool.getLiquidityQueuePosition(signers[3].address, false);
+      expect(result.liquidityBeforePosition).to.eq(parseBase('22500'));
+      expect(result.positionSize).to.eq(parseBase('20000'));
+
+      result = await pool.getLiquidityQueuePosition(signers[0].address, true);
+      expect(result.liquidityBeforePosition).to.eq(0);
+      expect(result.positionSize).to.eq(parseUnderlying('100'));
+
+      // Not in queue
+      result = await pool.getLiquidityQueuePosition(signers[5].address, true);
+      expect(result.liquidityBeforePosition).to.eq(parseUnderlying('425'));
+      expect(result.positionSize).to.eq(0);
+    });
+  });
 });

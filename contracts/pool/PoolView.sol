@@ -193,6 +193,37 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
+    function getLiquidityQueuePosition(address account, bool isCallPool)
+        external
+        view
+        override
+        returns (uint256 liquidityBeforePosition, uint256 positionSize)
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        uint256 tokenId = _getFreeLiquidityTokenId(isCallPool);
+
+        if (!l.isInQueue(account, isCallPool)) {
+            liquidityBeforePosition = _totalSupply(tokenId);
+        } else {
+            mapping(address => address) storage asc = l.liquidityQueueAscending[
+                isCallPool
+            ];
+
+            address depositor = asc[address(0)];
+
+            while (depositor != account) {
+                liquidityBeforePosition += _balanceOf(depositor, tokenId);
+                depositor = asc[depositor];
+            }
+
+            positionSize = _balanceOf(depositor, tokenId);
+        }
+    }
+
+    /**
+     * @inheritdoc IPoolView
+     */
     function getPremiaMining() external view override returns (address) {
         return PREMIA_MINING_ADDRESS;
     }
