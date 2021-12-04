@@ -91,12 +91,7 @@ contract PoolView is IPoolView, PoolInternal {
         override
         returns (int128 cLevel64x64)
     {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        (cLevel64x64, ) = l.applyCLevelPendingDepositAdjustment(
-            l.getDecayAdjustedCLevel64x64(isCall),
-            l.totalFreeLiquiditySupply64x64(isCall),
-            isCall
-        );
+        (cLevel64x64, ) = PoolStorage.layout().getRealPoolState(isCall);
     }
 
     /**
@@ -193,6 +188,37 @@ contract PoolView is IPoolView, PoolInternal {
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
         return (l.totalTVL[true], l.totalTVL[false]);
+    }
+
+    /**
+     * @inheritdoc IPoolView
+     */
+    function getLiquidityQueuePosition(address account, bool isCallPool)
+        external
+        view
+        override
+        returns (uint256 liquidityBeforePosition, uint256 positionSize)
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        uint256 tokenId = _getFreeLiquidityTokenId(isCallPool);
+
+        if (!l.isInQueue(account, isCallPool)) {
+            liquidityBeforePosition = _totalSupply(tokenId);
+        } else {
+            mapping(address => address) storage asc = l.liquidityQueueAscending[
+                isCallPool
+            ];
+
+            address depositor = asc[address(0)];
+
+            while (depositor != account) {
+                liquidityBeforePosition += _balanceOf(depositor, tokenId);
+                depositor = asc[depositor];
+            }
+
+            positionSize = _balanceOf(depositor, tokenId);
+        }
     }
 
     /**

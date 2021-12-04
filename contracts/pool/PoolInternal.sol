@@ -140,20 +140,16 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             args.strike64x64 > 0 && args.spot64x64 > 0 && args.maturity > 0,
             "invalid args"
         );
+
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
             args.contractSize,
             l.underlyingDecimals
         );
-        bool isCall = args.isCall;
 
         (int128 adjustedCLevel64x64, int128 oldLiquidity64x64) = l
-            .applyCLevelPendingDepositAdjustment(
-                l.getDecayAdjustedCLevel64x64(isCall),
-                l.totalFreeLiquiditySupply64x64(isCall),
-                isCall
-            );
+            .getRealPoolState(args.isCall);
 
         require(oldLiquidity64x64 > 0, "no liq");
 
@@ -170,10 +166,14 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 args.spot64x64,
                 args.strike64x64,
                 timeToMaturity64x64,
-                isCall
+                args.isCall
             );
 
         require(annualizedVolatility64x64 > 0, "vol = 0");
+
+        int128 collateral64x64 = args.isCall
+            ? contractSize64x64
+            : contractSize64x64.mul(args.strike64x64);
 
         (
             int128 price64x64,
@@ -187,14 +187,14 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     timeToMaturity64x64,
                     adjustedCLevel64x64,
                     oldLiquidity64x64,
-                    oldLiquidity64x64.sub(contractSize64x64),
+                    oldLiquidity64x64.sub(collateral64x64),
                     0x10000000000000000, // 64x64 fixed point representation of 1
                     MIN_APY_64x64,
-                    isCall
+                    args.isCall
                 )
             );
 
-        result.baseCost64x64 = isCall
+        result.baseCost64x64 = args.isCall
             ? price64x64.mul(contractSize64x64).div(args.spot64x64)
             : price64x64.mul(contractSize64x64);
         result.feeCost64x64 = result.baseCost64x64.mul(FEE_64x64);

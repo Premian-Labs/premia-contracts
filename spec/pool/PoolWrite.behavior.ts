@@ -187,11 +187,11 @@ export function describeBehaviorOfPoolWrite({
             false,
           );
 
-          expect(fixedToNumber(q.baseCost64x64)).to.almost(34.68);
+          expect(fixedToNumber(q.baseCost64x64)).to.almost(45.14);
           expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
             fixedToNumber(q.baseCost64x64) * 0.01,
           );
-          expect(fixedToNumber(q.cLevel64x64)).to.almost(1.64);
+          expect(fixedToNumber(q.cLevel64x64)).to.almost(1.98);
           expect(
             fixedToNumber(q.baseCost64x64) /
               fixedToNumber(q.cLevel64x64) /
@@ -234,7 +234,7 @@ export function describeBehaviorOfPoolWrite({
 
           const maturity = await p.getMaturity(5);
           const strike64x64 = fixedFromFloat(p.getStrike(!isCall, 2000));
-          const purchaseAmountNb = 10;
+          const purchaseAmountNb = 5;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
           const quote = await instance.callStatic.quote(
