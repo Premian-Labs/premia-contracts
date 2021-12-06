@@ -511,20 +511,18 @@ describe('PoolProxy', function () {
           const userTVL = await p.pool.getUserTVL(lp1.address);
           const totalTVL = await p.pool.getTotalTVL();
           const baseCost = fixedToNumber(quote.baseCost64x64);
-          const feeCost =
-            (isCall ? 1 - exerciseValue : strike - exerciseValue) * FEE;
 
           expect(formatOptionToNb(userTVL.underlyingTVL, isCall)).to.almost(
-            isCall ? amountNb + baseCost - exerciseValue - feeCost : 0,
+            isCall ? amountNb + baseCost - exerciseValue : 0,
           );
           expect(formatOptionToNb(userTVL.baseTVL, isCall)).to.almost(
-            isCall ? 0 : amountNb + baseCost - exerciseValue - feeCost,
+            isCall ? 0 : amountNb + baseCost - exerciseValue,
           );
           expect(formatOptionToNb(totalTVL.underlyingTVL, isCall)).to.almost(
-            isCall ? amountNb + baseCost - exerciseValue - feeCost : 0,
+            isCall ? amountNb + baseCost - exerciseValue : 0,
           );
           expect(formatOptionToNb(totalTVL.baseTVL, isCall)).to.almost(
-            isCall ? 0 : amountNb + baseCost - exerciseValue - feeCost,
+            isCall ? 0 : amountNb + baseCost - exerciseValue,
           );
         });
 
