@@ -465,33 +465,28 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 fee;
 
         if (onlyExpired) {
+            // burn long option tokens from multiple holders
+            // transfer profit to and emit Exercise event for each holder in loop
+
             fee = _burnLongTokenLoop(
                 contractSize,
                 exerciseValue,
                 longTokenId,
-                isCall
+                _getPoolToken(isCall)
             );
         } else {
             // burn long option tokens from sender
-            _burn(holder, longTokenId, contractSize);
 
-            if (exerciseValue > 0) {
-                fee = _getFeeWithDiscount(
-                    holder,
-                    FEE_64x64.mulu(exerciseValue)
-                );
-
-                _pushTo(holder, _getPoolToken(isCall), exerciseValue - fee);
-            }
-
-            emit Exercise(
+            fee = _burnLongTokenInterval(
                 holder,
                 longTokenId,
                 contractSize,
                 exerciseValue,
-                fee
+                _getPoolToken(isCall)
             );
         }
+
+        // burn short option tokens from multiple underwriters
 
         _burnShortTokenLoop(
             contractSize,
@@ -597,7 +592,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 contractSize,
         uint256 exerciseValue,
         uint256 longTokenId,
-        bool isCall
+        address payoutToken
     ) internal returns (uint256 totalFee) {
         EnumerableSet.AddressSet storage holders = ERC1155EnumerableStorage
             .layout()
@@ -610,43 +605,52 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 longTokenHolder,
                 longTokenId
             );
+
             if (intervalContractSize > contractSize)
                 intervalContractSize = contractSize;
 
-            uint256 intervalExerciseValue;
+            uint256 intervalExerciseValue = (exerciseValue *
+                intervalContractSize) / contractSize;
 
-            uint256 fee;
-            if (exerciseValue > 0) {
-                intervalExerciseValue =
-                    (exerciseValue * intervalContractSize) /
-                    contractSize;
-
-                fee = _getFeeWithDiscount(
-                    longTokenHolder,
-                    FEE_64x64.mulu(intervalExerciseValue)
-                );
-                totalFee += fee;
-
-                exerciseValue -= intervalExerciseValue;
-                _pushTo(
-                    longTokenHolder,
-                    _getPoolToken(isCall),
-                    intervalExerciseValue - fee
-                );
-            }
-
-            contractSize -= intervalContractSize;
-
-            emit Exercise(
+            uint256 fee = _burnLongTokenInterval(
                 longTokenHolder,
                 longTokenId,
                 intervalContractSize,
-                intervalExerciseValue - fee,
-                fee
+                intervalExerciseValue,
+                payoutToken
             );
 
-            _burn(longTokenHolder, longTokenId, intervalContractSize);
+            exerciseValue -= intervalExerciseValue;
+            contractSize -= intervalContractSize;
+            totalFee += fee;
         }
+    }
+
+    function _burnLongTokenInterval(
+        address holder,
+        uint256 longTokenId,
+        uint256 contractSize,
+        uint256 intervalExerciseValue,
+        address payoutToken
+    ) internal returns (uint256 fee) {
+        if (intervalExerciseValue > 0) {
+            fee = _getFeeWithDiscount(
+                holder,
+                FEE_64x64.mulu(intervalExerciseValue)
+            );
+
+            _pushTo(holder, payoutToken, intervalExerciseValue - fee);
+        }
+
+        _burn(holder, longTokenId, contractSize);
+
+        emit Exercise(
+            holder,
+            longTokenId,
+            contractSize,
+            intervalExerciseValue,
+            fee
+        );
     }
 
     function _burnShortTokenLoop(
