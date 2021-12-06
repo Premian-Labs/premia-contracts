@@ -206,9 +206,8 @@ export function describeBehaviorOfPoolExercise({
 
             // Free liq = initial amount + premia paid
             expect(
-              (Number(formatOption(initialFreeLiqAmount, isCall)) -
-                exerciseValue) *
-                (1 - FEE * 0.5) +
+              Number(formatOption(initialFreeLiqAmount, isCall)) -
+                exerciseValue +
                 fixedToNumber(quote.baseCost64x64),
             ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
           });
@@ -277,9 +276,8 @@ export function describeBehaviorOfPoolExercise({
 
             // Free liq = initial amount + premia paid
             expect(
-              (Number(formatOption(initialFreeLiqAmount, isCall)) -
-                exerciseValue) *
-                (1 - FEE) +
+              Number(formatOption(initialFreeLiqAmount, isCall)) -
+                exerciseValue +
                 fixedToNumber(quote.baseCost64x64),
             ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
           });
@@ -381,9 +379,8 @@ export function describeBehaviorOfPoolExercise({
 
             // Free liq = initial amount + premia paid
             expect(
-              (Number(formatOption(initialFreeLiqAmount, isCall)) -
-                exerciseValue) *
-                (1 - FEE) +
+              Number(formatOption(initialFreeLiqAmount, isCall)) -
+                exerciseValue +
                 fixedToNumber(quote.baseCost64x64),
             ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
           });
@@ -501,7 +498,7 @@ export function describeBehaviorOfPoolExercise({
 
             // Free liq = initial amount + premia paid
             expect(
-              Number(formatOption(initialFreeLiqAmount, isCall)) * (1 - FEE) +
+              Number(formatOption(initialFreeLiqAmount, isCall)) +
                 fixedToNumber(quote.baseCost64x64),
             ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
           });
@@ -590,9 +587,8 @@ export function describeBehaviorOfPoolExercise({
 
             // Free liq = initial amount + premia paid - exerciseValue
             expect(
-              (Number(formatOption(initialFreeLiqAmount, isCall)) -
-                exerciseValue) *
-                (1 - FEE) +
+              Number(formatOption(initialFreeLiqAmount, isCall)) -
+                exerciseValue +
                 fixedToNumber(quote.baseCost64x64),
             ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
           });
