@@ -65,10 +65,32 @@ export function describeBehaviorOfPoolIO({
     });
 
     describe('#setDivestmentTimestamp', () => {
-      it('todo');
+      it('sets divestment timestamp and unsets if zero timestamp is passed', async () => {
+        const isCall = false;
+
+        let { timestamp } = await ethers.provider.getBlock('latest');
+
+        await instance.connect(lp1).setDivestmentTimestamp(timestamp, isCall);
+
+        expect(
+          (await instance.callStatic.getDivestmentTimestamps(lp1.address))[
+            +!isCall
+          ],
+        ).to.equal(timestamp);
+
+        await instance
+          .connect(lp1)
+          .setDivestmentTimestamp(ethers.constants.Zero, isCall);
+
+        expect(
+          (await instance.callStatic.getDivestmentTimestamps(lp1.address))[
+            +!isCall
+          ],
+        ).to.equal(ethers.constants.Zero);
+      });
 
       describe('reverts if', () => {
-        it('timestamp is less than one day after last deposit', async () => {
+        it('timestamp is less than one day after last deposit and greater than zero', async () => {
           const isCall = false;
 
           await instance.connect(lp1).deposit(ethers.constants.Zero, isCall);
@@ -83,6 +105,12 @@ export function describeBehaviorOfPoolIO({
 
           await expect(
             instance.setDivestmentTimestamp(timestamp + 86400, isCall),
+          ).not.to.be.reverted;
+
+          await expect(
+            instance
+              .connect(lp1)
+              .setDivestmentTimestamp(ethers.constants.Zero, isCall),
           ).not.to.be.reverted;
         });
       });
