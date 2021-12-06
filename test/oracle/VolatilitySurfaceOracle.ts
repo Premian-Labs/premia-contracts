@@ -28,8 +28,6 @@ describe('VolatilitySurfaceOracle', () => {
     0.14895038484273854, 0.034026549310791646,
   ].map((el) => Math.floor(el * 10 ** 12).toString());
 
-  console.log(coefficients);
-
   beforeEach(async () => {
     [owner, relayer, user] = await ethers.getSigners();
 
