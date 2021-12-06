@@ -1,20 +1,17 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { IPool } from '../../typechain';
-import { BigNumber, ContractTransaction } from 'ethers';
+import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   fixedFromFloat,
   fixedToNumber,
-  formatTokenId,
   getOptionTokenIds,
-  TokenType,
 } from '@premia/utils';
 
 import { bnToNumber } from '../../test/utils/math';
 
 import {
-  createUniswap,
   createUniswapPair,
   depositUniswapLiquidity,
   IUniswap,
@@ -23,11 +20,7 @@ import {
 import {
   DECIMALS_BASE,
   DECIMALS_UNDERLYING,
-  FEE,
   formatOption,
-  formatOptionToNb,
-  formatUnderlying,
-  getExerciseValue,
   getTokenDecimals,
   parseBase,
   parseOption,

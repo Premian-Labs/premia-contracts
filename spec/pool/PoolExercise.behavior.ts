@@ -1,38 +1,24 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import {
-  IPool,
-  FeeDiscount,
-  ERC20Mock,
-  ERC20Mock__factory,
-  ProxyUpgradeableOwnable__factory,
-} from '../../typechain';
-import { BigNumber, ContractTransaction } from 'ethers';
+import { ERC20Mock, FeeDiscount, IPool } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   fixedFromFloat,
   fixedToNumber,
   formatTokenId,
   getOptionTokenIds,
-  TokenType,
 } from '@premia/utils';
 
-import { bnToNumber } from '../../test/utils/math';
-
 import {
-  DECIMALS_BASE,
-  DECIMALS_UNDERLYING,
   FEE,
   formatOption,
-  formatOptionToNb,
   formatUnderlying,
   getExerciseValue,
-  getTokenDecimals,
   parseBase,
-  parseOption,
   parseUnderlying,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
+import { createUniswap, IUniswap } from '../../test/utils/uniswap';
 
 interface PoolExerciseBehaviorArgs {
   deploy: () => Promise<IPool>;
@@ -40,13 +26,6 @@ interface PoolExerciseBehaviorArgs {
   getXPremia: () => Promise<ERC20Mock>;
   getPoolUtil: () => Promise<PoolUtil>;
 }
-
-import {
-  createUniswap,
-  createUniswapPair,
-  depositUniswapLiquidity,
-  IUniswap,
-} from '../../test/utils/uniswap';
 
 const ONE_MONTH = 30 * 24 * 3600;
 

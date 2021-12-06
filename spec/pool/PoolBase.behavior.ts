@@ -6,20 +6,7 @@ import { BigNumber, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { formatTokenId, TokenType } from '@premia/utils';
 
-import {
-  DECIMALS_BASE,
-  DECIMALS_UNDERLYING,
-  FEE,
-  formatOption,
-  formatOptionToNb,
-  formatUnderlying,
-  getExerciseValue,
-  getTokenDecimals,
-  parseBase,
-  parseOption,
-  parseUnderlying,
-  PoolUtil,
-} from '../../test/pool/PoolUtil';
+import { parseOption, PoolUtil } from '../../test/pool/PoolUtil';
 
 interface PoolBaseBehaviorArgs {
   deploy: () => Promise<PoolBase>;

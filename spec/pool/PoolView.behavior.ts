@@ -1,30 +1,10 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { IPoolView, PoolExercise__factory } from '../../typechain';
-import { BigNumber, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import {
-  fixedFromFloat,
-  fixedToNumber,
-  formatTokenId,
-  getOptionTokenIds,
-  TokenType,
-} from '@premia/utils';
+import { fixedFromFloat, getOptionTokenIds } from '@premia/utils';
 
-import {
-  DECIMALS_BASE,
-  DECIMALS_UNDERLYING,
-  FEE,
-  formatOption,
-  formatOptionToNb,
-  formatUnderlying,
-  getExerciseValue,
-  getTokenDecimals,
-  parseBase,
-  parseOption,
-  parseUnderlying,
-  PoolUtil,
-} from '../../test/pool/PoolUtil';
+import { parseBase, parseUnderlying, PoolUtil } from '../../test/pool/PoolUtil';
 
 interface PoolViewBehaviorArgs {
   deploy: () => Promise<IPoolView>;

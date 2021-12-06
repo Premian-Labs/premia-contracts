@@ -19,26 +19,19 @@ import { describeBehaviorOfPoolSettings } from '../../spec/pool/PoolSettings.beh
 import { describeBehaviorOfPoolView } from '../../spec/pool/PoolView.behavior';
 import { describeBehaviorOfPoolWrite } from '../../spec/pool/PoolWrite.behavior';
 import chai, { expect } from 'chai';
-import { increaseTimestamp, setTimestamp } from '../utils/evm';
-import { hexlify, hexZeroPad, parseEther, parseUnits } from 'ethers/lib/utils';
+import { increaseTimestamp } from '../utils/evm';
+import { parseUnits } from 'ethers/lib/utils';
 import {
-  DECIMALS_BASE,
-  DECIMALS_UNDERLYING,
   FEE,
   formatOption,
   formatOptionToNb,
-  formatUnderlying,
   getExerciseValue,
-  getTokenDecimals,
-  parseBase,
   parseOption,
   parseUnderlying,
   PoolUtil,
 } from './PoolUtil';
-import { bnToNumber } from '../utils/math';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
-import { ZERO_ADDRESS } from '../utils/constants';
 import { describeBehaviorOfProxy } from '@solidstate/spec';
 import {
   fixedFromFloat,
@@ -47,12 +40,7 @@ import {
   getOptionTokenIds,
   TokenType,
 } from '@premia/utils';
-import {
-  createUniswap,
-  createUniswapPair,
-  depositUniswapLiquidity,
-  IUniswap,
-} from '../utils/uniswap';
+import { createUniswap, IUniswap } from '../utils/uniswap';
 
 chai.use(chaiAlmost(0.02));
 

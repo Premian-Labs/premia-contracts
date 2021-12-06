@@ -10,7 +10,7 @@ import {
 } from '../../typechain';
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { increaseTimestamp, setTimestamp } from '../utils/evm';
+import { increaseTimestamp } from '../utils/evm';
 import { formatEther, parseEther } from 'ethers/lib/utils';
 
 chai.use(chaiAlmost(0.2));
