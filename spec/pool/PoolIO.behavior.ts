@@ -69,25 +69,20 @@ export function describeBehaviorOfPoolIO({
 
       describe('reverts if', () => {
         it('timestamp is less than one day after last deposit', async () => {
-          await p.depositLiquidity(lp1, ethers.utils.parseEther('1000'), false);
-          let { timestamp } = await ethers.provider.getBlock('latest');
+          const isCall = false;
 
-          await ethers.provider.send('evm_setNextBlockTimestamp', [
-            ++timestamp,
-          ]);
+          await instance.connect(lp1).deposit(ethers.constants.Zero, isCall);
+
+          let { timestamp } = await ethers.provider.getBlock('latest');
 
           await expect(
             instance
               .connect(lp1)
-              .setDivestmentTimestamp(timestamp + 86400 - 500, false),
+              .setDivestmentTimestamp(timestamp + 86400 - 1, isCall),
           ).to.be.revertedWith('liq lock 1d');
 
-          await ethers.provider.send('evm_setNextBlockTimestamp', [
-            ++timestamp,
-          ]);
-
           await expect(
-            instance.setDivestmentTimestamp(timestamp + 86400, false),
+            instance.setDivestmentTimestamp(timestamp + 86400, isCall),
           ).not.to.be.reverted;
         });
       });
