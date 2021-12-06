@@ -633,6 +633,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 intervalExerciseValue,
         address payoutToken
     ) internal returns (uint256 fee) {
+        _burn(holder, longTokenId, contractSize);
+
         if (intervalExerciseValue > 0) {
             fee = _getFeeWithDiscount(
                 holder,
@@ -641,8 +643,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             _pushTo(holder, payoutToken, intervalExerciseValue - fee);
         }
-
-        _burn(holder, longTokenId, contractSize);
 
         emit Exercise(
             holder,
