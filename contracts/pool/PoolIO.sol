@@ -187,6 +187,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             newPrice64x64
         );
 
+        _subUserTVL(l, msg.sender, isCall, amountOut);
         _pushTo(msg.sender, _getPoolToken(isCall), amountOut);
     }
 
@@ -242,9 +243,15 @@ contract PoolIO is IPoolIO, PoolSwap {
             }
         }
 
-        _pushTo(msg.sender, _getPoolToken(true), amountOutCall);
+        if (amountOutCall > 0) {
+            _subUserTVL(l, msg.sender, true, amountOutCall);
+            _pushTo(msg.sender, _getPoolToken(true), amountOutCall);
+        }
 
-        _pushTo(msg.sender, _getPoolToken(false), amountOutPut);
+        if (amountOutPut > 0) {
+            _subUserTVL(l, msg.sender, false, amountOutPut);
+            _pushTo(msg.sender, _getPoolToken(false), amountOutPut);
+        }
     }
 
     /**
