@@ -47,7 +47,7 @@ describe('PremiaMakerKeeper', () => {
         await new ERC20Mock__factory(owner).deploy('PREMIA', 18)
       ).address,
       spotPrice,
-      contracts.premiaMaker.address,
+      contracts.premiaMaker,
       ZERO_ADDRESS,
     );
     keeper = await new PremiaMakerKeeper__factory(owner).deploy(

@@ -30,7 +30,7 @@ describe('ProcessExpiredKeeper', () => {
         await new ERC20Mock__factory(owner).deploy('PREMIA', 18)
       ).address,
       spotPrice,
-      feeReceiver.address,
+      feeReceiver,
       ZERO_ADDRESS,
     );
     expKeeper = await new ProcessExpiredKeeper__factory(owner).deploy(

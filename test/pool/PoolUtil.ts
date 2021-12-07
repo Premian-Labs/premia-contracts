@@ -3,28 +3,28 @@ import {
   ERC20Mock__factory,
   IPool,
   IPool__factory,
+  NFTDisplay__factory,
+  NFTSVG__factory,
   OptionMath__factory,
+  PoolBase__factory,
   PoolExercise__factory,
   PoolIO__factory,
-  PremiaMining,
-  PremiaMining__factory,
-  PremiaMiningProxy__factory,
-  PoolBase__factory,
   PoolMock__factory,
+  PoolSettings__factory,
   PoolView__factory,
   PoolWrite__factory,
   Premia,
   Premia__factory,
+  PremiaMining,
+  PremiaMining__factory,
+  PremiaMiningProxy__factory,
+  PremiaOptionNFTDisplay__factory,
   ProxyManager__factory,
+  ProxyUpgradeableOwnable__factory,
+  VolatilitySurfaceOracle,
+  VolatilitySurfaceOracle__factory,
   WETH9,
   WETH9__factory,
-  VolatilitySurfaceOracle,
-  ProxyUpgradeableOwnable__factory,
-  VolatilitySurfaceOracle__factory,
-  PremiaOptionNFTDisplay__factory,
-  NFTDisplay__factory,
-  NFTSVG__factory,
-  PoolSettings__factory,
 } from '../../typechain';
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -45,7 +45,7 @@ export const DECIMALS_BASE = 18;
 export const DECIMALS_UNDERLYING = 8;
 export const SYMBOL_BASE = 'SYMBOL_BASE';
 export const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
-export const FEE = 0.01;
+export const FEE = 0.03;
 export const MIN_APY = 0.3;
 
 interface PoolUtilArgs {
@@ -59,6 +59,7 @@ interface PoolUtilArgs {
   underlyingOracle: MockContract;
   premiaMining: PremiaMining;
   ivolOracle: VolatilitySurfaceOracle;
+  feeReceiver: any;
 }
 
 const ONE_DAY = 3600 * 24;
@@ -130,6 +131,7 @@ export class PoolUtil {
   underlyingOracle: MockContract;
   premiaMining: PremiaMining;
   ivolOracle: VolatilitySurfaceOracle;
+  feeReceiver: any;
 
   constructor(props: PoolUtilArgs) {
     this.premiaDiamond = props.premiaDiamond;
@@ -142,13 +144,14 @@ export class PoolUtil {
     this.underlyingOracle = props.underlyingOracle;
     this.premiaMining = props.premiaMining;
     this.ivolOracle = props.ivolOracle;
+    this.feeReceiver = props.feeReceiver;
   }
 
   static async deploy(
     deployer: SignerWithAddress,
     premia: string,
     priceUnderlying: number,
-    feeReceiver: string,
+    feeReceiver: any,
     premiaFeeDiscount: string,
     uniswapV2Factory?: string,
     wethAddress?: string,
@@ -278,7 +281,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
     );
@@ -303,7 +306,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
       uniswapV2Factory ?? ZERO_ADDRESS,
@@ -325,7 +328,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
     );
@@ -348,7 +351,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
     );
@@ -372,7 +375,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
     );
@@ -392,7 +395,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
     );
@@ -415,7 +418,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
       uniswapV2Factory ?? ZERO_ADDRESS,
@@ -511,6 +514,7 @@ export class PoolUtil {
       underlyingOracle,
       premiaMining: premiaMining,
       ivolOracle,
+      feeReceiver,
     });
   }
 
