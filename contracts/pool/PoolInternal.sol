@@ -565,7 +565,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 intervalContractSize = intervalTokenAmount;
             } else {
                 intervalContractSize = l.fromBaseToUnderlyingDecimals(
-                    strike64x64.inv().mulu(intervalContractSize)
+                    strike64x64.inv().mulu(intervalTokenAmount)
                 );
             }
 
