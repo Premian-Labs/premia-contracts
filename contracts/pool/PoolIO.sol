@@ -393,6 +393,20 @@ contract PoolIO is IPoolIO, PoolSwap {
         );
     }
 
+    function reduceUserTVL(
+        address[] calldata accounts,
+        uint256[] calldata amounts,
+        bool isCallPool
+    ) external onlyProtocolOwner {
+        require(accounts.length == amounts.length);
+
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        for (uint256 i; i < accounts.length; i++) {
+            _subUserTVL(l, accounts[i], isCallPool, amounts[i]);
+        }
+    }
+
     /**
      * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
      * @param amount quantity of underlying currency to deposit
