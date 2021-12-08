@@ -211,12 +211,11 @@ contract PoolIO is IPoolIO, PoolSwap {
     {
         require(tokenIds.length == contractSizes.length, "diff array length");
 
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
-        int128 newPrice64x64 = _update(l);
+        int128 newPrice64x64 = _update(PoolStorage.layout());
 
         baseCosts = new uint256[](tokenIds.length);
         feeCosts = new uint256[](tokenIds.length);
+        bool[] memory isCallToken = new bool[](tokenIds.length);
 
         for (uint256 i; i < tokenIds.length; i++) {
             (
@@ -228,8 +227,11 @@ contract PoolIO is IPoolIO, PoolSwap {
                 tokenType == PoolStorage.TokenType.LONG_CALL;
             uint256 amountOut;
             uint256 contractSize = contractSizes[i];
+
+            isCallToken[i] = isCall;
+
             (baseCosts[i], feeCosts[i], amountOut) = _reassign(
-                l,
+                PoolStorage.layout(),
                 msg.sender,
                 maturity,
                 strike64x64,
@@ -246,12 +248,28 @@ contract PoolIO is IPoolIO, PoolSwap {
         }
 
         if (amountOutCall > 0) {
-            _subUserTVL(l, msg.sender, true, amountOutCall);
+            uint256 tvlToSubtract = amountOutCall;
+            for (uint256 i; i < tokenIds.length; i++) {
+                if (isCallToken[i] == false) continue;
+
+                tvlToSubtract += baseCosts[i];
+                tvlToSubtract += feeCosts[i];
+            }
+
+            _subUserTVL(PoolStorage.layout(), msg.sender, true, tvlToSubtract);
             _pushTo(msg.sender, _getPoolToken(true), amountOutCall);
         }
 
         if (amountOutPut > 0) {
-            _subUserTVL(l, msg.sender, false, amountOutPut);
+            uint256 tvlToSubtract = amountOutPut;
+            for (uint256 i; i < tokenIds.length; i++) {
+                if (isCallToken[i] == true) continue;
+
+                tvlToSubtract += baseCosts[i];
+                tvlToSubtract += feeCosts[i];
+            }
+
+            _subUserTVL(PoolStorage.layout(), msg.sender, false, tvlToSubtract);
             _pushTo(msg.sender, _getPoolToken(false), amountOutPut);
         }
     }
