@@ -514,7 +514,7 @@ describe('PoolProxy', function () {
           );
         });
 
-        it('should decrease user TVL when free liquidity is moved as reserved liquidity', async () => {
+        it.only('should decrease user TVL when free liquidity is moved as reserved liquidity and not decrease user TVL when withdrawing reserved liquidity', async () => {
           const amountNb = isCall ? 10 : 100000;
           const amount = parseOption(amountNb.toString(), isCall);
           await p.depositLiquidity(lp1, amount, isCall);
@@ -558,7 +558,7 @@ describe('PoolProxy', function () {
               p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
             );
 
-          const lp1TVL = await p.pool.getUserTVL(lp1.address);
+          let lp1TVL = await p.pool.getUserTVL(lp1.address);
           const lp2TVL = await p.pool.getUserTVL(lp2.address);
           const totalTVL = await p.pool.getTotalTVL();
           const baseCost = fixedToNumber(quote.baseCost64x64);
@@ -587,6 +587,23 @@ describe('PoolProxy', function () {
           expect(formatOptionToNb(totalTVL.baseTVL, isCall)).to.almost(
             isCall ? 0 : amountNb + baseCost,
           );
+
+          await p.depositLiquidity(lp1, amount.div(2), isCall);
+          await increaseTimestamp(25 * 3600);
+
+          await p.pool.connect(lp1).withdraw(amount, isCall);
+
+          lp1TVL = await p.pool.getUserTVL(lp1.address);
+
+          expect(
+            await p.pool.balanceOf(
+              lp1.address,
+              p.getReservedLiqTokenId(isCall),
+            ),
+          ).to.eq(0);
+
+          expect(lp1TVL.underlyingTVL).to.eq(isCall ? amount.div(2) : 0);
+          expect(lp1TVL.baseTVL).to.eq(isCall ? 0 : amount.div(2));
         });
       });
     }
