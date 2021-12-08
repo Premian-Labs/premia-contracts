@@ -117,6 +117,8 @@ contract PoolIO is IPoolIO, PoolSwap {
 
         int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCallPool);
 
+        uint256 reservedLiqToWithdraw;
+
         {
             uint256 reservedLiqTokenId = _getReservedLiquidityTokenId(
                 isCallPool
@@ -127,7 +129,6 @@ contract PoolIO is IPoolIO, PoolSwap {
             );
 
             if (reservedLiquidity > 0) {
-                uint256 reservedLiqToWithdraw;
                 if (reservedLiquidity < toWithdraw) {
                     reservedLiqToWithdraw = reservedLiquidity;
                 } else {
@@ -150,7 +151,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
         }
 
-        _subUserTVL(l, msg.sender, isCallPool, amount);
+        _subUserTVL(l, msg.sender, isCallPool, amount - reservedLiqToWithdraw);
         _pushTo(msg.sender, _getPoolToken(isCallPool), amount);
         emit Withdrawal(msg.sender, isCallPool, depositedAt, amount);
     }
