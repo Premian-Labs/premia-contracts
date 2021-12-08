@@ -461,13 +461,28 @@ export function describeBehaviorOfPoolIO({
               tvlKey
             ];
 
-            const { amountOut, baseCost, feeCost } = await instance
-              .connect(lp1)
-              .callStatic.reassign(shortTokenId, shortTokenBalance);
-
-            await instance
+            const tx = await instance
               .connect(lp1)
               .reassign(shortTokenId, shortTokenBalance);
+
+            const receipt = await tx.wait();
+
+            const transferEvent = (
+              isCall ? p.underlying : p.base
+            ).interface.parseLog(
+              receipt.logs.find(
+                (l) =>
+                  l.topics[0] ==
+                  '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+              )!,
+            );
+
+            const purchaseEvent = receipt.events!.find(
+              (e) => e.event == 'Purchase',
+            )!;
+
+            const { value: amountOut } = transferEvent.args!;
+            const { baseCost, feeCost } = purchaseEvent.args!;
 
             const newUserTVL = (
               await instance.callStatic.getUserTVL(lp1.address)
