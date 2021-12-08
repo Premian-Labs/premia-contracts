@@ -539,30 +539,33 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             }
 
             // amount of liquidity provided by underwriter, accounting for reinvested premium
-            uint256 intervalContractSize = ((balance -
+            uint256 intervalTokenAmount = ((balance -
                 l.pendingDeposits[underwriter][l.nextDeposits[isCall].eta][
                     isCall
                 ]) * (toPay + premium)) / toPay;
-            if (intervalContractSize == 0) continue;
-            if (intervalContractSize > toPay) intervalContractSize = toPay;
+            if (intervalTokenAmount == 0) continue;
+            if (intervalTokenAmount > toPay) intervalTokenAmount = toPay;
 
             // amount of premium paid to underwriter
-            uint256 intervalPremium = (premium * intervalContractSize) / toPay;
+            uint256 intervalPremium = (premium * intervalTokenAmount) / toPay;
             premium -= intervalPremium;
-            toPay -= intervalContractSize;
+            toPay -= intervalTokenAmount;
             _addUserTVL(l, underwriter, isCall, intervalPremium);
 
             // burn free liquidity tokens from underwriter
             _burn(
                 underwriter,
                 freeLiqTokenId,
-                intervalContractSize - intervalPremium
+                intervalTokenAmount - intervalPremium
             );
 
-            if (isCall == false) {
-                // For PUT, conversion to contract amount is done here (Prior to this line, it is token amount)
+            uint256 intervalContractSize;
+
+            if (isCall) {
+                intervalContractSize = intervalTokenAmount;
+            } else {
                 intervalContractSize = l.fromBaseToUnderlyingDecimals(
-                    strike64x64.inv().mulu(intervalContractSize)
+                    strike64x64.inv().mulu(intervalTokenAmount)
                 );
             }
 
@@ -966,16 +969,28 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 userTVL = l.userTVL[user][isCallPool];
         uint256 totalTVL = l.totalTVL[isCallPool];
 
+        uint256 newUserTVL;
+        uint256 newTotalTVL;
+
+        if (userTVL > amount) {
+            newUserTVL = userTVL - amount;
+        }
+
+        if (totalTVL > amount) {
+            newTotalTVL = totalTVL - amount;
+        }
+
         IPremiaMining(PREMIA_MINING_ADDRESS).allocatePending(
             user,
             address(this),
             isCallPool,
             userTVL,
-            userTVL - amount,
+            newUserTVL,
             totalTVL
         );
-        l.userTVL[user][isCallPool] = userTVL - amount;
-        l.totalTVL[isCallPool] = totalTVL - amount;
+
+        l.userTVL[user][isCallPool] = newUserTVL;
+        l.totalTVL[isCallPool] = newTotalTVL;
     }
 
     /**
