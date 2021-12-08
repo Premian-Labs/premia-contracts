@@ -53,9 +53,11 @@ contract PoolIO is IPoolIO, PoolSwap {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         require(
-            timestamp >= l.depositedAt[msg.sender][isCallPool] + (1 days),
+            timestamp == 0 ||
+                timestamp >= l.depositedAt[msg.sender][isCallPool] + (1 days),
             "liq lock 1d"
         );
+
         l.divestmentTimestamps[msg.sender][isCallPool] = timestamp;
     }
 

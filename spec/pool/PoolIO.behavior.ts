@@ -56,29 +56,52 @@ export function describeBehaviorOfPoolIO({
     });
 
     describe('#setDivestmentTimestamp', () => {
-      it('todo');
+      it('sets divestment timestamp and unsets if zero timestamp is passed', async () => {
+        const isCall = false;
+
+        let { timestamp } = await ethers.provider.getBlock('latest');
+
+        await instance.connect(lp1).setDivestmentTimestamp(timestamp, isCall);
+
+        expect(
+          (await instance.callStatic.getDivestmentTimestamps(lp1.address))[
+            +!isCall
+          ],
+        ).to.equal(timestamp);
+
+        await instance
+          .connect(lp1)
+          .setDivestmentTimestamp(ethers.constants.Zero, isCall);
+
+        expect(
+          (await instance.callStatic.getDivestmentTimestamps(lp1.address))[
+            +!isCall
+          ],
+        ).to.equal(ethers.constants.Zero);
+      });
 
       describe('reverts if', () => {
-        it('timestamp is less than one day after last deposit', async () => {
-          await p.depositLiquidity(lp1, ethers.utils.parseEther('1000'), false);
-          let { timestamp } = await ethers.provider.getBlock('latest');
+        it('timestamp is less than one day after last deposit and greater than zero', async () => {
+          const isCall = false;
 
-          await ethers.provider.send('evm_setNextBlockTimestamp', [
-            ++timestamp,
-          ]);
+          await instance.connect(lp1).deposit(ethers.constants.Zero, isCall);
+
+          let { timestamp } = await ethers.provider.getBlock('latest');
 
           await expect(
             instance
               .connect(lp1)
-              .setDivestmentTimestamp(timestamp + 86400 - 500, false),
+              .setDivestmentTimestamp(timestamp + 86400 - 1, isCall),
           ).to.be.revertedWith('liq lock 1d');
 
-          await ethers.provider.send('evm_setNextBlockTimestamp', [
-            ++timestamp,
-          ]);
+          await expect(
+            instance.setDivestmentTimestamp(timestamp + 86400, isCall),
+          ).not.to.be.reverted;
 
           await expect(
-            instance.setDivestmentTimestamp(timestamp + 86400, false),
+            instance
+              .connect(lp1)
+              .setDivestmentTimestamp(ethers.constants.Zero, isCall),
           ).not.to.be.reverted;
         });
       });
