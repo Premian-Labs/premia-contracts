@@ -794,10 +794,10 @@ export function describeBehaviorOfPoolIO({
       it('todo');
     });
 
-    describe('#reduceUserTVL', () => {
+    describe('#increaseUserTVL', () => {
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
-          it('reduces TVL of given users by given amounts', async () => {
+          it('increases TVL of given users by given amounts', async () => {
             await p.depositLiquidity(lp1, parseOption('1', true), isCall);
             await p.depositLiquidity(lp2, parseOption('1', true), isCall);
 
@@ -816,7 +816,61 @@ export function describeBehaviorOfPoolIO({
             await PoolIO__factory.connect(
               instance.address,
               owner,
-            ).reduceUserTVL(
+            ).increaseUserTVL(
+              [lp1.address, lp2.address],
+              [amount1, amount2],
+              isCall,
+            );
+
+            const newUserTVL1 = (
+              await instance.callStatic.getUserTVL(lp1.address)
+            )[tvlKey];
+            const newUserTVL2 = (
+              await instance.callStatic.getUserTVL(lp2.address)
+            )[tvlKey];
+
+            expect(newUserTVL1).to.equal(oldUserTVL1.add(amount1));
+            expect(newUserTVL2).to.equal(oldUserTVL2.add(amount2));
+          });
+        });
+      }
+
+      describe('reverts if', () => {
+        it('sender is not protocol owner', async () => {
+          await expect(
+            PoolIO__factory.connect(instance.address, lp1).increaseUserTVL(
+              [lp1.address, lp2.address],
+              [ethers.constants.Zero, ethers.constants.Zero],
+              false,
+            ),
+          ).to.be.revertedWith('Not protocol owner');
+        });
+      });
+    });
+
+    describe('#decreaseUserTVL', () => {
+      for (const isCall of [true, false]) {
+        describe(isCall ? 'call' : 'put', () => {
+          it('decreases TVL of given users by given amounts', async () => {
+            await p.depositLiquidity(lp1, parseOption('1', true), isCall);
+            await p.depositLiquidity(lp2, parseOption('1', true), isCall);
+
+            const amount1 = ethers.constants.One;
+            const amount2 = ethers.constants.Two;
+
+            const tvlKey = isCall ? 'underlyingTVL' : 'baseTVL';
+
+            const oldUserTVL1 = (
+              await instance.callStatic.getUserTVL(lp1.address)
+            )[tvlKey];
+            const oldUserTVL2 = (
+              await instance.callStatic.getUserTVL(lp2.address)
+            )[tvlKey];
+
+            await PoolIO__factory.connect(
+              instance.address,
+              owner,
+            ).decreaseUserTVL(
               [lp1.address, lp2.address],
               [amount1, amount2],
               isCall,
@@ -838,7 +892,7 @@ export function describeBehaviorOfPoolIO({
       describe('reverts if', () => {
         it('sender is not protocol owner', async () => {
           await expect(
-            PoolIO__factory.connect(instance.address, lp1).reduceUserTVL(
+            PoolIO__factory.connect(instance.address, lp1).decreaseUserTVL(
               [lp1.address, lp2.address],
               [ethers.constants.Zero, ethers.constants.Zero],
               false,

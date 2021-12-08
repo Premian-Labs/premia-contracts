@@ -393,7 +393,21 @@ contract PoolIO is IPoolIO, PoolSwap {
         );
     }
 
-    function reduceUserTVL(
+    function increaseUserTVL(
+        address[] calldata accounts,
+        uint256[] calldata amounts,
+        bool isCallPool
+    ) external onlyProtocolOwner {
+        require(accounts.length == amounts.length);
+
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        for (uint256 i; i < accounts.length; i++) {
+            _addUserTVL(l, accounts[i], isCallPool, amounts[i]);
+        }
+    }
+
+    function decreaseUserTVL(
         address[] calldata accounts,
         uint256[] calldata amounts,
         bool isCallPool
