@@ -616,7 +616,92 @@ export function describeBehaviorOfPoolIO({
     });
 
     describe('#reassignBatch', function () {
-      it('todo');
+      for (const isCall of [true, false]) {
+        describe(isCall ? 'call' : 'put', () => {
+          it('deducts amount withdrawn plus fee from total TVL and amount withdrawn plus total premium paid from user TVL', async () => {
+            const maturity = await p.getMaturity(10);
+            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const amount = parseUnderlying('1');
+
+            await p.purchaseOption(
+              lp1,
+              buyer,
+              amount,
+              maturity,
+              strike64x64,
+              isCall,
+            );
+
+            await p.depositLiquidity(
+              lp2,
+              isCall
+                ? parseUnderlying('1').mul(2)
+                : parseBase('1').mul(fixedToNumber(strike64x64)).mul(2),
+              isCall,
+            );
+
+            await ethers.provider.send('evm_increaseTime', [25 * 3600]);
+
+            const shortTokenId = formatTokenId({
+              tokenType: p.getShort(isCall),
+              maturity,
+              strike64x64,
+            });
+
+            const shortTokenBalance = await instance.balanceOf(
+              lp1.address,
+              shortTokenId,
+            );
+
+            const tvlKey = isCall ? 'underlyingTVL' : 'baseTVL';
+
+            const oldUserTVL = (
+              await instance.callStatic.getUserTVL(lp1.address)
+            )[tvlKey];
+            const oldTotalTVL = (await instance.callStatic.getTotalTVL())[
+              tvlKey
+            ];
+
+            const tx = await instance
+              .connect(lp1)
+              .reassignBatch([shortTokenId], [shortTokenBalance]);
+
+            const receipt = await tx.wait();
+
+            const transferEvent = (
+              isCall ? p.underlying : p.base
+            ).interface.parseLog(
+              receipt.logs.find(
+                (l) =>
+                  l.topics[0] ==
+                  '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
+              )!,
+            );
+
+            const purchaseEvent = receipt.events!.find(
+              (e) => e.event == 'Purchase',
+            )!;
+
+            const { value: amountOut } = transferEvent.args!;
+            const { baseCost, feeCost } = purchaseEvent.args!;
+
+            const newUserTVL = (
+              await instance.callStatic.getUserTVL(lp1.address)
+            )[tvlKey];
+            const newTotalTVL = (await instance.callStatic.getTotalTVL())[
+              tvlKey
+            ];
+
+            expect(newUserTVL).to.equal(
+              oldUserTVL.sub(baseCost).sub(feeCost).sub(amountOut),
+            );
+
+            expect(newTotalTVL).to.equal(
+              oldTotalTVL.sub(amountOut).sub(feeCost),
+            );
+          });
+        });
+      }
 
       it('should revert if contract size is less than minimum', async () => {
         const isCall = true;
