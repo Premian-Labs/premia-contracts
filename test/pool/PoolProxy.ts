@@ -514,7 +514,7 @@ describe('PoolProxy', function () {
           );
         });
 
-        it.only('should decrease user TVL when free liquidity is moved as reserved liquidity and not decrease user TVL when withdrawing reserved liquidity', async () => {
+        it('should decrease user TVL when free liquidity is moved as reserved liquidity and not decrease user TVL when withdrawing reserved liquidity', async () => {
           const amountNb = isCall ? 10 : 100000;
           const amount = parseOption(amountNb.toString(), isCall);
           await p.depositLiquidity(lp1, amount, isCall);
