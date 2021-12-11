@@ -9,9 +9,9 @@ import {IFeeDiscount} from "./staking/IFeeDiscount.sol";
 import {IPremiaStaking} from "./staking/IPremiaStaking.sol";
 
 contract PremiaVoteProxy {
-    address internal PREMIA;
-    address internal xPREMIA;
-    address internal FEE_DISCOUNT;
+    address internal immutable PREMIA;
+    address internal immutable xPREMIA;
+    address internal immutable FEE_DISCOUNT;
 
     constructor(
         address _premia,
