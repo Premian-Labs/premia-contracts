@@ -9,13 +9,20 @@ import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 import {ERC20Permit} from "@solidstate/contracts/token/ERC20/permit/ERC20Permit.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 
+import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
+
+import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {IPremiaStaking} from "./IPremiaStaking.sol";
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 
 contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     using SafeERC20 for IERC20;
+    using ABDKMath64x64 for int128;
 
     address internal immutable PREMIA;
+
+    int128 internal constant ONE_64x64 = 0x10000000000000000;
+    int128 internal constant DECAY_RATE = 0x487a423b63e; // 2.7e-7
 
     constructor(address premia) {
         PREMIA = premia;
@@ -179,5 +186,24 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     function _getStakedPremiaAmount() internal view returns (uint256) {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         return IERC20(PREMIA).balanceOf(address(this)) - l.pendingWithdrawal;
+    }
+
+    function _decay(
+        uint256 pendingRewards,
+        uint256 oldTimestamp,
+        uint256 newTimestamp
+    ) internal pure returns (uint256) {
+        int128 pendingRewards64x64 = ABDKMath64x64Token.fromDecimals(
+            pendingRewards,
+            18
+        );
+
+        return
+            ABDKMath64x64Token.toDecimals(
+                pendingRewards64x64.mul(
+                    ONE_64x64.sub(DECAY_RATE).pow(newTimestamp - oldTimestamp)
+                ),
+                18
+            );
     }
 }

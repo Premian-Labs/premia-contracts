@@ -1,24 +1,28 @@
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
 import {
-  PremiaStaking,
-  PremiaStaking__factory,
-  PremiaStakingProxy__factory,
   ERC20Mock,
   ERC20Mock__factory,
+  PremiaStakingMock,
+  PremiaStakingMock__factory,
+  PremiaStakingProxy__factory,
 } from '../../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { signERC2612Permit } from 'eth-permit';
 import { increaseTimestamp } from '../utils/evm';
 import { parseEther } from 'ethers/lib/utils';
+import chaiAlmost from 'chai-almost';
+import { bnToNumber } from '../utils/math';
 
 let admin: SignerWithAddress;
 let alice: SignerWithAddress;
 let bob: SignerWithAddress;
 let carol: SignerWithAddress;
 let premia: ERC20Mock;
-let premiaStakingImplementation: PremiaStaking;
-let premiaStaking: PremiaStaking;
+let premiaStakingImplementation: PremiaStakingMock;
+let premiaStaking: PremiaStakingMock;
+
+chai.use(chaiAlmost(0.01));
 
 const ONE_DAY = 3600 * 24;
 
@@ -27,7 +31,7 @@ describe('PremiaStaking', () => {
     [admin, alice, bob, carol] = await ethers.getSigners();
 
     premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
-    premiaStakingImplementation = await new PremiaStaking__factory(
+    premiaStakingImplementation = await new PremiaStakingMock__factory(
       admin,
     ).deploy(premia.address);
 
@@ -35,7 +39,7 @@ describe('PremiaStaking', () => {
       admin,
     ).deploy(premiaStakingImplementation.address);
 
-    premiaStaking = PremiaStaking__factory.connect(
+    premiaStaking = PremiaStakingMock__factory.connect(
       premiaStakingProxy.address,
       admin,
     );
@@ -204,5 +208,16 @@ describe('PremiaStaking', () => {
     expect(alicePremiaBalance).to.eq(180);
     expect(bobPremiaBalance).to.eq(140);
     expect(carolPremiaBalance).to.eq(130);
+  });
+
+  it('should correctly calculate decay', async () => {
+    const oneMonth = 30 * 24 * 3600;
+    expect(
+      bnToNumber(await premiaStaking.decay(parseEther('100'), 0, oneMonth)),
+    ).to.almost(49.66);
+
+    expect(
+      bnToNumber(await premiaStaking.decay(parseEther('100'), 0, oneMonth * 2)),
+    ).to.almost(24.66);
   });
 });
