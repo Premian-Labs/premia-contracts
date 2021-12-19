@@ -1,5 +1,4 @@
 import Dotenv from 'dotenv';
-import fs from 'fs';
 // Hardhat plugins
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
