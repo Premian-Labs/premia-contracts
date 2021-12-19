@@ -130,7 +130,7 @@ export default {
     },
     rinkebyArbitrum: {
       url: `https://rinkeby.arbitrum.io/rpc`,
-      accounts: [ETH_MAIN_KEY],
+      accounts: [ETH_TEST_KEY],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
       // gasPrice: 100000000000,
