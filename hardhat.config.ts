@@ -17,13 +17,17 @@ import './tasks/accounts';
 import './tasks/typechain_generate_types';
 
 Dotenv.config();
+Dotenv.config({ path: './.env.secret' });
 
-const FORK_MODE = process.env.FORK_MODE === 'true';
-const ETH_TEST_KEY = process.env.ETH_TEST_PKEY;
-const BSC_KEY = process.env.BSC_PKEY;
-const ALCHEMY_KEY = process.env.ALCHEMY_KEY;
-const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
-const ETH_MAIN_PKEY = fs.readFileSync('./.secret').toString().trim();
+const {
+  API_KEY_ALCHEMY,
+  API_KEY_ETHERSCAN,
+  PKEY_BSC,
+  PKEY_ETH_MAIN,
+  PKEY_ETH_TEST,
+  FORK_MODE,
+  REPORT_GAS,
+} = process.env;
 
 export default {
   solidity: {
@@ -73,42 +77,42 @@ export default {
     hardhat: {
       allowUnlimitedContractSize: true,
       blockGasLimit: 180000000000,
-      ...(FORK_MODE
+      ...(FORK_MODE === 'true'
         ? {
             forking: {
-              url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
+              url: `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`,
               blockNumber: 13717777,
             },
           }
         : {}),
     },
     mainnet: {
-      url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-      accounts: [ETH_MAIN_PKEY],
+      url: `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`,
+      accounts: [PKEY_ETH_MAIN],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
       // gasPrice: 100000000000,
       timeout: 100000,
     },
     rinkeby: {
-      url: `https://eth-rinkeby.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-      accounts: [ETH_TEST_KEY],
+      url: `https://eth-rinkeby.alchemyapi.io/v2/${API_KEY_ALCHEMY}`,
+      accounts: [PKEY_ETH_TEST],
       //gas: 120000000000,
       blockGasLimit: 120000000000,
       //gasPrice: 10,
       timeout: 300000,
     },
     kovan: {
-      url: `https://eth-kovan.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-      accounts: [ETH_TEST_KEY],
+      url: `https://eth-kovan.alchemyapi.io/v2/${API_KEY_ALCHEMY}`,
+      accounts: [PKEY_ETH_TEST],
       //gas: 120000000000,
       blockGasLimit: 120000000000,
       //gasPrice: 10,
       timeout: 300000,
     },
     ropsten: {
-      url: `https://eth-ropsten.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-      accounts: [ETH_TEST_KEY],
+      url: `https://eth-ropsten.alchemyapi.io/v2/${API_KEY_ALCHEMY}`,
+      accounts: [PKEY_ETH_TEST],
       //gas: 120000000000,
       blockGasLimit: 120000000000,
       //gasPrice: 10,
@@ -116,7 +120,7 @@ export default {
     },
     arbitrum: {
       url: `https://arb1.arbitrum.io/rpc`,
-      accounts: [ETH_MAIN_PKEY],
+      accounts: [PKEY_ETH_MAIN],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
       //gasPrice: 10,
@@ -124,7 +128,7 @@ export default {
     },
     rinkebyArbitrum: {
       url: `https://rinkeby.arbitrum.io/rpc`,
-      accounts: [ETH_TEST_KEY],
+      accounts: [PKEY_ETH_TEST],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
       // gasPrice: 100000000000,
@@ -132,7 +136,7 @@ export default {
     },
     bsc: {
       url: `https://bsc-dataseed.binance.org/`,
-      accounts: [BSC_KEY],
+      accounts: [PKEY_BSC],
       //gas: 120000000000,
       blockGasLimit: 120000000000,
       //gasPrice: 10,
@@ -161,11 +165,11 @@ export default {
   },
 
   etherscan: {
-    apiKey: ETHERSCAN_KEY,
+    apiKey: API_KEY_ETHERSCAN,
   },
 
   gasReporter: {
-    enabled: process.env.REPORT_GAS === 'true',
+    enabled: REPORT_GAS === 'true',
   },
 
   spdxLicenseIdentifier: {
