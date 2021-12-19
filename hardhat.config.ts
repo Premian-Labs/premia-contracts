@@ -23,7 +23,7 @@ const ETH_TEST_KEY = process.env.ETH_TEST_PKEY;
 const BSC_KEY = process.env.BSC_PKEY;
 const ALCHEMY_KEY = process.env.ALCHEMY_KEY;
 const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
-const ETH_MAIN_KEY = fs.readFileSync('./.secret').toString();
+const ETH_MAIN_PKEY = fs.readFileSync('./.secret').toString().trim();
 
 export default {
   solidity: {
@@ -90,7 +90,7 @@ export default {
     },
     mainnet: {
       url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-      accounts: [ETH_MAIN_KEY],
+      accounts: [ETH_MAIN_PKEY],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
       // gasPrice: 100000000000,
@@ -122,7 +122,7 @@ export default {
     },
     arbitrum: {
       url: `https://arb1.arbitrum.io/rpc`,
-      accounts: [ETH_MAIN_KEY],
+      accounts: [ETH_MAIN_PKEY],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
       //gasPrice: 10,
@@ -130,7 +130,7 @@ export default {
     },
     rinkebyArbitrum: {
       url: `https://rinkeby.arbitrum.io/rpc`,
-      accounts: [ETH_MAIN_KEY],
+      accounts: [ETH_TEST_KEY],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
       // gasPrice: 100000000000,
@@ -147,6 +147,7 @@ export default {
   },
 
   abiExporter: {
+    runOnCompile: true,
     path: './abi',
     clear: true,
     flat: true,
