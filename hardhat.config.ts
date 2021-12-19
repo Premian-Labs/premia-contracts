@@ -147,6 +147,7 @@ export default {
   },
 
   abiExporter: {
+    runOnCompile: true,
     path: './abi',
     clear: true,
     flat: true,
