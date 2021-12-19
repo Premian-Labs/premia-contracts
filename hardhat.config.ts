@@ -29,7 +29,7 @@ export default {
   solidity: {
     compilers: [
       {
-        version: '0.8.9',
+        version: '0.8.10',
         settings: {
           optimizer: {
             enabled: true,
@@ -37,15 +37,7 @@ export default {
           },
         },
       },
-      {
-        version: '0.6.12',
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
-      },
+      // @uniswap/v2-periphery
       {
         version: '0.6.6',
         settings: {
@@ -55,6 +47,7 @@ export default {
           },
         },
       },
+      // @uniswap/v2-core
       {
         version: '0.5.16',
         settings: {
@@ -64,6 +57,7 @@ export default {
           },
         },
       },
+      // WETH
       {
         version: '0.4.18',
         settings: {
