@@ -22,10 +22,45 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     address internal immutable PREMIA;
 
     int128 internal constant ONE_64x64 = 0x10000000000000000;
-    int128 internal constant DECAY_RATE = 0x487a423b63e; // 2.7e-7
+    int128 internal constant DECAY_RATE_64x64 = 0x487a423b63e; // 2.7e-7
 
     constructor(address premia) {
         PREMIA = premia;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getAvailableRewards() external view override returns (uint256) {
+        return PremiaStakingStorage.layout().availableRewards;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getPendingRewards() external view override returns (uint256) {
+        return _getPendingRewards();
+    }
+
+    function _getPendingRewards() internal view returns (uint256) {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        return
+            l.availableRewards -
+            _decay(l.availableRewards, l.lastRewardUpdate, block.timestamp);
+    }
+
+    function _updateRewards() internal {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+
+        if (l.lastRewardUpdate == 0) {
+            l.lastRewardUpdate = block.timestamp;
+            return;
+        }
+
+        if (l.availableRewards == 0) return;
+
+        l.availableRewards -= _getPendingRewards();
+        l.lastRewardUpdate = block.timestamp;
     }
 
     /**
@@ -58,6 +93,8 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     }
 
     function _deposit(uint256 amount) internal {
+        _updateRewards();
+
         // Gets the amount of Premia locked in the contract
         uint256 totalPremia = _getStakedPremiaAmount();
 
@@ -93,6 +130,8 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
      * @inheritdoc IPremiaStaking
      */
     function startWithdraw(uint256 amount) external override {
+        _updateRewards();
+
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
         // Gets the amount of xPremia in existence
@@ -114,6 +153,8 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
      * @inheritdoc IPremiaStaking
      */
     function withdraw() external override {
+        _updateRewards();
+
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
         uint256 startDate = l.withdrawals[msg.sender].startDate;
@@ -157,7 +198,9 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         override
         returns (uint256)
     {
-        return (_getStakedPremiaAmount() * 1e18) / _totalSupply();
+        return
+            ((_getStakedPremiaAmount() + _getPendingRewards()) * 1e18) /
+            _totalSupply();
     }
 
     function getPendingWithdrawal(address user)
@@ -180,12 +223,15 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
      * @inheritdoc IPremiaStaking
      */
     function getStakedPremiaAmount() external view override returns (uint256) {
-        return _getStakedPremiaAmount();
+        return _getStakedPremiaAmount() + _getPendingRewards();
     }
 
     function _getStakedPremiaAmount() internal view returns (uint256) {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        return IERC20(PREMIA).balanceOf(address(this)) - l.pendingWithdrawal;
+        return
+            IERC20(PREMIA).balanceOf(address(this)) -
+            l.pendingWithdrawal -
+            l.availableRewards;
     }
 
     function _decay(
@@ -201,7 +247,9 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         return
             ABDKMath64x64Token.toDecimals(
                 pendingRewards64x64.mul(
-                    ONE_64x64.sub(DECAY_RATE).pow(newTimestamp - oldTimestamp)
+                    ONE_64x64.sub(DECAY_RATE_64x64).pow(
+                        newTimestamp - oldTimestamp
+                    )
                 ),
                 18
             );

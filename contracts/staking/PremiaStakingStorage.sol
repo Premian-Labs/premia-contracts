@@ -16,6 +16,8 @@ library PremiaStakingStorage {
         uint256 pendingWithdrawal;
         uint256 withdrawalDelay;
         mapping(address => Withdrawal) withdrawals;
+        uint256 availableRewards;
+        uint256 lastRewardUpdate; // Timestamp of last reward distribution update
     }
 
     function layout() internal pure returns (Layout storage l) {
