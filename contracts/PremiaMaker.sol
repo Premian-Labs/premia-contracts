@@ -16,6 +16,7 @@ import {PremiaMakerStorage} from "./PremiaMakerStorage.sol";
 import {IPoolIO} from "./pool/IPoolIO.sol";
 
 import {IPremiaMaker} from "./interface/IPremiaMaker.sol";
+import {IPremiaStaking} from "./staking/IPremiaStaking.sol";
 
 /// @author Premia
 /// @title A contract receiving all protocol fees, swapping them for premia
@@ -200,26 +201,34 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
                 path[1] = address(PREMIA);
             }
 
-            IUniswapV2Router02(_router).swapExactTokensForTokens(
-                amountMinusFee,
-                0,
-                path,
-                PREMIA_STAKING,
-                block.timestamp
-            );
+            uint256[] memory amounts = IUniswapV2Router02(_router)
+                .swapExactTokensForTokens(
+                    amountMinusFee,
+                    0,
+                    path,
+                    address(this),
+                    block.timestamp
+                );
+
+            premiaAmount = amounts[amounts.length - 1];
         } else {
             premiaAmount = amountMinusFee;
-            IERC20(PREMIA).safeTransfer(PREMIA_STAKING, premiaAmount);
+
             // Just for the event
             _router = address(0);
         }
 
-        emit Converted(
-            msg.sender,
-            _router,
-            _token,
-            amountMinusFee,
-            premiaAmount
-        );
+        if (premiaAmount > 0) {
+            IERC20(PREMIA).approve(PREMIA_STAKING, premiaAmount);
+            IPremiaStaking(PREMIA_STAKING).addRewards(premiaAmount);
+
+            emit Converted(
+                msg.sender,
+                _router,
+                _token,
+                amountMinusFee,
+                premiaAmount
+            );
+        }
     }
 }
