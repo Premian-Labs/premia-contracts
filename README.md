@@ -30,8 +30,9 @@ Create a `.env` file with the following values defined:
 | `FORK_MODE`     | if `true`, tests will be run against a mainnet fork               |
 | `ALCHEMY_KEY`   | [Alchemy](https://www.alchemy.com/) API key for node connectivity |
 | `ETH_TEST_PKEY` | private key for use on Rinkeby testnet                            |
-| `ETH_MAIN_KEY`  | private key for use on Ethereum mainnet                           |
 | `BSC_PKEY`      | private key for use on Binance Smart Chain                        |
+
+Create a `.secret` file containing a private key for production use.
 
 ### Testing
 
