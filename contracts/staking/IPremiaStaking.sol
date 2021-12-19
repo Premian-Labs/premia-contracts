@@ -14,6 +14,12 @@ interface IPremiaStaking {
     event Withdrawal(address indexed user, uint256 amount);
 
     /**
+     * @notice add premia tokens as available tokens to be distributed as rewards
+     * @param amount amount of premia tokens to add as rewards
+     */
+    function addRewards(uint256 amount) external;
+
+    /**
      * @notice get amount of tokens that have not yet been distributed as rewards
      * @return amount of tokens not yet distributed as rewards
      */

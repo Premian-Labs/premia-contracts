@@ -31,6 +31,18 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
+    function addRewards(uint256 amount) external override {
+        _updateRewards();
+
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+
+        IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
+        l.availableRewards += amount;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
     function getAvailableRewards() external view override returns (uint256) {
         return PremiaStakingStorage.layout().availableRewards;
     }
