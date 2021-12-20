@@ -251,19 +251,10 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         uint256 oldTimestamp,
         uint256 newTimestamp
     ) internal pure returns (uint256) {
-        int128 pendingRewards64x64 = ABDKMath64x64Token.fromDecimals(
-            pendingRewards,
-            18
-        );
-
         return
-            ABDKMath64x64Token.toDecimals(
-                pendingRewards64x64.mul(
-                    ONE_64x64.sub(DECAY_RATE_64x64).pow(
-                        newTimestamp - oldTimestamp
-                    )
-                ),
-                18
-            );
+            ONE_64x64
+                .sub(DECAY_RATE_64x64)
+                .pow(newTimestamp - oldTimestamp)
+                .mulu(pendingRewards);
     }
 }
