@@ -72,7 +72,7 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
 
     /// @notice Add UniswapRouters to the whitelist so that they can be used to swap tokens.
     /// @param accounts The addresses to add to the whitelist
-    function addWhitelistedRouter(address[] memory accounts)
+    function addWhitelistedRouters(address[] memory accounts)
         external
         onlyOwner
     {
@@ -85,7 +85,7 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
 
     /// @notice Remove UniswapRouters from the whitelist so that they cannot be used to swap tokens.
     /// @param accounts The addresses to remove the whitelist
-    function removeWhitelistedRouter(address[] memory accounts)
+    function removeWhitelistedRouters(address[] memory accounts)
         external
         onlyOwner
     {
@@ -205,7 +205,6 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
         }
 
         if (premiaAmount > 0) {
-            IERC20(PREMIA).approve(PREMIA_STAKING, premiaAmount);
             IPremiaStaking(PREMIA_STAKING).addRewards(premiaAmount);
 
             emit Converted(
