@@ -21,7 +21,6 @@ Dotenv.config({ path: './.env.secret' });
 const {
   API_KEY_ALCHEMY,
   API_KEY_ETHERSCAN,
-  PKEY_BSC,
   PKEY_ETH_MAIN,
   PKEY_ETH_TEST,
   FORK_MODE,
@@ -132,14 +131,6 @@ export default {
       // blockGasLimit: 120000000000,
       // gasPrice: 100000000000,
       timeout: 100000,
-    },
-    bsc: {
-      url: `https://bsc-dataseed.binance.org/`,
-      accounts: [PKEY_BSC],
-      //gas: 120000000000,
-      blockGasLimit: 120000000000,
-      //gasPrice: 10,
-      timeout: 300000,
     },
   },
 

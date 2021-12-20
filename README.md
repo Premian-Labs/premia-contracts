@@ -30,7 +30,6 @@ Create a `.env` file with the following values defined:
 | `API_KEY_ALCHEMY`   | [Alchemy](https://www.alchemy.com/) API key for node connectivity        |
 | `API_KEY_ETHERSCAN` | [Etherscan](https://etherscan.io//) API key for source code verification |
 | `PKEY_ETH_TEST`     | private key for test/development use on testnets                         |
-| `PKEY_BSC`          | private key for use on Binance Smart Chain                               |
 | `FORK_MODE`         | if `true`, the local Hardhat network will be forked from mainnet         |
 | `REPORT_GAS`        | if `true`, a gas report will be generated after running tests            |
 
