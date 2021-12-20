@@ -5,6 +5,7 @@ typechain
 todoList.txt
 .env
 .env.local
+.env.secret
 .DS_Store
 
 coverage/

@@ -1,5 +1,4 @@
 import Dotenv from 'dotenv';
-import fs from 'fs';
 // Hardhat plugins
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
@@ -17,19 +16,22 @@ import './tasks/accounts';
 import './tasks/typechain_generate_types';
 
 Dotenv.config();
+Dotenv.config({ path: './.env.secret' });
 
-const FORK_MODE = process.env.FORK_MODE === 'true';
-const ETH_TEST_KEY = process.env.ETH_TEST_PKEY;
-const BSC_KEY = process.env.BSC_PKEY;
-const ALCHEMY_KEY = process.env.ALCHEMY_KEY;
-const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY;
-const ETH_MAIN_KEY = fs.readFileSync('./.secret').toString();
+const {
+  API_KEY_ALCHEMY,
+  API_KEY_ETHERSCAN,
+  PKEY_ETH_MAIN,
+  PKEY_ETH_TEST,
+  FORK_MODE,
+  REPORT_GAS,
+} = process.env;
 
 export default {
   solidity: {
     compilers: [
       {
-        version: '0.8.9',
+        version: '0.8.10',
         settings: {
           optimizer: {
             enabled: true,
@@ -37,15 +39,7 @@ export default {
           },
         },
       },
-      {
-        version: '0.6.12',
-        settings: {
-          optimizer: {
-            enabled: true,
-            runs: 200,
-          },
-        },
-      },
+      // @uniswap/v2-periphery
       {
         version: '0.6.6',
         settings: {
@@ -55,6 +49,7 @@ export default {
           },
         },
       },
+      // @uniswap/v2-core
       {
         version: '0.5.16',
         settings: {
@@ -64,6 +59,7 @@ export default {
           },
         },
       },
+      // WETH
       {
         version: '0.4.18',
         settings: {
@@ -79,42 +75,42 @@ export default {
     hardhat: {
       allowUnlimitedContractSize: true,
       blockGasLimit: 180000000000,
-      ...(FORK_MODE
+      ...(FORK_MODE === 'true'
         ? {
             forking: {
-              url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
+              url: `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`,
               blockNumber: 13717777,
             },
           }
         : {}),
     },
     mainnet: {
-      url: `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-      accounts: [ETH_MAIN_KEY],
+      url: `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`,
+      accounts: [PKEY_ETH_MAIN],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
       // gasPrice: 100000000000,
       timeout: 100000,
     },
     rinkeby: {
-      url: `https://eth-rinkeby.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-      accounts: [ETH_TEST_KEY],
+      url: `https://eth-rinkeby.alchemyapi.io/v2/${API_KEY_ALCHEMY}`,
+      accounts: [PKEY_ETH_TEST],
       //gas: 120000000000,
       blockGasLimit: 120000000000,
       //gasPrice: 10,
       timeout: 300000,
     },
     kovan: {
-      url: `https://eth-kovan.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-      accounts: [ETH_TEST_KEY],
+      url: `https://eth-kovan.alchemyapi.io/v2/${API_KEY_ALCHEMY}`,
+      accounts: [PKEY_ETH_TEST],
       //gas: 120000000000,
       blockGasLimit: 120000000000,
       //gasPrice: 10,
       timeout: 300000,
     },
     ropsten: {
-      url: `https://eth-ropsten.alchemyapi.io/v2/${ALCHEMY_KEY}`,
-      accounts: [ETH_TEST_KEY],
+      url: `https://eth-ropsten.alchemyapi.io/v2/${API_KEY_ALCHEMY}`,
+      accounts: [PKEY_ETH_TEST],
       //gas: 120000000000,
       blockGasLimit: 120000000000,
       //gasPrice: 10,
@@ -122,7 +118,7 @@ export default {
     },
     arbitrum: {
       url: `https://arb1.arbitrum.io/rpc`,
-      accounts: [ETH_MAIN_KEY],
+      accounts: [PKEY_ETH_MAIN],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
       //gasPrice: 10,
@@ -130,23 +126,16 @@ export default {
     },
     rinkebyArbitrum: {
       url: `https://rinkeby.arbitrum.io/rpc`,
-      accounts: [ETH_MAIN_KEY],
+      accounts: [PKEY_ETH_TEST],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
       // gasPrice: 100000000000,
       timeout: 100000,
     },
-    bsc: {
-      url: `https://bsc-dataseed.binance.org/`,
-      accounts: [BSC_KEY],
-      //gas: 120000000000,
-      blockGasLimit: 120000000000,
-      //gasPrice: 10,
-      timeout: 300000,
-    },
   },
 
   abiExporter: {
+    runOnCompile: true,
     path: './abi',
     clear: true,
     flat: true,
@@ -166,11 +155,11 @@ export default {
   },
 
   etherscan: {
-    apiKey: ETHERSCAN_KEY,
+    apiKey: API_KEY_ETHERSCAN,
   },
 
   gasReporter: {
-    enabled: process.env.REPORT_GAS === 'true',
+    enabled: REPORT_GAS === 'true',
   },
 
   spdxLicenseIdentifier: {
