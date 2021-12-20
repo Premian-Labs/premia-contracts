@@ -153,7 +153,7 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
         PremiaMakerStorage.Layout storage l = PremiaMakerStorage.layout();
 
         require(
-            l.whitelistedRouters.contains(address(router)),
+            l.whitelistedRouters.contains(router),
             "Router not whitelisted"
         );
 
@@ -170,7 +170,7 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
         address weth = IUniswapV2Router02(router).WETH();
         uint256 premiaAmount;
 
-        if (token != address(PREMIA)) {
+        if (token != PREMIA) {
             address[] memory path;
 
             if (token != weth) {
@@ -179,12 +179,12 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
                     path = new address[](3);
                     path[0] = token;
                     path[1] = weth;
-                    path[2] = address(PREMIA);
+                    path[2] = PREMIA;
                 }
             } else {
                 path = new address[](2);
                 path[0] = token;
-                path[1] = address(PREMIA);
+                path[1] = PREMIA;
             }
 
             uint256[] memory amounts = IUniswapV2Router02(router)
