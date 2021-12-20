@@ -36,18 +36,6 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
 
     uint256 private constant INVERSE_BASIS_POINT = 1e4;
 
-    ////////////
-    // Events //
-    ////////////
-
-    event Converted(
-        address indexed account,
-        address indexed router,
-        address indexed token,
-        uint256 tokenAmount,
-        uint256 premiaAmount
-    );
-
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////

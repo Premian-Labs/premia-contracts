@@ -3,6 +3,14 @@
 pragma solidity ^0.8.0;
 
 interface IPremiaMaker {
+    event Converted(
+        address indexed account,
+        address indexed router,
+        address indexed token,
+        uint256 tokenAmount,
+        uint256 premiaAmount
+    );
+
     function getCustomPath(address _token)
         external
         view
