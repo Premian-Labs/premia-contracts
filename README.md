@@ -25,14 +25,20 @@ yarn prepare
 
 Create a `.env` file with the following values defined:
 
-| Key             | Description                                                       |
-| --------------- | ----------------------------------------------------------------- |
-| `FORK_MODE`     | if `true`, tests will be run against a mainnet fork               |
-| `ALCHEMY_KEY`   | [Alchemy](https://www.alchemy.com/) API key for node connectivity |
-| `ETH_TEST_PKEY` | private key for use on Rinkeby testnet                            |
-| `BSC_PKEY`      | private key for use on Binance Smart Chain                        |
+| Key                 | Description                                                              |
+| ------------------- | ------------------------------------------------------------------------ |
+| `API_KEY_ALCHEMY`   | [Alchemy](https://www.alchemy.com/) API key for node connectivity        |
+| `API_KEY_ETHERSCAN` | [Etherscan](https://etherscan.io//) API key for source code verification |
+| `PKEY_ETH_TEST`     | private key for test/development use on testnets                         |
+| `PKEY_BSC`          | private key for use on Binance Smart Chain                               |
+| `FORK_MODE`         | if `true`, the local Hardhat network will be forked from mainnet         |
+| `REPORT_GAS`        | if `true`, a gas report will be generated after running tests            |
 
-Create a `.secret` file containing a private key for production use.
+Create a `.env.secret` file with the following values defined:
+
+| Key             | Description                                |
+| --------------- | ------------------------------------------ |
+| `PKEY_ETH_MAIN` | private key for production use on mainnets |
 
 ### Testing
 
