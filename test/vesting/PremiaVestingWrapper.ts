@@ -22,8 +22,8 @@ let premia: PremiaErc20;
 let premiaVesting: PremiaVesting;
 let premiaVestingWrapper: PremiaVestingWrapper;
 
-const ALCHEMY_KEY = process.env.ALCHEMY_KEY;
-const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`;
+const { API_KEY_ALCHEMY } = process.env;
+const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`;
 const blockNumber = 13366880;
 const ONE_DAY = 24 * 3600;
 const VESTED_PREMIA = 2500000;

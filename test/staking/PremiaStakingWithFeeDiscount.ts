@@ -23,8 +23,8 @@ let admin: SignerWithAddress;
 let user1: SignerWithAddress;
 let treasury: SignerWithAddress;
 
-const ALCHEMY_KEY = process.env.ALCHEMY_KEY;
-const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${ALCHEMY_KEY}`;
+const { API_KEY_ALCHEMY } = process.env;
+const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`;
 const blockNumber = 13639700;
 
 let premia: PremiaErc20;
