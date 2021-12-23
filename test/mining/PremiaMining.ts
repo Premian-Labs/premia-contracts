@@ -19,7 +19,8 @@ chai.use(chaiAlmost(0.05));
 const oneDay = 24 * 3600;
 const oneMonth = 30 * oneDay;
 
-const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`;
+const { API_KEY_ALCHEMY } = process.env;
+const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`;
 const blockNumber = 13569795;
 
 describe('PremiaMining', () => {
