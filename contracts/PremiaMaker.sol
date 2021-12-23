@@ -205,6 +205,7 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
         }
 
         if (premiaAmount > 0) {
+            IERC20(PREMIA).approve(PREMIA_STAKING, premiaAmount);
             IPremiaStaking(PREMIA_STAKING).addRewards(premiaAmount);
 
             emit Converted(
