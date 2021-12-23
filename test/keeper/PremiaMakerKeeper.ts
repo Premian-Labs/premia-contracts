@@ -103,7 +103,7 @@ describe('PremiaMakerKeeper', () => {
       parseEther('1000'),
     );
 
-    await contracts.premiaMaker.addWhitelistedRouter([uniswap.router.address]);
+    await contracts.premiaMaker.addWhitelistedRouters([uniswap.router.address]);
   });
 
   it('should successfully detect if there is work to do or not', async () => {

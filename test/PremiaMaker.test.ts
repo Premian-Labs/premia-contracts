@@ -34,7 +34,7 @@ describe('PremiaMaker', () => {
 
     uniswap = await createUniswap(admin, p.premia);
 
-    await p.premiaMaker.addWhitelistedRouter([uniswap.router.address]);
+    await p.premiaMaker.addWhitelistedRouters([uniswap.router.address]);
     premiaWeth = uniswap.premiaWeth as UniswapV2Pair;
   });
 
