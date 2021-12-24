@@ -9,6 +9,7 @@ import {
   IUniswap,
 } from './utils/uniswap';
 import { ERC20Mock, UniswapV2Pair } from '../typechain';
+import { bnToNumber } from './utils/math';
 
 let p: IPremiaContracts;
 let admin: SignerWithAddress;
@@ -33,7 +34,7 @@ describe('PremiaMaker', () => {
 
     uniswap = await createUniswap(admin, p.premia);
 
-    await p.premiaMaker.addWhitelistedRouter([uniswap.router.address]);
+    await p.premiaMaker.addWhitelistedRouters([uniswap.router.address]);
     premiaWeth = uniswap.premiaWeth as UniswapV2Pair;
   });
 
@@ -70,9 +71,11 @@ describe('PremiaMaker', () => {
       parseEther('2'),
     );
     expect(await uniswap.dai.balanceOf(p.premiaMaker.address)).to.eq(0);
-    expect(
-      Number(formatEther(await p.premia.balanceOf(p.xPremia.address))),
-    ).to.almost(685.94);
+    expect(bnToNumber(await p.premia.balanceOf(p.xPremia.address))).to.almost(
+      685.94,
+    );
+
+    expect(bnToNumber(await p.xPremia.getAvailableRewards())).to.almost(685.94);
   });
 
   it('should make premia successfully with WETH', async () => {
@@ -109,9 +112,12 @@ describe('PremiaMaker', () => {
       parseEther('2'),
     );
     expect(await uniswap.weth.balanceOf(p.premiaMaker.address)).to.eq(0);
-    expect(
-      Number(formatEther(await p.premia.balanceOf(p.xPremia.address))),
-    ).to.almost(8885.91);
+    expect(bnToNumber(await p.premia.balanceOf(p.xPremia.address))).to.almost(
+      8885.91,
+    );
+    expect(bnToNumber(await p.xPremia.getAvailableRewards())).to.almost(
+      8885.91,
+    );
   });
 
   it('should send premia successfully to premiaStaking', async () => {
@@ -121,5 +127,6 @@ describe('PremiaMaker', () => {
     expect(await p.premia.balanceOf(treasury.address)).to.eq(parseEther('2'));
     expect(await p.premia.balanceOf(p.premiaMaker.address)).to.eq(0);
     expect(await p.premia.balanceOf(p.xPremia.address)).to.eq(parseEther('8'));
+    expect(bnToNumber(await p.xPremia.getAvailableRewards())).to.almost(8);
   });
 });

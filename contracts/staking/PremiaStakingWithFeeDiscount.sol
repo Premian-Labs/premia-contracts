@@ -134,6 +134,8 @@ contract PremiaStakingWithFeeDiscount is
         internal
         returns (uint256 premiaDeposited, uint256 xPremiaMinted)
     {
+        _updateRewards();
+
         // Gets the amount of Premia locked in the contract
         uint256 totalPremia = _getStakedPremiaAmount();
 
