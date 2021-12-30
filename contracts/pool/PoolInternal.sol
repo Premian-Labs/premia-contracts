@@ -462,13 +462,11 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             }
         }
 
-        uint256 fee;
-
         if (onlyExpired) {
             // burn long option tokens from multiple holders
             // transfer profit to and emit Exercise event for each holder in loop
 
-            fee = _burnLongTokenLoop(
+            _burnLongTokenLoop(
                 contractSize,
                 exerciseValue,
                 longTokenId,
@@ -477,7 +475,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         } else {
             // burn long option tokens from sender
 
-            fee = _burnLongTokenInterval(
+            _burnLongTokenInterval(
                 holder,
                 longTokenId,
                 contractSize,
@@ -498,8 +496,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             ),
             isCall
         );
-
-        _mint(FEE_RECEIVER_ADDRESS, _getReservedLiquidityTokenId(isCall), fee);
     }
 
     function _mintShortTokenLoop(
@@ -596,7 +592,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 exerciseValue,
         uint256 longTokenId,
         address payoutToken
-    ) internal returns (uint256 totalFee) {
+    ) internal {
         EnumerableSet.AddressSet storage holders = ERC1155EnumerableStorage
             .layout()
             .accountsByToken[longTokenId];
@@ -615,7 +611,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             uint256 intervalExerciseValue = (exerciseValue *
                 intervalContractSize) / contractSize;
 
-            uint256 fee = _burnLongTokenInterval(
+            _burnLongTokenInterval(
                 longTokenHolder,
                 longTokenId,
                 intervalContractSize,
@@ -625,7 +621,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             exerciseValue -= intervalExerciseValue;
             contractSize -= intervalContractSize;
-            totalFee += fee;
         }
     }
 
@@ -635,16 +630,14 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 contractSize,
         uint256 exerciseValue,
         address payoutToken
-    ) internal returns (uint256 fee) {
+    ) internal {
         _burn(holder, longTokenId, contractSize);
 
         if (exerciseValue > 0) {
-            fee = _getFeeWithDiscount(holder, FEE_64x64.mulu(exerciseValue));
-
-            _pushTo(holder, payoutToken, exerciseValue - fee);
+            _pushTo(holder, payoutToken, exerciseValue);
         }
 
-        emit Exercise(holder, longTokenId, contractSize, exerciseValue, fee);
+        emit Exercise(holder, longTokenId, contractSize, exerciseValue, 0);
     }
 
     function _burnShortTokenLoop(
