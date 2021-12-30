@@ -62,62 +62,6 @@ export function describeBehaviorOfPoolExercise({
     describe('#exerciseFrom', function () {
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
-          it('should revert if token is a SHORT token', async () => {
-            const maturity = await p.getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
-
-            await p.purchaseOption(
-              lp1,
-              buyer,
-              parseUnderlying('1'),
-              maturity,
-              strike64x64,
-              isCall,
-            );
-
-            const shortTokenId = formatTokenId({
-              tokenType: p.getShort(isCall),
-              maturity,
-              strike64x64,
-            });
-
-            await expect(
-              instance
-                .connect(buyer)
-                .exerciseFrom(
-                  buyer.address,
-                  shortTokenId,
-                  parseUnderlying('1'),
-                ),
-            ).to.be.revertedWith('invalid type');
-          });
-
-          it('should revert if option is not ITM', async () => {
-            const maturity = await p.getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
-
-            await p.purchaseOption(
-              lp1,
-              buyer,
-              parseUnderlying('1'),
-              maturity,
-              strike64x64,
-              isCall,
-            );
-
-            const longTokenId = formatTokenId({
-              tokenType: p.getLong(isCall),
-              maturity,
-              strike64x64,
-            });
-
-            await expect(
-              instance
-                .connect(buyer)
-                .exerciseFrom(buyer.address, longTokenId, parseUnderlying('1')),
-            ).to.be.revertedWith('not ITM');
-          });
-
           it('should successfully exercise', async () => {
             const maturity = await p.getMaturity(10);
             const strike = p.getStrike(isCall, 2000);
@@ -186,35 +130,6 @@ export function describeBehaviorOfPoolExercise({
                 exerciseValue +
                 fixedToNumber(quote.baseCost64x64),
             ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
-          });
-
-          it('should revert when exercising on behalf of user not approved', async () => {
-            const maturity = await p.getMaturity(10);
-            const strike = p.getStrike(isCall, 2000);
-            const strike64x64 = fixedFromFloat(strike);
-            const amountNb = 10;
-            const amount = parseUnderlying(amountNb.toString());
-
-            await p.purchaseOption(
-              lp1,
-              buyer,
-              amount,
-              maturity,
-              strike64x64,
-              isCall,
-            );
-
-            const longTokenId = formatTokenId({
-              tokenType: p.getLong(isCall),
-              maturity,
-              strike64x64,
-            });
-
-            await expect(
-              instance
-                .connect(thirdParty)
-                .exerciseFrom(buyer.address, longTokenId, amount),
-            ).to.be.revertedWith('not approved');
           });
 
           it('should succeed when exercising on behalf of user approved', async () => {
@@ -292,37 +207,100 @@ export function describeBehaviorOfPoolExercise({
           });
         });
       }
+
+      describe('reverts if', () => {
+        it('token is a SHORT token', async () => {
+          const isCall = false;
+
+          const maturity = await p.getMaturity(10);
+          const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+
+          await p.purchaseOption(
+            lp1,
+            buyer,
+            parseUnderlying('1'),
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          const shortTokenId = formatTokenId({
+            tokenType: p.getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await expect(
+            instance
+              .connect(buyer)
+              .exerciseFrom(buyer.address, shortTokenId, parseUnderlying('1')),
+          ).to.be.revertedWith('invalid type');
+        });
+
+        it('sender is not authorized to exercise on behalf of given user', async () => {
+          const isCall = false;
+
+          const maturity = await p.getMaturity(10);
+          const strike = p.getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amountNb = 10;
+          const amount = parseUnderlying(amountNb.toString());
+
+          await p.purchaseOption(
+            lp1,
+            buyer,
+            amount,
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          const longTokenId = formatTokenId({
+            tokenType: p.getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await expect(
+            instance
+              .connect(thirdParty)
+              .exerciseFrom(buyer.address, longTokenId, amount),
+          ).to.be.revertedWith('not approved');
+        });
+
+        it('option is not ITM', async () => {
+          const isCall = false;
+
+          const maturity = await p.getMaturity(10);
+          const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+
+          await p.purchaseOption(
+            lp1,
+            buyer,
+            parseUnderlying('1'),
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          const longTokenId = formatTokenId({
+            tokenType: p.getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await expect(
+            instance
+              .connect(buyer)
+              .exerciseFrom(buyer.address, longTokenId, parseUnderlying('1')),
+          ).to.be.revertedWith('not ITM');
+        });
+      });
     });
 
     describe('#processExpired', function () {
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
-          it('should revert if option is not expired', async () => {
-            const maturity = await p.getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
-
-            await p.purchaseOption(
-              lp1,
-              buyer,
-              parseUnderlying('1'),
-              maturity,
-              strike64x64,
-              isCall,
-            );
-
-            const longTokenId = formatTokenId({
-              tokenType: p.getLong(isCall),
-              maturity,
-              strike64x64,
-            });
-
-            await expect(
-              instance
-                .connect(buyer)
-                .processExpired(longTokenId, parseUnderlying('1')),
-            ).to.be.revertedWith('not expired');
-          });
-
           it('should successfully process expired option OTM', async () => {
             const maturity = await p.getMaturity(20);
             const strike = p.getStrike(isCall, 2000);
@@ -500,6 +478,36 @@ export function describeBehaviorOfPoolExercise({
           });
         });
       }
+
+      describe('reverts if', () => {
+        it('option is not expired', async () => {
+          const isCall = false;
+
+          const maturity = await p.getMaturity(10);
+          const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+
+          await p.purchaseOption(
+            lp1,
+            buyer,
+            parseUnderlying('1'),
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          const longTokenId = formatTokenId({
+            tokenType: p.getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await expect(
+            instance
+              .connect(buyer)
+              .processExpired(longTokenId, parseUnderlying('1')),
+          ).to.be.revertedWith('not expired');
+        });
+      });
     });
   });
 }
