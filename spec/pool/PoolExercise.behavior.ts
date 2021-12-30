@@ -10,7 +10,6 @@ import {
 } from '@premia/utils';
 
 import {
-  FEE,
   formatOption,
   formatUnderlying,
   getExerciseValue,
@@ -68,11 +67,6 @@ export function describeBehaviorOfPoolExercise({
             const strike64x64 = fixedFromFloat(strike);
             const amountNb = 10;
             const amount = parseUnderlying(amountNb.toString());
-            const initialFreeLiqAmount = isCall
-              ? amount
-              : parseBase(formatUnderlying(amount)).mul(
-                  fixedToNumber(strike64x64),
-                );
 
             const quote = await p.purchaseOption(
               lp1,
@@ -83,20 +77,27 @@ export function describeBehaviorOfPoolExercise({
               isCall,
             );
 
-            const longTokenId = formatTokenId({
-              tokenType: p.getLong(isCall),
+            const freeLiquidityTokenId = p.getFreeLiqTokenId(isCall);
+            const { long: longTokenId } = getOptionTokenIds(
               maturity,
               strike64x64,
-            });
+              isCall,
+            );
 
             const price = isCall ? strike * 1.4 : strike * 0.7;
             await p.setUnderlyingPrice(
               ethers.utils.parseUnits(price.toString(), 8),
             );
 
-            const curBalance = await p
+            const oldBalance = await p
               .getToken(isCall)
               .balanceOf(buyer.address);
+
+            const oldFreeLiquidity = isCall
+              ? amount
+              : parseBase(formatUnderlying(amount)).mul(
+                  fixedToNumber(strike64x64),
+                );
 
             await instance
               .connect(buyer)
@@ -108,43 +109,39 @@ export function describeBehaviorOfPoolExercise({
               amountNb,
               isCall,
             );
+
             const premium = (
               await p.getToken(isCall).balanceOf(buyer.address)
-            ).sub(curBalance);
+            ).sub(oldBalance);
 
             expect(Number(formatOption(premium, isCall))).to.almost(
               exerciseValue,
             );
+
             expect(await instance.balanceOf(buyer.address, longTokenId)).to.eq(
               0,
             );
 
-            const freeLiqAfter = await instance.balanceOf(
+            const newFreeLiquidity = await instance.balanceOf(
               lp1.address,
-              p.getFreeLiqTokenId(isCall),
+              freeLiquidityTokenId,
             );
 
             // Free liq = initial amount + premia paid
-            expect(
-              Number(formatOption(initialFreeLiqAmount, isCall)) -
+            expect(Number(formatOption(newFreeLiquidity, isCall))).to.almost(
+              Number(formatOption(oldFreeLiquidity, isCall)) -
                 exerciseValue +
                 fixedToNumber(quote.baseCost64x64),
-            ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
+            );
           });
 
-          it('should succeed when exercising on behalf of user approved', async () => {
+          it('processes eligible option on behalf of given account with approval', async () => {
             const maturity = await p.getMaturity(10);
             const strike = p.getStrike(isCall, 2000);
             const strike64x64 = fixedFromFloat(strike);
-            const amountNb = 10;
-            const amount = parseUnderlying(amountNb.toString());
-            const initialFreeLiqAmount = isCall
-              ? amount
-              : parseBase(formatUnderlying(amount)).mul(
-                  fixedToNumber(strike64x64),
-                );
+            const amount = parseUnderlying('1');
 
-            const quote = await p.purchaseOption(
+            await p.purchaseOption(
               lp1,
               buyer,
               amount,
@@ -163,47 +160,36 @@ export function describeBehaviorOfPoolExercise({
             await p.setUnderlyingPrice(
               ethers.utils.parseUnits(price.toString(), 8),
             );
-
-            const curBalance = await p
-              .getToken(isCall)
-              .balanceOf(buyer.address);
 
             await instance
               .connect(buyer)
               .setApprovalForAll(thirdParty.address, true);
 
-            await instance
-              .connect(thirdParty)
-              .exerciseFrom(buyer.address, longTokenId, amount);
+            const poolToken = p.getToken(isCall);
 
-            const exerciseValue = getExerciseValue(
-              price,
-              strike,
-              amountNb,
-              isCall,
+            const oldBalanceBuyer = await poolToken.callStatic.balanceOf(
+              buyer.address,
             );
-            const premium = (
-              await p.getToken(isCall).balanceOf(buyer.address)
-            ).sub(curBalance);
-            expect(Number(formatOption(premium, isCall))).to.almost(
-              exerciseValue,
+            const oldBalanceThirdParty = await poolToken.callStatic.balanceOf(
+              thirdParty.address,
             );
 
-            expect(await instance.balanceOf(buyer.address, longTokenId)).to.eq(
-              0,
+            await expect(
+              instance
+                .connect(thirdParty)
+                .exerciseFrom(buyer.address, longTokenId, amount),
+            ).not.to.be.reverted;
+
+            const newBalanceBuyer = await poolToken.callStatic.balanceOf(
+              buyer.address,
+            );
+            const newBalanceThirdParty = await poolToken.callStatic.balanceOf(
+              thirdParty.address,
             );
 
-            const freeLiqAfter = await instance.balanceOf(
-              lp1.address,
-              p.getFreeLiqTokenId(isCall),
-            );
-
-            // Free liq = initial amount + premia paid
-            expect(
-              Number(formatOption(initialFreeLiqAmount, isCall)) -
-                exerciseValue +
-                fixedToNumber(quote.baseCost64x64),
-            ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
+            // validate that buyer is beneficiary of transaction
+            expect(newBalanceBuyer).to.be.gt(oldBalanceBuyer);
+            expect(newBalanceThirdParty).to.equal(oldBalanceThirdParty);
           });
         });
       }
@@ -211,14 +197,14 @@ export function describeBehaviorOfPoolExercise({
       describe('reverts if', () => {
         it('token is a SHORT token', async () => {
           const isCall = false;
-
           const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+          const amount = parseUnderlying('1');
 
           await p.purchaseOption(
             lp1,
             buyer,
-            parseUnderlying('1'),
+            amount,
             maturity,
             strike64x64,
             isCall,
@@ -233,13 +219,12 @@ export function describeBehaviorOfPoolExercise({
           await expect(
             instance
               .connect(buyer)
-              .exerciseFrom(buyer.address, shortTokenId, parseUnderlying('1')),
+              .exerciseFrom(buyer.address, shortTokenId, amount),
           ).to.be.revertedWith('invalid type');
         });
 
-        it('sender is not authorized to exercise on behalf of given user', async () => {
+        it('sender is not authorized to exercise on behalf of given account', async () => {
           const isCall = false;
-
           const maturity = await p.getMaturity(10);
           const strike = p.getStrike(isCall, 2000);
           const strike64x64 = fixedFromFloat(strike);
@@ -270,14 +255,14 @@ export function describeBehaviorOfPoolExercise({
 
         it('option is not ITM', async () => {
           const isCall = false;
-
           const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+          const amount = parseUnderlying('1');
 
           await p.purchaseOption(
             lp1,
             buyer,
-            parseUnderlying('1'),
+            amount,
             maturity,
             strike64x64,
             isCall,
@@ -292,7 +277,7 @@ export function describeBehaviorOfPoolExercise({
           await expect(
             instance
               .connect(buyer)
-              .exerciseFrom(buyer.address, longTokenId, parseUnderlying('1')),
+              .exerciseFrom(buyer.address, longTokenId, amount),
           ).to.be.revertedWith('not ITM');
         });
       });
@@ -305,13 +290,8 @@ export function describeBehaviorOfPoolExercise({
             const maturity = await p.getMaturity(20);
             const strike = p.getStrike(isCall, 2000);
             const strike64x64 = fixedFromFloat(strike);
-
             const amount = parseUnderlying('1');
-            const initialFreeLiqAmount = isCall
-              ? amount
-              : parseBase(formatUnderlying(amount)).mul(
-                  fixedToNumber(strike64x64),
-                );
+
             const initialBuyerAmount = isCall
               ? parseUnderlying('100')
               : parseBase('10000');
@@ -329,7 +309,9 @@ export function describeBehaviorOfPoolExercise({
               maturity.add(100).toNumber(),
             ]);
 
-            const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
+            const freeLiquidityTokenId = p.getFreeLiqTokenId(isCall);
+            const { long: longTokenId, short: shortTokenId } =
+              getOptionTokenIds(maturity, strike64x64, isCall);
 
             const price = isCall ? strike * 0.7 : strike * 1.4;
             await p.setUnderlyingPrice(
@@ -340,24 +322,27 @@ export function describeBehaviorOfPoolExercise({
             expect(
               Number(
                 formatOption(
-                  await instance.balanceOf(
-                    lp1.address,
-                    p.getFreeLiqTokenId(isCall),
-                  ),
+                  await instance.balanceOf(lp1.address, freeLiquidityTokenId),
                   isCall,
                 ),
               ),
             ).to.almost(fixedToNumber(quote.baseCost64x64));
 
+            const oldFreeLiquidity = isCall
+              ? amount
+              : parseBase(formatUnderlying(amount)).mul(
+                  fixedToNumber(strike64x64),
+                );
+
             // Process expired
             await instance
               .connect(buyer)
-              .processExpired(tokenId.long, parseUnderlying('1'));
+              .processExpired(longTokenId, parseUnderlying('1'));
 
-            expect(await instance.balanceOf(buyer.address, tokenId.long)).to.eq(
+            expect(await instance.balanceOf(buyer.address, longTokenId)).to.eq(
               0,
             );
-            expect(await instance.balanceOf(lp1.address, tokenId.short)).to.eq(
+            expect(await instance.balanceOf(lp1.address, shortTokenId)).to.eq(
               0,
             );
 
@@ -375,16 +360,16 @@ export function describeBehaviorOfPoolExercise({
                 fixedToNumber(quote.feeCost64x64),
             );
 
-            const freeLiqAfter = await instance.balanceOf(
+            const newFreeLiquidity = await instance.balanceOf(
               lp1.address,
-              p.getFreeLiqTokenId(isCall),
+              freeLiquidityTokenId,
             );
 
             // Free liq = initial amount + premia paid
-            expect(
-              Number(formatOption(initialFreeLiqAmount, isCall)) +
+            expect(Number(formatOption(newFreeLiquidity, isCall))).to.almost(
+              Number(formatOption(oldFreeLiquidity, isCall)) +
                 fixedToNumber(quote.baseCost64x64),
-            ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
+            );
           });
 
           it('should successfully process expired option ITM', async () => {
@@ -393,7 +378,7 @@ export function describeBehaviorOfPoolExercise({
             const strike64x64 = fixedFromFloat(strike);
 
             const amount = parseUnderlying('1');
-            const initialFreeLiqAmount = isCall
+            const oldFreeLiquidity = isCall
               ? amount
               : parseBase(formatUnderlying(amount)).mul(
                   fixedToNumber(strike64x64),
@@ -415,7 +400,9 @@ export function describeBehaviorOfPoolExercise({
               maturity.add(100).toNumber(),
             ]);
 
-            const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
+            const freeLiquidityTokenId = p.getFreeLiqTokenId(isCall);
+            const { long: longTokenId, short: shortTokenId } =
+              getOptionTokenIds(maturity, strike64x64, isCall);
 
             const price = isCall ? strike * 1.4 : strike * 0.7;
             await p.setUnderlyingPrice(
@@ -426,10 +413,7 @@ export function describeBehaviorOfPoolExercise({
             expect(
               Number(
                 formatOption(
-                  await instance.balanceOf(
-                    lp1.address,
-                    p.getFreeLiqTokenId(isCall),
-                  ),
+                  await instance.balanceOf(lp1.address, freeLiquidityTokenId),
                   isCall,
                 ),
               ),
@@ -438,12 +422,12 @@ export function describeBehaviorOfPoolExercise({
             // Process expired
             await instance
               .connect(buyer)
-              .processExpired(tokenId.long, parseUnderlying('1'));
+              .processExpired(longTokenId, parseUnderlying('1'));
 
-            expect(await instance.balanceOf(buyer.address, tokenId.long)).to.eq(
+            expect(await instance.balanceOf(buyer.address, longTokenId)).to.eq(
               0,
             );
-            expect(await instance.balanceOf(lp1.address, tokenId.short)).to.eq(
+            expect(await instance.balanceOf(lp1.address, shortTokenId)).to.eq(
               0,
             );
 
@@ -464,17 +448,17 @@ export function describeBehaviorOfPoolExercise({
                 exerciseValue,
             );
 
-            const freeLiqAfter = await instance.balanceOf(
+            const newFreeLiquidity = await instance.balanceOf(
               lp1.address,
-              p.getFreeLiqTokenId(isCall),
+              freeLiquidityTokenId,
             );
 
             // Free liq = initial amount + premia paid - exerciseValue
-            expect(
-              Number(formatOption(initialFreeLiqAmount, isCall)) -
-                exerciseValue +
-                fixedToNumber(quote.baseCost64x64),
-            ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
+            expect(Number(formatOption(newFreeLiquidity, isCall))).to.almost(
+              Number(formatOption(oldFreeLiquidity, isCall)) +
+                fixedToNumber(quote.baseCost64x64) -
+                exerciseValue,
+            );
           });
         });
       }
@@ -482,14 +466,14 @@ export function describeBehaviorOfPoolExercise({
       describe('reverts if', () => {
         it('option is not expired', async () => {
           const isCall = false;
-
           const maturity = await p.getMaturity(10);
           const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+          const amount = parseUnderlying('1');
 
           await p.purchaseOption(
             lp1,
             buyer,
-            parseUnderlying('1'),
+            amount,
             maturity,
             strike64x64,
             isCall,
@@ -502,9 +486,7 @@ export function describeBehaviorOfPoolExercise({
           });
 
           await expect(
-            instance
-              .connect(buyer)
-              .processExpired(longTokenId, parseUnderlying('1')),
+            instance.connect(buyer).processExpired(longTokenId, amount),
           ).to.be.revertedWith('not expired');
         });
       });
