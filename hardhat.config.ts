@@ -2,6 +2,7 @@ import Dotenv from 'dotenv';
 // Hardhat plugins
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
+import '@solidstate/hardhat-4byte-uploader';
 import '@typechain/hardhat';
 import 'hardhat-abi-exporter';
 import 'hardhat-artifactor';
