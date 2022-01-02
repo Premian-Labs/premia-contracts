@@ -3,6 +3,7 @@ import Dotenv from 'dotenv';
 import '@nomiclabs/hardhat-waffle';
 import '@nomiclabs/hardhat-etherscan';
 import '@solidstate/hardhat-4byte-uploader';
+import '@solidstate/hardhat-test-short-circuit';
 import '@typechain/hardhat';
 import 'hardhat-abi-exporter';
 import 'hardhat-artifactor';

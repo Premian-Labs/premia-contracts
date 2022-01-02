@@ -731,6 +731,11 @@
   dependencies:
     axios "^0.24.0"
 
+"@solidstate/hardhat-test-short-circuit@^1.0.1":
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/@solidstate/hardhat-test-short-circuit/-/hardhat-test-short-circuit-1.0.1.tgz#f0113cbd1c614c528dc272b732f9eb59ee8808dd"
+  integrity sha512-TzwfolXsty71ay8IOmlIPE48B9YocADP3FK7BUduzRtDt5Mp0J0P7zOT8SHFPgCwSMIKLO2m8wPukWBZhlP40g==
+
 "@solidstate/library@^0.0.29":
   version "0.0.29"
   resolved "https://registry.yarnpkg.com/@solidstate/library/-/library-0.0.29.tgz#97c791349c1ac9c3c04199536f4e3016c24e32ad"

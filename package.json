@@ -45,6 +45,7 @@
     "@premia/utils": "^0.0.4",
     "@solidstate/contracts": "^0.0.29",
     "@solidstate/hardhat-4byte-uploader": "^1.0.0",
+    "@solidstate/hardhat-test-short-circuit": "^1.0.1",
     "@solidstate/library": "^0.0.29",
     "@solidstate/spec": "^0.0.29",
     "@typechain/ethers-v5": "^8.0.5",
