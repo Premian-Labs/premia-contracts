@@ -19,7 +19,8 @@ chai.use(chaiAlmost(0.05));
 const oneDay = 24 * 3600;
 const oneMonth = 30 * oneDay;
 
-const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${process.env.ALCHEMY_KEY}`;
+const { API_KEY_ALCHEMY } = process.env;
+const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`;
 const blockNumber = 13569795;
 
 describe('PremiaMining', () => {
@@ -71,7 +72,7 @@ describe('PremiaMining', () => {
       owner,
       premia.address,
       spotPrice,
-      feeReceiver.address,
+      feeReceiver,
       feeDiscount.address,
     );
 
@@ -227,12 +228,6 @@ describe('PremiaMining', () => {
       .deposit(parseUnits('10', p.getTokenDecimals(true)), true);
 
     await increaseTimestamp(4 * 200 * oneDay + oneDay);
-
-    console.log(
-      bnToNumber(
-        await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
-      ),
-    );
 
     expect(
       await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),

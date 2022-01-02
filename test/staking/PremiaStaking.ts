@@ -1,24 +1,28 @@
-import { expect } from 'chai';
+import chai, { expect } from 'chai';
 import {
-  PremiaStaking,
-  PremiaStaking__factory,
-  PremiaStakingProxy__factory,
   ERC20Mock,
   ERC20Mock__factory,
+  PremiaStakingMock,
+  PremiaStakingMock__factory,
+  PremiaStakingProxy__factory,
 } from '../../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { signERC2612Permit } from 'eth-permit';
 import { increaseTimestamp } from '../utils/evm';
 import { parseEther } from 'ethers/lib/utils';
+import chaiAlmost from 'chai-almost';
+import { bnToNumber } from '../utils/math';
 
 let admin: SignerWithAddress;
 let alice: SignerWithAddress;
 let bob: SignerWithAddress;
 let carol: SignerWithAddress;
 let premia: ERC20Mock;
-let premiaStakingImplementation: PremiaStaking;
-let premiaStaking: PremiaStaking;
+let premiaStakingImplementation: PremiaStakingMock;
+let premiaStaking: PremiaStakingMock;
+
+chai.use(chaiAlmost(0.01));
 
 const ONE_DAY = 3600 * 24;
 
@@ -27,7 +31,7 @@ describe('PremiaStaking', () => {
     [admin, alice, bob, carol] = await ethers.getSigners();
 
     premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
-    premiaStakingImplementation = await new PremiaStaking__factory(
+    premiaStakingImplementation = await new PremiaStakingMock__factory(
       admin,
     ).deploy(premia.address);
 
@@ -35,7 +39,7 @@ describe('PremiaStaking', () => {
       admin,
     ).deploy(premiaStakingImplementation.address);
 
-    premiaStaking = PremiaStaking__factory.connect(
+    premiaStaking = PremiaStakingMock__factory.connect(
       premiaStakingProxy.address,
       admin,
     );
@@ -44,6 +48,10 @@ describe('PremiaStaking', () => {
     await premia.mint(alice.address, '100');
     await premia.mint(bob.address, '100');
     await premia.mint(carol.address, '100');
+
+    await premia
+      .connect(admin)
+      .approve(premiaStaking.address, ethers.constants.MaxUint256);
   });
 
   it('should successfully enter with permit', async () => {
@@ -118,6 +126,44 @@ describe('PremiaStaking', () => {
     );
   });
 
+  it('should distribute partial rewards properly', async () => {
+    await premia.connect(alice).approve(premiaStaking.address, '100');
+    await premia.connect(bob).approve(premiaStaking.address, '100');
+    await premia.connect(carol).approve(premiaStaking.address, '100');
+
+    // Alice enters and gets 20 shares. Bob enters and gets 10 shares.
+    await premiaStaking.connect(alice).deposit('30');
+    await premiaStaking.connect(bob).deposit('10');
+    await premiaStaking.connect(carol).deposit('10');
+
+    let aliceBalance = await premiaStaking.balanceOf(alice.address);
+    let bobBalance = await premiaStaking.balanceOf(bob.address);
+    let carolBalance = await premiaStaking.balanceOf(carol.address);
+    let contractBalance = await premia.balanceOf(premiaStaking.address);
+
+    expect(aliceBalance).to.eq(30);
+    expect(bobBalance).to.eq(10);
+    expect(carolBalance).to.eq(10);
+    expect(contractBalance).to.eq(50);
+
+    // PremiaStaking get 20 more PREMIAs from an external source.
+    await premiaStaking.connect(admin).addRewards('50');
+
+    await premiaStaking.connect(bob).startWithdraw('10');
+    expect((await premiaStaking.getPendingWithdrawal(bob.address))[0]).to.eq(
+      '10',
+    );
+
+    await increaseTimestamp(ONE_DAY * 30);
+
+    await premiaStaking.connect(bob).withdraw();
+
+    await premiaStaking.connect(carol).startWithdraw('10');
+    expect((await premiaStaking.getPendingWithdrawal(carol.address))[0]).to.eq(
+      '16',
+    );
+  });
+
   it('should work with more than one participant', async () => {
     await premia.connect(alice).approve(premiaStaking.address, '100');
     await premia.connect(bob).approve(premiaStaking.address, '100');
@@ -139,7 +185,16 @@ describe('PremiaStaking', () => {
     expect(contractBalance).to.eq(50);
 
     // PremiaStaking get 20 more PREMIAs from an external source.
-    await premia.connect(admin).transfer(premiaStaking.address, '50');
+    await premiaStaking.connect(admin).addRewards('50');
+
+    await increaseTimestamp(ONE_DAY * 30);
+
+    expect(await premiaStaking.getPendingRewards()).to.eq('26');
+    expect(await premiaStaking.getXPremiaToPremiaRatio()).to.eq(
+      parseEther('1.52'),
+    );
+
+    await increaseTimestamp(ONE_DAY * 300000);
 
     // Bob deposits 50 more PREMIAs. She should receive 50*50/100 = 25 shares.
     await premiaStaking.connect(bob).deposit('50');
@@ -168,7 +223,13 @@ describe('PremiaStaking', () => {
     expect(carolBalance).to.eq(10);
 
     // Pending withdrawals should not count anymore as staked
-    await premia.connect(admin).transfer(premiaStaking.address, '100');
+    await premiaStaking.connect(admin).addRewards('100');
+
+    await increaseTimestamp(ONE_DAY * 30);
+
+    expect(await premiaStaking.getPendingRewards()).to.eq('51');
+
+    await increaseTimestamp(ONE_DAY * 300000);
 
     expect(await premiaStaking.getXPremiaToPremiaRatio()).to.eq(
       parseEther('4'),
@@ -204,5 +265,16 @@ describe('PremiaStaking', () => {
     expect(alicePremiaBalance).to.eq(180);
     expect(bobPremiaBalance).to.eq(140);
     expect(carolPremiaBalance).to.eq(130);
+  });
+
+  it('should correctly calculate decay', async () => {
+    const oneMonth = 30 * 24 * 3600;
+    expect(
+      bnToNumber(await premiaStaking.decay(parseEther('100'), 0, oneMonth)),
+    ).to.almost(49.66);
+
+    expect(
+      bnToNumber(await premiaStaking.decay(parseEther('100'), 0, oneMonth * 2)),
+    ).to.almost(24.66);
   });
 });

@@ -14,6 +14,24 @@ interface IPremiaStaking {
     event Withdrawal(address indexed user, uint256 amount);
 
     /**
+     * @notice add premia tokens as available tokens to be distributed as rewards
+     * @param amount amount of premia tokens to add as rewards
+     */
+    function addRewards(uint256 amount) external;
+
+    /**
+     * @notice get amount of tokens that have not yet been distributed as rewards
+     * @return amount of tokens not yet distributed as rewards
+     */
+    function getAvailableRewards() external view returns (uint256);
+
+    /**
+     * @notice get pending amount of tokens to be distributed as rewards to stakers
+     * @return amount of tokens pending to be distributed as rewards
+     */
+    function getPendingRewards() external view returns (uint256);
+
+    /**
      * @notice stake PREMIA using IERC2612 permit
      * @param amount quantity of PREMIA to stake
      * @param deadline timestamp after which permit will fail

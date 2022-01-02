@@ -47,7 +47,7 @@ describe('PremiaMakerKeeper', () => {
         await new ERC20Mock__factory(owner).deploy('PREMIA', 18)
       ).address,
       spotPrice,
-      contracts.premiaMaker.address,
+      contracts.premiaMaker,
       ZERO_ADDRESS,
     );
     keeper = await new PremiaMakerKeeper__factory(owner).deploy(
@@ -103,7 +103,7 @@ describe('PremiaMakerKeeper', () => {
       parseEther('1000'),
     );
 
-    await contracts.premiaMaker.addWhitelistedRouter([uniswap.router.address]);
+    await contracts.premiaMaker.addWhitelistedRouters([uniswap.router.address]);
   });
 
   it('should successfully detect if there is work to do or not', async () => {
