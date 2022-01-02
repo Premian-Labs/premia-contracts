@@ -137,10 +137,11 @@ export default {
   },
 
   abiExporter: {
-    runOnCompile: true,
+    runOnCompile: false,
     path: './abi',
     clear: true,
     flat: true,
+    except: ['@uniswap'],
   },
 
   dependencyCompiler: {
