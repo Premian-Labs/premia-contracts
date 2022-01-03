@@ -1,0 +1,15 @@
+export API_KEY_ALCHEMY=''
+export API_KEY_ETHERSCAN=''
+export PKEY_ETH_TEST=''
+export PKEY_ETH_MAIN=''
+export FORK_MODE=false
+export FORK_BLOCK_NUMBER=13894483
+export REPORT_GAS=false
+export CACHE_PATH=./cache
+
+# MAINNET p-key
+export PKEY_ETH_MAIN=''
+
+# Node opts
+export NODE_OPTIONS=--max_old_space_size=4096
+export HARDHAT_MAX_MEMORY=4096
