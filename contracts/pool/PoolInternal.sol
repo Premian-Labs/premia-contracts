@@ -17,7 +17,7 @@ import {OptionMath} from "../libraries/OptionMath.sol";
 import {IFeeDiscount} from "../staking/IFeeDiscount.sol";
 import {IPoolEvents} from "./IPoolEvents.sol";
 import {IPremiaMining} from "../mining/IPremiaMining.sol";
-import {IVolatilitySurfaceOracle} from "../oracle/IVolatilitySurfaceOracle.sol";
+import {ImpliedVolOracle} from "../oracle/ImpliedVolOracle.sol";
 
 /**
  * @title Premia option pool
@@ -158,15 +158,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             365 days
         );
 
-        int128 annualizedVolatility64x64 = IVolatilitySurfaceOracle(
-            IVOL_ORACLE_ADDRESS
-        ).getAnnualizedVolatility64x64(
+        int128 annualizedVolatility64x64 = ImpliedVolOracle(IVOL_ORACLE_ADDRESS)
+            .getImpliedVol64x64(
                 l.base,
                 l.underlying,
                 args.spot64x64,
                 args.strike64x64,
-                timeToMaturity64x64,
-                args.isCall
+                timeToMaturity64x64
             );
 
         require(annualizedVolatility64x64 > 0, "vol = 0");
