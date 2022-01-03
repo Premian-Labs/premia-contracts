@@ -724,6 +724,18 @@
   resolved "https://registry.yarnpkg.com/@solidstate/contracts/-/contracts-0.0.29.tgz#d9334db3bfe0a420dc9cf0d44143b112d404144a"
   integrity sha512-3ZncVL3fNIXL6SFOOZew587es2UhLmbgrd3LIoWxJBfXMlVJJX3ffhCfdNMJezZ4a0c1n7MdnzfTBpNmX2J0AA==
 
+"@solidstate/hardhat-4byte-uploader@^1.0.2":
+  version "1.0.2"
+  resolved "https://registry.yarnpkg.com/@solidstate/hardhat-4byte-uploader/-/hardhat-4byte-uploader-1.0.2.tgz#c265d64a82c2f67982851408d088dc2ec58d4cad"
+  integrity sha512-O1trdKctT7ru28LxpLc3RvQtAniBbE1zahi1+y8lc3N04QygOy4k3DneY/QC2NF69xkfnNzloau2m0SnR04zuw==
+  dependencies:
+    axios "^0.24.0"
+
+"@solidstate/hardhat-test-short-circuit@^1.0.1":
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/@solidstate/hardhat-test-short-circuit/-/hardhat-test-short-circuit-1.0.1.tgz#f0113cbd1c614c528dc272b732f9eb59ee8808dd"
+  integrity sha512-TzwfolXsty71ay8IOmlIPE48B9YocADP3FK7BUduzRtDt5Mp0J0P7zOT8SHFPgCwSMIKLO2m8wPukWBZhlP40g==
+
 "@solidstate/library@^0.0.29":
   version "0.0.29"
   resolved "https://registry.yarnpkg.com/@solidstate/library/-/library-0.0.29.tgz#97c791349c1ac9c3c04199536f4e3016c24e32ad"
@@ -938,7 +950,7 @@
     "@types/node" "*"
     form-data "^3.0.0"
 
-"@types/node@*", "@types/node@^17.0.5":
+"@types/node@*":
   version "17.0.5"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-17.0.5.tgz#57ca67ec4e57ad9e4ef5a6bab48a15387a1c83e0"
   integrity sha512-w3mrvNXLeDYV1GKTZorGJQivK6XLCoGwpnyJFbJVK/aTBQUxOCaa/GlFAAN3OTDFcb7h5tiFG+YXCO2By+riZw==
@@ -952,6 +964,11 @@
   version "12.20.39"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-12.20.39.tgz#ef3cb119eaba80e9f1012c78b9384a7489a18bf6"
   integrity sha512-U7PMwkDmc3bnL0e4U8oA0POpi1vfsYDc+DEUS2+rPxm9NlLcW1dBa5JcRhO633PoPUcCSWMNXrMsqhmAVEo+IQ==
+
+"@types/node@^17.0.6":
+  version "17.0.6"
+  resolved "https://registry.yarnpkg.com/@types/node/-/node-17.0.6.tgz#cc1589c9ee853b389e67e8fb4384e0f250a139b9"
+  integrity sha512-+XBAjfZmmivILUzO0HwBJoYkAyyySSLg5KCGBDFLomJo0sV6szvVLAf4ANZZ0pfWzgEds5KmGLG9D5hfEqOhaA==
 
 "@types/node@^8.0.0":
   version "8.10.66"
@@ -1599,6 +1616,13 @@ aws4@^1.8.0:
   version "1.11.0"
   resolved "https://registry.yarnpkg.com/aws4/-/aws4-1.11.0.tgz#d61f46d83b2519250e2784daf5b09479a8b41c59"
   integrity sha512-xh1Rl34h6Fi1DC2WWKfxUTVqRsNnr6LsKz2+hfwDxQJWmrx8+c7ylaqBMcHfl1U1r2dsifOvKX3LQuLNZ+XSvA==
+
+axios@^0.24.0:
+  version "0.24.0"
+  resolved "https://registry.yarnpkg.com/axios/-/axios-0.24.0.tgz#804e6fa1e4b9c5288501dd9dff56a7a0940d20d6"
+  integrity sha512-Q6cWsys88HoPgAaFAVUb0WpPk0O8iTeisR9IMqy9G8AbO4NlpVknrnQS03zzF9PGAWgO3cgletO3VjV/P7VztA==
+  dependencies:
+    follow-redirects "^1.14.4"
 
 babel-code-frame@^6.26.0:
   version "6.26.0"
@@ -4498,7 +4522,7 @@ flow-stoplight@^1.0.0:
   resolved "https://registry.yarnpkg.com/flow-stoplight/-/flow-stoplight-1.0.0.tgz#4a292c5bcff8b39fa6cc0cb1a853d86f27eeff7b"
   integrity sha1-SiksW8/4s5+mzAyxqFPYbyfu/3s=
 
-follow-redirects@^1.12.1:
+follow-redirects@^1.12.1, follow-redirects@^1.14.4:
   version "1.14.6"
   resolved "https://registry.yarnpkg.com/follow-redirects/-/follow-redirects-1.14.6.tgz#8cfb281bbc035b3c067d6cd975b0f6ade6e855cd"
   integrity sha512-fhUl5EwSJbbl8AR+uYL2KQDxLkdSjZGR36xy46AO7cOMTrCMON6Sa28FmAnC2tRTDbd/Uuzz3aJBv7EBN7JH8A==
@@ -4965,10 +4989,10 @@ har-validator@~5.1.3:
     ajv "^6.12.3"
     har-schema "^2.0.0"
 
-hardhat-abi-exporter@^2.4.1:
-  version "2.4.1"
-  resolved "https://registry.yarnpkg.com/hardhat-abi-exporter/-/hardhat-abi-exporter-2.4.1.tgz#d4703d2b528759d6997171d33a0e4b37d3c2c179"
-  integrity sha512-ez1s1EDJZw7th3F0Mf/IAj0UCHjLFRhIGFXhbeUaoQzTITT9Bxc3+O6MRI7drNot6iyqHy/bTZG3UKAGj68kJg==
+hardhat-abi-exporter@^2.6.1:
+  version "2.6.1"
+  resolved "https://registry.yarnpkg.com/hardhat-abi-exporter/-/hardhat-abi-exporter-2.6.1.tgz#fcd8966cf128b29f2693887621be20cebc906d36"
+  integrity sha512-XJj5ZaeBOAuzDzxp8kBbnAlKJZaju0cDBXk0cE7Lphftr+XX5e8XzHU7keZhQIi2dn85dxTrqEY8F/kdltI+hw==
   dependencies:
     "@ethersproject/abi" "^5.5.0"
     delete-empty "^3.0.0"
@@ -4991,10 +5015,10 @@ hardhat-dependency-compiler@^1.1.2:
   resolved "https://registry.yarnpkg.com/hardhat-dependency-compiler/-/hardhat-dependency-compiler-1.1.2.tgz#02867b7c6dd3de4924d9d3d6593feab8408f1eeb"
   integrity sha512-LVnsPSZnGvzWVvlpewlkPKlPtFP/S9V41RC1fd/ygZc4jkG8ubNlfE82nwiGw5oPueHSmFi6TACgmyrEOokK8w==
 
-hardhat-docgen@^1.2.1:
-  version "1.2.1"
-  resolved "https://registry.yarnpkg.com/hardhat-docgen/-/hardhat-docgen-1.2.1.tgz#1fb1f35edd5e47f7c67f3081381a08702650f2f6"
-  integrity sha512-5WNlSPYTBTTxl7fMTUQ27EmHFeTH4qc7o+PXuh1tsy3Qw+0qA2HV+clEBuZo6Hymsi1L/927mSWL0fj/QEpHXA==
+hardhat-docgen@^1.3.0:
+  version "1.3.0"
+  resolved "https://registry.yarnpkg.com/hardhat-docgen/-/hardhat-docgen-1.3.0.tgz#604c685cb92c4231c8d84b2d81c017fb887ff1d8"
+  integrity sha512-paaiOHjJFLCLz2/qM1TQ7ZEG+Vy+LBvJL+SW4A64ZhBnVnyoZ/zv9DvEuawaWhqP5P7AOM6r22reVz4ecWgW7A==
   dependencies:
     css-loader "^6.5.1"
     html-webpack-plugin "^5.5.0"
