@@ -17,6 +17,7 @@ import {
   parseUnderlying,
   getFreeLiqTokenId,
   getReservedLiqTokenId,
+  getMaturity,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 import { createUniswap, IUniswap } from '../../test/utils/uniswap';
@@ -64,7 +65,7 @@ export function describeBehaviorOfPoolExercise({
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
           it('should successfully exercise', async () => {
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike = p.getStrike(isCall, 2000);
             const strike64x64 = fixedFromFloat(strike);
             const amountNb = 10;
@@ -138,7 +139,7 @@ export function describeBehaviorOfPoolExercise({
           });
 
           it('processes eligible option on behalf of given account with approval', async () => {
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike = p.getStrike(isCall, 2000);
             const strike64x64 = fixedFromFloat(strike);
             const amount = parseUnderlying('1');
@@ -199,7 +200,7 @@ export function describeBehaviorOfPoolExercise({
       describe('reverts if', () => {
         it('token is a SHORT token', async () => {
           const isCall = false;
-          const maturity = await p.getMaturity(10);
+          const maturity = await getMaturity(10);
           const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
           const amount = parseUnderlying('1');
 
@@ -227,7 +228,7 @@ export function describeBehaviorOfPoolExercise({
 
         it('sender is not authorized to exercise on behalf of given account', async () => {
           const isCall = false;
-          const maturity = await p.getMaturity(10);
+          const maturity = await getMaturity(10);
           const strike = p.getStrike(isCall, 2000);
           const strike64x64 = fixedFromFloat(strike);
           const amountNb = 10;
@@ -257,7 +258,7 @@ export function describeBehaviorOfPoolExercise({
 
         it('option is not ITM', async () => {
           const isCall = false;
-          const maturity = await p.getMaturity(10);
+          const maturity = await getMaturity(10);
           const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
           const amount = parseUnderlying('1');
 
@@ -289,7 +290,7 @@ export function describeBehaviorOfPoolExercise({
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
           it('should successfully process expired option OTM', async () => {
-            const maturity = await p.getMaturity(20);
+            const maturity = await getMaturity(20);
             const strike = p.getStrike(isCall, 2000);
             const strike64x64 = fixedFromFloat(strike);
             const amount = parseUnderlying('1');
@@ -375,7 +376,7 @@ export function describeBehaviorOfPoolExercise({
           });
 
           it('should successfully process expired option ITM', async () => {
-            const maturity = await p.getMaturity(20);
+            const maturity = await getMaturity(20);
             const strike = p.getStrike(isCall, 2000);
             const strike64x64 = fixedFromFloat(strike);
 
@@ -468,7 +469,7 @@ export function describeBehaviorOfPoolExercise({
       describe('reverts if', () => {
         it('option is not expired', async () => {
           const isCall = false;
-          const maturity = await p.getMaturity(10);
+          const maturity = await getMaturity(10);
           const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
           const amount = parseUnderlying('1');
 

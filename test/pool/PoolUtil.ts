@@ -152,6 +152,14 @@ export function getExerciseValue(
   }
 }
 
+export async function getMaturity(days: number) {
+  const { timestamp } = await ethers.provider.getBlock('latest');
+
+  return BigNumber.from(
+    Math.floor(timestamp / ONE_DAY) * ONE_DAY + days * ONE_DAY,
+  );
+}
+
 export class PoolUtil {
   premiaDiamond: Premia;
   pool: IPool;
@@ -703,13 +711,5 @@ export class PoolUtil {
       );
 
     return quote;
-  }
-
-  async getMaturity(days: number) {
-    const { timestamp } = await ethers.provider.getBlock('latest');
-
-    return BigNumber.from(
-      Math.floor(timestamp / ONE_DAY) * ONE_DAY + days * ONE_DAY,
-    );
   }
 }

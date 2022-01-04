@@ -30,6 +30,7 @@ import {
   parseUnderlying,
   getFreeLiqTokenId,
   getReservedLiqTokenId,
+  getMaturity,
   PoolUtil,
 } from './PoolUtil';
 import chaiAlmost from 'chai-almost';
@@ -217,7 +218,7 @@ describe('PoolProxy', function () {
           const amount = parseOption(amountNb.toString(), isCall);
           await p.depositLiquidity(lp1, amount, isCall);
 
-          const maturity = await p.getMaturity(10);
+          const maturity = await getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           const purchaseAmountNb = 4;
@@ -317,7 +318,7 @@ describe('PoolProxy', function () {
           const amount = parseOption(amountNb.toString(), isCall);
           await p.depositLiquidity(lp1, amount, isCall);
 
-          const maturity = await p.getMaturity(10);
+          const maturity = await getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           const purchaseAmountNb = 4;
@@ -382,7 +383,7 @@ describe('PoolProxy', function () {
           const amount = parseOption(amountNb.toString(), isCall);
           await p.depositLiquidity(lp1, amount, isCall);
 
-          const maturity = await p.getMaturity(10);
+          const maturity = await getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           const purchaseAmountNb = 4;
@@ -455,7 +456,7 @@ describe('PoolProxy', function () {
           const strike = getStrike(isCall);
           await p.depositLiquidity(lp1, amount, isCall);
 
-          const maturity = await p.getMaturity(10);
+          const maturity = await getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           const purchaseAmountNb = 4;
@@ -527,7 +528,7 @@ describe('PoolProxy', function () {
             .setDivestmentTimestamp(timestamp + 25 * 3600, isCall);
           await increaseTimestamp(26 * 3600);
 
-          const maturity = await p.getMaturity(10);
+          const maturity = await getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall));
 
           const purchaseAmountNb = 4;

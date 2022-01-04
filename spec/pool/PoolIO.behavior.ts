@@ -23,6 +23,7 @@ import {
   parseUnderlying,
   getFreeLiqTokenId,
   getReservedLiqTokenId,
+  getMaturity,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 
@@ -440,7 +441,7 @@ export function describeBehaviorOfPoolIO({
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
           it('deducts amount withdrawn plus fee from total TVL and amount withdrawn plus total premium paid from user TVL', async () => {
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
             const amount = parseUnderlying('1');
 
@@ -523,7 +524,7 @@ export function describeBehaviorOfPoolIO({
           });
 
           it('should revert if contract size is less than minimum', async () => {
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
 
             await p.purchaseOption(
@@ -547,7 +548,7 @@ export function describeBehaviorOfPoolIO({
           });
 
           it('should revert if option is expired', async () => {
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
 
             await p.purchaseOption(
@@ -578,7 +579,7 @@ export function describeBehaviorOfPoolIO({
           });
 
           it('should successfully reassign option to another LP', async () => {
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
             const amount = parseUnderlying('1');
 
@@ -638,7 +639,7 @@ export function describeBehaviorOfPoolIO({
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
           it('deducts amount withdrawn plus fee from total TVL and amount withdrawn plus total premium paid from user TVL', async () => {
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
             const amount = parseUnderlying('1');
 
@@ -724,7 +725,7 @@ export function describeBehaviorOfPoolIO({
 
       it('should revert if contract size is less than minimum', async () => {
         const isCall = true;
-        const maturity = await p.getMaturity(10);
+        const maturity = await getMaturity(10);
         const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
 
         await p.purchaseOption(
@@ -765,14 +766,14 @@ export function describeBehaviorOfPoolIO({
               lp1,
               lp1,
               lp1,
-              await p.getMaturity(30),
+              await getMaturity(30),
               fixedFromFloat(2),
               amount,
               isCall,
             );
 
             const tokenIds = getOptionTokenIds(
-              await p.getMaturity(30),
+              await getMaturity(30),
               fixedFromFloat(2),
               isCall,
             );

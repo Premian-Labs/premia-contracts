@@ -6,7 +6,12 @@ import {
   ProcessExpiredKeeper,
   ProcessExpiredKeeper__factory,
 } from '../../typechain';
-import { parseOption, parseUnderlying, PoolUtil } from '../pool/PoolUtil';
+import {
+  parseOption,
+  parseUnderlying,
+  getMaturity,
+  PoolUtil,
+} from '../pool/PoolUtil';
 import { increaseTimestamp } from '../utils/evm';
 import { ZERO_ADDRESS } from '../utils/constants';
 import { fixedFromFloat, getOptionTokenIds } from '@premia/utils';
@@ -53,7 +58,7 @@ describe('ProcessExpiredKeeper', () => {
       isCall,
     );
 
-    const maturity = await p.getMaturity(10);
+    const maturity = await getMaturity(10);
     const strike64x64 = fixedFromFloat(p.getStrike(isCall, spotPrice));
 
     const purchaseAmountNb = 10;
@@ -114,12 +119,12 @@ describe('ProcessExpiredKeeper', () => {
 
     const mintAmount = parseOption('1000', isCall);
     const tokenIds1 = getOptionTokenIds(
-      await p.getMaturity(10),
+      await getMaturity(10),
       strike64x64,
       isCall,
     );
     const tokenIds2 = getOptionTokenIds(
-      await p.getMaturity(9),
+      await getMaturity(9),
       strike64x64,
       isCall,
     );
@@ -131,7 +136,7 @@ describe('ProcessExpiredKeeper', () => {
 
     let quote = await p.pool.quote(
       buyer.address,
-      await p.getMaturity(10),
+      await getMaturity(10),
       strike64x64,
       purchaseAmount,
       isCall,
@@ -140,7 +145,7 @@ describe('ProcessExpiredKeeper', () => {
     await p.pool
       .connect(buyer)
       .purchase(
-        await p.getMaturity(10),
+        await getMaturity(10),
         strike64x64,
         purchaseAmount,
         isCall,
@@ -149,7 +154,7 @@ describe('ProcessExpiredKeeper', () => {
 
     quote = await p.pool.quote(
       buyer.address,
-      await p.getMaturity(10),
+      await getMaturity(10),
       strike64x64,
       purchaseAmount,
       isCall,
@@ -158,7 +163,7 @@ describe('ProcessExpiredKeeper', () => {
     await p.pool
       .connect(buyer)
       .purchase(
-        await p.getMaturity(9),
+        await getMaturity(9),
         strike64x64,
         purchaseAmount,
         isCall,

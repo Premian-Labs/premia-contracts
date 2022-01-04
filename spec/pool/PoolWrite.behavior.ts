@@ -27,6 +27,7 @@ import {
   parseUnderlying,
   getFreeLiqTokenId,
   getReservedLiqTokenId,
+  getMaturity,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 
@@ -66,7 +67,7 @@ export function describeBehaviorOfPoolWrite({
 
     describe('#quote', function () {
       it('should revert if no liquidity', async () => {
-        const maturity = await p.getMaturity(17);
+        const maturity = await getMaturity(17);
         const strike64x64 = fixedFromFloat(2000 * 1.25);
 
         await expect(
@@ -140,7 +141,7 @@ export function describeBehaviorOfPoolWrite({
             .connect(owner)
             .setCLevel64x64(fixedFromFloat('0.1'), isCall);
 
-          const maturity = await p.getMaturity(5);
+          const maturity = await getMaturity(5);
           const strike64x64 = fixedFromFloat(p.getStrike(!isCall, 2000));
           const purchaseAmountNb = 10;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -229,7 +230,7 @@ export function describeBehaviorOfPoolWrite({
             .connect(owner)
             .setCLevel64x64(fixedFromFloat('0.1'), isCall);
 
-          const maturity = await p.getMaturity(5);
+          const maturity = await getMaturity(5);
           const strike64x64 = fixedFromFloat(p.getStrike(!isCall, 2000));
           const purchaseAmountNb = 5;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -271,7 +272,7 @@ export function describeBehaviorOfPoolWrite({
               parseOption(isCall ? '100' : '100000', isCall),
               isCall,
             );
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
 
             await expect(
@@ -293,7 +294,7 @@ export function describeBehaviorOfPoolWrite({
               parseOption(isCall ? '100' : '100000', isCall),
               isCall,
             );
-            const maturity = (await p.getMaturity(1)).sub(ethers.constants.One);
+            const maturity = (await getMaturity(1)).sub(ethers.constants.One);
             const strike64x64 = fixedFromFloat(1.5);
 
             await expect(
@@ -315,7 +316,7 @@ export function describeBehaviorOfPoolWrite({
               parseOption(isCall ? '100' : '100000', isCall),
               isCall,
             );
-            const maturity = await p.getMaturity(92);
+            const maturity = await getMaturity(92);
             const strike64x64 = fixedFromFloat(1.5);
 
             await expect(
@@ -337,7 +338,7 @@ export function describeBehaviorOfPoolWrite({
               parseOption(isCall ? '100' : '100000', isCall),
               isCall,
             );
-            const maturity = (await p.getMaturity(10)).add(3600);
+            const maturity = (await getMaturity(10)).add(3600);
             const strike64x64 = fixedFromFloat(1.5);
 
             await expect(
@@ -361,7 +362,7 @@ export function describeBehaviorOfPoolWrite({
               parseOption(isCall ? '100' : '100000', isCall),
               isCall,
             );
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(2000 * multiplier).add(
               ethers.constants.One,
             );
@@ -387,7 +388,7 @@ export function describeBehaviorOfPoolWrite({
               parseOption(isCall ? '100' : '100000', isCall),
               isCall,
             );
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(2000 * multiplier).sub(
               ethers.constants.One,
             );
@@ -411,7 +412,7 @@ export function describeBehaviorOfPoolWrite({
               parseOption(isCall ? '100' : '100000', isCall),
               isCall,
             );
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
 
             await p
@@ -442,7 +443,7 @@ export function describeBehaviorOfPoolWrite({
               isCall,
             );
 
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
 
             const purchaseAmountNb = 10;
@@ -550,7 +551,7 @@ export function describeBehaviorOfPoolWrite({
               amountInPool = amountInPool.add(depositAmount);
             }
 
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
 
             // 10 intervals used
@@ -678,7 +679,7 @@ export function describeBehaviorOfPoolWrite({
               isCall,
             );
 
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
 
             const purchaseAmountNb = 10;
@@ -838,7 +839,7 @@ export function describeBehaviorOfPoolWrite({
               isCall,
             );
 
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
 
             const purchaseAmountNb = 10;
@@ -995,7 +996,7 @@ export function describeBehaviorOfPoolWrite({
               isCall,
             );
 
-            const maturity = await p.getMaturity(10);
+            const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
 
             const purchaseAmountNb = 10;
@@ -1116,7 +1117,7 @@ export function describeBehaviorOfPoolWrite({
                 owner,
                 lp1,
                 lp2,
-                await p.getMaturity(30),
+                await getMaturity(30),
                 fixedFromFloat(2),
                 amount,
                 isCall,
@@ -1130,14 +1131,14 @@ export function describeBehaviorOfPoolWrite({
               lp1,
               lp1,
               lp2,
-              await p.getMaturity(30),
+              await getMaturity(30),
               fixedFromFloat(2),
               amount,
               isCall,
             );
 
             const tokenIds = getOptionTokenIds(
-              await p.getMaturity(30),
+              await getMaturity(30),
               fixedFromFloat(2),
               isCall,
             );
@@ -1164,14 +1165,14 @@ export function describeBehaviorOfPoolWrite({
               owner,
               lp1,
               lp2,
-              await p.getMaturity(30),
+              await getMaturity(30),
               fixedFromFloat(2),
               amount,
               isCall,
             );
 
             const tokenIds = getOptionTokenIds(
-              await p.getMaturity(30),
+              await getMaturity(30),
               fixedFromFloat(2),
               isCall,
             );
