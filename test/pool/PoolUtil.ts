@@ -160,6 +160,14 @@ export async function getMaturity(days: number) {
   );
 }
 
+export async function getMinPrice(collateralAmount: number, maturity: number) {
+  let { timestamp } = await ethers.provider.getBlock('latest');
+
+  return (
+    (collateralAmount * (MIN_APY * (maturity - timestamp))) / (365 * 24 * 3600)
+  );
+}
+
 export class PoolUtil {
   premiaDiamond: Premia;
   pool: IPool;
@@ -602,15 +610,6 @@ export class PoolUtil {
         ).toString(),
       );
     }
-  }
-
-  async getMinPrice(collateralAmount: number, maturity: number) {
-    let { timestamp } = await ethers.provider.getBlock('latest');
-
-    return (
-      (collateralAmount * (MIN_APY * (maturity - timestamp))) /
-      (365 * 24 * 3600)
-    );
   }
 
   async depositLiquidity(

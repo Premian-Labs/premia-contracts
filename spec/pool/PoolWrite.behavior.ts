@@ -28,6 +28,7 @@ import {
   getFreeLiqTokenId,
   getReservedLiqTokenId,
   getMaturity,
+  getMinPrice,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 
@@ -125,7 +126,7 @@ export function describeBehaviorOfPoolWrite({
           );
 
           expect(fixedToNumber(q.baseCost64x64)).to.almost(
-            await p.getMinPrice(1, maturity),
+            await getMinPrice(1, maturity),
           );
         });
 
@@ -165,7 +166,7 @@ export function describeBehaviorOfPoolWrite({
 
           expect(fixedToNumber(quote.baseCost64x64)).to.almost(
             fixedToNumber(intrinsicValue64x64) +
-              (await p.getMinPrice(purchaseAmountNb, maturity.toNumber())),
+              (await getMinPrice(purchaseAmountNb, maturity.toNumber())),
           );
         });
       });
@@ -214,7 +215,7 @@ export function describeBehaviorOfPoolWrite({
           );
 
           expect(fixedToNumber(q.baseCost64x64)).to.almost(
-            await p.getMinPrice(strike, maturity),
+            await getMinPrice(strike, maturity),
           );
         });
 
@@ -253,7 +254,7 @@ export function describeBehaviorOfPoolWrite({
 
           expect(fixedToNumber(quote.baseCost64x64)).to.almost(
             fixedToNumber(intrinsicValue64x64) +
-              (await p.getMinPrice(
+              (await getMinPrice(
                 purchaseAmountNb * p.getStrike(!isCall, 2000),
                 maturity.toNumber(),
               )),
