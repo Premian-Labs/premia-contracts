@@ -29,6 +29,7 @@ import {
   getReservedLiqTokenId,
   getMaturity,
   getMinPrice,
+  getMaxCost,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 
@@ -472,7 +473,7 @@ export function describeBehaviorOfPoolWrite({
                 strike64x64,
                 purchaseAmount,
                 isCall,
-                p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+                getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
               );
 
             const newBalance = await p
@@ -584,7 +585,7 @@ export function describeBehaviorOfPoolWrite({
                 strike64x64,
                 purchaseAmount,
                 isCall,
-                p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+                getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
               );
 
             expect(await instance.balanceOf(buyer.address, tokenId.long)).to.eq(
@@ -713,8 +714,8 @@ export function describeBehaviorOfPoolWrite({
                 strike64x64,
                 purchaseAmount,
                 isCall,
-                p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
-                p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+                getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+                getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
                 ethers.utils.parseEther('10000'),
                 isCall
                   ? [p.base.address, uniswap.weth.address, p.underlying.address]
@@ -733,7 +734,7 @@ export function describeBehaviorOfPoolWrite({
             expect(bnToNumber(newBalance, getTokenDecimals(isCall))).to.almost(
               Number(
                 formatOption(
-                  p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+                  getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
                   isCall,
                 ),
               ) -
@@ -873,8 +874,8 @@ export function describeBehaviorOfPoolWrite({
                 strike64x64,
                 purchaseAmount,
                 isCall,
-                p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
-                p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+                getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+                getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
                 0,
                 isCall
                   ? [uniswap.weth.address, p.underlying.address]
@@ -890,7 +891,7 @@ export function describeBehaviorOfPoolWrite({
             expect(bnToNumber(newBalance, getTokenDecimals(isCall))).to.almost(
               Number(
                 formatOption(
-                  p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+                  getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
                   isCall,
                 ),
               ) -
@@ -1030,7 +1031,7 @@ export function describeBehaviorOfPoolWrite({
                 strike64x64,
                 purchaseAmount,
                 isCall,
-                p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+                getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
                 '0',
                 ethers.utils.parseEther('10000'),
                 isCall

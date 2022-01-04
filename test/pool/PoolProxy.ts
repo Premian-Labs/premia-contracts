@@ -31,6 +31,7 @@ import {
   getFreeLiqTokenId,
   getReservedLiqTokenId,
   getMaturity,
+  getMaxCost,
   PoolUtil,
 } from './PoolUtil';
 import chaiAlmost from 'chai-almost';
@@ -246,7 +247,7 @@ describe('PoolProxy', function () {
               strike64x64,
               purchaseAmount,
               isCall,
-              p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+              getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
             );
 
           expect(
@@ -346,7 +347,7 @@ describe('PoolProxy', function () {
               strike64x64,
               purchaseAmount,
               isCall,
-              p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+              getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
             );
           const tokenIds = getOptionTokenIds(maturity, strike64x64, isCall);
 
@@ -411,7 +412,7 @@ describe('PoolProxy', function () {
               strike64x64,
               purchaseAmount,
               isCall,
-              p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+              getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
             );
           const tokenIds = getOptionTokenIds(maturity, strike64x64, isCall);
 
@@ -484,7 +485,7 @@ describe('PoolProxy', function () {
               strike64x64,
               purchaseAmount,
               isCall,
-              p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+              getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
             );
 
           const price = isCall ? strike * 1.4 : strike * 0.7;
@@ -556,7 +557,7 @@ describe('PoolProxy', function () {
               strike64x64,
               purchaseAmount,
               isCall,
-              p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+              getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
             );
 
           let lp1TVL = await p.pool.getUserTVL(lp1.address);

@@ -168,6 +168,28 @@ export async function getMinPrice(collateralAmount: number, maturity: number) {
   );
 }
 
+export function getMaxCost(
+  baseCost64x64: BigNumber,
+  feeCost64x64: BigNumber,
+  isCall: boolean,
+) {
+  if (isCall) {
+    return parseUnderlying(
+      (
+        (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
+        1.03
+      ).toString(),
+    );
+  } else {
+    return parseBase(
+      (
+        (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
+        1.03
+      ).toString(),
+    );
+  }
+}
+
 export class PoolUtil {
   premiaDiamond: Premia;
   pool: IPool;
@@ -588,28 +610,6 @@ export class PoolUtil {
 
   getStrike(isCall: boolean, spotPrice: number) {
     return isCall ? spotPrice * 1.25 : spotPrice * 0.75;
-  }
-
-  getMaxCost(
-    baseCost64x64: BigNumber,
-    feeCost64x64: BigNumber,
-    isCall: boolean,
-  ) {
-    if (isCall) {
-      return parseUnderlying(
-        (
-          (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
-          1.03
-        ).toString(),
-      );
-    } else {
-      return parseBase(
-        (
-          (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
-          1.03
-        ).toString(),
-      );
-    }
   }
 
   async depositLiquidity(

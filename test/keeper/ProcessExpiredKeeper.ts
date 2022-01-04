@@ -10,6 +10,7 @@ import {
   parseOption,
   parseUnderlying,
   getMaturity,
+  getMaxCost,
   PoolUtil,
 } from '../pool/PoolUtil';
 import { increaseTimestamp } from '../utils/evm';
@@ -87,7 +88,7 @@ describe('ProcessExpiredKeeper', () => {
         strike64x64,
         purchaseAmount,
         isCall,
-        p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+        getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
       );
 
     await increaseTimestamp(15 * 24 * 3600);
@@ -149,7 +150,7 @@ describe('ProcessExpiredKeeper', () => {
         strike64x64,
         purchaseAmount,
         isCall,
-        p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+        getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
       );
 
     quote = await p.pool.quote(
@@ -167,7 +168,7 @@ describe('ProcessExpiredKeeper', () => {
         strike64x64,
         purchaseAmount,
         isCall,
-        p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+        getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
       );
 
     await increaseTimestamp(15 * 24 * 3600);
