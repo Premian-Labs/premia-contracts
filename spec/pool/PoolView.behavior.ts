@@ -9,6 +9,7 @@ import {
   parseUnderlying,
   getFreeLiqTokenId,
   getReservedLiqTokenId,
+  getStrike,
   getMaturity,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
@@ -60,7 +61,7 @@ export function describeBehaviorOfPoolView({
         const isCallPool = true;
 
         const maturity = await getMaturity(20);
-        const strike = p.getStrike(isCallPool, 2000);
+        const strike = getStrike(isCallPool, 2000);
         const strike64x64 = fixedFromFloat(strike);
         const amount = parseUnderlying('1');
 

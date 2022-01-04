@@ -27,6 +27,7 @@ import {
   parseUnderlying,
   getFreeLiqTokenId,
   getReservedLiqTokenId,
+  getStrike,
   getMaturity,
   getMinPrice,
   getMaxCost,
@@ -144,7 +145,7 @@ export function describeBehaviorOfPoolWrite({
             .setCLevel64x64(fixedFromFloat('0.1'), isCall);
 
           const maturity = await getMaturity(5);
-          const strike64x64 = fixedFromFloat(p.getStrike(!isCall, 2000));
+          const strike64x64 = fixedFromFloat(getStrike(!isCall, 2000));
           const purchaseAmountNb = 10;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
@@ -233,7 +234,7 @@ export function describeBehaviorOfPoolWrite({
             .setCLevel64x64(fixedFromFloat('0.1'), isCall);
 
           const maturity = await getMaturity(5);
-          const strike64x64 = fixedFromFloat(p.getStrike(!isCall, 2000));
+          const strike64x64 = fixedFromFloat(getStrike(!isCall, 2000));
           const purchaseAmountNb = 5;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
@@ -256,7 +257,7 @@ export function describeBehaviorOfPoolWrite({
           expect(fixedToNumber(quote.baseCost64x64)).to.almost(
             fixedToNumber(intrinsicValue64x64) +
               (await getMinPrice(
-                purchaseAmountNb * p.getStrike(!isCall, 2000),
+                purchaseAmountNb * getStrike(!isCall, 2000),
                 maturity.toNumber(),
               )),
             0.1,
@@ -275,7 +276,7 @@ export function describeBehaviorOfPoolWrite({
               isCall,
             );
             const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
             await expect(
               instance
@@ -415,7 +416,7 @@ export function describeBehaviorOfPoolWrite({
               isCall,
             );
             const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
             await p
               .getToken(isCall)
@@ -446,7 +447,7 @@ export function describeBehaviorOfPoolWrite({
             );
 
             const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
             const purchaseAmountNb = 10;
             const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -511,7 +512,7 @@ export function describeBehaviorOfPoolWrite({
                 ),
               ).to.almost(
                 100000 -
-                  purchaseAmountNb * p.getStrike(isCall, 2000) +
+                  purchaseAmountNb * getStrike(isCall, 2000) +
                   fixedToNumber(quote.baseCost64x64),
               );
             }
@@ -554,7 +555,7 @@ export function describeBehaviorOfPoolWrite({
             }
 
             const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
             // 10 intervals used
             const purchaseAmountNb = 10;
@@ -602,12 +603,12 @@ export function describeBehaviorOfPoolWrite({
 
               const totalToPay = isCall
                 ? purchaseAmountNb
-                : purchaseAmountNb * p.getStrike(isCall, 2000);
+                : purchaseAmountNb * getStrike(isCall, 2000);
               const intervalAmount =
                 (depositAmountNb *
                   (totalToPay + fixedToNumber(quote.baseCost64x64))) /
                 totalToPay /
-                (isCall ? 1 : p.getStrike(isCall, 2000));
+                (isCall ? 1 : getStrike(isCall, 2000));
 
               if (intervalAmount < amount) {
                 expectedAmount = intervalAmount;
@@ -682,7 +683,7 @@ export function describeBehaviorOfPoolWrite({
             );
 
             const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
             const purchaseAmountNb = 10;
             const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -767,7 +768,7 @@ export function describeBehaviorOfPoolWrite({
                 ),
               ).to.almost(
                 100000 -
-                  purchaseAmountNb * p.getStrike(isCall, 2000) +
+                  purchaseAmountNb * getStrike(isCall, 2000) +
                   fixedToNumber(quote.baseCost64x64),
               );
             }
@@ -842,7 +843,7 @@ export function describeBehaviorOfPoolWrite({
             );
 
             const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
             const purchaseAmountNb = 10;
             const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -924,7 +925,7 @@ export function describeBehaviorOfPoolWrite({
                 ),
               ).to.almost(
                 100000 -
-                  purchaseAmountNb * p.getStrike(isCall, 2000) +
+                  purchaseAmountNb * getStrike(isCall, 2000) +
                   fixedToNumber(quote.baseCost64x64),
               );
             }
@@ -999,7 +1000,7 @@ export function describeBehaviorOfPoolWrite({
             );
 
             const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
             const purchaseAmountNb = 10;
             const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -1077,7 +1078,7 @@ export function describeBehaviorOfPoolWrite({
                 ),
               ).to.almost(
                 100000 -
-                  purchaseAmountNb * p.getStrike(isCall, 2000) +
+                  purchaseAmountNb * getStrike(isCall, 2000) +
                   fixedToNumber(quote.baseCost64x64),
               );
             }

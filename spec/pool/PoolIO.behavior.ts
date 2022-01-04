@@ -23,6 +23,8 @@ import {
   parseUnderlying,
   getFreeLiqTokenId,
   getReservedLiqTokenId,
+  getShort,
+  getStrike,
   getMaturity,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
@@ -442,7 +444,7 @@ export function describeBehaviorOfPoolIO({
         describe(isCall ? 'call' : 'put', () => {
           it('deducts amount withdrawn plus fee from total TVL and amount withdrawn plus total premium paid from user TVL', async () => {
             const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
             const amount = parseUnderlying('1');
 
             await p.purchaseOption(
@@ -465,7 +467,7 @@ export function describeBehaviorOfPoolIO({
             await ethers.provider.send('evm_increaseTime', [25 * 3600]);
 
             const shortTokenId = formatTokenId({
-              tokenType: p.getShort(isCall),
+              tokenType: getShort(isCall),
               maturity,
               strike64x64,
             });
@@ -525,7 +527,7 @@ export function describeBehaviorOfPoolIO({
 
           it('should revert if contract size is less than minimum', async () => {
             const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
             await p.purchaseOption(
               lp1,
@@ -537,7 +539,7 @@ export function describeBehaviorOfPoolIO({
             );
 
             const shortTokenId = formatTokenId({
-              tokenType: p.getShort(isCall),
+              tokenType: getShort(isCall),
               maturity,
               strike64x64,
             });
@@ -549,7 +551,7 @@ export function describeBehaviorOfPoolIO({
 
           it('should revert if option is expired', async () => {
             const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
             await p.purchaseOption(
               lp1,
@@ -561,7 +563,7 @@ export function describeBehaviorOfPoolIO({
             );
 
             const shortTokenId = formatTokenId({
-              tokenType: p.getShort(isCall),
+              tokenType: getShort(isCall),
               maturity,
               strike64x64,
             });
@@ -580,7 +582,7 @@ export function describeBehaviorOfPoolIO({
 
           it('should successfully reassign option to another LP', async () => {
             const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
             const amount = parseUnderlying('1');
 
             await p.purchaseOption(
@@ -603,7 +605,7 @@ export function describeBehaviorOfPoolIO({
             await ethers.provider.send('evm_increaseTime', [25 * 3600]);
 
             const shortTokenId = formatTokenId({
-              tokenType: p.getShort(isCall),
+              tokenType: getShort(isCall),
               maturity,
               strike64x64,
             });
@@ -640,7 +642,7 @@ export function describeBehaviorOfPoolIO({
         describe(isCall ? 'call' : 'put', () => {
           it('deducts amount withdrawn plus fee from total TVL and amount withdrawn plus total premium paid from user TVL', async () => {
             const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
             const amount = parseUnderlying('1');
 
             await p.purchaseOption(
@@ -663,7 +665,7 @@ export function describeBehaviorOfPoolIO({
             await ethers.provider.send('evm_increaseTime', [25 * 3600]);
 
             const shortTokenId = formatTokenId({
-              tokenType: p.getShort(isCall),
+              tokenType: getShort(isCall),
               maturity,
               strike64x64,
             });
@@ -726,7 +728,7 @@ export function describeBehaviorOfPoolIO({
       it('should revert if contract size is less than minimum', async () => {
         const isCall = true;
         const maturity = await getMaturity(10);
-        const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+        const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
         await p.purchaseOption(
           lp1,
@@ -738,7 +740,7 @@ export function describeBehaviorOfPoolIO({
         );
 
         const shortTokenId = formatTokenId({
-          tokenType: p.getShort(isCall),
+          tokenType: getShort(isCall),
           maturity,
           strike64x64,
         });

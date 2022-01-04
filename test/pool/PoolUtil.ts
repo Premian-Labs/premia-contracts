@@ -152,6 +152,18 @@ export function getExerciseValue(
   }
 }
 
+export function getLong(isCall: boolean) {
+  return isCall ? TokenType.LongCall : TokenType.LongPut;
+}
+
+export function getShort(isCall: boolean) {
+  return isCall ? TokenType.ShortCall : TokenType.ShortPut;
+}
+
+export function getStrike(isCall: boolean, spotPrice: number) {
+  return isCall ? spotPrice * 1.25 : spotPrice * 0.75;
+}
+
 export async function getMaturity(days: number) {
   const { timestamp } = await ethers.provider.getBlock('latest');
 
@@ -594,22 +606,6 @@ export class PoolUtil {
 
   getToken(isCall: boolean) {
     return isCall ? this.underlying : this.base;
-  }
-
-  getTokenDecimals(isCall: boolean) {
-    return isCall ? DECIMALS_UNDERLYING : DECIMALS_BASE;
-  }
-
-  getLong(isCall: boolean) {
-    return isCall ? TokenType.LongCall : TokenType.LongPut;
-  }
-
-  getShort(isCall: boolean) {
-    return isCall ? TokenType.ShortCall : TokenType.ShortPut;
-  }
-
-  getStrike(isCall: boolean, spotPrice: number) {
-    return isCall ? spotPrice * 1.25 : spotPrice * 0.75;
   }
 
   async depositLiquidity(

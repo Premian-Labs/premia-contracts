@@ -30,6 +30,7 @@ import {
   parseUnderlying,
   getFreeLiqTokenId,
   getReservedLiqTokenId,
+  getStrike,
   getMaturity,
   getMaxCost,
   PoolUtil,
@@ -81,10 +82,6 @@ describe('PoolProxy', function () {
   });
 
   const spotPrice = 2000;
-
-  const getStrike = (isCall: boolean) => {
-    return p.getStrike(isCall, spotPrice);
-  };
 
   before(async function () {
     [owner, lp1, lp2, buyer, thirdParty, feeReceiver] =
@@ -220,7 +217,7 @@ describe('PoolProxy', function () {
           await p.depositLiquidity(lp1, amount, isCall);
 
           const maturity = await getMaturity(10);
-          const strike64x64 = fixedFromFloat(getStrike(isCall));
+          const strike64x64 = fixedFromFloat(getStrike(isCall, spotPrice));
 
           const purchaseAmountNb = 4;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -261,7 +258,7 @@ describe('PoolProxy', function () {
             amountNb -
               (isCall
                 ? purchaseAmountNb
-                : purchaseAmountNb * getStrike(isCall)) +
+                : purchaseAmountNb * getStrike(isCall, spotPrice)) +
               fixedToNumber(quote.baseCost64x64),
           );
 
@@ -320,7 +317,7 @@ describe('PoolProxy', function () {
           await p.depositLiquidity(lp1, amount, isCall);
 
           const maturity = await getMaturity(10);
-          const strike64x64 = fixedFromFloat(getStrike(isCall));
+          const strike64x64 = fixedFromFloat(getStrike(isCall, spotPrice));
 
           const purchaseAmountNb = 4;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -385,7 +382,7 @@ describe('PoolProxy', function () {
           await p.depositLiquidity(lp1, amount, isCall);
 
           const maturity = await getMaturity(10);
-          const strike64x64 = fixedFromFloat(getStrike(isCall));
+          const strike64x64 = fixedFromFloat(getStrike(isCall, spotPrice));
 
           const purchaseAmountNb = 4;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -435,13 +432,13 @@ describe('PoolProxy', function () {
             isCall ? 9 + baseCost : 0,
           );
           expect(formatOptionToNb(user1TVL.baseTVL, isCall)).to.almost(
-            isCall ? 0 : amountNb + baseCost - p.getStrike(isCall, spotPrice),
+            isCall ? 0 : amountNb + baseCost - getStrike(isCall, spotPrice),
           );
           expect(formatOptionToNb(user2TVL.underlyingTVL, isCall)).to.almost(
             isCall ? 1 : 0,
           );
           expect(formatOptionToNb(user2TVL.baseTVL, isCall)).to.almost(
-            isCall ? 0 : p.getStrike(isCall, spotPrice),
+            isCall ? 0 : getStrike(isCall, spotPrice),
           );
           expect(formatOptionToNb(totalTVL.underlyingTVL, isCall)).to.almost(
             isCall ? amountNb + baseCost : 0,
@@ -454,11 +451,11 @@ describe('PoolProxy', function () {
         it('should decrease user TVL if buyer exercise option with profit', async () => {
           const amountNb = isCall ? 10 : 100000;
           const amount = parseOption(amountNb.toString(), isCall);
-          const strike = getStrike(isCall);
+          const strike = getStrike(isCall, spotPrice);
           await p.depositLiquidity(lp1, amount, isCall);
 
           const maturity = await getMaturity(10);
-          const strike64x64 = fixedFromFloat(getStrike(isCall));
+          const strike64x64 = fixedFromFloat(getStrike(isCall, spotPrice));
 
           const purchaseAmountNb = 4;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -530,7 +527,7 @@ describe('PoolProxy', function () {
           await increaseTimestamp(26 * 3600);
 
           const maturity = await getMaturity(10);
-          const strike64x64 = fixedFromFloat(getStrike(isCall));
+          const strike64x64 = fixedFromFloat(getStrike(isCall, spotPrice));
 
           const purchaseAmountNb = 4;
           const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());

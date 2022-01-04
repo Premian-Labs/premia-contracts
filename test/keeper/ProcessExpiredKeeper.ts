@@ -11,6 +11,7 @@ import {
   parseUnderlying,
   getMaturity,
   getMaxCost,
+  getStrike,
   PoolUtil,
 } from '../pool/PoolUtil';
 import { increaseTimestamp } from '../utils/evm';
@@ -60,7 +61,7 @@ describe('ProcessExpiredKeeper', () => {
     );
 
     const maturity = await getMaturity(10);
-    const strike64x64 = fixedFromFloat(p.getStrike(isCall, spotPrice));
+    const strike64x64 = fixedFromFloat(getStrike(isCall, spotPrice));
 
     const purchaseAmountNb = 10;
     const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -113,7 +114,7 @@ describe('ProcessExpiredKeeper', () => {
       isCall,
     );
 
-    const strike64x64 = fixedFromFloat(p.getStrike(isCall, spotPrice));
+    const strike64x64 = fixedFromFloat(getStrike(isCall, spotPrice));
 
     const purchaseAmountNb = 10;
     const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());

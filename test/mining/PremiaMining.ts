@@ -1,5 +1,5 @@
 import chai, { expect } from 'chai';
-import { PoolUtil } from '../pool/PoolUtil';
+import { getTokenDecimals, PoolUtil } from '../pool/PoolUtil';
 import { increaseTimestamp, mineBlockUntil } from '../utils/evm';
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -87,16 +87,13 @@ describe('PremiaMining', () => {
     for (const lp of [lp1, lp2, lp3]) {
       await p.underlying.mint(
         lp.address,
-        parseUnits('100', p.getTokenDecimals(true)),
+        parseUnits('100', getTokenDecimals(true)),
       );
       await p.underlying
         .connect(lp)
         .approve(p.pool.address, ethers.constants.MaxUint256);
 
-      await p.base.mint(
-        lp.address,
-        parseUnits('100', p.getTokenDecimals(false)),
-      );
+      await p.base.mint(lp.address, parseUnits('100', getTokenDecimals(false)));
       await p.base
         .connect(lp)
         .approve(p.pool.address, ethers.constants.MaxUint256);
@@ -114,19 +111,19 @@ describe('PremiaMining', () => {
 
     await p.pool
       .connect(lp1)
-      .deposit(parseUnits('10', p.getTokenDecimals(false)), false);
+      .deposit(parseUnits('10', getTokenDecimals(false)), false);
 
     await increaseTimestamp(oneDay);
 
     await p.pool
       .connect(lp1)
-      .deposit(parseUnits('10', p.getTokenDecimals(true)), true);
+      .deposit(parseUnits('10', getTokenDecimals(true)), true);
 
     await increaseTimestamp(2 * oneDay);
 
     await p.pool
       .connect(lp2)
-      .deposit(parseUnits('20', p.getTokenDecimals(true)), true);
+      .deposit(parseUnits('20', getTokenDecimals(true)), true);
 
     // There is 4 pools with equal alloc points, with premia reward of 1k per day
     // Each pool should get 250 reward per day. Lp1 should therefore have 2 * 250 pending reward now
@@ -139,13 +136,13 @@ describe('PremiaMining', () => {
     await increaseTimestamp(3 * oneDay);
     await p.pool
       .connect(lp3)
-      .deposit(parseUnits('30', p.getTokenDecimals(true)), true);
+      .deposit(parseUnits('30', getTokenDecimals(true)), true);
 
     // LP1 should have pending reward of : 2*250 + 3*1/3*250 + 2*1/6*250 = 833.33
     await increaseTimestamp(2 * oneDay);
     await p.pool
       .connect(lp1)
-      .deposit(parseUnits('10', p.getTokenDecimals(true)), true);
+      .deposit(parseUnits('10', getTokenDecimals(true)), true);
     expect(
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
@@ -156,7 +153,7 @@ describe('PremiaMining', () => {
     await increaseTimestamp(5 * oneDay);
     await p.pool
       .connect(lp2)
-      .withdraw(parseUnits('5', p.getTokenDecimals(true)), true);
+      .withdraw(parseUnits('5', getTokenDecimals(true)), true);
     expect(
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp2.address),
@@ -166,17 +163,17 @@ describe('PremiaMining', () => {
     await increaseTimestamp(oneDay);
     await p.pool
       .connect(lp1)
-      .withdraw(parseUnits('20', p.getTokenDecimals(true)), true);
+      .withdraw(parseUnits('20', getTokenDecimals(true)), true);
 
     await increaseTimestamp(oneDay);
     await p.pool
       .connect(lp2)
-      .withdraw(parseUnits('15', p.getTokenDecimals(true)), true);
+      .withdraw(parseUnits('15', getTokenDecimals(true)), true);
 
     await increaseTimestamp(oneDay);
     await p.pool
       .connect(lp3)
-      .withdraw(parseUnits('30', p.getTokenDecimals(true)), true);
+      .withdraw(parseUnits('30', getTokenDecimals(true)), true);
 
     expect(bnToNumber(await p.premiaMining.premiaRewardsAvailable())).to.almost(
       totalRewardAmount - 15000 / 4,
@@ -225,7 +222,7 @@ describe('PremiaMining', () => {
 
     await p.pool
       .connect(lp1)
-      .deposit(parseUnits('10', p.getTokenDecimals(true)), true);
+      .deposit(parseUnits('10', getTokenDecimals(true)), true);
 
     await increaseTimestamp(4 * 200 * oneDay + oneDay);
 
