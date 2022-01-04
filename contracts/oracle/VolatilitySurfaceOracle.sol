@@ -104,7 +104,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         VolatilitySurfaceOracleStorage.Layout
             storage layout = VolatilitySurfaceOracleStorage.layout();
         bytes32 packed = layout.getParams(base, underlying);
-        return VolatilitySurfaceOracleStorage.parse(packed);
+        return VolatilitySurfaceOracleStorage.parseParams(packed);
     }
 
     /**
@@ -139,7 +139,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         VolatilitySurfaceOracleStorage.Layout
             storage layout = VolatilitySurfaceOracleStorage.layout();
 
-        int256[] memory params = VolatilitySurfaceOracleStorage.parse(
+        int256[] memory params = VolatilitySurfaceOracleStorage.parseParams(
             layout.getParams(base, underlying)
         );
 
@@ -253,7 +253,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      * @param underlying The underlying token of the pair
      * @param params The parameters of the IV model to be updated.
      */
-    function update(
+    function updateParams(
         address base,
         address underlying,
         bytes32 params
@@ -276,12 +276,12 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      * @param input Packed IV model parameters to unpack
      * @return params The unpacked parameters of the IV model
      */
-    function parse(bytes32 input)
+    function parseParams(bytes32 input)
         external
         pure
         returns (int256[] memory params)
     {
-        return VolatilitySurfaceOracleStorage.parse(input);
+        return VolatilitySurfaceOracleStorage.parseParams(input);
     }
 
     /**
@@ -290,11 +290,11 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      * @param params Parameters of IV model to pack
      * @return result The packed parameters of IV model
      */
-    function format(int256[5] memory params)
+    function formatParams(int256[5] memory params)
         external
         pure
         returns (bytes32 result)
     {
-        return VolatilitySurfaceOracleStorage.format(params);
+        return VolatilitySurfaceOracleStorage.formatParams(params);
     }
 }

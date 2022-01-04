@@ -42,7 +42,7 @@ library VolatilitySurfaceOracleStorage {
         return u.params;
     }
 
-    function parse(bytes32 input)
+    function parseParams(bytes32 input)
         internal
         pure
         returns (int256[] memory params)
@@ -88,7 +88,7 @@ library VolatilitySurfaceOracleStorage {
         }
     }
 
-    function format(int256[5] memory params)
+    function formatParams(int256[5] memory params)
         internal
         pure
         returns (bytes32 result)

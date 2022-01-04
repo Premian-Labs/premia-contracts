@@ -40,31 +40,31 @@ describe('VolatilitySurfaceOracle', () => {
     await oracle.connect(owner).addWhitelistedRelayer([relayer.address]);
   });
 
-  describe('#parse', () => {
+  describe('#parseParams', () => {
     it('should correctly parse parameters', async () => {
-      const result = await oracle.format(params as any);
+      const result = await oracle.formatParams(params as any);
       expect(
-        (await oracle.parse(result)).map((el) => el.toString()),
+        (await oracle.parseParams(result)).map((el) => el.toString()),
       ).to.have.same.members(params);
     });
   });
 
-  describe('#format', () => {
+  describe('#formatParams', () => {
     it('should correctly format parameters', async () => {
-      const params = await oracle.parse(paramsFormatted);
-      expect(await oracle.format(params as any)).to.eq(paramsFormatted);
+      const params = await oracle.parseParams(paramsFormatted);
+      expect(await oracle.formatParams(params as any)).to.eq(paramsFormatted);
     });
 
     it('should fail if a variable is out of bounds', async () => {
       const newParams = [...params];
       newParams[4] = BigNumber.from(1).shl(51).toString();
-      await expect(oracle.format(newParams as any)).to.be.revertedWith(
+      await expect(oracle.formatParams(newParams as any)).to.be.revertedWith(
         'Out of bounds',
       );
     });
   });
 
-  describe('#getImpliedVol64x64', () => {
+  describe('#getAnnualizedVolatility64x64', () => {
     // ETH surface regression primer
     const params = [
       0.9342809639050504, // intercept
@@ -78,9 +78,9 @@ describe('VolatilitySurfaceOracle', () => {
     const underlying = '0x0000000000000000000000000000000000000002';
 
     const prepareContractEnv = async () => {
-      const paramsHex = await oracle.format(params as any);
+      const paramsHex = await oracle.formatParams(params as any);
 
-      await oracle.connect(relayer).update(base, underlying, paramsHex);
+      await oracle.connect(relayer).updateParams(base, underlying, paramsHex);
     };
 
     it('should correctly apply coefficients to obtain call IVOL surface', async () => {
