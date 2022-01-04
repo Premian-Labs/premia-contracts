@@ -151,6 +151,8 @@ describe('PoolProxy', function () {
 
   describeBehaviorOfPoolIO({
     deploy: async () => instance,
+    getBase: async () => p.base,
+    getUnderlying: async () => p.underlying,
     getPoolUtil: async () => p,
     getUniswap: async () => uniswap,
   });
@@ -168,6 +170,8 @@ describe('PoolProxy', function () {
 
   describeBehaviorOfPoolWrite({
     deploy: async () => instance,
+    getBase: async () => p.base,
+    getUnderlying: async () => p.underlying,
     getPoolUtil: async () => p,
     getUniswap: async () => uniswap,
   });

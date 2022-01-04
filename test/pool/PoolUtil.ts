@@ -632,33 +632,6 @@ export class PoolUtil {
     await increaseTimestamp(300);
   }
 
-  async writeOption(
-    operator: SignerWithAddress,
-    underwriter: SignerWithAddress,
-    longReceiver: SignerWithAddress,
-    maturity: BigNumber,
-    strike64x64: BigNumber,
-    amount: BigNumber,
-    isCall: boolean,
-  ) {
-    const toMint = isCall ? parseUnderlying('1') : parseBase('2');
-
-    await this.getToken(isCall).mint(underwriter.address, toMint);
-    await this.getToken(isCall)
-      .connect(underwriter)
-      .approve(this.pool.address, ethers.constants.MaxUint256);
-    await this.pool
-      .connect(operator)
-      .writeFrom(
-        underwriter.address,
-        longReceiver.address,
-        maturity,
-        strike64x64,
-        amount,
-        isCall,
-      );
-  }
-
   async purchaseOption(
     lp: SignerWithAddress,
     buyer: SignerWithAddress,

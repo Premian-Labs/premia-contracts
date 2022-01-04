@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { IPool } from '../../typechain';
+import { IPool, ERC20Mock } from '../../typechain';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
@@ -36,12 +36,16 @@ import {
 
 interface PoolWriteBehaviorArgs {
   deploy: () => Promise<IPool>;
+  getBase: () => Promise<ERC20Mock>;
+  getUnderlying: () => Promise<ERC20Mock>;
   getPoolUtil: () => Promise<PoolUtil>;
   getUniswap: () => Promise<IUniswap>;
 }
 
 export function describeBehaviorOfPoolWrite({
   deploy,
+  getBase,
+  getUnderlying,
   getPoolUtil,
   getUniswap,
 }: PoolWriteBehaviorArgs) {
@@ -53,6 +57,8 @@ export function describeBehaviorOfPoolWrite({
     // TODO: pass as arg
     let feeReceiver: SignerWithAddress;
     let instance: IPool;
+    let base: ERC20Mock;
+    let underlying: ERC20Mock;
     let p: PoolUtil;
     let uniswap: IUniswap;
 
@@ -66,6 +72,8 @@ export function describeBehaviorOfPoolWrite({
       p = await getPoolUtil();
       uniswap = await getUniswap();
       feeReceiver = p.feeReceiver;
+      base = await getBase();
+      underlying = await getUnderlying();
     });
 
     describe('#quote', function () {
@@ -1114,31 +1122,55 @@ export function describeBehaviorOfPoolWrite({
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
           it('should revert if trying to manually underwrite an option from a non approved operator', async () => {
+            const maturity = await getMaturity(30);
+            const strike64x64 = fixedFromFloat(2);
             const amount = parseUnderlying('1');
+
+            const token = isCall ? underlying : base;
+            const toMint = isCall ? parseUnderlying('1') : parseBase('2');
+
+            await token.mint(lp1.address, toMint);
+            await token
+              .connect(lp1)
+              .approve(instance.address, ethers.constants.MaxUint256);
+
             await expect(
-              p.writeOption(
-                owner,
-                lp1,
-                lp2,
-                await getMaturity(30),
-                fixedFromFloat(2),
-                amount,
-                isCall,
-              ),
+              instance
+                .connect(owner)
+                .writeFrom(
+                  lp1.address,
+                  lp2.address,
+                  maturity,
+                  strike64x64,
+                  amount,
+                  isCall,
+                ),
             ).to.be.revertedWith('not approved');
           });
 
           it('should successfully manually underwrite an option without use of an external operator', async () => {
+            const maturity = await getMaturity(30);
+            const strike64x64 = fixedFromFloat(2);
             const amount = parseUnderlying('1');
-            await p.writeOption(
-              lp1,
-              lp1,
-              lp2,
-              await getMaturity(30),
-              fixedFromFloat(2),
-              amount,
-              isCall,
-            );
+
+            const token = isCall ? underlying : base;
+            const toMint = isCall ? parseUnderlying('1') : parseBase('2');
+
+            await token.mint(lp1.address, toMint);
+            await token
+              .connect(lp1)
+              .approve(instance.address, ethers.constants.MaxUint256);
+
+            await instance
+              .connect(lp1)
+              .writeFrom(
+                lp1.address,
+                lp2.address,
+                maturity,
+                strike64x64,
+                amount,
+                isCall,
+              );
 
             const tokenIds = getOptionTokenIds(
               await getMaturity(30),
@@ -1162,17 +1194,30 @@ export function describeBehaviorOfPoolWrite({
           });
 
           it('should successfully manually underwrite an option with use of an external operator', async () => {
+            const maturity = await getMaturity(30);
+            const strike64x64 = fixedFromFloat(2);
             const amount = parseUnderlying('1');
+
+            const token = isCall ? underlying : base;
+            const toMint = isCall ? parseUnderlying('1') : parseBase('2');
+
+            await token.mint(lp1.address, toMint);
+            await token
+              .connect(lp1)
+              .approve(instance.address, ethers.constants.MaxUint256);
+
             await instance.connect(lp1).setApprovalForAll(owner.address, true);
-            await p.writeOption(
-              owner,
-              lp1,
-              lp2,
-              await getMaturity(30),
-              fixedFromFloat(2),
-              amount,
-              isCall,
-            );
+
+            await instance
+              .connect(owner)
+              .writeFrom(
+                lp1.address,
+                lp2.address,
+                maturity,
+                strike64x64,
+                amount,
+                isCall,
+              );
 
             const tokenIds = getOptionTokenIds(
               await getMaturity(30),

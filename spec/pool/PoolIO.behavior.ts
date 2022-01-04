@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { IPool, PoolIO__factory } from '../../typechain';
+import { IPool, PoolIO__factory, ERC20Mock } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   fixedFromFloat,
@@ -31,12 +31,16 @@ import {
 
 interface PoolIOBehaviorArgs {
   deploy: () => Promise<IPool>;
+  getBase: () => Promise<ERC20Mock>;
+  getUnderlying: () => Promise<ERC20Mock>;
   getPoolUtil: () => Promise<PoolUtil>;
   getUniswap: () => Promise<IUniswap>;
 }
 
 export function describeBehaviorOfPoolIO({
   deploy,
+  getBase,
+  getUnderlying,
   getPoolUtil,
   getUniswap,
 }: PoolIOBehaviorArgs) {
@@ -46,6 +50,8 @@ export function describeBehaviorOfPoolIO({
     let lp1: SignerWithAddress;
     let lp2: SignerWithAddress;
     let instance: IPool;
+    let base: ERC20Mock;
+    let underlying: ERC20Mock;
     let p: PoolUtil;
     let uniswap: IUniswap;
 
@@ -58,6 +64,8 @@ export function describeBehaviorOfPoolIO({
       // TODO: don't
       p = await getPoolUtil();
       uniswap = await getUniswap();
+      base = await getBase();
+      underlying = await getUnderlying();
     });
 
     describe('#setDivestmentTimestamp', () => {
@@ -763,16 +771,28 @@ export function describeBehaviorOfPoolIO({
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
           it('should successfully burn long and short tokens + withdraw collateral', async () => {
+            const maturity = await getMaturity(30);
+            const strike64x64 = fixedFromFloat(2);
             const amount = parseUnderlying('1');
-            await p.writeOption(
-              lp1,
-              lp1,
-              lp1,
-              await getMaturity(30),
-              fixedFromFloat(2),
-              amount,
-              isCall,
-            );
+
+            const token = isCall ? underlying : base;
+            const toMint = isCall ? parseUnderlying('1') : parseBase('2');
+
+            await token.mint(lp1.address, toMint);
+            await token
+              .connect(lp1)
+              .approve(instance.address, ethers.constants.MaxUint256);
+
+            await instance
+              .connect(lp1)
+              .writeFrom(
+                lp1.address,
+                lp1.address,
+                maturity,
+                strike64x64,
+                amount,
+                isCall,
+              );
 
             const tokenIds = getOptionTokenIds(
               await getMaturity(30),
