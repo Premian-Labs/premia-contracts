@@ -1,16 +1,20 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { describeBehaviorOfERC1155Enumerable } from '@solidstate/spec';
-import { PoolBase } from '../../typechain';
+import { IPool, ERC20Mock } from '../../typechain';
 import { BigNumber, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { formatTokenId, TokenType } from '@premia/utils';
 
-import { parseOption, PoolUtil } from '../../test/pool/PoolUtil';
+import {
+  parseOption,
+  getFreeLiqTokenId,
+  getReservedLiqTokenId,
+} from '../../test/pool/PoolUtil';
 
 interface PoolBaseBehaviorArgs {
-  deploy: () => Promise<PoolBase>;
-  getPoolUtil: () => Promise<PoolUtil>;
+  deploy: () => Promise<IPool>;
+  getUnderlying: () => Promise<ERC20Mock>;
   mintERC1155: (
     address: string,
     id: BigNumber,
@@ -24,13 +28,13 @@ interface PoolBaseBehaviorArgs {
 }
 
 export function describeBehaviorOfPoolBase(
-  { deploy, getPoolUtil, mintERC1155, burnERC1155 }: PoolBaseBehaviorArgs,
+  { deploy, getUnderlying, mintERC1155, burnERC1155 }: PoolBaseBehaviorArgs,
   skips?: string[],
 ) {
   describe('::PoolBase', () => {
     let owner: SignerWithAddress;
-    let instance: PoolBase;
-    let p: PoolUtil;
+    let instance: IPool;
+    let underlying: ERC20Mock;
 
     before(async () => {
       [owner] = await ethers.getSigners();
@@ -38,8 +42,7 @@ export function describeBehaviorOfPoolBase(
 
     beforeEach(async () => {
       instance = await deploy();
-      // TODO: don't
-      p = await getPoolUtil();
+      underlying = await getUnderlying();
     });
 
     describeBehaviorOfERC1155Enumerable(
@@ -65,36 +68,54 @@ export function describeBehaviorOfPoolBase(
     });
 
     describe('#safeTransferFrom', () => {
-      it('reverts if tokenId corresponds to locked free liquidity', async () => {
-        await p.depositLiquidity(owner, parseOption('100', true), true);
+      describe('reverts if', () => {
+        it('tokenId corresponds to locked free liquidity', async () => {
+          const isCall = true;
+          const amount = parseOption('100', isCall);
 
-        expect(
-          instance
+          await underlying.mint(owner.address, amount);
+          await underlying
             .connect(owner)
-            .safeTransferFrom(
-              owner.address,
-              owner.address,
-              p.getFreeLiqTokenId(true),
-              '1',
-              ethers.utils.randomBytes(0),
-            ),
-        ).to.be.revertedWith('liq lock 1d');
-      });
+            .approve(instance.address, ethers.constants.MaxUint256);
 
-      it('reverts if tokenId corresponds to locked reserved liquidity', async () => {
-        await p.depositLiquidity(owner, parseOption('100', true), true);
+          await instance.connect(owner).deposit(amount, isCall);
 
-        expect(
-          instance
+          await expect(
+            instance
+              .connect(owner)
+              .safeTransferFrom(
+                owner.address,
+                owner.address,
+                getFreeLiqTokenId(isCall),
+                '1',
+                '0x',
+              ),
+          ).to.be.revertedWith('liq lock 1d');
+        });
+
+        it('tokenId corresponds to locked reserved liquidity', async () => {
+          const isCall = true;
+          const amount = parseOption('100', isCall);
+
+          await underlying.mint(owner.address, amount);
+          await underlying
             .connect(owner)
-            .safeTransferFrom(
-              owner.address,
-              owner.address,
-              p.getReservedLiqTokenId(true),
-              '1',
-              ethers.utils.randomBytes(0),
-            ),
-        ).to.be.revertedWith('liq lock 1d');
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance.connect(owner).deposit(amount, isCall);
+
+          await expect(
+            instance
+              .connect(owner)
+              .safeTransferFrom(
+                owner.address,
+                owner.address,
+                getReservedLiqTokenId(isCall),
+                '1',
+                '0x',
+              ),
+          ).to.be.revertedWith('liq lock 1d');
+        });
       });
     });
   });

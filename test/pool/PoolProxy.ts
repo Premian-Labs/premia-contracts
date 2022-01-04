@@ -129,7 +129,7 @@ describe('PoolProxy', function () {
   describeBehaviorOfPoolBase(
     {
       deploy: async () => instance,
-      getPoolUtil: async () => p,
+      getUnderlying: async () => p.underlying,
       // mintERC1155: (recipient, tokenId, amount) =>
       //   instance['mint(address,uint256,uint256)'](recipient, tokenId, amount),
       // burnERC1155: (recipient, tokenId, amount) =>
@@ -137,6 +137,7 @@ describe('PoolProxy', function () {
       mintERC1155: undefined as any,
       burnERC1155: undefined as any,
     },
+    // TODO: don't skip
     ['::ERC1155Enumerable'],
   );
 

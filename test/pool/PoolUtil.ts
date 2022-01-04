@@ -64,6 +64,38 @@ interface PoolUtilArgs {
 
 const ONE_DAY = 3600 * 24;
 
+export function getFreeLiqTokenId(isCall: boolean) {
+  if (isCall) {
+    return formatTokenId({
+      tokenType: TokenType.UnderlyingFreeLiq,
+      maturity: BigNumber.from(0),
+      strike64x64: BigNumber.from(0),
+    });
+  } else {
+    return formatTokenId({
+      tokenType: TokenType.BaseFreeLiq,
+      maturity: BigNumber.from(0),
+      strike64x64: BigNumber.from(0),
+    });
+  }
+}
+
+export function getReservedLiqTokenId(isCall: boolean) {
+  if (isCall) {
+    return formatTokenId({
+      tokenType: TokenType.UnderlyingReservedLiq,
+      maturity: BigNumber.from(0),
+      strike64x64: BigNumber.from(0),
+    });
+  } else {
+    return formatTokenId({
+      tokenType: TokenType.BaseReservedLiq,
+      maturity: BigNumber.from(0),
+      strike64x64: BigNumber.from(0),
+    });
+  }
+}
+
 export function getTokenDecimals(isCall: boolean) {
   return isCall ? DECIMALS_UNDERLYING : DECIMALS_BASE;
 }
