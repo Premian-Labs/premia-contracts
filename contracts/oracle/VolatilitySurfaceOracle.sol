@@ -8,13 +8,14 @@ import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
 import {OptionMath} from "../libraries/OptionMath.sol";
-import {ParameterStorage} from "./ParameterStorage.sol";
+import {VolatilitySurfaceOracleStorage} from "./VolatilitySurfaceOracleStorage.sol";
+import {IVolatilitySurfaceOracle} from "./IVolatilitySurfaceOracle.sol";
 
 /**
  * @title Premia volatility surface oracle contract
  */
-contract ImpliedVolOracle is OwnableInternal {
-    using ParameterStorage for ParameterStorage.Layout;
+contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
+    using VolatilitySurfaceOracleStorage for VolatilitySurfaceOracleStorage.Layout;
     using EnumerableSet for EnumerableSet.AddressSet;
     using ABDKMath64x64 for int128;
 
@@ -31,7 +32,8 @@ contract ImpliedVolOracle is OwnableInternal {
      * @param _addr The addresses to add to the whitelist
      */
     function addWhitelistedRelayer(address[] memory _addr) external onlyOwner {
-        ParameterStorage.Layout storage layout = ParameterStorage.layout();
+        VolatilitySurfaceOracleStorage.Layout
+            storage layout = VolatilitySurfaceOracleStorage.layout();
 
         for (uint256 i = 0; i < _addr.length; i++) {
             layout.whitelisted.add(_addr[i]);
@@ -46,7 +48,8 @@ contract ImpliedVolOracle is OwnableInternal {
         external
         onlyOwner
     {
-        ParameterStorage.Layout storage layout = ParameterStorage.layout();
+        VolatilitySurfaceOracleStorage.Layout
+            storage layout = VolatilitySurfaceOracleStorage.layout();
 
         for (uint256 i = 0; i < _addr.length; i++) {
             layout.whitelisted.remove(_addr[i]);
@@ -58,7 +61,8 @@ contract ImpliedVolOracle is OwnableInternal {
      * @return The list of whitelisted relayers
      */
     function getWhitelistedRelayers() external view returns (address[] memory) {
-        ParameterStorage.Layout storage layout = ParameterStorage.layout();
+        VolatilitySurfaceOracleStorage.Layout
+            storage layout = VolatilitySurfaceOracleStorage.layout();
 
         uint256 length = layout.whitelisted.length();
         address[] memory result = new address[](length);
@@ -79,9 +83,10 @@ contract ImpliedVolOracle is OwnableInternal {
     function getParams(address base, address underlying)
         external
         view
-        returns (ParameterStorage.Update memory)
+        returns (VolatilitySurfaceOracleStorage.Update memory)
     {
-        ParameterStorage.Layout storage layout = ParameterStorage.layout();
+        VolatilitySurfaceOracleStorage.Layout
+            storage layout = VolatilitySurfaceOracleStorage.layout();
         return layout.parameters[base][underlying];
     }
 
@@ -96,9 +101,10 @@ contract ImpliedVolOracle is OwnableInternal {
         view
         returns (int256[] memory)
     {
-        ParameterStorage.Layout storage layout = ParameterStorage.layout();
+        VolatilitySurfaceOracleStorage.Layout
+            storage layout = VolatilitySurfaceOracleStorage.layout();
         bytes32 packed = layout.getParams(base, underlying);
-        return ParameterStorage.parse(packed);
+        return VolatilitySurfaceOracleStorage.parse(packed);
     }
 
     /**
@@ -123,16 +129,17 @@ contract ImpliedVolOracle is OwnableInternal {
      * @param timeToMaturity64x64 Time to maturity (in years), as a 64x64 fixed point representation
      * @return Annualized implied volatility, as a 64x64 fixed point representation. 1 = 100%
      */
-    function getImpliedVol64x64(
+    function getAnnualizedVolatility64x64(
         address base,
         address underlying,
         int128 spot64x64,
         int128 strike64x64,
         int128 timeToMaturity64x64
     ) public view returns (int128) {
-        ParameterStorage.Layout storage layout = ParameterStorage.layout();
+        VolatilitySurfaceOracleStorage.Layout
+            storage layout = VolatilitySurfaceOracleStorage.layout();
 
-        int256[] memory params = ParameterStorage.parse(
+        int256[] memory params = VolatilitySurfaceOracleStorage.parse(
             layout.getParams(base, underlying)
         );
 
@@ -163,7 +170,7 @@ contract ImpliedVolOracle is OwnableInternal {
         int128 timeToMaturity64x64,
         bool isCall
     ) internal view returns (int128) {
-        int128 annualizedVol = getImpliedVol64x64(
+        int128 annualizedVol = getAnnualizedVolatility64x64(
             base,
             underlying,
             strike64x64,
@@ -251,17 +258,16 @@ contract ImpliedVolOracle is OwnableInternal {
         address underlying,
         bytes32 params
     ) external {
-        ParameterStorage.Layout storage layout = ParameterStorage.layout();
+        VolatilitySurfaceOracleStorage.Layout
+            storage layout = VolatilitySurfaceOracleStorage.layout();
 
         require(
             layout.whitelisted.contains(msg.sender),
             "Relayer not whitelisted"
         );
 
-        layout.parameters[base][underlying] = ParameterStorage.Update({
-            updatedAt: block.timestamp,
-            params: params
-        });
+        layout.parameters[base][underlying] = VolatilitySurfaceOracleStorage
+            .Update({updatedAt: block.timestamp, params: params});
         emit UpdateParameters(base, underlying, params);
     }
 
@@ -275,7 +281,7 @@ contract ImpliedVolOracle is OwnableInternal {
         pure
         returns (int256[] memory params)
     {
-        return ParameterStorage.parse(input);
+        return VolatilitySurfaceOracleStorage.parse(input);
     }
 
     /**
@@ -289,6 +295,6 @@ contract ImpliedVolOracle is OwnableInternal {
         pure
         returns (bytes32 result)
     {
-        return ParameterStorage.format(params);
+        return VolatilitySurfaceOracleStorage.format(params);
     }
 }

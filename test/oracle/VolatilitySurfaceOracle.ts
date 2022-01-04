@@ -4,8 +4,8 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   ProxyUpgradeableOwnable,
   ProxyUpgradeableOwnable__factory,
-  ImpliedVolOracle,
-  ImpliedVolOracle__factory,
+  VolatilitySurfaceOracle,
+  VolatilitySurfaceOracle__factory,
 } from '../../typechain';
 import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
@@ -14,11 +14,11 @@ import { bnToNumber } from '../utils/math';
 
 chai.use(chaiAlmost(0.01));
 
-describe('ImpliedVolOracle', () => {
+describe('VolatilitySurfaceOracle', () => {
   let owner: SignerWithAddress;
   let relayer: SignerWithAddress;
   let user: SignerWithAddress;
-  let oracle: ImpliedVolOracle;
+  let oracle: VolatilitySurfaceOracle;
   let proxy: ProxyUpgradeableOwnable;
 
   const paramsFormatted =
@@ -31,11 +31,11 @@ describe('ImpliedVolOracle', () => {
   beforeEach(async () => {
     [owner, relayer, user] = await ethers.getSigners();
 
-    const impl = await new ImpliedVolOracle__factory(owner).deploy();
+    const impl = await new VolatilitySurfaceOracle__factory(owner).deploy();
     proxy = await new ProxyUpgradeableOwnable__factory(owner).deploy(
       impl.address,
     );
-    oracle = ImpliedVolOracle__factory.connect(proxy.address, owner);
+    oracle = VolatilitySurfaceOracle__factory.connect(proxy.address, owner);
 
     await oracle.connect(owner).addWhitelistedRelayer([relayer.address]);
   });
@@ -97,7 +97,7 @@ describe('ImpliedVolOracle', () => {
       // 0.06639676877520312 * ln(48000 / 60000) / (30/365)^0.5 * (30/365) =
       // 1.1032750138
 
-      const result = await oracle.getImpliedVol64x64(
+      const result = await oracle.getAnnualizedVolatility64x64(
         base,
         underlying,
         spot,

@@ -4,9 +4,9 @@ pragma solidity ^0.8.0;
 
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 
-library ParameterStorage {
+library VolatilitySurfaceOracleStorage {
     bytes32 internal constant STORAGE_SLOT =
-        keccak256("premia.contracts.storage.ImpliedVolOracle");
+        keccak256("premia.contracts.storage.VolatilitySurfaceOracle");
 
     uint256 internal constant PARAM_BITS = 51;
     uint256 internal constant PARAM_BITS_MINUS_ONE = 50;
