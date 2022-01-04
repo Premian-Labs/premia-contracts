@@ -21,6 +21,8 @@ import {
   parseBase,
   parseOption,
   parseUnderlying,
+  getFreeLiqTokenId,
+  getReservedLiqTokenId,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 
@@ -143,7 +145,7 @@ export function describeBehaviorOfPoolIO({
             instance.deposit('100', true),
           ).to.changeTokenBalance(p.underlying, owner, -100);
           expect(
-            await instance.balanceOf(owner.address, p.getFreeLiqTokenId(true)),
+            await instance.balanceOf(owner.address, getFreeLiqTokenId(true)),
           ).to.eq(100);
         });
 
@@ -167,10 +169,7 @@ export function describeBehaviorOfPoolIO({
 
           expect(await p.weth.balanceOf(owner.address)).to.eq(0);
           expect(
-            await p.poolWeth.balanceOf(
-              owner.address,
-              p.getFreeLiqTokenId(true),
-            ),
+            await p.poolWeth.balanceOf(owner.address, getFreeLiqTokenId(true)),
           ).to.eq(350);
         });
 
@@ -220,7 +219,7 @@ export function describeBehaviorOfPoolIO({
             instance.deposit('100', false),
           ).to.changeTokenBalance(p.base, owner, -100);
           expect(
-            await instance.balanceOf(owner.address, p.getFreeLiqTokenId(false)),
+            await instance.balanceOf(owner.address, getFreeLiqTokenId(false)),
           ).to.eq(100);
         });
       });
@@ -306,7 +305,7 @@ export function describeBehaviorOfPoolIO({
             expect(
               await instance.balanceOf(
                 buyer.address,
-                p.getFreeLiqTokenId(isCall),
+                getFreeLiqTokenId(isCall),
               ),
             ).to.eq(amount);
           });
@@ -386,7 +385,7 @@ export function describeBehaviorOfPoolIO({
             expect(
               await instance.balanceOf(
                 buyer.address,
-                p.getFreeLiqTokenId(isCall),
+                getFreeLiqTokenId(isCall),
               ),
             ).to.eq(amount);
           });
@@ -424,7 +423,7 @@ export function describeBehaviorOfPoolIO({
             expect(
               await instance.balanceOf(
                 owner.address,
-                p.getFreeLiqTokenId(isCall),
+                getFreeLiqTokenId(isCall),
               ),
             ).to.eq(0);
           });
@@ -622,10 +621,7 @@ export function describeBehaviorOfPoolIO({
               );
 
             expect(
-              await instance.balanceOf(
-                lp1.address,
-                p.getFreeLiqTokenId(isCall),
-              ),
+              await instance.balanceOf(lp1.address, getFreeLiqTokenId(isCall)),
             ).to.eq(0);
             expect(await instance.balanceOf(lp1.address, shortTokenId)).to.eq(
               0,

@@ -15,6 +15,8 @@ import {
   getExerciseValue,
   parseBase,
   parseUnderlying,
+  getFreeLiqTokenId,
+  getReservedLiqTokenId,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 import { createUniswap, IUniswap } from '../../test/utils/uniswap';
@@ -77,7 +79,7 @@ export function describeBehaviorOfPoolExercise({
               isCall,
             );
 
-            const freeLiquidityTokenId = p.getFreeLiqTokenId(isCall);
+            const freeLiquidityTokenId = getFreeLiqTokenId(isCall);
             const { long: longTokenId } = getOptionTokenIds(
               maturity,
               strike64x64,
@@ -309,7 +311,7 @@ export function describeBehaviorOfPoolExercise({
               maturity.add(100).toNumber(),
             ]);
 
-            const freeLiquidityTokenId = p.getFreeLiqTokenId(isCall);
+            const freeLiquidityTokenId = getFreeLiqTokenId(isCall);
             const { long: longTokenId, short: shortTokenId } =
               getOptionTokenIds(maturity, strike64x64, isCall);
 
@@ -400,7 +402,7 @@ export function describeBehaviorOfPoolExercise({
               maturity.add(100).toNumber(),
             ]);
 
-            const freeLiquidityTokenId = p.getFreeLiqTokenId(isCall);
+            const freeLiquidityTokenId = getFreeLiqTokenId(isCall);
             const { long: longTokenId, short: shortTokenId } =
               getOptionTokenIds(maturity, strike64x64, isCall);
 

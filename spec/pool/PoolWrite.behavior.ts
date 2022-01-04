@@ -25,6 +25,8 @@ import {
   parseBase,
   parseOption,
   parseUnderlying,
+  getFreeLiqTokenId,
+  getReservedLiqTokenId,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 
@@ -488,7 +490,7 @@ export function describeBehaviorOfPoolWrite({
                 bnToNumber(
                   await instance.balanceOf(
                     lp1.address,
-                    p.getFreeLiqTokenId(isCall),
+                    getFreeLiqTokenId(isCall),
                   ),
                   DECIMALS_UNDERLYING,
                 ),
@@ -500,7 +502,7 @@ export function describeBehaviorOfPoolWrite({
                 bnToNumber(
                   await instance.balanceOf(
                     lp1.address,
-                    p.getFreeLiqTokenId(isCall),
+                    getFreeLiqTokenId(isCall),
                   ),
                   DECIMALS_BASE,
                 ),
@@ -515,7 +517,7 @@ export function describeBehaviorOfPoolWrite({
               bnToNumber(
                 await instance.balanceOf(
                   feeReceiver.address,
-                  p.getReservedLiqTokenId(isCall),
+                  getReservedLiqTokenId(isCall),
                 ),
               ),
             ).to.almost(fixedToNumber(quote.feeCost64x64));
@@ -744,7 +746,7 @@ export function describeBehaviorOfPoolWrite({
                 bnToNumber(
                   await instance.balanceOf(
                     lp1.address,
-                    p.getFreeLiqTokenId(isCall),
+                    getFreeLiqTokenId(isCall),
                   ),
                   DECIMALS_UNDERLYING,
                 ),
@@ -756,7 +758,7 @@ export function describeBehaviorOfPoolWrite({
                 bnToNumber(
                   await instance.balanceOf(
                     lp1.address,
-                    p.getFreeLiqTokenId(isCall),
+                    getFreeLiqTokenId(isCall),
                   ),
                   DECIMALS_BASE,
                 ),
@@ -771,7 +773,7 @@ export function describeBehaviorOfPoolWrite({
               bnToNumber(
                 await instance.balanceOf(
                   feeReceiver.address,
-                  p.getReservedLiqTokenId(isCall),
+                  getReservedLiqTokenId(isCall),
                 ),
               ),
             ).to.almost(fixedToNumber(quote.feeCost64x64));
@@ -901,7 +903,7 @@ export function describeBehaviorOfPoolWrite({
                 bnToNumber(
                   await instance.balanceOf(
                     lp1.address,
-                    p.getFreeLiqTokenId(isCall),
+                    getFreeLiqTokenId(isCall),
                   ),
                   DECIMALS_UNDERLYING,
                 ),
@@ -913,7 +915,7 @@ export function describeBehaviorOfPoolWrite({
                 bnToNumber(
                   await instance.balanceOf(
                     lp1.address,
-                    p.getFreeLiqTokenId(isCall),
+                    getFreeLiqTokenId(isCall),
                   ),
                   DECIMALS_BASE,
                 ),
@@ -928,7 +930,7 @@ export function describeBehaviorOfPoolWrite({
               bnToNumber(
                 await instance.balanceOf(
                   feeReceiver.address,
-                  p.getReservedLiqTokenId(isCall),
+                  getReservedLiqTokenId(isCall),
                 ),
               ),
             ).to.almost(fixedToNumber(quote.feeCost64x64));
@@ -1054,7 +1056,7 @@ export function describeBehaviorOfPoolWrite({
                 bnToNumber(
                   await instance.balanceOf(
                     lp1.address,
-                    p.getFreeLiqTokenId(isCall),
+                    getFreeLiqTokenId(isCall),
                   ),
                   DECIMALS_UNDERLYING,
                 ),
@@ -1066,7 +1068,7 @@ export function describeBehaviorOfPoolWrite({
                 bnToNumber(
                   await instance.balanceOf(
                     lp1.address,
-                    p.getFreeLiqTokenId(isCall),
+                    getFreeLiqTokenId(isCall),
                   ),
                   DECIMALS_BASE,
                 ),
@@ -1081,7 +1083,7 @@ export function describeBehaviorOfPoolWrite({
               bnToNumber(
                 await instance.balanceOf(
                   feeReceiver.address,
-                  p.getReservedLiqTokenId(isCall),
+                  getReservedLiqTokenId(isCall),
                 ),
               ),
             ).to.almost(fixedToNumber(quote.feeCost64x64));

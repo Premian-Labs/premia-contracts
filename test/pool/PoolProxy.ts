@@ -28,6 +28,8 @@ import {
   getExerciseValue,
   parseOption,
   parseUnderlying,
+  getFreeLiqTokenId,
+  getReservedLiqTokenId,
   PoolUtil,
 } from './PoolUtil';
 import chaiAlmost from 'chai-almost';
@@ -249,10 +251,7 @@ describe('PoolProxy', function () {
           expect(
             Number(
               formatOption(
-                await p.pool.balanceOf(
-                  lp1.address,
-                  p.getFreeLiqTokenId(isCall),
-                ),
+                await p.pool.balanceOf(lp1.address, getFreeLiqTokenId(isCall)),
                 isCall,
               ),
             ),
@@ -292,7 +291,7 @@ describe('PoolProxy', function () {
             .safeTransferFrom(
               lp1.address,
               lp2.address,
-              p.getFreeLiqTokenId(isCall),
+              getFreeLiqTokenId(isCall),
               amountToTransfer,
               '0x',
             );
@@ -565,13 +564,10 @@ describe('PoolProxy', function () {
           const baseCost = fixedToNumber(quote.baseCost64x64);
 
           expect(
-            await p.pool.balanceOf(lp1.address, p.getFreeLiqTokenId(isCall)),
+            await p.pool.balanceOf(lp1.address, getFreeLiqTokenId(isCall)),
           ).to.eq(0);
           expect(
-            await p.pool.balanceOf(
-              lp1.address,
-              p.getReservedLiqTokenId(isCall),
-            ),
+            await p.pool.balanceOf(lp1.address, getReservedLiqTokenId(isCall)),
           ).to.eq(amount);
 
           expect(lp1TVL.underlyingTVL).to.eq(0);
@@ -597,10 +593,7 @@ describe('PoolProxy', function () {
           lp1TVL = await p.pool.getUserTVL(lp1.address);
 
           expect(
-            await p.pool.balanceOf(
-              lp1.address,
-              p.getReservedLiqTokenId(isCall),
-            ),
+            await p.pool.balanceOf(lp1.address, getReservedLiqTokenId(isCall)),
           ).to.eq(0);
 
           expect(lp1TVL.underlyingTVL).to.eq(isCall ? amount.div(2) : 0);

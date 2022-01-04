@@ -605,38 +605,6 @@ export class PoolUtil {
     );
   }
 
-  getFreeLiqTokenId(isCall: boolean) {
-    if (isCall) {
-      return formatTokenId({
-        tokenType: TokenType.UnderlyingFreeLiq,
-        maturity: BigNumber.from(0),
-        strike64x64: BigNumber.from(0),
-      });
-    } else {
-      return formatTokenId({
-        tokenType: TokenType.BaseFreeLiq,
-        maturity: BigNumber.from(0),
-        strike64x64: BigNumber.from(0),
-      });
-    }
-  }
-
-  getReservedLiqTokenId(isCall: boolean) {
-    if (isCall) {
-      return formatTokenId({
-        tokenType: TokenType.UnderlyingReservedLiq,
-        maturity: BigNumber.from(0),
-        strike64x64: BigNumber.from(0),
-      });
-    } else {
-      return formatTokenId({
-        tokenType: TokenType.BaseReservedLiq,
-        maturity: BigNumber.from(0),
-        strike64x64: BigNumber.from(0),
-      });
-    }
-  }
-
   async depositLiquidity(
     lp: SignerWithAddress,
     amount: BigNumberish,
