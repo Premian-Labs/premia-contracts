@@ -20,7 +20,6 @@ contract ProcessExpiredKeeper is KeeperCompatibleInterface {
     function checkUpkeep(bytes calldata)
         external
         view
-        override
         returns (bool upkeepNeeded, bytes memory performData)
     {
         address[] memory poolList = IProxyManager(PREMIA_DIAMOND).getPoolList();
@@ -51,7 +50,7 @@ contract ProcessExpiredKeeper is KeeperCompatibleInterface {
         return (false, "");
     }
 
-    function performUpkeep(bytes calldata performData) external override {
+    function performUpkeep(bytes calldata performData) external {
         (address pool, uint256 longTokenId, uint256 supply) = abi.decode(
             performData,
             (address, uint256, uint256)

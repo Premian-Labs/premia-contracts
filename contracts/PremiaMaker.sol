@@ -104,7 +104,6 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
     function getCustomPath(address token)
         external
         view
-        override
         returns (address[] memory)
     {
         return PremiaMakerStorage.layout().customPath[token];
@@ -112,12 +111,7 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
 
     /// @notice Get the list of whitelisted routers
     /// @return The list of whitelisted routers
-    function getWhitelistedRouters()
-        external
-        view
-        override
-        returns (address[] memory)
-    {
+    function getWhitelistedRouters() external view returns (address[] memory) {
         PremiaMakerStorage.Layout storage l = PremiaMakerStorage.layout();
 
         uint256 length = l.whitelistedRouters.length();
@@ -138,7 +132,7 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
         address pool,
         address router,
         address[] memory tokens
-    ) external override {
+    ) external {
         IPoolIO(pool).withdrawFees();
 
         for (uint256 i = 0; i < tokens.length; i++) {
@@ -149,7 +143,7 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
     /// @notice Convert tokens into Premia, and send Premia to PremiaStaking contract
     /// @param router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
     /// @param token The token to swap to premia
-    function convert(address router, address token) public override {
+    function convert(address router, address token) public {
         PremiaMakerStorage.Layout storage l = PremiaMakerStorage.layout();
 
         require(

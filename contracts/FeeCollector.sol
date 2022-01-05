@@ -22,7 +22,6 @@ contract FeeCollector is IFeeCollector {
 
     function withdraw(address[] memory pools, address[] memory tokens)
         external
-        override
     {
         for (uint256 i = 0; i < pools.length; i++) {
             IPoolIO(pools[i]).withdrawFees();

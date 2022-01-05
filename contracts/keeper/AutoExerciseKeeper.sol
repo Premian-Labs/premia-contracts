@@ -143,7 +143,6 @@ contract AutoExerciseKeeper is IKeeperCompatible {
     function checkUpkeep(bytes calldata checkData)
         external
         view
-        override
         returns (bool upkeepNeeded, bytes memory performData)
     {
         (bool isExpirationOrder, uint256 expiration) = abi.decode(
@@ -205,7 +204,7 @@ contract AutoExerciseKeeper is IKeeperCompatible {
      * calling `abi.decode`. This data should not be trusted, and should be
      * validated against the contract's current state.
      */
-    function performUpkeep(bytes calldata performData) external override {
+    function performUpkeep(bytes calldata performData) external {
         AutoExerciseOrder[] memory ordersToExercise = abi.decode(
             performData,
             (AutoExerciseOrder[])
