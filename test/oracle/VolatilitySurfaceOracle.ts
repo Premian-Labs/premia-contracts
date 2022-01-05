@@ -80,7 +80,9 @@ describe('VolatilitySurfaceOracle', () => {
     const prepareContractEnv = async () => {
       const paramsHex = await oracle.formatParams(params as any);
 
-      await oracle.connect(relayer).updateParams(base, underlying, paramsHex);
+      await oracle
+        .connect(relayer)
+        .updateParams([base], [underlying], [paramsHex]);
     };
 
     it('should correctly apply coefficients to obtain IVOL surface', async () => {
@@ -97,6 +99,7 @@ describe('VolatilitySurfaceOracle', () => {
       // 0.06639676877520312 * ln(48000 / 60000) / (30/365)^0.5 * (30/365) =
       // 1.1032750138
 
+      // Works for isCall = true
       const result = await oracle.getAnnualizedVolatility64x64(
         base,
         underlying,

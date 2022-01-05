@@ -206,9 +206,9 @@ export class PoolUtil {
     const paramsPacked = await ivolOracle.formatParams(paramsInt as any);
 
     await ivolOracle.updateParams(
-      base.address,
-      underlying.address,
-      paramsPacked,
+      [base.address],
+      [underlying.address],
+      [paramsPacked],
     );
 
     const premiaMiningImpl = await new PremiaMining__factory(deployer).deploy(

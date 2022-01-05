@@ -127,6 +127,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      * @param spot64x64 The spot, as a 64x64 fixed point representation
      * @param strike64x64 The strike, as a 64x64 fixed point representation
      * @param timeToMaturity64x64 Time to maturity (in years), as a 64x64 fixed point representation
+     * @param isCall Whether it is for call or put
      * @return Annualized implied volatility, as a 64x64 fixed point representation. 1 = 100%
      */
     function getAnnualizedVolatility64x64(
@@ -250,16 +251,22 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     }
 
     /**
-     * @notice Update the IV model parameters of a token pair
-     * @param base The base token of the pair
-     * @param underlying The underlying token of the pair
-     * @param params The parameters of the IV model to be updated.
+     * @notice Update a list of IV model parameters
+     * @param base List of base tokens
+     * @param underlying List of underlying tokens
+     * @param parameters List of IV model parameters
      */
     function updateParams(
-        address base,
-        address underlying,
-        bytes32 params
+        address[] memory base,
+        address[] memory underlying,
+        bytes32[] memory parameters
     ) external {
+        uint256 length = base.length;
+        require(
+            length == underlying.length && length == parameters.length,
+            "Wrong array length"
+        );
+
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
 
@@ -268,11 +275,16 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             "Relayer not whitelisted"
         );
 
-        l.parameters[base][underlying] = VolatilitySurfaceOracleStorage.Update({
-            updatedAt: block.timestamp,
-            params: params
-        });
-        emit UpdateParameters(base, underlying, params);
+        for (uint256 i = 0; i < length; i++) {
+            l.parameters[base[i]][
+                underlying[i]
+            ] = VolatilitySurfaceOracleStorage.Update({
+                updatedAt: block.timestamp,
+                params: parameters[i]
+            });
+
+            emit UpdateParameters(base[i], underlying[i], parameters[i]);
+        }
     }
 
     /**
