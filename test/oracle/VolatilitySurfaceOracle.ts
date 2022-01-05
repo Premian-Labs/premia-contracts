@@ -83,7 +83,7 @@ describe('VolatilitySurfaceOracle', () => {
       await oracle.connect(relayer).updateParams(base, underlying, paramsHex);
     };
 
-    it('should correctly apply coefficients to obtain call IVOL surface', async () => {
+    it('should correctly apply coefficients to obtain IVOL surface', async () => {
       await prepareContractEnv();
 
       const spot = fixedFromFloat(48000);
