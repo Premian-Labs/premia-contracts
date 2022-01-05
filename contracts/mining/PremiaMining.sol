@@ -55,7 +55,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @notice Add premia rewards to distribute. Can only be called by the owner
      * @param _amount Amount of premia to add
      */
-    function addPremiaRewards(uint256 _amount) external override onlyOwner {
+    function addPremiaRewards(uint256 _amount) external onlyOwner {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), _amount);
         l.premiaAvailable += _amount;
@@ -65,7 +65,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @notice Get amount of premia reward available to distribute
      * @return Amount of premia reward available to distribute
      */
-    function premiaRewardsAvailable() external view override returns (uint256) {
+    function premiaRewardsAvailable() external view returns (uint256) {
         return PremiaMiningStorage.layout().premiaAvailable;
     }
 
@@ -73,12 +73,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @notice Get the total allocation points
      * @return Total allocation points
      */
-    function getTotalAllocationPoints()
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function getTotalAllocationPoints() external view returns (uint256) {
         return PremiaMiningStorage.layout().totalAllocPoint;
     }
 
@@ -91,7 +86,6 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     function getPoolInfo(address pool, bool isCallPool)
         external
         view
-        override
         returns (PremiaMiningStorage.PoolInfo memory)
     {
         return PremiaMiningStorage.layout().poolInfo[pool][isCallPool];
@@ -101,7 +95,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @notice Get the amount of premia emitted per year
      * @return Premia emitted per year
      */
-    function getPremiaPerYear() external view override returns (uint256) {
+    function getPremiaPerYear() external view returns (uint256) {
         return PremiaMiningStorage.layout().premiaPerYear;
     }
 
@@ -120,7 +114,6 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      */
     function addPool(address _pool, uint256 _allocPoints)
         external
-        override
         onlyDiamondOrOwner
     {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
@@ -155,7 +148,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     function setPoolAllocPoints(
         address[] memory _pools,
         uint256[] memory _allocPoints
-    ) public override onlyDiamondOrOwner {
+    ) public onlyDiamondOrOwner {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
 
         for (uint256 i; i < _pools.length; i++) {
@@ -190,7 +183,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         address _pool,
         bool _isCallPool,
         address _user
-    ) external view override returns (uint256) {
+    ) external view returns (uint256) {
         uint256 TVL;
         uint256 userTVL;
 
@@ -246,7 +239,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         address _pool,
         bool _isCallPool,
         uint256 _totalTVL
-    ) external override onlyPool(_pool) {
+    ) external onlyPool(_pool) {
         _updatePool(_pool, _isCallPool, _totalTVL);
     }
 
@@ -307,7 +300,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         uint256 _userTVLOld,
         uint256 _userTVLNew,
         uint256 _totalTVL
-    ) external override onlyPool(_pool) {
+    ) external onlyPool(_pool) {
         _allocatePending(
             _user,
             _pool,
@@ -368,7 +361,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         uint256 _userTVLOld,
         uint256 _userTVLNew,
         uint256 _totalTVL
-    ) external override onlyPool(_pool) {
+    ) external onlyPool(_pool) {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
 
         _allocatePending(

@@ -61,12 +61,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      * @notice Get the list of whitelisted relayers
      * @return The list of whitelisted relayers
      */
-    function getWhitelistedRelayers()
-        external
-        view
-        override
-        returns (address[] memory)
-    {
+    function getWhitelistedRelayers() external view returns (address[] memory) {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
 
@@ -89,7 +84,6 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     function getVolatilitySurface(address baseToken, address underlyingToken)
         external
         view
-        override
         returns (VolatilitySurfaceOracleStorage.Update memory)
     {
         VolatilitySurfaceOracleStorage.Layout
@@ -108,7 +102,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         address baseToken,
         address underlyingToken,
         bool isCall
-    ) external view override returns (int256[] memory) {
+    ) external view returns (int256[] memory) {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
 
@@ -132,7 +126,6 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     function getTimeToMaturity64x64(uint64 maturity)
         external
         view
-        override
         returns (int128)
     {
         return ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
@@ -155,7 +148,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 strike64x64,
         int128 timeToMaturity64x64,
         bool isCall
-    ) public view override returns (int128) {
+    ) public view returns (int128) {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
         int256[] memory volatilitySurface = VolatilitySurfaceOracleStorage
@@ -250,7 +243,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 spot64x64,
         int128 timeToMaturity64x64,
         bool isCall
-    ) external view override returns (int128) {
+    ) external view returns (int128) {
         return
             _getBlackScholesPrice64x64(
                 baseToken,
@@ -279,7 +272,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 spot64x64,
         int128 timeToMaturity64x64,
         bool isCall
-    ) external view override returns (uint256) {
+    ) external view returns (uint256) {
         return
             _getBlackScholesPrice64x64(
                 baseToken,

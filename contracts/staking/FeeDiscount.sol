@@ -57,7 +57,7 @@ contract FeeDiscount is IFeeDiscount {
     /**
      * @inheritdoc IFeeDiscount
      */
-    function stake(uint256 amount, uint256 period) external override {
+    function stake(uint256 amount, uint256 period) external {
         _stake(amount, period);
     }
 
@@ -87,7 +87,7 @@ contract FeeDiscount is IFeeDiscount {
     /**
      * @inheritdoc IFeeDiscount
      */
-    function unstake(uint256 amount) external override {
+    function unstake(uint256 amount) external {
         FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
 
         FeeDiscountStorage.UserInfo storage user = l.userInfo[msg.sender];
@@ -113,7 +113,6 @@ contract FeeDiscount is IFeeDiscount {
     function getStakeAmountWithBonus(address user)
         external
         view
-        override
         returns (uint256)
     {
         return _getStakeAmountWithBonus(user);
@@ -122,12 +121,7 @@ contract FeeDiscount is IFeeDiscount {
     /**
      * @inheritdoc IFeeDiscount
      */
-    function getDiscount(address user)
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function getDiscount(address user) external view returns (uint256) {
         uint256 userBalance = _getStakeAmountWithBonus(user);
 
         IFeeDiscount.StakeLevel[] memory stakeLevels = _getStakeLevels();
@@ -172,7 +166,6 @@ contract FeeDiscount is IFeeDiscount {
     function getStakeLevels()
         external
         pure
-        override
         returns (IFeeDiscount.StakeLevel[] memory stakeLevels)
     {
         return _getStakeLevels();
@@ -184,7 +177,6 @@ contract FeeDiscount is IFeeDiscount {
     function getStakePeriodMultiplier(uint256 period)
         external
         pure
-        override
         returns (uint256)
     {
         return _getStakePeriodMultiplier(period);
@@ -196,7 +188,6 @@ contract FeeDiscount is IFeeDiscount {
     function getUserInfo(address user)
         external
         view
-        override
         returns (FeeDiscountStorage.UserInfo memory)
     {
         return FeeDiscountStorage.layout().userInfo[user];

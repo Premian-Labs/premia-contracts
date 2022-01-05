@@ -57,7 +57,7 @@ contract ProxyManager is IProxyManager, OwnableInternal {
      * @notice get address list of all Pool contracts
      * @return list of pool addresses
      */
-    function getPoolList() external view override returns (address[] memory) {
+    function getPoolList() external view returns (address[] memory) {
         return ProxyManagerStorage.layout().poolList;
     }
 
