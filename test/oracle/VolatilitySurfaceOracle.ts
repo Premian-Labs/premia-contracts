@@ -103,6 +103,7 @@ describe('VolatilitySurfaceOracle', () => {
         spot,
         strike,
         timeToMaturity,
+        true,
       );
       const expected = bnToNumber(fixedFromFloat(1.1032750138));
 

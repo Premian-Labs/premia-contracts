@@ -197,43 +197,19 @@ export class PoolUtil {
     );
     await ivolOracle.addWhitelistedRelayer([deployer.address]);
 
-    // Set coefficients for IVOL oracle
-
-    const callCoefficients = [
+    // Set parameters for IVOL oracle
+    const params = [
       0.839159148341129, -0.05957422656606383, 0.02004706385514592,
       0.14895038484273854, 0.034026549310791646,
     ];
+    const paramsInt = params.map((el) => parseUnits(el.toFixed(12), '12'));
+    const paramsPacked = await ivolOracle.formatParams(paramsInt as any);
 
-    const putCoefficients = [
-      0.839159148341129, -0.05957422656606383, 0.02004706385514592,
-      0.14895038484273854, 0.034026549310791646,
-    ];
-
-    const callCoefficientsInt = callCoefficients.map((el) =>
-      parseUnits(el.toFixed(12), '12'),
+    await ivolOracle.updateParams(
+      base.address,
+      underlying.address,
+      paramsPacked,
     );
-
-    const putCoefficientsInt = putCoefficients.map((el) =>
-      parseUnits(el.toFixed(12), '12'),
-    );
-
-    const callCoefficientsPacked =
-      await ivolOracle.formatVolatilitySurfaceCoefficients(
-        callCoefficientsInt as any,
-      );
-    const putCoefficientsPacked =
-      await ivolOracle.formatVolatilitySurfaceCoefficients(
-        putCoefficientsInt as any,
-      );
-
-    await ivolOracle.updateVolatilitySurfaces(
-      [base.address],
-      [underlying.address],
-      [callCoefficientsPacked],
-      [putCoefficientsPacked],
-    );
-
-    //
 
     const premiaMiningImpl = await new PremiaMining__factory(deployer).deploy(
       premiaDiamond.address,

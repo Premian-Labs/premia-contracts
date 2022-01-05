@@ -23,7 +23,7 @@ library VolatilitySurfaceOracleStorage {
         // Base token -> Underlying token -> Update
         mapping(address => mapping(address => Update)) parameters;
         // Relayer addresses which can be trusted to provide accurate option trades
-        EnumerableSet.AddressSet whitelisted;
+        EnumerableSet.AddressSet whitelistedRelayers;
     }
 
     function layout() internal pure returns (Layout storage l) {
@@ -34,11 +34,11 @@ library VolatilitySurfaceOracleStorage {
     }
 
     function getParams(
-        Layout storage layout,
+        Layout storage l,
         address base,
         address underlying
     ) internal view returns (bytes32) {
-        return layout.parameters[base][underlying].params;
+        return l.parameters[base][underlying].params;
     }
 
     function parseParams(bytes32 input)
@@ -92,8 +92,8 @@ library VolatilitySurfaceOracleStorage {
         pure
         returns (bytes32 result)
     {
+        int256 max = int256(1 << PARAM_BITS_MINUS_ONE);
         for (uint256 i = 0; i < PARAM_AMOUNT; i++) {
-            int256 max = int256(1 << PARAM_BITS_MINUS_ONE);
             require(params[i] < max && params[i] > -max, "Out of bounds");
         }
 

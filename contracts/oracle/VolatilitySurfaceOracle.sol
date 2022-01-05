@@ -33,10 +33,10 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      */
     function addWhitelistedRelayer(address[] memory _addr) external onlyOwner {
         VolatilitySurfaceOracleStorage.Layout
-            storage layout = VolatilitySurfaceOracleStorage.layout();
+            storage l = VolatilitySurfaceOracleStorage.layout();
 
         for (uint256 i = 0; i < _addr.length; i++) {
-            layout.whitelisted.add(_addr[i]);
+            l.whitelistedRelayers.add(_addr[i]);
         }
     }
 
@@ -49,10 +49,10 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         onlyOwner
     {
         VolatilitySurfaceOracleStorage.Layout
-            storage layout = VolatilitySurfaceOracleStorage.layout();
+            storage l = VolatilitySurfaceOracleStorage.layout();
 
         for (uint256 i = 0; i < _addr.length; i++) {
-            layout.whitelisted.remove(_addr[i]);
+            l.whitelistedRelayers.remove(_addr[i]);
         }
     }
 
@@ -62,13 +62,13 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      */
     function getWhitelistedRelayers() external view returns (address[] memory) {
         VolatilitySurfaceOracleStorage.Layout
-            storage layout = VolatilitySurfaceOracleStorage.layout();
+            storage l = VolatilitySurfaceOracleStorage.layout();
 
-        uint256 length = layout.whitelisted.length();
+        uint256 length = l.whitelistedRelayers.length();
         address[] memory result = new address[](length);
 
         for (uint256 i = 0; i < length; i++) {
-            result[i] = layout.whitelisted.at(i);
+            result[i] = l.whitelistedRelayers.at(i);
         }
 
         return result;
@@ -86,8 +86,8 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         returns (VolatilitySurfaceOracleStorage.Update memory)
     {
         VolatilitySurfaceOracleStorage.Layout
-            storage layout = VolatilitySurfaceOracleStorage.layout();
-        return layout.parameters[base][underlying];
+            storage l = VolatilitySurfaceOracleStorage.layout();
+        return l.parameters[base][underlying];
     }
 
     /**
@@ -102,8 +102,8 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         returns (int256[] memory)
     {
         VolatilitySurfaceOracleStorage.Layout
-            storage layout = VolatilitySurfaceOracleStorage.layout();
-        bytes32 packed = layout.getParams(base, underlying);
+            storage l = VolatilitySurfaceOracleStorage.layout();
+        bytes32 packed = l.getParams(base, underlying);
         return VolatilitySurfaceOracleStorage.parseParams(packed);
     }
 
@@ -134,13 +134,14 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         address underlying,
         int128 spot64x64,
         int128 strike64x64,
-        int128 timeToMaturity64x64
+        int128 timeToMaturity64x64,
+        bool isCall
     ) public view returns (int128) {
         VolatilitySurfaceOracleStorage.Layout
-            storage layout = VolatilitySurfaceOracleStorage.layout();
+            storage l = VolatilitySurfaceOracleStorage.layout();
 
         int256[] memory params = VolatilitySurfaceOracleStorage.parseParams(
-            layout.getParams(base, underlying)
+            l.getParams(base, underlying)
         );
 
         require(params.length == 5, "Invalid vol surface");
@@ -175,7 +176,8 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             underlying,
             strike64x64,
             spot64x64,
-            timeToMaturity64x64
+            timeToMaturity64x64,
+            isCall
         );
         int128 annualizedVar = annualizedVol.mul(annualizedVol);
 
@@ -259,15 +261,17 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         bytes32 params
     ) external {
         VolatilitySurfaceOracleStorage.Layout
-            storage layout = VolatilitySurfaceOracleStorage.layout();
+            storage l = VolatilitySurfaceOracleStorage.layout();
 
         require(
-            layout.whitelisted.contains(msg.sender),
+            l.whitelistedRelayers.contains(msg.sender),
             "Relayer not whitelisted"
         );
 
-        layout.parameters[base][underlying] = VolatilitySurfaceOracleStorage
-            .Update({updatedAt: block.timestamp, params: params});
+        l.parameters[base][underlying] = VolatilitySurfaceOracleStorage.Update({
+            updatedAt: block.timestamp,
+            params: params
+        });
         emit UpdateParameters(base, underlying, params);
     }
 

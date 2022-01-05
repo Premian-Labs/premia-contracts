@@ -27,7 +27,8 @@ interface IVolatilitySurfaceOracle {
         address underlying,
         int128 spot64x64,
         int128 strike64x64,
-        int128 timeToMaturity64x64
+        int128 timeToMaturity64x64,
+        bool isCall
     ) external view returns (int128);
 
     function getBlackScholesPrice64x64(
