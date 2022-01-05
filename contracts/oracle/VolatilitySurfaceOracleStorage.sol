@@ -38,8 +38,7 @@ library VolatilitySurfaceOracleStorage {
         address base,
         address underlying
     ) internal view returns (bytes32) {
-        Update storage u = layout.parameters[base][underlying];
-        return u.params;
+        return layout.parameters[base][underlying].params;
     }
 
     function parseParams(bytes32 input)
