@@ -93,8 +93,11 @@ library VolatilitySurfaceOracleStorage {
         returns (bytes32 result)
     {
         int256 max = int256(1 << PARAM_BITS_MINUS_ONE);
-        for (uint256 i = 0; i < PARAM_AMOUNT; i++) {
-            require(params[i] < max && params[i] > -max, "Out of bounds");
+
+        unchecked {
+            for (uint256 i = 0; i < PARAM_AMOUNT; i++) {
+                require(params[i] < max && params[i] > -max, "Out of bounds");
+            }
         }
 
         assembly {
