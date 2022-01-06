@@ -115,12 +115,18 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     }
 
     function _getAnnualizedVolatility64x64(
+        address base,
+        address underlying,
         int128 spot64x64,
         int128 strike64x64,
-        int128 timeToMaturity64x64,
-        int256[] memory params
-    ) internal pure returns (int128) {
-        require(params.length == 5, "Invalid vol surface");
+        int128 timeToMaturity64x64
+    ) internal view returns (int128) {
+        VolatilitySurfaceOracleStorage.Layout
+            storage l = VolatilitySurfaceOracleStorage.layout();
+
+        int256[] memory params = VolatilitySurfaceOracleStorage.parseParams(
+            l.getParams(base, underlying)
+        );
 
         // Time adjusted log moneyness
         int128 M64x64 = spot64x64.div(strike64x64).ln().div(
@@ -144,20 +150,14 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 spot64x64,
         int128 strike64x64,
         int128 timeToMaturity64x64
-    ) public view returns (int128) {
-        VolatilitySurfaceOracleStorage.Layout
-            storage l = VolatilitySurfaceOracleStorage.layout();
-
-        int256[] memory params = VolatilitySurfaceOracleStorage.parseParams(
-            l.getParams(base, underlying)
-        );
-
+    ) external view returns (int128) {
         return
             _getAnnualizedVolatility64x64(
+                base,
+                underlying,
                 spot64x64,
                 strike64x64,
-                timeToMaturity64x64,
-                params
+                timeToMaturity64x64
             );
     }
 
@@ -172,20 +172,14 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 strike64x64,
         int128 timeToMaturity64x64,
         bool
-    ) public view returns (int128) {
-        VolatilitySurfaceOracleStorage.Layout
-            storage l = VolatilitySurfaceOracleStorage.layout();
-
-        int256[] memory params = VolatilitySurfaceOracleStorage.parseParams(
-            l.getParams(base, underlying)
-        );
-
+    ) external view returns (int128) {
         return
             _getAnnualizedVolatility64x64(
+                base,
+                underlying,
                 spot64x64,
                 strike64x64,
-                timeToMaturity64x64,
-                params
+                timeToMaturity64x64
             );
     }
 
@@ -201,13 +195,12 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 timeToMaturity64x64,
         bool isCall
     ) internal view returns (int128) {
-        int128 annualizedVol = getAnnualizedVolatility64x64(
+        int128 annualizedVol = _getAnnualizedVolatility64x64(
             base,
             underlying,
             strike64x64,
             spot64x64,
-            timeToMaturity64x64,
-            isCall
+            timeToMaturity64x64
         );
         int128 annualizedVar = annualizedVol.mul(annualizedVol);
 
