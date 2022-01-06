@@ -29,30 +29,33 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
 
     /**
      * @notice Add relayer to the whitelist so that they can add oracle surfaces.
-     * @param _addr The addresses to add to the whitelist
+     * @param accounts The addresses to add to the whitelist
      */
-    function addWhitelistedRelayer(address[] memory _addr) external onlyOwner {
-        VolatilitySurfaceOracleStorage.Layout
-            storage l = VolatilitySurfaceOracleStorage.layout();
-
-        for (uint256 i = 0; i < _addr.length; i++) {
-            l.whitelistedRelayers.add(_addr[i]);
-        }
-    }
-
-    /**
-     * @notice Remove relayer from the whitelist so that they cannot add oracle surfaces.
-     * @param _addr The addresses to remove the whitelist
-     */
-    function removeWhitelistedRelayer(address[] memory _addr)
+    function addWhitelistedRelayer(address[] memory accounts)
         external
         onlyOwner
     {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
 
-        for (uint256 i = 0; i < _addr.length; i++) {
-            l.whitelistedRelayers.remove(_addr[i]);
+        for (uint256 i = 0; i < accounts.length; i++) {
+            l.whitelistedRelayers.add(accounts[i]);
+        }
+    }
+
+    /**
+     * @notice Remove relayer from the whitelist so that they cannot add oracle surfaces.
+     * @param accounts The addresses to remove the whitelist
+     */
+    function removeWhitelistedRelayer(address[] memory accounts)
+        external
+        onlyOwner
+    {
+        VolatilitySurfaceOracleStorage.Layout
+            storage l = VolatilitySurfaceOracleStorage.layout();
+
+        for (uint256 i = 0; i < accounts.length; i++) {
+            l.whitelistedRelayers.remove(accounts[i]);
         }
     }
 
