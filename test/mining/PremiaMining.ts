@@ -1,6 +1,6 @@
 import chai, { expect } from 'chai';
 import { PoolUtil } from '../pool/PoolUtil';
-import { increaseTimestamp, mineBlockUntil } from '../utils/evm';
+import { increaseTimestamp, mineBlockUntil, resetHardhat } from '../utils/evm';
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
@@ -101,6 +101,10 @@ describe('PremiaMining', () => {
         .connect(lp)
         .approve(p.pool.address, ethers.constants.MaxUint256);
     }
+  });
+
+  afterEach(async () => {
+    await resetHardhat();
   });
 
   it('should revert if calling update not from the option pool', async () => {
