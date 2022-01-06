@@ -120,6 +120,59 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         return ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
     }
 
+    function _getAnnualizedVolatility64x64(
+        int128 spot64x64,
+        int128 strike64x64,
+        int128 timeToMaturity64x64,
+        int256[] memory params
+    ) internal pure returns (int128) {
+        require(params.length == 5, "Invalid vol surface");
+
+        // Time adjusted log moneyness
+        int128 M64x64 = spot64x64.div(strike64x64).ln().div(
+            timeToMaturity64x64.sqrt()
+        );
+
+        return
+            _toParameter64x64(params[0]) +
+            _toParameter64x64(params[1]).mul(M64x64) +
+            _toParameter64x64(params[2]).mul(M64x64.mul(M64x64)) +
+            _toParameter64x64(params[3]).mul(timeToMaturity64x64) +
+            _toParameter64x64(params[4]).mul(M64x64).mul(timeToMaturity64x64);
+    }
+
+    /**
+     * @notice Get annualized volatility as a 64x64 fixed point representation
+     * @param base The base token of the pair
+     * @param underlying The underlying token of the pair
+     * @param spot64x64 The spot, as a 64x64 fixed point representation
+     * @param strike64x64 The strike, as a 64x64 fixed point representation
+     * @param timeToMaturity64x64 Time to maturity (in years), as a 64x64 fixed point representation
+     * @return Annualized implied volatility, as a 64x64 fixed point representation. 1 = 100%
+     */
+    function getAnnualizedVolatility64x64(
+        address base,
+        address underlying,
+        int128 spot64x64,
+        int128 strike64x64,
+        int128 timeToMaturity64x64
+    ) public view returns (int128) {
+        VolatilitySurfaceOracleStorage.Layout
+            storage l = VolatilitySurfaceOracleStorage.layout();
+
+        int256[] memory params = VolatilitySurfaceOracleStorage.parseParams(
+            l.getParams(base, underlying)
+        );
+
+        return
+            _getAnnualizedVolatility64x64(
+                spot64x64,
+                strike64x64,
+                timeToMaturity64x64,
+                params
+            );
+    }
+
     /**
      * @notice Get annualized volatility as a 64x64 fixed point representation
      * @param base The base token of the pair
@@ -145,19 +198,13 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             l.getParams(base, underlying)
         );
 
-        require(params.length == 5, "Invalid vol surface");
-
-        // Time adjusted log moneyness
-        int128 M64x64 = spot64x64.div(strike64x64).ln().div(
-            timeToMaturity64x64.sqrt()
-        );
-
         return
-            _toParameter64x64(params[0]) +
-            _toParameter64x64(params[1]).mul(M64x64) +
-            _toParameter64x64(params[2]).mul(M64x64.mul(M64x64)) +
-            _toParameter64x64(params[3]).mul(timeToMaturity64x64) +
-            _toParameter64x64(params[4]).mul(M64x64).mul(timeToMaturity64x64);
+            _getAnnualizedVolatility64x64(
+                spot64x64,
+                strike64x64,
+                timeToMaturity64x64,
+                params
+            );
     }
 
     function _toParameter64x64(int256 value) internal pure returns (int128) {

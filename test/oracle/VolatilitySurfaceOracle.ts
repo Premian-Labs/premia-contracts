@@ -100,14 +100,32 @@ describe('VolatilitySurfaceOracle', () => {
       // 1.1032750138
 
       // Works for isCall = true
-      const result = await oracle.getAnnualizedVolatility64x64(
-        base,
-        underlying,
-        spot,
-        strike,
-        timeToMaturity,
-        true,
-      );
+      const result = await oracle[
+        'getAnnualizedVolatility64x64(address,address,int128,int128,int128)'
+      ](base, underlying, spot, strike, timeToMaturity);
+      const expected = bnToNumber(fixedFromFloat(1.1032750138));
+
+      expect(expected / bnToNumber(result)).to.be.closeTo(1, 0.001);
+    });
+
+    it('should correctly apply coefficients to obtain IVOL surface using deprecated signature', async () => {
+      await prepareContractEnv();
+
+      const spot = fixedFromFloat(48000);
+      const strike = fixedFromFloat(60000);
+      const timeToMaturity = fixedFromFloat(30 / 365);
+
+      // 0.9342809639050504 -
+      // 0.13731127641216775 * ln(48000 / 60000) / (30/365)^0.5 -
+      // 0.00027206354505048273 * (ln(48000 / 60000) / (30/365)^0.5) ^ 2 +
+      // 0.8094657778778461 * (30/365) +
+      // 0.06639676877520312 * ln(48000 / 60000) / (30/365)^0.5 * (30/365) =
+      // 1.1032750138
+
+      // Works for isCall = true
+      const result = await oracle[
+        'getAnnualizedVolatility64x64(address,address,int128,int128,int128,bool)'
+      ](base, underlying, spot, strike, timeToMaturity, true);
       const expected = bnToNumber(fixedFromFloat(1.1032750138));
 
       expect(expected / bnToNumber(result)).to.be.closeTo(1, 0.001);
