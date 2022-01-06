@@ -195,7 +195,7 @@ export class PoolUtil {
       ivolOracleProxy.address,
       deployer,
     );
-    await ivolOracle.addWhitelistedRelayer([deployer.address]);
+    await ivolOracle.addWhitelistedRelayers([deployer.address]);
 
     // Set parameters for IVOL oracle
     const params = [

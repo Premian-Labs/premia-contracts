@@ -28,10 +28,10 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     );
 
     /**
-     * @notice Add relayer to the whitelist so that they can add oracle surfaces.
+     * @notice Add relayers to the whitelist so that they can add oracle surfaces
      * @param accounts The addresses to add to the whitelist
      */
-    function addWhitelistedRelayer(address[] memory accounts)
+    function addWhitelistedRelayers(address[] memory accounts)
         external
         onlyOwner
     {
@@ -44,10 +44,10 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     }
 
     /**
-     * @notice Remove relayer from the whitelist so that they cannot add oracle surfaces.
-     * @param accounts The addresses to remove the whitelist
+     * @notice Remove relayers from the whitelist so that they cannot add oracle surfaces
+     * @param accounts The addresses to remove from the whitelist
      */
-    function removeWhitelistedRelayer(address[] memory accounts)
+    function removeWhitelistedRelayers(address[] memory accounts)
         external
         onlyOwner
     {

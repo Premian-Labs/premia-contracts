@@ -37,7 +37,7 @@ describe('VolatilitySurfaceOracle', () => {
     );
     oracle = VolatilitySurfaceOracle__factory.connect(proxy.address, owner);
 
-    await oracle.connect(owner).addWhitelistedRelayer([relayer.address]);
+    await oracle.connect(owner).addWhitelistedRelayers([relayer.address]);
   });
 
   describe('#parseParams', () => {
