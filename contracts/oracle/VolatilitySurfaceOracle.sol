@@ -57,8 +57,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     }
 
     /**
-     * @notice Get the list of whitelisted relayers
-     * @return The list of whitelisted relayers
+     * @inheritdoc IVolatilitySurfaceOracle
      */
     function getWhitelistedRelayers() external view returns (address[] memory) {
         VolatilitySurfaceOracleStorage.Layout
@@ -75,10 +74,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     }
 
     /**
-     * @notice Get the IV model parameters of a token pair
-     * @param base The base token of the pair
-     * @param underlying The underlying token of the pair
-     * @return The IV model parameters
+     * @inheritdoc IVolatilitySurfaceOracle
      */
     function getParams(address base, address underlying)
         external
@@ -91,10 +87,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     }
 
     /**
-     * @notice Get unpacked IV model parameters
-     * @param base The base token of the pair
-     * @param underlying The underlying token of the pair
-     * @return The unpacked IV model parameters
+     * @inheritdoc IVolatilitySurfaceOracle
      */
     function getParamsUnpacked(address base, address underlying)
         external
@@ -108,9 +101,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     }
 
     /**
-     * @notice Get time to maturity in years, as a 64x64 fixed point representation
-     * @param maturity Maturity timestamp
-     * @return Time to maturity (in years), as a 64x64 fixed point representation
+     * @inheritdoc IVolatilitySurfaceOracle
      */
     function getTimeToMaturity64x64(uint64 maturity)
         external
@@ -142,13 +133,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     }
 
     /**
-     * @notice Get annualized volatility as a 64x64 fixed point representation
-     * @param base The base token of the pair
-     * @param underlying The underlying token of the pair
-     * @param spot64x64 The spot, as a 64x64 fixed point representation
-     * @param strike64x64 The strike, as a 64x64 fixed point representation
-     * @param timeToMaturity64x64 Time to maturity (in years), as a 64x64 fixed point representation
-     * @return Annualized implied volatility, as a 64x64 fixed point representation. 1 = 100%
+     * @inheritdoc IVolatilitySurfaceOracle
      */
     function getAnnualizedVolatility64x64(
         address base,
@@ -174,14 +159,8 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     }
 
     /**
-     * @notice Get annualized volatility as a 64x64 fixed point representation
-     * @param base The base token of the pair
-     * @param underlying The underlying token of the pair
-     * @param spot64x64 The spot, as a 64x64 fixed point representation
-     * @param strike64x64 The strike, as a 64x64 fixed point representation
-     * @param timeToMaturity64x64 Time to maturity (in years), as a 64x64 fixed point representation
-     * @param isCall Whether it is for call or put
-     * @return Annualized implied volatility, as a 64x64 fixed point representation. 1 = 100%
+     * @notice see getAnnualizedVolatility64x64(address,address,int128,int128,int128)
+     * @dev deprecated - will be removed once PoolInternal call is updated
      */
     function getAnnualizedVolatility64x64(
         address base,
@@ -189,7 +168,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 spot64x64,
         int128 strike64x64,
         int128 timeToMaturity64x64,
-        bool isCall
+        bool
     ) public view returns (int128) {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
@@ -240,14 +219,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     }
 
     /**
-     * @notice Get Black Scholes price as a 64x64 fixed point representation
-     * @param base The base token of the pair
-     * @param underlying The underlying token of the pair
-     * @param strike64x64 Strike, as a64x64 fixed point representation
-     * @param spot64x64 Spot price, as a 64x64 fixed point representation
-     * @param timeToMaturity64x64 Time to maturity (in years), as a 64x64 fixed point representation
-     * @param isCall Whether it is for call or put
-     * @return Black scholes price, as a 64x64 fixed point representation
+     * @inheritdoc IVolatilitySurfaceOracle
      */
     function getBlackScholesPrice64x64(
         address base,
@@ -269,14 +241,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     }
 
     /**
-     * @notice Get Black Scholes price as an uint256 with 18 decimals
-     * @param base The base token of the pair
-     * @param underlying The underlying token of the pair
-     * @param strike64x64 Strike, as a64x64 fixed point representation
-     * @param spot64x64 Spot price, as a 64x64 fixed point representation
-     * @param timeToMaturity64x64 Time to maturity (in years), as a 64x64 fixed point representation
-     * @param isCall Whether it is for call or put
-     * @return Black scholes price, as an uint256 with 18 decimals
+     * @inheritdoc IVolatilitySurfaceOracle
      */
     function getBlackScholesPrice(
         address base,
