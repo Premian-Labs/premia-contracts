@@ -254,6 +254,11 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         }
     }
 
+    /**
+     * @notice convert decimal parameter to 64x64 fixed point representation
+     * @param value parameter to convert
+     * @return 64x64 fixed point representation of parameter
+     */
     function _toParameter64x64(int256 value) private pure returns (int128) {
         return ABDKMath64x64.divi(value, int256(10**DECIMALS));
     }
@@ -294,6 +299,16 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             _toParameter64x64(params[4]).mul(M64x64).mul(timeToMaturity64x64);
     }
 
+    /**
+     * @notice calculate the price of an option using the Black-Scholes model
+     * @param base The base token of the pair
+     * @param underlying The underlying token of the pair
+     * @param strike64x64 Strike, as a64x64 fixed point representation
+     * @param spot64x64 Spot price, as a 64x64 fixed point representation
+     * @param timeToMaturity64x64 64x64 fixed point representation of time to maturity (denominated in years)
+     * @param isCall Whether it is for call or put
+     * @return 64x64 fixed point representation of the Black Scholes price
+     */
     function _getBlackScholesPrice64x64(
         address base,
         address underlying,

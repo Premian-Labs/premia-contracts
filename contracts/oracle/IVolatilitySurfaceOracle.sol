@@ -82,14 +82,14 @@ interface IVolatilitySurfaceOracle {
     ) external view returns (int128);
 
     /**
-     * @notice Get Black Scholes price as a 64x64 fixed point representation
+     * @notice calculate the price of an option using the Black-Scholes model
      * @param base The base token of the pair
      * @param underlying The underlying token of the pair
      * @param strike64x64 Strike, as a64x64 fixed point representation
      * @param spot64x64 Spot price, as a 64x64 fixed point representation
      * @param timeToMaturity64x64 64x64 fixed point representation of time to maturity (denominated in years)
      * @param isCall Whether it is for call or put
-     * @return Black scholes price, as a 64x64 fixed point representation
+     * @return 64x64 fixed point representation of the Black Scholes price
      */
     function getBlackScholesPrice64x64(
         address base,
