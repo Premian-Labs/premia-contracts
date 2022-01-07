@@ -28,35 +28,25 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     );
 
     /**
-     * @notice Add relayers to the whitelist so that they can add oracle surfaces
-     * @param accounts The addresses to add to the whitelist
+     * @inheritdoc IVolatilitySurfaceOracle
      */
-    function addWhitelistedRelayers(address[] memory accounts)
+    function formatParams(int256[5] memory params)
         external
-        onlyOwner
+        pure
+        returns (bytes32 result)
     {
-        VolatilitySurfaceOracleStorage.Layout
-            storage l = VolatilitySurfaceOracleStorage.layout();
-
-        for (uint256 i = 0; i < accounts.length; i++) {
-            l.whitelistedRelayers.add(accounts[i]);
-        }
+        return VolatilitySurfaceOracleStorage.formatParams(params);
     }
 
     /**
-     * @notice Remove relayers from the whitelist so that they cannot add oracle surfaces
-     * @param accounts The addresses to remove from the whitelist
+     * @inheritdoc IVolatilitySurfaceOracle
      */
-    function removeWhitelistedRelayers(address[] memory accounts)
+    function parseParams(bytes32 input)
         external
-        onlyOwner
+        pure
+        returns (int256[] memory params)
     {
-        VolatilitySurfaceOracleStorage.Layout
-            storage l = VolatilitySurfaceOracleStorage.layout();
-
-        for (uint256 i = 0; i < accounts.length; i++) {
-            l.whitelistedRelayers.remove(accounts[i]);
-        }
+        return VolatilitySurfaceOracleStorage.parseParams(input);
     }
 
     /**
@@ -114,33 +104,6 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         return ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
     }
 
-    function _getAnnualizedVolatility64x64(
-        address base,
-        address underlying,
-        int128 spot64x64,
-        int128 strike64x64,
-        int128 timeToMaturity64x64
-    ) internal view returns (int128) {
-        VolatilitySurfaceOracleStorage.Layout
-            storage l = VolatilitySurfaceOracleStorage.layout();
-
-        int256[] memory params = VolatilitySurfaceOracleStorage.parseParams(
-            l.getParams(base, underlying)
-        );
-
-        // Time adjusted log moneyness
-        int128 M64x64 = spot64x64.div(strike64x64).ln().div(
-            timeToMaturity64x64.sqrt()
-        );
-
-        return
-            _toParameter64x64(params[0]) +
-            _toParameter64x64(params[1]).mul(M64x64) +
-            _toParameter64x64(params[2]).mul(M64x64.mul(M64x64)) +
-            _toParameter64x64(params[3]).mul(timeToMaturity64x64) +
-            _toParameter64x64(params[4]).mul(M64x64).mul(timeToMaturity64x64);
-    }
-
     /**
      * @inheritdoc IVolatilitySurfaceOracle
      */
@@ -180,37 +143,6 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
                 spot64x64,
                 strike64x64,
                 timeToMaturity64x64
-            );
-    }
-
-    function _toParameter64x64(int256 value) internal pure returns (int128) {
-        return ABDKMath64x64.divi(value, int256(10**DECIMALS));
-    }
-
-    function _getBlackScholesPrice64x64(
-        address base,
-        address underlying,
-        int128 strike64x64,
-        int128 spot64x64,
-        int128 timeToMaturity64x64,
-        bool isCall
-    ) internal view returns (int128) {
-        int128 annualizedVol = _getAnnualizedVolatility64x64(
-            base,
-            underlying,
-            strike64x64,
-            spot64x64,
-            timeToMaturity64x64
-        );
-        int128 annualizedVar = annualizedVol.mul(annualizedVol);
-
-        return
-            OptionMath._blackScholesPrice(
-                annualizedVar,
-                strike64x64,
-                spot64x64,
-                timeToMaturity64x64,
-                isCall
             );
     }
 
@@ -259,10 +191,37 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     }
 
     /**
-     * @notice Update a list of IV model parameters
-     * @param base List of base tokens
-     * @param underlying List of underlying tokens
-     * @param parameters List of IV model parameters
+     * @inheritdoc IVolatilitySurfaceOracle
+     */
+    function addWhitelistedRelayers(address[] memory accounts)
+        external
+        onlyOwner
+    {
+        VolatilitySurfaceOracleStorage.Layout
+            storage l = VolatilitySurfaceOracleStorage.layout();
+
+        for (uint256 i = 0; i < accounts.length; i++) {
+            l.whitelistedRelayers.add(accounts[i]);
+        }
+    }
+
+    /**
+     * @inheritdoc IVolatilitySurfaceOracle
+     */
+    function removeWhitelistedRelayers(address[] memory accounts)
+        external
+        onlyOwner
+    {
+        VolatilitySurfaceOracleStorage.Layout
+            storage l = VolatilitySurfaceOracleStorage.layout();
+
+        for (uint256 i = 0; i < accounts.length; i++) {
+            l.whitelistedRelayers.remove(accounts[i]);
+        }
+    }
+
+    /**
+     * @inheritdoc IVolatilitySurfaceOracle
      */
     function updateParams(
         address[] memory base,
@@ -295,30 +254,70 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         }
     }
 
-    /**
-     * @notice Unpack IV model parameters from a bytes32
-     * @param input Packed IV model parameters to unpack
-     * @return params The unpacked parameters of the IV model
-     */
-    function parseParams(bytes32 input)
-        external
-        pure
-        returns (int256[] memory params)
-    {
-        return VolatilitySurfaceOracleStorage.parseParams(input);
+    function _toParameter64x64(int256 value) internal pure returns (int128) {
+        return ABDKMath64x64.divi(value, int256(10**DECIMALS));
     }
 
     /**
-     * @notice Pack IV model parameters into a single bytes32
-     * @dev This function is used to pack the parameters into a single variable, which is then used as input in `update`
-     * @param params Parameters of IV model to pack
-     * @return result The packed parameters of IV model
+     * @notice calculate the annualized volatility for given set of parameters
+     * @param base The base token of the pair
+     * @param underlying The underlying token of the pair
+     * @param spot64x64 64x64 fixed point representation of spot price
+     * @param strike64x64 64x64 fixed point representation of strike price
+     * @param timeToMaturity64x64 64x64 fixed point representation of time to maturity (denominated in years)
+     * @return 64x64 fixed point representation of annualized implied volatility, where 1 is defined as 100%
      */
-    function formatParams(int256[5] memory params)
-        external
-        pure
-        returns (bytes32 result)
-    {
-        return VolatilitySurfaceOracleStorage.formatParams(params);
+    function _getAnnualizedVolatility64x64(
+        address base,
+        address underlying,
+        int128 spot64x64,
+        int128 strike64x64,
+        int128 timeToMaturity64x64
+    ) internal view returns (int128) {
+        VolatilitySurfaceOracleStorage.Layout
+            storage l = VolatilitySurfaceOracleStorage.layout();
+
+        int256[] memory params = VolatilitySurfaceOracleStorage.parseParams(
+            l.getParams(base, underlying)
+        );
+
+        // Time adjusted log moneyness
+        int128 M64x64 = spot64x64.div(strike64x64).ln().div(
+            timeToMaturity64x64.sqrt()
+        );
+
+        return
+            _toParameter64x64(params[0]) +
+            _toParameter64x64(params[1]).mul(M64x64) +
+            _toParameter64x64(params[2]).mul(M64x64.mul(M64x64)) +
+            _toParameter64x64(params[3]).mul(timeToMaturity64x64) +
+            _toParameter64x64(params[4]).mul(M64x64).mul(timeToMaturity64x64);
+    }
+
+    function _getBlackScholesPrice64x64(
+        address base,
+        address underlying,
+        int128 strike64x64,
+        int128 spot64x64,
+        int128 timeToMaturity64x64,
+        bool isCall
+    ) internal view returns (int128) {
+        int128 annualizedVol = _getAnnualizedVolatility64x64(
+            base,
+            underlying,
+            strike64x64,
+            spot64x64,
+            timeToMaturity64x64
+        );
+        int128 annualizedVar = annualizedVol.mul(annualizedVol);
+
+        return
+            OptionMath._blackScholesPrice(
+                annualizedVar,
+                strike64x64,
+                spot64x64,
+                timeToMaturity64x64,
+                isCall
+            );
     }
 }
