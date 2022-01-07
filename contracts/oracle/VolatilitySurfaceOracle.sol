@@ -19,7 +19,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     using EnumerableSet for EnumerableSet.AddressSet;
     using ABDKMath64x64 for int128;
 
-    uint256 internal constant DECIMALS = 12;
+    uint256 private constant DECIMALS = 12;
 
     event UpdateParameters(
         address indexed base,
@@ -254,7 +254,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         }
     }
 
-    function _toParameter64x64(int256 value) internal pure returns (int128) {
+    function _toParameter64x64(int256 value) private pure returns (int128) {
         return ABDKMath64x64.divi(value, int256(10**DECIMALS));
     }
 
@@ -273,7 +273,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 spot64x64,
         int128 strike64x64,
         int128 timeToMaturity64x64
-    ) internal view returns (int128) {
+    ) private view returns (int128) {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
 
@@ -301,7 +301,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 spot64x64,
         int128 timeToMaturity64x64,
         bool isCall
-    ) internal view returns (int128) {
+    ) private view returns (int128) {
         int128 annualizedVol = _getAnnualizedVolatility64x64(
             base,
             underlying,
