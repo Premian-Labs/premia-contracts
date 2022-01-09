@@ -10,7 +10,7 @@ import {
 } from '../../typechain';
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { increaseTimestamp } from '../utils/evm';
+import { increaseTimestamp, resetHardhat } from '../utils/evm';
 import { formatEther, parseEther } from 'ethers/lib/utils';
 
 chai.use(chaiAlmost(0.2));
@@ -62,6 +62,10 @@ describe('PremiaVesting', () => {
 
     await premiaVesting.transferOwnership(premiaVestingWrapper.address);
     await premiaVestingWrapper.connect(admin).transferOwnership(user1.address);
+  });
+
+  afterEach(async () => {
+    await resetHardhat();
   });
 
   it('should successfully withdraw over 2 years', async () => {

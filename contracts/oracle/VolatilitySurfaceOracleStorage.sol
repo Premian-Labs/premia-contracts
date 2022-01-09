@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: BUSL-1.1
-// For further clarification please see https://license.premia.legal
 
 pragma solidity ^0.8.0;
 
@@ -9,21 +8,20 @@ library VolatilitySurfaceOracleStorage {
     bytes32 internal constant STORAGE_SLOT =
         keccak256("premia.contracts.storage.VolatilitySurfaceOracle");
 
-    uint256 internal constant COEFF_BITS = 51;
-    uint256 internal constant COEFF_BITS_MINUS_ONE = 50;
-    uint256 internal constant COEFF_AMOUNT = 5;
-    // START_BIT = COEFF_BITS * (COEFF_AMOUNT - 1)
+    uint256 internal constant PARAM_BITS = 51;
+    uint256 internal constant PARAM_BITS_MINUS_ONE = 50;
+    uint256 internal constant PARAM_AMOUNT = 5;
+    // START_BIT = PARAM_BITS * (PARAM_AMOUNT - 1)
     uint256 internal constant START_BIT = 204;
 
     struct Update {
         uint256 updatedAt;
-        bytes32 callCoefficients;
-        bytes32 putCoefficients;
+        bytes32 params;
     }
 
     struct Layout {
         // Base token -> Underlying token -> Update
-        mapping(address => mapping(address => Update)) volatilitySurfaces;
+        mapping(address => mapping(address => Update)) parameters;
         // Relayer addresses which can be trusted to provide accurate option trades
         EnumerableSet.AddressSet whitelistedRelayers;
     }
@@ -35,72 +33,71 @@ library VolatilitySurfaceOracleStorage {
         }
     }
 
-    function getCoefficients(
+    function getParams(
         Layout storage l,
-        address baseToken,
-        address underlyingToken,
-        bool isCall
+        address base,
+        address underlying
     ) internal view returns (bytes32) {
-        Update storage u = l.volatilitySurfaces[baseToken][underlyingToken];
-        return isCall ? u.callCoefficients : u.putCoefficients;
+        return l.parameters[base][underlying].params;
     }
 
-    function parseVolatilitySurfaceCoefficients(bytes32 input)
+    function parseParams(bytes32 input)
         internal
         pure
-        returns (int256[] memory coefficients)
+        returns (int256[] memory params)
     {
-        coefficients = new int256[](COEFF_AMOUNT);
+        params = new int256[](PARAM_AMOUNT);
 
         // Value to add to negative numbers to cast them to int256
-        int256 toAdd = (int256(-1) >> COEFF_BITS) << COEFF_BITS;
+        int256 toAdd = (int256(-1) >> PARAM_BITS) << PARAM_BITS;
 
         assembly {
             let i := 0
             // Value equal to -1
-            let mid := shl(COEFF_BITS_MINUS_ONE, 1)
+
+            let mid := shl(PARAM_BITS_MINUS_ONE, 1)
 
             for {
 
-            } lt(i, COEFF_AMOUNT) {
+            } lt(i, PARAM_AMOUNT) {
 
             } {
-                let offset := sub(START_BIT, mul(COEFF_BITS, i))
-                let coeff := shr(
+                let offset := sub(START_BIT, mul(PARAM_BITS, i))
+                let param := shr(
                     offset,
                     sub(
                         input,
                         shl(
-                            add(offset, COEFF_BITS),
-                            shr(add(offset, COEFF_BITS), input)
+                            add(offset, PARAM_BITS),
+                            shr(add(offset, PARAM_BITS), input)
                         )
                     )
                 )
 
                 // Check if value is a negative number and needs casting
-                if or(eq(coeff, mid), gt(coeff, mid)) {
-                    coeff := add(coeff, toAdd)
+                if or(eq(param, mid), gt(param, mid)) {
+                    param := add(param, toAdd)
                 }
 
-                // Store result in the coefficients array
-                mstore(add(coefficients, add(0x20, mul(0x20, i))), coeff)
+                // Store result in the params array
+                mstore(add(params, add(0x20, mul(0x20, i))), param)
 
                 i := add(i, 1)
             }
         }
     }
 
-    function formatVolatilitySurfaceCoefficients(int256[5] memory coefficients)
+    function formatParams(int256[5] memory params)
         internal
         pure
         returns (bytes32 result)
     {
-        for (uint256 i = 0; i < COEFF_AMOUNT; i++) {
-            int256 max = int256(1 << COEFF_BITS_MINUS_ONE);
-            require(
-                coefficients[i] < max && coefficients[i] > -max,
-                "Out of bounds"
-            );
+        int256 max = int256(1 << PARAM_BITS_MINUS_ONE);
+
+        unchecked {
+            for (uint256 i = 0; i < PARAM_AMOUNT; i++) {
+                require(params[i] < max && params[i] > -max, "Out of bounds");
+            }
         }
 
         assembly {
@@ -108,17 +105,17 @@ library VolatilitySurfaceOracleStorage {
 
             for {
 
-            } lt(i, COEFF_AMOUNT) {
+            } lt(i, PARAM_AMOUNT) {
 
             } {
-                let offset := sub(START_BIT, mul(COEFF_BITS, i))
-                let coeff := mload(add(coefficients, mul(0x20, i)))
+                let offset := sub(START_BIT, mul(PARAM_BITS, i))
+                let param := mload(add(params, mul(0x20, i)))
 
                 result := add(
                     result,
                     shl(
                         offset,
-                        sub(coeff, shl(COEFF_BITS, shr(COEFF_BITS, coeff)))
+                        sub(param, shl(PARAM_BITS, shr(PARAM_BITS, param)))
                     )
                 )
 

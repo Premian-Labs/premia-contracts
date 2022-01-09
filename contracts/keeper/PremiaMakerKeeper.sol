@@ -52,7 +52,6 @@ contract PremiaMakerKeeper is IKeeperCompatible, Ownable {
     function checkUpkeep(bytes calldata checkData)
         external
         view
-        override
         returns (bool upkeepNeeded, bytes memory performData)
     {
         address[] memory pools = IProxyManager(PREMIA_DIAMOND).getPoolList();
@@ -146,7 +145,7 @@ contract PremiaMakerKeeper is IKeeperCompatible, Ownable {
      * calling `abi.decode`. This data should not be trusted, and should be
      * validated against the contract's current state.
      */
-    function performUpkeep(bytes calldata performData) external override {
+    function performUpkeep(bytes calldata performData) external {
         (address pool, address router, address[] memory tokens) = abi.decode(
             performData,
             (address, address, address[])

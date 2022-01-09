@@ -165,8 +165,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 l.underlying,
                 args.spot64x64,
                 args.strike64x64,
-                timeToMaturity64x64,
-                args.isCall
+                timeToMaturity64x64
             );
 
         require(annualizedVolatility64x64 > 0, "vol = 0");
