@@ -31,7 +31,7 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function addRewards(uint256 amount) external override {
+    function addRewards(uint256 amount) external {
         _updateRewards();
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
@@ -43,14 +43,14 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getAvailableRewards() external view override returns (uint256) {
+    function getAvailableRewards() external view returns (uint256) {
         return PremiaStakingStorage.layout().availableRewards;
     }
 
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getPendingRewards() external view override returns (uint256) {
+    function getPendingRewards() external view returns (uint256) {
         return _getPendingRewards();
     }
 
@@ -84,7 +84,7 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external override {
+    ) external {
         IERC2612(PREMIA).permit(
             msg.sender,
             address(this),
@@ -100,7 +100,7 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function deposit(uint256 amount) external override {
+    function deposit(uint256 amount) external {
         _deposit(amount);
     }
 
@@ -141,7 +141,7 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function startWithdraw(uint256 amount) external override {
+    function startWithdraw(uint256 amount) external {
         _updateRewards();
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
@@ -164,7 +164,7 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function withdraw() external override {
+    function withdraw() external {
         _updateRewards();
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
@@ -190,26 +190,21 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getWithdrawalDelay() external view override returns (uint256) {
+    function getWithdrawalDelay() external view returns (uint256) {
         return PremiaStakingStorage.layout().withdrawalDelay;
     }
 
     /**
      * @inheritdoc IPremiaStaking
      */
-    function setWithdrawalDelay(uint256 delay) external override {
+    function setWithdrawalDelay(uint256 delay) external {
         PremiaStakingStorage.layout().withdrawalDelay = delay;
     }
 
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getXPremiaToPremiaRatio()
-        external
-        view
-        override
-        returns (uint256)
-    {
+    function getXPremiaToPremiaRatio() external view returns (uint256) {
         return
             ((_getStakedPremiaAmount() + _getPendingRewards()) * 1e18) /
             _totalSupply();
@@ -218,7 +213,6 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     function getPendingWithdrawal(address user)
         external
         view
-        override
         returns (
             uint256 amount,
             uint256 startDate,
@@ -234,7 +228,7 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getStakedPremiaAmount() external view override returns (uint256) {
+    function getStakedPremiaAmount() external view returns (uint256) {
         return _getStakedPremiaAmount() + _getPendingRewards();
     }
 

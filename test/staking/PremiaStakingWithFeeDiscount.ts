@@ -16,6 +16,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import chaiAlmost from 'chai-almost';
 import { bnToNumber } from '../utils/math';
 import { parseEther } from 'ethers/lib/utils';
+import { resetHardhat } from '../utils/evm';
 
 chai.use(chaiAlmost(0.05));
 
@@ -85,6 +86,10 @@ describe('PremiaStakingWithFeeDiscount', () => {
     );
 
     await feeDiscountOld.connect(treasury).setNewContract(xPremia.address);
+  });
+
+  afterEach(async () => {
+    await resetHardhat();
   });
 
   it('should successfully migrate locked tokens', async () => {

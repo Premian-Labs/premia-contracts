@@ -17,7 +17,6 @@ contract PremiaOptionNFTDisplay is IPremiaOptionNFTDisplay {
     function tokenURI(address _pool, uint256 _tokenId)
         external
         view
-        override
         returns (string memory)
     {
         IPool pool = IPool(_pool);

@@ -10,6 +10,7 @@ import {
 } from './utils/uniswap';
 import { ERC20Mock, UniswapV2Pair } from '../typechain';
 import { bnToNumber } from './utils/math';
+import { resetHardhat } from './utils/evm';
 
 let p: IPremiaContracts;
 let admin: SignerWithAddress;
@@ -36,6 +37,10 @@ describe('PremiaMaker', () => {
 
     await p.premiaMaker.addWhitelistedRouters([uniswap.router.address]);
     premiaWeth = uniswap.premiaWeth as UniswapV2Pair;
+  });
+
+  afterEach(async () => {
+    await resetHardhat();
   });
 
   it('should make premia successfully', async () => {

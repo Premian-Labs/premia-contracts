@@ -3,11 +3,15 @@ import { ONE_WEEK } from './constants';
 import { BigNumber } from 'ethers';
 
 export async function resetHardhat() {
-  const { url: jsonRpcUrl, blockNumber } = (network as any).config.forking;
+  if ((network as any).config.forking) {
+    const { url: jsonRpcUrl, blockNumber } = (network as any).config.forking;
 
-  await ethers.provider.send('hardhat_reset', [
-    { forking: { jsonRpcUrl, blockNumber } },
-  ]);
+    await ethers.provider.send('hardhat_reset', [
+      { forking: { jsonRpcUrl, blockNumber } },
+    ]);
+  } else {
+    await ethers.provider.send('hardhat_reset', []);
+  }
 }
 
 export async function getBlockNumber() {
