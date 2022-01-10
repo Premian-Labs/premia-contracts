@@ -48,7 +48,6 @@ contract PoolIO is IPoolIO, PoolSwap {
      */
     function setDivestmentTimestamp(uint64 timestamp, bool isCallPool)
         external
-        override
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -64,11 +63,7 @@ contract PoolIO is IPoolIO, PoolSwap {
     /**
      * @inheritdoc IPoolIO
      */
-    function deposit(uint256 amount, bool isCallPool)
-        external
-        payable
-        override
-    {
+    function deposit(uint256 amount, bool isCallPool) external payable {
         _deposit(amount, isCallPool, false);
     }
 
@@ -82,7 +77,7 @@ contract PoolIO is IPoolIO, PoolSwap {
         uint256 amountInMax,
         address[] calldata path,
         bool isSushi
-    ) external payable override {
+    ) external payable {
         // If value is passed, amountInMax must be 0, as the value wont be used
         // If amountInMax is not 0, user wants to do a swap from an ERC20, and therefore no value should be attached
         require(
@@ -107,7 +102,7 @@ contract PoolIO is IPoolIO, PoolSwap {
     /**
      * @inheritdoc IPoolIO
      */
-    function withdraw(uint256 amount, bool isCallPool) public override {
+    function withdraw(uint256 amount, bool isCallPool) public {
         PoolStorage.Layout storage l = PoolStorage.layout();
         uint256 toWithdraw = amount;
 
@@ -163,7 +158,6 @@ contract PoolIO is IPoolIO, PoolSwap {
      */
     function reassign(uint256 tokenId, uint256 contractSize)
         external
-        override
         returns (
             uint256 baseCost,
             uint256 feeCost,
@@ -204,7 +198,6 @@ contract PoolIO is IPoolIO, PoolSwap {
         uint256[] calldata contractSizes
     )
         public
-        override
         returns (
             uint256[] memory baseCosts,
             uint256[] memory feeCosts,
@@ -286,7 +279,6 @@ contract PoolIO is IPoolIO, PoolSwap {
         uint256[] calldata contractSizes
     )
         external
-        override
         returns (
             uint256[] memory baseCosts,
             uint256[] memory feeCosts,
@@ -314,7 +306,6 @@ contract PoolIO is IPoolIO, PoolSwap {
      */
     function withdrawFees()
         external
-        override
         returns (uint256 amountOutCall, uint256 amountOutPut)
     {
         amountOutCall = _withdrawFees(true);
@@ -326,10 +317,7 @@ contract PoolIO is IPoolIO, PoolSwap {
     /**
      * @inheritdoc IPoolIO
      */
-    function annihilate(uint256 tokenId, uint256 contractSize)
-        external
-        override
-    {
+    function annihilate(uint256 tokenId, uint256 contractSize) external {
         (
             PoolStorage.TokenType tokenType,
             uint64 maturity,
@@ -355,14 +343,14 @@ contract PoolIO is IPoolIO, PoolSwap {
     /**
      * @inheritdoc IPoolIO
      */
-    function claimRewards(bool isCallPool) external override {
+    function claimRewards(bool isCallPool) external {
         claimRewards(msg.sender, isCallPool);
     }
 
     /**
      * @inheritdoc IPoolIO
      */
-    function claimRewards(address account, bool isCallPool) public override {
+    function claimRewards(address account, bool isCallPool) public {
         PoolStorage.Layout storage l = PoolStorage.layout();
         uint256 userTVL = l.userTVL[account][isCallPool];
         uint256 totalTVL = l.totalTVL[isCallPool];
@@ -380,7 +368,7 @@ contract PoolIO is IPoolIO, PoolSwap {
     /**
      * @inheritdoc IPoolIO
      */
-    function updateMiningPools() external override {
+    function updateMiningPools() external {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         IPremiaMining(PREMIA_MINING_ADDRESS).updatePool(

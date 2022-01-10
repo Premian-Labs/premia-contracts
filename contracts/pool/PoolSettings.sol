@@ -38,7 +38,6 @@ contract PoolSettings is IPoolSettings, PoolInternal {
      */
     function setPoolCaps(uint256 basePoolCap, uint256 underlyingPoolCap)
         external
-        override
         onlyProtocolOwner
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
@@ -51,7 +50,6 @@ contract PoolSettings is IPoolSettings, PoolInternal {
      */
     function setMinimumAmounts(uint256 baseMinimum, uint256 underlyingMinimum)
         external
-        override
         onlyProtocolOwner
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
@@ -64,7 +62,6 @@ contract PoolSettings is IPoolSettings, PoolInternal {
      */
     function setSteepness64x64(int128 steepness64x64, bool isCallPool)
         external
-        override
         onlyProtocolOwner
     {
         if (isCallPool) {
@@ -81,7 +78,6 @@ contract PoolSettings is IPoolSettings, PoolInternal {
      */
     function setCLevel64x64(int128 cLevel64x64, bool isCallPool)
         external
-        override
         onlyProtocolOwner
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
