@@ -59,7 +59,6 @@ contract PoolWrite is IPoolWrite, PoolSwap {
     )
         external
         view
-        override
         returns (
             int128 baseCost64x64,
             int128 feeCost64x64,
@@ -104,7 +103,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         uint256 contractSize,
         bool isCall,
         uint256 maxCost
-    ) external payable override returns (uint256 baseCost, uint256 feeCost) {
+    ) external payable returns (uint256 baseCost, uint256 feeCost) {
         return
             _verifyAndPurchase(
                 maturity,
@@ -129,7 +128,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         uint256 amountInMax,
         address[] calldata path,
         bool isSushi
-    ) public payable override returns (uint256 baseCost, uint256 feeCost) {
+    ) public payable returns (uint256 baseCost, uint256 feeCost) {
         // If value is passed, amountInMax must be 0, as the value wont be used
         // If amountInMax is not 0, user wants to do a swap from an ERC20, and therefore no value should be attached
         require(
@@ -188,12 +187,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         int128 strike64x64,
         uint256 contractSize,
         bool isCall
-    )
-        external
-        payable
-        override
-        returns (uint256 longTokenId, uint256 shortTokenId)
-    {
+    ) external payable returns (uint256 longTokenId, uint256 shortTokenId) {
         require(
             msg.sender == underwriter ||
                 ERC1155BaseStorage.layout().operatorApprovals[underwriter][
@@ -241,7 +235,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
     /**
      * @inheritdoc IPoolWrite
      */
-    function update() external override {
+    function update() external {
         _update(PoolStorage.layout());
     }
 
