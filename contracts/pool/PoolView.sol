@@ -44,7 +44,7 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getFeeReceiverAddress() external view override returns (address) {
+    function getFeeReceiverAddress() external view returns (address) {
         return FEE_RECEIVER_ADDRESS;
     }
 
@@ -54,7 +54,6 @@ contract PoolView is IPoolView, PoolInternal {
     function getPoolSettings()
         external
         view
-        override
         returns (PoolStorage.PoolSettings memory)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
@@ -70,7 +69,7 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getTokenIds() external view override returns (uint256[] memory) {
+    function getTokenIds() external view returns (uint256[] memory) {
         PoolStorage.Layout storage l = PoolStorage.layout();
         uint256 length = l.tokenIds.length();
         uint256[] memory result = new uint256[](length);
@@ -88,7 +87,6 @@ contract PoolView is IPoolView, PoolInternal {
     function getCLevel64x64(bool isCall)
         external
         view
-        override
         returns (int128 cLevel64x64)
     {
         (cLevel64x64, ) = PoolStorage.layout().getRealPoolState(isCall);
@@ -97,12 +95,7 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getSteepness64x64(bool isCallPool)
-        external
-        view
-        override
-        returns (int128)
-    {
+    function getSteepness64x64(bool isCallPool) external view returns (int128) {
         if (isCallPool) {
             return PoolStorage.layout().steepnessUnderlying64x64;
         } else {
@@ -113,12 +106,7 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getPrice(uint256 timestamp)
-        external
-        view
-        override
-        returns (int128)
-    {
+    function getPrice(uint256 timestamp) external view returns (int128) {
         return PoolStorage.layout().getPriceUpdate(timestamp);
     }
 
@@ -128,7 +116,6 @@ contract PoolView is IPoolView, PoolInternal {
     function getParametersForTokenId(uint256 tokenId)
         external
         pure
-        override
         returns (
             PoolStorage.TokenType,
             uint64,
@@ -144,7 +131,6 @@ contract PoolView is IPoolView, PoolInternal {
     function getMinimumAmounts()
         external
         view
-        override
         returns (uint256 minCallTokenAmount, uint256 minPutTokenAmount)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
@@ -157,7 +143,6 @@ contract PoolView is IPoolView, PoolInternal {
     function getCapAmounts()
         external
         view
-        override
         returns (uint256 callTokenCapAmount, uint256 putTokenCapAmount)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
@@ -170,7 +155,6 @@ contract PoolView is IPoolView, PoolInternal {
     function getUserTVL(address user)
         external
         view
-        override
         returns (uint256 underlyingTVL, uint256 baseTVL)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
@@ -183,7 +167,6 @@ contract PoolView is IPoolView, PoolInternal {
     function getTotalTVL()
         external
         view
-        override
         returns (uint256 underlyingTVL, uint256 baseTVL)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
@@ -196,7 +179,6 @@ contract PoolView is IPoolView, PoolInternal {
     function getLiquidityQueuePosition(address account, bool isCallPool)
         external
         view
-        override
         returns (uint256 liquidityBeforePosition, uint256 positionSize)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
@@ -224,7 +206,7 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getPremiaMining() external view override returns (address) {
+    function getPremiaMining() external view returns (address) {
         return PREMIA_MINING_ADDRESS;
     }
 
@@ -234,7 +216,6 @@ contract PoolView is IPoolView, PoolInternal {
     function getDivestmentTimestamps(address account)
         external
         view
-        override
         returns (
             uint256 callDivestmentTimestamp,
             uint256 putDivestmentTimestamp
@@ -249,12 +230,7 @@ contract PoolView is IPoolView, PoolInternal {
      * @inheritdoc IERC1155Metadata
      * @dev SVG generated via external PremiaOptionNFTDisplay contract
      */
-    function uri(uint256 tokenId)
-        external
-        view
-        override
-        returns (string memory)
-    {
+    function uri(uint256 tokenId) external view returns (string memory) {
         return
             IPremiaOptionNFTDisplay(NFT_DISPLAY_ADDRESS).tokenURI(
                 address(this),
