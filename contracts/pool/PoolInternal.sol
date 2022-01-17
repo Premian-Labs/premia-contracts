@@ -212,7 +212,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     }
 
     function _sellQuote(PoolStorage.QuoteArgsInternal memory args)
-        external
+        internal
         view
         returns (int128 baseCost64x64, int128 feeCost64x64)
     {
