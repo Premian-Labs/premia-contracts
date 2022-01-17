@@ -50,6 +50,10 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     // The quote will return a minimum price corresponding to this APY
     int128 internal constant MIN_APY_64x64 = 0x4ccccccccccccccd; // 0.3
 
+    // This constant is used to replace real exponent by an integer with 4 decimals of precision
+    int128 internal constant SELL_CONSTANT_64x64 = 0x100068dce3484dce2; // e^(1 / 10^4)
+    uint256 internal constant SELL_CONSTANT_PRECISION = 4; // Decimals of precision to use with the sell constant
+
     constructor(
         address ivolOracle,
         address weth,
@@ -205,6 +209,70 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             INVERSE_BASIS_POINT
         );
         result.feeCost64x64 -= result.feeCost64x64.mul(discount);
+    }
+
+    function _sellQuote(PoolStorage.QuoteArgsInternal memory args)
+        external
+        view
+        returns (uint256 baseCost, uint256 feeCost)
+    {
+        require(
+            args.strike64x64 > 0 && args.spot64x64 > 0 && args.maturity > 0,
+            "invalid args"
+        );
+
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        int128 timeToMaturity64x64 = ABDKMath64x64.divu(
+            args.maturity - block.timestamp,
+            365 days
+        );
+
+        int128 annualizedVolatility64x64 = IVolatilitySurfaceOracle(
+            IVOL_ORACLE_ADDRESS
+        ).getAnnualizedVolatility64x64(
+                l.base,
+                l.underlying,
+                args.spot64x64,
+                args.strike64x64,
+                timeToMaturity64x64
+            );
+
+        require(annualizedVolatility64x64 > 0, "vol = 0");
+
+        int128 blackScholesPrice64x64 = OptionMath._blackScholesPrice(
+            annualizedVolatility64x64.mul(annualizedVolatility64x64),
+            args.strike64x64,
+            args.spot64x64,
+            timeToMaturity64x64,
+            args.isCall
+        );
+
+        uint256 exerciseValue = _calculateExerciseValue(
+            l,
+            args.contractSize,
+            args.spot64x64,
+            args.strike64x64,
+            args.isCall
+        );
+
+        uint256 shortTokenId = PoolStorage.formatTokenId(
+            _getTokenType(args.isCall, false),
+            args.maturity,
+            args.strike64x64
+        );
+
+        // ToDo : Account only for available liquidity to sell
+        uint256 liquidityChange = (args.contractSize *
+            (10**SELL_CONSTANT_PRECISION)) / _totalSupply(shortTokenId);
+
+        uint256 baseCost = exerciseValue +
+            (SELL_CONSTANT_64x64.pow(liquidityChange)).mulu(
+                blackScholesPrice64x64.mulu(10**18) - exerciseValue
+            );
+
+        // ToDo : Implement feeCost
+        return (baseCost, 0);
     }
 
     /**
@@ -447,21 +515,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             "not ITM"
         );
 
-        uint256 exerciseValue;
-        // option has a non-zero exercise value
-        if (isCall) {
-            if (spot64x64 > strike64x64) {
-                exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(
-                    contractSize
-                );
-            }
-        } else {
-            if (spot64x64 < strike64x64) {
-                exerciseValue = l.fromUnderlyingToBaseDecimals(
-                    strike64x64.sub(spot64x64).mulu(contractSize)
-                );
-            }
-        }
+        uint256 exerciseValue = _calculateExerciseValue(
+            l,
+            contractSize,
+            spot64x64,
+            strike64x64,
+            isCall
+        );
 
         uint256 fee;
 
@@ -501,6 +561,29 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
 
         _mint(FEE_RECEIVER_ADDRESS, _getReservedLiquidityTokenId(isCall), fee);
+    }
+
+    function _calculateExerciseValue(
+        PoolStorage.Layout storage l,
+        uint256 contractSize,
+        int128 spot64x64,
+        int128 strike64x64,
+        bool isCall
+    ) internal view returns (uint256 exerciseValue) {
+        // option has a non-zero exercise value
+        if (isCall) {
+            if (spot64x64 > strike64x64) {
+                exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(
+                    contractSize
+                );
+            }
+        } else {
+            if (spot64x64 < strike64x64) {
+                exerciseValue = l.fromUnderlyingToBaseDecimals(
+                    strike64x64.sub(spot64x64).mulu(contractSize)
+                );
+            }
+        }
     }
 
     function _mintShortTokenLoop(
