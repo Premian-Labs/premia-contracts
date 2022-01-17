@@ -229,12 +229,7 @@ contract PoolView is IPoolView, PoolInternal {
         putDivestmentTimestamp = l.divestmentTimestamps[account][false];
     }
 
-    function isBuyBackEnabled(address account)
-        external
-        view
-        override
-        returns (bool)
-    {
+    function isBuyBackEnabled(address account) external view returns (bool) {
         return PoolStorage.layout().isBuyBackEnabled[account];
     }
 
@@ -247,7 +242,6 @@ contract PoolView is IPoolView, PoolInternal {
     function getBuyers(uint256 shortTokenId)
         external
         view
-        override
         returns (address[] memory buyers, uint256[] memory amounts)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();

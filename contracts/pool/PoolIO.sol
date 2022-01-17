@@ -451,7 +451,7 @@ contract PoolIO is IPoolIO, PoolSwap {
         emit Deposit(msg.sender, isCallPool, amount);
     }
 
-    function setBuyBackEnabled(bool state) external override {
+    function setBuyBackEnabled(bool state) external {
         PoolStorage.Layout storage l = PoolStorage.layout();
         l.isBuyBackEnabled[msg.sender] = state;
     }
