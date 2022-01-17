@@ -139,6 +139,4 @@ interface IPoolIO {
      * @notice TODO
      */
     function updateMiningPools() external;
-
-    function setBuyBackEnabled(bool state) external;
 }

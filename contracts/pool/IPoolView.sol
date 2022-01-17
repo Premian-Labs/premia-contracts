@@ -141,11 +141,4 @@ interface IPoolView is IERC1155Metadata {
             uint256 callDivestmentTimestamp,
             uint256 putDivestmentTimestamp
         );
-
-    function isBuyBackEnabled(address account) external view returns (bool);
-
-    function getBuyers(uint256 shortTokenId)
-        external
-        view
-        returns (address[] memory buyers, uint256[] memory amounts);
 }
