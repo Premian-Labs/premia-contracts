@@ -204,17 +204,17 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         result.cLevel64x64 = cLevel64x64;
         result.slippageCoefficient64x64 = slippageCoefficient64x64;
 
-        int128 discount = ABDKMath64x64.divu(
+        int128 discount64x64 = ABDKMath64x64.divu(
             _getFeeDiscount(args.feePayer),
             INVERSE_BASIS_POINT
         );
-        result.feeCost64x64 -= result.feeCost64x64.mul(discount);
+        result.feeCost64x64 -= result.feeCost64x64.mul(discount64x64);
     }
 
     function _sellQuote(PoolStorage.QuoteArgsInternal memory args)
         external
         view
-        returns (uint256 baseCost, uint256 feeCost)
+        returns (int128 baseCost64x64, int128 feeCost64x64)
     {
         require(
             args.strike64x64 > 0 && args.spot64x64 > 0 && args.maturity > 0,
@@ -248,12 +248,15 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             args.isCall
         );
 
-        uint256 exerciseValue = _calculateExerciseValue(
-            l,
-            args.contractSize,
-            args.spot64x64,
-            args.strike64x64,
-            args.isCall
+        int128 exerciseValue64x64 = ABDKMath64x64Token.fromDecimals(
+            _calculateExerciseValue(
+                l,
+                args.contractSize,
+                args.spot64x64,
+                args.strike64x64,
+                args.isCall
+            ),
+            l.baseDecimals
         );
 
         uint256 shortTokenId = PoolStorage.formatTokenId(
@@ -266,13 +269,18 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 liquidityChange = (args.contractSize *
             (10**SELL_CONSTANT_PRECISION)) / _totalSupply(shortTokenId);
 
-        uint256 baseCost = exerciseValue +
-            (SELL_CONSTANT_64x64.pow(liquidityChange)).mulu(
-                blackScholesPrice64x64.mulu(10**18) - exerciseValue
-            );
+        baseCost64x64 = (SELL_CONSTANT_64x64.pow(liquidityChange))
+            .mul(blackScholesPrice64x64.sub(exerciseValue64x64))
+            .add(exerciseValue64x64);
 
-        // ToDo : Implement feeCost
-        return (baseCost, 0);
+        feeCost64x64 = baseCost64x64.mul(FEE_64x64);
+        int128 discount64x64 = ABDKMath64x64.divu(
+            _getFeeDiscount(args.feePayer),
+            INVERSE_BASIS_POINT
+        );
+
+        feeCost64x64 -= feeCost64x64.mul(discount64x64);
+        baseCost64x64 -= feeCost64x64;
     }
 
     /**
