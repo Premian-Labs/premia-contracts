@@ -265,11 +265,27 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             args.strike64x64
         );
 
+        uint256 longTokenId = PoolStorage.formatTokenId(
+            _getTokenType(args.isCall, true),
+            args.maturity,
+            args.strike64x64
+        );
+
+        int128 currentCLevel64x64 = l.getRawCLevel64x64(args.isCall);
+
+        // Initialize to avg value, and replace by current if avg not set or current is lower
+        int128 sellCLevel64x64 = l.avgCLevel64x64[longTokenId];
+
+        if (sellCLevel64x64 == 0 || currentCLevel64x64 < sellCLevel64x64) {
+            sellCLevel64x64 = currentCLevel64x64;
+        }
+
         // ToDo : Account only for available liquidity to sell
         uint256 liquidityChange = (args.contractSize *
             (10**SELL_CONSTANT_PRECISION)) / _totalSupply(shortTokenId);
 
         baseCost64x64 = (SELL_CONSTANT_64x64.pow(liquidityChange))
+            .mul(sellCLevel64x64)
             .mul(blackScholesPrice64x64.sub(exerciseValue64x64))
             .add(exerciseValue64x64);
 
