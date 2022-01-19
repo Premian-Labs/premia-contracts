@@ -37,6 +37,16 @@ export function describeBehaviorOfPoolSell({
       poolMock = PoolMock__factory.connect(p.pool.address, owner);
     });
 
+    describe('#setBuybackEnabled', () => {
+      it('should correctly enable/disable buyback', async () => {
+        expect(await instance.isBuyBackEnabled(lp1.address)).to.be.false;
+        await instance.connect(lp1).setBuyBackEnabled(true);
+        expect(await instance.isBuyBackEnabled(lp1.address)).to.be.true;
+        await instance.connect(lp1).setBuyBackEnabled(false);
+        expect(await instance.isBuyBackEnabled(lp1.address)).to.be.false;
+      });
+    });
+
     describe('#setPoolCaps', () =>
       it('should updates pool caps if owner', async () => {
         expect(
