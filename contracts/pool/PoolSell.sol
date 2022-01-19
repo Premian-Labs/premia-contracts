@@ -146,31 +146,25 @@ contract PoolSell is IPoolSell, PoolInternal {
             uint256 intervalPremium = (sellPrice * intervalContractSize) /
                 contractSize;
 
+            uint256 tvlToSubtract;
+
             if (PoolStorage.layout().getReinvestmentStatus(buyers[i], isCall)) {
                 _addToDepositQueue(
                     buyers[i],
                     intervalToken - intervalPremium,
                     isCall
                 );
-                _subUserTVL(
-                    PoolStorage.layout(),
-                    buyers[i],
-                    isCall,
-                    intervalPremium
-                );
+                tvlToSubtract = intervalPremium;
             } else {
                 _mint(
                     buyers[i],
                     _getReservedLiquidityTokenId(isCall),
                     intervalToken - intervalPremium
                 );
-                _subUserTVL(
-                    PoolStorage.layout(),
-                    buyers[i],
-                    isCall,
-                    intervalToken
-                );
+                tvlToSubtract = intervalToken;
             }
+
+            _subUserTVL(PoolStorage.layout(), buyers[i], isCall, tvlToSubtract);
 
             toFill -= intervalContractSize;
 
