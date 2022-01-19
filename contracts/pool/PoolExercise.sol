@@ -38,7 +38,7 @@ contract PoolExercise is IPoolExercise, PoolInternal {
         address holder,
         uint256 longTokenId,
         uint256 contractSize
-    ) external override {
+    ) external {
         if (msg.sender != holder) {
             require(
                 ERC1155BaseStorage.layout().operatorApprovals[holder][
@@ -56,7 +56,6 @@ contract PoolExercise is IPoolExercise, PoolInternal {
      */
     function processExpired(uint256 longTokenId, uint256 contractSize)
         external
-        override
     {
         _exercise(address(0), longTokenId, contractSize);
     }
