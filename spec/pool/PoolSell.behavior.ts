@@ -28,12 +28,12 @@ export function describeBehaviorOfPoolSell({
 
     before(async () => {
       [owner, buyer, lp1, lp2, thirdParty] = await ethers.getSigners();
-      feeReceiver = p.feeReceiver;
     });
 
     beforeEach(async () => {
       instance = await deploy();
       p = await getPoolUtil();
+      feeReceiver = p.feeReceiver;
       poolMock = PoolMock__factory.connect(p.pool.address, owner);
     });
 
