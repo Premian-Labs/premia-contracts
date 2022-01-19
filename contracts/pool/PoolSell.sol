@@ -106,13 +106,14 @@ contract PoolSell is IPoolSell, PoolInternal {
     ) external {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
-        PoolStorage.QuoteResultInternal memory sellQuote;
+        int128 baseCost64x64;
+        int128 feeCost64x64;
 
         {
             int128 newPrice64x64 = _update(l);
 
             // ToDo : Use C based on avg
-            sellQuote = _quote(
+            (baseCost64x64, feeCost64x64) = _sellQuote(
                 PoolStorage.QuoteArgsInternal(
                     msg.sender,
                     maturity,
@@ -137,7 +138,7 @@ contract PoolSell is IPoolSell, PoolInternal {
         );
 
         uint256 baseCost = ABDKMath64x64Token.toDecimals(
-            sellQuote.baseCost64x64,
+            baseCost64x64,
             l.getTokenDecimals(isCall)
         );
 
@@ -180,7 +181,7 @@ contract PoolSell is IPoolSell, PoolInternal {
         }
 
         uint256 feeCost = ABDKMath64x64Token.toDecimals(
-            sellQuote.feeCost64x64,
+            feeCost64x64,
             l.getTokenDecimals(isCall)
         );
 
