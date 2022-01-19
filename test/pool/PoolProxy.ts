@@ -22,7 +22,6 @@ import chai, { expect } from 'chai';
 import { increaseTimestamp } from '../utils/evm';
 import { parseUnits } from 'ethers/lib/utils';
 import {
-  FEE,
   formatOption,
   formatOptionToNb,
   getExerciseValue,
@@ -31,20 +30,16 @@ import {
   PoolUtil,
 } from './PoolUtil';
 import chaiAlmost from 'chai-almost';
-import { BigNumber } from 'ethers';
 import { describeBehaviorOfProxy } from '@solidstate/spec';
 import {
   fixedFromFloat,
   fixedToNumber,
-  formatTokenId,
   getOptionTokenIds,
-  TokenType,
 } from '@premia/utils';
 import { createUniswap, IUniswap } from '../utils/uniswap';
+import { describeBehaviorOfPoolSell } from '../../spec/pool/PoolSell.behavior';
 
 chai.use(chaiAlmost(0.02));
-
-const oneMonth = 30 * 24 * 3600;
 
 describe('PoolProxy', function () {
   let owner: SignerWithAddress;
@@ -64,17 +59,6 @@ describe('PoolProxy', function () {
   let poolWeth: IPool;
   let p: PoolUtil;
   let premia: ERC20Mock;
-
-  const underlyingFreeLiqToken = formatTokenId({
-    tokenType: TokenType.UnderlyingFreeLiq,
-    maturity: BigNumber.from(0),
-    strike64x64: BigNumber.from(0),
-  });
-  const baseFreeLiqToken = formatTokenId({
-    tokenType: TokenType.BaseFreeLiq,
-    maturity: BigNumber.from(0),
-    strike64x64: BigNumber.from(0),
-  });
 
   const spotPrice = 2000;
 
@@ -151,6 +135,11 @@ describe('PoolProxy', function () {
     deploy: async () => instance,
     getPoolUtil: async () => p,
     getUniswap: async () => uniswap,
+  });
+
+  describeBehaviorOfPoolSell({
+    deploy: async () => instance,
+    getPoolUtil: async () => p,
   });
 
   describeBehaviorOfPoolSettings({
@@ -640,52 +629,6 @@ describe('PoolProxy', function () {
             ethers.utils.randomBytes(0),
           ),
       ).to.be.revertedWith('liq lock 1d');
-    });
-  });
-
-  describe('#setPoolCaps', () =>
-    it('should updates pool caps if owner', async () => {
-      expect(pool.connect(lp1).setPoolCaps('123', '456')).to.be.revertedWith(
-        'Not protocol owner',
-      );
-
-      await pool.connect(owner).setPoolCaps('123', '456');
-      const caps = await pool.getCapAmounts();
-      expect(caps.callTokenCapAmount).to.eq('456');
-      expect(caps.putTokenCapAmount).to.eq('123');
-    }));
-
-  describe('#getBuyers', () => {
-    it('should return list of underwriters with buyback enabled', async () => {
-      const maturity = await p.getMaturity(10);
-      const isCall = true;
-      const strike64x64 = fixedFromFloat(getStrike(isCall));
-
-      const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
-
-      await poolMock.mint(lp1.address, tokenId.short, parseUnderlying('1'));
-      await poolMock.mint(lp2.address, tokenId.short, parseUnderlying('2'));
-      await poolMock.mint(
-        thirdParty.address,
-        tokenId.short,
-        parseUnderlying('3'),
-      );
-      await poolMock.mint(buyer.address, tokenId.short, parseUnderlying('4'));
-      await poolMock.mint(
-        feeReceiver.address,
-        tokenId.short,
-        parseUnderlying('5'),
-      );
-
-      await pool.connect(lp2).setBuyBackEnabled(true);
-      await pool.connect(buyer).setBuyBackEnabled(true);
-
-      const result = await pool.getBuyers(tokenId.short);
-      expect(result.buyers).to.deep.eq([lp2.address, buyer.address]);
-      expect(result.amounts).to.deep.eq([
-        parseUnderlying('2'),
-        parseUnderlying('4'),
-      ]);
     });
   });
 });
