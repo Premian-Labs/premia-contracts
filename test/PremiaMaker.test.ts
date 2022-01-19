@@ -8,7 +8,7 @@ import {
   depositUniswapLiquidity,
   IUniswap,
 } from './utils/uniswap';
-import { ERC20Mock, UniswapV2Pair } from '../typechain';
+import { ERC20Mock, PremiaErc20, UniswapV2Pair } from '../typechain';
 import { bnToNumber } from './utils/math';
 import { resetHardhat } from './utils/evm';
 
@@ -33,7 +33,7 @@ describe('PremiaMaker', () => {
 
     p = await deployV1(admin, treasury.address, true);
 
-    uniswap = await createUniswap(admin, p.premia);
+    uniswap = await createUniswap(admin, p.premia as PremiaErc20);
 
     await p.premiaMaker.addWhitelistedRouters([uniswap.router.address]);
     premiaWeth = uniswap.premiaWeth as UniswapV2Pair;
