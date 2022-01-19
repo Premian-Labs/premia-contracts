@@ -94,37 +94,15 @@ contract PoolSell is IPoolSell, PoolInternal {
         }
     }
 
-    /**
-     * @inheritdoc IPoolSell
-     */
-    function sell(
+    function _sellLoop(
+        PoolStorage.Layout storage l,
         uint64 maturity,
         int128 strike64x64,
         bool isCall,
         uint256 contractSize,
-        address[] memory buyers
-    ) external {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
-        int128 baseCost64x64;
-        int128 feeCost64x64;
-
-        {
-            int128 newPrice64x64 = _update(l);
-
-            // ToDo : Use C based on avg
-            (baseCost64x64, feeCost64x64) = _sellQuote(
-                PoolStorage.QuoteArgsInternal(
-                    msg.sender,
-                    maturity,
-                    strike64x64,
-                    newPrice64x64,
-                    contractSize,
-                    isCall
-                )
-            );
-        }
-
+        address[] memory buyers,
+        uint256 sellPrice
+    ) internal {
         uint256 longTokenId = PoolStorage.formatTokenId(
             _getTokenType(isCall, true),
             maturity,
@@ -135,11 +113,6 @@ contract PoolSell is IPoolSell, PoolInternal {
             _getTokenType(isCall, false),
             maturity,
             strike64x64
-        );
-
-        uint256 baseCost = ABDKMath64x64Token.toDecimals(
-            baseCost64x64,
-            l.getTokenDecimals(isCall)
         );
 
         uint256 tokenAmount = isCall
@@ -156,6 +129,8 @@ contract PoolSell is IPoolSell, PoolInternal {
                     shortTokenId
                 ][buyers[i]];
 
+                if (maxAmount == 0) continue;
+
                 if (maxAmount >= toFill) {
                     intervalContractSize = toFill;
                 } else {
@@ -166,23 +141,91 @@ contract PoolSell is IPoolSell, PoolInternal {
             _burn(msg.sender, longTokenId, intervalContractSize);
             _burn(buyers[i], shortTokenId, intervalContractSize);
 
-            // ToDo : Deal with TVL + gradual divestment
+            uint256 intervalToken = (tokenAmount * intervalContractSize) /
+                contractSize;
+            uint256 intervalPremium = (sellPrice * intervalContractSize) /
+                contractSize;
+
+            if (PoolStorage.layout().getReinvestmentStatus(buyers[i], isCall)) {
+                _addToDepositQueue(
+                    buyers[i],
+                    intervalToken - intervalPremium,
+                    isCall
+                );
+                _subUserTVL(
+                    PoolStorage.layout(),
+                    buyers[i],
+                    isCall,
+                    intervalPremium
+                );
+            } else {
+                _mint(
+                    buyers[i],
+                    _getReservedLiquidityTokenId(isCall),
+                    intervalToken - intervalPremium
+                );
+                _subUserTVL(
+                    PoolStorage.layout(),
+                    buyers[i],
+                    isCall,
+                    intervalToken
+                );
+            }
 
             toFill -= intervalContractSize;
 
-            _mint(
-                buyers[i],
-                _getFreeLiquidityTokenId(isCall),
-                ((tokenAmount * intervalContractSize) / contractSize) -
-                    ((baseCost * intervalContractSize) / contractSize) // intervalToken - intervalPremium
-            );
-
             if (toFill == 0) break;
         }
+    }
 
-        uint256 feeCost = ABDKMath64x64Token.toDecimals(
-            feeCost64x64,
-            l.getTokenDecimals(isCall)
+    /**
+     * @inheritdoc IPoolSell
+     */
+    function sell(
+        uint64 maturity,
+        int128 strike64x64,
+        bool isCall,
+        uint256 contractSize,
+        address[] memory buyers
+    ) external {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        uint256 baseCost;
+        uint256 feeCost;
+
+        {
+            int128 newPrice64x64 = _update(l);
+
+            (int128 baseCost64x64, int128 feeCost64x64) = _sellQuote(
+                PoolStorage.QuoteArgsInternal(
+                    msg.sender,
+                    maturity,
+                    strike64x64,
+                    newPrice64x64,
+                    contractSize,
+                    isCall
+                )
+            );
+
+            baseCost = ABDKMath64x64Token.toDecimals(
+                baseCost64x64,
+                l.getTokenDecimals(isCall)
+            );
+
+            feeCost = ABDKMath64x64Token.toDecimals(
+                feeCost64x64,
+                l.getTokenDecimals(isCall)
+            );
+        }
+
+        _sellLoop(
+            l,
+            maturity,
+            strike64x64,
+            isCall,
+            contractSize,
+            buyers,
+            baseCost
         );
 
         _pushTo(msg.sender, _getPoolToken(isCall), baseCost - feeCost);
