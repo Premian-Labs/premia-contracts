@@ -416,12 +416,12 @@ contract PoolIO is IPoolIO, PoolSwap {
      * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
      * @param amount quantity of underlying currency to deposit
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
-     * @param noCredit whether to ignore message value credit
+     * @param creditMessageValue whether to apply message value as credit towards transfer
      */
     function _deposit(
         uint256 amount,
         bool isCallPool,
-        bool noCredit
+        bool creditMessageValue
     ) internal {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -443,7 +443,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             msg.sender,
             _getPoolToken(isCallPool),
             amount,
-            noCredit ? 0 : _creditMessageValue(amount, isCallPool)
+            creditMessageValue ? _creditMessageValue(amount, isCallPool) : 0
         );
 
         _addToDepositQueue(msg.sender, amount, isCallPool);

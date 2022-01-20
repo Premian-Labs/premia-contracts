@@ -251,7 +251,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
      * @param contractSize size of option contract
      * @param isCall true for call, false for put
      * @param maxCost maximum acceptable cost after accounting for slippage
-     * @param noCredit whether to ignore message value credit
+     * @param creditMessageValue whether to apply message value as credit towards transfer
      * @return baseCost quantity of tokens required to purchase long position
      * @return feeCost quantity of tokens required to pay fees
      */
@@ -261,7 +261,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         uint256 contractSize,
         bool isCall,
         uint256 maxCost,
-        bool noCredit
+        bool creditMessageValue
     ) internal returns (uint256 baseCost, uint256 feeCost) {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -303,7 +303,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             msg.sender,
             _getPoolToken(isCall),
             amount,
-            noCredit ? 0 : _creditMessageValue(amount, isCall)
+            creditMessageValue ? _creditMessageValue(amount, isCall) : 0
         );
     }
 }
