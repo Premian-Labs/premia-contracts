@@ -149,7 +149,7 @@ contract PoolIO is IPoolIO, PoolSwap {
         }
 
         _subUserTVL(l, msg.sender, isCallPool, amount - reservedLiqToWithdraw);
-        _pushTo(msg.sender, _getPoolToken(isCallPool), amount);
+        _processAvailableFunds(msg.sender, amount, isCallPool, true);
         emit Withdrawal(msg.sender, isCallPool, depositedAt, amount);
     }
 
@@ -187,7 +187,7 @@ contract PoolIO is IPoolIO, PoolSwap {
         );
 
         _subUserTVL(l, msg.sender, isCall, baseCost + feeCost + amountOut);
-        _pushTo(msg.sender, _getPoolToken(isCall), amountOut);
+        _processAvailableFunds(msg.sender, amountOut, isCall, true);
     }
 
     /**
@@ -253,7 +253,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             }
 
             _subUserTVL(PoolStorage.layout(), msg.sender, true, tvlToSubtract);
-            _pushTo(msg.sender, _getPoolToken(true), amountOutCall);
+            _processAvailableFunds(msg.sender, amountOutCall, true, true);
         }
 
         if (amountOutPut > 0) {
@@ -266,7 +266,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             }
 
             _subUserTVL(PoolStorage.layout(), msg.sender, false, tvlToSubtract);
-            _pushTo(msg.sender, _getPoolToken(false), amountOutPut);
+            _processAvailableFunds(msg.sender, amountOutPut, false, true);
         }
     }
 
@@ -310,8 +310,8 @@ contract PoolIO is IPoolIO, PoolSwap {
     {
         amountOutCall = _withdrawFees(true);
         amountOutPut = _withdrawFees(false);
-        _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(true), amountOutCall);
-        _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(false), amountOutPut);
+        _processAvailableFunds(FEE_RECEIVER_ADDRESS, amountOutCall, true, true);
+        _processAvailableFunds(FEE_RECEIVER_ADDRESS, amountOutPut, false, true);
     }
 
     /**
@@ -329,14 +329,15 @@ contract PoolIO is IPoolIO, PoolSwap {
 
         _annihilate(msg.sender, maturity, strike64x64, isCall, contractSize);
 
-        _pushTo(
+        _processAvailableFunds(
             msg.sender,
-            _getPoolToken(isCall),
             isCall
                 ? contractSize
                 : PoolStorage.layout().fromUnderlyingToBaseDecimals(
                     strike64x64.mulu(contractSize)
-                )
+                ),
+            isCall,
+            true
         );
     }
 

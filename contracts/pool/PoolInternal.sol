@@ -947,6 +947,26 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     }
 
     /**
+     * @notice transfer or reinvest available user funds
+     * @param account owner of funds
+     * @param amount quantity of funds available
+     * @param isCallPool whether funds correspond to call or put pool
+     * @param divest whether to transfer funds to owner or reinvest
+     */
+    function _processAvailableFunds(
+        address account,
+        uint256 amount,
+        bool isCallPool,
+        bool divest
+    ) internal {
+        if (divest) {
+            _pushTo(account, _getPoolToken(isCallPool), amount);
+        } else {
+            // TODO: redeposit
+        }
+    }
+
+    /**
      * @notice validate that pool accepts ether deposits and calculate credit amount from message value
      * @param amount total deposit quantity
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
