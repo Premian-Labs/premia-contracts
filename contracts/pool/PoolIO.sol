@@ -64,7 +64,7 @@ contract PoolIO is IPoolIO, PoolSwap {
      * @inheritdoc IPoolIO
      */
     function deposit(uint256 amount, bool isCallPool) external payable {
-        _deposit(amount, _creditMessageValue(amount, isCallPool), isCallPool);
+        _deposit(amount, isCallPool, false);
     }
 
     /**
@@ -96,7 +96,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
         }
 
-        _deposit(amount, 0, isCallPool);
+        _deposit(amount, isCallPool, true);
     }
 
     /**
@@ -415,13 +415,13 @@ contract PoolIO is IPoolIO, PoolSwap {
     /**
      * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
      * @param amount quantity of underlying currency to deposit
-     * @param credit amount credited, which should not be transferred
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
+     * @param noCredit whether to ignore message value credit
      */
     function _deposit(
         uint256 amount,
-        uint256 credit,
-        bool isCallPool
+        bool isCallPool,
+        bool noCredit
     ) internal {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -439,7 +439,12 @@ contract PoolIO is IPoolIO, PoolSwap {
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;
         _addUserTVL(l, msg.sender, isCallPool, amount);
-        _pullFrom(msg.sender, _getPoolToken(isCallPool), amount, credit);
+        _pullFrom(
+            msg.sender,
+            _getPoolToken(isCallPool),
+            amount,
+            noCredit ? 0 : _creditMessageValue(amount, isCallPool)
+        );
 
         _addToDepositQueue(msg.sender, amount, isCallPool);
 
