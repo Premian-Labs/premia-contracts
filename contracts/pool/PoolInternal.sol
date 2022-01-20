@@ -923,18 +923,18 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 "not WETH deposit"
             );
 
-            if (msg.value <= amount) {
-                credit = msg.value;
-            } else {
+            if (msg.value > amount) {
                 unchecked {
                     (bool success, ) = payable(msg.sender).call{
-                        value: credit - amount
+                        value: msg.value - amount
                     }("");
 
                     require(success, "ETH refund failed");
 
                     credit = amount;
                 }
+            } else {
+                credit = msg.value;
             }
 
             IWETH(WETH_ADDRESS).deposit{value: credit}();
