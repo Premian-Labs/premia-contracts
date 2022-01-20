@@ -7,6 +7,7 @@ import {IERC173} from "@solidstate/contracts/access/IERC173.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155EnumerableInternal, ERC1155EnumerableStorage, EnumerableSet} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
+import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
 
 import {PoolStorage} from "./PoolStorage.sol";
 
@@ -903,6 +904,40 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 ),
                 "ERC20 transfer failed"
             );
+        }
+    }
+
+    /**
+     * @notice validate that pool accepts ether deposits and calculate credit amount from message value
+     * @param amount total deposit quantity
+     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
+     * @return credit quantity of credit to apply
+     */
+    function _creditMessageValue(uint256 amount, bool isCallPool)
+        internal
+        returns (uint256 credit)
+    {
+        credit = msg.value;
+
+        if (credit > 0) {
+            require(
+                _getPoolToken(isCallPool) == WETH_ADDRESS,
+                "not WETH deposit"
+            );
+
+            if (credit > amount) {
+                unchecked {
+                    (bool success, ) = payable(msg.sender).call{
+                        value: credit - amount
+                    }("");
+
+                    require(success, "ETH refund failed");
+
+                    credit = amount;
+                }
+            }
+
+            IWETH(WETH_ADDRESS).deposit{value: credit}();
         }
     }
 

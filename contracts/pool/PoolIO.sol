@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
-import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
 
 import {IPoolIO} from "./IPoolIO.sol";
 import {PoolSwap} from "./PoolSwap.sol";
@@ -65,30 +64,7 @@ contract PoolIO is IPoolIO, PoolSwap {
      * @inheritdoc IPoolIO
      */
     function deposit(uint256 amount, bool isCallPool) external payable {
-        uint256 credit = msg.value;
-
-        if (credit > 0) {
-            require(
-                _getPoolToken(isCallPool) == WETH_ADDRESS,
-                "not WETH deposit"
-            );
-
-            if (credit > amount) {
-                unchecked {
-                    (bool success, ) = payable(msg.sender).call{
-                        value: credit - amount
-                    }("");
-
-                    require(success, "ETH refund failed");
-
-                    credit = amount;
-                }
-            }
-
-            IWETH(WETH_ADDRESS).deposit{value: credit}();
-        }
-
-        _deposit(amount, credit, isCallPool);
+        _deposit(amount, _creditMessageValue(amount, isCallPool), isCallPool);
     }
 
     /**

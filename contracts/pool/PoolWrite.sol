@@ -8,7 +8,6 @@ import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155BaseStorage} from "@solidstate/contracts/token/ERC1155/base/ERC1155BaseStorage.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
-import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
 
 import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {PoolSwap} from "./PoolSwap.sol";
@@ -111,8 +110,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
                 strike64x64,
                 contractSize,
                 isCall,
-                maxCost,
-                msg.value
+                maxCost
             );
     }
 
@@ -173,8 +171,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
                 strike64x64,
                 contractSize,
                 isCall,
-                maxCost,
-                0
+                maxCost
             );
     }
 
@@ -205,27 +202,12 @@ contract PoolWrite is IPoolWrite, PoolSwap {
                 strike64x64.mulu(contractSize)
             );
 
-        uint256 credit = msg.value;
-
-        if (credit > 0) {
-            require(_getPoolToken(isCall) == WETH_ADDRESS, "not WETH deposit");
-
-            if (credit > amount) {
-                unchecked {
-                    (bool success, ) = payable(msg.sender).call{
-                        value: credit - amount
-                    }("");
-
-                    require(success, "ETH refund failed");
-
-                    credit = amount;
-                }
-            }
-
-            IWETH(WETH_ADDRESS).deposit{value: credit}();
-        }
-
-        _pullFrom(underwriter, token, amount, credit);
+        _pullFrom(
+            underwriter,
+            token,
+            amount,
+            _creditMessageValue(amount, isCall)
+        );
 
         longTokenId = PoolStorage.formatTokenId(
             _getTokenType(isCall, true),
@@ -267,7 +249,6 @@ contract PoolWrite is IPoolWrite, PoolSwap {
      * @param contractSize size of option contract
      * @param isCall true for call, false for put
      * @param maxCost maximum acceptable cost after accounting for slippage
-     * @param credit amount already credited to depositor, to be deducted from transfer
      * @return baseCost quantity of tokens required to purchase long position
      * @return feeCost quantity of tokens required to pay fees
      */
@@ -276,8 +257,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         int128 strike64x64,
         uint256 contractSize,
         bool isCall,
-        uint256 maxCost,
-        uint256 credit
+        uint256 maxCost
     ) internal returns (uint256 baseCost, uint256 feeCost) {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -315,24 +295,11 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         require(amount <= maxCost, "excess slipp");
 
-        if (credit > 0) {
-            require(_getPoolToken(isCall) == WETH_ADDRESS, "not WETH deposit");
-
-            if (credit > amount) {
-                unchecked {
-                    (bool success, ) = payable(msg.sender).call{
-                        value: credit - amount
-                    }("");
-
-                    require(success, "ETH refund failed");
-
-                    credit = amount;
-                }
-            }
-
-            IWETH(WETH_ADDRESS).deposit{value: credit}();
-        }
-
-        _pullFrom(msg.sender, _getPoolToken(isCall), amount, credit);
+        _pullFrom(
+            msg.sender,
+            _getPoolToken(isCall),
+            amount,
+            _creditMessageValue(amount, isCall)
+        );
     }
 }
