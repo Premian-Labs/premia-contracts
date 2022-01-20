@@ -64,7 +64,7 @@ contract PoolIO is IPoolIO, PoolSwap {
      * @inheritdoc IPoolIO
      */
     function deposit(uint256 amount, bool isCallPool) external payable {
-        _deposit(amount, isCallPool, false);
+        _deposit(amount, isCallPool, true);
     }
 
     /**
@@ -96,7 +96,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
         }
 
-        _deposit(amount, isCallPool, true);
+        _deposit(amount, isCallPool, false);
     }
 
     /**

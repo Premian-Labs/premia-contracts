@@ -111,7 +111,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
                 contractSize,
                 isCall,
                 maxCost,
-                false
+                true
             );
     }
 
@@ -173,7 +173,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
                 contractSize,
                 isCall,
                 maxCost,
-                true
+                false
             );
     }
 
