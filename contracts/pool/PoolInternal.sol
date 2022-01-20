@@ -240,6 +240,45 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     }
 
     /**
+     * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
+     * @param amount quantity of underlying currency to deposit
+     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
+     * @param creditMessageValue whether to apply message value as credit towards transfer
+     */
+    function _deposit(
+        uint256 amount,
+        bool isCallPool,
+        bool creditMessageValue
+    ) internal {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        // Reset gradual divestment timestamp
+        delete l.divestmentTimestamps[msg.sender][isCallPool];
+
+        uint256 cap = _getPoolCapAmount(l, isCallPool);
+
+        require(
+            l.totalTVL[isCallPool] + amount <= cap,
+            "pool deposit cap reached"
+        );
+
+        _processPendingDeposits(l, isCallPool);
+
+        l.depositedAt[msg.sender][isCallPool] = block.timestamp;
+        _addUserTVL(l, msg.sender, isCallPool, amount);
+        _pullFrom(
+            msg.sender,
+            _getPoolToken(isCallPool),
+            amount,
+            creditMessageValue ? _creditMessageValue(amount, isCallPool) : 0
+        );
+
+        _addToDepositQueue(msg.sender, amount, isCallPool);
+
+        emit Deposit(msg.sender, isCallPool, amount);
+    }
+
+    /**
      * @notice purchase option
      * @param l storage layout struct
      * @param account recipient of purchased option
@@ -887,45 +926,57 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @param from address from which tokens are pulled from
      * @param token ERC20 token address
      * @param amount quantity of token to transfer
-     * @param skipWethDeposit if false, will not try to deposit weth from attach eth
+     * @param credit amount already credited to depositor, to be deducted from transfer
      */
     function _pullFrom(
         address from,
         address token,
         uint256 amount,
-        bool skipWethDeposit
+        uint256 credit
     ) internal {
-        if (!skipWethDeposit) {
-            if (token == WETH_ADDRESS) {
-                if (msg.value > 0) {
-                    if (msg.value > amount) {
-                        IWETH(WETH_ADDRESS).deposit{value: amount}();
-
-                        (bool success, ) = payable(msg.sender).call{
-                            value: msg.value - amount
-                        }("");
-
-                        require(success, "ETH refund failed");
-
-                        amount = 0;
-                    } else {
-                        unchecked {
-                            amount -= msg.value;
-                        }
-
-                        IWETH(WETH_ADDRESS).deposit{value: msg.value}();
-                    }
-                }
-            } else {
-                require(msg.value == 0, "not WETH deposit");
-            }
-        }
-
-        if (amount > 0) {
+        if (amount > credit) {
             require(
-                IERC20(token).transferFrom(from, address(this), amount),
+                IERC20(token).transferFrom(
+                    from,
+                    address(this),
+                    amount - credit
+                ),
                 "ERC20 transfer failed"
             );
+        }
+    }
+
+    /**
+     * @notice validate that pool accepts ether deposits and calculate credit amount from message value
+     * @param amount total deposit quantity
+     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
+     * @return credit quantity of credit to apply
+     */
+    function _creditMessageValue(uint256 amount, bool isCallPool)
+        internal
+        returns (uint256 credit)
+    {
+        if (msg.value > 0) {
+            require(
+                _getPoolToken(isCallPool) == WETH_ADDRESS,
+                "not WETH deposit"
+            );
+
+            if (msg.value > amount) {
+                unchecked {
+                    (bool success, ) = payable(msg.sender).call{
+                        value: msg.value - amount
+                    }("");
+
+                    require(success, "ETH refund failed");
+
+                    credit = amount;
+                }
+            } else {
+                credit = msg.value;
+            }
+
+            IWETH(WETH_ADDRESS).deposit{value: credit}();
         }
     }
 

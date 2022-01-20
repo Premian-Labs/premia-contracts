@@ -111,7 +111,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
                 contractSize,
                 isCall,
                 maxCost,
-                false
+                true
             );
     }
 
@@ -173,7 +173,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
                 contractSize,
                 isCall,
                 maxCost,
-                true
+                false
             );
     }
 
@@ -198,13 +198,18 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         address token = _getPoolToken(isCall);
 
-        uint256 tokenAmount = isCall
+        uint256 amount = isCall
             ? contractSize
             : PoolStorage.layout().fromUnderlyingToBaseDecimals(
                 strike64x64.mulu(contractSize)
             );
 
-        _pullFrom(underwriter, token, tokenAmount, false);
+        _pullFrom(
+            underwriter,
+            token,
+            amount,
+            _creditMessageValue(amount, isCall)
+        );
 
         longTokenId = PoolStorage.formatTokenId(
             _getTokenType(isCall, true),
@@ -246,7 +251,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
      * @param contractSize size of option contract
      * @param isCall true for call, false for put
      * @param maxCost maximum acceptable cost after accounting for slippage
-     * @param skipWethDeposit if false, will not try to deposit weth from attach eth
+     * @param creditMessageValue whether to apply message value as credit towards transfer
      * @return baseCost quantity of tokens required to purchase long position
      * @return feeCost quantity of tokens required to pay fees
      */
@@ -256,7 +261,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         uint256 contractSize,
         bool isCall,
         uint256 maxCost,
-        bool skipWethDeposit
+        bool creditMessageValue
     ) internal returns (uint256 baseCost, uint256 feeCost) {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -290,13 +295,15 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             newPrice64x64
         );
 
-        require(baseCost + feeCost <= maxCost, "excess slipp");
+        uint256 amount = baseCost + feeCost;
+
+        require(amount <= maxCost, "excess slipp");
 
         _pullFrom(
             msg.sender,
             _getPoolToken(isCall),
-            baseCost + feeCost,
-            skipWethDeposit
+            amount,
+            creditMessageValue ? _creditMessageValue(amount, isCall) : 0
         );
     }
 }
