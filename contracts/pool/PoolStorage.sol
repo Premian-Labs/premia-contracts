@@ -184,6 +184,14 @@ library PoolStorage {
         decimals = isCall ? l.underlyingDecimals : l.baseDecimals;
     }
 
+    function getMinimumAmount(Layout storage l, bool isCall)
+        internal
+        view
+        returns (uint256 minimumAmount)
+    {
+        minimumAmount = isCall ? l.underlyingMinimum : l.baseMinimum;
+    }
+
     /**
      * @notice get the total supply of free liquidity tokens, minus pending deposits
      * @param l storage layout struct

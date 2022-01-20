@@ -134,7 +134,7 @@ contract PoolView is IPoolView, PoolInternal {
         returns (uint256 minCallTokenAmount, uint256 minPutTokenAmount)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
-        return (_getMinimumAmount(l, true), _getMinimumAmount(l, false));
+        return (l.getMinimumAmount(true), l.getMinimumAmount(false));
     }
 
     /**
