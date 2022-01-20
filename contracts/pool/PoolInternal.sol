@@ -107,15 +107,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         }
     }
 
-    function _getFeeWithDiscount(address feePayer, uint256 fee)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 discount = _getFeeDiscount(feePayer);
-        return fee - ((fee * discount) / INVERSE_BASIS_POINT);
-    }
-
     function _withdrawFees(bool isCall) internal returns (uint256 amount) {
         uint256 tokenId = _getReservedLiquidityTokenId(isCall);
         amount = _balanceOf(FEE_RECEIVER_ADDRESS, tokenId);
