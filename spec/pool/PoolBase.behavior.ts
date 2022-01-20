@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { describeBehaviorOfERC1155Enumerable } from '@solidstate/spec';
-import { PoolBase } from '../../typechain';
+import { IPool } from '../../typechain';
 import { BigNumber, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { formatTokenId, TokenType } from '@premia/utils';
@@ -9,7 +9,7 @@ import { formatTokenId, TokenType } from '@premia/utils';
 import { parseOption, PoolUtil } from '../../test/pool/PoolUtil';
 
 interface PoolBaseBehaviorArgs {
-  deploy: () => Promise<PoolBase>;
+  deploy: () => Promise<IPool>;
   getPoolUtil: () => Promise<PoolUtil>;
   mintERC1155: (
     address: string,
@@ -29,7 +29,7 @@ export function describeBehaviorOfPoolBase(
 ) {
   describe('::PoolBase', () => {
     let owner: SignerWithAddress;
-    let instance: PoolBase;
+    let instance: IPool;
     let p: PoolUtil;
 
     before(async () => {

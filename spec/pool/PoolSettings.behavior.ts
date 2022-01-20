@@ -1,10 +1,10 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { PoolSettings, PoolView__factory } from '../../typechain';
+import { IPool, PoolView__factory } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 interface PoolSettingsBehaviorArgs {
-  deploy: () => Promise<PoolSettings>;
+  deploy: () => Promise<IPool>;
   getProtocolOwner: () => Promise<SignerWithAddress>;
   getNonProtocolOwner: () => Promise<SignerWithAddress>;
 }
@@ -17,7 +17,7 @@ export function describeBehaviorOfPoolSettings({
   describe('::PoolSettings', () => {
     let protocolOwner: SignerWithAddress;
     let nonProtocolOwner: SignerWithAddress;
-    let instance: PoolSettings;
+    let instance: IPool;
 
     before(async () => {
       protocolOwner = await getProtocolOwner();
