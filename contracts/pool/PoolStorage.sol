@@ -156,6 +156,18 @@ library PoolStorage {
         }
     }
 
+    function getTokenType(bool isCall, bool isLong)
+        internal
+        pure
+        returns (TokenType tokenType)
+    {
+        if (isCall) {
+            tokenType = isLong ? TokenType.LONG_CALL : TokenType.SHORT_CALL;
+        } else {
+            tokenType = isLong ? TokenType.LONG_PUT : TokenType.SHORT_PUT;
+        }
+    }
+
     function getPoolToken(Layout storage l, bool isCall)
         internal
         view

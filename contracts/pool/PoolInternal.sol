@@ -223,12 +223,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 contractSize
     ) internal {
         uint256 longTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, true),
+            PoolStorage.getTokenType(isCall, true),
             maturity,
             strike64x64
         );
         uint256 shortTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, false),
+            PoolStorage.getTokenType(isCall, false),
             maturity,
             strike64x64
         );
@@ -341,13 +341,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
 
         uint256 longTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, true),
+            PoolStorage.getTokenType(isCall, true),
             maturity,
             strike64x64
         );
 
         uint256 shortTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, false),
+            PoolStorage.getTokenType(isCall, false),
             maturity,
             strike64x64
         );
@@ -530,7 +530,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             contractSize,
             exerciseValue,
             PoolStorage.formatTokenId(
-                _getTokenType(isCall, false),
+                PoolStorage.getTokenType(isCall, false),
                 maturity,
                 strike64x64
             ),
@@ -816,22 +816,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         reservedLiqTokenId = isCall
             ? UNDERLYING_RESERVED_LIQ_TOKEN_ID
             : BASE_RESERVED_LIQ_TOKEN_ID;
-    }
-
-    function _getTokenType(bool isCall, bool isLong)
-        internal
-        pure
-        returns (PoolStorage.TokenType tokenType)
-    {
-        if (isCall) {
-            tokenType = isLong
-                ? PoolStorage.TokenType.LONG_CALL
-                : PoolStorage.TokenType.SHORT_CALL;
-        } else {
-            tokenType = isLong
-                ? PoolStorage.TokenType.LONG_PUT
-                : PoolStorage.TokenType.SHORT_PUT;
-        }
     }
 
     function _getMinimumAmount(PoolStorage.Layout storage l, bool isCall)
