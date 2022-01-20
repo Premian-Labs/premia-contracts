@@ -917,15 +917,15 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         internal
         returns (uint256 credit)
     {
-        credit = msg.value;
-
-        if (credit > 0) {
+        if (msg.value > 0) {
             require(
                 _getPoolToken(isCallPool) == WETH_ADDRESS,
                 "not WETH deposit"
             );
 
-            if (credit > amount) {
+            if (msg.value <= amount) {
+                credit = msg.value;
+            } else {
                 unchecked {
                     (bool success, ) = payable(msg.sender).call{
                         value: credit - amount
