@@ -64,7 +64,7 @@ contract PoolIO is IPoolIO, PoolSwap {
      * @inheritdoc IPoolIO
      */
     function deposit(uint256 amount, bool isCallPool) external payable {
-        _deposit(amount, isCallPool, false);
+        _deposit(amount, isCallPool, true);
     }
 
     /**
@@ -96,7 +96,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
         }
 
-        _deposit(amount, isCallPool, true);
+        _deposit(amount, isCallPool, false);
     }
 
     /**
@@ -149,7 +149,7 @@ contract PoolIO is IPoolIO, PoolSwap {
         }
 
         _subUserTVL(l, msg.sender, isCallPool, amount - reservedLiqToWithdraw);
-        _pushTo(msg.sender, _getPoolToken(isCallPool), amount);
+        _processAvailableFunds(msg.sender, amount, isCallPool, true);
         emit Withdrawal(msg.sender, isCallPool, depositedAt, amount);
     }
 
@@ -187,7 +187,7 @@ contract PoolIO is IPoolIO, PoolSwap {
         );
 
         _subUserTVL(l, msg.sender, isCall, baseCost + feeCost + amountOut);
-        _pushTo(msg.sender, _getPoolToken(isCall), amountOut);
+        _processAvailableFunds(msg.sender, amountOut, isCall, true);
     }
 
     /**
@@ -253,7 +253,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             }
 
             _subUserTVL(PoolStorage.layout(), msg.sender, true, tvlToSubtract);
-            _pushTo(msg.sender, _getPoolToken(true), amountOutCall);
+            _processAvailableFunds(msg.sender, amountOutCall, true, true);
         }
 
         if (amountOutPut > 0) {
@@ -266,7 +266,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             }
 
             _subUserTVL(PoolStorage.layout(), msg.sender, false, tvlToSubtract);
-            _pushTo(msg.sender, _getPoolToken(false), amountOutPut);
+            _processAvailableFunds(msg.sender, amountOutPut, false, true);
         }
     }
 
@@ -310,8 +310,8 @@ contract PoolIO is IPoolIO, PoolSwap {
     {
         amountOutCall = _withdrawFees(true);
         amountOutPut = _withdrawFees(false);
-        _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(true), amountOutCall);
-        _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(false), amountOutPut);
+        _processAvailableFunds(FEE_RECEIVER_ADDRESS, amountOutCall, true, true);
+        _processAvailableFunds(FEE_RECEIVER_ADDRESS, amountOutPut, false, true);
     }
 
     /**
@@ -329,14 +329,15 @@ contract PoolIO is IPoolIO, PoolSwap {
 
         _annihilate(msg.sender, maturity, strike64x64, isCall, contractSize);
 
-        _pushTo(
+        _processAvailableFunds(
             msg.sender,
-            _getPoolToken(isCall),
             isCall
                 ? contractSize
                 : PoolStorage.layout().fromUnderlyingToBaseDecimals(
                     strike64x64.mulu(contractSize)
-                )
+                ),
+            isCall,
+            true
         );
     }
 
@@ -410,44 +411,5 @@ contract PoolIO is IPoolIO, PoolSwap {
         for (uint256 i; i < accounts.length; i++) {
             _subUserTVL(l, accounts[i], isCallPool, amounts[i]);
         }
-    }
-
-    /**
-     * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
-     * @param amount quantity of underlying currency to deposit
-     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
-     * @param skipWethDeposit if false, will not try to deposit weth from attach eth
-     */
-    function _deposit(
-        uint256 amount,
-        bool isCallPool,
-        bool skipWethDeposit
-    ) internal {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
-        // Reset gradual divestment timestamp
-        delete l.divestmentTimestamps[msg.sender][isCallPool];
-
-        uint256 cap = _getPoolCapAmount(l, isCallPool);
-
-        require(
-            l.totalTVL[isCallPool] + amount <= cap,
-            "pool deposit cap reached"
-        );
-
-        _processPendingDeposits(l, isCallPool);
-
-        l.depositedAt[msg.sender][isCallPool] = block.timestamp;
-        _addUserTVL(l, msg.sender, isCallPool, amount);
-        _pullFrom(
-            msg.sender,
-            _getPoolToken(isCallPool),
-            amount,
-            skipWethDeposit
-        );
-
-        _addToDepositQueue(msg.sender, amount, isCallPool);
-
-        emit Deposit(msg.sender, isCallPool, amount);
     }
 }

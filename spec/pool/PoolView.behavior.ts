@@ -1,13 +1,13 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { IPoolView, PoolExercise__factory } from '../../typechain';
+import { IPool, PoolExercise__factory } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { fixedFromFloat, getOptionTokenIds } from '@premia/utils';
 
 import { parseBase, parseUnderlying, PoolUtil } from '../../test/pool/PoolUtil';
 
 interface PoolViewBehaviorArgs {
-  deploy: () => Promise<IPoolView>;
+  deploy: () => Promise<IPool>;
   getPoolUtil: () => Promise<PoolUtil>;
 }
 
@@ -19,7 +19,7 @@ export function describeBehaviorOfPoolView({
     let buyer: SignerWithAddress;
     let lp1: SignerWithAddress;
     let lp2: SignerWithAddress;
-    let instance: IPoolView;
+    let instance: IPool;
     let p: PoolUtil;
 
     before(async () => {

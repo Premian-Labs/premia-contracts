@@ -4,6 +4,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import {
   ERC20Mock__factory,
   PoolMock__factory,
+  PremiaErc20,
   PremiaMakerKeeper,
   PremiaMakerKeeper__factory,
   UniswapV2Pair,
@@ -55,7 +56,11 @@ describe('PremiaMakerKeeper', () => {
       p.premiaDiamond.address,
     );
 
-    uniswap = await createUniswap(owner, contracts.premia, undefined);
+    uniswap = await createUniswap(
+      owner,
+      contracts.premia as PremiaErc20,
+      undefined,
+    );
 
     pairBase = await createUniswapPair(
       owner,
