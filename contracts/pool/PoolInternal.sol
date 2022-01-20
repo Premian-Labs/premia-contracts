@@ -268,7 +268,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         _addUserTVL(l, msg.sender, isCallPool, amount);
         _pullFrom(
             msg.sender,
-            _getPoolToken(isCallPool),
+            l.getPoolToken(isCallPool),
             amount,
             creditMessageValue ? _creditMessageValue(amount, isCallPool) : 0
         );
@@ -510,7 +510,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 contractSize,
                 exerciseValue,
                 longTokenId,
-                _getPoolToken(isCall)
+                l.getPoolToken(isCall)
             );
         } else {
             // burn long option tokens from sender
@@ -520,7 +520,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 longTokenId,
                 contractSize,
                 exerciseValue,
-                _getPoolToken(isCall)
+                l.getPoolToken(isCall)
             );
         }
 
@@ -818,12 +818,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             : BASE_RESERVED_LIQ_TOKEN_ID;
     }
 
-    function _getPoolToken(bool isCall) internal view returns (address token) {
-        token = isCall
-            ? PoolStorage.layout().underlying
-            : PoolStorage.layout().base;
-    }
-
     function _getTokenType(bool isCall, bool isLong)
         internal
         pure
@@ -960,7 +954,11 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         bool divest
     ) internal {
         if (divest) {
-            _pushTo(account, _getPoolToken(isCallPool), amount);
+            _pushTo(
+                account,
+                PoolStorage.layout().getPoolToken(isCallPool),
+                amount
+            );
         } else {
             // TODO: redeposit
         }
@@ -978,7 +976,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     {
         if (msg.value > 0) {
             require(
-                _getPoolToken(isCallPool) == WETH_ADDRESS,
+                PoolStorage.layout().getPoolToken(isCallPool) == WETH_ADDRESS,
                 "not WETH deposit"
             );
 

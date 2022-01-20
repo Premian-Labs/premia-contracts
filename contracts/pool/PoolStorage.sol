@@ -156,6 +156,14 @@ library PoolStorage {
         }
     }
 
+    function getPoolToken(Layout storage l, bool isCall)
+        internal
+        view
+        returns (address token)
+    {
+        token = isCall ? l.underlying : l.base;
+    }
+
     function getTokenDecimals(Layout storage l, bool isCall)
         internal
         view

@@ -196,13 +196,13 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             "not approved"
         );
 
-        address token = _getPoolToken(isCall);
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        address token = l.getPoolToken(isCall);
 
         uint256 amount = isCall
             ? contractSize
-            : PoolStorage.layout().fromUnderlyingToBaseDecimals(
-                strike64x64.mulu(contractSize)
-            );
+            : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
 
         _pullFrom(
             underwriter,
@@ -301,7 +301,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         _pullFrom(
             msg.sender,
-            _getPoolToken(isCall),
+            l.getPoolToken(isCall),
             amount,
             creditMessageValue ? _creditMessageValue(amount, isCall) : 0
         );
