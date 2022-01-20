@@ -255,7 +255,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         // Reset gradual divestment timestamp
         delete l.divestmentTimestamps[msg.sender][isCallPool];
 
-        uint256 cap = _getPoolCapAmount(l, isCallPool);
+        uint256 cap = l.getPoolCapAmount(isCallPool);
 
         require(
             l.totalTVL[isCallPool] + amount <= cap,
@@ -816,14 +816,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         reservedLiqTokenId = isCall
             ? UNDERLYING_RESERVED_LIQ_TOKEN_ID
             : BASE_RESERVED_LIQ_TOKEN_ID;
-    }
-
-    function _getPoolCapAmount(PoolStorage.Layout storage l, bool isCall)
-        internal
-        view
-        returns (uint256 poolCapAmount)
-    {
-        poolCapAmount = isCall ? l.underlyingPoolCap : l.basePoolCap;
     }
 
     function _setCLevel(

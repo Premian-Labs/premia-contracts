@@ -192,6 +192,14 @@ library PoolStorage {
         minimumAmount = isCall ? l.underlyingMinimum : l.baseMinimum;
     }
 
+    function getPoolCapAmount(Layout storage l, bool isCall)
+        internal
+        view
+        returns (uint256 poolCapAmount)
+    {
+        poolCapAmount = isCall ? l.underlyingPoolCap : l.basePoolCap;
+    }
+
     /**
      * @notice get the total supply of free liquidity tokens, minus pending deposits
      * @param l storage layout struct
