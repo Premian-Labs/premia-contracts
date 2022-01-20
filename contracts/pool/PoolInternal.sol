@@ -7,7 +7,6 @@ import {IERC173} from "@solidstate/contracts/access/IERC173.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155EnumerableInternal, ERC1155EnumerableStorage, EnumerableSet} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
-import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
 
 import {PoolStorage} from "./PoolStorage.sol";
 
@@ -887,43 +886,21 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @param from address from which tokens are pulled from
      * @param token ERC20 token address
      * @param amount quantity of token to transfer
-     * @param skipWethDeposit if false, will not try to deposit weth from attach eth
+     * @param credit amount already credited to depositor, to be deducted from transfer
      */
     function _pullFrom(
         address from,
         address token,
         uint256 amount,
-        bool skipWethDeposit
+        uint256 credit
     ) internal {
-        if (!skipWethDeposit) {
-            if (token == WETH_ADDRESS) {
-                if (msg.value > 0) {
-                    if (msg.value > amount) {
-                        IWETH(WETH_ADDRESS).deposit{value: amount}();
-
-                        (bool success, ) = payable(msg.sender).call{
-                            value: msg.value - amount
-                        }("");
-
-                        require(success, "ETH refund failed");
-
-                        amount = 0;
-                    } else {
-                        unchecked {
-                            amount -= msg.value;
-                        }
-
-                        IWETH(WETH_ADDRESS).deposit{value: msg.value}();
-                    }
-                }
-            } else {
-                require(msg.value == 0, "not WETH deposit");
-            }
-        }
-
-        if (amount > 0) {
+        if (amount > credit) {
             require(
-                IERC20(token).transferFrom(from, address(this), amount),
+                IERC20(token).transferFrom(
+                    from,
+                    address(this),
+                    amount - credit
+                ),
                 "ERC20 transfer failed"
             );
         }

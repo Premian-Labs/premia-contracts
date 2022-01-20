@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
+import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
 
 import {IPoolIO} from "./IPoolIO.sol";
 import {PoolSwap} from "./PoolSwap.sol";
@@ -64,7 +65,30 @@ contract PoolIO is IPoolIO, PoolSwap {
      * @inheritdoc IPoolIO
      */
     function deposit(uint256 amount, bool isCallPool) external payable {
-        _deposit(amount, isCallPool, false);
+        uint256 credit = msg.value;
+
+        if (credit > 0) {
+            require(
+                _getPoolToken(isCallPool) == WETH_ADDRESS,
+                "not WETH deposit"
+            );
+
+            if (credit > amount) {
+                unchecked {
+                    (bool success, ) = payable(msg.sender).call{
+                        value: credit - amount
+                    }("");
+
+                    require(success, "ETH refund failed");
+
+                    credit = amount;
+                }
+            }
+
+            IWETH(WETH_ADDRESS).deposit{value: credit}();
+        }
+
+        _deposit(amount, credit, isCallPool);
     }
 
     /**
@@ -96,7 +120,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
         }
 
-        _deposit(amount, isCallPool, true);
+        _deposit(amount, 0, isCallPool);
     }
 
     /**
@@ -415,13 +439,13 @@ contract PoolIO is IPoolIO, PoolSwap {
     /**
      * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
      * @param amount quantity of underlying currency to deposit
+     * @param credit amount credited, which should not be transferred
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
-     * @param skipWethDeposit if false, will not try to deposit weth from attach eth
      */
     function _deposit(
         uint256 amount,
-        bool isCallPool,
-        bool skipWethDeposit
+        uint256 credit,
+        bool isCallPool
     ) internal {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -439,12 +463,7 @@ contract PoolIO is IPoolIO, PoolSwap {
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;
         _addUserTVL(l, msg.sender, isCallPool, amount);
-        _pullFrom(
-            msg.sender,
-            _getPoolToken(isCallPool),
-            amount,
-            skipWethDeposit
-        );
+        _pullFrom(msg.sender, _getPoolToken(isCallPool), amount, credit);
 
         _addToDepositQueue(msg.sender, amount, isCallPool);
 
