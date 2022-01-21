@@ -6,10 +6,10 @@ pragma solidity ^0.8.0;
 import {AggregatorInterface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorInterface.sol";
 
 contract PriceFeedConverter {
-    address private immutable BASE;
     address private immutable QUOTE;
-    uint8 private immutable BASE_DECIMALS;
+    address private immutable BASE;
     uint8 private immutable QUOTE_DECIMALS;
+    uint8 private immutable BASE_DECIMALS;
 
     constructor(
         address quote,
@@ -17,8 +17,8 @@ contract PriceFeedConverter {
         uint8 quoteDecimals,
         uint8 baseDecimals
     ) {
-        BASE = base;
         QUOTE = quote;
+        BASE = base;
         QUOTE_DECIMALS = quoteDecimals;
         BASE_DECIMALS = baseDecimals;
     }
