@@ -601,13 +601,18 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             if (isCall) {
                 intervalContractSize = intervalTokenAmount;
             } else {
-                (, , int128 strike64x64) = PoolStorage.parseTokenId(
-                    shortTokenId
-                );
+                if (toPay == 0) {
+                    // round last interval up to account for fixed point precision errors
+                    intervalContractSize = contractSize;
+                } else {
+                    (, , int128 strike64x64) = PoolStorage.parseTokenId(
+                        shortTokenId
+                    );
 
-                intervalContractSize = l.fromBaseToUnderlyingDecimals(
-                    strike64x64.inv().mulu(intervalTokenAmount)
-                );
+                    intervalContractSize = l.fromBaseToUnderlyingDecimals(
+                        strike64x64.inv().mulu(intervalTokenAmount)
+                    );
+                }
             }
 
             // mint short option tokens for underwriter
@@ -616,7 +621,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 underwriter,
                 buyer,
                 shortTokenId,
-                toPay == 0 ? contractSize : intervalContractSize,
+                intervalContractSize,
                 intervalPremium,
                 isCall
             );
