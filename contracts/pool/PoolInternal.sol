@@ -510,7 +510,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 contractSize,
                 exerciseValue,
                 longTokenId,
-                _getPoolToken(isCall)
+                isCall
             );
         } else {
             // burn long option tokens from sender
@@ -520,7 +520,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 longTokenId,
                 contractSize,
                 exerciseValue,
-                _getPoolToken(isCall)
+                isCall
             );
         }
 
@@ -633,7 +633,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 contractSize,
         uint256 exerciseValue,
         uint256 longTokenId,
-        address payoutToken
+        bool isCallPool
     ) internal returns (uint256 totalFee) {
         EnumerableSet.AddressSet storage holders = ERC1155EnumerableStorage
             .layout()
@@ -658,7 +658,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 longTokenId,
                 intervalContractSize,
                 intervalExerciseValue,
-                payoutToken
+                isCallPool
             );
 
             exerciseValue -= intervalExerciseValue;
@@ -672,14 +672,19 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 longTokenId,
         uint256 contractSize,
         uint256 exerciseValue,
-        address payoutToken
+        bool isCallPool
     ) internal returns (uint256 fee) {
         _burn(holder, longTokenId, contractSize);
 
         if (exerciseValue > 0) {
             fee = _getFeeWithDiscount(holder, FEE_64x64.mulu(exerciseValue));
 
-            _pushTo(holder, payoutToken, exerciseValue - fee);
+            _processAvailableFunds(
+                holder,
+                exerciseValue - fee,
+                isCallPool,
+                true
+            );
         }
 
         emit Exercise(holder, longTokenId, contractSize, exerciseValue, fee);
