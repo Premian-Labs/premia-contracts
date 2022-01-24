@@ -536,21 +536,31 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         bool isCall
     ) internal {
         uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCall);
-        (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
-        uint256 toPay = isCall
-            ? contractSize
-            : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
+        uint256 toPay;
+
+        if (isCall) {
+            toPay = contractSize;
+        } else {
+            (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
+
+            toPay = l.fromUnderlyingToBaseDecimals(
+                strike64x64.mulu(contractSize)
+            );
+        }
 
         while (toPay > 0) {
             address underwriter = l.liquidityQueueAscending[isCall][address(0)];
             uint256 balance = _balanceOf(underwriter, freeLiqTokenId);
 
-            // If dust left, we remove underwriter and skip to next
+            // if underwriter has insufficient liquidity, remove from queue
+
             if (balance < _getMinimumAmount(l, isCall)) {
                 l.removeUnderwriter(underwriter, isCall);
                 continue;
             }
+
+            // if underwriter is in process of divestment, remove from queue
 
             if (!l.getReinvestmentStatus(underwriter, isCall)) {
                 _burn(underwriter, freeLiqTokenId, balance);
@@ -568,6 +578,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 l.pendingDeposits[underwriter][l.nextDeposits[isCall].eta][
                     isCall
                 ]) * (toPay + premium)) / toPay;
+
+            // skip underwriters whose liquidity is pending deposit processing
+
             if (intervalTokenAmount == 0) continue;
             if (intervalTokenAmount > toPay) intervalTokenAmount = toPay;
 
@@ -575,7 +588,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             uint256 intervalPremium = (premium * intervalTokenAmount) / toPay;
             premium -= intervalPremium;
             toPay -= intervalTokenAmount;
-            _addUserTVL(l, underwriter, isCall, intervalPremium);
 
             // burn free liquidity tokens from underwriter
             _burn(
@@ -589,31 +601,51 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             if (isCall) {
                 intervalContractSize = intervalTokenAmount;
             } else {
+                (, , int128 strike64x64) = PoolStorage.parseTokenId(
+                    shortTokenId
+                );
+
                 intervalContractSize = l.fromBaseToUnderlyingDecimals(
                     strike64x64.inv().mulu(intervalTokenAmount)
                 );
             }
 
             // mint short option tokens for underwriter
-            // toPay == 0 ? contractSize : intervalContractSize : To prevent minting less than amount,
-            // because of rounding (Can happen for put, because of fixed point precision)
-            _mint(
-                underwriter,
-                shortTokenId,
-                toPay == 0 ? contractSize : intervalContractSize
-            );
-
-            emit Underwrite(
+            _mintShortTokenInterval(
+                l,
                 underwriter,
                 buyer,
                 shortTokenId,
                 toPay == 0 ? contractSize : intervalContractSize,
                 intervalPremium,
-                false
+                isCall
             );
 
             contractSize -= intervalContractSize;
         }
+    }
+
+    function _mintShortTokenInterval(
+        PoolStorage.Layout storage l,
+        address holder,
+        address buyer,
+        uint256 shortTokenId,
+        uint256 intervalContractSize,
+        uint256 intervalPremium,
+        bool isCallPool
+    ) internal {
+        _mint(holder, shortTokenId, intervalContractSize);
+
+        _addUserTVL(l, holder, isCallPool, intervalPremium);
+
+        emit Underwrite(
+            holder,
+            buyer,
+            shortTokenId,
+            intervalContractSize,
+            intervalPremium,
+            false
+        );
     }
 
     function _burnLongTokenLoop(
