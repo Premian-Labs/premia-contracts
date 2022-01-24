@@ -537,19 +537,19 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) internal {
         uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCall);
 
-        uint256 toPay;
+        uint256 tokenAmount;
 
         if (isCall) {
-            toPay = contractSize;
+            tokenAmount = contractSize;
         } else {
             (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
-            toPay = l.fromUnderlyingToBaseDecimals(
+            tokenAmount = l.fromUnderlyingToBaseDecimals(
                 strike64x64.mulu(contractSize)
             );
         }
 
-        while (toPay > 0) {
+        while (tokenAmount > 0) {
             address underwriter = l.liquidityQueueAscending[isCall][address(0)];
             uint256 balance = _balanceOf(underwriter, freeLiqTokenId);
 
@@ -577,17 +577,17 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             uint256 intervalTokenAmount = ((balance -
                 l.pendingDeposits[underwriter][l.nextDeposits[isCall].eta][
                     isCall
-                ]) * (toPay + premium)) / toPay;
+                ]) * (tokenAmount + premium)) / tokenAmount;
 
             // skip underwriters whose liquidity is pending deposit processing
 
             if (intervalTokenAmount == 0) continue;
-            if (intervalTokenAmount > toPay) intervalTokenAmount = toPay;
+            if (intervalTokenAmount > tokenAmount)
+                intervalTokenAmount = tokenAmount;
 
             // amount of premium paid to underwriter
-            uint256 intervalPremium = (premium * intervalTokenAmount) / toPay;
-            premium -= intervalPremium;
-            toPay -= intervalTokenAmount;
+            uint256 intervalPremium = (premium * intervalTokenAmount) /
+                tokenAmount;
 
             // burn free liquidity tokens from underwriter
             _burn(
@@ -601,7 +601,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             if (isCall) {
                 intervalContractSize = intervalTokenAmount;
             } else {
-                if (toPay == 0) {
+                if (tokenAmount == intervalTokenAmount) {
                     // round last interval up to account for fixed point precision errors
                     intervalContractSize = contractSize;
                 } else {
@@ -626,6 +626,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 isCall
             );
 
+            premium -= intervalPremium;
+            tokenAmount -= intervalTokenAmount;
             contractSize -= intervalContractSize;
         }
     }
