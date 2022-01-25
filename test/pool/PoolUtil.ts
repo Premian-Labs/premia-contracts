@@ -375,7 +375,7 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver,
+      feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE),
     );
