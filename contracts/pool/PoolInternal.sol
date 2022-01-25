@@ -265,29 +265,50 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             args.strike64x64
         );
 
-        uint256 longTokenId = PoolStorage.formatTokenId(
-            _getTokenType(args.isCall, true),
-            args.maturity,
-            args.strike64x64
-        );
+        int128 sellCLevel64x64;
 
-        int128 currentCLevel64x64 = l.getRawCLevel64x64(args.isCall);
+        {
+            uint256 longTokenId = PoolStorage.formatTokenId(
+                _getTokenType(args.isCall, true),
+                args.maturity,
+                args.strike64x64
+            );
 
-        // Initialize to avg value, and replace by current if avg not set or current is lower
-        int128 sellCLevel64x64 = l.avgCLevel64x64[longTokenId];
+            // Initialize to avg value, and replace by current if avg not set or current is lower
+            sellCLevel64x64 = l.avgCLevel64x64[longTokenId];
 
-        if (sellCLevel64x64 == 0 || currentCLevel64x64 < sellCLevel64x64) {
-            sellCLevel64x64 = currentCLevel64x64;
+            {
+                int128 currentCLevel64x64 = l.getRawCLevel64x64(args.isCall);
+
+                if (
+                    sellCLevel64x64 == 0 || currentCLevel64x64 < sellCLevel64x64
+                ) {
+                    sellCLevel64x64 = currentCLevel64x64;
+                }
+            }
         }
 
         // ToDo : Account only for available liquidity to sell
         uint256 liquidityChange = (args.contractSize *
             (10**SELL_CONSTANT_PRECISION)) / _totalSupply(shortTokenId);
 
+        int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
+            args.contractSize,
+            l.underlyingDecimals
+        );
+
         baseCost64x64 = (SELL_CONSTANT_64x64.pow(liquidityChange))
             .mul(sellCLevel64x64)
-            .mul(blackScholesPrice64x64.sub(exerciseValue64x64))
+            .mul(
+                blackScholesPrice64x64.mul(contractSize64x64).sub(
+                    exerciseValue64x64
+                )
+            )
             .add(exerciseValue64x64);
+
+        if (args.isCall) {
+            baseCost64x64 = baseCost64x64.div(args.spot64x64);
+        }
 
         feeCost64x64 = baseCost64x64.mul(FEE_64x64);
         int128 discount64x64 = ABDKMath64x64.divu(
