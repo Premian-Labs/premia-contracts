@@ -107,15 +107,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         }
     }
 
-    function _getFeeWithDiscount(address feePayer, uint256 fee)
-        internal
-        view
-        returns (uint256)
-    {
-        uint256 discount = _getFeeDiscount(feePayer);
-        return fee - ((fee * discount) / INVERSE_BASIS_POINT);
-    }
-
     function _withdrawFees(bool isCall) internal returns (uint256 amount) {
         uint256 tokenId = _getReservedLiquidityTokenId(isCall);
         amount = _balanceOf(FEE_RECEIVER_ADDRESS, tokenId);
@@ -500,27 +491,25 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             }
         }
 
-        uint256 fee;
-
         if (onlyExpired) {
             // burn long option tokens from multiple holders
             // transfer profit to and emit Exercise event for each holder in loop
 
-            fee = _burnLongTokenLoop(
+            _burnLongTokenLoop(
                 contractSize,
                 exerciseValue,
                 longTokenId,
-                l.getPoolToken(isCall)
+                isCall
             );
         } else {
             // burn long option tokens from sender
 
-            fee = _burnLongTokenInterval(
+            _burnLongTokenInterval(
                 holder,
                 longTokenId,
                 contractSize,
                 exerciseValue,
-                l.getPoolToken(isCall)
+                isCall
             );
         }
 
@@ -536,8 +525,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             ),
             isCall
         );
-
-        _mint(FEE_RECEIVER_ADDRESS, _getReservedLiquidityTokenId(isCall), fee);
     }
 
     function _mintShortTokenLoop(
@@ -549,21 +536,31 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         bool isCall
     ) internal {
         uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCall);
-        (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
-        uint256 toPay = isCall
-            ? contractSize
-            : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
+        uint256 tokenAmount;
 
-        while (toPay > 0) {
+        if (isCall) {
+            tokenAmount = contractSize;
+        } else {
+            (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
+
+            tokenAmount = l.fromUnderlyingToBaseDecimals(
+                strike64x64.mulu(contractSize)
+            );
+        }
+
+        while (tokenAmount > 0) {
             address underwriter = l.liquidityQueueAscending[isCall][address(0)];
             uint256 balance = _balanceOf(underwriter, freeLiqTokenId);
 
-            // If dust left, we remove underwriter and skip to next
+            // if underwriter has insufficient liquidity, remove from queue
+
             if (balance < l.getMinimumAmount(isCall)) {
                 l.removeUnderwriter(underwriter, isCall);
                 continue;
             }
+
+            // if underwriter is in process of divestment, remove from queue
 
             if (!l.getReinvestmentStatus(underwriter, isCall)) {
                 _burn(underwriter, freeLiqTokenId, balance);
@@ -580,15 +577,17 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             uint256 intervalTokenAmount = ((balance -
                 l.pendingDeposits[underwriter][l.nextDeposits[isCall].eta][
                     isCall
-                ]) * (toPay + premium)) / toPay;
+                ]) * (tokenAmount + premium)) / tokenAmount;
+
+            // skip underwriters whose liquidity is pending deposit processing
+
             if (intervalTokenAmount == 0) continue;
-            if (intervalTokenAmount > toPay) intervalTokenAmount = toPay;
+            if (intervalTokenAmount > tokenAmount)
+                intervalTokenAmount = tokenAmount;
 
             // amount of premium paid to underwriter
-            uint256 intervalPremium = (premium * intervalTokenAmount) / toPay;
-            premium -= intervalPremium;
-            toPay -= intervalTokenAmount;
-            _addUserTVL(l, underwriter, isCall, intervalPremium);
+            uint256 intervalPremium = (premium * intervalTokenAmount) /
+                tokenAmount;
 
             // burn free liquidity tokens from underwriter
             _burn(
@@ -602,39 +601,66 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             if (isCall) {
                 intervalContractSize = intervalTokenAmount;
             } else {
-                intervalContractSize = l.fromBaseToUnderlyingDecimals(
-                    strike64x64.inv().mulu(intervalTokenAmount)
-                );
+                if (tokenAmount == intervalTokenAmount) {
+                    // round last interval up to account for fixed point precision errors
+                    intervalContractSize = contractSize;
+                } else {
+                    (, , int128 strike64x64) = PoolStorage.parseTokenId(
+                        shortTokenId
+                    );
+
+                    intervalContractSize = l.fromBaseToUnderlyingDecimals(
+                        strike64x64.inv().mulu(intervalTokenAmount)
+                    );
+                }
             }
 
             // mint short option tokens for underwriter
-            // toPay == 0 ? contractSize : intervalContractSize : To prevent minting less than amount,
-            // because of rounding (Can happen for put, because of fixed point precision)
-            _mint(
-                underwriter,
-                shortTokenId,
-                toPay == 0 ? contractSize : intervalContractSize
-            );
-
-            emit Underwrite(
+            _mintShortTokenInterval(
+                l,
                 underwriter,
                 buyer,
                 shortTokenId,
-                toPay == 0 ? contractSize : intervalContractSize,
+                intervalContractSize,
                 intervalPremium,
-                false
+                isCall
             );
 
+            premium -= intervalPremium;
+            tokenAmount -= intervalTokenAmount;
             contractSize -= intervalContractSize;
         }
+    }
+
+    function _mintShortTokenInterval(
+        PoolStorage.Layout storage l,
+        address holder,
+        address buyer,
+        uint256 shortTokenId,
+        uint256 intervalContractSize,
+        uint256 intervalPremium,
+        bool isCallPool
+    ) internal {
+        _mint(holder, shortTokenId, intervalContractSize);
+
+        _addUserTVL(l, holder, isCallPool, intervalPremium);
+
+        emit Underwrite(
+            holder,
+            buyer,
+            shortTokenId,
+            intervalContractSize,
+            intervalPremium,
+            false
+        );
     }
 
     function _burnLongTokenLoop(
         uint256 contractSize,
         uint256 exerciseValue,
         uint256 longTokenId,
-        address payoutToken
-    ) internal returns (uint256 totalFee) {
+        bool isCallPool
+    ) internal {
         EnumerableSet.AddressSet storage holders = ERC1155EnumerableStorage
             .layout()
             .accountsByToken[longTokenId];
@@ -653,17 +679,16 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             uint256 intervalExerciseValue = (exerciseValue *
                 intervalContractSize) / contractSize;
 
-            uint256 fee = _burnLongTokenInterval(
+            _burnLongTokenInterval(
                 longTokenHolder,
                 longTokenId,
                 intervalContractSize,
                 intervalExerciseValue,
-                payoutToken
+                isCallPool
             );
 
             exerciseValue -= intervalExerciseValue;
             contractSize -= intervalContractSize;
-            totalFee += fee;
         }
     }
 
@@ -672,17 +697,15 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 longTokenId,
         uint256 contractSize,
         uint256 exerciseValue,
-        address payoutToken
-    ) internal returns (uint256 fee) {
+        bool isCallPool
+    ) internal {
         _burn(holder, longTokenId, contractSize);
 
         if (exerciseValue > 0) {
-            fee = _getFeeWithDiscount(holder, FEE_64x64.mulu(exerciseValue));
-
-            _pushTo(holder, payoutToken, exerciseValue - fee);
+            _processAvailableFunds(holder, exerciseValue, isCallPool, true);
         }
 
-        emit Exercise(holder, longTokenId, contractSize, exerciseValue, fee);
+        emit Exercise(holder, longTokenId, contractSize, exerciseValue, 0);
     }
 
     function _burnShortTokenLoop(
