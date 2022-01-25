@@ -305,7 +305,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     ERC1155EnumerableStorage.layout().totalSupply[
                         _getFreeLiquidityTokenId(isCall)
                     ] -
-                        l.nextDeposits[isCall].totalPendingDeposits,
+                        l.totalPendingDeposits(isCall),
                 "insuf liq"
             );
         }
@@ -575,9 +575,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             // amount of liquidity provided by underwriter, accounting for reinvested premium
             uint256 intervalTokenAmount = ((balance -
-                l.pendingDeposits[underwriter][l.nextDeposits[isCall].eta][
-                    isCall
-                ]) * (tokenAmount + premium)) / tokenAmount;
+                l.pendingDepositsOf(underwriter, isCall)) *
+                (tokenAmount + premium)) / tokenAmount;
 
             // skip underwriters whose liquidity is pending deposit processing
 
@@ -800,9 +799,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     function _processPendingDeposits(PoolStorage.Layout storage l, bool isCall)
         internal
     {
-        PoolStorage.BatchData storage data = l.nextDeposits[isCall];
+        PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
 
-        if (data.eta == 0 || block.timestamp < data.eta) return;
+        if (batchData.eta == 0 || block.timestamp < batchData.eta) return;
 
         int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
 
@@ -811,7 +810,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             oldLiquidity64x64,
             oldLiquidity64x64.add(
                 ABDKMath64x64Token.fromDecimals(
-                    data.totalPendingDeposits,
+                    batchData.totalPendingDeposits,
                     l.getTokenDecimals(isCall)
                 )
             ),
@@ -1122,10 +1121,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
                     if (balance > minimum && balance <= amount + minimum) {
                         require(
-                            balance -
-                                l.pendingDeposits[from][
-                                    l.nextDeposits[isCallPool].eta
-                                ][isCallPool] >=
+                            balance - l.pendingDepositsOf(from, isCallPool) >=
                                 amount,
                             "Insuf balance"
                         );

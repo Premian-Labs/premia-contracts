@@ -220,7 +220,7 @@ library PoolStorage {
         return
             ABDKMath64x64Token.fromDecimals(
                 ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
-                    l.nextDeposits[isCall].totalPendingDeposits,
+                    l.totalPendingDeposits(isCall),
                 l.getTokenDecimals(isCall)
             );
     }
@@ -416,7 +416,7 @@ library PoolStorage {
         int128 utilization = ABDKMath64x64.divu(
             tvl -
                 (ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
-                    l.nextDeposits[isCall].totalPendingDeposits),
+                    l.totalPendingDeposits(isCall)),
             tvl
         );
 
@@ -594,6 +594,25 @@ library PoolStorage {
         }
 
         return l.bucketPrices64x64[((sequenceId + 1) << 8) - msb - 1];
+    }
+
+    function totalPendingDeposits(Layout storage l, bool isCallPool)
+        internal
+        view
+        returns (uint256)
+    {
+        return l.nextDeposits[isCallPool].totalPendingDeposits;
+    }
+
+    function pendingDepositsOf(
+        Layout storage l,
+        address account,
+        bool isCallPool
+    ) internal view returns (uint256) {
+        return
+            l.pendingDeposits[account][l.nextDeposits[isCallPool].eta][
+                isCallPool
+            ];
     }
 
     function fromBaseToUnderlyingDecimals(Layout storage l, uint256 value)
