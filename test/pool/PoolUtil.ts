@@ -381,16 +381,6 @@ export class PoolUtil {
     );
     await poolSellImpl.deployed();
 
-    console.log(
-      `PoolSell Implementation : ${poolSellImpl.address} (${
-        ivolOracle.address
-      }, ${weth.address}, ${
-        premiaMining.address
-      }, ${feeReceiver}, ${premiaFeeDiscount}, ${fixedFromFloat(
-        FEE,
-      )}) (OptionMath: ${optionMath.address})`,
-    );
-
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
         poolDiamond,

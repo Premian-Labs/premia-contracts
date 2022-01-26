@@ -102,7 +102,7 @@ contract PoolSell is IPoolSell, PoolInternal {
         uint256 contractSize,
         address[] memory buyers,
         uint256 sellPrice
-    ) internal {
+    ) internal returns (uint256 amountFilled) {
         uint256 longTokenId = PoolStorage.formatTokenId(
             _getTokenType(isCall, true),
             maturity,
@@ -119,7 +119,6 @@ contract PoolSell is IPoolSell, PoolInternal {
             ? contractSize
             : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
 
-        uint256 toFill = contractSize;
         for (uint256 i = 0; i < buyers.length; i++) {
             if (!l.isBuyBackEnabled[buyers[i]]) continue;
 
@@ -131,8 +130,8 @@ contract PoolSell is IPoolSell, PoolInternal {
 
                 if (maxAmount == 0) continue;
 
-                if (maxAmount >= toFill) {
-                    intervalContractSize = toFill;
+                if (maxAmount >= contractSize - amountFilled) {
+                    intervalContractSize = contractSize - amountFilled;
                 } else {
                     intervalContractSize = maxAmount;
                 }
@@ -166,10 +165,12 @@ contract PoolSell is IPoolSell, PoolInternal {
 
             _subUserTVL(PoolStorage.layout(), buyers[i], isCall, tvlToSubtract);
 
-            toFill -= intervalContractSize;
+            amountFilled += intervalContractSize;
 
-            if (toFill == 0) break;
+            if (amountFilled == contractSize) break;
         }
+
+        return amountFilled;
     }
 
     /**
@@ -212,7 +213,7 @@ contract PoolSell is IPoolSell, PoolInternal {
             );
         }
 
-        _sellLoop(
+        uint256 amountFilled = _sellLoop(
             l,
             maturity,
             strike64x64,
@@ -221,6 +222,11 @@ contract PoolSell is IPoolSell, PoolInternal {
             buyers,
             baseCost
         );
+
+        require(amountFilled > 0, "no sell liq");
+
+        baseCost = (baseCost * amountFilled) / contractSize;
+        feeCost = (feeCost * amountFilled) / contractSize;
 
         _pushTo(msg.sender, _getPoolToken(isCall), baseCost - feeCost);
         _mint(
