@@ -343,9 +343,10 @@ export function describeBehaviorOfPoolExercise({
               ethers.utils.parseUnits(price.toString(), 8),
             );
 
-            const curBalance = await p
-              .getToken(isCall)
-              .balanceOf(buyer.address);
+            const curBalance = await instance.balanceOf(
+              buyer.address,
+              p.getReservedLiqTokenId(isCall),
+            );
 
             await instance
               .connect(buyer)
@@ -361,9 +362,14 @@ export function describeBehaviorOfPoolExercise({
               amountNb,
               isCall,
             );
+
             const premium = (
-              await p.getToken(isCall).balanceOf(buyer.address)
+              await instance.balanceOf(
+                buyer.address,
+                p.getReservedLiqTokenId(isCall),
+              )
             ).sub(curBalance);
+
             expect(Number(formatOption(premium, isCall))).to.almost(
               exerciseValue * (1 - FEE),
             );
