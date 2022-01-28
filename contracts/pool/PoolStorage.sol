@@ -156,12 +156,48 @@ library PoolStorage {
         }
     }
 
+    function getTokenType(bool isCall, bool isLong)
+        internal
+        pure
+        returns (TokenType tokenType)
+    {
+        if (isCall) {
+            tokenType = isLong ? TokenType.LONG_CALL : TokenType.SHORT_CALL;
+        } else {
+            tokenType = isLong ? TokenType.LONG_PUT : TokenType.SHORT_PUT;
+        }
+    }
+
+    function getPoolToken(Layout storage l, bool isCall)
+        internal
+        view
+        returns (address token)
+    {
+        token = isCall ? l.underlying : l.base;
+    }
+
     function getTokenDecimals(Layout storage l, bool isCall)
         internal
         view
         returns (uint8 decimals)
     {
         decimals = isCall ? l.underlyingDecimals : l.baseDecimals;
+    }
+
+    function getMinimumAmount(Layout storage l, bool isCall)
+        internal
+        view
+        returns (uint256 minimumAmount)
+    {
+        minimumAmount = isCall ? l.underlyingMinimum : l.baseMinimum;
+    }
+
+    function getPoolCapAmount(Layout storage l, bool isCall)
+        internal
+        view
+        returns (uint256 poolCapAmount)
+    {
+        poolCapAmount = isCall ? l.underlyingPoolCap : l.basePoolCap;
     }
 
     /**
@@ -184,7 +220,7 @@ library PoolStorage {
         return
             ABDKMath64x64Token.fromDecimals(
                 ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
-                    l.nextDeposits[isCall].totalPendingDeposits,
+                    l.totalPendingDeposits(isCall),
                 l.getTokenDecimals(isCall)
             );
     }
@@ -380,7 +416,7 @@ library PoolStorage {
         int128 utilization = ABDKMath64x64.divu(
             tvl -
                 (ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
-                    l.nextDeposits[isCall].totalPendingDeposits),
+                    l.totalPendingDeposits(isCall)),
             tvl
         );
 
@@ -558,6 +594,25 @@ library PoolStorage {
         }
 
         return l.bucketPrices64x64[((sequenceId + 1) << 8) - msb - 1];
+    }
+
+    function totalPendingDeposits(Layout storage l, bool isCallPool)
+        internal
+        view
+        returns (uint256)
+    {
+        return l.nextDeposits[isCallPool].totalPendingDeposits;
+    }
+
+    function pendingDepositsOf(
+        Layout storage l,
+        address account,
+        bool isCallPool
+    ) internal view returns (uint256) {
+        return
+            l.pendingDeposits[account][l.nextDeposits[isCallPool].eta][
+                isCallPool
+            ];
     }
 
     function fromBaseToUnderlyingDecimals(Layout storage l, uint256 value)

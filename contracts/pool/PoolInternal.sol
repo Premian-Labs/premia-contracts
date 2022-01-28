@@ -214,12 +214,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 contractSize
     ) internal {
         uint256 longTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, true),
+            PoolStorage.getTokenType(isCall, true),
             maturity,
             strike64x64
         );
         uint256 shortTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, false),
+            PoolStorage.getTokenType(isCall, false),
             maturity,
             strike64x64
         );
@@ -246,7 +246,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         // Reset gradual divestment timestamp
         delete l.divestmentTimestamps[msg.sender][isCallPool];
 
-        uint256 cap = _getPoolCapAmount(l, isCallPool);
+        uint256 cap = l.getPoolCapAmount(isCallPool);
 
         require(
             l.totalTVL[isCallPool] + amount <= cap,
@@ -259,7 +259,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         _addUserTVL(l, msg.sender, isCallPool, amount);
         _pullFrom(
             msg.sender,
-            _getPoolToken(isCallPool),
+            l.getPoolToken(isCallPool),
             amount,
             creditMessageValue ? _creditMessageValue(amount, isCallPool) : 0
         );
@@ -305,7 +305,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     ERC1155EnumerableStorage.layout().totalSupply[
                         _getFreeLiquidityTokenId(isCall)
                     ] -
-                        l.nextDeposits[isCall].totalPendingDeposits,
+                        l.totalPendingDeposits(isCall),
                 "insuf liq"
             );
         }
@@ -332,13 +332,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
 
         uint256 longTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, true),
+            PoolStorage.getTokenType(isCall, true),
             maturity,
             strike64x64
         );
 
         uint256 shortTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, false),
+            PoolStorage.getTokenType(isCall, false),
             maturity,
             strike64x64
         );
@@ -519,7 +519,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             contractSize,
             exerciseValue,
             PoolStorage.formatTokenId(
-                _getTokenType(isCall, false),
+                PoolStorage.getTokenType(isCall, false),
                 maturity,
                 strike64x64
             ),
@@ -555,7 +555,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             // if underwriter has insufficient liquidity, remove from queue
 
-            if (balance < _getMinimumAmount(l, isCall)) {
+            if (balance < l.getMinimumAmount(isCall)) {
                 l.removeUnderwriter(underwriter, isCall);
                 continue;
             }
@@ -575,9 +575,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             // amount of liquidity provided by underwriter, accounting for reinvested premium
             uint256 intervalTokenAmount = ((balance -
-                l.pendingDeposits[underwriter][l.nextDeposits[isCall].eta][
-                    isCall
-                ]) * (tokenAmount + premium)) / tokenAmount;
+                l.pendingDepositsOf(underwriter, isCall)) *
+                (tokenAmount + premium)) / tokenAmount;
 
             // skip underwriters whose liquidity is pending deposit processing
 
@@ -800,9 +799,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     function _processPendingDeposits(PoolStorage.Layout storage l, bool isCall)
         internal
     {
-        PoolStorage.BatchData storage data = l.nextDeposits[isCall];
+        PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
 
-        if (data.eta == 0 || block.timestamp < data.eta) return;
+        if (batchData.eta == 0 || block.timestamp < batchData.eta) return;
 
         int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
 
@@ -811,7 +810,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             oldLiquidity64x64,
             oldLiquidity64x64.add(
                 ABDKMath64x64Token.fromDecimals(
-                    data.totalPendingDeposits,
+                    batchData.totalPendingDeposits,
                     l.getTokenDecimals(isCall)
                 )
             ),
@@ -839,44 +838,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         reservedLiqTokenId = isCall
             ? UNDERLYING_RESERVED_LIQ_TOKEN_ID
             : BASE_RESERVED_LIQ_TOKEN_ID;
-    }
-
-    function _getPoolToken(bool isCall) internal view returns (address token) {
-        token = isCall
-            ? PoolStorage.layout().underlying
-            : PoolStorage.layout().base;
-    }
-
-    function _getTokenType(bool isCall, bool isLong)
-        internal
-        pure
-        returns (PoolStorage.TokenType tokenType)
-    {
-        if (isCall) {
-            tokenType = isLong
-                ? PoolStorage.TokenType.LONG_CALL
-                : PoolStorage.TokenType.SHORT_CALL;
-        } else {
-            tokenType = isLong
-                ? PoolStorage.TokenType.LONG_PUT
-                : PoolStorage.TokenType.SHORT_PUT;
-        }
-    }
-
-    function _getMinimumAmount(PoolStorage.Layout storage l, bool isCall)
-        internal
-        view
-        returns (uint256 minimumAmount)
-    {
-        minimumAmount = isCall ? l.underlyingMinimum : l.baseMinimum;
-    }
-
-    function _getPoolCapAmount(PoolStorage.Layout storage l, bool isCall)
-        internal
-        view
-        returns (uint256 poolCapAmount)
-    {
-        poolCapAmount = isCall ? l.underlyingPoolCap : l.basePoolCap;
     }
 
     function _setCLevel(
@@ -983,7 +944,11 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         bool divest
     ) internal {
         if (divest) {
-            _pushTo(account, _getPoolToken(isCallPool), amount);
+            _pushTo(
+                account,
+                PoolStorage.layout().getPoolToken(isCallPool),
+                amount
+            );
         } else {
             // TODO: redeposit
         }
@@ -1001,7 +966,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     {
         if (msg.value > 0) {
             require(
-                _getPoolToken(isCallPool) == WETH_ADDRESS,
+                PoolStorage.layout().getPoolToken(isCallPool) == WETH_ADDRESS,
                 "not WETH deposit"
             );
 
@@ -1149,17 +1114,14 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 id == BASE_FREE_LIQ_TOKEN_ID
             ) {
                 bool isCallPool = id == UNDERLYING_FREE_LIQ_TOKEN_ID;
-                uint256 minimum = _getMinimumAmount(l, isCallPool);
+                uint256 minimum = l.getMinimumAmount(isCallPool);
 
                 if (from != address(0)) {
                     uint256 balance = _balanceOf(from, id);
 
                     if (balance > minimum && balance <= amount + minimum) {
                         require(
-                            balance -
-                                l.pendingDeposits[from][
-                                    l.nextDeposits[isCallPool].eta
-                                ][isCallPool] >=
+                            balance - l.pendingDepositsOf(from, isCallPool) >=
                                 amount,
                             "Insuf balance"
                         );
