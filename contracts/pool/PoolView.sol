@@ -27,7 +27,8 @@ contract PoolView is IPoolView, PoolInternal {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64
+        int128 feePremium64x64,
+        int128 feeApy64x64
     )
         PoolInternal(
             ivolOracle,
@@ -35,7 +36,8 @@ contract PoolView is IPoolView, PoolInternal {
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            fee64x64
+            feePremium64x64,
+            feeApy64x64
         )
     {
         NFT_DISPLAY_ADDRESS = nftDisplay;

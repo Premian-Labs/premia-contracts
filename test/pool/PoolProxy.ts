@@ -22,7 +22,6 @@ import chai, { expect } from 'chai';
 import { increaseTimestamp } from '../utils/evm';
 import { parseUnits } from 'ethers/lib/utils';
 import {
-  FEE,
   formatOption,
   formatOptionToNb,
   getExerciseValue,

@@ -45,7 +45,8 @@ export const DECIMALS_BASE = 18;
 export const DECIMALS_UNDERLYING = 8;
 export const SYMBOL_BASE = 'SYMBOL_BASE';
 export const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
-export const FEE = 0.03;
+export const FEE_PREMIUM = 0.03;
+export const FEE_APY = 0.03;
 export const MIN_APY = 0.3;
 
 interface PoolUtilArgs {
@@ -259,7 +260,8 @@ export class PoolUtil {
       premiaMining.address,
       feeReceiver.address,
       premiaFeeDiscount,
-      fixedFromFloat(FEE),
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
     );
     await poolBaseImpl.deployed();
 
@@ -284,7 +286,8 @@ export class PoolUtil {
       premiaMining.address,
       feeReceiver.address,
       premiaFeeDiscount,
-      fixedFromFloat(FEE),
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
       uniswapV2Factory ?? ZERO_ADDRESS,
       ZERO_ADDRESS,
     );
@@ -306,7 +309,8 @@ export class PoolUtil {
       premiaMining.address,
       feeReceiver.address,
       premiaFeeDiscount,
-      fixedFromFloat(FEE),
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -329,7 +333,8 @@ export class PoolUtil {
       premiaMining.address,
       feeReceiver.address,
       premiaFeeDiscount,
-      fixedFromFloat(FEE),
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -353,7 +358,8 @@ export class PoolUtil {
       premiaMining.address,
       feeReceiver.address,
       premiaFeeDiscount,
-      fixedFromFloat(FEE),
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -373,7 +379,8 @@ export class PoolUtil {
       premiaMining.address,
       feeReceiver.address,
       premiaFeeDiscount,
-      fixedFromFloat(FEE),
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -396,7 +403,8 @@ export class PoolUtil {
       premiaMining.address,
       feeReceiver.address,
       premiaFeeDiscount,
-      fixedFromFloat(FEE),
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
       uniswapV2Factory ?? ZERO_ADDRESS,
       ZERO_ADDRESS,
     );

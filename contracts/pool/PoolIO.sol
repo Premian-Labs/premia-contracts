@@ -27,7 +27,8 @@ contract PoolIO is IPoolIO, PoolSwap {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64,
+        int128 feePremium64x64,
+        int128 feeApy64x64,
         address uniswapV2Factory,
         address sushiswapFactory
     )
@@ -37,7 +38,8 @@ contract PoolIO is IPoolIO, PoolSwap {
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            fee64x64,
+            feePremium64x64,
+            feeApy64x64,
             uniswapV2Factory,
             sushiswapFactory
         )

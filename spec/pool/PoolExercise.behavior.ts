@@ -10,7 +10,6 @@ import {
 } from '@premia/utils';
 
 import {
-  FEE,
   formatOption,
   formatUnderlying,
   getExerciseValue,

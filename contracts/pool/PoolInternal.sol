@@ -35,7 +35,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     address internal immutable FEE_DISCOUNT_ADDRESS;
     address internal immutable IVOL_ORACLE_ADDRESS;
 
-    int128 internal immutable FEE_64x64;
+    int128 internal immutable FEE_PREMIUM_64x64;
+    int128 internal immutable FEE_APY_64x64;
 
     uint256 internal immutable UNDERLYING_FREE_LIQ_TOKEN_ID;
     uint256 internal immutable BASE_FREE_LIQ_TOKEN_ID;
@@ -56,7 +57,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64
+        int128 feePremium64x64,
+        int128 feeApy64x64
     ) {
         IVOL_ORACLE_ADDRESS = ivolOracle;
         WETH_ADDRESS = weth;
@@ -64,7 +66,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         FEE_RECEIVER_ADDRESS = feeReceiver;
         // PremiaFeeDiscount contract address
         FEE_DISCOUNT_ADDRESS = feeDiscountAddress;
-        FEE_64x64 = fee64x64;
+        FEE_PREMIUM_64x64 = feePremium64x64;
+        FEE_APY_64x64 = feeApy64x64;
 
         UNDERLYING_FREE_LIQ_TOKEN_ID = PoolStorage.formatTokenId(
             PoolStorage.TokenType.UNDERLYING_FREE_LIQ,
@@ -187,7 +190,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         result.baseCost64x64 = args.isCall
             ? price64x64.mul(contractSize64x64).div(args.spot64x64)
             : price64x64.mul(contractSize64x64);
-        result.feeCost64x64 = result.baseCost64x64.mul(FEE_64x64);
+        result.feeCost64x64 = result.baseCost64x64.mul(FEE_PREMIUM_64x64);
         result.cLevel64x64 = cLevel64x64;
         result.slippageCoefficient64x64 = slippageCoefficient64x64;
 

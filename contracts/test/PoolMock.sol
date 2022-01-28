@@ -20,7 +20,8 @@ contract PoolMock is PoolBase {
         address premiaMining,
         address feeReceiver,
         address feeDiscount,
-        int128 fee64x64
+        int128 feePremium64x64,
+        int128 feeApy64x64
     )
         PoolBase(
             ivolOracle,
@@ -28,7 +29,8 @@ contract PoolMock is PoolBase {
             premiaMining,
             feeReceiver,
             feeDiscount,
-            fee64x64
+            feePremium64x64,
+            feeApy64x64
         )
     {}
 
