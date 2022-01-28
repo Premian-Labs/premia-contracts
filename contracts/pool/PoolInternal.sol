@@ -124,6 +124,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             _burn(FEE_RECEIVER_ADDRESS, tokenId, amount);
             emit FeeWithdrawal(isCall, amount);
         }
+
+        _processAvailableFunds(FEE_RECEIVER_ADDRESS, amount, isCall, true);
     }
 
     /**

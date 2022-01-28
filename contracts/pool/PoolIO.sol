@@ -310,8 +310,6 @@ contract PoolIO is IPoolIO, PoolSwap {
     {
         amountOutCall = _withdrawFees(true);
         amountOutPut = _withdrawFees(false);
-        _processAvailableFunds(FEE_RECEIVER_ADDRESS, amountOutCall, true, true);
-        _processAvailableFunds(FEE_RECEIVER_ADDRESS, amountOutPut, false, true);
     }
 
     /**
