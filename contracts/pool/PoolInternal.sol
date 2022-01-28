@@ -122,10 +122,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         if (amount > 0) {
             _burn(FEE_RECEIVER_ADDRESS, tokenId, amount);
+            _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(isCall), amount);
             emit FeeWithdrawal(isCall, amount);
         }
-
-        _processAvailableFunds(FEE_RECEIVER_ADDRESS, amount, isCall, true);
     }
 
     /**
@@ -957,7 +956,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         bool divest
     ) internal {
         if (divest) {
-            if (account == msg.sender || account == FEE_RECEIVER_ADDRESS) {
+            if (account == msg.sender) {
                 _pushTo(account, _getPoolToken(isCallPool), amount);
             } else {
                 _mint(
