@@ -527,6 +527,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         // burn short option tokens from multiple underwriters
 
         _burnShortTokenLoop(
+            l,
             contractSize,
             exerciseValue,
             PoolStorage.formatTokenId(
@@ -691,6 +692,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     }
 
     function _burnShortTokenLoop(
+        PoolStorage.Layout storage l,
         uint256 contractSize,
         uint256 exerciseValue,
         uint256 shortTokenId,
@@ -720,16 +722,14 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             uint256 freeLiq = isCall
                 ? intervalContractSize - intervalExerciseValue
-                : PoolStorage.layout().fromUnderlyingToBaseDecimals(
+                : l.fromUnderlyingToBaseDecimals(
                     strike64x64.mulu(intervalContractSize)
                 ) - intervalExerciseValue;
 
             uint256 tvlToSubtract = intervalExerciseValue;
 
             // mint free liquidity tokens for underwriter
-            if (
-                PoolStorage.layout().getReinvestmentStatus(underwriter, isCall)
-            ) {
+            if (l.getReinvestmentStatus(underwriter, isCall)) {
                 _addToDepositQueue(underwriter, freeLiq, isCall);
             } else {
                 _mint(
@@ -740,12 +740,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 tvlToSubtract += freeLiq;
             }
 
-            _subUserTVL(
-                PoolStorage.layout(),
-                underwriter,
-                isCall,
-                tvlToSubtract
-            );
+            _subUserTVL(l, underwriter, isCall, tvlToSubtract);
 
             // burn short option tokens from underwriter
             _burn(underwriter, shortTokenId, intervalContractSize);
