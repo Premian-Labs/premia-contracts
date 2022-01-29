@@ -615,31 +615,35 @@ library PoolStorage {
             ];
     }
 
-    function fromBaseToUnderlyingDecimals(Layout storage l, uint256 value)
-        internal
-        view
-        returns (uint256)
-    {
+    function baseTokenAmountToContractSize(
+        Layout storage l,
+        uint256 liquidity,
+        int128 price64x64
+    ) internal view returns (uint256 contractSize) {
+        uint256 value = price64x64.inv().mulu(liquidity);
+
         int128 valueFixed64x64 = ABDKMath64x64Token.fromDecimals(
             value,
             l.baseDecimals
         );
-        return
-            ABDKMath64x64Token.toDecimals(
-                valueFixed64x64,
-                l.underlyingDecimals
-            );
+        contractSize = ABDKMath64x64Token.toDecimals(
+            valueFixed64x64,
+            l.underlyingDecimals
+        );
     }
 
-    function fromUnderlyingToBaseDecimals(Layout storage l, uint256 value)
-        internal
-        view
-        returns (uint256)
-    {
-        int128 valueFixed64x64 = ABDKMath64x64Token.fromDecimals(
+    function contractSizeToBaseTokenAmount(
+        Layout storage l,
+        uint256 contractSize,
+        int128 price64x64
+    ) internal view returns (uint256 liquidity) {
+        uint256 value = price64x64.mulu(contractSize);
+
+        int128 value64x64 = ABDKMath64x64Token.fromDecimals(
             value,
             l.underlyingDecimals
         );
-        return ABDKMath64x64Token.toDecimals(valueFixed64x64, l.baseDecimals);
+
+        liquidity = ABDKMath64x64Token.toDecimals(value64x64, l.baseDecimals);
     }
 }

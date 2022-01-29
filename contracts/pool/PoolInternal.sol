@@ -299,9 +299,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         {
             uint256 size = isCall
                 ? contractSize
-                : l.fromUnderlyingToBaseDecimals(
-                    strike64x64.mulu(contractSize)
-                );
+                : l.contractSizeToBaseTokenAmount(contractSize, strike64x64);
 
             require(
                 size <=
@@ -423,7 +421,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         uint256 annihilateAmount = isCall
             ? contractSize
-            : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
+            : l.contractSizeToBaseTokenAmount(contractSize, strike64x64);
 
         amountOut = annihilateAmount - baseCost - feeCost;
     }
@@ -488,8 +486,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             }
         } else {
             if (spot64x64 < strike64x64) {
-                exerciseValue = l.fromUnderlyingToBaseDecimals(
-                    strike64x64.sub(spot64x64).mulu(contractSize)
+                exerciseValue = l.contractSizeToBaseTokenAmount(
+                    contractSize,
+                    strike64x64.sub(spot64x64)
                 );
             }
         }
@@ -547,8 +546,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         } else {
             (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
 
-            tokenAmount = l.fromUnderlyingToBaseDecimals(
-                strike64x64.mulu(contractSize)
+            tokenAmount = l.contractSizeToBaseTokenAmount(
+                contractSize,
+                strike64x64
             );
         }
 
@@ -587,17 +587,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             if (intervalTokenAmount > tokenAmount)
                 intervalTokenAmount = tokenAmount;
 
-            // amount of premium paid to underwriter
-            uint256 intervalPremium = (premium * intervalTokenAmount) /
-                tokenAmount;
-
-            // burn free liquidity tokens from underwriter
-            _burn(
-                underwriter,
-                freeLiqTokenId,
-                intervalTokenAmount - intervalPremium
-            );
-
             uint256 intervalContractSize;
 
             if (isCall) {
@@ -611,11 +600,23 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                         shortTokenId
                     );
 
-                    intervalContractSize = l.fromBaseToUnderlyingDecimals(
-                        strike64x64.inv().mulu(intervalTokenAmount)
+                    intervalContractSize = l.baseTokenAmountToContractSize(
+                        intervalTokenAmount,
+                        strike64x64
                     );
                 }
             }
+
+            // amount of premium paid to underwriter
+            uint256 intervalPremium = (premium * intervalTokenAmount) /
+                tokenAmount;
+
+            // burn free liquidity tokens from underwriter
+            _burn(
+                underwriter,
+                freeLiqTokenId,
+                intervalTokenAmount - intervalPremium
+            );
 
             // mint short option tokens for underwriter
             _mintShortTokenInterval(
@@ -740,8 +741,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             uint256 freeLiq = isCall
                 ? intervalContractSize - intervalExerciseValue
-                : PoolStorage.layout().fromUnderlyingToBaseDecimals(
-                    strike64x64.mulu(intervalContractSize)
+                : PoolStorage.layout().contractSizeToBaseTokenAmount(
+                    intervalContractSize,
+                    strike64x64
                 ) - intervalExerciseValue;
 
             uint256 tvlToSubtract = intervalExerciseValue;
@@ -1161,7 +1163,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
                 uint256 collateral = isCall
                     ? amount
-                    : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
+                    : l.contractSizeToBaseTokenAmount(amount, strike64x64);
 
                 _subUserTVL(l, from, isCall, collateral);
                 _addUserTVL(l, to, isCall, collateral);

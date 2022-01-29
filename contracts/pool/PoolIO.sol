@@ -335,8 +335,9 @@ contract PoolIO is IPoolIO, PoolSwap {
             msg.sender,
             isCall
                 ? contractSize
-                : PoolStorage.layout().fromUnderlyingToBaseDecimals(
-                    strike64x64.mulu(contractSize)
+                : PoolStorage.layout().contractSizeToBaseTokenAmount(
+                    contractSize,
+                    strike64x64
                 ),
             isCall,
             true
