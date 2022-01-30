@@ -587,17 +587,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             if (intervalTokenAmount > tokenAmount)
                 intervalTokenAmount = tokenAmount;
 
-            // amount of premium paid to underwriter
-            uint256 intervalPremium = (premium * intervalTokenAmount) /
-                tokenAmount;
-
-            // burn free liquidity tokens from underwriter
-            _burn(
-                underwriter,
-                freeLiqTokenId,
-                intervalTokenAmount - intervalPremium
-            );
-
             uint256 intervalContractSize;
 
             if (isCall) {
@@ -616,6 +605,17 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     );
                 }
             }
+
+            // amount of premium paid to underwriter
+            uint256 intervalPremium = (premium * intervalTokenAmount) /
+                tokenAmount;
+
+            // burn free liquidity tokens from underwriter
+            _burn(
+                underwriter,
+                freeLiqTokenId,
+                intervalTokenAmount - intervalPremium
+            );
 
             // mint short option tokens for underwriter
             _mintShortTokenInterval(
