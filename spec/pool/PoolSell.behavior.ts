@@ -43,7 +43,7 @@ export function describeBehaviorOfPoolSell({
       poolMock = PoolMock__factory.connect(p.pool.address, owner);
     });
 
-    describe.only('#sell', () => {
+    describe('#sell', () => {
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
           it('should correctly sell option back to the pool', async () => {
