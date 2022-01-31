@@ -173,6 +173,27 @@ contract PoolSell is IPoolSell, PoolInternal {
         return amountFilled;
     }
 
+    function sellQuote(
+        address feePayer,
+        uint64 maturity,
+        int128 strike64x64,
+        int128 spot64x64,
+        uint256 contractSize,
+        bool isCall
+    ) external view returns (int128 baseCost64x64, int128 feeCost64x64) {
+        return
+            _sellQuote(
+                PoolStorage.QuoteArgsInternal(
+                    feePayer,
+                    maturity,
+                    strike64x64,
+                    spot64x64,
+                    contractSize,
+                    isCall
+                )
+            );
+    }
+
     /**
      * @inheritdoc IPoolSell
      */
