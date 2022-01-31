@@ -100,13 +100,16 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         _;
     }
 
-    function _getFeeDiscount(address feePayer)
+    function _fetchFeeDiscount64x64(address feePayer)
         internal
         view
-        returns (uint256 discount)
+        returns (int128 discount64x64)
     {
         if (FEE_DISCOUNT_ADDRESS != address(0)) {
-            discount = IFeeDiscount(FEE_DISCOUNT_ADDRESS).getDiscount(feePayer);
+            discount64x64 = ABDKMath64x64.divu(
+                IFeeDiscount(FEE_DISCOUNT_ADDRESS).getDiscount(feePayer),
+                INVERSE_BASIS_POINT
+            );
         }
     }
 
@@ -194,11 +197,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         result.cLevel64x64 = cLevel64x64;
         result.slippageCoefficient64x64 = slippageCoefficient64x64;
 
-        int128 discount = ABDKMath64x64.divu(
-            _getFeeDiscount(args.feePayer),
-            INVERSE_BASIS_POINT
+        result.feeCost64x64 -= result.feeCost64x64.mul(
+            _fetchFeeDiscount64x64(args.feePayer)
         );
-        result.feeCost64x64 -= result.feeCost64x64.mul(discount);
     }
 
     /**
