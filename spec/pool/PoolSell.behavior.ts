@@ -2,8 +2,14 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { IPool, PoolMock, PoolMock__factory } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { fixedFromFloat, getOptionTokenIds } from '@premia/utils';
-import { parseUnderlying, PoolUtil } from '../../test/pool/PoolUtil';
+import { fixedFromFloat, fixedToBn, getOptionTokenIds } from '@premia/utils';
+import {
+  getTokenDecimals,
+  parseBase,
+  parseUnderlying,
+  PoolUtil,
+} from '../../test/pool/PoolUtil';
+import { bnToNumber } from '../../test/utils/math';
 
 interface PoolSellBehaviorArgs {
   deploy: () => Promise<IPool>;
@@ -37,6 +43,120 @@ export function describeBehaviorOfPoolSell({
       poolMock = PoolMock__factory.connect(p.pool.address, owner);
     });
 
+    describe.only('#sell', () => {
+      for (const isCall of [true, false]) {
+        describe(isCall ? 'call' : 'put', () => {
+          it('should correctly sell option back to the pool', async () => {
+            await instance.connect(lp1).setBuyBackEnabled(true);
+
+            const maturity = await p.getMaturity(10);
+            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+
+            const quote = await p.purchaseOption(
+              lp1,
+              buyer,
+              parseUnderlying('1'),
+              maturity,
+              strike64x64,
+              isCall,
+            );
+
+            const initialTokenAmount = isCall
+              ? parseUnderlying('100')
+              : parseBase('10000');
+
+            const tokenIds = getOptionTokenIds(maturity, strike64x64, isCall);
+
+            const buyers = await instance.getBuyers(tokenIds.short);
+
+            expect(
+              bnToNumber(
+                await p.getToken(isCall).balanceOf(buyer.address),
+                getTokenDecimals(isCall),
+              ),
+            ).to.almost(
+              bnToNumber(
+                initialTokenAmount
+                  .sub(fixedToBn(quote.baseCost64x64, getTokenDecimals(isCall)))
+                  .sub(fixedToBn(quote.feeCost64x64, getTokenDecimals(isCall))),
+                getTokenDecimals(isCall),
+              ),
+            );
+
+            const sellQuote = await instance
+              .connect(buyer)
+              .sellQuote(
+                buyer.address,
+                maturity,
+                strike64x64,
+                fixedFromFloat(2000),
+                parseUnderlying('1'),
+                isCall,
+              );
+
+            await instance
+              .connect(buyer)
+              .sell(
+                maturity,
+                strike64x64,
+                isCall,
+                parseUnderlying('1'),
+                buyers.buyers,
+              );
+
+            expect(
+              bnToNumber(
+                await p.getToken(isCall).balanceOf(buyer.address),
+                getTokenDecimals(isCall),
+              ),
+            ).to.almost(
+              bnToNumber(
+                initialTokenAmount
+                  .sub(fixedToBn(quote.baseCost64x64, getTokenDecimals(isCall)))
+                  .sub(fixedToBn(quote.feeCost64x64, getTokenDecimals(isCall)))
+                  .add(
+                    fixedToBn(
+                      sellQuote.baseCost64x64,
+                      getTokenDecimals(isCall),
+                    ).sub(
+                      fixedToBn(
+                        sellQuote.feeCost64x64,
+                        getTokenDecimals(isCall),
+                      ),
+                    ),
+                  ),
+                getTokenDecimals(isCall),
+              ),
+            );
+          });
+
+          it('should fail selling back to the pool if no buyer available', async () => {
+            await instance.connect(lp1).setBuyBackEnabled(false);
+
+            const maturity = await p.getMaturity(10);
+            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+
+            await p.purchaseOption(
+              lp1,
+              buyer,
+              parseUnderlying('1'),
+              maturity,
+              strike64x64,
+              isCall,
+            );
+
+            await expect(
+              instance
+                .connect(buyer)
+                .sell(maturity, strike64x64, isCall, parseUnderlying('1'), [
+                  lp1.address,
+                ]),
+            ).to.be.revertedWith('no sell liq');
+          });
+        });
+      }
+    });
+
     describe('#setBuybackEnabled', () => {
       it('should correctly enable/disable buyback', async () => {
         expect(await instance.isBuyBackEnabled(lp1.address)).to.be.false;
@@ -46,18 +166,6 @@ export function describeBehaviorOfPoolSell({
         expect(await instance.isBuyBackEnabled(lp1.address)).to.be.false;
       });
     });
-
-    describe('#setPoolCaps', () =>
-      it('should updates pool caps if owner', async () => {
-        expect(
-          instance.connect(lp1).setPoolCaps('123', '456'),
-        ).to.be.revertedWith('Not protocol owner');
-
-        await instance.connect(owner).setPoolCaps('123', '456');
-        const caps = await instance.getCapAmounts();
-        expect(caps.callTokenCapAmount).to.eq('456');
-        expect(caps.putTokenCapAmount).to.eq('123');
-      }));
 
     describe('#getBuyers', () => {
       it('should return list of underwriters with buyback enabled', async () => {
