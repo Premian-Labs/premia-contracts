@@ -29,6 +29,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     using EnumerableSet for EnumerableSet.UintSet;
     using PoolStorage for PoolStorage.Layout;
 
+    struct Interval {
+        uint256 contractSize;
+        uint256 tokenAmount;
+        uint256 payment;
+        uint256 apyFee;
+    }
+
     address internal immutable WETH_ADDRESS;
     address internal immutable PREMIA_MINING_ADDRESS;
     address internal immutable FEE_RECEIVER_ADDRESS;
@@ -563,73 +570,67 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         while (tokenAmount > 0) {
             address underwriter = l.liquidityQueueAscending[isCall][address(0)];
-            uint256 intervalTokenAmount;
 
-            {
-                uint256 balance = _balanceOf(
-                    underwriter,
-                    _getFreeLiquidityTokenId(isCall)
-                );
+            Interval memory interval;
 
-                // if underwriter has insufficient liquidity, remove from queue
+            uint256 balance = _balanceOf(
+                underwriter,
+                _getFreeLiquidityTokenId(isCall)
+            );
 
-                if (balance < l.getMinimumAmount(isCall)) {
-                    l.removeUnderwriter(underwriter, isCall);
-                    continue;
-                }
+            // if underwriter has insufficient liquidity, remove from queue
 
-                // if underwriter is in process of divestment, remove from queue
-
-                if (!l.getReinvestmentStatus(underwriter, isCall)) {
-                    _burn(
-                        underwriter,
-                        _getFreeLiquidityTokenId(isCall),
-                        balance
-                    );
-                    _mint(
-                        underwriter,
-                        _getReservedLiquidityTokenId(isCall),
-                        balance
-                    );
-                    _subUserTVL(l, underwriter, isCall, balance);
-                    continue;
-                }
-
-                balance -= l.pendingDepositsOf(underwriter, isCall);
-
-                // amount of liquidity provided by underwriter, accounting for reinvested premium
-                intervalTokenAmount =
-                    (balance * (tokenAmount + premium - apyFee)) /
-                    tokenAmount;
-
-                // skip underwriters whose liquidity is pending deposit processing
-
-                if (intervalTokenAmount == 0) continue;
-
-                // truncate interval if underwriter has excess liquidity available
-
-                if (intervalTokenAmount > tokenAmount)
-                    intervalTokenAmount = tokenAmount;
+            if (balance < l.getMinimumAmount(isCall)) {
+                l.removeUnderwriter(underwriter, isCall);
+                continue;
             }
+
+            // if underwriter is in process of divestment, remove from queue
+
+            if (!l.getReinvestmentStatus(underwriter, isCall)) {
+                _burn(underwriter, _getFreeLiquidityTokenId(isCall), balance);
+                _mint(
+                    underwriter,
+                    _getReservedLiquidityTokenId(isCall),
+                    balance
+                );
+                _subUserTVL(l, underwriter, isCall, balance);
+                continue;
+            }
+
+            balance -= l.pendingDepositsOf(underwriter, isCall);
+
+            // amount of liquidity provided by underwriter, accounting for reinvested premium
+            interval.tokenAmount =
+                (balance * (tokenAmount + premium - apyFee)) /
+                tokenAmount;
+
+            // skip underwriters whose liquidity is pending deposit processing
+
+            if (interval.tokenAmount == 0) continue;
+
+            // truncate interval if underwriter has excess liquidity available
+
+            if (interval.tokenAmount > tokenAmount)
+                interval.tokenAmount = tokenAmount;
 
             // calculate derived interval variables
 
-            uint256 intervalContractSize = (contractSize *
-                intervalTokenAmount) / tokenAmount;
-            uint256 intervalPremium = (premium * intervalTokenAmount) /
+            interval.contractSize =
+                (contractSize * interval.tokenAmount) /
                 tokenAmount;
-            uint256 intervalApyFee = (apyFee * intervalTokenAmount) /
-                tokenAmount;
+            interval.payment = (premium * interval.tokenAmount) / tokenAmount;
+            interval.apyFee = (apyFee * interval.tokenAmount) / tokenAmount;
 
             // track prepaid APY fees
 
-            l.feesReserved[underwriter][shortTokenId] += intervalApyFee;
+            l.feesReserved[underwriter][shortTokenId] += interval.apyFee;
 
             // burn free liquidity tokens from underwriter
             _burn(
                 underwriter,
                 _getFreeLiquidityTokenId(isCall),
-                intervalTokenAmount - intervalPremium + intervalApyFee
+                interval.tokenAmount - interval.payment + interval.apyFee
             );
 
             // mint short option tokens for underwriter
@@ -638,16 +639,14 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 underwriter,
                 buyer,
                 shortTokenId,
-                intervalContractSize,
-                intervalPremium,
-                intervalApyFee,
+                interval,
                 isCall
             );
 
-            tokenAmount -= intervalTokenAmount;
-            contractSize -= intervalContractSize;
-            premium -= intervalPremium;
-            apyFee -= intervalApyFee;
+            tokenAmount -= interval.tokenAmount;
+            contractSize -= interval.contractSize;
+            premium -= interval.payment;
+            apyFee -= interval.apyFee;
         }
     }
 
@@ -656,21 +655,19 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         address holder,
         address buyer,
         uint256 shortTokenId,
-        uint256 intervalContractSize,
-        uint256 intervalPremium,
-        uint256 intervalApyFee,
+        Interval memory interval,
         bool isCallPool
     ) internal {
-        _mint(holder, shortTokenId, intervalContractSize);
+        _mint(holder, shortTokenId, interval.contractSize);
 
-        _addUserTVL(l, holder, isCallPool, intervalPremium - intervalApyFee);
+        _addUserTVL(l, holder, isCallPool, interval.payment - interval.apyFee);
 
         emit Underwrite(
             holder,
             buyer,
             shortTokenId,
-            intervalContractSize,
-            intervalPremium,
+            interval.contractSize,
+            interval.payment,
             false
         );
     }
@@ -737,14 +734,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 shortTokenId,
         bool isCall
     ) internal {
-        EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage
-            .layout()
-            .accountsByToken[shortTokenId];
-
         uint256 tokenAmount;
+        uint256 apyFee;
 
         {
-            (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
+            (, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(
+                shortTokenId
+            );
 
             if (isCall) {
                 tokenAmount = contractSize;
@@ -753,28 +749,43 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     strike64x64.mulu(contractSize)
                 );
             }
+
+            apyFee = FEE_APY_64x64.mulu(
+                (tokenAmount * (maturity - block.timestamp)) / (365 days)
+            );
         }
 
         while (contractSize > 0) {
-            address underwriter = underwriters.at(underwriters.length() - 1);
+            address underwriter;
+
+            Interval memory interval;
+
+            {
+                EnumerableSet.AddressSet
+                    storage underwriters = ERC1155EnumerableStorage
+                        .layout()
+                        .accountsByToken[shortTokenId];
+
+                underwriter = underwriters.at(underwriters.length() - 1);
+            }
 
             // amount of liquidity provided by underwriter
-            uint256 intervalContractSize = _balanceOf(
-                underwriter,
-                shortTokenId
-            );
+            interval.contractSize = _balanceOf(underwriter, shortTokenId);
 
             // truncate interval if underwriter has excess short position size
 
-            if (intervalContractSize > contractSize)
-                intervalContractSize = contractSize;
+            if (interval.contractSize > contractSize)
+                interval.contractSize = contractSize;
 
-            // amount of value claimed by buyer
-            uint256 intervalExerciseValue = (exerciseValue *
-                intervalContractSize) / contractSize;
+            // calculate derived interval variables
 
-            uint256 intervalTokenAmount = (tokenAmount * intervalContractSize) /
+            interval.payment =
+                (exerciseValue * interval.contractSize) /
                 contractSize;
+            interval.tokenAmount =
+                (tokenAmount * interval.contractSize) /
+                contractSize;
+            interval.apyFee = (apyFee * interval.contractSize) / contractSize;
 
             uint256 tvlToSubtract;
 
@@ -782,33 +793,32 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             if (l.getReinvestmentStatus(underwriter, isCall)) {
                 _addToDepositQueue(
                     underwriter,
-                    intervalTokenAmount - intervalExerciseValue,
+                    interval.tokenAmount - interval.payment,
                     isCall
                 );
-                tvlToSubtract = intervalExerciseValue;
+                tvlToSubtract = interval.payment;
             } else {
                 _mint(
                     underwriter,
                     _getReservedLiquidityTokenId(isCall),
-                    intervalTokenAmount - intervalExerciseValue
+                    interval.tokenAmount - interval.payment
                 );
-                tvlToSubtract = intervalTokenAmount - intervalExerciseValue;
+                tvlToSubtract = interval.tokenAmount - interval.payment;
             }
 
             _burnShortTokenInterval(
                 l,
                 underwriter,
                 shortTokenId,
-                intervalContractSize,
-                intervalTokenAmount,
-                intervalExerciseValue,
+                interval,
                 tvlToSubtract,
                 isCall
             );
 
-            contractSize -= intervalContractSize;
-            exerciseValue -= intervalExerciseValue;
-            tokenAmount -= intervalTokenAmount;
+            contractSize -= interval.contractSize;
+            exerciseValue -= interval.payment;
+            tokenAmount -= interval.tokenAmount;
+            apyFee -= interval.apyFee;
         }
     }
 
@@ -816,22 +826,20 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         PoolStorage.Layout storage l,
         address underwriter,
         uint256 shortTokenId,
-        uint256 intervalContractSize,
-        uint256 intervalTokenAmount,
-        uint256 intervalExerciseValue,
+        Interval memory interval,
         uint256 tvlToSubtract,
         bool isCallPool
     ) internal {
         _subUserTVL(l, underwriter, isCallPool, tvlToSubtract);
 
         // burn short option tokens from underwriter
-        _burn(underwriter, shortTokenId, intervalContractSize);
+        _burn(underwriter, shortTokenId, interval.contractSize);
 
         emit AssignExercise(
             underwriter,
             shortTokenId,
-            intervalTokenAmount - intervalExerciseValue,
-            intervalContractSize,
+            interval.tokenAmount - interval.payment,
+            interval.contractSize,
             0
         );
     }
