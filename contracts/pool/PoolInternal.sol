@@ -637,6 +637,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 shortTokenId,
                 intervalContractSize,
                 intervalPremium,
+                intervalApyFee,
                 isCall
             );
 
@@ -654,11 +655,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 shortTokenId,
         uint256 intervalContractSize,
         uint256 intervalPremium,
+        uint256 intervalApyFee,
         bool isCallPool
     ) internal {
         _mint(holder, shortTokenId, intervalContractSize);
 
-        _addUserTVL(l, holder, isCallPool, intervalPremium);
+        _addUserTVL(l, holder, isCallPool, intervalPremium - intervalApyFee);
 
         emit Underwrite(
             holder,
