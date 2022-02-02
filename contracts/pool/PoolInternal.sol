@@ -539,23 +539,33 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 shortTokenId,
         bool isCall
     ) internal {
-        uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCall);
-
         uint256 tokenAmount;
+        uint256 apyFee;
 
-        if (isCall) {
-            tokenAmount = contractSize;
-        } else {
-            (, , int128 strike64x64) = PoolStorage.parseTokenId(shortTokenId);
+        {
+            (, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(
+                shortTokenId
+            );
 
-            tokenAmount = l.fromUnderlyingToBaseDecimals(
-                strike64x64.mulu(contractSize)
+            if (isCall) {
+                tokenAmount = contractSize;
+            } else {
+                tokenAmount = l.fromUnderlyingToBaseDecimals(
+                    strike64x64.mulu(contractSize)
+                );
+            }
+
+            apyFee = FEE_APY_64x64.mulu(
+                (tokenAmount * (maturity - block.timestamp)) / (365 days)
             );
         }
 
         while (tokenAmount > 0) {
             address underwriter = l.liquidityQueueAscending[isCall][address(0)];
-            uint256 balance = _balanceOf(underwriter, freeLiqTokenId);
+            uint256 balance = _balanceOf(
+                underwriter,
+                _getFreeLiquidityTokenId(isCall)
+            );
 
             // if underwriter has insufficient liquidity, remove from queue
 
@@ -567,7 +577,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             // if underwriter is in process of divestment, remove from queue
 
             if (!l.getReinvestmentStatus(underwriter, isCall)) {
-                _burn(underwriter, freeLiqTokenId, balance);
+                _burn(underwriter, _getFreeLiquidityTokenId(isCall), balance);
                 _mint(
                     underwriter,
                     _getReservedLiquidityTokenId(isCall),
@@ -580,7 +590,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             // amount of liquidity provided by underwriter, accounting for reinvested premium
             uint256 intervalTokenAmount = ((balance -
                 l.pendingDepositsOf(underwriter, isCall)) *
-                (tokenAmount + premium)) / tokenAmount;
+                (tokenAmount + premium - apyFee)) / tokenAmount;
 
             // skip underwriters whose liquidity is pending deposit processing
 
@@ -593,7 +603,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             if (isCall) {
                 intervalContractSize = intervalTokenAmount;
             } else {
-                if (tokenAmount == intervalTokenAmount) {
+                if (intervalTokenAmount == tokenAmount) {
                     // round last interval up to account for fixed point precision errors
                     intervalContractSize = contractSize;
                 } else {
@@ -611,11 +621,21 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             uint256 intervalPremium = (premium * intervalTokenAmount) /
                 tokenAmount;
 
+            uint256 intervalApyFee;
+
+            if (intervalTokenAmount == tokenAmount) {
+                intervalApyFee = apyFee;
+            } else {
+                intervalApyFee = (apyFee * intervalTokenAmount) / tokenAmount;
+            }
+
+            l.feesReserved[underwriter][shortTokenId] += intervalApyFee;
+
             // burn free liquidity tokens from underwriter
             _burn(
                 underwriter,
-                freeLiqTokenId,
-                intervalTokenAmount - intervalPremium
+                _getFreeLiquidityTokenId(isCall),
+                intervalTokenAmount - intervalPremium + intervalApyFee
             );
 
             // mint short option tokens for underwriter
@@ -632,6 +652,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             premium -= intervalPremium;
             tokenAmount -= intervalTokenAmount;
             contractSize -= intervalContractSize;
+            apyFee -= intervalApyFee;
         }
     }
 
