@@ -606,11 +606,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
                 if (intervalTokenAmount == 0) continue;
 
-                // TODO: describe cause of rounding error
+                // truncate interval if underwriter has excess liquidity available
 
                 if (intervalTokenAmount > tokenAmount)
                     intervalTokenAmount = tokenAmount;
             }
+
+            // calculate derived interval variables
 
             uint256 intervalContractSize = (contractSize *
                 intervalTokenAmount) / tokenAmount;
@@ -691,6 +693,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 longTokenId
             );
 
+            // truncate interval if holder has excess long position size
+
             if (intervalContractSize > contractSize)
                 intervalContractSize = contractSize;
 
@@ -705,8 +709,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 isCallPool
             );
 
-            exerciseValue -= intervalExerciseValue;
             contractSize -= intervalContractSize;
+            exerciseValue -= intervalExerciseValue;
         }
     }
 
@@ -759,6 +763,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 underwriter,
                 shortTokenId
             );
+
+            // truncate interval if underwriter has excess short position size
+
             if (intervalContractSize > contractSize)
                 intervalContractSize = contractSize;
 
