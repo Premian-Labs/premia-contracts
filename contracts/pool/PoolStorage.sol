@@ -618,23 +618,6 @@ library PoolStorage {
             ];
     }
 
-    function baseTokenAmountToContractSize(
-        Layout storage l,
-        uint256 tokenAmount,
-        int128 price64x64
-    ) internal view returns (uint256 contractSize) {
-        uint256 value = price64x64.inv().mulu(tokenAmount);
-
-        int128 valueFixed64x64 = ABDKMath64x64Token.fromDecimals(
-            value,
-            l.baseDecimals
-        );
-        contractSize = ABDKMath64x64Token.toDecimals(
-            valueFixed64x64,
-            l.underlyingDecimals
-        );
-    }
-
     function contractSizeToBaseTokenAmount(
         Layout storage l,
         uint256 contractSize,
