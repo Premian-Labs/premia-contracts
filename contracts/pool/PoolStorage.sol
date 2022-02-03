@@ -106,6 +106,9 @@ library PoolStorage {
         // steepness values
         int128 steepnessBase64x64;
         int128 steepnessUnderlying64x64;
+        // APY fee tracking
+        // underwriter -> shortTokenId -> amount
+        mapping(address => mapping(uint256 => uint256)) feesReserved;
     }
 
     function layout() internal pure returns (Layout storage l) {
