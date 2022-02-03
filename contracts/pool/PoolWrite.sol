@@ -204,7 +204,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         uint256 amount = isCall
             ? contractSize
-            : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
+            : l.contractSizeToBaseTokenAmount(contractSize, strike64x64);
 
         _pullFrom(
             underwriter,

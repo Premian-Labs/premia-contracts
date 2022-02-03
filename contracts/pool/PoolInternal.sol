@@ -307,9 +307,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         {
             uint256 size = isCall
                 ? contractSize
-                : l.fromUnderlyingToBaseDecimals(
-                    strike64x64.mulu(contractSize)
-                );
+                : l.contractSizeToBaseTokenAmount(contractSize, strike64x64);
 
             require(
                 size <=
@@ -431,7 +429,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         uint256 annihilateAmount = isCall
             ? contractSize
-            : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
+            : l.contractSizeToBaseTokenAmount(contractSize, strike64x64);
 
         amountOut = annihilateAmount - baseCost - feeCost;
     }
@@ -496,8 +494,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             }
         } else {
             if (spot64x64 < strike64x64) {
-                exerciseValue = l.fromUnderlyingToBaseDecimals(
-                    strike64x64.sub(spot64x64).mulu(contractSize)
+                exerciseValue = l.contractSizeToBaseTokenAmount(
+                    contractSize,
+                    strike64x64.sub(spot64x64)
                 );
             }
         }
@@ -558,8 +557,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             if (isCall) {
                 tokenAmount = contractSize;
             } else {
-                tokenAmount = l.fromUnderlyingToBaseDecimals(
-                    strike64x64.mulu(contractSize)
+                tokenAmount = l.contractSizeToBaseTokenAmount(
+                    contractSize,
+                    strike64x64
                 );
             }
 
@@ -750,8 +750,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             if (isCall) {
                 tokenAmount = contractSize;
             } else {
-                tokenAmount = l.fromUnderlyingToBaseDecimals(
-                    strike64x64.mulu(contractSize)
+                tokenAmount = l.contractSizeToBaseTokenAmount(
+                    contractSize,
+                    strike64x64
                 );
             }
 
@@ -1225,7 +1226,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
                 uint256 collateral = isCall
                     ? amount
-                    : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(amount));
+                    : l.contractSizeToBaseTokenAmount(amount, strike64x64);
 
                 _subUserTVL(l, from, isCall, collateral);
                 _addUserTVL(l, to, isCall, collateral);
