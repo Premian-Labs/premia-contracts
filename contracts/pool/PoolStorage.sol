@@ -621,15 +621,23 @@ library PoolStorage {
     function contractSizeToBaseTokenAmount(
         Layout storage l,
         uint256 contractSize,
-        int128 price64x64
+        int128 price64x64,
+        bool isCallPool
     ) internal view returns (uint256 tokenAmount) {
-        uint256 value = price64x64.mulu(contractSize);
+        if (isCallPool) {
+            tokenAmount = contractSize;
+        } else {
+            uint256 value = price64x64.mulu(contractSize);
 
-        int128 value64x64 = ABDKMath64x64Token.fromDecimals(
-            value,
-            l.underlyingDecimals
-        );
+            int128 value64x64 = ABDKMath64x64Token.fromDecimals(
+                value,
+                l.underlyingDecimals
+            );
 
-        tokenAmount = ABDKMath64x64Token.toDecimals(value64x64, l.baseDecimals);
+            tokenAmount = ABDKMath64x64Token.toDecimals(
+                value64x64,
+                l.baseDecimals
+            );
+        }
     }
 }

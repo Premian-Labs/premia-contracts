@@ -333,12 +333,11 @@ contract PoolIO is IPoolIO, PoolSwap {
 
         _processAvailableFunds(
             msg.sender,
-            isCall
-                ? contractSize
-                : PoolStorage.layout().contractSizeToBaseTokenAmount(
-                    contractSize,
-                    strike64x64
-                ),
+            PoolStorage.layout().contractSizeToBaseTokenAmount(
+                contractSize,
+                strike64x64,
+                isCall
+            ),
             isCall,
             true
         );
