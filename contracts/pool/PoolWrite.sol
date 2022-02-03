@@ -202,15 +202,17 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         address token = l.getPoolToken(isCall);
 
-        uint256 amount = isCall
-            ? contractSize
-            : l.contractSizeToBaseTokenAmount(contractSize, strike64x64);
+        uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
+            contractSize,
+            strike64x64,
+            isCall
+        );
 
         _pullFrom(
             underwriter,
             token,
-            amount,
-            _creditMessageValue(amount, isCall)
+            tokenAmount,
+            _creditMessageValue(tokenAmount, isCall)
         );
 
         longTokenId = PoolStorage.formatTokenId(
