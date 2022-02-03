@@ -762,19 +762,14 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             }
         }
 
+        EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage
+            .layout()
+            .accountsByToken[shortTokenId];
+
         while (contractSize > 0) {
-            address underwriter;
+            address underwriter = underwriters.at(underwriters.length() - 1);
 
             Interval memory interval;
-
-            {
-                EnumerableSet.AddressSet
-                    storage underwriters = ERC1155EnumerableStorage
-                        .layout()
-                        .accountsByToken[shortTokenId];
-
-                underwriter = underwriters.at(underwriters.length() - 1);
-            }
 
             // amount of liquidity provided by underwriter
             interval.contractSize = _balanceOf(underwriter, shortTokenId);
