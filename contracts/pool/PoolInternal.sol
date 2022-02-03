@@ -622,18 +622,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             interval.payment = (premium * interval.tokenAmount) / tokenAmount;
             interval.apyFee = (apyFee * interval.tokenAmount) / tokenAmount;
 
-            // track prepaid APY fees
-
-            l.feesReserved[underwriter][shortTokenId] += interval.apyFee;
-
-            // burn free liquidity tokens from underwriter
-            _burn(
-                underwriter,
-                _getFreeLiquidityTokenId(isCall),
-                interval.tokenAmount - interval.payment + interval.apyFee
-            );
-
-            // mint short option tokens for underwriter
             _mintShortTokenInterval(
                 l,
                 underwriter,
@@ -652,18 +640,35 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
     function _mintShortTokenInterval(
         PoolStorage.Layout storage l,
-        address holder,
+        address underwriter,
         address buyer,
         uint256 shortTokenId,
         Interval memory interval,
         bool isCallPool
     ) internal {
-        _mint(holder, shortTokenId, interval.contractSize);
+        // track prepaid APY fees
 
-        _addUserTVL(l, holder, isCallPool, interval.payment - interval.apyFee);
+        l.feesReserved[underwriter][shortTokenId] += interval.apyFee;
+
+        // burn free liquidity tokens from underwriter
+        _burn(
+            underwriter,
+            _getFreeLiquidityTokenId(isCallPool),
+            interval.tokenAmount - interval.payment + interval.apyFee
+        );
+
+        // mint short option tokens for underwriter
+        _mint(underwriter, shortTokenId, interval.contractSize);
+
+        _addUserTVL(
+            l,
+            underwriter,
+            isCallPool,
+            interval.payment - interval.apyFee
+        );
 
         emit Underwrite(
-            holder,
+            underwriter,
             buyer,
             shortTokenId,
             interval.contractSize,
@@ -789,31 +794,11 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 contractSize;
             interval.apyFee = (apyFee * interval.contractSize) / contractSize;
 
-            uint256 tvlToSubtract;
-
-            // mint free liquidity tokens for underwriter
-            if (l.getReinvestmentStatus(underwriter, isCall)) {
-                _addToDepositQueue(
-                    underwriter,
-                    interval.tokenAmount - interval.payment,
-                    isCall
-                );
-                tvlToSubtract = interval.payment;
-            } else {
-                _mint(
-                    underwriter,
-                    _getReservedLiquidityTokenId(isCall),
-                    interval.tokenAmount - interval.payment
-                );
-                tvlToSubtract = interval.tokenAmount - interval.payment;
-            }
-
             _burnShortTokenInterval(
                 l,
                 underwriter,
                 shortTokenId,
                 interval,
-                tvlToSubtract,
                 isCall
             );
 
@@ -829,13 +814,31 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         address underwriter,
         uint256 shortTokenId,
         Interval memory interval,
-        uint256 tvlToSubtract,
         bool isCallPool
     ) internal {
-        _subUserTVL(l, underwriter, isCallPool, tvlToSubtract);
+        uint256 tvlToSubtract;
+
+        // mint free or reserved liquidity tokens for underwriter
+        if (l.getReinvestmentStatus(underwriter, isCallPool)) {
+            _addToDepositQueue(
+                underwriter,
+                interval.tokenAmount - interval.payment,
+                isCallPool
+            );
+            tvlToSubtract = interval.payment;
+        } else {
+            _mint(
+                underwriter,
+                _getReservedLiquidityTokenId(isCallPool),
+                interval.tokenAmount - interval.payment
+            );
+            tvlToSubtract = interval.tokenAmount - interval.payment;
+        }
 
         // burn short option tokens from underwriter
         _burn(underwriter, shortTokenId, interval.contractSize);
+
+        _subUserTVL(l, underwriter, isCallPool, tvlToSubtract);
 
         emit AssignExercise(
             underwriter,
