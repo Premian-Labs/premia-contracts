@@ -815,29 +815,56 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         Interval memory interval,
         bool isCallPool
     ) internal {
-        uint256 tvlToSubtract;
+        // track prepaid APY fees
+
+        uint256 rebate = _applyApyFeeRebate(
+            l,
+            underwriter,
+            shortTokenId,
+            interval.tokenAmount,
+            isCallPool
+        );
+
+        // burn short option tokens from underwriter
+        _burn(underwriter, shortTokenId, interval.contractSize);
 
         // mint free or reserved liquidity tokens for underwriter
         if (l.getReinvestmentStatus(underwriter, isCallPool)) {
             _addToDepositQueue(
                 underwriter,
-                interval.tokenAmount - interval.payment,
+                interval.tokenAmount - interval.payment + rebate,
                 isCallPool
             );
-            tvlToSubtract = interval.payment;
+
+            if (rebate > interval.payment) {
+                _addUserTVL(
+                    l,
+                    underwriter,
+                    isCallPool,
+                    rebate - interval.payment
+                );
+            } else if (interval.payment > rebate) {
+                _subUserTVL(
+                    l,
+                    underwriter,
+                    isCallPool,
+                    interval.payment - rebate
+                );
+            }
         } else {
             _mint(
                 underwriter,
                 _getReservedLiquidityTokenId(isCallPool),
+                interval.tokenAmount - interval.payment + rebate
+            );
+
+            _subUserTVL(
+                l,
+                underwriter,
+                isCallPool,
                 interval.tokenAmount - interval.payment
             );
-            tvlToSubtract = interval.tokenAmount - interval.payment;
         }
-
-        // burn short option tokens from underwriter
-        _burn(underwriter, shortTokenId, interval.contractSize);
-
-        _subUserTVL(l, underwriter, isCallPool, tvlToSubtract);
 
         emit AssignExercise(
             underwriter,
@@ -846,6 +873,56 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             interval.contractSize,
             0
         );
+    }
+
+    function _applyApyFeeRebate(
+        PoolStorage.Layout storage l,
+        address underwriter,
+        uint256 shortTokenId,
+        uint256 intervalTokenAmount,
+        bool isCallPool
+    ) internal returns (uint256) {
+        (, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(
+            shortTokenId
+        );
+
+        // calculate proportion of fees reserved corresponding to interval
+
+        uint256 intervalFeesReserved;
+
+        {
+            uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
+                _balanceOf(underwriter, shortTokenId),
+                strike64x64,
+                isCallPool
+            );
+
+            uint256 feesReserved = l.feesReserved[underwriter][shortTokenId];
+
+            intervalFeesReserved =
+                (feesReserved * intervalTokenAmount) /
+                tokenAmount;
+
+            l.feesReserved[underwriter][shortTokenId] -= intervalFeesReserved;
+        }
+
+        uint256 periodPaid = FEE_APY_64x64.inv().mulu(
+            intervalFeesReserved * (365 days)
+        ) / intervalTokenAmount;
+
+        // average time of short position acquisition
+        uint256 openedAt = maturity - periodPaid;
+        uint256 closedAt = maturity > block.timestamp
+            ? block.timestamp
+            : maturity;
+
+        uint256 refund = (intervalFeesReserved * (maturity - closedAt)) /
+            periodPaid;
+        uint256 rebate = _fetchFeeDiscount64x64(underwriter).mulu(
+            (intervalFeesReserved * (closedAt - openedAt)) / periodPaid
+        );
+
+        return refund + rebate;
     }
 
     function _addToDepositQueue(
