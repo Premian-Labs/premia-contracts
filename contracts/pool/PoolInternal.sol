@@ -750,9 +750,11 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 );
             }
 
-            apyFee = FEE_APY_64x64.mulu(
-                (tokenAmount * (maturity - block.timestamp)) / (365 days)
-            );
+            if (maturity > block.timestamp) {
+                apyFee = FEE_APY_64x64.mulu(
+                    (tokenAmount * (maturity - block.timestamp)) / (365 days)
+                );
+            }
         }
 
         while (contractSize > 0) {
