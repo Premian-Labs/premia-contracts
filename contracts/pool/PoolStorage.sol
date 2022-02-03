@@ -620,10 +620,10 @@ library PoolStorage {
 
     function baseTokenAmountToContractSize(
         Layout storage l,
-        uint256 liquidity,
+        uint256 tokenAmount,
         int128 price64x64
     ) internal view returns (uint256 contractSize) {
-        uint256 value = price64x64.inv().mulu(liquidity);
+        uint256 value = price64x64.inv().mulu(tokenAmount);
 
         int128 valueFixed64x64 = ABDKMath64x64Token.fromDecimals(
             value,
@@ -639,7 +639,7 @@ library PoolStorage {
         Layout storage l,
         uint256 contractSize,
         int128 price64x64
-    ) internal view returns (uint256 liquidity) {
+    ) internal view returns (uint256 tokenAmount) {
         uint256 value = price64x64.mulu(contractSize);
 
         int128 value64x64 = ABDKMath64x64Token.fromDecimals(
@@ -647,6 +647,6 @@ library PoolStorage {
             l.underlyingDecimals
         );
 
-        liquidity = ABDKMath64x64Token.toDecimals(value64x64, l.baseDecimals);
+        tokenAmount = ABDKMath64x64Token.toDecimals(value64x64, l.baseDecimals);
     }
 }
