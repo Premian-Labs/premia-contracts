@@ -817,7 +817,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             l,
             underwriter,
             shortTokenId,
-            interval.tokenAmount,
+            interval.contractSize,
+            interval.apyFee,
             isCallPool
         );
 
@@ -885,50 +886,28 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         PoolStorage.Layout storage l,
         address underwriter,
         uint256 shortTokenId,
-        uint256 intervalTokenAmount,
+        uint256 intervalContractSize,
+        uint256 intervalApyFee,
         bool isCallPool
-    ) internal returns (uint256) {
-        (, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(
-            shortTokenId
-        );
-
+    ) internal returns (uint256 rebate) {
         // calculate proportion of fees reserved corresponding to interval
 
-        uint256 intervalFeesReserved;
+        uint256 feesReserved = l.feesReserved[underwriter][shortTokenId];
 
-        {
-            uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
-                _balanceOf(underwriter, shortTokenId),
-                strike64x64,
-                isCallPool
+        uint256 intervalFeesReserved = (feesReserved * intervalContractSize) /
+            _balanceOf(underwriter, shortTokenId);
+
+        l.feesReserved[underwriter][shortTokenId] -= intervalFeesReserved;
+
+        // deduct fees for time not elapsed and apply rebate to fees accrued
+
+        rebate =
+            intervalApyFee +
+            _fetchFeeDiscount64x64(underwriter).mulu(
+                intervalFeesReserved - intervalApyFee
             );
 
-            uint256 feesReserved = l.feesReserved[underwriter][shortTokenId];
-
-            intervalFeesReserved =
-                (feesReserved * intervalTokenAmount) /
-                tokenAmount;
-
-            l.feesReserved[underwriter][shortTokenId] -= intervalFeesReserved;
-        }
-
-        uint256 periodPaid = FEE_APY_64x64.inv().mulu(
-            intervalFeesReserved * (365 days)
-        ) / intervalTokenAmount;
-
-        // average time of short position acquisition
-        uint256 openedAt = maturity - periodPaid;
-        uint256 closedAt = maturity > block.timestamp
-            ? block.timestamp
-            : maturity;
-
-        uint256 refund = (intervalFeesReserved * (maturity - closedAt)) /
-            periodPaid;
-        uint256 rebate = _fetchFeeDiscount64x64(underwriter).mulu(
-            (intervalFeesReserved * (closedAt - openedAt)) / periodPaid
-        );
-
-        return refund + rebate;
+        // TODO: mint for treasury (intervalFeesReserved - rebate - refund)
     }
 
     function _addToDepositQueue(
