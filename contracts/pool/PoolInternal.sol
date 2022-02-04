@@ -1306,27 +1306,77 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             }
 
             // Update userTVL on SHORT options transfers
+            (PoolStorage.TokenType tokenType, , ) = PoolStorage.parseTokenId(
+                id
+            );
+
+            if (
+                tokenType == PoolStorage.TokenType.SHORT_CALL ||
+                tokenType == PoolStorage.TokenType.SHORT_PUT
+            ) {
+                _beforeShortTokenTransfer(l, from, to, id, amount);
+            }
+        }
+    }
+
+    function _beforeShortTokenTransfer(
+        PoolStorage.Layout storage l,
+        address from,
+        address to,
+        uint256 id,
+        uint256 amount
+    ) private {
+        if (from != address(0) && to != address(0)) {
             (
                 PoolStorage.TokenType tokenType,
-                ,
+                uint64 maturity,
                 int128 strike64x64
             ) = PoolStorage.parseTokenId(id);
 
-            if (
-                (from != address(0) && to != address(0)) &&
-                (tokenType == PoolStorage.TokenType.SHORT_CALL ||
-                    tokenType == PoolStorage.TokenType.SHORT_PUT)
-            ) {
-                bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
-                uint256 collateral = l.contractSizeToBaseTokenAmount(
-                    amount,
-                    strike64x64,
-                    isCall
+            bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
+            uint256 collateral = l.contractSizeToBaseTokenAmount(
+                amount,
+                strike64x64,
+                isCall
+            );
+
+            uint256 intervalApyFee = _calculateApyFee(collateral, maturity);
+
+            uint256 rebate = _applyApyFeeRebate(
+                l,
+                from,
+                id,
+                amount,
+                intervalApyFee,
+                isCall
+            );
+
+            l.feesReserved[to][id] += intervalApyFee;
+
+            if (l.getReinvestmentStatus(from, isCall)) {
+                _mint(
+                    from,
+                    _getFreeLiquidityTokenId(isCall),
+                    rebate - intervalApyFee
+                );
+
+                _subUserTVL(
+                    l,
+                    from,
+                    isCall,
+                    collateral - (rebate - intervalApyFee)
+                );
+            } else {
+                _mint(
+                    from,
+                    _getReservedLiquidityTokenId(isCall),
+                    rebate - intervalApyFee
                 );
 
                 _subUserTVL(l, from, isCall, collateral);
-                _addUserTVL(l, to, isCall, collateral);
             }
+
+            _addUserTVL(l, to, isCall, collateral);
         }
     }
 }
