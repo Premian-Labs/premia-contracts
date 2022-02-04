@@ -208,12 +208,16 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             isCall
         );
 
+        uint256 intervalApyFee = _calculateApyFee(tokenAmount, maturity);
+
         _pullFrom(
             underwriter,
             token,
-            tokenAmount,
-            _creditMessageValue(tokenAmount, isCall)
+            tokenAmount + intervalApyFee,
+            _creditMessageValue(tokenAmount + intervalApyFee, isCall)
         );
+
+        // TODO: account for TVL change
 
         longTokenId = PoolStorage.formatTokenId(
             PoolStorage.getTokenType(isCall, true),
