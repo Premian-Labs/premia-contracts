@@ -569,9 +569,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 isCall
             );
 
-            apyFee = FEE_APY_64x64.mulu(
-                (tokenAmount * (maturity - block.timestamp)) / (365 days)
-            );
+            apyFee = _calculateApyFee(tokenAmount, maturity);
         }
 
         while (tokenAmount > 0) {
@@ -760,9 +758,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             );
 
             if (maturity > block.timestamp) {
-                apyFee = FEE_APY_64x64.mulu(
-                    (tokenAmount * (maturity - block.timestamp)) / (365 days)
-                );
+                apyFee = _calculateApyFee(tokenAmount, maturity);
             }
         }
 
@@ -872,6 +868,16 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             interval.tokenAmount - interval.payment,
             interval.contractSize,
             0
+        );
+    }
+
+    function _calculateApyFee(uint256 tokenAmount, uint64 maturity)
+        internal
+        view
+        returns (uint256 apyFee)
+    {
+        apyFee = FEE_APY_64x64.mulu(
+            (tokenAmount * (maturity - block.timestamp)) / (365 days)
         );
     }
 
