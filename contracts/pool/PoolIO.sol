@@ -329,18 +329,18 @@ contract PoolIO is IPoolIO, PoolSwap {
         bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL ||
             tokenType == PoolStorage.TokenType.LONG_CALL;
 
-        _annihilate(msg.sender, maturity, strike64x64, isCall, contractSize);
+        PoolStorage.Layout storage l = PoolStorage.layout();
 
-        _processAvailableFunds(
+        uint256 collateralFreed = _annihilate(
+            l,
             msg.sender,
-            PoolStorage.layout().contractSizeToBaseTokenAmount(
-                contractSize,
-                strike64x64,
-                isCall
-            ),
+            maturity,
+            strike64x64,
             isCall,
-            true
+            contractSize
         );
+
+        _processAvailableFunds(msg.sender, collateralFreed, isCall, true);
     }
 
     /**

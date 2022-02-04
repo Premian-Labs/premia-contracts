@@ -211,19 +211,22 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
     /**
      * @notice burn corresponding long and short option tokens
+     * @param l storage layout struct
      * @param account holder of tokens to annihilate
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param isCall true for call, false for put
      * @param contractSize quantity of option contract tokens to annihilate
+     * @return collateralFreed amount of collateral freed, including APY fee rebate
      */
     function _annihilate(
+        PoolStorage.Layout storage l,
         address account,
         uint64 maturity,
         int128 strike64x64,
         bool isCall,
         uint256 contractSize
-    ) internal {
+    ) internal returns (uint256 collateralFreed) {
         uint256 longTokenId = PoolStorage.formatTokenId(
             PoolStorage.getTokenType(isCall, true),
             maturity,
@@ -236,7 +239,27 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
 
         _burn(account, longTokenId, contractSize);
+
+        uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
+            contractSize,
+            strike64x64,
+            isCall
+        );
+
+        uint256 rebate = _applyApyFeeRebate(
+            l,
+            account,
+            shortTokenId,
+            contractSize,
+            _calculateApyFee(tokenAmount, maturity),
+            isCall
+        );
+
+        collateralFreed = tokenAmount + rebate;
+
         _burn(account, shortTokenId, contractSize);
+
+        // TODO: account for TVL change
 
         emit Annihilate(shortTokenId, contractSize);
     }
@@ -427,15 +450,16 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             newPrice64x64
         );
 
-        _annihilate(account, maturity, strike64x64, isCall, contractSize);
-
-        uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
-            contractSize,
+        uint256 collateralFreed = _annihilate(
+            l,
+            account,
+            maturity,
             strike64x64,
-            isCall
+            isCall,
+            contractSize
         );
 
-        amountOut = tokenAmount - baseCost - feeCost;
+        amountOut = collateralFreed - baseCost - feeCost;
     }
 
     /**
