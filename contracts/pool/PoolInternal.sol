@@ -1144,8 +1144,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     }
 
                     if (to != address(0)) {
-                        _subUserTVL(l, from, isCallPool, amounts[i]);
-                        _addUserTVL(l, to, isCallPool, amounts[i]);
+                        _subUserTVL(l, from, isCallPool, amount);
+                        _addUserTVL(l, to, isCallPool, amount);
                     }
                 }
 
