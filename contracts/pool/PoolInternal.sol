@@ -1354,11 +1354,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             l.feesReserved[to][id] += intervalApyFee;
 
             if (l.getReinvestmentStatus(from, isCall)) {
-                _mint(
-                    from,
-                    _getFreeLiquidityTokenId(isCall),
-                    rebate - intervalApyFee
-                );
+                _addToDepositQueue(from, rebate - intervalApyFee, isCall);
 
                 _subUserTVL(
                     l,
