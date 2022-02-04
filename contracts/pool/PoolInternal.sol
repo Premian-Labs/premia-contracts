@@ -907,7 +907,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 intervalFeesReserved - intervalApyFee
             );
 
-        // TODO: mint for treasury (intervalFeesReserved - rebate - refund)
+        _processAvailableFunds(
+            FEE_RECEIVER_ADDRESS,
+            intervalFeesReserved - rebate,
+            isCallPool,
+            true
+        );
     }
 
     function _addToDepositQueue(
