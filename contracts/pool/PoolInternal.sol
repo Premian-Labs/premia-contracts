@@ -781,9 +781,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 isCall
             );
 
-            if (maturity > block.timestamp) {
-                apyFee = _calculateApyFee(tokenAmount, maturity);
-            }
+            apyFee = _calculateApyFee(tokenAmount, maturity);
         }
 
         EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage
@@ -901,9 +899,11 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         view
         returns (uint256 apyFee)
     {
-        apyFee = FEE_APY_64x64.mulu(
-            (tokenAmount * (maturity - block.timestamp)) / (365 days)
-        );
+        if (block.timestamp < maturity) {
+            apyFee = FEE_APY_64x64.mulu(
+                (tokenAmount * (maturity - block.timestamp)) / (365 days)
+            );
+        }
     }
 
     function _applyApyFeeRebate(
