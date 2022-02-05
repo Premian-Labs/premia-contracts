@@ -126,6 +126,11 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         if (amount > 0) {
             _burn(FEE_RECEIVER_ADDRESS, tokenId, amount);
+            _pushTo(
+                FEE_RECEIVER_ADDRESS,
+                PoolStorage.layout().getPoolToken(isCall),
+                amount
+            );
             emit FeeWithdrawal(isCall, amount);
         }
     }
@@ -395,10 +400,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
 
         // mint reserved liquidity tokens for fee receiver
-        _mint(
+
+        _processAvailableFunds(
             FEE_RECEIVER_ADDRESS,
-            _getReservedLiquidityTokenId(isCall),
-            feeCost
+            feeCost,
+            isCall,
+            true,
+            false
         );
 
         emit Purchase(
@@ -617,10 +625,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             if (!l.getReinvestmentStatus(underwriter, isCall)) {
                 _burn(underwriter, _getFreeLiquidityTokenId(isCall), balance);
-                _mint(
+                _processAvailableFunds(
                     underwriter,
-                    _getReservedLiquidityTokenId(isCall),
-                    balance
+                    balance,
+                    isCall,
+                    true,
+                    false
                 );
                 _subUserTVL(l, underwriter, isCall, balance);
                 continue;
@@ -754,7 +764,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         _burn(holder, longTokenId, contractSize);
 
         if (exerciseValue > 0) {
-            _processAvailableFunds(holder, exerciseValue, isCallPool, true);
+            _processAvailableFunds(
+                holder,
+                exerciseValue,
+                isCallPool,
+                true,
+                true
+            );
         }
 
         emit Exercise(holder, longTokenId, contractSize, exerciseValue, 0);
@@ -935,7 +951,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             FEE_RECEIVER_ADDRESS,
             intervalFeesReserved - rebate,
             isCallPool,
-            true
+            true,
+            false
         );
     }
 
@@ -1097,22 +1114,32 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @param account owner of funds
      * @param amount quantity of funds available
      * @param isCallPool whether funds correspond to call or put pool
-     * @param divest whether to transfer funds to owner or reinvest
+     * @param divest whether to reserve funds or reinvest
+     * @param transferOnDivest whether to transfer divested funds to owner
      */
     function _processAvailableFunds(
         address account,
         uint256 amount,
         bool isCallPool,
-        bool divest
+        bool divest,
+        bool transferOnDivest
     ) internal {
         if (divest) {
-            _pushTo(
-                account,
-                PoolStorage.layout().getPoolToken(isCallPool),
-                amount
-            );
+            if (transferOnDivest) {
+                _pushTo(
+                    account,
+                    PoolStorage.layout().getPoolToken(isCallPool),
+                    amount
+                );
+            } else {
+                _mint(
+                    account,
+                    _getReservedLiquidityTokenId(isCallPool),
+                    amount
+                );
+            }
         } else {
-            // TODO: redeposit
+            _addToDepositQueue(account, amount, isCallPool);
         }
     }
 

@@ -151,7 +151,7 @@ contract PoolIO is IPoolIO, PoolSwap {
         }
 
         _subUserTVL(l, msg.sender, isCallPool, amount - reservedLiqToWithdraw);
-        _processAvailableFunds(msg.sender, amount, isCallPool, true);
+        _processAvailableFunds(msg.sender, amount, isCallPool, true, true);
         emit Withdrawal(msg.sender, isCallPool, depositedAt, amount);
     }
 
@@ -189,7 +189,7 @@ contract PoolIO is IPoolIO, PoolSwap {
         );
 
         _subUserTVL(l, msg.sender, isCall, baseCost + feeCost + amountOut);
-        _processAvailableFunds(msg.sender, amountOut, isCall, true);
+        _processAvailableFunds(msg.sender, amountOut, isCall, true, true);
     }
 
     /**
@@ -255,7 +255,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             }
 
             _subUserTVL(PoolStorage.layout(), msg.sender, true, tvlToSubtract);
-            _processAvailableFunds(msg.sender, amountOutCall, true, true);
+            _processAvailableFunds(msg.sender, amountOutCall, true, true, true);
         }
 
         if (amountOutPut > 0) {
@@ -268,7 +268,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             }
 
             _subUserTVL(PoolStorage.layout(), msg.sender, false, tvlToSubtract);
-            _processAvailableFunds(msg.sender, amountOutPut, false, true);
+            _processAvailableFunds(msg.sender, amountOutPut, false, true, true);
         }
     }
 
@@ -312,8 +312,6 @@ contract PoolIO is IPoolIO, PoolSwap {
     {
         amountOutCall = _withdrawFees(true);
         amountOutPut = _withdrawFees(false);
-        _processAvailableFunds(FEE_RECEIVER_ADDRESS, amountOutCall, true, true);
-        _processAvailableFunds(FEE_RECEIVER_ADDRESS, amountOutPut, false, true);
     }
 
     /**
@@ -340,7 +338,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             contractSize
         );
 
-        _processAvailableFunds(msg.sender, collateralFreed, isCall, true);
+        _processAvailableFunds(msg.sender, collateralFreed, isCall, true, true);
     }
 
     /**
