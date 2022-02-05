@@ -372,7 +372,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         // mint reserved liquidity tokens for fee receiver
 
-        _processAvailableFunds(FEE_RECEIVER_ADDRESS, feeCost, isCall, true);
+        _processAvailableFunds(
+            FEE_RECEIVER_ADDRESS,
+            feeCost,
+            isCall,
+            true,
+            false
+        );
 
         emit Purchase(
             account,
@@ -538,7 +544,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         // mint reserved liquidity tokens for fee receiver
 
-        _processAvailableFunds(FEE_RECEIVER_ADDRESS, fee, isCall, true);
+        _processAvailableFunds(FEE_RECEIVER_ADDRESS, fee, isCall, true, false);
     }
 
     function _mintShortTokenLoop(
@@ -568,7 +574,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             if (!l.getReinvestmentStatus(underwriter, isCall)) {
                 _burn(underwriter, freeLiqTokenId, balance);
-                _processAvailableFunds(underwriter, balance, isCall, true);
+                _processAvailableFunds(
+                    underwriter,
+                    balance,
+                    isCall,
+                    true,
+                    false
+                );
                 _subUserTVL(l, underwriter, isCall, balance);
                 continue;
             }
@@ -680,6 +692,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 holder,
                 exerciseValue - fee,
                 isCallPool,
+                true,
                 true
             );
         }
@@ -728,7 +741,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 underwriter,
                 freeLiq - intervalExerciseValue,
                 isCall,
-                divest
+                divest,
+                false
             );
 
             _subUserTVL(
@@ -947,16 +961,18 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @param account owner of funds
      * @param amount quantity of funds available
      * @param isCallPool whether funds correspond to call or put pool
-     * @param divest whether to transfer funds to owner or reinvest
+     * @param divest whether to reserve funds or reinvest
+     * @param transferOnDivest whether to transfer divested funds to owner
      */
     function _processAvailableFunds(
         address account,
         uint256 amount,
         bool isCallPool,
-        bool divest
+        bool divest,
+        bool transferOnDivest
     ) internal {
         if (divest) {
-            if (account == msg.sender) {
+            if (transferOnDivest) {
                 _pushTo(account, _getPoolToken(isCallPool), amount);
             } else {
                 _mint(
