@@ -361,9 +361,11 @@ export function describeBehaviorOfPoolExercise({
               amountNb,
               isCall,
             );
+
             const premium = (
               await p.getToken(isCall).balanceOf(buyer.address)
             ).sub(curBalance);
+
             expect(Number(formatOption(premium, isCall))).to.almost(
               exerciseValue * (1 - FEE),
             );

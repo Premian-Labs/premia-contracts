@@ -122,6 +122,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         if (amount > 0) {
             _burn(FEE_RECEIVER_ADDRESS, tokenId, amount);
+            _pushTo(FEE_RECEIVER_ADDRESS, _getPoolToken(isCall), amount);
             emit FeeWithdrawal(isCall, amount);
         }
     }
@@ -370,10 +371,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
 
         // mint reserved liquidity tokens for fee receiver
-        _mint(
+
+        _processAvailableFunds(
             FEE_RECEIVER_ADDRESS,
-            _getReservedLiquidityTokenId(isCall),
-            feeCost
+            feeCost,
+            isCall,
+            true,
+            false
         );
 
         emit Purchase(
@@ -538,7 +542,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             isCall
         );
 
-        _mint(FEE_RECEIVER_ADDRESS, _getReservedLiquidityTokenId(isCall), fee);
+        // mint reserved liquidity tokens for fee receiver
+
+        _processAvailableFunds(FEE_RECEIVER_ADDRESS, fee, isCall, true, false);
     }
 
     function _mintShortTokenLoop(
@@ -568,10 +574,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             if (!l.getReinvestmentStatus(underwriter, isCall)) {
                 _burn(underwriter, freeLiqTokenId, balance);
-                _mint(
+                _processAvailableFunds(
                     underwriter,
-                    _getReservedLiquidityTokenId(isCall),
-                    balance
+                    balance,
+                    isCall,
+                    true,
+                    false
                 );
                 _subUserTVL(l, underwriter, isCall, balance);
                 continue;
@@ -684,6 +692,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 holder,
                 exerciseValue - fee,
                 isCallPool,
+                true,
                 true
             );
         }
@@ -721,26 +730,27 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             contractSize -= intervalContractSize;
 
             uint256 freeLiq = isCall
-                ? intervalContractSize - intervalExerciseValue
+                ? intervalContractSize
                 : l.fromUnderlyingToBaseDecimals(
                     strike64x64.mulu(intervalContractSize)
-                ) - intervalExerciseValue;
-
-            uint256 tvlToSubtract = intervalExerciseValue;
-
-            // mint free liquidity tokens for underwriter
-            if (l.getReinvestmentStatus(underwriter, isCall)) {
-                _addToDepositQueue(underwriter, freeLiq, isCall);
-            } else {
-                _mint(
-                    underwriter,
-                    _getReservedLiquidityTokenId(isCall),
-                    freeLiq
                 );
-                tvlToSubtract += freeLiq;
-            }
 
-            _subUserTVL(l, underwriter, isCall, tvlToSubtract);
+            bool divest = !l.getReinvestmentStatus(underwriter, isCall);
+
+            _processAvailableFunds(
+                underwriter,
+                freeLiq - intervalExerciseValue,
+                isCall,
+                divest,
+                false
+            );
+
+            _subUserTVL(
+                l,
+                underwriter,
+                isCall,
+                divest ? freeLiq : intervalExerciseValue
+            );
 
             // burn short option tokens from underwriter
             _burn(underwriter, shortTokenId, intervalContractSize);
@@ -748,7 +758,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             emit AssignExercise(
                 underwriter,
                 shortTokenId,
-                freeLiq,
+                freeLiq - intervalExerciseValue,
                 intervalContractSize,
                 0
             );
@@ -951,18 +961,28 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @param account owner of funds
      * @param amount quantity of funds available
      * @param isCallPool whether funds correspond to call or put pool
-     * @param divest whether to transfer funds to owner or reinvest
+     * @param divest whether to reserve funds or reinvest
+     * @param transferOnDivest whether to transfer divested funds to owner
      */
     function _processAvailableFunds(
         address account,
         uint256 amount,
         bool isCallPool,
-        bool divest
+        bool divest,
+        bool transferOnDivest
     ) internal {
         if (divest) {
-            _pushTo(account, _getPoolToken(isCallPool), amount);
+            if (transferOnDivest) {
+                _pushTo(account, _getPoolToken(isCallPool), amount);
+            } else {
+                _mint(
+                    account,
+                    _getReservedLiquidityTokenId(isCallPool),
+                    amount
+                );
+            }
         } else {
-            // TODO: redeposit
+            _addToDepositQueue(account, amount, isCallPool);
         }
     }
 
