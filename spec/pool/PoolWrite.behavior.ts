@@ -20,6 +20,8 @@ import {
 import {
   DECIMALS_BASE,
   DECIMALS_UNDERLYING,
+  FEE_APY,
+  ONE_YEAR,
   formatOption,
   getTokenDecimals,
   parseBase,
@@ -716,7 +718,7 @@ export function describeBehaviorOfPoolWrite({
               .connect(buyer)
               .approve(instance.address, ethers.constants.MaxUint256);
 
-            await instance
+            const tx = await instance
               .connect(buyer)
               .swapAndPurchase(
                 maturity,
@@ -736,6 +738,9 @@ export function describeBehaviorOfPoolWrite({
                 false,
               );
 
+            const { blockNumber } = await tx.wait();
+            const { timestamp } = await ethers.provider.getBlock(blockNumber);
+
             const newBalance = await p
               .getToken(isCall)
               .balanceOf(buyer.address);
@@ -754,6 +759,12 @@ export function describeBehaviorOfPoolWrite({
             const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
 
             if (isCall) {
+              const apyFee =
+                (purchaseAmountNb *
+                  (maturity.toNumber() - timestamp) *
+                  FEE_APY) /
+                ONE_YEAR;
+
               expect(
                 bnToNumber(
                   await instance.balanceOf(
@@ -763,9 +774,19 @@ export function describeBehaviorOfPoolWrite({
                   DECIMALS_UNDERLYING,
                 ),
               ).to.almost(
-                100 - purchaseAmountNb + fixedToNumber(quote.baseCost64x64),
+                100 -
+                  purchaseAmountNb +
+                  fixedToNumber(quote.baseCost64x64) -
+                  apyFee,
               );
             } else {
+              const apyFee =
+                (purchaseAmountNb *
+                  getStrike(isCall, 2000) *
+                  (maturity.toNumber() - timestamp) *
+                  FEE_APY) /
+                ONE_YEAR;
+
               expect(
                 bnToNumber(
                   await instance.balanceOf(
@@ -777,7 +798,8 @@ export function describeBehaviorOfPoolWrite({
               ).to.almost(
                 100000 -
                   purchaseAmountNb * getStrike(isCall, 2000) +
-                  fixedToNumber(quote.baseCost64x64),
+                  fixedToNumber(quote.baseCost64x64) -
+                  apyFee,
               );
             }
 
@@ -876,7 +898,7 @@ export function describeBehaviorOfPoolWrite({
               .connect(buyer)
               .approve(instance.address, ethers.constants.MaxUint256);
 
-            await instance
+            const tx = await instance
               .connect(buyer)
               .swapAndPurchase(
                 maturity,
@@ -892,6 +914,9 @@ export function describeBehaviorOfPoolWrite({
                 false,
                 { value: ethers.utils.parseEther('2') },
               );
+
+            const { blockNumber } = await tx.wait();
+            const { timestamp } = await ethers.provider.getBlock(blockNumber);
 
             const newBalance = await p
               .getToken(isCall)
@@ -911,6 +936,12 @@ export function describeBehaviorOfPoolWrite({
             const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
 
             if (isCall) {
+              const apyFee =
+                (purchaseAmountNb *
+                  (maturity.toNumber() - timestamp) *
+                  FEE_APY) /
+                ONE_YEAR;
+
               expect(
                 bnToNumber(
                   await instance.balanceOf(
@@ -920,9 +951,19 @@ export function describeBehaviorOfPoolWrite({
                   DECIMALS_UNDERLYING,
                 ),
               ).to.almost(
-                100 - purchaseAmountNb + fixedToNumber(quote.baseCost64x64),
+                100 -
+                  purchaseAmountNb +
+                  fixedToNumber(quote.baseCost64x64) -
+                  apyFee,
               );
             } else {
+              const apyFee =
+                (purchaseAmountNb *
+                  getStrike(isCall, 2000) *
+                  (maturity.toNumber() - timestamp) *
+                  FEE_APY) /
+                ONE_YEAR;
+
               expect(
                 bnToNumber(
                   await instance.balanceOf(
@@ -934,7 +975,8 @@ export function describeBehaviorOfPoolWrite({
               ).to.almost(
                 100000 -
                   purchaseAmountNb * getStrike(isCall, 2000) +
-                  fixedToNumber(quote.baseCost64x64),
+                  fixedToNumber(quote.baseCost64x64) -
+                  apyFee,
               );
             }
 
@@ -1033,7 +1075,7 @@ export function describeBehaviorOfPoolWrite({
               .connect(buyer)
               .approve(instance.address, ethers.constants.MaxUint256);
 
-            await instance
+            const tx = await instance
               .connect(buyer)
               .swapAndPurchase(
                 maturity,
@@ -1053,6 +1095,9 @@ export function describeBehaviorOfPoolWrite({
                 false,
               );
 
+            const { blockNumber } = await tx.wait();
+            const { timestamp } = await ethers.provider.getBlock(blockNumber);
+
             const newBalance = await p
               .getToken(isCall)
               .balanceOf(buyer.address);
@@ -1064,6 +1109,12 @@ export function describeBehaviorOfPoolWrite({
             const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
 
             if (isCall) {
+              const apyFee =
+                (purchaseAmountNb *
+                  (maturity.toNumber() - timestamp) *
+                  FEE_APY) /
+                ONE_YEAR;
+
               expect(
                 bnToNumber(
                   await instance.balanceOf(
@@ -1073,9 +1124,19 @@ export function describeBehaviorOfPoolWrite({
                   DECIMALS_UNDERLYING,
                 ),
               ).to.almost(
-                100 - purchaseAmountNb + fixedToNumber(quote.baseCost64x64),
+                100 -
+                  purchaseAmountNb +
+                  fixedToNumber(quote.baseCost64x64) -
+                  apyFee,
               );
             } else {
+              const apyFee =
+                (purchaseAmountNb *
+                  getStrike(isCall, 2000) *
+                  (maturity.toNumber() - timestamp) *
+                  FEE_APY) /
+                ONE_YEAR;
+
               expect(
                 bnToNumber(
                   await instance.balanceOf(
@@ -1087,7 +1148,8 @@ export function describeBehaviorOfPoolWrite({
               ).to.almost(
                 100000 -
                   purchaseAmountNb * getStrike(isCall, 2000) +
-                  fixedToNumber(quote.baseCost64x64),
+                  fixedToNumber(quote.baseCost64x64) -
+                  apyFee,
               );
             }
 

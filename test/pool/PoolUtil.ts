@@ -63,7 +63,8 @@ interface PoolUtilArgs {
   feeReceiver: any;
 }
 
-const ONE_DAY = 3600 * 24;
+export const ONE_DAY = 3600 * 24;
+export const ONE_YEAR = ONE_DAY * 365;
 
 export function getFreeLiqTokenId(isCall: boolean) {
   if (isCall) {
