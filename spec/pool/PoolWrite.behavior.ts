@@ -1183,21 +1183,6 @@ export function describeBehaviorOfPoolWrite({
     describe('#writeFrom', () => {
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
-          it('should revert if trying to manually underwrite an option from a non approved operator', async () => {
-            await expect(
-              instance
-                .connect(owner)
-                .writeFrom(
-                  lp1.address,
-                  lp2.address,
-                  ethers.constants.Zero,
-                  ethers.constants.Zero,
-                  ethers.constants.Zero,
-                  isCall,
-                ),
-            ).to.be.revertedWith('not approved');
-          });
-
           it('should successfully manually underwrite an option without use of an external operator', async () => {
             const maturity = await getMaturity(30);
             const strike64x64 = fixedFromFloat(2);
@@ -1299,6 +1284,23 @@ export function describeBehaviorOfPoolWrite({
           });
         });
       }
+
+      describe('reverts if', () => {
+        it('operator is not approved', async () => {
+          await expect(
+            instance
+              .connect(owner)
+              .writeFrom(
+                lp1.address,
+                lp2.address,
+                ethers.constants.Zero,
+                ethers.constants.Zero,
+                ethers.constants.Zero,
+                false,
+              ),
+          ).to.be.revertedWith('not approved');
+        });
+      });
     });
 
     describe('#update', () => {
