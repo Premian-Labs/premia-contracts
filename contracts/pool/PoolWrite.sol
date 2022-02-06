@@ -31,7 +31,8 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64,
+        int128 feePremium64x64,
+        int128 feeApy64x64,
         address uniswapV2Factory,
         address sushiswapFactory
     )
@@ -41,7 +42,8 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            fee64x64,
+            feePremium64x64,
+            feeApy64x64,
             uniswapV2Factory,
             sushiswapFactory
         )
@@ -196,28 +198,34 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             "not approved"
         );
 
-        address token = _getPoolToken(isCall);
+        PoolStorage.Layout storage l = PoolStorage.layout();
 
-        uint256 amount = isCall
-            ? contractSize
-            : PoolStorage.layout().fromUnderlyingToBaseDecimals(
-                strike64x64.mulu(contractSize)
-            );
+        address token = l.getPoolToken(isCall);
+
+        uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
+            contractSize,
+            strike64x64,
+            isCall
+        );
+
+        uint256 intervalApyFee = _calculateApyFee(tokenAmount, maturity);
 
         _pullFrom(
             underwriter,
             token,
-            amount,
-            _creditMessageValue(amount, isCall)
+            tokenAmount + intervalApyFee,
+            _creditMessageValue(tokenAmount + intervalApyFee, isCall)
         );
 
+        // TODO: account for TVL change
+
         longTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, true),
+            PoolStorage.getTokenType(isCall, true),
             maturity,
             strike64x64
         );
         shortTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, false),
+            PoolStorage.getTokenType(isCall, false),
             maturity,
             strike64x64
         );
@@ -301,7 +309,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         _pullFrom(
             msg.sender,
-            _getPoolToken(isCall),
+            l.getPoolToken(isCall),
             amount,
             creditMessageValue ? _creditMessageValue(amount, isCall) : 0
         );
