@@ -533,61 +533,6 @@ export function describeBehaviorOfPoolIO({
             );
           });
 
-          it('should revert if contract size is less than minimum', async () => {
-            const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
-
-            await p.purchaseOption(
-              lp1,
-              buyer,
-              parseUnderlying('1'),
-              maturity,
-              strike64x64,
-              isCall,
-            );
-
-            const shortTokenId = formatTokenId({
-              tokenType: getShort(isCall),
-              maturity,
-              strike64x64,
-            });
-
-            await expect(
-              instance.connect(lp1).reassign(shortTokenId, '1'),
-            ).to.be.revertedWith('too small');
-          });
-
-          it('should revert if option is expired', async () => {
-            const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
-
-            await p.purchaseOption(
-              lp1,
-              buyer,
-              parseUnderlying('1'),
-              maturity,
-              strike64x64,
-              isCall,
-            );
-
-            const shortTokenId = formatTokenId({
-              tokenType: getShort(isCall),
-              maturity,
-              strike64x64,
-            });
-
-            const shortTokenBalance = await instance.balanceOf(
-              lp1.address,
-              shortTokenId,
-            );
-
-            await ethers.provider.send('evm_increaseTime', [11 * 24 * 3600]);
-
-            await expect(
-              instance.connect(lp1).reassign(shortTokenId, shortTokenBalance),
-            ).to.be.revertedWith('expired');
-          });
-
           it('should successfully reassign option to another LP', async () => {
             const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
@@ -643,6 +588,65 @@ export function describeBehaviorOfPoolIO({
           });
         });
       }
+
+      describe('reverts if', () => {
+        it('contract size is less than minimum', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
+
+          await p.purchaseOption(
+            lp1,
+            buyer,
+            parseUnderlying('1'),
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await expect(
+            instance.connect(lp1).reassign(shortTokenId, '1'),
+          ).to.be.revertedWith('too small');
+        });
+
+        it('option is expired', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
+
+          await p.purchaseOption(
+            lp1,
+            buyer,
+            parseUnderlying('1'),
+            maturity,
+            strike64x64,
+            isCall,
+          );
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenBalance = await instance.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+
+          await ethers.provider.send('evm_increaseTime', [11 * 24 * 3600]);
+
+          await expect(
+            instance.connect(lp1).reassign(shortTokenId, shortTokenBalance),
+          ).to.be.revertedWith('expired');
+        });
+      });
     });
 
     describe('#reassignBatch', function () {
@@ -733,29 +737,31 @@ export function describeBehaviorOfPoolIO({
         });
       }
 
-      it('should revert if contract size is less than minimum', async () => {
-        const isCall = true;
-        const maturity = await getMaturity(10);
-        const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
+      describe('reverts if', () => {
+        it('contract size is less than minimum', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(10);
+          const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
-        await p.purchaseOption(
-          lp1,
-          buyer,
-          parseUnderlying('1'),
-          maturity,
-          strike64x64,
-          isCall,
-        );
+          await p.purchaseOption(
+            lp1,
+            buyer,
+            parseUnderlying('1'),
+            maturity,
+            strike64x64,
+            isCall,
+          );
 
-        const shortTokenId = formatTokenId({
-          tokenType: getShort(isCall),
-          maturity,
-          strike64x64,
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await expect(
+            instance.connect(lp1).reassignBatch([shortTokenId], ['1']),
+          ).to.be.revertedWith('too small');
         });
-
-        await expect(
-          instance.connect(lp1).reassignBatch([shortTokenId], ['1']),
-        ).to.be.revertedWith('too small');
       });
     });
 
