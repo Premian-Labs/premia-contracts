@@ -234,51 +234,6 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
-     * @notice get list of underwriters with buyback enabled for a specific shortTokenId
-     * @param shortTokenId the long token id
-     * @return buyers list of underwriters with buyback enabled for this shortTokenId
-     * @return amounts amounts of options underwritten by each LP with buyback enabled
-     */
-    function getBuyers(uint256 shortTokenId)
-        external
-        view
-        returns (address[] memory buyers, uint256[] memory amounts)
-    {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        ERC1155EnumerableStorage.Layout
-            storage erc1155EnumerableLayout = ERC1155EnumerableStorage.layout();
-
-        uint256 length = erc1155EnumerableLayout
-            .accountsByToken[shortTokenId]
-            .length();
-        uint256 i = 0;
-
-        buyers = new address[](length);
-        amounts = new uint256[](length);
-
-        for (uint256 j = 0; j < length; j++) {
-            address lp = erc1155EnumerableLayout
-                .accountsByToken[shortTokenId]
-                .at(j);
-            if (l.isBuyBackEnabled[lp]) {
-                buyers[i] = lp;
-                amounts[i] = ERC1155BaseStorage.layout().balances[shortTokenId][
-                    lp
-                ];
-                i++;
-            }
-        }
-
-        // Reduce array size
-        if (length > 0 && i < length - 1) {
-            assembly {
-                mstore(buyers, sub(mload(buyers), sub(length, i)))
-                mstore(amounts, sub(mload(amounts), sub(length, i)))
-            }
-        }
-    }
-
-    /**
      * @inheritdoc IERC1155Metadata
      * @dev SVG generated via external PremiaOptionNFTDisplay contract
      */

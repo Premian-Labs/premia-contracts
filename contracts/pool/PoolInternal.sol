@@ -7,6 +7,7 @@ import {IERC173} from "@solidstate/contracts/access/IERC173.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155EnumerableInternal, ERC1155EnumerableStorage, EnumerableSet} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
+import {ERC1155BaseStorage} from "@solidstate/contracts/token/ERC1155/base/ERC1155BaseStorage.sol";
 import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
 
 import {PoolStorage} from "./PoolStorage.sol";
@@ -288,9 +289,14 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             }
         }
 
-        // ToDo : Account only for available liquidity to sell
+        uint256 availableLiquidity = _getAvailableBuybackLiquidity(
+            shortTokenId
+        );
+
+        require(availableLiquidity > 0, "no sell liq");
+
         uint256 liquidityChange = (args.contractSize *
-            (10**SELL_CONSTANT_PRECISION)) / _totalSupply(shortTokenId);
+            (10**SELL_CONSTANT_PRECISION)) / availableLiquidity;
 
         int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
             args.contractSize,
@@ -318,6 +324,31 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         feeCost64x64 -= feeCost64x64.mul(discount64x64);
         baseCost64x64 -= feeCost64x64;
+    }
+
+    function _getAvailableBuybackLiquidity(uint256 shortTokenId)
+        internal
+        view
+        returns (uint256 totalLiquidity)
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        ERC1155EnumerableStorage.Layout
+            storage erc1155EnumerableLayout = ERC1155EnumerableStorage.layout();
+
+        uint256 length = erc1155EnumerableLayout
+            .accountsByToken[shortTokenId]
+            .length();
+
+        for (uint256 i = 0; i < length; i++) {
+            address lp = erc1155EnumerableLayout
+                .accountsByToken[shortTokenId]
+                .at(i);
+            if (l.isBuyBackEnabled[lp]) {
+                totalLiquidity += ERC1155BaseStorage.layout().balances[
+                    shortTokenId
+                ][lp];
+            }
+        }
     }
 
     /**
