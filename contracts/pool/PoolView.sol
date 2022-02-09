@@ -229,10 +229,6 @@ contract PoolView is IPoolView, PoolInternal {
         putDivestmentTimestamp = l.divestmentTimestamps[account][false];
     }
 
-    function isBuyBackEnabled(address account) external view returns (bool) {
-        return PoolStorage.layout().isBuyBackEnabled[account];
-    }
-
     /**
      * @inheritdoc IERC1155Metadata
      * @dev SVG generated via external PremiaOptionNFTDisplay contract
