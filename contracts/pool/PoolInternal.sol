@@ -1226,6 +1226,11 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             .div(supply64x64.add(contractSize64x64));
     }
 
+    function _setBuyBackEnabled(bool state) internal {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        l.isBuyBackEnabled[msg.sender] = state;
+    }
+
     /**
      * @notice ERC1155 hook: track eligible underwriters
      * @param operator transaction sender

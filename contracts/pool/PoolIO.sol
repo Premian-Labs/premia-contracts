@@ -411,9 +411,4 @@ contract PoolIO is IPoolIO, PoolSwap {
             _subUserTVL(l, accounts[i], isCallPool, amounts[i]);
         }
     }
-
-    function setBuyBackEnabled(bool state) external {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        l.isBuyBackEnabled[msg.sender] = state;
-    }
 }

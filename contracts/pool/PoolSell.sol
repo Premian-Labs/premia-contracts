@@ -41,8 +41,7 @@ contract PoolSell is IPoolSell, PoolInternal {
      * @inheritdoc IPoolSell
      */
     function setBuyBackEnabled(bool state) external {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        l.isBuyBackEnabled[msg.sender] = state;
+        _setBuyBackEnabled(state);
     }
 
     /**
