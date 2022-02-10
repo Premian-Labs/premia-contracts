@@ -7,7 +7,6 @@ import {IERC173} from "@solidstate/contracts/access/IERC173.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155EnumerableInternal, ERC1155EnumerableStorage, EnumerableSet} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
-import {ERC1155BaseStorage} from "@solidstate/contracts/token/ERC1155/base/ERC1155BaseStorage.sol";
 import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
 
 import {PoolStorage} from "./PoolStorage.sol";
