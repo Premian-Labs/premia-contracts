@@ -16,8 +16,12 @@ import {
 } from '../../test/utils/uniswap';
 
 import {
+  FEE_APY,
+  ONE_YEAR,
   DECIMALS_BASE,
   DECIMALS_UNDERLYING,
+  formatUnderlying,
+  formatBase,
   parseBase,
   parseOption,
   parseUnderlying,
@@ -452,146 +456,545 @@ export function describeBehaviorOfPoolIO({
     });
 
     describe('#reassign', function () {
-      for (const isCall of [true, false]) {
-        describe(isCall ? 'call' : 'put', () => {
-          it('deducts amount withdrawn plus fee from total TVL and amount withdrawn plus total premium paid from user TVL', async () => {
-            const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
-            const amount = parseUnderlying('1');
+      describe('call option', () => {
+        it('transfers freed capital to underwriter', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
 
-            await p.purchaseOption(
-              lp1,
-              buyer,
-              amount,
-              maturity,
-              strike64x64,
-              isCall,
-            );
-
-            await p.depositLiquidity(
-              lp2,
-              isCall
-                ? parseUnderlying('1').mul(2)
-                : parseBase('1').mul(fixedToNumber(strike64x64)).mul(2),
-              isCall,
-            );
-
-            await ethers.provider.send('evm_increaseTime', [25 * 3600]);
-
-            const shortTokenId = formatTokenId({
-              tokenType: getShort(isCall),
-              maturity,
-              strike64x64,
-            });
-
-            const shortTokenBalance = await instance.balanceOf(
-              lp1.address,
-              shortTokenId,
-            );
-
-            const tvlKey = isCall ? 'underlyingTVL' : 'baseTVL';
-
-            const oldUserTVL = (
-              await instance.callStatic.getUserTVL(lp1.address)
-            )[tvlKey];
-            const oldTotalTVL = (await instance.callStatic.getTotalTVL())[
-              tvlKey
-            ];
-
-            const tx = await instance
-              .connect(lp1)
-              .reassign(shortTokenId, shortTokenBalance);
-
-            const receipt = await tx.wait();
-
-            const transferEvent = (
-              isCall ? p.underlying : p.base
-            ).interface.parseLog(
-              receipt.logs.find(
-                (l) =>
-                  l.topics[0] ==
-                  '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef',
-              )!,
-            );
-
-            const purchaseEvent = receipt.events!.find(
-              (e) => e.event == 'Purchase',
-            )!;
-
-            const { value: amountOut } = transferEvent.args!;
-            const { baseCost, feeCost } = purchaseEvent.args!;
-
-            const newUserTVL = (
-              await instance.callStatic.getUserTVL(lp1.address)
-            )[tvlKey];
-            const newTotalTVL = (await instance.callStatic.getTotalTVL())[
-              tvlKey
-            ];
-
-            expect(newUserTVL).to.equal(
-              oldUserTVL.sub(baseCost).sub(feeCost).sub(amountOut),
-            );
-
-            expect(newTotalTVL).to.equal(
-              oldTotalTVL.sub(amountOut).sub(feeCost),
-            );
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
           });
 
-          it('should successfully reassign option to another LP', async () => {
-            const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
-            const amount = parseUnderlying('1');
+          await p.depositLiquidity(lp1, amount, isCall);
 
-            await p.purchaseOption(
-              lp1,
-              buyer,
+          await underlying.mint(buyer.address, parseUnderlying('100'));
+          await underlying
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
               amount,
-              maturity,
-              strike64x64,
               isCall,
+              ethers.constants.MaxUint256,
             );
 
-            await p.depositLiquidity(
-              lp2,
-              isCall
-                ? parseUnderlying('1').mul(2)
-                : parseBase('1').mul(fixedToNumber(strike64x64)).mul(2),
-              isCall,
-            );
+          await p.depositLiquidity(lp2, amount, isCall);
 
-            await ethers.provider.send('evm_increaseTime', [25 * 3600]);
+          const oldBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
 
-            const shortTokenId = formatTokenId({
-              tokenType: getShort(isCall),
-              maturity,
-              strike64x64,
-            });
+          const contractSizeReassigned = oldBalance.div(ethers.constants.Two);
 
-            const shortTokenBalance = await instance.balanceOf(
-              lp1.address,
-              shortTokenId,
-            );
+          const oldContractBalance = await underlying.callStatic.balanceOf(
+            instance.address,
+          );
+          const oldLPBalance = await underlying.callStatic.balanceOf(
+            lp1.address,
+          );
 
-            await instance
-              .connect(lp1)
-              .withdrawAllAndReassignBatch(
-                isCall,
-                [shortTokenId],
-                [shortTokenBalance],
-              );
+          const tx = await instance
+            .connect(lp1)
+            .reassign(shortTokenId, contractSizeReassigned);
 
-            expect(
-              await instance.balanceOf(lp1.address, getFreeLiqTokenId(isCall)),
-            ).to.eq(0);
-            expect(await instance.balanceOf(lp1.address, shortTokenId)).to.eq(
-              0,
-            );
-            expect(await instance.balanceOf(lp2.address, shortTokenId)).to.eq(
-              shortTokenBalance,
-            );
-          });
+          const {
+            blockNumber: reassignBlockNumber,
+            events,
+            logs,
+          } = await tx.wait();
+          const { timestamp: reassignTimestamp } =
+            await ethers.provider.getBlock(reassignBlockNumber);
+
+          const purchaseEvent = events!.find((e) => e.event == 'Purchase')!;
+
+          const { baseCost, feeCost } = purchaseEvent.args!;
+
+          const apyFeeRemaining = maturity
+            .sub(ethers.BigNumber.from(reassignTimestamp))
+            .mul(contractSizeReassigned)
+            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .div(ethers.utils.parseEther(ONE_YEAR.toString()));
+
+          const newContractBalance = await underlying.callStatic.balanceOf(
+            instance.address,
+          );
+          const newLPBalance = await underlying.callStatic.balanceOf(
+            lp1.address,
+          );
+
+          expect(newContractBalance).to.almost(
+            oldContractBalance
+              .sub(contractSizeReassigned)
+              .add(baseCost)
+              .add(feeCost)
+              .sub(apyFeeRemaining),
+          );
+          expect(newLPBalance).to.almost(
+            oldLPBalance
+              .add(contractSizeReassigned)
+              .sub(baseCost)
+              .sub(feeCost)
+              .add(apyFeeRemaining),
+          );
         });
-      }
+
+        it('assigns short position to new underwriter', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await p.depositLiquidity(lp1, amount, isCall);
+
+          await underlying.mint(buyer.address, parseUnderlying('100'));
+          await underlying
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await p.depositLiquidity(lp2, amount, isCall);
+
+          const oldBalanceLP1 = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+          const oldBalanceLP2 = await instance.callStatic.balanceOf(
+            lp2.address,
+            shortTokenId,
+          );
+          const oldSupply = await instance.callStatic.totalSupply(shortTokenId);
+
+          const contractSizeReassigned = oldBalanceLP1.div(
+            ethers.constants.Two,
+          );
+
+          await instance
+            .connect(lp1)
+            .reassign(shortTokenId, contractSizeReassigned);
+
+          const newBalanceLP1 = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+          const newBalanceLP2 = await instance.callStatic.balanceOf(
+            lp2.address,
+            shortTokenId,
+          );
+          const newSupply = await instance.callStatic.totalSupply(shortTokenId);
+
+          expect(newBalanceLP1).to.equal(
+            oldBalanceLP1.sub(contractSizeReassigned),
+          );
+          expect(newBalanceLP2).to.equal(
+            oldBalanceLP2.add(contractSizeReassigned),
+          );
+          expect(newSupply).to.equal(oldSupply);
+        });
+
+        it('deducts amount withdrawn from total TVL and user TVL', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await p.depositLiquidity(lp1, amount, isCall);
+
+          await underlying.mint(buyer.address, parseUnderlying('100'));
+          await underlying
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await p.depositLiquidity(lp2, amount, isCall);
+
+          const oldBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+          const oldSupply = await instance.callStatic.totalSupply(shortTokenId);
+          await ethers.provider.send('evm_increaseTime', [24 * 3600]);
+          await instance
+            .connect(lp1)
+            .withdraw(
+              await instance.callStatic.balanceOf(
+                lp1.address,
+                getFreeLiqTokenId(isCall),
+              ),
+              isCall,
+            );
+
+          const contractSizeReassigned = oldBalance.div(ethers.constants.Two);
+
+          const { underlyingTVL: oldUserTVL } =
+            await instance.callStatic.getUserTVL(lp1.address);
+          const { underlyingTVL: oldTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          const tx = await instance
+            .connect(lp1)
+            .reassign(shortTokenId, contractSizeReassigned);
+
+          const {
+            blockNumber: reassignBlockNumber,
+            events,
+            logs,
+          } = await tx.wait();
+          const { timestamp: reassignTimestamp } =
+            await ethers.provider.getBlock(reassignBlockNumber);
+
+          const purchaseEvent = events!.find((e) => e.event == 'Purchase')!;
+
+          const { baseCost, feeCost } = purchaseEvent.args!;
+
+          const apyFeeRemaining = maturity
+            .sub(ethers.BigNumber.from(reassignTimestamp))
+            .mul(contractSizeReassigned)
+            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .div(ethers.utils.parseEther(ONE_YEAR.toString()));
+
+          const { underlyingTVL: newUserTVL } =
+            await instance.callStatic.getUserTVL(lp1.address);
+          const { underlyingTVL: newTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          expect(newUserTVL).to.almost(
+            oldUserTVL.sub(contractSizeReassigned).sub(apyFeeRemaining),
+          );
+          expect(newTotalTVL).to.almost(
+            oldTotalTVL
+              .sub(contractSizeReassigned)
+              .add(baseCost)
+              .sub(apyFeeRemaining)
+              .sub(apyFeeRemaining),
+          );
+        });
+      });
+
+      describe('put option', () => {
+        it('transfers freed capital to underwriter', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await p.depositLiquidity(
+            lp1,
+            parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
+            isCall,
+          );
+
+          await base.mint(buyer.address, parseBase('10000'));
+          await base
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await p.depositLiquidity(
+            lp2,
+            parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
+            isCall,
+          );
+
+          const oldBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+
+          const contractSizeReassigned = oldBalance.div(ethers.constants.Two);
+          const tokenAmount = parseBase(
+            formatUnderlying(contractSizeReassigned),
+          ).mul(fixedToNumber(strike64x64));
+
+          const oldContractBalance = await base.callStatic.balanceOf(
+            instance.address,
+          );
+          const oldLPBalance = await base.callStatic.balanceOf(lp1.address);
+
+          const tx = await instance
+            .connect(lp1)
+            .reassign(shortTokenId, contractSizeReassigned);
+
+          const {
+            blockNumber: reassignBlockNumber,
+            events,
+            logs,
+          } = await tx.wait();
+          const { timestamp: reassignTimestamp } =
+            await ethers.provider.getBlock(reassignBlockNumber);
+
+          const purchaseEvent = events!.find((e) => e.event == 'Purchase')!;
+
+          const { baseCost, feeCost } = purchaseEvent.args!;
+
+          const apyFeeRemaining = maturity
+            .sub(ethers.BigNumber.from(reassignTimestamp))
+            .mul(tokenAmount)
+            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .div(ethers.utils.parseEther(ONE_YEAR.toString()));
+
+          const newContractBalance = await base.callStatic.balanceOf(
+            instance.address,
+          );
+          const newLPBalance = await base.callStatic.balanceOf(lp1.address);
+
+          expect(newContractBalance).to.almost(
+            oldContractBalance
+              .sub(tokenAmount)
+              .add(baseCost)
+              .add(feeCost)
+              .sub(apyFeeRemaining),
+          );
+          expect(newLPBalance).to.almost(
+            oldLPBalance
+              .add(tokenAmount)
+              .sub(baseCost)
+              .sub(feeCost)
+              .add(apyFeeRemaining),
+          );
+        });
+
+        it('assigns short position to new underwriter', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await p.depositLiquidity(
+            lp1,
+            parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
+            isCall,
+          );
+
+          await base.mint(buyer.address, parseBase('10000'));
+          await base
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await p.depositLiquidity(
+            lp2,
+            parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
+            isCall,
+          );
+
+          const oldBalanceLP1 = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+          const oldBalanceLP2 = await instance.callStatic.balanceOf(
+            lp2.address,
+            shortTokenId,
+          );
+          const oldSupply = await instance.callStatic.totalSupply(shortTokenId);
+
+          const contractSizeReassigned = oldBalanceLP1.div(
+            ethers.constants.Two,
+          );
+
+          await instance
+            .connect(lp1)
+            .reassign(shortTokenId, contractSizeReassigned);
+
+          const newBalanceLP1 = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+          const newBalanceLP2 = await instance.callStatic.balanceOf(
+            lp2.address,
+            shortTokenId,
+          );
+          const newSupply = await instance.callStatic.totalSupply(shortTokenId);
+
+          expect(newBalanceLP1).to.equal(
+            oldBalanceLP1.sub(contractSizeReassigned),
+          );
+          expect(newBalanceLP2).to.equal(
+            oldBalanceLP2.add(contractSizeReassigned),
+          );
+          expect(newSupply).to.equal(oldSupply);
+        });
+
+        it('deducts amount withdrawn from total TVL and user TVL', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await p.depositLiquidity(
+            lp1,
+            parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
+            isCall,
+          );
+
+          await base.mint(buyer.address, parseBase('10000'));
+          await base
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await p.depositLiquidity(
+            lp2,
+            parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
+            isCall,
+          );
+          await ethers.provider.send('evm_increaseTime', [24 * 3600]);
+          await instance
+            .connect(lp1)
+            .withdraw(
+              await instance.callStatic.balanceOf(
+                lp1.address,
+                getFreeLiqTokenId(isCall),
+              ),
+              isCall,
+            );
+
+          const oldBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+          const oldSupply = await instance.callStatic.totalSupply(shortTokenId);
+
+          const contractSizeReassigned = oldBalance.div(ethers.constants.Two);
+          const tokenAmount = parseBase(
+            formatUnderlying(contractSizeReassigned),
+          ).mul(fixedToNumber(strike64x64));
+
+          const { baseTVL: oldUserTVL } = await instance.callStatic.getUserTVL(
+            lp1.address,
+          );
+          const { baseTVL: oldTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          const tx = await instance
+            .connect(lp1)
+            .reassign(shortTokenId, contractSizeReassigned);
+
+          const {
+            blockNumber: reassignBlockNumber,
+            events,
+            logs,
+          } = await tx.wait();
+          const { timestamp: reassignTimestamp } =
+            await ethers.provider.getBlock(reassignBlockNumber);
+
+          const purchaseEvent = events!.find((e) => e.event == 'Purchase')!;
+
+          const { baseCost, feeCost } = purchaseEvent.args!;
+
+          const apyFeeRemaining = maturity
+            .sub(ethers.BigNumber.from(reassignTimestamp))
+            .mul(tokenAmount)
+            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .div(ethers.utils.parseEther(ONE_YEAR.toString()));
+
+          const { baseTVL: newUserTVL } = await instance.callStatic.getUserTVL(
+            lp1.address,
+          );
+          const { baseTVL: newTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          expect(newUserTVL).to.almost(
+            oldUserTVL.sub(tokenAmount).sub(apyFeeRemaining),
+          );
+          expect(newTotalTVL).to.almost(
+            oldTotalTVL
+              .sub(tokenAmount)
+              .add(baseCost)
+              .sub(apyFeeRemaining)
+              .sub(apyFeeRemaining),
+          );
+        });
+      });
 
       describe('reverts if', () => {
         it('contract size is less than minimum', async () => {
