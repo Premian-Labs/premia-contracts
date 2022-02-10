@@ -332,21 +332,18 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         returns (uint256 totalLiquidity)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
-        ERC1155EnumerableStorage.Layout
-            storage erc1155EnumerableLayout = ERC1155EnumerableStorage.layout();
 
-        uint256 length = erc1155EnumerableLayout
-            .accountsByToken[shortTokenId]
-            .length();
+        EnumerableSet.AddressSet storage accounts = ERC1155EnumerableStorage
+            .layout()
+            .accountsByToken[shortTokenId];
+
+        uint256 length = accounts.length();
 
         for (uint256 i = 0; i < length; i++) {
-            address lp = erc1155EnumerableLayout
-                .accountsByToken[shortTokenId]
-                .at(i);
+            address lp = accounts.at(i);
+
             if (l.isBuyBackEnabled[lp]) {
-                totalLiquidity += ERC1155BaseStorage.layout().balances[
-                    shortTokenId
-                ][lp];
+                totalLiquidity += _balanceOf(lp, shortTokenId);
             }
         }
     }
