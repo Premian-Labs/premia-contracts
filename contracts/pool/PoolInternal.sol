@@ -135,7 +135,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @param args structured quote arguments
      * @return result quote result
      */
-    function _quote(PoolStorage.QuoteArgsInternal memory args)
+    function _quotePurchasePrice(PoolStorage.QuoteArgsInternal memory args)
         internal
         view
         returns (PoolStorage.QuoteResultInternal memory result)
@@ -211,7 +211,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         result.feeCost64x64 -= result.feeCost64x64.mul(discount64x64);
     }
 
-    function _sellQuote(PoolStorage.QuoteArgsInternal memory args)
+    function _quoteSalePrice(PoolStorage.QuoteArgsInternal memory args)
         internal
         view
         returns (int128 baseCost64x64, int128 feeCost64x64)
@@ -459,7 +459,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             );
         }
 
-        PoolStorage.QuoteResultInternal memory quote = _quote(
+        PoolStorage.QuoteResultInternal memory quote = _quotePurchasePrice(
             PoolStorage.QuoteArgsInternal(
                 account,
                 maturity,

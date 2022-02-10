@@ -181,7 +181,7 @@ contract PoolSell is IPoolSell, PoolInternal {
         bool isCall
     ) external view returns (int128 baseCost64x64, int128 feeCost64x64) {
         return
-            _sellQuote(
+            _quoteSalePrice(
                 PoolStorage.QuoteArgsInternal(
                     feePayer,
                     maturity,
@@ -211,7 +211,7 @@ contract PoolSell is IPoolSell, PoolInternal {
         {
             int128 newPrice64x64 = _update(l);
 
-            (int128 baseCost64x64, int128 feeCost64x64) = _sellQuote(
+            (int128 baseCost64x64, int128 feeCost64x64) = _quoteSalePrice(
                 PoolStorage.QuoteArgsInternal(
                     msg.sender,
                     maturity,
