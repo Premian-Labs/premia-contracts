@@ -407,20 +407,6 @@ export function describeBehaviorOfPoolIO({
     describe('#withdraw', function () {
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
-          it('should fail withdrawing if < 1 day after deposit', async () => {
-            await p.depositLiquidity(owner, 100, isCall);
-
-            await expect(instance.withdraw('100', isCall)).to.be.revertedWith(
-              'liq lock 1d',
-            );
-
-            await ethers.provider.send('evm_increaseTime', [23 * 3600]);
-
-            await expect(instance.withdraw('100', isCall)).to.be.revertedWith(
-              'liq lock 1d',
-            );
-          });
-
           it('should return underlying tokens withdrawn by sender', async () => {
             await p.depositLiquidity(owner, 100, isCall);
             expect(await p.getToken(isCall).balanceOf(owner.address)).to.eq(0);
@@ -445,6 +431,24 @@ export function describeBehaviorOfPoolIO({
           });
         });
       }
+
+      describe('reverts if', () => {
+        it('liquidity lock is in effect', async () => {
+          const isCall = false;
+
+          await p.depositLiquidity(owner, 100, isCall);
+
+          await expect(instance.withdraw('100', isCall)).to.be.revertedWith(
+            'liq lock 1d',
+          );
+
+          await ethers.provider.send('evm_increaseTime', [23 * 3600]);
+
+          await expect(instance.withdraw('100', isCall)).to.be.revertedWith(
+            'liq lock 1d',
+          );
+        });
+      });
     });
 
     describe('#reassign', function () {
