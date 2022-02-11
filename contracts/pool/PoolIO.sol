@@ -338,6 +338,14 @@ contract PoolIO is IPoolIO, PoolSwap {
             contractSize
         );
 
+        uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
+            contractSize,
+            strike64x64,
+            isCall
+        );
+
+        _subUserTVL(l, msg.sender, isCall, tokenAmount);
+
         _processAvailableFunds(msg.sender, collateralFreed, isCall, true, true);
     }
 

@@ -235,6 +235,8 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         // mint short option token for underwriter
         _mint(underwriter, shortTokenId, contractSize);
 
+        _addUserTVL(l, underwriter, isCall, tokenAmount);
+
         emit Underwrite(
             underwriter,
             longReceiver,
