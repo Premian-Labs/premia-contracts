@@ -244,6 +244,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
 
         _burn(account, longTokenId, contractSize);
+        _burn(account, shortTokenId, contractSize);
 
         uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
             contractSize,
@@ -261,8 +262,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
 
         collateralFreed = tokenAmount + rebate;
-
-        _burn(account, shortTokenId, contractSize);
 
         // TODO: account for TVL change
 
