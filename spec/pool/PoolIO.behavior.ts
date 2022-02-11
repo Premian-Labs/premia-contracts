@@ -28,6 +28,7 @@ import {
   getFreeLiqTokenId,
   getReservedLiqTokenId,
   getShort,
+  getLong,
   getStrike,
   getMaturity,
   PoolUtil,
@@ -1668,60 +1669,497 @@ export function describeBehaviorOfPoolIO({
     });
 
     describe('#annihilate', () => {
-      for (const isCall of [true, false]) {
-        describe(isCall ? 'call' : 'put', () => {
-          it('should successfully burn long and short tokens + withdraw collateral', async () => {
-            const maturity = await getMaturity(30);
-            const strike64x64 = fixedFromFloat(2);
-            const amount = parseUnderlying('1');
+      describe('call option', () => {
+        it('burns corresponding long and short tokens held by sender', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(30);
+          const strike64x64 = fixedFromFloat(2);
+          const amount = parseUnderlying('1');
 
-            const token = isCall ? underlying : base;
-            const toMint = isCall ? parseUnderlying('1') : parseBase('2');
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
 
-            await token.mint(lp1.address, toMint);
-            await token
-              .connect(lp1)
-              .approve(instance.address, ethers.constants.MaxUint256);
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
 
-            await instance
-              .connect(lp1)
-              .writeFrom(
-                lp1.address,
-                lp1.address,
-                maturity,
-                strike64x64,
-                amount,
-                isCall,
-              );
+          await underlying.mint(lp1.address, parseUnderlying('2'));
+          await underlying
+            .connect(lp1)
+            .approve(instance.address, ethers.constants.MaxUint256);
 
-            const tokenIds = getOptionTokenIds(
-              await getMaturity(30),
-              fixedFromFloat(2),
+          await instance
+            .connect(lp1)
+            .writeFrom(
+              lp1.address,
+              lp1.address,
+              maturity,
+              strike64x64,
+              amount,
               isCall,
             );
 
-            expect(await instance.balanceOf(lp1.address, tokenIds.long)).to.eq(
-              amount,
-            );
-            expect(await instance.balanceOf(lp1.address, tokenIds.short)).to.eq(
-              amount,
-            );
-            expect(await p.getToken(isCall).balanceOf(lp1.address)).to.eq(0);
+          await ethers.provider.send('evm_increaseTime', [23 * 3600]);
 
-            await instance.connect(lp1).annihilate(tokenIds.short, amount);
+          const contractSizeAnnihilated = amount.div(ethers.constants.Two);
 
-            expect(await instance.balanceOf(lp1.address, tokenIds.long)).to.eq(
-              0,
-            );
-            expect(await instance.balanceOf(lp1.address, tokenIds.short)).to.eq(
-              0,
-            );
-            expect(await p.getToken(isCall).balanceOf(lp1.address)).to.eq(
-              isCall ? amount : parseBase('2'),
-            );
-          });
+          const oldLongTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            longTokenId,
+          );
+          const oldShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+
+          await instance
+            .connect(lp1)
+            .annihilate(shortTokenId, contractSizeAnnihilated);
+
+          const newLongTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            longTokenId,
+          );
+          const newShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+
+          expect(newLongTokenBalance).to.equal(
+            oldLongTokenBalance.sub(contractSizeAnnihilated),
+          );
+          expect(newShortTokenBalance).to.equal(
+            oldShortTokenBalance.sub(contractSizeAnnihilated),
+          );
         });
-      }
+
+        it('transfers freed capital to sender', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(30);
+          const strike64x64 = fixedFromFloat(2);
+          const amount = parseUnderlying('1');
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await underlying.mint(lp1.address, parseUnderlying('2'));
+          await underlying
+            .connect(lp1)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(lp1)
+            .writeFrom(
+              lp1.address,
+              lp1.address,
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+            );
+
+          await ethers.provider.send('evm_increaseTime', [23 * 3600]);
+
+          const contractSizeAnnihilated = amount.div(ethers.constants.Two);
+
+          const oldContractBalance = await underlying.callStatic.balanceOf(
+            instance.address,
+          );
+          const oldLPBalance = await underlying.callStatic.balanceOf(
+            lp1.address,
+          );
+
+          const tx = await instance
+            .connect(lp1)
+            .annihilate(shortTokenId, contractSizeAnnihilated);
+
+          const { blockNumber: reassignBlockNumber } = await tx.wait();
+          const { timestamp: reassignTimestamp } =
+            await ethers.provider.getBlock(reassignBlockNumber);
+
+          const apyFeeRemaining = maturity
+            .sub(ethers.BigNumber.from(reassignTimestamp))
+            .mul(contractSizeAnnihilated)
+            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .div(ethers.utils.parseEther(ONE_YEAR.toString()));
+
+          const newContractBalance = await underlying.callStatic.balanceOf(
+            instance.address,
+          );
+          const newLPBalance = await underlying.callStatic.balanceOf(
+            lp1.address,
+          );
+
+          expect(newContractBalance).to.almost(
+            oldContractBalance
+              .sub(contractSizeAnnihilated)
+              .sub(apyFeeRemaining),
+          );
+          expect(newLPBalance).to.almost(
+            oldLPBalance.add(contractSizeAnnihilated).add(apyFeeRemaining),
+          );
+        });
+
+        it('deducts amount annihilated from total TVL and user TVL', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(30);
+          const strike64x64 = fixedFromFloat(2);
+          const amount = parseUnderlying('1');
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await underlying.mint(lp1.address, parseUnderlying('2'));
+          await underlying
+            .connect(lp1)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(lp1)
+            .writeFrom(
+              lp1.address,
+              lp1.address,
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+            );
+
+          await ethers.provider.send('evm_increaseTime', [23 * 3600]);
+
+          const contractSizeAnnihilated = amount.div(ethers.constants.Two);
+
+          const { underlyingTVL: oldUserTVL } =
+            await instance.callStatic.getUserTVL(lp1.address);
+          const { underlyingTVL: oldTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          const tx = await instance
+            .connect(lp1)
+            .annihilate(shortTokenId, contractSizeAnnihilated);
+
+          const { blockNumber: annihilateBlockNumber } = await tx.wait();
+          const { timestamp: annihilateTimestamp } =
+            await ethers.provider.getBlock(annihilateBlockNumber);
+
+          const apyFeeRemaining = maturity
+            .sub(ethers.BigNumber.from(annihilateTimestamp))
+            .mul(contractSizeAnnihilated)
+            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .div(ethers.utils.parseEther(ONE_YEAR.toString()));
+
+          const { underlyingTVL: newUserTVL } =
+            await instance.callStatic.getUserTVL(lp1.address);
+          const { underlyingTVL: newTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          expect(newUserTVL).to.almost(oldUserTVL.sub(contractSizeAnnihilated));
+          expect(newTotalTVL).to.almost(
+            oldTotalTVL.sub(contractSizeAnnihilated),
+          );
+        });
+      });
+
+      describe('put option', () => {
+        it('burns corresponding long and short tokens held by sender', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(30);
+          const strike64x64 = fixedFromFloat(2);
+          const amount = parseUnderlying('1');
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await base.mint(lp1.address, parseBase('10000'));
+          await base
+            .connect(lp1)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(lp1)
+            .writeFrom(
+              lp1.address,
+              lp1.address,
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+            );
+
+          await ethers.provider.send('evm_increaseTime', [23 * 3600]);
+
+          const contractSizeAnnihilated = amount.div(ethers.constants.Two);
+
+          const oldLongTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            longTokenId,
+          );
+          const oldShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+
+          await instance
+            .connect(lp1)
+            .annihilate(shortTokenId, contractSizeAnnihilated);
+
+          const newLongTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            longTokenId,
+          );
+          const newShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+
+          expect(newLongTokenBalance).to.equal(
+            oldLongTokenBalance.sub(contractSizeAnnihilated),
+          );
+          expect(newShortTokenBalance).to.equal(
+            oldShortTokenBalance.sub(contractSizeAnnihilated),
+          );
+        });
+
+        it('transfers freed capital to sender', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(30);
+          const strike64x64 = fixedFromFloat(2);
+          const amount = parseUnderlying('1');
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await base.mint(lp1.address, parseBase('10000'));
+          await base
+            .connect(lp1)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(lp1)
+            .writeFrom(
+              lp1.address,
+              lp1.address,
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+            );
+
+          await ethers.provider.send('evm_increaseTime', [23 * 3600]);
+
+          const contractSizeAnnihilated = amount.div(ethers.constants.Two);
+          const tokenAmount = parseBase(
+            formatUnderlying(contractSizeAnnihilated),
+          ).mul(fixedToNumber(strike64x64));
+
+          const oldContractBalance = await base.callStatic.balanceOf(
+            instance.address,
+          );
+          const oldLPBalance = await base.callStatic.balanceOf(lp1.address);
+
+          const tx = await instance
+            .connect(lp1)
+            .annihilate(shortTokenId, contractSizeAnnihilated);
+
+          const { blockNumber: annihilateBlockNumber } = await tx.wait();
+          const { timestamp: annihilateTimestamp } =
+            await ethers.provider.getBlock(annihilateBlockNumber);
+
+          const apyFeeRemaining = maturity
+            .sub(ethers.BigNumber.from(annihilateTimestamp))
+            .mul(tokenAmount)
+            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .div(ethers.utils.parseEther(ONE_YEAR.toString()));
+
+          const newContractBalance = await base.callStatic.balanceOf(
+            instance.address,
+          );
+          const newLPBalance = await base.callStatic.balanceOf(lp1.address);
+
+          expect(newContractBalance).to.almost(
+            oldContractBalance.sub(tokenAmount).sub(apyFeeRemaining),
+          );
+          expect(newLPBalance).to.almost(
+            oldLPBalance.add(tokenAmount).add(apyFeeRemaining),
+          );
+        });
+
+        it('deducts amount annihilated from total TVL and user TVL', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(30);
+          const strike64x64 = fixedFromFloat(2);
+          const amount = parseUnderlying('1');
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await base.mint(lp1.address, parseBase('10000'));
+          await base
+            .connect(lp1)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(lp1)
+            .writeFrom(
+              lp1.address,
+              lp1.address,
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+            );
+
+          await ethers.provider.send('evm_increaseTime', [23 * 3600]);
+
+          const contractSizeAnnihilated = amount.div(ethers.constants.Two);
+          const tokenAmount = parseBase(
+            formatUnderlying(contractSizeAnnihilated),
+          ).mul(fixedToNumber(strike64x64));
+
+          const { baseTVL: oldUserTVL } = await instance.callStatic.getUserTVL(
+            lp1.address,
+          );
+          const { baseTVL: oldTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          const tx = await instance
+            .connect(lp1)
+            .annihilate(shortTokenId, contractSizeAnnihilated);
+
+          const { blockNumber: annihilateBlockNumber } = await tx.wait();
+          const { timestamp: annihilateTimestamp } =
+            await ethers.provider.getBlock(annihilateBlockNumber);
+
+          const apyFeeRemaining = maturity
+            .sub(ethers.BigNumber.from(annihilateTimestamp))
+            .mul(tokenAmount)
+            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .div(ethers.utils.parseEther(ONE_YEAR.toString()));
+
+          const { baseTVL: newUserTVL } = await instance.callStatic.getUserTVL(
+            lp1.address,
+          );
+          const { baseTVL: newTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          expect(newUserTVL).to.almost(oldUserTVL.sub(tokenAmount));
+          expect(newTotalTVL).to.almost(oldTotalTVL.sub(tokenAmount));
+        });
+      });
+
+      describe('reverts if', () => {
+        it('sender has insufficient long token balance', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(30);
+          const strike64x64 = fixedFromFloat(2);
+          const amount = parseUnderlying('1');
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await base.mint(lp1.address, parseBase('10000'));
+          await base
+            .connect(lp1)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(lp1)
+            .writeFrom(
+              lp1.address,
+              lp1.address,
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+            );
+
+          await instance
+            .connect(lp1)
+            .safeTransferFrom(
+              lp1.address,
+              lp2.address,
+              longTokenId,
+              ethers.constants.One,
+              '0x',
+            );
+
+          await expect(
+            instance.connect(lp1).annihilate(longTokenId, amount),
+          ).to.be.revertedWith('ERC1155: burn amount exceeds balances');
+        });
+
+        it('sender has insufficient short token balance', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(30);
+          const strike64x64 = fixedFromFloat(2);
+          const amount = parseUnderlying('1');
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await base.mint(lp1.address, parseBase('10000'));
+          await base
+            .connect(lp1)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(lp1)
+            .writeFrom(
+              lp1.address,
+              lp1.address,
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+            );
+
+          await instance
+            .connect(lp1)
+            .safeTransferFrom(
+              lp1.address,
+              lp2.address,
+              shortTokenId,
+              ethers.constants.One,
+              '0x',
+            );
+
+          await expect(
+            instance.connect(lp1).annihilate(shortTokenId, amount),
+          ).to.be.revertedWith('ERC1155: burn amount exceeds balances');
+        });
+      });
     });
 
     describe('#claimRewards', () => {
