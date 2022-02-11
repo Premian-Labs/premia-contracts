@@ -217,8 +217,6 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             _creditMessageValue(tokenAmount + intervalApyFee, isCall)
         );
 
-        // TODO: account for TVL change
-
         longTokenId = PoolStorage.formatTokenId(
             PoolStorage.getTokenType(isCall, true),
             maturity,
@@ -229,6 +227,8 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             maturity,
             strike64x64
         );
+
+        l.feesReserved[underwriter][shortTokenId] += intervalApyFee;
 
         // mint long option token for designated receiver
         _mint(longReceiver, longTokenId, contractSize);
