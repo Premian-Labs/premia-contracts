@@ -252,14 +252,17 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             isCall
         );
 
-        uint256 rebate = _applyApyFeeRebate(
-            l,
-            account,
-            shortTokenId,
-            contractSize,
-            _calculateApyFee(tokenAmount, maturity),
-            isCall
-        );
+        uint256 intervalApyFee = _calculateApyFee(tokenAmount, maturity);
+
+        uint256 rebate = intervalApyFee +
+            _applyApyFeeRebate(
+                l,
+                account,
+                shortTokenId,
+                contractSize,
+                intervalApyFee,
+                isCall
+            );
 
         collateralFreed = tokenAmount + rebate;
 
@@ -850,14 +853,15 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) internal {
         // track prepaid APY fees
 
-        uint256 rebate = _applyApyFeeRebate(
-            l,
-            underwriter,
-            shortTokenId,
-            interval.contractSize,
-            interval.apyFee,
-            isCallPool
-        );
+        uint256 rebate = interval.apyFee +
+            _applyApyFeeRebate(
+                l,
+                underwriter,
+                shortTokenId,
+                interval.contractSize,
+                interval.apyFee,
+                isCallPool
+            );
 
         // burn short option tokens from underwriter
         _burn(underwriter, shortTokenId, interval.contractSize);
@@ -940,15 +944,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         // deduct fees for time not elapsed and apply rebate to fees accrued
 
-        rebate =
-            intervalApyFee +
-            _fetchFeeDiscount64x64(underwriter).mulu(
-                intervalFeesReserved - intervalApyFee
-            );
+        rebate = _fetchFeeDiscount64x64(underwriter).mulu(
+            intervalFeesReserved - intervalApyFee
+        );
 
         _processAvailableFunds(
             FEE_RECEIVER_ADDRESS,
-            intervalFeesReserved - rebate,
+            intervalFeesReserved - intervalApyFee - rebate,
             isCallPool,
             true,
             false
@@ -1380,20 +1382,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             l.feesReserved[to][id] += intervalApyFee;
 
             if (l.getReinvestmentStatus(from, isCall)) {
-                _addToDepositQueue(from, rebate - intervalApyFee, isCall);
+                if (rebate > 0) {
+                    _addToDepositQueue(from, rebate, isCall);
+                }
 
-                _subUserTVL(
-                    l,
-                    from,
-                    isCall,
-                    collateral - (rebate - intervalApyFee)
-                );
+                _subUserTVL(l, from, isCall, collateral - rebate);
             } else {
-                _mint(
-                    from,
-                    _getReservedLiquidityTokenId(isCall),
-                    rebate - intervalApyFee
-                );
+                _mint(from, _getReservedLiquidityTokenId(isCall), rebate);
 
                 _subUserTVL(l, from, isCall, collateral);
             }
