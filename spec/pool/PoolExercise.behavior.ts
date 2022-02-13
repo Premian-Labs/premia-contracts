@@ -27,6 +27,8 @@ import { createUniswap, IUniswap } from '../../test/utils/uniswap';
 
 interface PoolExerciseBehaviorArgs {
   deploy: () => Promise<IPool>;
+  getBase: () => Promise<ERC20Mock>;
+  getUnderlying: () => Promise<ERC20Mock>;
   getFeeDiscount: () => Promise<FeeDiscount>;
   getXPremia: () => Promise<ERC20Mock>;
   getPoolUtil: () => Promise<PoolUtil>;
@@ -36,6 +38,8 @@ const ONE_MONTH = 30 * 24 * 3600;
 
 export function describeBehaviorOfPoolExercise({
   deploy,
+  getUnderlying,
+  getBase,
   getFeeDiscount,
   getXPremia,
   getPoolUtil,
@@ -49,6 +53,8 @@ export function describeBehaviorOfPoolExercise({
     // TODO: pass as arg
     let feeReceiver: SignerWithAddress;
     let instance: IPool;
+    let base: ERC20Mock;
+    let underlying: ERC20Mock;
     let p: PoolUtil;
     let uniswap: IUniswap;
 
@@ -62,6 +68,8 @@ export function describeBehaviorOfPoolExercise({
       // TODO: don't
       p = await getPoolUtil();
       uniswap = await createUniswap(owner);
+      base = await getBase();
+      underlying = await getUnderlying();
     });
 
     describe('#exerciseFrom', function () {
@@ -290,184 +298,453 @@ export function describeBehaviorOfPoolExercise({
     });
 
     describe('#processExpired', function () {
-      for (const isCall of [true, false]) {
-        describe(isCall ? 'call' : 'put', () => {
-          it('should successfully process expired option OTM', async () => {
-            const maturity = await getMaturity(20);
-            const strike = getStrike(isCall, 2000);
-            const strike64x64 = fixedFromFloat(strike);
-            const amount = parseUnderlying('1');
+      describe('call option', () => {
+        it('processes expired option OTM', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(20);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
 
-            const initialBuyerAmount = isCall
-              ? parseUnderlying('100')
-              : parseBase('10000');
-
-            const quote = await p.purchaseOption(
-              lp1,
-              buyer,
-              amount,
-              maturity,
-              strike64x64,
-              isCall,
-            );
-
-            await ethers.provider.send('evm_setNextBlockTimestamp', [
-              maturity.add(100).toNumber(),
-            ]);
-
-            const freeLiquidityTokenId = getFreeLiqTokenId(isCall);
-            const { long: longTokenId, short: shortTokenId } =
-              getOptionTokenIds(maturity, strike64x64, isCall);
-
-            const price = isCall ? strike * 0.7 : strike * 1.4;
-            await p.setUnderlyingPrice(
-              ethers.utils.parseUnits(price.toString(), 8),
-            );
-
-            // Free liq = premia paid after purchase
-            expect(
-              Number(
-                formatOption(
-                  await instance.balanceOf(lp1.address, freeLiquidityTokenId),
-                  isCall,
-                ),
-              ),
-            ).to.almost(fixedToNumber(quote.baseCost64x64));
-
-            const oldFreeLiquidity = isCall
-              ? amount
-              : parseBase(formatUnderlying(amount)).mul(
-                  fixedToNumber(strike64x64),
-                );
-
-            // Process expired
-            await instance
-              .connect(buyer)
-              .processExpired(longTokenId, parseUnderlying('1'));
-
-            expect(await instance.balanceOf(buyer.address, longTokenId)).to.eq(
-              0,
-            );
-            expect(await instance.balanceOf(lp1.address, shortTokenId)).to.eq(
-              0,
-            );
-
-            // Buyer balance = initial amount - premia paid
-            expect(
-              Number(
-                formatOption(
-                  await p.getToken(isCall).balanceOf(buyer.address),
-                  isCall,
-                ),
-              ),
-            ).to.almost(
-              Number(formatOption(initialBuyerAmount, isCall)) -
-                fixedToNumber(quote.baseCost64x64) -
-                fixedToNumber(quote.feeCost64x64),
-            );
-
-            const newFreeLiquidity = await instance.balanceOf(
-              lp1.address,
-              freeLiquidityTokenId,
-            );
-
-            // Free liq = initial amount + premia paid
-            expect(Number(formatOption(newFreeLiquidity, isCall))).to.almost(
-              Number(formatOption(oldFreeLiquidity, isCall)) +
-                fixedToNumber(quote.baseCost64x64),
-            );
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
           });
 
-          it('should successfully process expired option ITM', async () => {
-            const maturity = await getMaturity(20);
-            const strike = getStrike(isCall, 2000);
-            const strike64x64 = fixedFromFloat(strike);
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
 
-            const amount = parseUnderlying('1');
-            const oldFreeLiquidity = isCall
-              ? amount
-              : parseBase(formatUnderlying(amount)).mul(
-                  fixedToNumber(strike64x64),
-                );
-            const initialBuyerAmount = isCall
-              ? parseUnderlying('100')
-              : parseBase('10000');
+          const freeLiquidityTokenId = getFreeLiqTokenId(isCall);
 
-            const quote = await p.purchaseOption(
-              lp1,
-              buyer,
-              amount,
+          await p.depositLiquidity(lp1, amount, isCall);
+
+          await underlying.mint(buyer.address, parseUnderlying('100'));
+          await underlying
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
               maturity,
               strike64x64,
+              amount,
               isCall,
+              ethers.constants.MaxUint256,
             );
 
-            await ethers.provider.send('evm_setNextBlockTimestamp', [
-              maturity.add(100).toNumber(),
-            ]);
+          await ethers.provider.send('evm_setNextBlockTimestamp', [
+            maturity.add(100).toNumber(),
+          ]);
 
-            const freeLiquidityTokenId = getFreeLiqTokenId(isCall);
-            const { long: longTokenId, short: shortTokenId } =
-              getOptionTokenIds(maturity, strike64x64, isCall);
+          const contractSizeProcessed = amount.div(ethers.constants.Two);
 
-            const price = isCall ? strike * 1.4 : strike * 0.7;
-            await p.setUnderlyingPrice(
-              ethers.utils.parseUnits(price.toString(), 8),
-            );
+          const oldLongTokenSupply = await instance.callStatic.totalSupply(
+            longTokenId,
+          );
+          const oldShortTokenSupply = await instance.callStatic.totalSupply(
+            shortTokenId,
+          );
+          const oldBuyerLongTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            longTokenId,
+          );
+          const oldLPShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+          const oldLPFreeLiquidityBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            freeLiquidityTokenId,
+          );
 
-            // Free liq = premia paid after purchase
-            expect(
-              Number(
-                formatOption(
-                  await instance.balanceOf(lp1.address, freeLiquidityTokenId),
-                  isCall,
-                ),
-              ),
-            ).to.almost(fixedToNumber(quote.baseCost64x64));
+          await instance
+            .connect(owner)
+            .processExpired(longTokenId, contractSizeProcessed);
 
-            // Process expired
-            await instance
-              .connect(buyer)
-              .processExpired(longTokenId, parseUnderlying('1'));
+          const newLongTokenSupply = await instance.callStatic.totalSupply(
+            longTokenId,
+          );
+          const newShortTokenSupply = await instance.callStatic.totalSupply(
+            shortTokenId,
+          );
+          const newBuyerLongTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            longTokenId,
+          );
+          const newLPShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+          const newLPFreeLiquidityBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            freeLiquidityTokenId,
+          );
 
-            expect(await instance.balanceOf(buyer.address, longTokenId)).to.eq(
-              0,
-            );
-            expect(await instance.balanceOf(lp1.address, shortTokenId)).to.eq(
-              0,
-            );
-
-            const exerciseValue = getExerciseValue(price, strike, 1, isCall);
-
-            // Buyer balance = initial amount - premia paid + exercise value
-            expect(
-              Number(
-                formatOption(
-                  await p.getToken(isCall).balanceOf(buyer.address),
-                  isCall,
-                ),
-              ),
-            ).to.almost(
-              Number(formatOption(initialBuyerAmount, isCall)) -
-                fixedToNumber(quote.baseCost64x64) -
-                fixedToNumber(quote.feeCost64x64) +
-                exerciseValue,
-            );
-
-            const newFreeLiquidity = await instance.balanceOf(
-              lp1.address,
-              freeLiquidityTokenId,
-            );
-
-            // Free liq = initial amount + premia paid - exerciseValue
-            expect(Number(formatOption(newFreeLiquidity, isCall))).to.almost(
-              Number(formatOption(oldFreeLiquidity, isCall)) +
-                fixedToNumber(quote.baseCost64x64) -
-                exerciseValue,
-            );
-          });
+          expect(newLongTokenSupply).to.equal(
+            oldLongTokenSupply.sub(contractSizeProcessed),
+          );
+          expect(newShortTokenSupply).to.equal(
+            oldShortTokenSupply.sub(contractSizeProcessed),
+          );
+          expect(newBuyerLongTokenBalance).to.equal(
+            oldBuyerLongTokenBalance.sub(contractSizeProcessed),
+          );
+          expect(newLPShortTokenBalance).to.equal(
+            oldLPShortTokenBalance.sub(contractSizeProcessed),
+          );
+          expect(newLPFreeLiquidityBalance).to.equal(
+            oldLPFreeLiquidityBalance.add(contractSizeProcessed),
+          );
         });
-      }
+
+        it('processes expired option ITM', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(20);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const freeLiquidityTokenId = getFreeLiqTokenId(isCall);
+
+          await p.depositLiquidity(lp1, amount, isCall);
+
+          await underlying.mint(buyer.address, parseUnderlying('100'));
+          await underlying
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await ethers.provider.send('evm_setNextBlockTimestamp', [
+            maturity.add(100).toNumber(),
+          ]);
+
+          const price = strike * 1.4;
+          await p.setUnderlyingPrice(
+            ethers.utils.parseUnits(price.toString(), 8),
+          );
+
+          const contractSizeProcessed = amount.div(ethers.constants.Two);
+
+          const oldLongTokenSupply = await instance.callStatic.totalSupply(
+            longTokenId,
+          );
+          const oldShortTokenSupply = await instance.callStatic.totalSupply(
+            shortTokenId,
+          );
+          const oldBuyerLongTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            longTokenId,
+          );
+          const oldLPShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+          const oldLPFreeLiquidityBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            freeLiquidityTokenId,
+          );
+
+          await instance
+            .connect(owner)
+            .processExpired(longTokenId, contractSizeProcessed);
+
+          const newLongTokenSupply = await instance.callStatic.totalSupply(
+            longTokenId,
+          );
+          const newShortTokenSupply = await instance.callStatic.totalSupply(
+            shortTokenId,
+          );
+          const newBuyerLongTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            longTokenId,
+          );
+          const newLPShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+          const newLPFreeLiquidityBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            freeLiquidityTokenId,
+          );
+
+          const exerciseValue = getExerciseValue(price, strike, 0.5, isCall);
+
+          expect(newLongTokenSupply).to.equal(
+            oldLongTokenSupply.sub(contractSizeProcessed),
+          );
+          expect(newShortTokenSupply).to.equal(
+            oldShortTokenSupply.sub(contractSizeProcessed),
+          );
+          expect(newBuyerLongTokenBalance).to.equal(
+            oldBuyerLongTokenBalance.sub(contractSizeProcessed),
+          );
+          expect(newLPShortTokenBalance).to.equal(
+            oldLPShortTokenBalance.sub(contractSizeProcessed),
+          );
+          expect(newLPFreeLiquidityBalance).to.equal(
+            oldLPFreeLiquidityBalance
+              .add(contractSizeProcessed)
+              .sub(parseUnderlying(exerciseValue.toString())),
+          );
+        });
+      });
+
+      describe('put option', () => {
+        it('processes expired option OTM', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(20);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const freeLiquidityTokenId = getFreeLiqTokenId(isCall);
+
+          await p.depositLiquidity(
+            lp1,
+            parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
+            isCall,
+          );
+
+          await base.mint(buyer.address, parseBase('100000'));
+          await base
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await ethers.provider.send('evm_setNextBlockTimestamp', [
+            maturity.add(100).toNumber(),
+          ]);
+
+          const contractSizeProcessed = amount.div(ethers.constants.Two);
+          const tokenAmount = parseBase(
+            formatUnderlying(contractSizeProcessed),
+          ).mul(fixedToNumber(strike64x64));
+
+          const oldLongTokenSupply = await instance.callStatic.totalSupply(
+            longTokenId,
+          );
+          const oldShortTokenSupply = await instance.callStatic.totalSupply(
+            shortTokenId,
+          );
+          const oldBuyerLongTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            longTokenId,
+          );
+          const oldLPShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+          const oldLPFreeLiquidityBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            freeLiquidityTokenId,
+          );
+
+          await instance
+            .connect(owner)
+            .processExpired(longTokenId, contractSizeProcessed);
+
+          const newLongTokenSupply = await instance.callStatic.totalSupply(
+            longTokenId,
+          );
+          const newShortTokenSupply = await instance.callStatic.totalSupply(
+            shortTokenId,
+          );
+          const newBuyerLongTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            longTokenId,
+          );
+          const newLPShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+          const newLPFreeLiquidityBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            freeLiquidityTokenId,
+          );
+
+          expect(newLongTokenSupply).to.equal(
+            oldLongTokenSupply.sub(contractSizeProcessed),
+          );
+          expect(newShortTokenSupply).to.equal(
+            oldShortTokenSupply.sub(contractSizeProcessed),
+          );
+          expect(newBuyerLongTokenBalance).to.equal(
+            oldBuyerLongTokenBalance.sub(contractSizeProcessed),
+          );
+          expect(newLPShortTokenBalance).to.equal(
+            oldLPShortTokenBalance.sub(contractSizeProcessed),
+          );
+          expect(newLPFreeLiquidityBalance).to.equal(
+            oldLPFreeLiquidityBalance.add(tokenAmount),
+          );
+        });
+
+        it('processes expired option ITM', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(20);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const freeLiquidityTokenId = getFreeLiqTokenId(isCall);
+
+          await p.depositLiquidity(
+            lp1,
+            parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
+            isCall,
+          );
+
+          await base.mint(buyer.address, parseBase('100000'));
+          await base
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await ethers.provider.send('evm_setNextBlockTimestamp', [
+            maturity.add(100).toNumber(),
+          ]);
+
+          const price = strike * 0.7;
+          await p.setUnderlyingPrice(
+            ethers.utils.parseUnits(price.toString(), 8),
+          );
+
+          const contractSizeProcessed = amount.div(ethers.constants.Two);
+          const tokenAmount = parseBase(
+            formatUnderlying(contractSizeProcessed),
+          ).mul(fixedToNumber(strike64x64));
+
+          const oldLongTokenSupply = await instance.callStatic.totalSupply(
+            longTokenId,
+          );
+          const oldShortTokenSupply = await instance.callStatic.totalSupply(
+            shortTokenId,
+          );
+          const oldBuyerLongTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            longTokenId,
+          );
+          const oldLPShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+          const oldLPFreeLiquidityBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            freeLiquidityTokenId,
+          );
+
+          await instance
+            .connect(owner)
+            .processExpired(longTokenId, contractSizeProcessed);
+
+          const newLongTokenSupply = await instance.callStatic.totalSupply(
+            longTokenId,
+          );
+          const newShortTokenSupply = await instance.callStatic.totalSupply(
+            shortTokenId,
+          );
+          const newBuyerLongTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            longTokenId,
+          );
+          const newLPShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+          const newLPFreeLiquidityBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            freeLiquidityTokenId,
+          );
+
+          const exerciseValue = getExerciseValue(price, strike, 0.5, isCall);
+
+          expect(newLongTokenSupply).to.equal(
+            oldLongTokenSupply.sub(contractSizeProcessed),
+          );
+          expect(newShortTokenSupply).to.equal(
+            oldShortTokenSupply.sub(contractSizeProcessed),
+          );
+          expect(newBuyerLongTokenBalance).to.equal(
+            oldBuyerLongTokenBalance.sub(contractSizeProcessed),
+          );
+          expect(newLPShortTokenBalance).to.equal(
+            oldLPShortTokenBalance.sub(contractSizeProcessed),
+          );
+          expect(newLPFreeLiquidityBalance).to.equal(
+            oldLPFreeLiquidityBalance
+              .add(tokenAmount)
+              .sub(parseBase(exerciseValue.toString())),
+          );
+        });
+      });
 
       describe('reverts if', () => {
         it('option is not expired', async () => {
