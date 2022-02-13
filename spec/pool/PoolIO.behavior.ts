@@ -225,6 +225,33 @@ export function describeBehaviorOfPoolIO({
             'pool deposit cap reached',
           );
         });
+
+        it('increases user TVL and total TVL', async () => {
+          const isCall = true;
+          const amount = parseOption('10', isCall);
+
+          await underlying.mint(lp1.address, amount);
+          await underlying
+            .connect(lp1)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          const amountDeposited = amount.div(ethers.constants.Two);
+
+          const { underlyingTVL: oldUserTVL } =
+            await instance.callStatic.getUserTVL(lp1.address);
+          const { underlyingTVL: oldTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          await instance.connect(lp1).deposit(amountDeposited, isCall);
+
+          const { underlyingTVL: newUserTVL } =
+            await instance.callStatic.getUserTVL(lp1.address);
+          const { underlyingTVL: newTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          expect(newUserTVL).to.equal(oldUserTVL.add(amountDeposited));
+          expect(newTotalTVL).to.equal(oldTotalTVL.add(amountDeposited));
+        });
       });
 
       describe('put', () => {
@@ -237,6 +264,35 @@ export function describeBehaviorOfPoolIO({
           expect(
             await instance.balanceOf(owner.address, getFreeLiqTokenId(false)),
           ).to.eq(100);
+        });
+
+        it('increases user TVL and total TVL', async () => {
+          const isCall = false;
+          const amount = parseOption('10', isCall);
+
+          await base.mint(lp1.address, amount);
+          await base
+            .connect(lp1)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          const amountDeposited = amount.div(ethers.constants.Two);
+
+          const { baseTVL: oldUserTVL } = await instance.callStatic.getUserTVL(
+            lp1.address,
+          );
+          const { baseTVL: oldTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          await instance.connect(lp1).deposit(amountDeposited, isCall);
+
+          const { baseTVL: newUserTVL } = await instance.callStatic.getUserTVL(
+            lp1.address,
+          );
+          const { baseTVL: newTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          expect(newUserTVL).to.equal(oldUserTVL.add(amountDeposited));
+          expect(newTotalTVL).to.equal(oldTotalTVL.add(amountDeposited));
         });
       });
     });
@@ -433,6 +489,41 @@ export function describeBehaviorOfPoolIO({
           it('should successfully withdraw reserved liquidity', async () => {
             // ToDo
             expect(false);
+          });
+
+          it('decreases user TVL and total TVL', async () => {
+            const amount = parseOption('10', isCall);
+
+            await (isCall ? underlying : base).mint(
+              lp1.address,
+              isCall ? amount : parseBase('10000'),
+            );
+            await (isCall ? underlying : base)
+              .connect(lp1)
+              .approve(instance.address, ethers.constants.MaxUint256);
+
+            await instance.connect(lp1).deposit(amount, isCall);
+
+            await ethers.provider.send('evm_increaseTime', [24 * 3600 + 1]);
+
+            const amountWithdrawn = amount.div(ethers.constants.Two);
+
+            const tvlKey = isCall ? 'underlyingTVL' : 'baseTVL';
+
+            const { [tvlKey]: oldUserTVL } =
+              await instance.callStatic.getUserTVL(lp1.address);
+            const { [tvlKey]: oldTotalTVL } =
+              await instance.callStatic.getTotalTVL();
+
+            await instance.connect(lp1).withdraw(amountWithdrawn, isCall);
+
+            const { [tvlKey]: newUserTVL } =
+              await instance.callStatic.getUserTVL(lp1.address);
+            const { [tvlKey]: newTotalTVL } =
+              await instance.callStatic.getTotalTVL();
+
+            expect(newUserTVL).to.equal(oldUserTVL.sub(amountWithdrawn));
+            expect(newTotalTVL).to.equal(oldTotalTVL.sub(amountWithdrawn));
           });
         });
       }

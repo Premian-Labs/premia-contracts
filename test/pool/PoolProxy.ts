@@ -180,42 +180,6 @@ describe('PoolProxy', function () {
   describe('user TVL', () => {
     for (const isCall of [true, false]) {
       describe(isCall ? 'call' : 'put', () => {
-        it('should increase user TVL on deposit', async () => {
-          const amount = parseOption('10', isCall);
-          const amount2 = parseOption('5', isCall);
-          await p.depositLiquidity(lp1, amount, isCall);
-          await p.depositLiquidity(lp2, amount2, isCall);
-
-          const userTVL = await p.pool.getUserTVL(lp1.address);
-          const totalTVL = await p.pool.getTotalTVL();
-
-          expect(userTVL.underlyingTVL).to.eq(isCall ? amount : 0);
-          expect(userTVL.baseTVL).to.eq(isCall ? 0 : amount);
-          expect(totalTVL.underlyingTVL).to.eq(
-            isCall ? amount.add(amount2) : 0,
-          );
-          expect(totalTVL.baseTVL).to.eq(isCall ? 0 : amount.add(amount2));
-        });
-
-        it('should decrease user TVL on withdrawal', async () => {
-          const amount = parseOption('10', isCall);
-          await p.depositLiquidity(lp1, amount, isCall);
-
-          await increaseTimestamp(25 * 3600);
-
-          await p.pool.connect(lp1).withdraw(parseOption('3', isCall), isCall);
-
-          const userTVL = await p.pool.getUserTVL(lp1.address);
-          const totalTVL = await p.pool.getTotalTVL();
-
-          const amountLeft = parseOption('7', isCall);
-
-          expect(userTVL.underlyingTVL).to.eq(isCall ? amountLeft : 0);
-          expect(userTVL.baseTVL).to.eq(isCall ? 0 : amountLeft);
-          expect(totalTVL.underlyingTVL).to.eq(isCall ? amountLeft : 0);
-          expect(totalTVL.baseTVL).to.eq(isCall ? 0 : amountLeft);
-        });
-
         it('should not decrease user TVL if liquidity is used to underwrite option', async () => {
           const amountNb = isCall ? 10 : 100000;
           const amount = parseOption(amountNb.toString(), isCall);
