@@ -437,7 +437,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @param newPrice64x64 64x64 fixed point representation of current spot price
      * @return baseCost quantity of tokens required to reassign short position
      * @return feeCost quantity of tokens required to pay fees
-     * @return amountOut quantity of liquidity freed
+     * @return netCollateralFreed quantity of liquidity freed
      */
     function _reassign(
         PoolStorage.Layout storage l,
@@ -452,7 +452,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         returns (
             uint256 baseCost,
             uint256 feeCost,
-            uint256 amountOut
+            uint256 netCollateralFreed
         )
     {
         (baseCost, feeCost) = _purchase(
@@ -465,7 +465,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             newPrice64x64
         );
 
-        uint256 collateralFreed = _annihilate(
+        uint256 totalCollateralFreed = _annihilate(
             l,
             account,
             maturity,
@@ -474,7 +474,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             contractSize
         );
 
-        amountOut = collateralFreed - baseCost - feeCost;
+        netCollateralFreed = totalCollateralFreed - baseCost - feeCost;
     }
 
     /**
