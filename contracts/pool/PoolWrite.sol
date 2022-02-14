@@ -200,6 +200,8 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         PoolStorage.Layout storage l = PoolStorage.layout();
 
+        _verifyPurchase(maturity, strike64x64, isCall, _update(l));
+
         address token = l.getPoolToken(isCall);
 
         uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
