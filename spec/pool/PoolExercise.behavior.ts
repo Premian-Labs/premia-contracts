@@ -10,6 +10,8 @@ import {
 } from '@premia/utils';
 
 import {
+  ONE_YEAR,
+  FEE_APY,
   formatOption,
   formatUnderlying,
   getExerciseValue,
@@ -73,143 +75,569 @@ export function describeBehaviorOfPoolExercise({
     });
 
     describe('#exerciseFrom', function () {
-      for (const isCall of [true, false]) {
-        describe(isCall ? 'call' : 'put', () => {
-          it('should successfully exercise', async () => {
-            const maturity = await getMaturity(10);
-            const strike = getStrike(isCall, 2000);
-            const strike64x64 = fixedFromFloat(strike);
-            const amountNb = 10;
-            const amount = parseUnderlying(amountNb.toString());
+      describe('call option', () => {
+        it('exercises on behalf of sender without approval', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
 
-            const quote = await p.purchaseOption(
-              lp1,
-              buyer,
-              amount,
-              maturity,
-              strike64x64,
-              isCall,
-            );
-
-            const freeLiquidityTokenId = getFreeLiqTokenId(isCall);
-            const { long: longTokenId } = getOptionTokenIds(
-              maturity,
-              strike64x64,
-              isCall,
-            );
-
-            const price = isCall ? strike * 1.4 : strike * 0.7;
-            await p.setUnderlyingPrice(
-              ethers.utils.parseUnits(price.toString(), 8),
-            );
-
-            const oldBalance = await p
-              .getToken(isCall)
-              .balanceOf(buyer.address);
-
-            const oldFreeLiquidity = isCall
-              ? amount
-              : parseBase(formatUnderlying(amount)).mul(
-                  fixedToNumber(strike64x64),
-                );
-
-            await instance
-              .connect(buyer)
-              .exerciseFrom(buyer.address, longTokenId, amount);
-
-            const exerciseValue = getExerciseValue(
-              price,
-              strike,
-              amountNb,
-              isCall,
-            );
-
-            const premium = (
-              await p.getToken(isCall).balanceOf(buyer.address)
-            ).sub(oldBalance);
-
-            expect(Number(formatOption(premium, isCall))).to.almost(
-              exerciseValue,
-            );
-
-            expect(await instance.balanceOf(buyer.address, longTokenId)).to.eq(
-              0,
-            );
-
-            const newFreeLiquidity = await instance.balanceOf(
-              lp1.address,
-              freeLiquidityTokenId,
-            );
-
-            // Free liq = initial amount + premia paid
-            expect(Number(formatOption(newFreeLiquidity, isCall))).to.almost(
-              Number(formatOption(oldFreeLiquidity, isCall)) -
-                exerciseValue +
-                fixedToNumber(quote.baseCost64x64),
-            );
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
           });
 
-          it('processes eligible option on behalf of given account with approval', async () => {
-            const maturity = await getMaturity(10);
-            const strike = getStrike(isCall, 2000);
-            const strike64x64 = fixedFromFloat(strike);
-            const amount = parseUnderlying('1');
+          await p.depositLiquidity(lp1, amount, isCall);
 
-            await p.purchaseOption(
-              lp1,
-              buyer,
+          await underlying.mint(buyer.address, parseUnderlying('1'));
+          await underlying
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
               amount,
-              maturity,
-              strike64x64,
               isCall,
+              ethers.constants.MaxUint256,
             );
 
-            const longTokenId = formatTokenId({
-              tokenType: getLong(isCall),
-              maturity,
-              strike64x64,
-            });
+          await ethers.provider.send('evm_increaseTime', [5 * 24 * 3600]);
 
-            const price = isCall ? strike * 1.4 : strike * 0.7;
-            await p.setUnderlyingPrice(
-              ethers.utils.parseUnits(price.toString(), 8),
-            );
+          const price = strike * 1.4;
+          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
 
-            await instance
+          await expect(
+            instance
               .connect(buyer)
-              .setApprovalForAll(thirdParty.address, true);
-
-            const poolToken = p.getToken(isCall);
-
-            const oldBalanceBuyer = await poolToken.callStatic.balanceOf(
-              buyer.address,
-            );
-            const oldBalanceThirdParty = await poolToken.callStatic.balanceOf(
-              thirdParty.address,
-            );
-
-            await expect(
-              instance
-                .connect(thirdParty)
-                .exerciseFrom(buyer.address, longTokenId, amount),
-            ).not.to.be.reverted;
-
-            const newBalanceBuyer = await poolToken.callStatic.balanceOf(
-              buyer.address,
-            );
-            const newBalanceThirdParty = await poolToken.callStatic.balanceOf(
-              thirdParty.address,
-            );
-
-            // validate that buyer is beneficiary of transaction
-            expect(newBalanceBuyer).to.be.gt(oldBalanceBuyer);
-            expect(newBalanceThirdParty).to.equal(oldBalanceThirdParty);
-          });
+              .exerciseFrom(buyer.address, longTokenId, amount),
+          ).not.to.be.reverted;
         });
-      }
+
+        it('burns long tokens from holder and corresponding short tokens from underwriter', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await p.depositLiquidity(lp1, amount, isCall);
+
+          await underlying.mint(buyer.address, parseUnderlying('1'));
+          await underlying
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await ethers.provider.send('evm_increaseTime', [5 * 24 * 3600]);
+
+          await instance
+            .connect(buyer)
+            .setApprovalForAll(thirdParty.address, true);
+
+          const price = strike * 1.4;
+          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+
+          const contractSizeExercised = amount.div(ethers.constants.Two);
+
+          const oldLongTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            longTokenId,
+          );
+          const oldShortTokenSupply = await instance.callStatic.totalSupply(
+            shortTokenId,
+          );
+
+          await instance
+            .connect(thirdParty)
+            .exerciseFrom(buyer.address, longTokenId, contractSizeExercised);
+
+          const newLongTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            longTokenId,
+          );
+          const newShortTokenSupply = await instance.callStatic.totalSupply(
+            shortTokenId,
+          );
+
+          expect(newLongTokenBalance).to.equal(
+            oldLongTokenBalance.sub(contractSizeExercised),
+          );
+          expect(newShortTokenSupply).to.equal(
+            oldShortTokenSupply.sub(contractSizeExercised),
+          );
+        });
+
+        it('transfers exercise value to holder', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await p.depositLiquidity(lp1, amount, isCall);
+
+          await underlying.mint(buyer.address, parseUnderlying('1'));
+          await underlying
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await ethers.provider.send('evm_increaseTime', [5 * 24 * 3600]);
+
+          await instance
+            .connect(buyer)
+            .setApprovalForAll(thirdParty.address, true);
+
+          const price = strike * 1.4;
+          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+
+          const contractSizeExercised = amount.div(ethers.constants.Two);
+
+          const oldBalance = await underlying.callStatic.balanceOf(
+            buyer.address,
+          );
+
+          await instance
+            .connect(thirdParty)
+            .exerciseFrom(buyer.address, longTokenId, contractSizeExercised);
+
+          const newBalance = await underlying.callStatic.balanceOf(
+            buyer.address,
+          );
+
+          const exerciseValue = contractSizeExercised
+            .mul(parseUnderlying(((price - strike) / price).toString()))
+            .div(parseUnderlying('1'));
+
+          expect(newBalance).to.equal(oldBalance.add(exerciseValue));
+        });
+
+        it('deducts exercise value from TVL', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await p.depositLiquidity(lp1, amount, isCall);
+
+          await underlying.mint(buyer.address, parseUnderlying('1'));
+          await underlying
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await ethers.provider.send('evm_increaseTime', [5 * 24 * 3600]);
+
+          await instance
+            .connect(buyer)
+            .setApprovalForAll(thirdParty.address, true);
+
+          const price = strike * 1.4;
+          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+
+          const contractSizeExercised = amount.div(ethers.constants.Two);
+
+          const { underlyingTVL: oldUserTVL } =
+            await instance.callStatic.getUserTVL(lp1.address);
+          const { underlyingTVL: oldTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          const tx = await instance
+            .connect(thirdParty)
+            .exerciseFrom(buyer.address, longTokenId, contractSizeExercised);
+
+          const { blockNumber } = await tx.wait();
+          const { timestamp } = await ethers.provider.getBlock(blockNumber);
+
+          const { underlyingTVL: newUserTVL } =
+            await instance.callStatic.getUserTVL(lp1.address);
+          const { underlyingTVL: newTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          const exerciseValue = contractSizeExercised
+            .mul(parseUnderlying(((price - strike) / price).toString()))
+            .div(parseUnderlying('1'));
+
+          const apyFeeRemaining = maturity
+            .sub(ethers.BigNumber.from(timestamp))
+            .mul(contractSizeExercised)
+            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .div(ethers.utils.parseEther(ONE_YEAR.toString()));
+
+          expect(newUserTVL).to.equal(
+            oldUserTVL.sub(exerciseValue).add(apyFeeRemaining),
+          );
+
+          expect(newTotalTVL).to.equal(
+            oldTotalTVL.sub(exerciseValue).add(apyFeeRemaining),
+          );
+        });
+      });
+
+      describe('put option', () => {
+        it('exercises on behalf of sender without approval', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await p.depositLiquidity(
+            lp1,
+            parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
+            isCall,
+          );
+
+          await base.mint(buyer.address, parseBase('100000'));
+          await base
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await ethers.provider.send('evm_increaseTime', [5 * 24 * 3600]);
+
+          const price = strike * 0.7;
+          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+
+          await expect(
+            instance
+              .connect(buyer)
+              .exerciseFrom(buyer.address, longTokenId, amount),
+          ).not.to.be.reverted;
+        });
+
+        it('burns long tokens from holder and corresponding short tokens from underwriter', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await p.depositLiquidity(
+            lp1,
+            parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
+            isCall,
+          );
+
+          await base.mint(buyer.address, parseBase('100000'));
+          await base
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await ethers.provider.send('evm_increaseTime', [5 * 24 * 3600]);
+
+          await instance
+            .connect(buyer)
+            .setApprovalForAll(thirdParty.address, true);
+
+          const price = strike * 0.7;
+          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+
+          const contractSizeExercised = amount.div(ethers.constants.Two);
+
+          const oldLongTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            longTokenId,
+          );
+          const oldShortTokenSupply = await instance.callStatic.totalSupply(
+            shortTokenId,
+          );
+
+          await instance
+            .connect(thirdParty)
+            .exerciseFrom(buyer.address, longTokenId, contractSizeExercised);
+
+          const newLongTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            longTokenId,
+          );
+          const newShortTokenSupply = await instance.callStatic.totalSupply(
+            shortTokenId,
+          );
+
+          expect(newLongTokenBalance).to.equal(
+            oldLongTokenBalance.sub(contractSizeExercised),
+          );
+          expect(newShortTokenSupply).to.equal(
+            oldShortTokenSupply.sub(contractSizeExercised),
+          );
+        });
+
+        it('transfers exercise value to holder', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await p.depositLiquidity(
+            lp1,
+            parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
+            isCall,
+          );
+
+          await base.mint(buyer.address, parseBase('100000'));
+          await base
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await ethers.provider.send('evm_increaseTime', [5 * 24 * 3600]);
+
+          await instance
+            .connect(buyer)
+            .setApprovalForAll(thirdParty.address, true);
+
+          const price = strike * 0.7;
+          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+
+          const contractSizeExercised = amount.div(ethers.constants.Two);
+
+          const oldBalance = await base.callStatic.balanceOf(buyer.address);
+
+          await instance
+            .connect(thirdParty)
+            .exerciseFrom(buyer.address, longTokenId, contractSizeExercised);
+
+          const newBalance = await base.callStatic.balanceOf(buyer.address);
+
+          const exerciseValue = parseBase(
+            formatUnderlying(
+              contractSizeExercised
+                .mul(parseUnderlying((strike - price).toString()))
+                .div(parseUnderlying('1')),
+            ),
+          );
+
+          expect(newBalance).to.equal(oldBalance.add(exerciseValue));
+        });
+
+        it('deducts exercise value from TVL', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const longTokenId = formatTokenId({
+            tokenType: getLong(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await p.depositLiquidity(
+            lp1,
+            parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
+            isCall,
+          );
+
+          await base.mint(buyer.address, parseBase('100000'));
+          await base
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          await ethers.provider.send('evm_increaseTime', [5 * 24 * 3600]);
+
+          await instance
+            .connect(buyer)
+            .setApprovalForAll(thirdParty.address, true);
+
+          const price = strike * 0.7;
+          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+
+          const contractSizeExercised = amount.div(ethers.constants.Two);
+          const tokenAmount = parseBase(
+            formatUnderlying(contractSizeExercised),
+          ).mul(fixedToNumber(strike64x64));
+
+          const { baseTVL: oldUserTVL } = await instance.callStatic.getUserTVL(
+            lp1.address,
+          );
+          const { baseTVL: oldTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          const tx = await instance
+            .connect(thirdParty)
+            .exerciseFrom(buyer.address, longTokenId, contractSizeExercised);
+
+          const { blockNumber } = await tx.wait();
+          const { timestamp } = await ethers.provider.getBlock(blockNumber);
+
+          const { baseTVL: newUserTVL } = await instance.callStatic.getUserTVL(
+            lp1.address,
+          );
+          const { baseTVL: newTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          const exerciseValue = parseBase(
+            formatUnderlying(
+              contractSizeExercised
+                .mul(parseUnderlying((strike - price).toString()))
+                .div(parseUnderlying('1')),
+            ),
+          );
+
+          const apyFeeRemaining = maturity
+            .sub(ethers.BigNumber.from(timestamp))
+            .mul(tokenAmount)
+            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .div(ethers.utils.parseEther(ONE_YEAR.toString()));
+
+          expect(newUserTVL).to.equal(
+            oldUserTVL.sub(exerciseValue).add(apyFeeRemaining),
+          );
+
+          expect(newTotalTVL).to.equal(
+            oldTotalTVL.sub(exerciseValue).add(apyFeeRemaining),
+          );
+        });
+      });
 
       describe('reverts if', () => {
-        it('token is a SHORT token', async () => {
+        it('token is a short token', async () => {
           const isCall = false;
           const maturity = await getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
@@ -445,9 +873,7 @@ export function describeBehaviorOfPoolExercise({
           ]);
 
           const price = strike * 1.4;
-          await p.setUnderlyingPrice(
-            ethers.utils.parseUnits(price.toString(), 8),
-          );
+          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
 
           const contractSizeProcessed = amount.div(ethers.constants.Two);
 
@@ -673,9 +1099,7 @@ export function describeBehaviorOfPoolExercise({
           ]);
 
           const price = strike * 0.7;
-          await p.setUnderlyingPrice(
-            ethers.utils.parseUnits(price.toString(), 8),
-          );
+          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
 
           const contractSizeProcessed = amount.div(ethers.constants.Two);
           const tokenAmount = parseBase(
