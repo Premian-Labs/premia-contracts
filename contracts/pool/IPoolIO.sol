@@ -126,8 +126,13 @@ interface IPoolIO {
      * @notice burn corresponding long and short option tokens and withdraw collateral
      * @param tokenId ERC1155 token id (long or short)
      * @param contractSize quantity of option contract tokens to annihilate
+     * @param divest whether to withdraw freed funds after annihilation
      */
-    function annihilate(uint256 tokenId, uint256 contractSize) external;
+    function annihilate(
+        uint256 tokenId,
+        uint256 contractSize,
+        bool divest
+    ) external;
 
     /**
      * @notice claim earned PREMIA emissions

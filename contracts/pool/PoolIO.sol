@@ -341,7 +341,11 @@ contract PoolIO is IPoolIO, PoolSwap {
     /**
      * @inheritdoc IPoolIO
      */
-    function annihilate(uint256 tokenId, uint256 contractSize) external {
+    function annihilate(
+        uint256 tokenId,
+        uint256 contractSize,
+        bool divest
+    ) external {
         (
             PoolStorage.TokenType tokenType,
             uint64 maturity,
@@ -368,9 +372,19 @@ contract PoolIO is IPoolIO, PoolSwap {
             isCall
         );
 
-        _subUserTVL(l, msg.sender, isCall, tokenAmount);
+        if (divest) {
+            _subUserTVL(l, msg.sender, isCall, tokenAmount);
+        } else {
+            _addUserTVL(l, msg.sender, isCall, collateralFreed - tokenAmount);
+        }
 
-        _processAvailableFunds(msg.sender, collateralFreed, isCall, true, true);
+        _processAvailableFunds(
+            msg.sender,
+            collateralFreed,
+            isCall,
+            divest,
+            true
+        );
     }
 
     /**
