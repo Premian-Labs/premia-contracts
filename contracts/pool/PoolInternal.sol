@@ -346,12 +346,16 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 isCall
             );
 
+            uint256 freeLiquidityTokenId = _getFreeLiquidityTokenId(isCall);
+
             require(
                 tokenAmount <=
                     ERC1155EnumerableStorage.layout().totalSupply[
-                        _getFreeLiquidityTokenId(isCall)
+                        freeLiquidityTokenId
                     ] -
-                        l.totalPendingDeposits(isCall),
+                        l.totalPendingDeposits(isCall) -
+                        (_balanceOf(account, freeLiquidityTokenId) -
+                            l.pendingDepositsOf(account, isCall)),
                 "insuf liq"
             );
         }
