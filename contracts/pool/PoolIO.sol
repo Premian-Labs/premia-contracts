@@ -198,7 +198,12 @@ contract PoolIO is IPoolIO, PoolSwap {
             newPrice64x64
         );
 
-        _subUserTVL(l, msg.sender, isCall, baseCost + feeCost + amountOut);
+        if (divest) {
+            _subUserTVL(l, msg.sender, isCall, baseCost + feeCost + amountOut);
+        } else {
+            _subUserTVL(l, msg.sender, isCall, baseCost + feeCost);
+        }
+
         _processAvailableFunds(msg.sender, amountOut, isCall, divest, true);
     }
 
@@ -257,15 +262,31 @@ contract PoolIO is IPoolIO, PoolSwap {
         }
 
         if (amountOutCall > 0) {
-            uint256 tvlToSubtract = amountOutCall;
+            uint256 reassignmentCost;
+
             for (uint256 i; i < tokenIds.length; i++) {
                 if (isCallToken[i] == false) continue;
 
-                tvlToSubtract += baseCosts[i];
-                tvlToSubtract += feeCosts[i];
+                reassignmentCost += baseCosts[i];
+                reassignmentCost += feeCosts[i];
             }
 
-            _subUserTVL(PoolStorage.layout(), msg.sender, true, tvlToSubtract);
+            if (divest) {
+                _subUserTVL(
+                    PoolStorage.layout(),
+                    msg.sender,
+                    true,
+                    reassignmentCost + amountOutCall
+                );
+            } else {
+                _subUserTVL(
+                    PoolStorage.layout(),
+                    msg.sender,
+                    true,
+                    reassignmentCost
+                );
+            }
+
             _processAvailableFunds(
                 msg.sender,
                 amountOutCall,
@@ -276,15 +297,31 @@ contract PoolIO is IPoolIO, PoolSwap {
         }
 
         if (amountOutPut > 0) {
-            uint256 tvlToSubtract = amountOutPut;
+            uint256 reassignmentCost;
+
             for (uint256 i; i < tokenIds.length; i++) {
                 if (isCallToken[i] == true) continue;
 
-                tvlToSubtract += baseCosts[i];
-                tvlToSubtract += feeCosts[i];
+                reassignmentCost += baseCosts[i];
+                reassignmentCost += feeCosts[i];
             }
 
-            _subUserTVL(PoolStorage.layout(), msg.sender, false, tvlToSubtract);
+            if (divest) {
+                _subUserTVL(
+                    PoolStorage.layout(),
+                    msg.sender,
+                    false,
+                    reassignmentCost + amountOutPut
+                );
+            } else {
+                _subUserTVL(
+                    PoolStorage.layout(),
+                    msg.sender,
+                    false,
+                    reassignmentCost
+                );
+            }
+
             _processAvailableFunds(
                 msg.sender,
                 amountOutPut,
