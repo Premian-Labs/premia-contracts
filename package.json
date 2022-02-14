@@ -30,7 +30,8 @@
     "deploy:rinkeby": "hardhat run \"./scripts/deploy/testnet/0004-deployV2Rinkeby.ts\" --network rinkeby",
     "test": "hardhat test",
     "contract-size": "yarn run hardhat size-contracts",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "prettier": "prettier --write --ignore-path .gitignore ."
   },
   "lint-staged": {
     "*.{md,js,ts,sol}": [
