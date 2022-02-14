@@ -243,16 +243,21 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             strike64x64
         );
 
-        _burn(account, longTokenId, contractSize);
-        _burn(account, shortTokenId, contractSize);
-
         uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
             contractSize,
             strike64x64,
             isCall
         );
 
-        uint256 intervalApyFee = _calculateApyFee(tokenAmount, maturity);
+        uint256 intervalApyFee = _calculateApyFee(
+            l,
+            shortTokenId,
+            tokenAmount,
+            maturity
+        );
+
+        _burn(account, longTokenId, contractSize);
+        _burn(account, shortTokenId, contractSize);
 
         uint256 rebate = intervalApyFee +
             _applyApyFeeRebate(
@@ -603,7 +608,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 isCall
             );
 
-            apyFee = _calculateApyFee(tokenAmount, maturity);
+            apyFee = _calculateApyFee(l, shortTokenId, tokenAmount, maturity);
         }
 
         while (tokenAmount > 0) {
@@ -799,7 +804,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 isCall
             );
 
-            apyFee = _calculateApyFee(tokenAmount, maturity);
+            apyFee = _calculateApyFee(l, shortTokenId, tokenAmount, maturity);
         }
 
         EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage
@@ -913,13 +918,18 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
     }
 
-    function _calculateApyFee(uint256 tokenAmount, uint64 maturity)
-        internal
-        view
-        returns (uint256 apyFee)
-    {
+    function _calculateApyFee(
+        PoolStorage.Layout storage l,
+        uint256 shortTokenId,
+        uint256 tokenAmount,
+        uint64 maturity
+    ) internal view returns (uint256 apyFee) {
         if (block.timestamp < maturity) {
-            apyFee = FEE_APY_64x64.mulu(
+            int128 apyFeeRate64x64 = _totalSupply(shortTokenId) == 0
+                ? FEE_APY_64x64
+                : l.feeReserveRates[shortTokenId];
+
+            apyFee = apyFeeRate64x64.mulu(
                 (tokenAmount * (maturity - block.timestamp)) / (365 days)
             );
         }
@@ -1363,6 +1373,15 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 id,
         uint256 amount
     ) private {
+        // total supply has already been updated, so compare to amount rather than 0
+        if (from == address(0) && _totalSupply(id) == amount) {
+            l.feeReserveRates[id] = FEE_APY_64x64;
+        }
+
+        if (to == address(0) && _totalSupply(id) == 0) {
+            delete l.feeReserveRates[id];
+        }
+
         if (from != address(0) && to != address(0)) {
             (
                 PoolStorage.TokenType tokenType,
@@ -1377,7 +1396,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 isCall
             );
 
-            uint256 intervalApyFee = _calculateApyFee(collateral, maturity);
+            uint256 intervalApyFee = _calculateApyFee(
+                l,
+                id,
+                collateral,
+                maturity
+            );
 
             uint256 rebate = _applyApyFeeRebate(
                 l,

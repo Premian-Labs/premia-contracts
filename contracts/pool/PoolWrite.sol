@@ -208,15 +208,6 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             isCall
         );
 
-        uint256 intervalApyFee = _calculateApyFee(tokenAmount, maturity);
-
-        _pullFrom(
-            underwriter,
-            token,
-            tokenAmount + intervalApyFee,
-            _creditMessageValue(tokenAmount + intervalApyFee, isCall)
-        );
-
         longTokenId = PoolStorage.formatTokenId(
             PoolStorage.getTokenType(isCall, true),
             maturity,
@@ -226,6 +217,20 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             PoolStorage.getTokenType(isCall, false),
             maturity,
             strike64x64
+        );
+
+        uint256 intervalApyFee = _calculateApyFee(
+            l,
+            shortTokenId,
+            tokenAmount,
+            maturity
+        );
+
+        _pullFrom(
+            underwriter,
+            token,
+            tokenAmount + intervalApyFee,
+            _creditMessageValue(tokenAmount + intervalApyFee, isCall)
         );
 
         _reserveApyFees(l, underwriter, shortTokenId, intervalApyFee);
