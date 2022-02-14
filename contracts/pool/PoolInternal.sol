@@ -614,7 +614,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         while (tokenAmount > 0) {
             address underwriter = l.liquidityQueueAscending[isCall][address(0)];
 
-            Interval memory interval;
+            // move interval to end of queue if underwriter is buyer
+
+            if (underwriter == buyer) {
+                l.removeUnderwriter(underwriter, isCall);
+                l.addUnderwriter(underwriter, isCall);
+                continue;
+            }
 
             uint256 balance = _balanceOf(
                 underwriter,
@@ -644,6 +650,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             }
 
             balance -= l.pendingDepositsOf(underwriter, isCall);
+
+            Interval memory interval;
 
             // amount of liquidity provided by underwriter, accounting for reinvested premium
             interval.tokenAmount =
