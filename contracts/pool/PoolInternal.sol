@@ -350,9 +350,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             require(
                 tokenAmount <=
-                    ERC1155EnumerableStorage.layout().totalSupply[
-                        freeLiquidityTokenId
-                    ] -
+                    _totalSupply(freeLiquidityTokenId) -
                         l.totalPendingDeposits(isCall) -
                         (_balanceOf(account, freeLiquidityTokenId) -
                             l.pendingDepositsOf(account, isCall)),
@@ -1303,10 +1301,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 l.tokenIds.add(id);
             }
 
-            if (
-                to == address(0) &&
-                ERC1155EnumerableStorage.layout().totalSupply[id] == 0
-            ) {
+            if (to == address(0) && _totalSupply(id) == 0) {
                 l.tokenIds.remove(id);
             }
 
