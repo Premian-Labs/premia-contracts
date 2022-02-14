@@ -688,7 +688,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) internal {
         // track prepaid APY fees
 
-        l.feesReserved[underwriter][shortTokenId] += interval.apyFee;
+        _reserveApyFees(l, underwriter, shortTokenId, interval.apyFee);
 
         // burn free liquidity tokens from underwriter
         _burn(
@@ -923,6 +923,15 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 (tokenAmount * (maturity - block.timestamp)) / (365 days)
             );
         }
+    }
+
+    function _reserveApyFees(
+        PoolStorage.Layout storage l,
+        address underwriter,
+        uint256 shortTokenId,
+        uint256 amount
+    ) internal {
+        l.feesReserved[underwriter][shortTokenId] += amount;
     }
 
     function _applyApyFeeRebate(
@@ -1379,7 +1388,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 isCall
             );
 
-            l.feesReserved[to][id] += intervalApyFee;
+            _reserveApyFees(l, to, id, intervalApyFee);
 
             if (l.getReinvestmentStatus(from, isCall)) {
                 if (rebate > 0) {

@@ -228,7 +228,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             strike64x64
         );
 
-        l.feesReserved[underwriter][shortTokenId] += intervalApyFee;
+        _reserveApyFees(l, underwriter, shortTokenId, intervalApyFee);
 
         // mint long option token for designated receiver
         _mint(longReceiver, longTokenId, contractSize);
