@@ -1588,6 +1588,151 @@ export function describeBehaviorOfPoolWrite({
               ),
           ).to.be.revertedWith('not approved');
         });
+
+        it('maturity is less than 1 day in the future', async () => {
+          const isCall = false;
+          const maturity = (await getMaturity(1)).sub(ethers.constants.One);
+          const strike64x64 = fixedFromFloat(1.5);
+
+          await expect(
+            instance
+              .connect(lp1)
+              .writeFrom(
+                lp1.address,
+                lp1.address,
+                maturity,
+                strike64x64,
+                parseUnderlying('1'),
+                isCall,
+              ),
+          ).to.be.revertedWith('exp < 1 day');
+        });
+
+        it('maturity is more than 90 days in the future', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(92);
+          const strike64x64 = fixedFromFloat(1.5);
+
+          await expect(
+            instance
+              .connect(lp1)
+              .writeFrom(
+                lp1.address,
+                lp1.address,
+                maturity,
+                strike64x64,
+                parseUnderlying('1'),
+                isCall,
+              ),
+          ).to.be.revertedWith('exp > 90 days');
+        });
+
+        it('maturity does not corresponding to 8-hour increment', async () => {
+          const isCall = false;
+          const maturity = (await getMaturity(10)).add(3600);
+          const strike64x64 = fixedFromFloat(1.5);
+
+          await expect(
+            instance
+              .connect(lp1)
+              .writeFrom(
+                lp1.address,
+                lp1.address,
+                maturity,
+                strike64x64,
+                parseUnderlying('1'),
+                isCall,
+              ),
+          ).to.be.revertedWith('exp must be 8-hour increment');
+        });
+
+        it('call option strike price is more than 2x spot price', async () => {
+          const isCall = true;
+          const multiplier = 2;
+          const maturity = await getMaturity(10);
+          const strike64x64 = fixedFromFloat(2000 * multiplier).add(
+            ethers.constants.One,
+          );
+
+          await expect(
+            instance
+              .connect(lp1)
+              .writeFrom(
+                lp1.address,
+                lp1.address,
+                maturity,
+                strike64x64,
+                parseUnderlying('1'),
+                isCall,
+              ),
+          ).to.be.revertedWith('strike out of range');
+        });
+
+        it('put option strike price is more than 1.2x spot price', async () => {
+          const isCall = false;
+          const multiplier = 1.2;
+          const maturity = await getMaturity(10);
+          const strike64x64 = fixedFromFloat(2000 * multiplier).add(
+            ethers.constants.One,
+          );
+
+          await expect(
+            instance
+              .connect(lp1)
+              .writeFrom(
+                lp1.address,
+                lp1.address,
+                maturity,
+                strike64x64,
+                parseUnderlying('1'),
+                isCall,
+              ),
+          ).to.be.revertedWith('strike out of range');
+        });
+
+        it('call option strike price is less than 0.8x spot price', async () => {
+          const isCall = true;
+          const multiplier = 0.8;
+          const maturity = await getMaturity(10);
+          const strike64x64 = fixedFromFloat(2000 * multiplier).sub(
+            ethers.constants.One,
+          );
+
+          await expect(
+            instance
+              .connect(lp1)
+              .writeFrom(
+                lp1.address,
+                lp1.address,
+                maturity,
+                strike64x64,
+                parseUnderlying('1'),
+                isCall,
+              ),
+          ).to.be.revertedWith('strike out of range');
+        });
+
+        it('put option strike price is less than 0.5x spot price', async () => {
+          const isCall = false;
+          const multiplier = 0.5;
+          const maturity = await getMaturity(10);
+          const strike64x64 = fixedFromFloat(2000 * multiplier).sub(
+            ethers.constants.One,
+          );
+
+          await expect(
+            instance
+              .connect(lp1)
+              .writeFrom(
+                lp1.address,
+                lp1.address,
+                maturity,
+                strike64x64,
+                parseUnderlying('1'),
+                isCall,
+              ),
+          ).to.be.revertedWith('strike out of range');
+        });
       });
     });
 
