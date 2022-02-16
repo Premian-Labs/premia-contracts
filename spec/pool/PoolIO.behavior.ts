@@ -1764,7 +1764,8 @@ export function describeBehaviorOfPoolIO({
         it('burns corresponding long and short tokens held by sender', async () => {
           const isCall = true;
           const maturity = await getMaturity(30);
-          const strike64x64 = fixedFromFloat(2);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
           const amount = parseUnderlying('1');
 
           const longTokenId = formatTokenId({
@@ -1832,7 +1833,8 @@ export function describeBehaviorOfPoolIO({
         it('transfers freed capital to sender', async () => {
           const isCall = true;
           const maturity = await getMaturity(30);
-          const strike64x64 = fixedFromFloat(2);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
           const amount = parseUnderlying('1');
 
           const shortTokenId = formatTokenId({
@@ -1902,7 +1904,8 @@ export function describeBehaviorOfPoolIO({
         it('deducts amount annihilated from total TVL and user TVL', async () => {
           const isCall = true;
           const maturity = await getMaturity(30);
-          const strike64x64 = fixedFromFloat(2);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
           const amount = parseUnderlying('1');
 
           const shortTokenId = formatTokenId({
@@ -1966,7 +1969,8 @@ export function describeBehaviorOfPoolIO({
         it('burns corresponding long and short tokens held by sender', async () => {
           const isCall = false;
           const maturity = await getMaturity(30);
-          const strike64x64 = fixedFromFloat(2);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
           const amount = parseUnderlying('1');
 
           const longTokenId = formatTokenId({
@@ -2034,7 +2038,8 @@ export function describeBehaviorOfPoolIO({
         it('transfers freed capital to sender', async () => {
           const isCall = false;
           const maturity = await getMaturity(30);
-          const strike64x64 = fixedFromFloat(2);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
           const amount = parseUnderlying('1');
 
           const shortTokenId = formatTokenId({
@@ -2101,7 +2106,8 @@ export function describeBehaviorOfPoolIO({
         it('deducts amount annihilated from total TVL and user TVL', async () => {
           const isCall = false;
           const maturity = await getMaturity(30);
-          const strike64x64 = fixedFromFloat(2);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
           const amount = parseUnderlying('1');
 
           const shortTokenId = formatTokenId({
@@ -2168,7 +2174,8 @@ export function describeBehaviorOfPoolIO({
         it('sender has insufficient long token balance', async () => {
           const isCall = false;
           const maturity = await getMaturity(30);
-          const strike64x64 = fixedFromFloat(2);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
           const amount = parseUnderlying('1');
 
           const longTokenId = formatTokenId({
@@ -2211,7 +2218,8 @@ export function describeBehaviorOfPoolIO({
         it('sender has insufficient short token balance', async () => {
           const isCall = false;
           const maturity = await getMaturity(30);
-          const strike64x64 = fixedFromFloat(2);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
           const amount = parseUnderlying('1');
 
           const shortTokenId = formatTokenId({

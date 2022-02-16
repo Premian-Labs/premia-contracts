@@ -1473,11 +1473,12 @@ export function describeBehaviorOfPoolWrite({
         describe(isCall ? 'call' : 'put', () => {
           it('should successfully manually underwrite an option without use of an external operator', async () => {
             const maturity = await getMaturity(30);
-            const strike64x64 = fixedFromFloat(2);
+            const strike = getStrike(isCall, 2000);
+            const strike64x64 = fixedFromFloat(strike);
             const amount = parseUnderlying('1');
 
             const token = isCall ? underlying : base;
-            let toMint = isCall ? parseUnderlying('1') : parseBase('2');
+            let toMint = isCall ? parseUnderlying('1') : parseBase('100000');
 
             // mint extra to account for APY fee
             toMint = toMint.mul(ethers.constants.Two);
@@ -1500,7 +1501,7 @@ export function describeBehaviorOfPoolWrite({
 
             const tokenIds = getOptionTokenIds(
               await getMaturity(30),
-              fixedFromFloat(2),
+              strike64x64,
               isCall,
             );
 
@@ -1522,11 +1523,12 @@ export function describeBehaviorOfPoolWrite({
 
           it('should successfully manually underwrite an option with use of an external operator', async () => {
             const maturity = await getMaturity(30);
-            const strike64x64 = fixedFromFloat(2);
+            const strike = getStrike(isCall, 2000);
+            const strike64x64 = fixedFromFloat(strike);
             const amount = parseUnderlying('1');
 
             const token = isCall ? underlying : base;
-            let toMint = isCall ? parseUnderlying('1') : parseBase('2');
+            let toMint = isCall ? parseUnderlying('1') : parseBase('100000');
 
             // mint extra to account for APY fee
             toMint = toMint.mul(ethers.constants.Two);
@@ -1551,7 +1553,7 @@ export function describeBehaviorOfPoolWrite({
 
             const tokenIds = getOptionTokenIds(
               await getMaturity(30),
-              fixedFromFloat(2),
+              strike64x64,
               isCall,
             );
 
