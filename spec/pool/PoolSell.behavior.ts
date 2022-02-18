@@ -47,7 +47,7 @@ export function describeBehaviorOfPoolSell({
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
           it('should correctly sell option back to the pool', async () => {
-            await instance.connect(lp1).setBuyBackEnabled(true);
+            await instance.connect(lp1).setBuybackEnabled(true);
 
             const maturity = await p.getMaturity(10);
             const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
@@ -131,7 +131,7 @@ export function describeBehaviorOfPoolSell({
           });
 
           it('should fail selling back to the pool if no buyer available', async () => {
-            await instance.connect(lp1).setBuyBackEnabled(false);
+            await instance.connect(lp1).setBuybackEnabled(false);
 
             const maturity = await p.getMaturity(10);
             const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
@@ -159,11 +159,11 @@ export function describeBehaviorOfPoolSell({
 
     describe('#setBuybackEnabled', () => {
       it('should correctly enable/disable buyback', async () => {
-        expect(await instance.isBuyBackEnabled(lp1.address)).to.be.false;
-        await instance.connect(lp1).setBuyBackEnabled(true);
-        expect(await instance.isBuyBackEnabled(lp1.address)).to.be.true;
-        await instance.connect(lp1).setBuyBackEnabled(false);
-        expect(await instance.isBuyBackEnabled(lp1.address)).to.be.false;
+        expect(await instance.isBuybackEnabled(lp1.address)).to.be.false;
+        await instance.connect(lp1).setBuybackEnabled(true);
+        expect(await instance.isBuybackEnabled(lp1.address)).to.be.true;
+        await instance.connect(lp1).setBuybackEnabled(false);
+        expect(await instance.isBuybackEnabled(lp1.address)).to.be.false;
       });
     });
 
@@ -190,8 +190,8 @@ export function describeBehaviorOfPoolSell({
           parseUnderlying('5'),
         );
 
-        await instance.connect(lp2).setBuyBackEnabled(true);
-        await instance.connect(buyer).setBuyBackEnabled(true);
+        await instance.connect(lp2).setBuybackEnabled(true);
+        await instance.connect(buyer).setBuybackEnabled(true);
 
         const result = await instance.getBuyers(tokenId.short);
         expect(result.buyers).to.deep.eq([lp2.address, buyer.address]);

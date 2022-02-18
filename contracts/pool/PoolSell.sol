@@ -40,15 +40,15 @@ contract PoolSell is IPoolSell, PoolInternal {
     /**
      * @inheritdoc IPoolSell
      */
-    function setBuyBackEnabled(bool state) external {
-        _setBuyBackEnabled(state);
+    function setBuybackEnabled(bool state) external {
+        _setBuybackEnabled(state);
     }
 
     /**
      * @inheritdoc IPoolSell
      */
-    function isBuyBackEnabled(address account) external view returns (bool) {
-        return PoolStorage.layout().isBuyBackEnabled[account];
+    function isBuybackEnabled(address account) external view returns (bool) {
+        return PoolStorage.layout().isBuybackEnabled[account];
     }
 
     /**
@@ -75,7 +75,7 @@ contract PoolSell is IPoolSell, PoolInternal {
             address lp = erc1155EnumerableLayout
                 .accountsByToken[shortTokenId]
                 .at(j);
-            if (l.isBuyBackEnabled[lp]) {
+            if (l.isBuybackEnabled[lp]) {
                 buyers[i] = lp;
                 amounts[i] = ERC1155BaseStorage.layout().balances[shortTokenId][
                     lp
@@ -119,7 +119,7 @@ contract PoolSell is IPoolSell, PoolInternal {
             : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
 
         for (uint256 i = 0; i < buyers.length; i++) {
-            if (!l.isBuyBackEnabled[buyers[i]]) continue;
+            if (!l.isBuybackEnabled[buyers[i]]) continue;
 
             uint256 intervalContractSize;
             {

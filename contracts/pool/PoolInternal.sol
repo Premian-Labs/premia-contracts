@@ -341,7 +341,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         for (uint256 i = 0; i < length; i++) {
             address lp = accounts.at(i);
 
-            if (l.isBuyBackEnabled[lp]) {
+            if (l.isBuybackEnabled[lp]) {
                 totalLiquidity += _balanceOf(lp, shortTokenId);
             }
         }
@@ -1222,9 +1222,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             .div(supply64x64.add(contractSize64x64));
     }
 
-    function _setBuyBackEnabled(bool state) internal {
+    function _setBuybackEnabled(bool state) internal {
         PoolStorage.Layout storage l = PoolStorage.layout();
-        l.isBuyBackEnabled[msg.sender] = state;
+        l.isBuybackEnabled[msg.sender] = state;
     }
 
     /**

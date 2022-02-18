@@ -7,14 +7,14 @@ interface IPoolSell {
      * @notice Enable or disable buyback
      * @param state whether to enable or disable buyback
      */
-    function setBuyBackEnabled(bool state) external;
+    function setBuybackEnabled(bool state) external;
 
     /**
      * @notice Get whether buyback is enabled or not for a given LP
      * @param account LP account for which to check
      * @return whether buyback is enabled or not
      */
-    function isBuyBackEnabled(address account) external view returns (bool);
+    function isBuybackEnabled(address account) external view returns (bool);
 
     /**
      * @notice get list of underwriters with buyback enabled for a specific shortTokenId

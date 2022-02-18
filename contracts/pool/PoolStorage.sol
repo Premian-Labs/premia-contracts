@@ -106,8 +106,8 @@ library PoolStorage {
         // steepness values
         int128 steepnessBase64x64;
         int128 steepnessUnderlying64x64;
-        // User -> isBuyBackEnabled
-        mapping(address => bool) isBuyBackEnabled;
+        // User -> isBuybackEnabled
+        mapping(address => bool) isBuybackEnabled;
         // LongTokenId -> averageC
         mapping(uint256 => int128) avgCLevel64x64;
     }
