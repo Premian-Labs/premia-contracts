@@ -598,18 +598,6 @@ export class PoolUtil {
     amount: BigNumberish,
     isCall: boolean,
   ) {
-    if (isCall) {
-      await this.underlying.mint(lp.address, amount);
-      await this.underlying
-        .connect(lp)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    } else {
-      await this.base.mint(lp.address, amount);
-      await this.base
-        .connect(lp)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    }
-
     await PoolIO__factory.connect(this.pool.address, lp)
       .connect(lp)
       .deposit(amount, isCall);
