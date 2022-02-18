@@ -292,11 +292,6 @@ export function describeBehaviorOfPoolWrite({
 
           await p.depositLiquidity(lp1, amount, isCall);
 
-          await underlying.mint(buyer.address, parseUnderlying('100'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           const oldBuyerBalance = await underlying.callStatic.balanceOf(
             buyer.address,
           );
@@ -360,11 +355,6 @@ export function describeBehaviorOfPoolWrite({
             tokenAmount.mul(ethers.constants.Two),
             isCall,
           );
-
-          await underlying.mint(buyer.address, parseUnderlying('100000'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           const oldBuyerLongTokenBalance = await instance.callStatic.balanceOf(
             buyer.address,
@@ -459,11 +449,6 @@ export function describeBehaviorOfPoolWrite({
             isCall,
           );
 
-          await underlying.mint(buyer.address, parseBase('100000'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           const oldFreeLiquidityBalance = await instance.callStatic.balanceOf(
             lp1.address,
             getFreeLiqTokenId(isCall),
@@ -516,11 +501,6 @@ export function describeBehaviorOfPoolWrite({
             tokenAmount.mul(ethers.constants.Two),
             isCall,
           );
-
-          await underlying.mint(buyer.address, parseBase('100000'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           const { underlyingTVL: oldUserTVL } =
             await instance.callStatic.getUserTVL(lp1.address);
@@ -589,11 +569,6 @@ export function describeBehaviorOfPoolWrite({
             isCall,
           );
 
-          await underlying.mint(buyer.address, parseBase('100000'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           const { underlyingTVL: oldUserTVL } =
             await instance.callStatic.getUserTVL(lp1.address);
           const { underlyingTVL: oldTotalTVL } =
@@ -649,11 +624,6 @@ export function describeBehaviorOfPoolWrite({
             parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
             isCall,
           );
-
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           const oldBuyerBalance = await base.callStatic.balanceOf(
             buyer.address,
@@ -720,11 +690,6 @@ export function describeBehaviorOfPoolWrite({
             tokenAmount.mul(ethers.constants.Two),
             isCall,
           );
-
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           const oldBuyerLongTokenBalance = await instance.callStatic.balanceOf(
             buyer.address,
@@ -821,11 +786,6 @@ export function describeBehaviorOfPoolWrite({
             isCall,
           );
 
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           const oldFreeLiquidityBalance = await instance.callStatic.balanceOf(
             lp1.address,
             getFreeLiqTokenId(isCall),
@@ -880,11 +840,6 @@ export function describeBehaviorOfPoolWrite({
             tokenAmount.mul(ethers.constants.Two),
             isCall,
           );
-
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           const { baseTVL: oldUserTVL } = await instance.callStatic.getUserTVL(
             lp1.address,
@@ -956,11 +911,6 @@ export function describeBehaviorOfPoolWrite({
             tokenAmount.mul(ethers.constants.Two),
             isCall,
           );
-
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           const { baseTVL: oldUserTVL } = await instance.callStatic.getUserTVL(
             lp1.address,
@@ -1209,14 +1159,6 @@ export function describeBehaviorOfPoolWrite({
           const maturity = await getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
-          await p
-            .getToken(isCall)
-            .mint(buyer.address, parseOption('100', isCall));
-          await p
-            .getToken(isCall)
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await expect(
             instance
               .connect(buyer)
@@ -1295,16 +1237,6 @@ export function describeBehaviorOfPoolWrite({
             );
 
             const mintAmount = parseOption(!isCall ? '1' : '10000', !isCall);
-
-            await p.getToken(!isCall).mint(buyer.address, mintAmount);
-            await p
-              .getToken(isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
-            await p
-              .getToken(!isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
 
             const tx = await instance
               .connect(buyer)
@@ -1476,16 +1408,6 @@ export function describeBehaviorOfPoolWrite({
 
             const mintAmount = parseOption(!isCall ? '1' : '10000', !isCall);
 
-            await p.getToken(!isCall).mint(buyer.address, mintAmount);
-            await p
-              .getToken(isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
-            await p
-              .getToken(!isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
-
             const tx = await instance
               .connect(buyer)
               .swapAndPurchase(
@@ -1653,16 +1575,6 @@ export function describeBehaviorOfPoolWrite({
 
             const mintAmount = parseOption(!isCall ? '1' : '10000', !isCall);
 
-            await p.getToken(!isCall).mint(buyer.address, mintAmount);
-            await p
-              .getToken(isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
-            await p
-              .getToken(!isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
-
             const tx = await instance
               .connect(buyer)
               .swapAndPurchase(
@@ -1778,15 +1690,6 @@ export function describeBehaviorOfPoolWrite({
             const amount = parseUnderlying('1');
 
             const token = isCall ? underlying : base;
-            let toMint = isCall ? parseUnderlying('1') : parseBase('100000');
-
-            // mint extra to account for APY fee
-            toMint = toMint.mul(ethers.constants.Two);
-
-            await token.mint(lp1.address, toMint);
-            await token
-              .connect(lp1)
-              .approve(instance.address, ethers.constants.MaxUint256);
 
             await instance
               .connect(lp1)
@@ -1828,15 +1731,6 @@ export function describeBehaviorOfPoolWrite({
             const amount = parseUnderlying('1');
 
             const token = isCall ? underlying : base;
-            let toMint = isCall ? parseUnderlying('1') : parseBase('100000');
-
-            // mint extra to account for APY fee
-            toMint = toMint.mul(ethers.constants.Two);
-
-            await token.mint(lp1.address, toMint);
-            await token
-              .connect(lp1)
-              .approve(instance.address, ethers.constants.MaxUint256);
 
             await instance.connect(lp1).setApprovalForAll(owner.address, true);
 

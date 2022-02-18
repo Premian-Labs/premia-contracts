@@ -117,6 +117,23 @@ describe('PoolProxy', function () {
     underlying = p.underlying;
 
     instance = p.pool;
+
+    // mint ERC20 tokens and set approvals
+
+    for (const signer of [owner, lp1, lp2, buyer]) {
+      await base.mint(signer.address, ethers.utils.parseEther('1000000000'));
+      await base
+        .connect(signer)
+        .approve(instance.address, ethers.constants.MaxUint256);
+
+      await underlying.mint(
+        signer.address,
+        ethers.utils.parseEther('1000000000'),
+      );
+      await underlying
+        .connect(signer)
+        .approve(instance.address, ethers.constants.MaxUint256);
+    }
   });
 
   beforeEach(async () => {

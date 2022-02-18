@@ -91,11 +91,6 @@ export function describeBehaviorOfPoolExercise({
 
           await p.depositLiquidity(lp1, amount, isCall);
 
-          await underlying.mint(buyer.address, parseUnderlying('1'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -138,11 +133,6 @@ export function describeBehaviorOfPoolExercise({
           });
 
           await p.depositLiquidity(lp1, amount, isCall);
-
-          await underlying.mint(buyer.address, parseUnderlying('1'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(buyer)
@@ -214,11 +204,6 @@ export function describeBehaviorOfPoolExercise({
 
           await p.depositLiquidity(lp1, amount, isCall);
 
-          await underlying.mint(buyer.address, parseUnderlying('1'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -281,11 +266,6 @@ export function describeBehaviorOfPoolExercise({
           });
 
           await p.depositLiquidity(lp1, amount, isCall);
-
-          await underlying.mint(buyer.address, parseUnderlying('1'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(buyer)
@@ -365,11 +345,6 @@ export function describeBehaviorOfPoolExercise({
             isCall,
           );
 
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -416,11 +391,6 @@ export function describeBehaviorOfPoolExercise({
             parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
             isCall,
           );
-
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(buyer)
@@ -496,11 +466,6 @@ export function describeBehaviorOfPoolExercise({
             isCall,
           );
 
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -567,11 +532,6 @@ export function describeBehaviorOfPoolExercise({
             parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
             isCall,
           );
-
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(buyer)
@@ -754,11 +714,6 @@ export function describeBehaviorOfPoolExercise({
 
           await p.depositLiquidity(lp1, amount, isCall);
 
-          await underlying.mint(buyer.address, parseUnderlying('100'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -856,11 +811,6 @@ export function describeBehaviorOfPoolExercise({
           const freeLiquidityTokenId = getFreeLiqTokenId(isCall);
 
           await p.depositLiquidity(lp1, amount, isCall);
-
-          await underlying.mint(buyer.address, parseUnderlying('100'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(buyer)
@@ -977,11 +927,6 @@ export function describeBehaviorOfPoolExercise({
             isCall,
           );
 
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -1086,11 +1031,6 @@ export function describeBehaviorOfPoolExercise({
             parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
             isCall,
           );
-
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(buyer)
