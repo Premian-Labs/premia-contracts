@@ -621,18 +621,6 @@ export class PoolUtil {
       isCall,
     );
 
-    if (isCall) {
-      await this.underlying.mint(buyer.address, parseUnderlying('100'));
-      await this.underlying
-        .connect(buyer)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    } else {
-      await this.base.mint(buyer.address, parseBase('10000'));
-      await this.base
-        .connect(buyer)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    }
-
     const quote = await this.pool.quote(
       buyer.address,
       maturity,
