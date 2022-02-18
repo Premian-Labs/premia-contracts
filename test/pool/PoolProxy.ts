@@ -6,8 +6,6 @@ import {
   FeeDiscount,
   FeeDiscount__factory,
   IPool,
-  PoolMock,
-  PoolMock__factory,
   Proxy__factory,
   ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
@@ -64,9 +62,9 @@ describe('PoolProxy', function () {
   let xPremia: ERC20Mock;
   let feeDiscount: FeeDiscount;
 
-  let pool: IPool;
+  let base: ERC20Mock;
+  let underlying: ERC20Mock;
   let instance: IPool;
-  let poolMock: PoolMock;
   let poolWeth: IPool;
   let p: PoolUtil;
   let premia: ERC20Mock;
@@ -113,9 +111,10 @@ describe('PoolProxy', function () {
       uniswap.weth.address,
     );
 
-    pool = p.pool;
-    poolMock = PoolMock__factory.connect(p.pool.address, owner);
     poolWeth = p.poolWeth;
+
+    base = p.base;
+    underlying = p.underlying;
 
     instance = p.pool;
   });
@@ -129,7 +128,7 @@ describe('PoolProxy', function () {
   });
 
   describeBehaviorOfProxy({
-    deploy: async () => Proxy__factory.connect(p.pool.address, owner),
+    deploy: async () => Proxy__factory.connect(instance.address, owner),
     implementationFunction: 'getPoolSettings()',
     implementationFunctionArgs: [],
   });
@@ -137,8 +136,8 @@ describe('PoolProxy', function () {
   describeBehaviorOfPoolBase(
     {
       deploy: async () => instance,
-      getUnderlying: async () => p.underlying,
-      getBase: async () => p.base,
+      getBase: async () => base,
+      getUnderlying: async () => underlying,
       getPoolUtil: async () => p,
       // mintERC1155: (recipient, tokenId, amount) =>
       //   instance['mint(address,uint256,uint256)'](recipient, tokenId, amount),
@@ -153,8 +152,8 @@ describe('PoolProxy', function () {
 
   describeBehaviorOfPoolExercise({
     deploy: async () => instance,
-    getBase: async () => p.base,
-    getUnderlying: async () => p.underlying,
+    getBase: async () => base,
+    getUnderlying: async () => underlying,
     getFeeDiscount: async () => feeDiscount,
     getXPremia: async () => xPremia,
     getPoolUtil: async () => p,
@@ -162,8 +161,8 @@ describe('PoolProxy', function () {
 
   describeBehaviorOfPoolIO({
     deploy: async () => instance,
-    getBase: async () => p.base,
-    getUnderlying: async () => p.underlying,
+    getBase: async () => base,
+    getUnderlying: async () => underlying,
     getPoolUtil: async () => p,
     getUniswap: async () => uniswap,
   });
@@ -181,8 +180,8 @@ describe('PoolProxy', function () {
 
   describeBehaviorOfPoolWrite({
     deploy: async () => instance,
-    getBase: async () => p.base,
-    getUnderlying: async () => p.underlying,
+    getBase: async () => base,
+    getUnderlying: async () => underlying,
     getPoolUtil: async () => p,
     getUniswap: async () => uniswap,
   });
