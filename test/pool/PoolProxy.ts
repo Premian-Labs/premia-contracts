@@ -51,6 +51,8 @@ chai.use(chaiAlmost(0.02));
 const oneMonth = 30 * 24 * 3600;
 
 describe('PoolProxy', function () {
+  let snapshotId: number;
+
   let owner: SignerWithAddress;
   let lp1: SignerWithAddress;
   let lp2: SignerWithAddress;
@@ -85,9 +87,7 @@ describe('PoolProxy', function () {
   before(async function () {
     [owner, lp1, lp2, buyer, thirdParty, feeReceiver] =
       await ethers.getSigners();
-  });
 
-  beforeEach(async function () {
     const erc20Factory = new ERC20Mock__factory(owner);
 
     premia = await erc20Factory.deploy('PREMIA', 18);
@@ -118,6 +118,14 @@ describe('PoolProxy', function () {
     poolWeth = p.poolWeth;
 
     instance = p.pool;
+  });
+
+  beforeEach(async () => {
+    snapshotId = await ethers.provider.send('evm_snapshot', []);
+  });
+
+  afterEach(async () => {
+    await ethers.provider.send('evm_revert', [snapshotId]);
   });
 
   describeBehaviorOfProxy({
