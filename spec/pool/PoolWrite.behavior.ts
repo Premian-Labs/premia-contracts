@@ -12,11 +12,7 @@ import {
 
 import { bnToNumber } from '../../test/utils/math';
 
-import {
-  createUniswapPair,
-  depositUniswapLiquidity,
-  IUniswap,
-} from '../../test/utils/uniswap';
+import { IUniswap } from '../../test/utils/uniswap';
 
 import {
   DECIMALS_BASE,
@@ -1178,44 +1174,6 @@ export function describeBehaviorOfPoolWrite({
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
           it('should successfully swaps tokens and purchase an option', async () => {
-            const pairBase = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.base.address,
-              uniswap.weth.address,
-            );
-
-            const pairUnderlying = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.underlying.address,
-              uniswap.weth.address,
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairBase,
-              (await pairBase.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-              (await pairBase.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairUnderlying,
-              (await pairUnderlying.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-              (await pairUnderlying.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-            );
-
             await p.depositLiquidity(
               lp1,
               parseOption(isCall ? '100' : '100000', isCall),
@@ -1235,8 +1193,6 @@ export function describeBehaviorOfPoolWrite({
               purchaseAmount,
               isCall,
             );
-
-            const mintAmount = parseOption(!isCall ? '1' : '10000', !isCall);
 
             const tx = await instance
               .connect(buyer)
@@ -1348,44 +1304,6 @@ export function describeBehaviorOfPoolWrite({
           });
 
           it('should successfully swaps tokens and purchase an option with ETH', async () => {
-            const pairBase = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.base.address,
-              uniswap.weth.address,
-            );
-
-            const pairUnderlying = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.underlying.address,
-              uniswap.weth.address,
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairBase,
-              (await pairBase.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-              (await pairBase.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairUnderlying,
-              (await pairUnderlying.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-              (await pairUnderlying.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-            );
-
             await p.depositLiquidity(
               lp1,
               parseOption(isCall ? '100' : '100000', isCall),
@@ -1405,8 +1323,6 @@ export function describeBehaviorOfPoolWrite({
               purchaseAmount,
               isCall,
             );
-
-            const mintAmount = parseOption(!isCall ? '1' : '10000', !isCall);
 
             const tx = await instance
               .connect(buyer)
@@ -1515,44 +1431,6 @@ export function describeBehaviorOfPoolWrite({
           });
 
           it('should successfully swaps tokens and purchase an option without dust left', async () => {
-            const pairBase = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.base.address,
-              uniswap.weth.address,
-            );
-
-            const pairUnderlying = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.underlying.address,
-              uniswap.weth.address,
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairBase,
-              (await pairBase.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-              (await pairBase.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairUnderlying,
-              (await pairUnderlying.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-              (await pairUnderlying.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-            );
-
             await p.depositLiquidity(
               lp1,
               parseOption(isCall ? '100' : '100000', isCall),
@@ -1572,8 +1450,6 @@ export function describeBehaviorOfPoolWrite({
               purchaseAmount,
               isCall,
             );
-
-            const mintAmount = parseOption(!isCall ? '1' : '10000', !isCall);
 
             const tx = await instance
               .connect(buyer)

@@ -20,6 +20,8 @@ import chai, { expect } from 'chai';
 import { increaseTimestamp } from '../utils/evm';
 import { parseUnits } from 'ethers/lib/utils';
 import {
+  DECIMALS_BASE,
+  DECIMALS_UNDERLYING,
   formatOption,
   formatOptionToNb,
   getExerciseValue,
@@ -42,7 +44,12 @@ import {
   getOptionTokenIds,
   TokenType,
 } from '@premia/utils';
-import { createUniswap, IUniswap } from '../utils/uniswap';
+import {
+  createUniswap,
+  createUniswapPair,
+  depositUniswapLiquidity,
+  IUniswap,
+} from '../utils/uniswap';
 
 chai.use(chaiAlmost(0.02));
 
@@ -134,6 +141,46 @@ describe('PoolProxy', function () {
         .connect(signer)
         .approve(instance.address, ethers.constants.MaxUint256);
     }
+
+    // setup Uniswap
+
+    const pairBase = await createUniswapPair(
+      owner,
+      uniswap.factory,
+      base.address,
+      uniswap.weth.address,
+    );
+
+    const pairUnderlying = await createUniswapPair(
+      owner,
+      uniswap.factory,
+      underlying.address,
+      uniswap.weth.address,
+    );
+
+    await depositUniswapLiquidity(
+      lp2,
+      uniswap.weth.address,
+      pairBase,
+      (await pairBase.token0()) === uniswap.weth.address
+        ? ethers.utils.parseUnits('100', 18)
+        : ethers.utils.parseUnits('100000', DECIMALS_BASE),
+      (await pairBase.token1()) === uniswap.weth.address
+        ? ethers.utils.parseUnits('100', 18)
+        : ethers.utils.parseUnits('100000', DECIMALS_BASE),
+    );
+
+    await depositUniswapLiquidity(
+      lp2,
+      uniswap.weth.address,
+      pairUnderlying,
+      (await pairUnderlying.token0()) === uniswap.weth.address
+        ? ethers.utils.parseUnits('100', 18)
+        : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
+      (await pairUnderlying.token1()) === uniswap.weth.address
+        ? ethers.utils.parseUnits('100', 18)
+        : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
+    );
   });
 
   beforeEach(async () => {
