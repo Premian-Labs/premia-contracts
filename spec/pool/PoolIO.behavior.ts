@@ -466,6 +466,184 @@ export function describeBehaviorOfPoolIO({
     });
 
     describe('#withdraw', function () {
+      describe('call option', () => {
+        it('processes withdrawal of reserved liquidity', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const tokenAmount = amount;
+
+          const divestedLiquidity = tokenAmount.mul(17n);
+
+          await p.depositLiquidity(lp1, divestedLiquidity, isCall);
+
+          const { timestamp: depositTimestamp } =
+            await ethers.provider.getBlock('latest');
+
+          await instance
+            .connect(lp1)
+            .setDivestmentTimestamp(depositTimestamp + 24 * 3600, isCall);
+
+          await ethers.provider.send('evm_setNextBlockTimestamp', [
+            depositTimestamp + 24 * 3600,
+          ]);
+
+          await p.depositLiquidity(
+            lp2,
+            tokenAmount.mul(ethers.constants.Two),
+            isCall,
+          );
+
+          await underlying.mint(buyer.address, parseBase('100000'));
+          await underlying
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          const oldTokenBalance = await underlying.callStatic.balanceOf(
+            lp1.address,
+          );
+          const oldReservedLiquidityBalance =
+            await instance.callStatic.balanceOf(
+              lp1.address,
+              getReservedLiqTokenId(isCall),
+            );
+          const { underlyingTVL: oldUserTVL } =
+            await instance.callStatic.getUserTVL(lp1.address);
+          const { underlyingTVL: oldTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          const amountWithdrawn = oldReservedLiquidityBalance.div(
+            ethers.constants.Two,
+          );
+
+          await instance.connect(lp1).withdraw(amountWithdrawn, isCall);
+
+          const newTokenBalance = await underlying.callStatic.balanceOf(
+            lp1.address,
+          );
+          const newReservedLiquidityBalance =
+            await instance.callStatic.balanceOf(
+              lp1.address,
+              getReservedLiqTokenId(isCall),
+            );
+          const { underlyingTVL: newUserTVL } =
+            await instance.callStatic.getUserTVL(lp1.address);
+          const { underlyingTVL: newTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          expect(newTokenBalance).to.equal(
+            oldTokenBalance.add(amountWithdrawn),
+          );
+          expect(newReservedLiquidityBalance).to.equal(
+            oldReservedLiquidityBalance.sub(amountWithdrawn),
+          );
+          expect(newUserTVL).to.equal(oldUserTVL);
+          expect(newTotalTVL).to.equal(oldTotalTVL);
+        });
+      });
+
+      describe('put option', () => {
+        it('processes withdrawal of reserved liquidity', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const tokenAmount = parseBase(formatUnderlying(amount)).mul(
+            fixedToNumber(strike64x64),
+          );
+
+          const divestedLiquidity = tokenAmount.mul(17n);
+
+          await p.depositLiquidity(lp1, divestedLiquidity, isCall);
+
+          const { timestamp: depositTimestamp } =
+            await ethers.provider.getBlock('latest');
+
+          await instance
+            .connect(lp1)
+            .setDivestmentTimestamp(depositTimestamp + 24 * 3600, isCall);
+
+          await ethers.provider.send('evm_setNextBlockTimestamp', [
+            depositTimestamp + 24 * 3600,
+          ]);
+
+          await p.depositLiquidity(
+            lp2,
+            tokenAmount.mul(ethers.constants.Two),
+            isCall,
+          );
+
+          await base.mint(buyer.address, parseBase('100000'));
+          await base
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          const oldTokenBalance = await base.callStatic.balanceOf(lp1.address);
+          const oldReservedLiquidityBalance =
+            await instance.callStatic.balanceOf(
+              lp1.address,
+              getReservedLiqTokenId(isCall),
+            );
+          const { baseTVL: oldUserTVL } = await instance.callStatic.getUserTVL(
+            lp1.address,
+          );
+          const { baseTVL: oldTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          const amountWithdrawn = oldReservedLiquidityBalance.div(
+            ethers.constants.Two,
+          );
+
+          await instance.connect(lp1).withdraw(amountWithdrawn, isCall);
+
+          const newTokenBalance = await base.callStatic.balanceOf(lp1.address);
+          const newReservedLiquidityBalance =
+            await instance.callStatic.balanceOf(
+              lp1.address,
+              getReservedLiqTokenId(isCall),
+            );
+          const { baseTVL: newUserTVL } = await instance.callStatic.getUserTVL(
+            lp1.address,
+          );
+          const { baseTVL: newTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          expect(newTokenBalance).to.equal(
+            oldTokenBalance.add(amountWithdrawn),
+          );
+          expect(newReservedLiquidityBalance).to.equal(
+            oldReservedLiquidityBalance.sub(amountWithdrawn),
+          );
+          expect(newUserTVL).to.equal(oldUserTVL);
+          expect(newTotalTVL).to.equal(oldTotalTVL);
+        });
+      });
+
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
           it('should return underlying tokens withdrawn by sender', async () => {
@@ -484,11 +662,6 @@ export function describeBehaviorOfPoolIO({
                 getFreeLiqTokenId(isCall),
               ),
             ).to.eq(0);
-          });
-
-          it('should successfully withdraw reserved liquidity', async () => {
-            // ToDo
-            expect(false);
           });
 
           it('decreases user TVL and total TVL', async () => {
