@@ -429,7 +429,80 @@ export function describeBehaviorOfPoolWrite({
           );
         });
 
-        it('adds premium to underwriter TVL and total TVL', async () => {
+        it('processes divestment', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const tokenAmount = amount;
+
+          const divestedLiquidity = tokenAmount.mul(17n);
+
+          await p.depositLiquidity(lp1, divestedLiquidity, isCall);
+
+          const { timestamp: depositTimestamp } =
+            await ethers.provider.getBlock('latest');
+
+          await instance
+            .connect(lp1)
+            .setDivestmentTimestamp(depositTimestamp + 24 * 3600, isCall);
+
+          await ethers.provider.send('evm_setNextBlockTimestamp', [
+            depositTimestamp + 24 * 3600,
+          ]);
+
+          await p.depositLiquidity(
+            lp2,
+            tokenAmount.mul(ethers.constants.Two),
+            isCall,
+          );
+
+          await underlying.mint(buyer.address, parseBase('100000'));
+          await underlying
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          const oldFreeLiquidityBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            getFreeLiqTokenId(isCall),
+          );
+          const oldReservedLiquidityBalance =
+            await instance.callStatic.balanceOf(
+              lp1.address,
+              getReservedLiqTokenId(isCall),
+            );
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          const newFreeLiquidityBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            getFreeLiqTokenId(isCall),
+          );
+          const newReservedLiquidityBalance =
+            await instance.callStatic.balanceOf(
+              lp1.address,
+              getReservedLiqTokenId(isCall),
+            );
+
+          expect(newFreeLiquidityBalance).to.equal(
+            oldFreeLiquidityBalance.sub(divestedLiquidity),
+          );
+          expect(newReservedLiquidityBalance).to.equal(
+            oldReservedLiquidityBalance.add(divestedLiquidity),
+          );
+        });
+
+        it('updates underwriter TVL', async () => {
           const isCall = true;
           const maturity = await getMaturity(10);
           const strike = getStrike(isCall, 2000);
@@ -484,6 +557,80 @@ export function describeBehaviorOfPoolWrite({
 
           expect(newUserTVL).to.equal(oldUserTVL.add(baseCost).sub(apyFee));
           expect(newTotalTVL).to.equal(oldTotalTVL.add(baseCost).sub(apyFee));
+        });
+
+        it('updates divesting user TVL', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const tokenAmount = amount;
+
+          const divestedLiquidity = tokenAmount.mul(17n);
+
+          await p.depositLiquidity(lp1, divestedLiquidity, isCall);
+
+          const { timestamp: depositTimestamp } =
+            await ethers.provider.getBlock('latest');
+
+          await instance
+            .connect(lp1)
+            .setDivestmentTimestamp(depositTimestamp + 24 * 3600, isCall);
+
+          await ethers.provider.send('evm_setNextBlockTimestamp', [
+            depositTimestamp + 24 * 3600,
+          ]);
+
+          await p.depositLiquidity(
+            lp2,
+            tokenAmount.mul(ethers.constants.Two),
+            isCall,
+          );
+
+          await underlying.mint(buyer.address, parseBase('100000'));
+          await underlying
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          const { underlyingTVL: oldUserTVL } =
+            await instance.callStatic.getUserTVL(lp1.address);
+          const { underlyingTVL: oldTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          const tx = await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          const { blockNumber, events } = await tx.wait();
+          const { timestamp } = await ethers.provider.getBlock(blockNumber);
+
+          const purchaseEvent = events!.find((e) => e.event == 'Purchase')!;
+
+          const { baseCost, feeCost } = purchaseEvent.args!;
+
+          const apyFee = maturity
+            .sub(ethers.BigNumber.from(timestamp))
+            .mul(tokenAmount)
+            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .div(ethers.utils.parseEther(ONE_YEAR.toString()));
+
+          const { underlyingTVL: newUserTVL } =
+            await instance.callStatic.getUserTVL(lp1.address);
+          const { underlyingTVL: newTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          expect(newUserTVL).to.equal(oldUserTVL.sub(divestedLiquidity));
+          expect(newTotalTVL).to.equal(
+            oldTotalTVL.add(baseCost).sub(apyFee).sub(divestedLiquidity),
+          );
         });
 
         it('utilizes multiple LP intervals');
@@ -642,7 +789,82 @@ export function describeBehaviorOfPoolWrite({
           );
         });
 
-        it('adds premium to underwriter TVL and total TVL', async () => {
+        it('processes divestment', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const tokenAmount = parseBase(formatUnderlying(amount)).mul(
+            fixedToNumber(strike64x64),
+          );
+
+          const divestedLiquidity = tokenAmount.mul(17n);
+
+          await p.depositLiquidity(lp1, divestedLiquidity, isCall);
+
+          const { timestamp: depositTimestamp } =
+            await ethers.provider.getBlock('latest');
+
+          await instance
+            .connect(lp1)
+            .setDivestmentTimestamp(depositTimestamp + 24 * 3600, isCall);
+
+          await ethers.provider.send('evm_setNextBlockTimestamp', [
+            depositTimestamp + 24 * 3600,
+          ]);
+
+          await p.depositLiquidity(
+            lp2,
+            tokenAmount.mul(ethers.constants.Two),
+            isCall,
+          );
+
+          await base.mint(buyer.address, parseBase('100000'));
+          await base
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          const oldFreeLiquidityBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            getFreeLiqTokenId(isCall),
+          );
+          const oldReservedLiquidityBalance =
+            await instance.callStatic.balanceOf(
+              lp1.address,
+              getReservedLiqTokenId(isCall),
+            );
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          const newFreeLiquidityBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            getFreeLiqTokenId(isCall),
+          );
+          const newReservedLiquidityBalance =
+            await instance.callStatic.balanceOf(
+              lp1.address,
+              getReservedLiqTokenId(isCall),
+            );
+
+          expect(newFreeLiquidityBalance).to.equal(
+            oldFreeLiquidityBalance.sub(divestedLiquidity),
+          );
+          expect(newReservedLiquidityBalance).to.equal(
+            oldReservedLiquidityBalance.add(divestedLiquidity),
+          );
+        });
+
+        it('updates underwriter TVL', async () => {
           const isCall = false;
           const maturity = await getMaturity(10);
           const strike = getStrike(isCall, 2000);
@@ -701,6 +923,84 @@ export function describeBehaviorOfPoolWrite({
 
           expect(newUserTVL).to.equal(oldUserTVL.add(baseCost).sub(apyFee));
           expect(newTotalTVL).to.equal(oldTotalTVL.add(baseCost).sub(apyFee));
+        });
+
+        it('updates divesting user TVL', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const tokenAmount = parseBase(formatUnderlying(amount)).mul(
+            fixedToNumber(strike64x64),
+          );
+
+          const divestedLiquidity = tokenAmount.mul(17n);
+
+          await p.depositLiquidity(lp1, divestedLiquidity, isCall);
+
+          const { timestamp: depositTimestamp } =
+            await ethers.provider.getBlock('latest');
+
+          await instance
+            .connect(lp1)
+            .setDivestmentTimestamp(depositTimestamp + 24 * 3600, isCall);
+
+          await ethers.provider.send('evm_setNextBlockTimestamp', [
+            depositTimestamp + 24 * 3600,
+          ]);
+
+          await p.depositLiquidity(
+            lp2,
+            tokenAmount.mul(ethers.constants.Two),
+            isCall,
+          );
+
+          await base.mint(buyer.address, parseBase('100000'));
+          await base
+            .connect(buyer)
+            .approve(instance.address, ethers.constants.MaxUint256);
+
+          const { baseTVL: oldUserTVL } = await instance.callStatic.getUserTVL(
+            lp1.address,
+          );
+          const { baseTVL: oldTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          const tx = await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          const { blockNumber, events } = await tx.wait();
+          const { timestamp } = await ethers.provider.getBlock(blockNumber);
+
+          const purchaseEvent = events!.find((e) => e.event == 'Purchase')!;
+
+          const { baseCost, feeCost } = purchaseEvent.args!;
+
+          const apyFee = maturity
+            .sub(ethers.BigNumber.from(timestamp))
+            .mul(tokenAmount)
+            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .div(ethers.utils.parseEther(ONE_YEAR.toString()));
+
+          const { baseTVL: newUserTVL } = await instance.callStatic.getUserTVL(
+            lp1.address,
+          );
+          const { baseTVL: newTotalTVL } =
+            await instance.callStatic.getTotalTVL();
+
+          expect(newUserTVL).to.equal(oldUserTVL.sub(divestedLiquidity));
+          expect(newTotalTVL).to.equal(
+            oldTotalTVL.add(baseCost).sub(apyFee).sub(divestedLiquidity),
+          );
         });
 
         it('utilizes multiple LP intervals');
