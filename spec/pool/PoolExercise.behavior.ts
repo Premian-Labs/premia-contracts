@@ -259,6 +259,8 @@ export function describeBehaviorOfPoolExercise({
           expect(newBalance).to.equal(oldBalance.add(exerciseValue));
         });
 
+        it('processes divestment');
+
         it('deducts exercise value from TVL', async () => {
           const isCall = true;
           const maturity = await getMaturity(10);
@@ -538,6 +540,8 @@ export function describeBehaviorOfPoolExercise({
 
           expect(newBalance).to.equal(oldBalance.add(exerciseValue));
         });
+
+        it('processes divestment');
 
         it('deducts exercise value from TVL', async () => {
           const isCall = false;
@@ -939,6 +943,10 @@ export function describeBehaviorOfPoolExercise({
               .sub(parseUnderlying(exerciseValue.toString())),
           );
         });
+
+        it('processes divestment');
+
+        it('updates TVL');
       });
 
       describe('put option', () => {
@@ -1168,6 +1176,10 @@ export function describeBehaviorOfPoolExercise({
               .sub(parseBase(exerciseValue.toString())),
           );
         });
+
+        it('processes divestment');
+
+        it('updates TVL');
       });
 
       describe('reverts if', () => {
