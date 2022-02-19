@@ -930,6 +930,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 amount
     ) internal {
         l.feesReserved[underwriter][shortTokenId] += amount;
+
+        emit APYFeeReserved(underwriter, shortTokenId, amount);
     }
 
     function _applyApyFeeRebate(
@@ -955,13 +957,17 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             intervalFeesReserved - intervalApyFee
         );
 
+        uint256 amountPaid = intervalFeesReserved - intervalApyFee - rebate;
+
         _processAvailableFunds(
             FEE_RECEIVER_ADDRESS,
-            intervalFeesReserved - intervalApyFee - rebate,
+            amountPaid,
             isCallPool,
             true,
             false
         );
+
+        emit APYFeePaid(underwriter, shortTokenId, amountPaid);
     }
 
     function _addToDepositQueue(
