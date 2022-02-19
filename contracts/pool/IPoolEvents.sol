@@ -48,6 +48,14 @@ interface IPoolEvents {
 
     event FeeWithdrawal(bool indexed isCallPool, uint256 amount);
 
+    event APYFeeReserved(
+        address underwriter,
+        uint256 shortTokenId,
+        uint256 amount
+    );
+
+    event APYFeePaid(address underwriter, uint256 shortTokenId, uint256 amount);
+
     event Annihilate(uint256 shortTokenId, uint256 amount);
 
     event UpdateCLevel(
