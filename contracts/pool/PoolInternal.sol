@@ -266,8 +266,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         collateralFreed = tokenAmount + rebate;
 
-        // TODO: account for TVL change
-
         emit Annihilate(shortTokenId, contractSize);
     }
 
