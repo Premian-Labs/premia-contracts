@@ -1206,13 +1206,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 contractSize,
         int128 cLevel64x64
     ) internal {
-        int128 supply64x64 = ABDKMath64x64.divu(
+        int128 supply64x64 = ABDKMath64x64Token.fromDecimals(
             ERC1155EnumerableStorage.layout().totalSupply[longTokenId],
-            10**l.underlyingDecimals
+            l.underlyingDecimals
         );
-        int128 contractSize64x64 = ABDKMath64x64.divu(
+        int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
             contractSize,
-            10**l.underlyingDecimals
+            l.underlyingDecimals
         );
 
         l.avgCLevel64x64[longTokenId] = l
