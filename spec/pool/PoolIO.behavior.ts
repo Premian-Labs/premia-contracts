@@ -272,7 +272,7 @@ export function describeBehaviorOfPoolIO({
     describe('#swapAndDeposit', function () {
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
-          it('should successfully swaps tokens and purchase an option', async () => {
+          it('executes deposit using non-pool ERC20 token', async () => {
             const mintAmount = parseOption(
               !isCall ? '1000' : '100000',
               !isCall,
@@ -307,7 +307,7 @@ export function describeBehaviorOfPoolIO({
             ).to.eq(amount);
           });
 
-          it('should successfully swaps tokens and purchase an option with ETH', async () => {
+          it('executes deposit using ETH', async () => {
             const mintAmount = parseOption(
               !isCall ? '1000' : '100000',
               !isCall,
