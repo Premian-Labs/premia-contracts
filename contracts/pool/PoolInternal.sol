@@ -1207,7 +1207,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         int128 cLevel64x64
     ) internal {
         int128 supply64x64 = ABDKMath64x64Token.fromDecimals(
-            ERC1155EnumerableStorage.layout().totalSupply[longTokenId],
+            _totalSupply(longTokenId),
             l.underlyingDecimals
         );
         int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
