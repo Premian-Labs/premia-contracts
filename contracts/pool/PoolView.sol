@@ -229,6 +229,17 @@ contract PoolView is IPoolView, PoolInternal {
     }
 
     /**
+     * @inheritdoc IPoolView
+     */
+    function getFeesReserved(address account, uint256 shortTokenId)
+        external
+        view
+        returns (uint256 feesReserved)
+    {
+        feesReserved = PoolStorage.layout().feesReserved[account][shortTokenId];
+    }
+
+    /**
      * @inheritdoc IERC1155Metadata
      * @dev SVG generated via external PremiaOptionNFTDisplay contract
      */

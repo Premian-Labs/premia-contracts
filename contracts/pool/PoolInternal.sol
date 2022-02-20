@@ -271,8 +271,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         collateralFreed = tokenAmount + rebate;
 
-        // TODO: account for TVL change
-
         emit Annihilate(shortTokenId, contractSize);
     }
 
@@ -686,7 +684,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     function _mintShortTokenInterval(
         PoolStorage.Layout storage l,
         address underwriter,
-        address buyer,
+        address longReceiver,
         uint256 shortTokenId,
         Interval memory interval,
         bool isCallPool
@@ -699,7 +697,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         _burn(
             underwriter,
             _getFreeLiquidityTokenId(isCallPool),
-            interval.tokenAmount - interval.payment + interval.apyFee
+            interval.tokenAmount + interval.apyFee - interval.payment
         );
 
         // mint short option tokens for underwriter
@@ -712,13 +710,15 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             interval.payment - interval.apyFee
         );
 
+        // if payment is equal to collateral amount plus APY fee, this is a manual underwrite
+
         emit Underwrite(
             underwriter,
-            buyer,
+            longReceiver,
             shortTokenId,
             interval.contractSize,
             interval.payment,
-            false
+            interval.payment == interval.tokenAmount + interval.apyFee
         );
     }
 
@@ -942,6 +942,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 amount
     ) internal {
         l.feesReserved[underwriter][shortTokenId] += amount;
+
+        emit APYFeeReserved(underwriter, shortTokenId, amount);
     }
 
     function _applyApyFeeRebate(
@@ -967,13 +969,17 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             intervalFeesReserved - intervalApyFee
         );
 
+        uint256 amountPaid = intervalFeesReserved - intervalApyFee - rebate;
+
         _processAvailableFunds(
             FEE_RECEIVER_ADDRESS,
-            intervalFeesReserved - intervalApyFee - rebate,
+            amountPaid,
             isCallPool,
             true,
             false
         );
+
+        emit APYFeePaid(underwriter, shortTokenId, amountPaid);
     }
 
     function _addToDepositQueue(
