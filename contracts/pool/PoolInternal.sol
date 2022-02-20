@@ -252,10 +252,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             isCall
         );
 
+        // calculate unconsumed APY fee so that it may be refunded
+
         uint256 intervalApyFee = _calculateApyFee(tokenAmount, maturity);
 
         uint256 rebate = intervalApyFee +
-            _applyApyFeeRebate(
+            _fulfillApyFee(
                 l,
                 account,
                 shortTokenId,
@@ -601,6 +603,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 isCall
             );
 
+            // calculate anticipated APY fee so that it may be reserved
+
             apyFee = _calculateApyFee(tokenAmount, maturity);
         }
 
@@ -686,7 +690,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) internal {
         // track prepaid APY fees
 
-        _reserveApyFees(l, underwriter, shortTokenId, interval.apyFee);
+        _reserveApyFee(l, underwriter, shortTokenId, interval.apyFee);
 
         // burn free liquidity tokens from underwriter
         _burn(
@@ -799,6 +803,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 isCall
             );
 
+            // calculate unconsumed APY fee so that it may be refunded
+
             apyFee = _calculateApyFee(tokenAmount, maturity);
         }
 
@@ -854,7 +860,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         // track prepaid APY fees
 
         uint256 rebate = interval.apyFee +
-            _applyApyFeeRebate(
+            _fulfillApyFee(
                 l,
                 underwriter,
                 shortTokenId,
@@ -925,7 +931,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         }
     }
 
-    function _reserveApyFees(
+    function _reserveApyFee(
         PoolStorage.Layout storage l,
         address underwriter,
         uint256 shortTokenId,
@@ -936,7 +942,16 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         emit APYFeeReserved(underwriter, shortTokenId, amount);
     }
 
-    function _applyApyFeeRebate(
+    /**
+     * @notice credit fee receiver with fees earned and calculate rebate for underwriter
+     * @param l storage layout struct
+     * @param underwriter holder of short position who reserved fees
+     * @param shortTokenId short token id whose reserved fees to pay and rebate
+     * @param intervalContractSize size of position for which to calculate accrued fees
+     * @param intervalApyFee quantity of fees reserved but not yet accrued
+     * @param isCallPool true for call, false for put
+     */
+    function _fulfillApyFee(
         PoolStorage.Layout storage l,
         address underwriter,
         uint256 shortTokenId,
@@ -951,25 +966,31 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 intervalFeesReserved = (feesReserved * intervalContractSize) /
             _balanceOf(underwriter, shortTokenId);
 
+        // deduct fees for time not elapsed
+
         l.feesReserved[underwriter][shortTokenId] -= intervalFeesReserved;
 
-        // deduct fees for time not elapsed and apply rebate to fees accrued
+        // apply rebate to fees accrued
 
         rebate = _fetchFeeDiscount64x64(underwriter).mulu(
             intervalFeesReserved - intervalApyFee
         );
 
-        uint256 amountPaid = intervalFeesReserved - intervalApyFee - rebate;
+        // credit fee receiver with fees paid
+
+        uint256 intervalFeesPaid = intervalFeesReserved -
+            intervalApyFee -
+            rebate;
 
         _processAvailableFunds(
             FEE_RECEIVER_ADDRESS,
-            amountPaid,
+            intervalFeesPaid,
             isCallPool,
             true,
             false
         );
 
-        emit APYFeePaid(underwriter, shortTokenId, amountPaid);
+        emit APYFeePaid(underwriter, shortTokenId, intervalFeesPaid);
     }
 
     function _addToDepositQueue(
@@ -1385,7 +1406,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             uint256 intervalApyFee = _calculateApyFee(collateral, maturity);
 
-            uint256 rebate = _applyApyFeeRebate(
+            uint256 rebate = _fulfillApyFee(
                 l,
                 from,
                 id,
@@ -1394,7 +1415,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 isCall
             );
 
-            _reserveApyFees(l, to, id, intervalApyFee);
+            _reserveApyFee(l, to, id, intervalApyFee);
 
             if (l.getReinvestmentStatus(from, isCall)) {
                 if (rebate > 0) {
