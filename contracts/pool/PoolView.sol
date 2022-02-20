@@ -4,8 +4,6 @@
 pragma solidity ^0.8.0;
 
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
-import {ERC1155BaseStorage} from "@solidstate/contracts/token/ERC1155/base/ERC1155BaseStorage.sol";
-import {ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155EnumerableStorage.sol";
 
 import {IPremiaOptionNFTDisplay} from "../interface/IPremiaOptionNFTDisplay.sol";
 import {IPoolView, IERC1155Metadata} from "./IPoolView.sol";
@@ -18,7 +16,6 @@ import {PoolStorage} from "./PoolStorage.sol";
  */
 contract PoolView is IPoolView, PoolInternal {
     using EnumerableSet for EnumerableSet.UintSet;
-    using EnumerableSet for EnumerableSet.AddressSet;
     using PoolStorage for PoolStorage.Layout;
 
     address internal immutable NFT_DISPLAY_ADDRESS;
