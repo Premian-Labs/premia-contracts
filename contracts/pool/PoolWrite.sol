@@ -198,27 +198,6 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             "not approved"
         );
 
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
-        _verifyPurchase(maturity, strike64x64, isCall, _update(l));
-
-        address token = l.getPoolToken(isCall);
-
-        uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
-            contractSize,
-            strike64x64,
-            isCall
-        );
-
-        uint256 intervalApyFee = _calculateApyFee(tokenAmount, maturity);
-
-        _pullFrom(
-            underwriter,
-            token,
-            tokenAmount + intervalApyFee,
-            _creditMessageValue(tokenAmount + intervalApyFee, isCall)
-        );
-
         longTokenId = PoolStorage.formatTokenId(
             PoolStorage.getTokenType(isCall, true),
             maturity,
@@ -230,22 +209,43 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             strike64x64
         );
 
-        _reserveApyFees(l, underwriter, shortTokenId, intervalApyFee);
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        _verifyPurchase(maturity, strike64x64, isCall, _update(l));
+
+        address token = l.getPoolToken(isCall);
+
+        Interval memory interval;
+
+        interval.contractSize = contractSize;
+
+        interval.tokenAmount = l.contractSizeToBaseTokenAmount(
+            contractSize,
+            strike64x64,
+            isCall
+        );
+
+        interval.apyFee = _calculateApyFee(interval.tokenAmount, maturity);
+
+        interval.payment = interval.tokenAmount + interval.apyFee;
+
+        _pullFrom(
+            underwriter,
+            token,
+            interval.payment,
+            _creditMessageValue(interval.payment, isCall)
+        );
 
         // mint long option token for designated receiver
         _mint(longReceiver, longTokenId, contractSize);
-        // mint short option token for underwriter
-        _mint(underwriter, shortTokenId, contractSize);
 
-        _addUserTVL(l, underwriter, isCall, tokenAmount);
-
-        emit Underwrite(
+        _mintShortTokenInterval(
+            l,
             underwriter,
             longReceiver,
             shortTokenId,
-            contractSize,
-            0,
-            true
+            interval,
+            isCall
         );
     }
 
