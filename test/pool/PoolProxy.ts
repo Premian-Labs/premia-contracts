@@ -6,8 +6,6 @@ import {
   FeeDiscount,
   FeeDiscount__factory,
   IPool,
-  PoolMock,
-  PoolMock__factory,
   Proxy__factory,
   ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
@@ -22,6 +20,8 @@ import chai, { expect } from 'chai';
 import { increaseTimestamp } from '../utils/evm';
 import { parseUnits } from 'ethers/lib/utils';
 import {
+  DECIMALS_BASE,
+  DECIMALS_UNDERLYING,
   formatOption,
   formatOptionToNb,
   getExerciseValue,
@@ -44,13 +44,20 @@ import {
   getOptionTokenIds,
   TokenType,
 } from '@premia/utils';
-import { createUniswap, IUniswap } from '../utils/uniswap';
+import {
+  createUniswap,
+  createUniswapPair,
+  depositUniswapLiquidity,
+  IUniswap,
+} from '../utils/uniswap';
 
 chai.use(chaiAlmost(0.02));
 
 const oneMonth = 30 * 24 * 3600;
 
 describe('PoolProxy', function () {
+  let snapshotId: number;
+
   let owner: SignerWithAddress;
   let lp1: SignerWithAddress;
   let lp2: SignerWithAddress;
@@ -62,9 +69,9 @@ describe('PoolProxy', function () {
   let xPremia: ERC20Mock;
   let feeDiscount: FeeDiscount;
 
-  let pool: IPool;
+  let base: ERC20Mock;
+  let underlying: ERC20Mock;
   let instance: IPool;
-  let poolMock: PoolMock;
   let poolWeth: IPool;
   let p: PoolUtil;
   let premia: ERC20Mock;
@@ -85,9 +92,7 @@ describe('PoolProxy', function () {
   before(async function () {
     [owner, lp1, lp2, buyer, thirdParty, feeReceiver] =
       await ethers.getSigners();
-  });
 
-  beforeEach(async function () {
     const erc20Factory = new ERC20Mock__factory(owner);
 
     premia = await erc20Factory.deploy('PREMIA', 18);
@@ -113,15 +118,81 @@ describe('PoolProxy', function () {
       uniswap.weth.address,
     );
 
-    pool = p.pool;
-    poolMock = PoolMock__factory.connect(p.pool.address, owner);
     poolWeth = p.poolWeth;
 
+    base = p.base;
+    underlying = p.underlying;
+
     instance = p.pool;
+
+    // mint ERC20 tokens and set approvals
+
+    for (const signer of await ethers.getSigners()) {
+      await base.mint(signer.address, ethers.utils.parseEther('1000000000'));
+      await base
+        .connect(signer)
+        .approve(instance.address, ethers.constants.MaxUint256);
+
+      await underlying.mint(
+        signer.address,
+        ethers.utils.parseEther('1000000000'),
+      );
+      await underlying
+        .connect(signer)
+        .approve(instance.address, ethers.constants.MaxUint256);
+    }
+
+    // setup Uniswap
+
+    const pairBase = await createUniswapPair(
+      owner,
+      uniswap.factory,
+      base.address,
+      uniswap.weth.address,
+    );
+
+    const pairUnderlying = await createUniswapPair(
+      owner,
+      uniswap.factory,
+      underlying.address,
+      uniswap.weth.address,
+    );
+
+    await depositUniswapLiquidity(
+      lp2,
+      uniswap.weth.address,
+      pairBase,
+      (await pairBase.token0()) === uniswap.weth.address
+        ? ethers.utils.parseUnits('100', 18)
+        : ethers.utils.parseUnits('100000', DECIMALS_BASE),
+      (await pairBase.token1()) === uniswap.weth.address
+        ? ethers.utils.parseUnits('100', 18)
+        : ethers.utils.parseUnits('100000', DECIMALS_BASE),
+    );
+
+    await depositUniswapLiquidity(
+      lp2,
+      uniswap.weth.address,
+      pairUnderlying,
+      (await pairUnderlying.token0()) === uniswap.weth.address
+        ? ethers.utils.parseUnits('100', 18)
+        : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
+      (await pairUnderlying.token1()) === uniswap.weth.address
+        ? ethers.utils.parseUnits('100', 18)
+        : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
+    );
+  });
+
+  beforeEach(async () => {
+    snapshotId = await ethers.provider.send('evm_snapshot', []);
+  });
+
+  afterEach(async () => {
+    await ethers.provider.send('evm_revert', [snapshotId]);
   });
 
   describeBehaviorOfProxy({
-    deploy: async () => Proxy__factory.connect(p.pool.address, owner),
+    deploy: async () => Proxy__factory.connect(instance.address, owner),
     implementationFunction: 'getPoolSettings()',
     implementationFunctionArgs: [],
   });
@@ -129,8 +200,8 @@ describe('PoolProxy', function () {
   describeBehaviorOfPoolBase(
     {
       deploy: async () => instance,
-      getUnderlying: async () => p.underlying,
-      getBase: async () => p.base,
+      getBase: async () => base,
+      getUnderlying: async () => underlying,
       getPoolUtil: async () => p,
       // mintERC1155: (recipient, tokenId, amount) =>
       //   instance['mint(address,uint256,uint256)'](recipient, tokenId, amount),
@@ -145,8 +216,8 @@ describe('PoolProxy', function () {
 
   describeBehaviorOfPoolExercise({
     deploy: async () => instance,
-    getBase: async () => p.base,
-    getUnderlying: async () => p.underlying,
+    getBase: async () => base,
+    getUnderlying: async () => underlying,
     getFeeDiscount: async () => feeDiscount,
     getXPremia: async () => xPremia,
     getPoolUtil: async () => p,
@@ -154,8 +225,8 @@ describe('PoolProxy', function () {
 
   describeBehaviorOfPoolIO({
     deploy: async () => instance,
-    getBase: async () => p.base,
-    getUnderlying: async () => p.underlying,
+    getBase: async () => base,
+    getUnderlying: async () => underlying,
     getPoolUtil: async () => p,
     getUniswap: async () => uniswap,
   });
@@ -173,8 +244,8 @@ describe('PoolProxy', function () {
 
   describeBehaviorOfPoolWrite({
     deploy: async () => instance,
-    getBase: async () => p.base,
-    getUnderlying: async () => p.underlying,
+    getBase: async () => base,
+    getUnderlying: async () => underlying,
     getPoolUtil: async () => p,
     getUniswap: async () => uniswap,
   });

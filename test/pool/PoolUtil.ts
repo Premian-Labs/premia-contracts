@@ -598,18 +598,6 @@ export class PoolUtil {
     amount: BigNumberish,
     isCall: boolean,
   ) {
-    if (isCall) {
-      await this.underlying.mint(lp.address, amount);
-      await this.underlying
-        .connect(lp)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    } else {
-      await this.base.mint(lp.address, amount);
-      await this.base
-        .connect(lp)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    }
-
     await PoolIO__factory.connect(this.pool.address, lp)
       .connect(lp)
       .deposit(amount, isCall);
@@ -632,18 +620,6 @@ export class PoolUtil {
         : parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
       isCall,
     );
-
-    if (isCall) {
-      await this.underlying.mint(buyer.address, parseUnderlying('100'));
-      await this.underlying
-        .connect(buyer)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    } else {
-      await this.base.mint(buyer.address, parseBase('10000'));
-      await this.base
-        .connect(buyer)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    }
 
     const quote = await this.pool.quote(
       buyer.address,

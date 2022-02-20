@@ -152,11 +152,6 @@ export function describeBehaviorOfPoolIO({
 
       describe('call', () => {
         it('should grant sender share tokens with ERC20 deposit', async () => {
-          await p.underlying.mint(owner.address, 100);
-          await p.underlying.approve(
-            instance.address,
-            ethers.constants.MaxUint256,
-          );
           await expect(() =>
             instance.deposit('100', true),
           ).to.changeTokenBalance(p.underlying, owner, -100);
@@ -190,11 +185,6 @@ export function describeBehaviorOfPoolIO({
         });
 
         it('should revert if user send ETH with a token deposit', async () => {
-          await p.underlying.mint(owner.address, 100);
-          await p.underlying.approve(
-            instance.address,
-            ethers.constants.MaxUint256,
-          );
           await expect(
             instance.deposit('100', true, { value: 1 }),
           ).to.be.revertedWith('not WETH deposit');
@@ -210,12 +200,6 @@ export function describeBehaviorOfPoolIO({
           const signers = (await ethers.getSigners()).slice(0, 10);
 
           for (const signer of signers) {
-            await p.underlying
-              .connect(signer)
-              .mint(signer.address, parseUnderlying((1000000).toString()));
-            await p.underlying
-              .connect(signer)
-              .approve(instance.address, ethers.constants.MaxUint256);
             await instance
               .connect(signer)
               .deposit(parseUnderlying((1000000 / 10).toString()), true);
@@ -229,11 +213,6 @@ export function describeBehaviorOfPoolIO({
         it('increases user TVL and total TVL', async () => {
           const isCall = true;
           const amount = parseOption('10', isCall);
-
-          await underlying.mint(lp1.address, amount);
-          await underlying
-            .connect(lp1)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           const amountDeposited = amount.div(ethers.constants.Two);
 
@@ -256,8 +235,6 @@ export function describeBehaviorOfPoolIO({
 
       describe('put', () => {
         it('should grant sender share tokens with ERC20 deposit', async () => {
-          await p.base.mint(owner.address, 100);
-          await p.base.approve(instance.address, ethers.constants.MaxUint256);
           await expect(() =>
             instance.deposit('100', false),
           ).to.changeTokenBalance(p.base, owner, -100);
@@ -269,11 +246,6 @@ export function describeBehaviorOfPoolIO({
         it('increases user TVL and total TVL', async () => {
           const isCall = false;
           const amount = parseOption('10', isCall);
-
-          await base.mint(lp1.address, amount);
-          await base
-            .connect(lp1)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           const amountDeposited = amount.div(ethers.constants.Two);
 
@@ -300,58 +272,11 @@ export function describeBehaviorOfPoolIO({
     describe('#swapAndDeposit', function () {
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
-          it('should successfully swaps tokens and purchase an option', async () => {
-            const pairBase = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.base.address,
-              uniswap.weth.address,
-            );
-
-            const pairUnderlying = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.underlying.address,
-              uniswap.weth.address,
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairBase,
-              (await pairBase.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-              (await pairBase.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairUnderlying,
-              (await pairUnderlying.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-              (await pairUnderlying.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-            );
-
+          it('executes deposit using non-pool ERC20 token', async () => {
             const mintAmount = parseOption(
               !isCall ? '1000' : '100000',
               !isCall,
             );
-            await p.getToken(!isCall).mint(buyer.address, mintAmount);
-            await p
-              .getToken(isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
-            await p
-              .getToken(!isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
 
             const amount = isCall
               ? parseOption('0.1', isCall)
@@ -382,59 +307,11 @@ export function describeBehaviorOfPoolIO({
             ).to.eq(amount);
           });
 
-          it('should successfully swaps tokens and purchase an option with ETH', async () => {
-            const pairBase = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.base.address,
-              uniswap.weth.address,
-            );
-
-            const pairUnderlying = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.underlying.address,
-              uniswap.weth.address,
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairBase,
-              (await pairBase.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-              (await pairBase.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairUnderlying,
-              (await pairUnderlying.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-              (await pairUnderlying.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-            );
-
+          it('executes deposit using ETH', async () => {
             const mintAmount = parseOption(
               !isCall ? '1000' : '100000',
               !isCall,
             );
-
-            await p.getToken(!isCall).mint(buyer.address, mintAmount);
-            await p
-              .getToken(isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
-            await p
-              .getToken(!isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
 
             const amount = isCall
               ? parseOption('0.1', isCall)
@@ -496,11 +373,6 @@ export function describeBehaviorOfPoolIO({
             tokenAmount.mul(ethers.constants.Two),
             isCall,
           );
-
-          await underlying.mint(buyer.address, parseBase('100000'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(buyer)
@@ -588,11 +460,6 @@ export function describeBehaviorOfPoolIO({
             isCall,
           );
 
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -667,14 +534,6 @@ export function describeBehaviorOfPoolIO({
           it('decreases user TVL and total TVL', async () => {
             const amount = parseOption('10', isCall);
 
-            await (isCall ? underlying : base).mint(
-              lp1.address,
-              isCall ? amount : parseBase('10000'),
-            );
-            await (isCall ? underlying : base)
-              .connect(lp1)
-              .approve(instance.address, ethers.constants.MaxUint256);
-
             await instance.connect(lp1).deposit(amount, isCall);
 
             await ethers.provider.send('evm_increaseTime', [24 * 3600 + 1]);
@@ -736,11 +595,6 @@ export function describeBehaviorOfPoolIO({
           });
 
           await p.depositLiquidity(lp1, amount, isCall);
-
-          await underlying.mint(buyer.address, parseUnderlying('100'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(buyer)
@@ -828,11 +682,6 @@ export function describeBehaviorOfPoolIO({
 
           await p.depositLiquidity(lp1, amount, isCall);
 
-          await underlying.mint(buyer.address, parseUnderlying('100'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -896,11 +745,6 @@ export function describeBehaviorOfPoolIO({
           });
 
           await p.depositLiquidity(lp1, amount, isCall);
-
-          await underlying.mint(buyer.address, parseUnderlying('100'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(buyer)
@@ -997,11 +841,6 @@ export function describeBehaviorOfPoolIO({
             isCall,
           );
 
-          await base.mint(buyer.address, parseBase('10000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -1095,11 +934,6 @@ export function describeBehaviorOfPoolIO({
             isCall,
           );
 
-          await base.mint(buyer.address, parseBase('10000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -1171,11 +1005,6 @@ export function describeBehaviorOfPoolIO({
             parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
             isCall,
           );
-
-          await base.mint(buyer.address, parseBase('10000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(buyer)
@@ -1338,11 +1167,6 @@ export function describeBehaviorOfPoolIO({
 
           await p.depositLiquidity(lp1, amount, isCall);
 
-          await underlying.mint(buyer.address, parseUnderlying('100'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -1429,11 +1253,6 @@ export function describeBehaviorOfPoolIO({
 
           await p.depositLiquidity(lp1, amount, isCall);
 
-          await underlying.mint(buyer.address, parseUnderlying('100'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -1497,11 +1316,6 @@ export function describeBehaviorOfPoolIO({
           });
 
           await p.depositLiquidity(lp1, amount, isCall);
-
-          await underlying.mint(buyer.address, parseUnderlying('100'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(buyer)
@@ -1598,11 +1412,6 @@ export function describeBehaviorOfPoolIO({
             isCall,
           );
 
-          await base.mint(buyer.address, parseBase('10000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -1696,11 +1505,6 @@ export function describeBehaviorOfPoolIO({
             isCall,
           );
 
-          await base.mint(buyer.address, parseBase('10000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -1772,11 +1576,6 @@ export function describeBehaviorOfPoolIO({
             parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
             isCall,
           );
-
-          await base.mint(buyer.address, parseBase('10000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(buyer)
@@ -1953,11 +1752,6 @@ export function describeBehaviorOfPoolIO({
             strike64x64,
           });
 
-          await underlying.mint(lp1.address, parseUnderlying('2'));
-          await underlying
-            .connect(lp1)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(lp1)
             .writeFrom(
@@ -2015,11 +1809,6 @@ export function describeBehaviorOfPoolIO({
             maturity,
             strike64x64,
           });
-
-          await underlying.mint(lp1.address, parseUnderlying('2'));
-          await underlying
-            .connect(lp1)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(lp1)
@@ -2087,11 +1876,6 @@ export function describeBehaviorOfPoolIO({
             strike64x64,
           });
 
-          await underlying.mint(lp1.address, parseUnderlying('2'));
-          await underlying
-            .connect(lp1)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(lp1)
             .writeFrom(
@@ -2158,11 +1942,6 @@ export function describeBehaviorOfPoolIO({
             strike64x64,
           });
 
-          await base.mint(lp1.address, parseBase('10000'));
-          await base
-            .connect(lp1)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(lp1)
             .writeFrom(
@@ -2220,11 +1999,6 @@ export function describeBehaviorOfPoolIO({
             maturity,
             strike64x64,
           });
-
-          await base.mint(lp1.address, parseBase('10000'));
-          await base
-            .connect(lp1)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(lp1)
@@ -2289,11 +2063,6 @@ export function describeBehaviorOfPoolIO({
             strike64x64,
           });
 
-          await base.mint(lp1.address, parseBase('10000'));
-          await base
-            .connect(lp1)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(lp1)
             .writeFrom(
@@ -2357,11 +2126,6 @@ export function describeBehaviorOfPoolIO({
             strike64x64,
           });
 
-          await base.mint(lp1.address, parseBase('10000'));
-          await base
-            .connect(lp1)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(lp1)
             .writeFrom(
@@ -2400,11 +2164,6 @@ export function describeBehaviorOfPoolIO({
             maturity,
             strike64x64,
           });
-
-          await base.mint(lp1.address, parseBase('10000'));
-          await base
-            .connect(lp1)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance
             .connect(lp1)

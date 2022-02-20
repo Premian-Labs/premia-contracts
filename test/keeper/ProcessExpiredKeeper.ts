@@ -53,15 +53,24 @@ describe('ProcessExpiredKeeper', () => {
 
   it('should detect expired option to process', async () => {
     const isCall = true;
-
-    await p.depositLiquidity(
-      lp,
-      parseOption(isCall ? '100' : '100000', isCall),
-      isCall,
-    );
-
     const maturity = await getMaturity(10);
     const strike64x64 = fixedFromFloat(getStrike(isCall, spotPrice));
+
+    const liquidityAmount = parseOption(isCall ? '100' : '100000', isCall);
+
+    if (isCall) {
+      await p.underlying.mint(lp.address, liquidityAmount);
+      await p.underlying
+        .connect(lp)
+        .approve(p.pool.address, ethers.constants.MaxUint256);
+    } else {
+      await p.base.mint(lp.address, liquidityAmount);
+      await p.base
+        .connect(lp)
+        .approve(p.pool.address, ethers.constants.MaxUint256);
+    }
+
+    await p.depositLiquidity(lp, liquidityAmount, isCall);
 
     const purchaseAmountNb = 10;
     const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -107,14 +116,23 @@ describe('ProcessExpiredKeeper', () => {
 
   it('should process multiple expired option', async () => {
     const isCall = true;
-
-    await p.depositLiquidity(
-      lp,
-      parseOption(isCall ? '100' : '100000', isCall),
-      isCall,
-    );
-
     const strike64x64 = fixedFromFloat(getStrike(isCall, spotPrice));
+
+    const liquidityAmount = parseOption(isCall ? '100' : '100000', isCall);
+
+    if (isCall) {
+      await p.underlying.mint(lp.address, liquidityAmount);
+      await p.underlying
+        .connect(lp)
+        .approve(p.pool.address, ethers.constants.MaxUint256);
+    } else {
+      await p.base.mint(lp.address, liquidityAmount);
+      await p.base
+        .connect(lp)
+        .approve(p.pool.address, ethers.constants.MaxUint256);
+    }
+
+    await p.depositLiquidity(lp, liquidityAmount, isCall);
 
     const purchaseAmountNb = 10;
     const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());

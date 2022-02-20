@@ -338,11 +338,6 @@ export function describeBehaviorOfPoolBase(
             isCall,
           );
 
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance
             .connect(buyer)
             .purchase(
@@ -461,11 +456,6 @@ export function describeBehaviorOfPoolBase(
           const isCall = true;
           const amount = parseOption('100', isCall);
 
-          await underlying.mint(owner.address, amount);
-          await underlying
-            .connect(owner)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await instance.connect(owner).deposit(amount, isCall);
 
           await expect(
@@ -484,11 +474,6 @@ export function describeBehaviorOfPoolBase(
         it('tokenId corresponds to locked reserved liquidity', async () => {
           const isCall = true;
           const amount = parseOption('100', isCall);
-
-          await underlying.mint(owner.address, amount);
-          await underlying
-            .connect(owner)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           await instance.connect(owner).deposit(amount, isCall);
 

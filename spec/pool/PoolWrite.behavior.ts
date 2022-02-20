@@ -12,11 +12,7 @@ import {
 
 import { bnToNumber } from '../../test/utils/math';
 
-import {
-  createUniswapPair,
-  depositUniswapLiquidity,
-  IUniswap,
-} from '../../test/utils/uniswap';
+import { IUniswap } from '../../test/utils/uniswap';
 
 import {
   DECIMALS_BASE,
@@ -292,11 +288,6 @@ export function describeBehaviorOfPoolWrite({
 
           await p.depositLiquidity(lp1, amount, isCall);
 
-          await underlying.mint(buyer.address, parseUnderlying('100'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           const oldBuyerBalance = await underlying.callStatic.balanceOf(
             buyer.address,
           );
@@ -360,11 +351,6 @@ export function describeBehaviorOfPoolWrite({
             tokenAmount.mul(ethers.constants.Two),
             isCall,
           );
-
-          await underlying.mint(buyer.address, parseUnderlying('100000'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           const oldBuyerLongTokenBalance = await instance.callStatic.balanceOf(
             buyer.address,
@@ -459,11 +445,6 @@ export function describeBehaviorOfPoolWrite({
             isCall,
           );
 
-          await underlying.mint(buyer.address, parseBase('100000'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           const oldFreeLiquidityBalance = await instance.callStatic.balanceOf(
             lp1.address,
             getFreeLiqTokenId(isCall),
@@ -516,11 +497,6 @@ export function describeBehaviorOfPoolWrite({
             tokenAmount.mul(ethers.constants.Two),
             isCall,
           );
-
-          await underlying.mint(buyer.address, parseBase('100000'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           const { underlyingTVL: oldUserTVL } =
             await instance.callStatic.getUserTVL(lp1.address);
@@ -589,11 +565,6 @@ export function describeBehaviorOfPoolWrite({
             isCall,
           );
 
-          await underlying.mint(buyer.address, parseBase('100000'));
-          await underlying
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           const { underlyingTVL: oldUserTVL } =
             await instance.callStatic.getUserTVL(lp1.address);
           const { underlyingTVL: oldTotalTVL } =
@@ -649,11 +620,6 @@ export function describeBehaviorOfPoolWrite({
             parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
             isCall,
           );
-
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           const oldBuyerBalance = await base.callStatic.balanceOf(
             buyer.address,
@@ -720,11 +686,6 @@ export function describeBehaviorOfPoolWrite({
             tokenAmount.mul(ethers.constants.Two),
             isCall,
           );
-
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           const oldBuyerLongTokenBalance = await instance.callStatic.balanceOf(
             buyer.address,
@@ -821,11 +782,6 @@ export function describeBehaviorOfPoolWrite({
             isCall,
           );
 
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           const oldFreeLiquidityBalance = await instance.callStatic.balanceOf(
             lp1.address,
             getFreeLiqTokenId(isCall),
@@ -880,11 +836,6 @@ export function describeBehaviorOfPoolWrite({
             tokenAmount.mul(ethers.constants.Two),
             isCall,
           );
-
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           const { baseTVL: oldUserTVL } = await instance.callStatic.getUserTVL(
             lp1.address,
@@ -956,11 +907,6 @@ export function describeBehaviorOfPoolWrite({
             tokenAmount.mul(ethers.constants.Two),
             isCall,
           );
-
-          await base.mint(buyer.address, parseBase('100000'));
-          await base
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
 
           const { baseTVL: oldUserTVL } = await instance.callStatic.getUserTVL(
             lp1.address,
@@ -1209,14 +1155,6 @@ export function describeBehaviorOfPoolWrite({
           const maturity = await getMaturity(10);
           const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
-          await p
-            .getToken(isCall)
-            .mint(buyer.address, parseOption('100', isCall));
-          await p
-            .getToken(isCall)
-            .connect(buyer)
-            .approve(instance.address, ethers.constants.MaxUint256);
-
           await expect(
             instance
               .connect(buyer)
@@ -1235,45 +1173,7 @@ export function describeBehaviorOfPoolWrite({
     describe('#swapAndPurchase', function () {
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
-          it('should successfully swaps tokens and purchase an option', async () => {
-            const pairBase = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.base.address,
-              uniswap.weth.address,
-            );
-
-            const pairUnderlying = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.underlying.address,
-              uniswap.weth.address,
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairBase,
-              (await pairBase.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-              (await pairBase.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairUnderlying,
-              (await pairUnderlying.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-              (await pairUnderlying.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-            );
-
+          it('executes purchase using non-pool ERC20 token', async () => {
             await p.depositLiquidity(
               lp1,
               parseOption(isCall ? '100' : '100000', isCall),
@@ -1283,177 +1183,62 @@ export function describeBehaviorOfPoolWrite({
             const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
-            const purchaseAmountNb = 10;
-            const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
-
-            const quote = await instance.quote(
-              buyer.address,
+            const longTokenId = formatTokenId({
+              tokenType: getLong(isCall),
               maturity,
               strike64x64,
-              purchaseAmount,
-              isCall,
+            });
+
+            const amount = parseUnderlying('1');
+
+            const oldPoolTokenBalance = await (isCall
+              ? underlying
+              : base
+            ).callStatic.balanceOf(buyer.address);
+            const oldNonPoolTokenBalance = await (isCall
+              ? base
+              : underlying
+            ).callStatic.balanceOf(buyer.address);
+            const oldLongTokenBalance = await instance.balanceOf(
+              buyer.address,
+              longTokenId,
             );
 
-            const mintAmount = parseOption(!isCall ? '1' : '10000', !isCall);
-
-            await p.getToken(!isCall).mint(buyer.address, mintAmount);
-            await p
-              .getToken(isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
-            await p
-              .getToken(!isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
-
-            const tx = await instance
+            await instance
               .connect(buyer)
               .swapAndPurchase(
                 maturity,
                 strike64x64,
-                purchaseAmount,
+                amount,
                 isCall,
-                getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
-                getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
-                ethers.utils.parseEther('10000'),
+                ethers.constants.MaxUint256,
+                ethers.constants.Zero,
+                ethers.constants.MaxUint256,
                 isCall
-                  ? [p.base.address, uniswap.weth.address, p.underlying.address]
-                  : [
-                      p.underlying.address,
-                      uniswap.weth.address,
-                      p.base.address,
-                    ],
+                  ? [base.address, uniswap.weth.address, underlying.address]
+                  : [underlying.address, uniswap.weth.address, base.address],
                 false,
               );
 
-            const { blockNumber } = await tx.wait();
-            const { timestamp } = await ethers.provider.getBlock(blockNumber);
-
-            const newBalance = await p
-              .getToken(isCall)
-              .balanceOf(buyer.address);
-
-            expect(bnToNumber(newBalance, getTokenDecimals(isCall))).to.almost(
-              Number(
-                formatOption(
-                  getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
-                  isCall,
-                ),
-              ) -
-                fixedToNumber(quote.baseCost64x64) -
-                fixedToNumber(quote.feeCost64x64),
+            const newPoolTokenBalance = await (isCall
+              ? underlying
+              : base
+            ).callStatic.balanceOf(buyer.address);
+            const newNonPoolTokenBalance = await (isCall
+              ? base
+              : underlying
+            ).callStatic.balanceOf(buyer.address);
+            const newLongTokenBalance = await instance.balanceOf(
+              buyer.address,
+              longTokenId,
             );
 
-            const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
-
-            if (isCall) {
-              const apyFee =
-                (purchaseAmountNb *
-                  (maturity.toNumber() - timestamp) *
-                  FEE_APY) /
-                ONE_YEAR;
-
-              expect(
-                bnToNumber(
-                  await instance.balanceOf(
-                    lp1.address,
-                    getFreeLiqTokenId(isCall),
-                  ),
-                  DECIMALS_UNDERLYING,
-                ),
-              ).to.almost(
-                100 -
-                  purchaseAmountNb +
-                  fixedToNumber(quote.baseCost64x64) -
-                  apyFee,
-              );
-            } else {
-              const apyFee =
-                (purchaseAmountNb *
-                  getStrike(isCall, 2000) *
-                  (maturity.toNumber() - timestamp) *
-                  FEE_APY) /
-                ONE_YEAR;
-
-              expect(
-                bnToNumber(
-                  await instance.balanceOf(
-                    lp1.address,
-                    getFreeLiqTokenId(isCall),
-                  ),
-                  DECIMALS_BASE,
-                ),
-              ).to.almost(
-                100000 -
-                  purchaseAmountNb * getStrike(isCall, 2000) +
-                  fixedToNumber(quote.baseCost64x64) -
-                  apyFee,
-              );
-            }
-
-            expect(
-              bnToNumber(
-                await instance.balanceOf(
-                  feeReceiver.address,
-                  getReservedLiqTokenId(isCall),
-                ),
-              ),
-            ).to.almost(fixedToNumber(quote.feeCost64x64));
-
-            expect(await instance.balanceOf(lp1.address, tokenId.long)).to.eq(
-              0,
-            );
-            expect(await instance.balanceOf(lp1.address, tokenId.short)).to.eq(
-              purchaseAmount,
-            );
-
-            expect(await instance.balanceOf(buyer.address, tokenId.long)).to.eq(
-              purchaseAmount,
-            );
-            expect(
-              await instance.balanceOf(buyer.address, tokenId.short),
-            ).to.eq(0);
+            expect(newPoolTokenBalance).to.eq(oldPoolTokenBalance);
+            // TODO: assert cost
+            expect(newLongTokenBalance).to.eq(oldLongTokenBalance.add(amount));
           });
 
-          it('should successfully swaps tokens and purchase an option with ETH', async () => {
-            const pairBase = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.base.address,
-              uniswap.weth.address,
-            );
-
-            const pairUnderlying = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.underlying.address,
-              uniswap.weth.address,
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairBase,
-              (await pairBase.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-              (await pairBase.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairUnderlying,
-              (await pairUnderlying.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-              (await pairUnderlying.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-            );
-
+          it('executes purchase using ETH', async () => {
             await p.depositLiquidity(
               lp1,
               parseOption(isCall ? '100' : '100000', isCall),
@@ -1463,306 +1248,60 @@ export function describeBehaviorOfPoolWrite({
             const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
-            const purchaseAmountNb = 10;
-            const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
-
-            const quote = await instance.quote(
-              buyer.address,
+            const longTokenId = formatTokenId({
+              tokenType: getLong(isCall),
               maturity,
               strike64x64,
-              purchaseAmount,
-              isCall,
+            });
+
+            const amount = parseUnderlying('1');
+
+            const oldPoolTokenBalance = await (isCall
+              ? underlying
+              : base
+            ).callStatic.balanceOf(buyer.address);
+            const oldNonPoolTokenBalance = await (isCall
+              ? base
+              : underlying
+            ).callStatic.balanceOf(buyer.address);
+            const oldLongTokenBalance = await instance.balanceOf(
+              buyer.address,
+              longTokenId,
             );
 
-            const mintAmount = parseOption(!isCall ? '1' : '10000', !isCall);
-
-            await p.getToken(!isCall).mint(buyer.address, mintAmount);
-            await p
-              .getToken(isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
-            await p
-              .getToken(!isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
-
-            const tx = await instance
+            await instance
               .connect(buyer)
               .swapAndPurchase(
                 maturity,
                 strike64x64,
-                purchaseAmount,
+                amount,
                 isCall,
-                getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
-                getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
-                0,
+                ethers.constants.MaxUint256,
+                ethers.constants.Zero,
+                ethers.constants.Zero,
                 isCall
-                  ? [uniswap.weth.address, p.underlying.address]
-                  : [uniswap.weth.address, p.base.address],
+                  ? [uniswap.weth.address, underlying.address]
+                  : [uniswap.weth.address, base.address],
                 false,
                 { value: ethers.utils.parseEther('2') },
               );
 
-            const { blockNumber } = await tx.wait();
-            const { timestamp } = await ethers.provider.getBlock(blockNumber);
-
-            const newBalance = await p
-              .getToken(isCall)
-              .balanceOf(buyer.address);
-
-            expect(bnToNumber(newBalance, getTokenDecimals(isCall))).to.almost(
-              Number(
-                formatOption(
-                  getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
-                  isCall,
-                ),
-              ) -
-                fixedToNumber(quote.baseCost64x64) -
-                fixedToNumber(quote.feeCost64x64),
-            );
-
-            const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
-
-            if (isCall) {
-              const apyFee =
-                (purchaseAmountNb *
-                  (maturity.toNumber() - timestamp) *
-                  FEE_APY) /
-                ONE_YEAR;
-
-              expect(
-                bnToNumber(
-                  await instance.balanceOf(
-                    lp1.address,
-                    getFreeLiqTokenId(isCall),
-                  ),
-                  DECIMALS_UNDERLYING,
-                ),
-              ).to.almost(
-                100 -
-                  purchaseAmountNb +
-                  fixedToNumber(quote.baseCost64x64) -
-                  apyFee,
-              );
-            } else {
-              const apyFee =
-                (purchaseAmountNb *
-                  getStrike(isCall, 2000) *
-                  (maturity.toNumber() - timestamp) *
-                  FEE_APY) /
-                ONE_YEAR;
-
-              expect(
-                bnToNumber(
-                  await instance.balanceOf(
-                    lp1.address,
-                    getFreeLiqTokenId(isCall),
-                  ),
-                  DECIMALS_BASE,
-                ),
-              ).to.almost(
-                100000 -
-                  purchaseAmountNb * getStrike(isCall, 2000) +
-                  fixedToNumber(quote.baseCost64x64) -
-                  apyFee,
-              );
-            }
-
-            expect(
-              bnToNumber(
-                await instance.balanceOf(
-                  feeReceiver.address,
-                  getReservedLiqTokenId(isCall),
-                ),
-              ),
-            ).to.almost(fixedToNumber(quote.feeCost64x64));
-
-            expect(await instance.balanceOf(lp1.address, tokenId.long)).to.eq(
-              0,
-            );
-            expect(await instance.balanceOf(lp1.address, tokenId.short)).to.eq(
-              purchaseAmount,
-            );
-
-            expect(await instance.balanceOf(buyer.address, tokenId.long)).to.eq(
-              purchaseAmount,
-            );
-            expect(
-              await instance.balanceOf(buyer.address, tokenId.short),
-            ).to.eq(0);
-          });
-
-          it('should successfully swaps tokens and purchase an option without dust left', async () => {
-            const pairBase = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.base.address,
-              uniswap.weth.address,
-            );
-
-            const pairUnderlying = await createUniswapPair(
-              owner,
-              uniswap.factory,
-              p.underlying.address,
-              uniswap.weth.address,
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairBase,
-              (await pairBase.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-              (await pairBase.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100000', DECIMALS_BASE),
-            );
-
-            await depositUniswapLiquidity(
-              lp2,
-              uniswap.weth.address,
-              pairUnderlying,
-              (await pairUnderlying.token0()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-              (await pairUnderlying.token1()) === uniswap.weth.address
-                ? ethers.utils.parseUnits('100', 18)
-                : ethers.utils.parseUnits('100', DECIMALS_UNDERLYING),
-            );
-
-            await p.depositLiquidity(
-              lp1,
-              parseOption(isCall ? '100' : '100000', isCall),
-              isCall,
-            );
-
-            const maturity = await getMaturity(10);
-            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
-
-            const purchaseAmountNb = 10;
-            const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
-
-            const quote = await instance.quote(
+            const newPoolTokenBalance = await (isCall
+              ? underlying
+              : base
+            ).callStatic.balanceOf(buyer.address);
+            const newNonPoolTokenBalance = await (isCall
+              ? base
+              : underlying
+            ).callStatic.balanceOf(buyer.address);
+            const newLongTokenBalance = await instance.balanceOf(
               buyer.address,
-              maturity,
-              strike64x64,
-              purchaseAmount,
-              isCall,
+              longTokenId,
             );
 
-            const mintAmount = parseOption(!isCall ? '1' : '10000', !isCall);
-
-            await p.getToken(!isCall).mint(buyer.address, mintAmount);
-            await p
-              .getToken(isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
-            await p
-              .getToken(!isCall)
-              .connect(buyer)
-              .approve(instance.address, ethers.constants.MaxUint256);
-
-            const tx = await instance
-              .connect(buyer)
-              .swapAndPurchase(
-                maturity,
-                strike64x64,
-                purchaseAmount,
-                isCall,
-                getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
-                '0',
-                ethers.utils.parseEther('10000'),
-                isCall
-                  ? [p.base.address, uniswap.weth.address, p.underlying.address]
-                  : [
-                      p.underlying.address,
-                      uniswap.weth.address,
-                      p.base.address,
-                    ],
-                false,
-              );
-
-            const { blockNumber } = await tx.wait();
-            const { timestamp } = await ethers.provider.getBlock(blockNumber);
-
-            const newBalance = await p
-              .getToken(isCall)
-              .balanceOf(buyer.address);
-
-            expect(bnToNumber(newBalance, getTokenDecimals(isCall))).to.almost(
-              0,
-            );
-
-            const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
-
-            if (isCall) {
-              const apyFee =
-                (purchaseAmountNb *
-                  (maturity.toNumber() - timestamp) *
-                  FEE_APY) /
-                ONE_YEAR;
-
-              expect(
-                bnToNumber(
-                  await instance.balanceOf(
-                    lp1.address,
-                    getFreeLiqTokenId(isCall),
-                  ),
-                  DECIMALS_UNDERLYING,
-                ),
-              ).to.almost(
-                100 -
-                  purchaseAmountNb +
-                  fixedToNumber(quote.baseCost64x64) -
-                  apyFee,
-              );
-            } else {
-              const apyFee =
-                (purchaseAmountNb *
-                  getStrike(isCall, 2000) *
-                  (maturity.toNumber() - timestamp) *
-                  FEE_APY) /
-                ONE_YEAR;
-
-              expect(
-                bnToNumber(
-                  await instance.balanceOf(
-                    lp1.address,
-                    getFreeLiqTokenId(isCall),
-                  ),
-                  DECIMALS_BASE,
-                ),
-              ).to.almost(
-                100000 -
-                  purchaseAmountNb * getStrike(isCall, 2000) +
-                  fixedToNumber(quote.baseCost64x64) -
-                  apyFee,
-              );
-            }
-
-            expect(
-              bnToNumber(
-                await instance.balanceOf(
-                  feeReceiver.address,
-                  getReservedLiqTokenId(isCall),
-                ),
-              ),
-            ).to.almost(fixedToNumber(quote.feeCost64x64));
-
-            expect(await instance.balanceOf(lp1.address, tokenId.long)).to.eq(
-              0,
-            );
-            expect(await instance.balanceOf(lp1.address, tokenId.short)).to.eq(
-              purchaseAmount,
-            );
-
-            expect(await instance.balanceOf(buyer.address, tokenId.long)).to.eq(
-              purchaseAmount,
-            );
-            expect(
-              await instance.balanceOf(buyer.address, tokenId.short),
-            ).to.eq(0);
+            expect(newPoolTokenBalance).to.eq(oldPoolTokenBalance);
+            // TODO: assert cost
+            expect(newLongTokenBalance).to.eq(oldLongTokenBalance.add(amount));
           });
         });
       }
@@ -1778,15 +1317,6 @@ export function describeBehaviorOfPoolWrite({
             const amount = parseUnderlying('1');
 
             const token = isCall ? underlying : base;
-            let toMint = isCall ? parseUnderlying('1') : parseBase('100000');
-
-            // mint extra to account for APY fee
-            toMint = toMint.mul(ethers.constants.Two);
-
-            await token.mint(lp1.address, toMint);
-            await token
-              .connect(lp1)
-              .approve(instance.address, ethers.constants.MaxUint256);
 
             await instance
               .connect(lp1)
@@ -1828,15 +1358,6 @@ export function describeBehaviorOfPoolWrite({
             const amount = parseUnderlying('1');
 
             const token = isCall ? underlying : base;
-            let toMint = isCall ? parseUnderlying('1') : parseBase('100000');
-
-            // mint extra to account for APY fee
-            toMint = toMint.mul(ethers.constants.Two);
-
-            await token.mint(lp1.address, toMint);
-            await token
-              .connect(lp1)
-              .approve(instance.address, ethers.constants.MaxUint256);
 
             await instance.connect(lp1).setApprovalForAll(owner.address, true);
 
