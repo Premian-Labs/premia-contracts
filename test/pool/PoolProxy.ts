@@ -127,7 +127,7 @@ describe('PoolProxy', function () {
 
     // mint ERC20 tokens and set approvals
 
-    for (const signer of [owner, lp1, lp2, buyer]) {
+    for (const signer of await ethers.getSigners()) {
       await base.mint(signer.address, ethers.utils.parseEther('1000000000'));
       await base
         .connect(signer)
