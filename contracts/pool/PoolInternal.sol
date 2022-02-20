@@ -692,12 +692,19 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         _reserveApyFee(l, underwriter, shortTokenId, interval.apyFee);
 
-        // burn free liquidity tokens from underwriter
-        _burn(
-            underwriter,
-            _getFreeLiquidityTokenId(isCallPool),
-            interval.tokenAmount + interval.apyFee - interval.payment
-        );
+        // if payment is equal to collateral amount plus APY fee, this is a manual underwrite
+
+        bool isManualUnderwrite = interval.payment ==
+            interval.tokenAmount + interval.apyFee;
+
+        if (!isManualUnderwrite) {
+            // burn free liquidity tokens from underwriter
+            _burn(
+                underwriter,
+                _getFreeLiquidityTokenId(isCallPool),
+                interval.tokenAmount + interval.apyFee - interval.payment
+            );
+        }
 
         // mint short option tokens for underwriter
         _mint(underwriter, shortTokenId, interval.contractSize);
@@ -709,15 +716,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             interval.payment - interval.apyFee
         );
 
-        // if payment is equal to collateral amount plus APY fee, this is a manual underwrite
-
         emit Underwrite(
             underwriter,
             longReceiver,
             shortTokenId,
             interval.contractSize,
-            interval.payment,
-            interval.payment == interval.tokenAmount + interval.apyFee
+            isManualUnderwrite ? 0 : interval.payment,
+            isManualUnderwrite
         );
     }
 
