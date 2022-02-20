@@ -513,22 +513,40 @@ export function describeBehaviorOfPoolIO({
 
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
-          it('should return underlying tokens withdrawn by sender', async () => {
-            await p.depositLiquidity(owner, 100, isCall);
-            expect(await p.getToken(isCall).balanceOf(owner.address)).to.eq(0);
+          it('transfers liquidity to sender', async () => {
+            const freeLiqTokenId = getFreeLiqTokenId(isCall);
 
+            await p.depositLiquidity(lp1, 100, isCall);
             await ethers.provider.send('evm_increaseTime', [24 * 3600 + 60]);
 
-            await instance.withdraw('100', isCall);
-            expect(await p.getToken(isCall).balanceOf(owner.address)).to.eq(
-              100,
+            const oldFreeLiquidityBalance = await instance.callStatic.balanceOf(
+              lp1.address,
+              freeLiqTokenId,
             );
-            expect(
-              await instance.balanceOf(
-                owner.address,
-                getFreeLiqTokenId(isCall),
-              ),
-            ).to.eq(0);
+            const oldTokenBalance = await (isCall
+              ? underlying
+              : base
+            ).callStatic.balanceOf(lp1.address);
+
+            const amountWithdrawn = ethers.constants.Two;
+
+            await instance.connect(lp1).withdraw(amountWithdrawn, isCall);
+
+            const newFreeLiquidityBalance = await instance.callStatic.balanceOf(
+              lp1.address,
+              freeLiqTokenId,
+            );
+            const newTokenBalance = await (isCall
+              ? underlying
+              : base
+            ).callStatic.balanceOf(lp1.address);
+
+            expect(newFreeLiquidityBalance).to.equal(
+              oldFreeLiquidityBalance.sub(amountWithdrawn),
+            );
+            expect(newTokenBalance).to.equal(
+              oldTokenBalance.add(amountWithdrawn),
+            );
           });
 
           it('decreases user TVL and total TVL', async () => {
