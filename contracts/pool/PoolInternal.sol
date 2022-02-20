@@ -1038,6 +1038,28 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
     }
 
+    function _updateCLevelAverage(
+        PoolStorage.Layout storage l,
+        uint256 longTokenId,
+        uint256 contractSize,
+        int128 cLevel64x64
+    ) internal {
+        int128 supply64x64 = ABDKMath64x64Token.fromDecimals(
+            _totalSupply(longTokenId),
+            l.underlyingDecimals
+        );
+        int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
+            contractSize,
+            l.underlyingDecimals
+        );
+
+        l.avgCLevel64x64[longTokenId] = l
+            .avgCLevel64x64[longTokenId]
+            .mul(supply64x64)
+            .add(cLevel64x64.mul(contractSize64x64))
+            .div(supply64x64.add(contractSize64x64));
+    }
+
     /**
      * @notice calculate and store updated market state
      * @param l storage layout struct
@@ -1198,28 +1220,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         l.userTVL[user][isCallPool] = newUserTVL;
         l.totalTVL[isCallPool] = newTotalTVL;
-    }
-
-    function _updateCLevelAverage(
-        PoolStorage.Layout storage l,
-        uint256 longTokenId,
-        uint256 contractSize,
-        int128 cLevel64x64
-    ) internal {
-        int128 supply64x64 = ABDKMath64x64Token.fromDecimals(
-            _totalSupply(longTokenId),
-            l.underlyingDecimals
-        );
-        int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
-            contractSize,
-            l.underlyingDecimals
-        );
-
-        l.avgCLevel64x64[longTokenId] = l
-            .avgCLevel64x64[longTokenId]
-            .mul(supply64x64)
-            .add(cLevel64x64.mul(contractSize64x64))
-            .div(supply64x64.add(contractSize64x64));
     }
 
     function _setBuybackEnabled(bool state) internal {
