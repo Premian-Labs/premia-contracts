@@ -113,13 +113,19 @@ contract PoolSell is IPoolSell, PoolInternal {
             isCall
         );
 
+        // calculate unconsumed APY fee so that it may be refunded
+
+        uint256 apyFee = _calculateApyFee(tokenAmount, maturity);
+
         for (uint256 i = 0; i < buyers.length; i++) {
-            if (!l.isBuybackEnabled[buyers[i]]) continue;
+            address underwriter = buyers[i];
+
+            if (!l.isBuybackEnabled[underwriter]) continue;
 
             Interval memory interval;
 
             {
-                uint256 maxAmount = _balanceOf(buyers[i], shortTokenId);
+                uint256 maxAmount = _balanceOf(underwriter, shortTokenId);
 
                 if (maxAmount == 0) continue;
 
@@ -130,30 +136,21 @@ contract PoolSell is IPoolSell, PoolInternal {
                 }
             }
 
-            _burn(buyers[i], shortTokenId, interval.contractSize);
-
             interval.tokenAmount =
                 (tokenAmount * interval.contractSize) /
                 contractSize;
             interval.payment =
                 (sellPrice * interval.contractSize) /
                 contractSize;
+            interval.apyFee = (apyFee * interval.contractSize) / contractSize;
 
-            if (l.getReinvestmentStatus(buyers[i], isCall)) {
-                _addToDepositQueue(
-                    buyers[i],
-                    interval.tokenAmount - interval.payment,
-                    isCall
-                );
-                _subUserTVL(l, buyers[i], isCall, interval.payment);
-            } else {
-                _mint(
-                    buyers[i],
-                    _getReservedLiquidityTokenId(isCall),
-                    interval.tokenAmount - interval.payment
-                );
-                _subUserTVL(l, buyers[i], isCall, interval.tokenAmount);
-            }
+            _burnShortTokenInterval(
+                l,
+                underwriter,
+                shortTokenId,
+                interval,
+                isCall
+            );
 
             amountFilled += interval.contractSize;
 
