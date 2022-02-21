@@ -250,11 +250,20 @@ contract PoolSell is IPoolSell, PoolInternal {
         baseCost = (baseCost * amountFilled) / contractSize;
         feeCost = (feeCost * amountFilled) / contractSize;
 
-        _pushTo(msg.sender, l.getPoolToken(isCall), baseCost - feeCost);
-        _mint(
+        _processAvailableFunds(
+            msg.sender,
+            baseCost - feeCost,
+            isCall,
+            true,
+            true
+        );
+
+        _processAvailableFunds(
             FEE_RECEIVER_ADDRESS,
-            _getReservedLiquidityTokenId(isCall),
-            feeCost
+            feeCost,
+            isCall,
+            true,
+            false
         );
     }
 }
