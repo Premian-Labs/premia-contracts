@@ -117,24 +117,27 @@ contract PoolSell is IPoolSell, PoolInternal {
 
         uint256 apyFee = _calculateApyFee(tokenAmount, maturity);
 
-        for (uint256 i = 0; i < buyers.length; i++) {
+        for (uint256 i = 0; i < buyers.length && contractSize > 0; i++) {
             address underwriter = buyers[i];
 
             if (!l.isBuybackEnabled[underwriter]) continue;
 
             Interval memory interval;
 
-            {
-                uint256 maxAmount = _balanceOf(underwriter, shortTokenId);
+            // amount of liquidity provided by underwriter
+            interval.contractSize = _balanceOf(underwriter, shortTokenId);
 
-                if (maxAmount == 0) continue;
+            // if underwriter has no liquidity, skip
+            // this should not be necessary because 0 value will prevent meaningful operations
 
-                if (maxAmount >= contractSize - amountFilled) {
-                    interval.contractSize = contractSize - amountFilled;
-                } else {
-                    interval.contractSize = maxAmount;
-                }
-            }
+            if (interval.contractSize == 0) continue;
+
+            // truncate interval if underwriter has excess short position size
+
+            if (interval.contractSize > contractSize)
+                interval.contractSize = contractSize;
+
+            // calculate derived interval variables
 
             interval.tokenAmount =
                 (tokenAmount * interval.contractSize) /
@@ -152,9 +155,12 @@ contract PoolSell is IPoolSell, PoolInternal {
                 isCall
             );
 
-            amountFilled += interval.contractSize;
+            contractSize -= interval.contractSize;
+            tokenAmount -= interval.tokenAmount;
+            sellPrice -= interval.payment;
+            apyFee -= interval.apyFee;
 
-            if (amountFilled == contractSize) break;
+            amountFilled += interval.contractSize;
         }
 
         return amountFilled;

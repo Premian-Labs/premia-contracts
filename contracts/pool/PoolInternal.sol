@@ -981,11 +981,11 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             // calculate derived interval variables
 
-            interval.payment =
-                (exerciseValue * interval.contractSize) /
-                contractSize;
             interval.tokenAmount =
                 (tokenAmount * interval.contractSize) /
+                contractSize;
+            interval.payment =
+                (exerciseValue * interval.contractSize) /
                 contractSize;
             interval.apyFee = (apyFee * interval.contractSize) / contractSize;
 
@@ -998,8 +998,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             );
 
             contractSize -= interval.contractSize;
-            exerciseValue -= interval.payment;
             tokenAmount -= interval.tokenAmount;
+            exerciseValue -= interval.payment;
             apyFee -= interval.apyFee;
         }
     }
