@@ -101,12 +101,6 @@ contract PoolSell is IPoolSell, PoolInternal {
         address[] memory buyers,
         uint256 sellPrice
     ) internal returns (uint256 amountFilled) {
-        uint256 longTokenId = PoolStorage.formatTokenId(
-            PoolStorage.getTokenType(isCall, true),
-            maturity,
-            strike64x64
-        );
-
         uint256 shortTokenId = PoolStorage.formatTokenId(
             PoolStorage.getTokenType(isCall, false),
             maturity,
@@ -136,7 +130,6 @@ contract PoolSell is IPoolSell, PoolInternal {
                 }
             }
 
-            _burn(msg.sender, longTokenId, interval.contractSize);
             _burn(buyers[i], shortTokenId, interval.contractSize);
 
             interval.tokenAmount =
@@ -240,6 +233,14 @@ contract PoolSell is IPoolSell, PoolInternal {
             buyers,
             baseCost
         );
+
+        uint256 longTokenId = PoolStorage.formatTokenId(
+            PoolStorage.getTokenType(isCall, true),
+            maturity,
+            strike64x64
+        );
+
+        _burn(msg.sender, longTokenId, amountFilled);
 
         require(amountFilled > 0, "no sell liq");
 
