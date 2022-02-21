@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {EnumerableSet, ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155EnumerableStorage.sol";
-import {ERC1155BaseStorage} from "@solidstate/contracts/token/ERC1155/base/ERC1155BaseStorage.sol";
 
 import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 
@@ -77,9 +76,7 @@ contract PoolSell is IPoolSell, PoolInternal {
                 .at(j);
             if (l.isBuybackEnabled[lp]) {
                 buyers[i] = lp;
-                amounts[i] = ERC1155BaseStorage.layout().balances[shortTokenId][
-                    lp
-                ];
+                amounts[i] = _balanceOf(lp, shortTokenId);
                 i++;
             }
         }
@@ -123,9 +120,7 @@ contract PoolSell is IPoolSell, PoolInternal {
 
             uint256 intervalContractSize;
             {
-                uint256 maxAmount = ERC1155BaseStorage.layout().balances[
-                    shortTokenId
-                ][buyers[i]];
+                uint256 maxAmount = _balanceOf(buyers[i], shortTokenId);
 
                 if (maxAmount == 0) continue;
 
