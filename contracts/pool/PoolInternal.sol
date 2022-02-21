@@ -7,7 +7,6 @@ import {IERC173} from "@solidstate/contracts/access/IERC173.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155EnumerableInternal, ERC1155EnumerableStorage, EnumerableSet} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
-import {ERC1155BaseStorage} from "@solidstate/contracts/token/ERC1155/base/ERC1155BaseStorage.sol";
 import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
 
 import {PoolStorage} from "./PoolStorage.sol";
@@ -136,7 +135,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @param args structured quote arguments
      * @return result quote result
      */
-    function _quote(PoolStorage.QuoteArgsInternal memory args)
+    function _quotePurchasePrice(PoolStorage.QuoteArgsInternal memory args)
         internal
         view
         returns (PoolStorage.QuoteResultInternal memory result)
@@ -212,7 +211,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         result.feeCost64x64 -= result.feeCost64x64.mul(discount64x64);
     }
 
-    function _sellQuote(PoolStorage.QuoteArgsInternal memory args)
+    function _quoteSalePrice(PoolStorage.QuoteArgsInternal memory args)
         internal
         view
         returns (int128 baseCost64x64, int128 feeCost64x64)
@@ -332,21 +331,18 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         returns (uint256 totalLiquidity)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
-        ERC1155EnumerableStorage.Layout
-            storage erc1155EnumerableLayout = ERC1155EnumerableStorage.layout();
 
-        uint256 length = erc1155EnumerableLayout
-            .accountsByToken[shortTokenId]
-            .length();
+        EnumerableSet.AddressSet storage accounts = ERC1155EnumerableStorage
+            .layout()
+            .accountsByToken[shortTokenId];
+
+        uint256 length = accounts.length();
 
         for (uint256 i = 0; i < length; i++) {
-            address lp = erc1155EnumerableLayout
-                .accountsByToken[shortTokenId]
-                .at(i);
-            if (l.isBuyBackEnabled[lp]) {
-                totalLiquidity += ERC1155BaseStorage.layout().balances[
-                    shortTokenId
-                ][lp];
+            address lp = accounts.at(i);
+
+            if (l.isBuybackEnabled[lp]) {
+                totalLiquidity += _balanceOf(lp, shortTokenId);
             }
         }
     }
@@ -463,7 +459,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             );
         }
 
-        PoolStorage.QuoteResultInternal memory quote = _quote(
+        PoolStorage.QuoteResultInternal memory quote = _quotePurchasePrice(
             PoolStorage.QuoteArgsInternal(
                 account,
                 maturity,
@@ -1042,6 +1038,28 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
     }
 
+    function _updateCLevelAverage(
+        PoolStorage.Layout storage l,
+        uint256 longTokenId,
+        uint256 contractSize,
+        int128 cLevel64x64
+    ) internal {
+        int128 supply64x64 = ABDKMath64x64Token.fromDecimals(
+            _totalSupply(longTokenId),
+            l.underlyingDecimals
+        );
+        int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
+            contractSize,
+            l.underlyingDecimals
+        );
+
+        l.avgCLevel64x64[longTokenId] = l
+            .avgCLevel64x64[longTokenId]
+            .mul(supply64x64)
+            .add(cLevel64x64.mul(contractSize64x64))
+            .div(supply64x64.add(contractSize64x64));
+    }
+
     /**
      * @notice calculate and store updated market state
      * @param l storage layout struct
@@ -1204,31 +1222,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         l.totalTVL[isCallPool] = newTotalTVL;
     }
 
-    function _updateCLevelAverage(
-        PoolStorage.Layout storage l,
-        uint256 longTokenId,
-        uint256 contractSize,
-        int128 cLevel64x64
-    ) internal {
-        int128 supply64x64 = ABDKMath64x64.divu(
-            ERC1155EnumerableStorage.layout().totalSupply[longTokenId],
-            10**l.underlyingDecimals
-        );
-        int128 contractSize64x64 = ABDKMath64x64.divu(
-            contractSize,
-            10**l.underlyingDecimals
-        );
-
-        l.avgCLevel64x64[longTokenId] = l
-            .avgCLevel64x64[longTokenId]
-            .mul(supply64x64)
-            .add(cLevel64x64.mul(contractSize64x64))
-            .div(supply64x64.add(contractSize64x64));
-    }
-
-    function _setBuyBackEnabled(bool state) internal {
+    function _setBuybackEnabled(bool state) internal {
         PoolStorage.Layout storage l = PoolStorage.layout();
-        l.isBuyBackEnabled[msg.sender] = state;
+        l.isBuybackEnabled[msg.sender] = state;
     }
 
     /**

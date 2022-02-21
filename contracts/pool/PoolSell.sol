@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {EnumerableSet, ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155EnumerableStorage.sol";
-import {ERC1155BaseStorage} from "@solidstate/contracts/token/ERC1155/base/ERC1155BaseStorage.sol";
 
 import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 
@@ -40,15 +39,15 @@ contract PoolSell is IPoolSell, PoolInternal {
     /**
      * @inheritdoc IPoolSell
      */
-    function setBuyBackEnabled(bool state) external {
-        _setBuyBackEnabled(state);
+    function setBuybackEnabled(bool state) external {
+        _setBuybackEnabled(state);
     }
 
     /**
      * @inheritdoc IPoolSell
      */
-    function isBuyBackEnabled(address account) external view returns (bool) {
-        return PoolStorage.layout().isBuyBackEnabled[account];
+    function isBuybackEnabled(address account) external view returns (bool) {
+        return PoolStorage.layout().isBuybackEnabled[account];
     }
 
     /**
@@ -75,11 +74,9 @@ contract PoolSell is IPoolSell, PoolInternal {
             address lp = erc1155EnumerableLayout
                 .accountsByToken[shortTokenId]
                 .at(j);
-            if (l.isBuyBackEnabled[lp]) {
+            if (l.isBuybackEnabled[lp]) {
                 buyers[i] = lp;
-                amounts[i] = ERC1155BaseStorage.layout().balances[shortTokenId][
-                    lp
-                ];
+                amounts[i] = _balanceOf(lp, shortTokenId);
                 i++;
             }
         }
@@ -119,13 +116,11 @@ contract PoolSell is IPoolSell, PoolInternal {
             : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
 
         for (uint256 i = 0; i < buyers.length; i++) {
-            if (!l.isBuyBackEnabled[buyers[i]]) continue;
+            if (!l.isBuybackEnabled[buyers[i]]) continue;
 
             uint256 intervalContractSize;
             {
-                uint256 maxAmount = ERC1155BaseStorage.layout().balances[
-                    shortTokenId
-                ][buyers[i]];
+                uint256 maxAmount = _balanceOf(buyers[i], shortTokenId);
 
                 if (maxAmount == 0) continue;
 
@@ -181,7 +176,7 @@ contract PoolSell is IPoolSell, PoolInternal {
         bool isCall
     ) external view returns (int128 baseCost64x64, int128 feeCost64x64) {
         return
-            _sellQuote(
+            _quoteSalePrice(
                 PoolStorage.QuoteArgsInternal(
                     feePayer,
                     maturity,
@@ -211,7 +206,7 @@ contract PoolSell is IPoolSell, PoolInternal {
         {
             int128 newPrice64x64 = _update(l);
 
-            (int128 baseCost64x64, int128 feeCost64x64) = _sellQuote(
+            (int128 baseCost64x64, int128 feeCost64x64) = _quoteSalePrice(
                 PoolStorage.QuoteArgsInternal(
                     msg.sender,
                     maturity,
