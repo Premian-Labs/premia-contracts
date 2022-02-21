@@ -84,10 +84,10 @@ interface IPoolWrite {
      * @param longReceiver address who will receive the long token (Can be the underwriter)
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
-     * @param contractSize quantity of option contract tokens to exercise
+     * @param contractSize quantity of option contract tokens to write
      * @param isCall whether this is a call or a put
      * @return longTokenId token id of the long call
-     * @return shortTokenId token id of the short call
+     * @return shortTokenId token id of the short option
      */
     function writeFrom(
         address underwriter,

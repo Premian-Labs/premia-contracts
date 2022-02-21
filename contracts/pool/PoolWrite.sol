@@ -77,16 +77,17 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             spot64x64 = l.getPriceUpdate(block.timestamp);
         }
 
-        PoolStorage.QuoteResultInternal memory quoteResult = _quote(
-            PoolStorage.QuoteArgsInternal(
-                feePayer,
-                maturity,
-                strike64x64,
-                spot64x64,
-                contractSize,
-                isCall
-            )
-        );
+        PoolStorage.QuoteResultInternal
+            memory quoteResult = _quotePurchasePrice(
+                PoolStorage.QuoteArgsInternal(
+                    feePayer,
+                    maturity,
+                    strike64x64,
+                    spot64x64,
+                    contractSize,
+                    isCall
+                )
+            );
 
         return (
             quoteResult.baseCost64x64,
@@ -152,9 +153,8 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             quoteArgs.contractSize = contractSize;
             quoteArgs.isCall = isCall;
 
-            PoolStorage.QuoteResultInternal memory purchaseQuote = _quote(
-                quoteArgs
-            );
+            PoolStorage.QuoteResultInternal
+                memory purchaseQuote = _quotePurchasePrice(quoteArgs);
 
             amountOut = ABDKMath64x64Token.toDecimals(
                 purchaseQuote.baseCost64x64.add(purchaseQuote.feeCost64x64),

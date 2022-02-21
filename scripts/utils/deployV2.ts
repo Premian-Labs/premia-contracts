@@ -17,6 +17,7 @@ import {
   NFTDisplay__factory,
   PremiaOptionNFTDisplay__factory,
   PoolSettings__factory,
+  PoolSell__factory,
 } from '../../typechain';
 import { diamondCut } from './diamond';
 import { BigNumber, BigNumberish } from 'ethers';
@@ -277,6 +278,35 @@ export async function deployV2(
       poolDiamond,
       poolViewImpl.address,
       poolViewFactory,
+      registeredSelectors,
+    ),
+  );
+
+  //////////////////////////////////////////////
+
+  const poolSellFactory = new PoolSell__factory(
+    { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath.address },
+    deployer,
+  );
+  const poolSellImpl = await poolSellFactory.deploy(
+    ivolOracle.address,
+    tokens.ETH,
+    premiaMining.address,
+    feeReceiver,
+    premiaFeeDiscount,
+    fee64x64,
+  );
+  await poolSellImpl.deployed();
+
+  console.log(
+    `PoolSell Implementation : ${poolSellImpl.address} (${ivolOracle.address}, ${tokens.ETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}) (OptionMath: ${optionMath.address})`,
+  );
+
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolSellImpl.address,
+      poolSellFactory,
       registeredSelectors,
     ),
   );
