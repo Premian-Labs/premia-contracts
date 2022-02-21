@@ -223,7 +223,12 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             isCall
         );
 
-        interval.apyFee = _calculateApyFee(interval.tokenAmount, maturity);
+        interval.apyFee = _calculateApyFee(
+            l,
+            shortTokenId,
+            interval.tokenAmount,
+            maturity
+        );
 
         interval.payment = interval.tokenAmount + interval.apyFee;
 
