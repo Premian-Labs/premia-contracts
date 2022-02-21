@@ -284,7 +284,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             sellCLevel64x64 = l.avgCLevel64x64[longTokenId];
 
             {
-                int128 currentCLevel64x64 = l.getRawCLevel64x64(args.isCall);
+                int128 currentCLevel64x64 = l.getRealPoolState(args.isCall);
 
                 if (
                     sellCLevel64x64 == 0 || currentCLevel64x64 < sellCLevel64x64
