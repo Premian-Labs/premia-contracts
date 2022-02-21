@@ -122,48 +122,47 @@ contract PoolSell is IPoolSell, PoolInternal {
         for (uint256 i = 0; i < buyers.length; i++) {
             if (!l.isBuybackEnabled[buyers[i]]) continue;
 
-            uint256 intervalContractSize;
+            Interval memory interval;
+
             {
                 uint256 maxAmount = _balanceOf(buyers[i], shortTokenId);
 
                 if (maxAmount == 0) continue;
 
                 if (maxAmount >= contractSize - amountFilled) {
-                    intervalContractSize = contractSize - amountFilled;
+                    interval.contractSize = contractSize - amountFilled;
                 } else {
-                    intervalContractSize = maxAmount;
+                    interval.contractSize = maxAmount;
                 }
             }
 
-            _burn(msg.sender, longTokenId, intervalContractSize);
-            _burn(buyers[i], shortTokenId, intervalContractSize);
+            _burn(msg.sender, longTokenId, interval.contractSize);
+            _burn(buyers[i], shortTokenId, interval.contractSize);
 
-            uint256 intervalToken = (tokenAmount * intervalContractSize) /
+            interval.tokenAmount =
+                (tokenAmount * interval.contractSize) /
                 contractSize;
-            uint256 intervalPremium = (sellPrice * intervalContractSize) /
+            interval.payment =
+                (sellPrice * interval.contractSize) /
                 contractSize;
 
-            uint256 tvlToSubtract;
-
-            if (PoolStorage.layout().getReinvestmentStatus(buyers[i], isCall)) {
+            if (l.getReinvestmentStatus(buyers[i], isCall)) {
                 _addToDepositQueue(
                     buyers[i],
-                    intervalToken - intervalPremium,
+                    interval.tokenAmount - interval.payment,
                     isCall
                 );
-                tvlToSubtract = intervalPremium;
+                _subUserTVL(l, buyers[i], isCall, interval.payment);
             } else {
                 _mint(
                     buyers[i],
                     _getReservedLiquidityTokenId(isCall),
-                    intervalToken - intervalPremium
+                    interval.tokenAmount - interval.payment
                 );
-                tvlToSubtract = intervalToken;
+                _subUserTVL(l, buyers[i], isCall, interval.tokenAmount);
             }
 
-            _subUserTVL(PoolStorage.layout(), buyers[i], isCall, tvlToSubtract);
-
-            amountFilled += intervalContractSize;
+            amountFilled += interval.contractSize;
 
             if (amountFilled == contractSize) break;
         }
