@@ -199,8 +199,7 @@ contract PoolSell is IPoolSell, PoolInternal {
         uint64 maturity,
         int128 strike64x64,
         bool isCall,
-        uint256 contractSize,
-        address[] memory buyers
+        uint256 contractSize
     ) external {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -232,14 +231,14 @@ contract PoolSell is IPoolSell, PoolInternal {
             );
         }
 
-        uint256 amountFilled = _sellLoop(
+        uint256 amountFilled = _burnShortTokenLoop(
             l,
             maturity,
             strike64x64,
-            isCall,
             contractSize,
-            buyers,
-            baseCost
+            baseCost,
+            isCall,
+            true
         );
 
         uint256 longTokenId = PoolStorage.formatTokenId(

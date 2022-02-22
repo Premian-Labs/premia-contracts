@@ -52,13 +52,11 @@ interface IPoolSell {
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param contractSize size of option contract
      * @param isCall true for call, false for put
-     * @param buyers list of potential buyers (to allow getting the list through static call, to save gas)
      */
     function sell(
         uint64 maturity,
         int128 strike64x64,
         bool isCall,
-        uint256 contractSize,
-        address[] memory buyers
+        uint256 contractSize
     ) external;
 }

@@ -67,8 +67,6 @@ export function describeBehaviorOfPoolSell({
 
             const tokenIds = getOptionTokenIds(maturity, strike64x64, isCall);
 
-            const buyers = await instance.getBuyers(tokenIds.short);
-
             expect(
               bnToNumber(
                 await p.getToken(isCall).balanceOf(buyer.address),
@@ -96,13 +94,7 @@ export function describeBehaviorOfPoolSell({
 
             await instance
               .connect(buyer)
-              .sell(
-                maturity,
-                strike64x64,
-                isCall,
-                parseUnderlying('1'),
-                buyers.buyers,
-              );
+              .sell(maturity, strike64x64, isCall, parseUnderlying('1'));
 
             expect(
               bnToNumber(
@@ -148,9 +140,7 @@ export function describeBehaviorOfPoolSell({
             await expect(
               instance
                 .connect(buyer)
-                .sell(maturity, strike64x64, isCall, parseUnderlying('1'), [
-                  lp1.address,
-                ]),
+                .sell(maturity, strike64x64, isCall, parseUnderlying('1')),
             ).to.be.revertedWith('no sell liq');
           });
         });

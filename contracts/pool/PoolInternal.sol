@@ -696,7 +696,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             strike64x64,
             contractSize,
             exerciseValue,
-            isCall
+            isCall,
+            false
         );
     }
 
@@ -941,8 +942,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         int128 strike64x64,
         uint256 contractSize,
         uint256 exerciseValue,
-        bool isCall
-    ) internal {
+        bool isCall,
+        bool onlyBuybackLiquidity
+    ) internal returns (uint256 amountFilled) {
         uint256 shortTokenId = PoolStorage.formatTokenId(
             PoolStorage.getTokenType(isCall, false),
             maturity,
@@ -968,8 +970,15 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             .layout()
             .accountsByToken[shortTokenId];
 
+        uint256 index = underwriters.length();
+
         while (contractSize > 0) {
-            address underwriter = underwriters.at(underwriters.length() - 1);
+            address underwriter = underwriters.at(--index);
+
+            // skip underwriters who do not provide buyback liqudity, if applicable
+
+            if (onlyBuybackLiquidity && !l.isBuybackEnabled[underwriter])
+                continue;
 
             Interval memory interval;
 
@@ -1003,6 +1012,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             tokenAmount -= interval.tokenAmount;
             exerciseValue -= interval.payment;
             apyFee -= interval.apyFee;
+
+            amountFilled += interval.contractSize;
         }
     }
 
