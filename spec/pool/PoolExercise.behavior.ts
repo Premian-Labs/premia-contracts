@@ -10,7 +10,6 @@ import {
 } from '@premia/utils';
 
 import {
-  FEE,
   formatOption,
   formatUnderlying,
   getExerciseValue,
@@ -118,100 +117,6 @@ export function describeBehaviorOfPoolExercise({
             ).to.be.revertedWith('not ITM');
           });
 
-          it('should successfully apply staking fee discount on exercise', async () => {
-            const maturity = await p.getMaturity(10);
-            const strike = p.getStrike(isCall, 2000);
-            const strike64x64 = fixedFromFloat(strike);
-            const amountNb = 10;
-            const amount = parseUnderlying(amountNb.toString());
-            const initialFreeLiqAmount = isCall
-              ? amount
-              : parseBase(formatUnderlying(amount)).mul(
-                  fixedToNumber(strike64x64),
-                );
-
-            const quote = await p.purchaseOption(
-              lp1,
-              buyer,
-              amount,
-              maturity,
-              strike64x64,
-              isCall,
-            );
-
-            const feeDiscount = await getFeeDiscount();
-            const xPremia = await getXPremia();
-
-            // Stake xPremia for fee discount
-            await xPremia.mint(buyer.address, ethers.utils.parseEther('5000'));
-            await xPremia.mint(lp1.address, ethers.utils.parseEther('50000'));
-            await xPremia
-              .connect(buyer)
-              .approve(feeDiscount.address, ethers.constants.MaxUint256);
-            await xPremia
-              .connect(lp1)
-              .approve(feeDiscount.address, ethers.constants.MaxUint256);
-            await feeDiscount
-              .connect(buyer)
-              .stake(ethers.utils.parseEther('5000'), ONE_MONTH);
-            await feeDiscount
-              .connect(lp1)
-              .stake(ethers.utils.parseEther('50000'), ONE_MONTH);
-
-            //
-
-            expect(await feeDiscount.getDiscount(buyer.address)).to.eq(2500);
-            expect(await feeDiscount.getDiscount(lp1.address)).to.eq(5000);
-
-            const longTokenId = formatTokenId({
-              tokenType: p.getLong(isCall),
-              maturity,
-              strike64x64,
-            });
-
-            const price = isCall ? strike * 1.4 : strike * 0.7;
-            await p.setUnderlyingPrice(
-              ethers.utils.parseUnits(price.toString(), 8),
-            );
-
-            const curBalance = await p
-              .getToken(isCall)
-              .balanceOf(buyer.address);
-
-            await instance
-              .connect(buyer)
-              .exerciseFrom(buyer.address, longTokenId, amount);
-
-            const exerciseValue = getExerciseValue(
-              price,
-              strike,
-              amountNb,
-              isCall,
-            );
-            const premium = (
-              await p.getToken(isCall).balanceOf(buyer.address)
-            ).sub(curBalance);
-
-            expect(Number(formatOption(premium, isCall))).to.almost(
-              exerciseValue * (1 - FEE * 0.75),
-            );
-            expect(await instance.balanceOf(buyer.address, longTokenId)).to.eq(
-              0,
-            );
-
-            const freeLiqAfter = await instance.balanceOf(
-              lp1.address,
-              p.getFreeLiqTokenId(isCall),
-            );
-
-            // Free liq = initial amount + premia paid
-            expect(
-              Number(formatOption(initialFreeLiqAmount, isCall)) -
-                exerciseValue +
-                fixedToNumber(quote.baseCost64x64),
-            ).to.almost(Number(formatOption(freeLiqAfter, isCall)));
-          });
-
           it('should successfully exercise', async () => {
             const maturity = await p.getMaturity(10);
             const strike = p.getStrike(isCall, 2000);
@@ -263,7 +168,7 @@ export function describeBehaviorOfPoolExercise({
             ).sub(curBalance);
 
             expect(Number(formatOption(premium, isCall))).to.almost(
-              exerciseValue * (1 - FEE),
+              exerciseValue,
             );
             expect(await instance.balanceOf(buyer.address, longTokenId)).to.eq(
               0,
@@ -361,11 +266,13 @@ export function describeBehaviorOfPoolExercise({
               amountNb,
               isCall,
             );
+
             const premium = (
               await p.getToken(isCall).balanceOf(buyer.address)
             ).sub(curBalance);
+
             expect(Number(formatOption(premium, isCall))).to.almost(
-              exerciseValue * (1 - FEE),
+              exerciseValue,
             );
 
             expect(await instance.balanceOf(buyer.address, longTokenId)).to.eq(
@@ -577,7 +484,7 @@ export function describeBehaviorOfPoolExercise({
               Number(formatOption(initialBuyerAmount, isCall)) -
                 fixedToNumber(quote.baseCost64x64) -
                 fixedToNumber(quote.feeCost64x64) +
-                exerciseValue * (1 - FEE),
+                exerciseValue,
             );
 
             const freeLiqAfter = await instance.balanceOf(
