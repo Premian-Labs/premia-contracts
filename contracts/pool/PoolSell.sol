@@ -115,7 +115,12 @@ contract PoolSell is IPoolSell, PoolInternal {
 
         // calculate unconsumed APY fee so that it may be refunded
 
-        uint256 apyFee = _calculateApyFee(tokenAmount, maturity);
+        uint256 apyFee = _calculateApyFee(
+            l,
+            shortTokenId,
+            tokenAmount,
+            maturity
+        );
 
         for (uint256 i = 0; i < buyers.length && contractSize > 0; i++) {
             address underwriter = buyers[i];
