@@ -1030,14 +1030,19 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         // burn short option tokens from underwriter
         _burn(underwriter, shortTokenId, interval.contractSize);
 
-        // mint free or reserved liquidity tokens for underwriter
-        if (l.getReinvestmentStatus(underwriter, isCallPool)) {
-            _addToDepositQueue(
-                underwriter,
-                interval.tokenAmount - interval.payment + refundWithRebate,
-                isCallPool
-            );
+        bool divest = !l.getReinvestmentStatus(underwriter, isCallPool);
 
+        _processAvailableFunds(
+            underwriter,
+            interval.tokenAmount - interval.payment + refundWithRebate,
+            isCallPool,
+            divest,
+            false
+        );
+
+        if (divest) {
+            _subUserTVL(l, underwriter, isCallPool, interval.tokenAmount);
+        } else {
             if (refundWithRebate > interval.payment) {
                 _addUserTVL(
                     l,
@@ -1053,14 +1058,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     interval.payment - refundWithRebate
                 );
             }
-        } else {
-            _mint(
-                underwriter,
-                _getReservedLiquidityTokenId(isCallPool),
-                interval.tokenAmount - interval.payment + refundWithRebate
-            );
-
-            _subUserTVL(l, underwriter, isCallPool, interval.tokenAmount);
         }
 
         emit AssignExercise(
@@ -1613,17 +1610,18 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             _reserveApyFee(l, to, id, intervalApyFee);
 
-            if (l.getReinvestmentStatus(from, isCall)) {
-                if (rebate > 0) {
-                    _addToDepositQueue(from, rebate, isCall);
-                }
+            bool divest = !l.getReinvestmentStatus(from, isCall);
 
-                _subUserTVL(l, from, isCall, collateral - rebate);
-            } else {
-                _mint(from, _getReservedLiquidityTokenId(isCall), rebate);
-
-                _subUserTVL(l, from, isCall, collateral);
+            if (rebate > 0) {
+                _processAvailableFunds(from, rebate, isCall, divest, false);
             }
+
+            _subUserTVL(
+                l,
+                from,
+                isCall,
+                divest ? collateral : collateral - rebate
+            );
 
             _addUserTVL(l, to, isCall, collateral);
         }
