@@ -113,6 +113,8 @@ library PoolStorage {
         // APY fee tracking
         // underwriter -> shortTokenId -> amount
         mapping(address => mapping(uint256 => uint256)) feesReserved;
+        // shortTokenId -> 64x64 fixed point representation of apy fee
+        mapping(uint256 => int128) feeReserveRates;
     }
 
     function layout() internal pure returns (Layout storage l) {
@@ -643,5 +645,9 @@ library PoolStorage {
                 l.baseDecimals
             );
         }
+    }
+
+    function setBuybackEnabled(Layout storage l, bool state) internal {
+        l.isBuybackEnabled[msg.sender] = state;
     }
 }

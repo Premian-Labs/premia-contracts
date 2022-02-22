@@ -378,9 +378,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             strike64x64
         );
 
-        _burn(account, longTokenId, contractSize);
-        _burn(account, shortTokenId, contractSize);
-
         uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
             contractSize,
             strike64x64,
@@ -389,19 +386,26 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         // calculate unconsumed APY fee so that it may be refunded
 
-        uint256 intervalApyFee = _calculateApyFee(tokenAmount, maturity);
+        uint256 intervalApyFee = _calculateApyFee(
+            l,
+            shortTokenId,
+            tokenAmount,
+            maturity
+        );
 
-        uint256 rebate = intervalApyFee +
-            _fulfillApyFee(
-                l,
-                account,
-                shortTokenId,
-                contractSize,
-                intervalApyFee,
-                isCall
-            );
+        _burn(account, longTokenId, contractSize);
+        _burn(account, shortTokenId, contractSize);
 
-        collateralFreed = tokenAmount + rebate;
+        uint256 rebate = _fulfillApyFee(
+            l,
+            account,
+            shortTokenId,
+            contractSize,
+            intervalApyFee,
+            isCall
+        );
+
+        collateralFreed = tokenAmount + rebate + intervalApyFee;
 
         emit Annihilate(shortTokenId, contractSize);
     }
@@ -754,7 +758,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             // calculate anticipated APY fee so that it may be reserved
 
-            apyFee = _calculateApyFee(tokenAmount, maturity);
+            apyFee = _calculateApyFee(l, shortTokenId, tokenAmount, maturity);
         }
 
         while (tokenAmount > 0) {
@@ -959,7 +963,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             // calculate unconsumed APY fee so that it may be refunded
 
-            apyFee = _calculateApyFee(tokenAmount, maturity);
+            apyFee = _calculateApyFee(l, shortTokenId, tokenAmount, maturity);
         }
 
         EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage
@@ -1013,7 +1017,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) internal {
         // track prepaid APY fees
 
-        uint256 rebate = interval.apyFee +
+        uint256 refundWithRebate = interval.apyFee +
             _fulfillApyFee(
                 l,
                 underwriter,
@@ -1030,30 +1034,30 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         if (l.getReinvestmentStatus(underwriter, isCallPool)) {
             _addToDepositQueue(
                 underwriter,
-                interval.tokenAmount - interval.payment + rebate,
+                interval.tokenAmount - interval.payment + refundWithRebate,
                 isCallPool
             );
 
-            if (rebate > interval.payment) {
+            if (refundWithRebate > interval.payment) {
                 _addUserTVL(
                     l,
                     underwriter,
                     isCallPool,
-                    rebate - interval.payment
+                    refundWithRebate - interval.payment
                 );
-            } else if (interval.payment > rebate) {
+            } else if (interval.payment > refundWithRebate) {
                 _subUserTVL(
                     l,
                     underwriter,
                     isCallPool,
-                    interval.payment - rebate
+                    interval.payment - refundWithRebate
                 );
             }
         } else {
             _mint(
                 underwriter,
                 _getReservedLiquidityTokenId(isCallPool),
-                interval.tokenAmount - interval.payment + rebate
+                interval.tokenAmount - interval.payment + refundWithRebate
             );
 
             _subUserTVL(
@@ -1073,13 +1077,18 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
     }
 
-    function _calculateApyFee(uint256 tokenAmount, uint64 maturity)
-        internal
-        view
-        returns (uint256 apyFee)
-    {
+    function _calculateApyFee(
+        PoolStorage.Layout storage l,
+        uint256 shortTokenId,
+        uint256 tokenAmount,
+        uint64 maturity
+    ) internal view returns (uint256 apyFee) {
         if (block.timestamp < maturity) {
-            apyFee = FEE_APY_64x64.mulu(
+            int128 apyFeeRate64x64 = _totalSupply(shortTokenId) == 0
+                ? FEE_APY_64x64
+                : l.feeReserveRates[shortTokenId];
+
+            apyFee = apyFeeRate64x64.mulu(
                 (tokenAmount * (maturity - block.timestamp)) / (365 days)
             );
         }
@@ -1113,6 +1122,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 intervalApyFee,
         bool isCallPool
     ) internal returns (uint256 rebate) {
+        if (intervalApyFee == 0) return 0;
+
         // calculate proportion of fees reserved corresponding to interval
 
         uint256 feesReserved = l.feesReserved[underwriter][shortTokenId];
@@ -1453,11 +1464,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         l.totalTVL[isCallPool] = newTotalTVL;
     }
 
-    function _setBuybackEnabled(bool state) internal {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        l.isBuybackEnabled[msg.sender] = state;
-    }
-
     /**
      * @notice ERC1155 hook: track eligible underwriters
      * @param operator transaction sender
@@ -1571,6 +1577,15 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 id,
         uint256 amount
     ) private {
+        // total supply has already been updated, so compare to amount rather than 0
+        if (from == address(0) && _totalSupply(id) == amount) {
+            l.feeReserveRates[id] = FEE_APY_64x64;
+        }
+
+        if (to == address(0) && _totalSupply(id) == 0) {
+            delete l.feeReserveRates[id];
+        }
+
         if (from != address(0) && to != address(0)) {
             (
                 PoolStorage.TokenType tokenType,
@@ -1585,7 +1600,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 isCall
             );
 
-            uint256 intervalApyFee = _calculateApyFee(collateral, maturity);
+            uint256 intervalApyFee = _calculateApyFee(
+                l,
+                id,
+                collateral,
+                maturity
+            );
 
             uint256 rebate = _fulfillApyFee(
                 l,
