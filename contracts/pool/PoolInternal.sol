@@ -1060,12 +1060,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 interval.tokenAmount - interval.payment + refundWithRebate
             );
 
-            _subUserTVL(
-                l,
-                underwriter,
-                isCallPool,
-                interval.tokenAmount - interval.payment
-            );
+            _subUserTVL(l, underwriter, isCallPool, interval.tokenAmount);
         }
 
         emit AssignExercise(
