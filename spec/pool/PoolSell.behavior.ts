@@ -156,40 +156,5 @@ export function describeBehaviorOfPoolSell({
         expect(await instance.isBuybackEnabled(lp1.address)).to.be.false;
       });
     });
-
-    describe('#getBuyers', () => {
-      it('should return list of underwriters with buyback enabled', async () => {
-        const maturity = await p.getMaturity(10);
-        const isCall = true;
-        const spotPrice = 2000;
-        const strike64x64 = fixedFromFloat(p.getStrike(isCall, spotPrice));
-
-        const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
-
-        await poolMock.mint(lp1.address, tokenId.short, parseUnderlying('1'));
-        await poolMock.mint(lp2.address, tokenId.short, parseUnderlying('2'));
-        await poolMock.mint(
-          thirdParty.address,
-          tokenId.short,
-          parseUnderlying('3'),
-        );
-        await poolMock.mint(buyer.address, tokenId.short, parseUnderlying('4'));
-        await poolMock.mint(
-          feeReceiver.address,
-          tokenId.short,
-          parseUnderlying('5'),
-        );
-
-        await instance.connect(lp2).setBuybackEnabled(true);
-        await instance.connect(buyer).setBuybackEnabled(true);
-
-        const result = await instance.getBuyers(tokenId.short);
-        expect(result.buyers).to.deep.eq([lp2.address, buyer.address]);
-        expect(result.amounts).to.deep.eq([
-          parseUnderlying('2'),
-          parseUnderlying('4'),
-        ]);
-      });
-    });
   });
 }

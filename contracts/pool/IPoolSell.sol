@@ -17,17 +17,6 @@ interface IPoolSell {
     function isBuybackEnabled(address account) external view returns (bool);
 
     /**
-     * @notice get list of underwriters with buyback enabled for a specific shortTokenId
-     * @param shortTokenId the long token id
-     * @return buyers list of underwriters with buyback enabled for this shortTokenId
-     * @return amounts amounts of options underwritten by each LP with buyback enabled
-     */
-    function getBuyers(uint256 shortTokenId)
-        external
-        view
-        returns (address[] memory buyers, uint256[] memory amounts);
-
-    /**
      * @notice calculate price of option contract
      * @param feePayer address of the fee payer
      * @param maturity timestamp of option maturity
