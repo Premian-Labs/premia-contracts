@@ -941,7 +941,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint64 maturity,
         int128 strike64x64,
         uint256 contractSize,
-        uint256 exerciseValue,
+        uint256 payment,
         bool isCall,
         bool onlyBuybackLiquidity
     ) internal {
@@ -995,9 +995,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             interval.tokenAmount =
                 (tokenAmount * interval.contractSize) /
                 contractSize;
-            interval.payment =
-                (exerciseValue * interval.contractSize) /
-                contractSize;
+            interval.payment = (payment * interval.contractSize) / contractSize;
             interval.apyFee = (apyFee * interval.contractSize) / contractSize;
 
             _burnShortTokenInterval(
@@ -1010,7 +1008,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             contractSize -= interval.contractSize;
             tokenAmount -= interval.tokenAmount;
-            exerciseValue -= interval.payment;
+            payment -= interval.payment;
             apyFee -= interval.apyFee;
         }
     }
