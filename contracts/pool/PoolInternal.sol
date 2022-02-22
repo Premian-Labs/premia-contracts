@@ -261,17 +261,16 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         _burn(account, longTokenId, contractSize);
         _burn(account, shortTokenId, contractSize);
 
-        uint256 rebate = intervalApyFee +
-            _fulfillApyFee(
-                l,
-                account,
-                shortTokenId,
-                contractSize,
-                intervalApyFee,
-                isCall
-            );
+        uint256 rebate = _fulfillApyFee(
+            l,
+            account,
+            shortTokenId,
+            contractSize,
+            intervalApyFee,
+            isCall
+        );
 
-        collateralFreed = tokenAmount + rebate;
+        collateralFreed = tokenAmount + rebate + intervalApyFee;
 
         emit Annihilate(shortTokenId, contractSize);
     }
@@ -869,7 +868,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) internal {
         // track prepaid APY fees
 
-        uint256 rebate = interval.apyFee +
+        uint256 refundWithRebate = interval.apyFee +
             _fulfillApyFee(
                 l,
                 underwriter,
@@ -886,30 +885,30 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         if (l.getReinvestmentStatus(underwriter, isCallPool)) {
             _addToDepositQueue(
                 underwriter,
-                interval.tokenAmount - interval.payment + rebate,
+                interval.tokenAmount - interval.payment + refundWithRebate,
                 isCallPool
             );
 
-            if (rebate > interval.payment) {
+            if (refundWithRebate > interval.payment) {
                 _addUserTVL(
                     l,
                     underwriter,
                     isCallPool,
-                    rebate - interval.payment
+                    refundWithRebate - interval.payment
                 );
-            } else if (interval.payment > rebate) {
+            } else if (interval.payment > refundWithRebate) {
                 _subUserTVL(
                     l,
                     underwriter,
                     isCallPool,
-                    interval.payment - rebate
+                    interval.payment - refundWithRebate
                 );
             }
         } else {
             _mint(
                 underwriter,
                 _getReservedLiquidityTokenId(isCallPool),
-                interval.tokenAmount - interval.payment + rebate
+                interval.tokenAmount - interval.payment + refundWithRebate
             );
 
             _subUserTVL(
