@@ -110,6 +110,9 @@ library PoolStorage {
         mapping(address => bool) isBuybackEnabled;
         // LongTokenId -> averageC
         mapping(uint256 => int128) avgCLevel64x64;
+        // APY fee tracking
+        // underwriter -> shortTokenId -> amount
+        mapping(address => mapping(uint256 => uint256)) feesReserved;
     }
 
     function layout() internal pure returns (Layout storage l) {
@@ -160,12 +163,48 @@ library PoolStorage {
         }
     }
 
+    function getTokenType(bool isCall, bool isLong)
+        internal
+        pure
+        returns (TokenType tokenType)
+    {
+        if (isCall) {
+            tokenType = isLong ? TokenType.LONG_CALL : TokenType.SHORT_CALL;
+        } else {
+            tokenType = isLong ? TokenType.LONG_PUT : TokenType.SHORT_PUT;
+        }
+    }
+
+    function getPoolToken(Layout storage l, bool isCall)
+        internal
+        view
+        returns (address token)
+    {
+        token = isCall ? l.underlying : l.base;
+    }
+
     function getTokenDecimals(Layout storage l, bool isCall)
         internal
         view
         returns (uint8 decimals)
     {
         decimals = isCall ? l.underlyingDecimals : l.baseDecimals;
+    }
+
+    function getMinimumAmount(Layout storage l, bool isCall)
+        internal
+        view
+        returns (uint256 minimumAmount)
+    {
+        minimumAmount = isCall ? l.underlyingMinimum : l.baseMinimum;
+    }
+
+    function getPoolCapAmount(Layout storage l, bool isCall)
+        internal
+        view
+        returns (uint256 poolCapAmount)
+    {
+        poolCapAmount = isCall ? l.underlyingPoolCap : l.basePoolCap;
     }
 
     /**
@@ -188,7 +227,7 @@ library PoolStorage {
         return
             ABDKMath64x64Token.fromDecimals(
                 ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
-                    l.nextDeposits[isCall].totalPendingDeposits,
+                    l.totalPendingDeposits(isCall),
                 l.getTokenDecimals(isCall)
             );
     }
@@ -384,7 +423,7 @@ library PoolStorage {
         int128 utilization = ABDKMath64x64.divu(
             tvl -
                 (ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
-                    l.nextDeposits[isCall].totalPendingDeposits),
+                    l.totalPendingDeposits(isCall)),
             tvl
         );
 
@@ -564,32 +603,46 @@ library PoolStorage {
         return l.bucketPrices64x64[((sequenceId + 1) << 8) - msb - 1];
     }
 
-    function fromBaseToUnderlyingDecimals(Layout storage l, uint256 value)
+    function totalPendingDeposits(Layout storage l, bool isCallPool)
         internal
         view
         returns (uint256)
     {
-        int128 valueFixed64x64 = ABDKMath64x64Token.fromDecimals(
-            value,
-            l.baseDecimals
-        );
-        return
-            ABDKMath64x64Token.toDecimals(
-                valueFixed64x64,
-                l.underlyingDecimals
-            );
+        return l.nextDeposits[isCallPool].totalPendingDeposits;
     }
 
-    function fromUnderlyingToBaseDecimals(Layout storage l, uint256 value)
-        internal
-        view
-        returns (uint256)
-    {
-        int128 valueFixed64x64 = ABDKMath64x64Token.fromDecimals(
-            value,
-            l.underlyingDecimals
-        );
-        return ABDKMath64x64Token.toDecimals(valueFixed64x64, l.baseDecimals);
+    function pendingDepositsOf(
+        Layout storage l,
+        address account,
+        bool isCallPool
+    ) internal view returns (uint256) {
+        return
+            l.pendingDeposits[account][l.nextDeposits[isCallPool].eta][
+                isCallPool
+            ];
+    }
+
+    function contractSizeToBaseTokenAmount(
+        Layout storage l,
+        uint256 contractSize,
+        int128 price64x64,
+        bool isCallPool
+    ) internal view returns (uint256 tokenAmount) {
+        if (isCallPool) {
+            tokenAmount = contractSize;
+        } else {
+            uint256 value = price64x64.mulu(contractSize);
+
+            int128 value64x64 = ABDKMath64x64Token.fromDecimals(
+                value,
+                l.underlyingDecimals
+            );
+
+            tokenAmount = ABDKMath64x64Token.toDecimals(
+                value64x64,
+                l.baseDecimals
+            );
+        }
     }
 
     function setBuybackEnabled(Layout storage l, bool state) internal {

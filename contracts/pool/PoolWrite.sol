@@ -31,7 +31,8 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64,
+        int128 feePremium64x64,
+        int128 feeApy64x64,
         address uniswapV2Factory,
         address sushiswapFactory
     )
@@ -41,7 +42,8 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            fee64x64,
+            feePremium64x64,
+            feeApy64x64,
             uniswapV2Factory,
             sushiswapFactory
         )
@@ -196,44 +198,52 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             "not approved"
         );
 
-        address token = _getPoolToken(isCall);
-
-        uint256 amount = isCall
-            ? contractSize
-            : PoolStorage.layout().fromUnderlyingToBaseDecimals(
-                strike64x64.mulu(contractSize)
-            );
-
-        _pullFrom(
-            underwriter,
-            token,
-            amount,
-            _creditMessageValue(amount, isCall)
-        );
-
         longTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, true),
+            PoolStorage.getTokenType(isCall, true),
             maturity,
             strike64x64
         );
         shortTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, false),
+            PoolStorage.getTokenType(isCall, false),
             maturity,
             strike64x64
         );
 
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        address token = l.getPoolToken(isCall);
+
+        Interval memory interval;
+
+        interval.contractSize = contractSize;
+
+        interval.tokenAmount = l.contractSizeToBaseTokenAmount(
+            contractSize,
+            strike64x64,
+            isCall
+        );
+
+        interval.apyFee = _calculateApyFee(interval.tokenAmount, maturity);
+
+        interval.payment = interval.tokenAmount + interval.apyFee;
+
+        _pullFrom(
+            underwriter,
+            token,
+            interval.payment,
+            _creditMessageValue(interval.payment, isCall)
+        );
+
         // mint long option token for designated receiver
         _mint(longReceiver, longTokenId, contractSize);
-        // mint short option token for underwriter
-        _mint(underwriter, shortTokenId, contractSize);
 
-        emit Underwrite(
+        _mintShortTokenInterval(
+            l,
             underwriter,
             longReceiver,
             shortTokenId,
-            contractSize,
-            0,
-            true
+            interval,
+            isCall
         );
     }
 
@@ -301,7 +311,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         _pullFrom(
             msg.sender,
-            _getPoolToken(isCall),
+            l.getPoolToken(isCall),
             amount,
             creditMessageValue ? _creditMessageValue(amount, isCall) : 0
         );

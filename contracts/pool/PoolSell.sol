@@ -24,7 +24,8 @@ contract PoolSell is IPoolSell, PoolInternal {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64
+        int128 feePremium64x64,
+        int128 feeApy64x64
     )
         PoolInternal(
             ivolOracle,
@@ -32,7 +33,8 @@ contract PoolSell is IPoolSell, PoolInternal {
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            fee64x64
+            feePremium64x64,
+            feeApy64x64
         )
     {}
 
@@ -100,20 +102,22 @@ contract PoolSell is IPoolSell, PoolInternal {
         uint256 sellPrice
     ) internal returns (uint256 amountFilled) {
         uint256 longTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, true),
+            PoolStorage.getTokenType(isCall, true),
             maturity,
             strike64x64
         );
 
         uint256 shortTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, false),
+            PoolStorage.getTokenType(isCall, false),
             maturity,
             strike64x64
         );
 
-        uint256 tokenAmount = isCall
-            ? contractSize
-            : l.fromUnderlyingToBaseDecimals(strike64x64.mulu(contractSize));
+        uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
+            contractSize,
+            strike64x64,
+            isCall
+        );
 
         for (uint256 i = 0; i < buyers.length; i++) {
             if (!l.isBuybackEnabled[buyers[i]]) continue;
@@ -243,7 +247,7 @@ contract PoolSell is IPoolSell, PoolInternal {
         baseCost = (baseCost * amountFilled) / contractSize;
         feeCost = (feeCost * amountFilled) / contractSize;
 
-        _pushTo(msg.sender, _getPoolToken(isCall), baseCost - feeCost);
+        _pushTo(msg.sender, l.getPoolToken(isCall), baseCost - feeCost);
         _mint(
             FEE_RECEIVER_ADDRESS,
             _getReservedLiquidityTokenId(isCall),
