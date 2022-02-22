@@ -112,7 +112,7 @@ contract PoolSell is IPoolSell, PoolInternal {
             );
         }
 
-        uint256 amountFilled = _burnShortTokenLoop(
+        _burnShortTokenLoop(
             l,
             maturity,
             strike64x64,
@@ -128,12 +128,7 @@ contract PoolSell is IPoolSell, PoolInternal {
             strike64x64
         );
 
-        _burn(msg.sender, longTokenId, amountFilled);
-
-        require(amountFilled > 0, "no sell liq");
-
-        baseCost = (baseCost * amountFilled) / contractSize;
-        feeCost = (feeCost * amountFilled) / contractSize;
+        _burn(msg.sender, longTokenId, contractSize);
 
         _processAvailableFunds(
             msg.sender,

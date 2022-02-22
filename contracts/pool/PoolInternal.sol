@@ -944,7 +944,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 exerciseValue,
         bool isCall,
         bool onlyBuybackLiquidity
-    ) internal returns (uint256 amountFilled) {
+    ) internal {
         uint256 shortTokenId = PoolStorage.formatTokenId(
             PoolStorage.getTokenType(isCall, false),
             maturity,
@@ -1012,8 +1012,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             tokenAmount -= interval.tokenAmount;
             exerciseValue -= interval.payment;
             apyFee -= interval.apyFee;
-
-            amountFilled += interval.contractSize;
         }
     }
 
