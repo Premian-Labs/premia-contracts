@@ -591,4 +591,8 @@ library PoolStorage {
         );
         return ABDKMath64x64Token.toDecimals(valueFixed64x64, l.baseDecimals);
     }
+
+    function setBuybackEnabled(Layout storage l, bool state) internal {
+        l.isBuybackEnabled[msg.sender] = state;
+    }
 }

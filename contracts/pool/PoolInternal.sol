@@ -1222,11 +1222,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         l.totalTVL[isCallPool] = newTotalTVL;
     }
 
-    function _setBuybackEnabled(bool state) internal {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        l.isBuybackEnabled[msg.sender] = state;
-    }
-
     /**
      * @notice ERC1155 hook: track eligible underwriters
      * @param operator transaction sender
