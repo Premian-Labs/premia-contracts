@@ -646,4 +646,8 @@ library PoolStorage {
             );
         }
     }
+
+    function setBuybackEnabled(Layout storage l, bool state) internal {
+        l.isBuybackEnabled[msg.sender] = state;
+    }
 }
