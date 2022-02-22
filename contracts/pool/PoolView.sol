@@ -27,7 +27,8 @@ contract PoolView is IPoolView, PoolInternal {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64
+        int128 feePremium64x64,
+        int128 feeApy64x64
     )
         PoolInternal(
             ivolOracle,
@@ -35,7 +36,8 @@ contract PoolView is IPoolView, PoolInternal {
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            fee64x64
+            feePremium64x64,
+            feeApy64x64
         )
     {
         NFT_DISPLAY_ADDRESS = nftDisplay;
@@ -134,7 +136,7 @@ contract PoolView is IPoolView, PoolInternal {
         returns (uint256 minCallTokenAmount, uint256 minPutTokenAmount)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
-        return (_getMinimumAmount(l, true), _getMinimumAmount(l, false));
+        return (l.getMinimumAmount(true), l.getMinimumAmount(false));
     }
 
     /**
@@ -146,7 +148,7 @@ contract PoolView is IPoolView, PoolInternal {
         returns (uint256 callTokenCapAmount, uint256 putTokenCapAmount)
     {
         PoolStorage.Layout storage l = PoolStorage.layout();
-        return (_getPoolCapAmount(l, true), _getPoolCapAmount(l, false));
+        return (l.getPoolCapAmount(true), l.getPoolCapAmount(false));
     }
 
     /**
@@ -224,6 +226,17 @@ contract PoolView is IPoolView, PoolInternal {
         PoolStorage.Layout storage l = PoolStorage.layout();
         callDivestmentTimestamp = l.divestmentTimestamps[account][true];
         putDivestmentTimestamp = l.divestmentTimestamps[account][false];
+    }
+
+    /**
+     * @inheritdoc IPoolView
+     */
+    function getFeesReserved(address account, uint256 shortTokenId)
+        external
+        view
+        returns (uint256 feesReserved)
+    {
+        feesReserved = PoolStorage.layout().feesReserved[account][shortTokenId];
     }
 
     /**

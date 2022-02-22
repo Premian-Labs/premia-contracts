@@ -151,6 +151,10 @@ export function describeBehaviorOfPoolView({
       it('todo');
     });
 
+    describe('#getFeesReserved', () => {
+      it('todo');
+    });
+
     describe('#getLiquidityQueuePosition', () => {
       it('should correctly return liquidity queue position', async () => {
         const signers = await ethers.getSigners();

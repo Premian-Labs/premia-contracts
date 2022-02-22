@@ -45,7 +45,8 @@ export const DECIMALS_BASE = 18;
 export const DECIMALS_UNDERLYING = 8;
 export const SYMBOL_BASE = 'SYMBOL_BASE';
 export const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
-export const FEE = 0.03;
+export const FEE_PREMIUM = 0.03;
+export const FEE_APY = 0.2;
 export const MIN_APY = 0.3;
 
 interface PoolUtilArgs {
@@ -62,7 +63,8 @@ interface PoolUtilArgs {
   feeReceiver: any;
 }
 
-const ONE_DAY = 3600 * 24;
+export const ONE_DAY = 3600 * 24;
+export const ONE_YEAR = ONE_DAY * 365;
 
 export function getFreeLiqTokenId(isCall: boolean) {
   if (isCall) {
@@ -341,7 +343,8 @@ export class PoolUtil {
       premiaMining.address,
       feeReceiver.address,
       premiaFeeDiscount,
-      fixedFromFloat(FEE),
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
     );
     await poolBaseImpl.deployed();
 
@@ -366,7 +369,8 @@ export class PoolUtil {
       premiaMining.address,
       feeReceiver.address,
       premiaFeeDiscount,
-      fixedFromFloat(FEE),
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
       uniswapV2Factory ?? ZERO_ADDRESS,
       ZERO_ADDRESS,
     );
@@ -388,7 +392,8 @@ export class PoolUtil {
       premiaMining.address,
       feeReceiver.address,
       premiaFeeDiscount,
-      fixedFromFloat(FEE),
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -411,7 +416,8 @@ export class PoolUtil {
       premiaMining.address,
       feeReceiver.address,
       premiaFeeDiscount,
-      fixedFromFloat(FEE),
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -435,7 +441,8 @@ export class PoolUtil {
       premiaMining.address,
       feeReceiver.address,
       premiaFeeDiscount,
-      fixedFromFloat(FEE),
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -455,7 +462,8 @@ export class PoolUtil {
       premiaMining.address,
       feeReceiver.address,
       premiaFeeDiscount,
-      fixedFromFloat(FEE),
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -478,7 +486,8 @@ export class PoolUtil {
       premiaMining.address,
       feeReceiver.address,
       premiaFeeDiscount,
-      fixedFromFloat(FEE),
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
       uniswapV2Factory ?? ZERO_ADDRESS,
       ZERO_ADDRESS,
     );
@@ -589,18 +598,6 @@ export class PoolUtil {
     amount: BigNumberish,
     isCall: boolean,
   ) {
-    if (isCall) {
-      await this.underlying.mint(lp.address, amount);
-      await this.underlying
-        .connect(lp)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    } else {
-      await this.base.mint(lp.address, amount);
-      await this.base
-        .connect(lp)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    }
-
     await PoolIO__factory.connect(this.pool.address, lp)
       .connect(lp)
       .deposit(amount, isCall);
@@ -623,18 +620,6 @@ export class PoolUtil {
         : parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
       isCall,
     );
-
-    if (isCall) {
-      await this.underlying.mint(buyer.address, parseUnderlying('100'));
-      await this.underlying
-        .connect(buyer)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    } else {
-      await this.base.mint(buyer.address, parseBase('10000'));
-      await this.base
-        .connect(buyer)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    }
 
     const quote = await this.pool.quote(
       buyer.address,

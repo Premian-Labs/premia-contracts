@@ -31,7 +31,8 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 fee64x64,
+        int128 feePremium64x64,
+        int128 feeApy64x64,
         address uniswapV2Factory,
         address sushiswapFactory
     )
@@ -41,7 +42,8 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            fee64x64,
+            feePremium64x64,
+            feeApy64x64,
             uniswapV2Factory,
             sushiswapFactory
         )
@@ -196,44 +198,59 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             "not approved"
         );
 
-        address token = _getPoolToken(isCall);
-
-        uint256 amount = isCall
-            ? contractSize
-            : PoolStorage.layout().fromUnderlyingToBaseDecimals(
-                strike64x64.mulu(contractSize)
-            );
-
-        _pullFrom(
-            underwriter,
-            token,
-            amount,
-            _creditMessageValue(amount, isCall)
-        );
-
         longTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, true),
+            PoolStorage.getTokenType(isCall, true),
             maturity,
             strike64x64
         );
         shortTokenId = PoolStorage.formatTokenId(
-            _getTokenType(isCall, false),
+            PoolStorage.getTokenType(isCall, false),
             maturity,
             strike64x64
         );
 
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        _verifyPurchase(maturity, strike64x64, isCall, _update(l));
+
+        address token = l.getPoolToken(isCall);
+
+        Interval memory interval;
+
+        interval.contractSize = contractSize;
+
+        interval.tokenAmount = l.contractSizeToBaseTokenAmount(
+            contractSize,
+            strike64x64,
+            isCall
+        );
+
+        interval.apyFee = _calculateApyFee(
+            l,
+            shortTokenId,
+            interval.tokenAmount,
+            maturity
+        );
+
+        interval.payment = interval.tokenAmount + interval.apyFee;
+
+        _pullFrom(
+            underwriter,
+            token,
+            interval.payment,
+            _creditMessageValue(interval.payment, isCall)
+        );
+
         // mint long option token for designated receiver
         _mint(longReceiver, longTokenId, contractSize);
-        // mint short option token for underwriter
-        _mint(underwriter, shortTokenId, contractSize);
 
-        emit Underwrite(
+        _mintShortTokenInterval(
+            l,
             underwriter,
             longReceiver,
             shortTokenId,
-            contractSize,
-            0,
-            true
+            interval,
+            isCall
         );
     }
 
@@ -265,25 +282,9 @@ contract PoolWrite is IPoolWrite, PoolSwap {
     ) internal returns (uint256 baseCost, uint256 feeCost) {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
-        require(maturity >= block.timestamp + (1 days), "exp < 1 day");
-        require(maturity < block.timestamp + (91 days), "exp > 90 days");
-        require(maturity % (8 hours) == 0, "exp must be 8-hour increment");
-
         int128 newPrice64x64 = _update(l);
 
-        if (isCall) {
-            require(
-                strike64x64 <= newPrice64x64 << 1 &&
-                    strike64x64 >= (newPrice64x64 * 8) / 10,
-                "strike out of range"
-            );
-        } else {
-            require(
-                strike64x64 <= (newPrice64x64 * 12) / 10 &&
-                    strike64x64 >= newPrice64x64 >> 1,
-                "strike out of range"
-            );
-        }
+        _verifyPurchase(maturity, strike64x64, isCall, newPrice64x64);
 
         (baseCost, feeCost) = _purchase(
             l,
@@ -301,9 +302,41 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         _pullFrom(
             msg.sender,
-            _getPoolToken(isCall),
+            l.getPoolToken(isCall),
             amount,
             creditMessageValue ? _creditMessageValue(amount, isCall) : 0
         );
+    }
+
+    /**
+     * @notice verify option parameters before writing
+     * @param maturity timestamp of option maturity
+     * @param strike64x64 64x64 fixed point representation of strike price
+     * @param isCall true for call, false for put
+     * @param spot64x64 64x64 fixed point representation of spot price
+     */
+    function _verifyPurchase(
+        uint64 maturity,
+        int128 strike64x64,
+        bool isCall,
+        int128 spot64x64
+    ) internal view {
+        require(maturity >= block.timestamp + (1 days), "exp < 1 day");
+        require(maturity < block.timestamp + (91 days), "exp > 90 days");
+        require(maturity % (8 hours) == 0, "exp must be 8-hour increment");
+
+        if (isCall) {
+            require(
+                strike64x64 <= spot64x64 << 1 &&
+                    strike64x64 >= (spot64x64 * 8) / 10,
+                "strike out of range"
+            );
+        } else {
+            require(
+                strike64x64 <= (spot64x64 * 12) / 10 &&
+                    strike64x64 >= spot64x64 >> 1,
+                "strike out of range"
+            );
+        }
     }
 }
