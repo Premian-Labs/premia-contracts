@@ -8,7 +8,7 @@ import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 
 import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
-import "./IPremiaVesting.sol";
+import {IPremiaVesting} from "./IPremiaVesting.sol";
 
 /// @author Premia
 /// @title Vesting contract for Premia founder allocations, wrapping an old vesting contract to extend the release period

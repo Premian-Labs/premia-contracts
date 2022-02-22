@@ -16,6 +16,7 @@ import { describeBehaviorOfPoolIO } from '../../spec/pool/PoolIO.behavior';
 import { describeBehaviorOfPoolSettings } from '../../spec/pool/PoolSettings.behavior';
 import { describeBehaviorOfPoolView } from '../../spec/pool/PoolView.behavior';
 import { describeBehaviorOfPoolWrite } from '../../spec/pool/PoolWrite.behavior';
+import { describeBehaviorOfPoolSell } from '../../spec/pool/PoolSell.behavior';
 import chai, { expect } from 'chai';
 import { increaseTimestamp } from '../utils/evm';
 import { parseUnits } from 'ethers/lib/utils';
@@ -35,14 +36,11 @@ import {
   PoolUtil,
 } from './PoolUtil';
 import chaiAlmost from 'chai-almost';
-import { BigNumber } from 'ethers';
 import { describeBehaviorOfProxy } from '@solidstate/spec';
 import {
   fixedFromFloat,
   fixedToNumber,
-  formatTokenId,
   getOptionTokenIds,
-  TokenType,
 } from '@premia/utils';
 import {
   createUniswap,
@@ -52,8 +50,6 @@ import {
 } from '../utils/uniswap';
 
 chai.use(chaiAlmost(0.02));
-
-const oneMonth = 30 * 24 * 3600;
 
 describe('PoolProxy', function () {
   let snapshotId: number;
@@ -75,17 +71,6 @@ describe('PoolProxy', function () {
   let poolWeth: IPool;
   let p: PoolUtil;
   let premia: ERC20Mock;
-
-  const underlyingFreeLiqToken = formatTokenId({
-    tokenType: TokenType.UnderlyingFreeLiq,
-    maturity: BigNumber.from(0),
-    strike64x64: BigNumber.from(0),
-  });
-  const baseFreeLiqToken = formatTokenId({
-    tokenType: TokenType.BaseFreeLiq,
-    maturity: BigNumber.from(0),
-    strike64x64: BigNumber.from(0),
-  });
 
   const spotPrice = 2000;
 
@@ -229,6 +214,11 @@ describe('PoolProxy', function () {
     getUnderlying: async () => underlying,
     getPoolUtil: async () => p,
     getUniswap: async () => uniswap,
+  });
+
+  describeBehaviorOfPoolSell({
+    deploy: async () => instance,
+    getPoolUtil: async () => p,
   });
 
   describeBehaviorOfPoolSettings({

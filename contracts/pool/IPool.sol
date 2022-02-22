@@ -6,6 +6,7 @@ import {IPoolBase} from "./IPoolBase.sol";
 import {IPoolEvents} from "./IPoolEvents.sol";
 import {IPoolExercise} from "./IPoolExercise.sol";
 import {IPoolIO} from "./IPoolIO.sol";
+import {IPoolSell} from "./IPoolSell.sol";
 import {IPoolSettings} from "./IPoolSettings.sol";
 import {IPoolView} from "./IPoolView.sol";
 import {IPoolWrite} from "./IPoolWrite.sol";
@@ -15,6 +16,7 @@ interface IPool is
     IPoolEvents,
     IPoolExercise,
     IPoolIO,
+    IPoolSell,
     IPoolSettings,
     IPoolView,
     IPoolWrite

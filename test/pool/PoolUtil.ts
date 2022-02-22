@@ -10,6 +10,7 @@ import {
   PoolExercise__factory,
   PoolIO__factory,
   PoolMock__factory,
+  PoolSell__factory,
   PoolSettings__factory,
   PoolView__factory,
   PoolWrite__factory,
@@ -449,6 +450,32 @@ export class PoolUtil {
         poolDiamond,
         poolViewImpl.address,
         poolViewFactory,
+        registeredSelectors,
+      ),
+    );
+
+    //////////////////////////////////////////////
+
+    const poolSellFactory = new PoolSell__factory(
+      { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath.address },
+      deployer,
+    );
+    const poolSellImpl = await poolSellFactory.deploy(
+      ivolOracle.address,
+      weth.address,
+      premiaMining.address,
+      feeReceiver.address,
+      premiaFeeDiscount,
+      fixedFromFloat(FEE_PREMIUM),
+      fixedFromFloat(FEE_APY),
+    );
+    await poolSellImpl.deployed();
+
+    registeredSelectors = registeredSelectors.concat(
+      await diamondCut(
+        poolDiamond,
+        poolSellImpl.address,
+        poolSellFactory,
         registeredSelectors,
       ),
     );
