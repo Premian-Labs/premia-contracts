@@ -101,12 +101,6 @@ contract PoolSell is IPoolSell, PoolInternal {
         address[] memory buyers,
         uint256 sellPrice
     ) internal returns (uint256 amountFilled) {
-        uint256 longTokenId = PoolStorage.formatTokenId(
-            PoolStorage.getTokenType(isCall, true),
-            maturity,
-            strike64x64
-        );
-
         uint256 shortTokenId = PoolStorage.formatTokenId(
             PoolStorage.getTokenType(isCall, false),
             maturity,
@@ -119,53 +113,59 @@ contract PoolSell is IPoolSell, PoolInternal {
             isCall
         );
 
-        for (uint256 i = 0; i < buyers.length; i++) {
-            if (!l.isBuybackEnabled[buyers[i]]) continue;
+        // calculate unconsumed APY fee so that it may be refunded
 
-            uint256 intervalContractSize;
-            {
-                uint256 maxAmount = _balanceOf(buyers[i], shortTokenId);
+        uint256 apyFee = _calculateApyFee(
+            l,
+            shortTokenId,
+            tokenAmount,
+            maturity
+        );
 
-                if (maxAmount == 0) continue;
+        for (uint256 i = 0; i < buyers.length && contractSize > 0; i++) {
+            address underwriter = buyers[i];
 
-                if (maxAmount >= contractSize - amountFilled) {
-                    intervalContractSize = contractSize - amountFilled;
-                } else {
-                    intervalContractSize = maxAmount;
-                }
-            }
+            if (!l.isBuybackEnabled[underwriter]) continue;
 
-            _burn(msg.sender, longTokenId, intervalContractSize);
-            _burn(buyers[i], shortTokenId, intervalContractSize);
+            Interval memory interval;
 
-            uint256 intervalToken = (tokenAmount * intervalContractSize) /
+            // amount of liquidity provided by underwriter
+            interval.contractSize = _balanceOf(underwriter, shortTokenId);
+
+            // if underwriter has no liquidity, skip
+            // this should not be necessary because 0 value will prevent meaningful operations
+
+            if (interval.contractSize == 0) continue;
+
+            // truncate interval if underwriter has excess short position size
+
+            if (interval.contractSize > contractSize)
+                interval.contractSize = contractSize;
+
+            // calculate derived interval variables
+
+            interval.tokenAmount =
+                (tokenAmount * interval.contractSize) /
                 contractSize;
-            uint256 intervalPremium = (sellPrice * intervalContractSize) /
+            interval.payment =
+                (sellPrice * interval.contractSize) /
                 contractSize;
+            interval.apyFee = (apyFee * interval.contractSize) / contractSize;
 
-            uint256 tvlToSubtract;
+            _burnShortTokenInterval(
+                l,
+                underwriter,
+                shortTokenId,
+                interval,
+                isCall
+            );
 
-            if (PoolStorage.layout().getReinvestmentStatus(buyers[i], isCall)) {
-                _addToDepositQueue(
-                    buyers[i],
-                    intervalToken - intervalPremium,
-                    isCall
-                );
-                tvlToSubtract = intervalPremium;
-            } else {
-                _mint(
-                    buyers[i],
-                    _getReservedLiquidityTokenId(isCall),
-                    intervalToken - intervalPremium
-                );
-                tvlToSubtract = intervalToken;
-            }
+            contractSize -= interval.contractSize;
+            tokenAmount -= interval.tokenAmount;
+            sellPrice -= interval.payment;
+            apyFee -= interval.apyFee;
 
-            _subUserTVL(PoolStorage.layout(), buyers[i], isCall, tvlToSubtract);
-
-            amountFilled += intervalContractSize;
-
-            if (amountFilled == contractSize) break;
+            amountFilled += interval.contractSize;
         }
 
         return amountFilled;
@@ -242,16 +242,33 @@ contract PoolSell is IPoolSell, PoolInternal {
             baseCost
         );
 
+        uint256 longTokenId = PoolStorage.formatTokenId(
+            PoolStorage.getTokenType(isCall, true),
+            maturity,
+            strike64x64
+        );
+
+        _burn(msg.sender, longTokenId, amountFilled);
+
         require(amountFilled > 0, "no sell liq");
 
         baseCost = (baseCost * amountFilled) / contractSize;
         feeCost = (feeCost * amountFilled) / contractSize;
 
-        _pushTo(msg.sender, l.getPoolToken(isCall), baseCost - feeCost);
-        _mint(
+        _processAvailableFunds(
+            msg.sender,
+            baseCost - feeCost,
+            isCall,
+            true,
+            true
+        );
+
+        _processAvailableFunds(
             FEE_RECEIVER_ADDRESS,
-            _getReservedLiquidityTokenId(isCall),
-            feeCost
+            feeCost,
+            isCall,
+            true,
+            false
         );
     }
 }
