@@ -58,6 +58,10 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     // The quote will return a minimum price corresponding to this APY
     int128 internal constant MIN_APY_64x64 = 0x4ccccccccccccccd; // 0.3
 
+    // This constant is used to replace real exponent by an integer with 4 decimals of precision
+    int128 internal constant SELL_CONSTANT_64x64 = 0x100068dce3484dce2; // e^(1 / 10^4)
+    uint256 internal constant SELL_CONSTANT_PRECISION = 4; // Decimals of precision to use with the sell constant
+
     constructor(
         address ivolOracle,
         address weth,
@@ -140,7 +144,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @param args structured quote arguments
      * @return result quote result
      */
-    function _quote(PoolStorage.QuoteArgsInternal memory args)
+    function _quotePurchasePrice(PoolStorage.QuoteArgsInternal memory args)
         internal
         view
         returns (PoolStorage.QuoteResultInternal memory result)
@@ -208,10 +212,141 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         result.feeCost64x64 = result.baseCost64x64.mul(FEE_PREMIUM_64x64);
         result.cLevel64x64 = cLevel64x64;
         result.slippageCoefficient64x64 = slippageCoefficient64x64;
-
         result.feeCost64x64 -= result.feeCost64x64.mul(
             _fetchFeeDiscount64x64(args.feePayer)
         );
+    }
+
+    function _quoteSalePrice(PoolStorage.QuoteArgsInternal memory args)
+        internal
+        view
+        returns (int128 baseCost64x64, int128 feeCost64x64)
+    {
+        require(
+            args.strike64x64 > 0 && args.spot64x64 > 0 && args.maturity > 0,
+            "invalid args"
+        );
+
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        int128 timeToMaturity64x64 = ABDKMath64x64.divu(
+            args.maturity - block.timestamp,
+            365 days
+        );
+
+        int128 annualizedVolatility64x64 = IVolatilitySurfaceOracle(
+            IVOL_ORACLE_ADDRESS
+        ).getAnnualizedVolatility64x64(
+                l.base,
+                l.underlying,
+                args.spot64x64,
+                args.strike64x64,
+                timeToMaturity64x64
+            );
+
+        require(annualizedVolatility64x64 > 0, "vol = 0");
+
+        int128 blackScholesPrice64x64 = OptionMath._blackScholesPrice(
+            annualizedVolatility64x64.mul(annualizedVolatility64x64),
+            args.strike64x64,
+            args.spot64x64,
+            timeToMaturity64x64,
+            args.isCall
+        );
+
+        int128 exerciseValue64x64 = ABDKMath64x64Token.fromDecimals(
+            _calculateExerciseValue(
+                l,
+                args.contractSize,
+                args.spot64x64,
+                args.strike64x64,
+                args.isCall
+            ),
+            l.baseDecimals
+        );
+
+        uint256 shortTokenId = PoolStorage.formatTokenId(
+            PoolStorage.getTokenType(args.isCall, false),
+            args.maturity,
+            args.strike64x64
+        );
+
+        int128 sellCLevel64x64;
+
+        {
+            uint256 longTokenId = PoolStorage.formatTokenId(
+                PoolStorage.getTokenType(args.isCall, true),
+                args.maturity,
+                args.strike64x64
+            );
+
+            // Initialize to avg value, and replace by current if avg not set or current is lower
+            sellCLevel64x64 = l.avgCLevel64x64[longTokenId];
+
+            {
+                (int128 currentCLevel64x64, ) = l.getRealPoolState(args.isCall);
+
+                if (
+                    sellCLevel64x64 == 0 || currentCLevel64x64 < sellCLevel64x64
+                ) {
+                    sellCLevel64x64 = currentCLevel64x64;
+                }
+            }
+        }
+
+        uint256 availableLiquidity = _getAvailableBuybackLiquidity(
+            shortTokenId
+        );
+
+        require(availableLiquidity > 0, "no sell liq");
+
+        uint256 liquidityChange = (args.contractSize *
+            (10**SELL_CONSTANT_PRECISION)) / availableLiquidity;
+
+        int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
+            args.contractSize,
+            l.underlyingDecimals
+        );
+
+        baseCost64x64 = (SELL_CONSTANT_64x64.pow(liquidityChange))
+            .mul(sellCLevel64x64)
+            .mul(
+                blackScholesPrice64x64.mul(contractSize64x64).sub(
+                    exerciseValue64x64
+                )
+            )
+            .add(exerciseValue64x64);
+
+        if (args.isCall) {
+            baseCost64x64 = baseCost64x64.div(args.spot64x64);
+        }
+
+        feeCost64x64 = baseCost64x64.mul(FEE_PREMIUM_64x64);
+
+        feeCost64x64 -= feeCost64x64.mul(_fetchFeeDiscount64x64(args.feePayer));
+        baseCost64x64 -= feeCost64x64;
+    }
+
+    function _getAvailableBuybackLiquidity(uint256 shortTokenId)
+        internal
+        view
+        returns (uint256 totalLiquidity)
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        EnumerableSet.AddressSet storage accounts = ERC1155EnumerableStorage
+            .layout()
+            .accountsByToken[shortTokenId];
+
+        uint256 length = accounts.length();
+
+        for (uint256 i = 0; i < length; i++) {
+            address lp = accounts.at(i);
+
+            if (l.isBuybackEnabled[lp]) {
+                totalLiquidity += _balanceOf(lp, shortTokenId);
+            }
+        }
     }
 
     /**
@@ -357,7 +492,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             );
         }
 
-        PoolStorage.QuoteResultInternal memory quote = _quote(
+        PoolStorage.QuoteResultInternal memory quote = _quotePurchasePrice(
             PoolStorage.QuoteArgsInternal(
                 account,
                 maturity,
@@ -384,11 +519,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             strike64x64
         );
 
-        uint256 shortTokenId = PoolStorage.formatTokenId(
-            PoolStorage.getTokenType(isCall, false),
-            maturity,
-            strike64x64
-        );
+        _updateCLevelAverage(l, longTokenId, contractSize, quote.cLevel64x64);
 
         // mint long option token for buyer
         _mint(account, longTokenId, contractSize);
@@ -398,9 +529,10 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         _mintShortTokenLoop(
             l,
             account,
+            maturity,
+            strike64x64,
             contractSize,
             baseCost,
-            shortTokenId,
             isCall
         );
         int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
@@ -528,27 +660,13 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             "not ITM"
         );
 
-        uint256 exerciseValue;
-
-        // calculate exercise value if option is in-the-money
-
-        int128 priceMoneyness64x64 = isCall
-            ? spot64x64.sub(strike64x64)
-            : strike64x64.sub(spot64x64);
-
-        if (priceMoneyness64x64 > 0) {
-            if (isCall) {
-                exerciseValue = priceMoneyness64x64.div(spot64x64).mulu(
-                    contractSize
-                );
-            } else {
-                exerciseValue = l.contractSizeToBaseTokenAmount(
-                    contractSize,
-                    priceMoneyness64x64,
-                    false
-                );
-            }
-        }
+        uint256 exerciseValue = _calculateExerciseValue(
+            l,
+            contractSize,
+            spot64x64,
+            strike64x64,
+            isCall
+        );
 
         if (onlyExpired) {
             // burn long option tokens from multiple holders
@@ -576,43 +694,70 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         _burnShortTokenLoop(
             l,
+            maturity,
+            strike64x64,
             contractSize,
             exerciseValue,
-            PoolStorage.formatTokenId(
-                PoolStorage.getTokenType(isCall, false),
-                maturity,
-                strike64x64
-            ),
-            isCall
+            isCall,
+            false
         );
+    }
+
+    function _calculateExerciseValue(
+        PoolStorage.Layout storage l,
+        uint256 contractSize,
+        int128 spot64x64,
+        int128 strike64x64,
+        bool isCall
+    ) internal view returns (uint256 exerciseValue) {
+        // calculate exercise value if option is in-the-money
+
+        if (isCall) {
+            if (spot64x64 > strike64x64) {
+                exerciseValue = spot64x64.sub(strike64x64).div(spot64x64).mulu(
+                    contractSize
+                );
+            }
+        } else {
+            if (spot64x64 < strike64x64) {
+                exerciseValue = l.contractSizeToBaseTokenAmount(
+                    contractSize,
+                    strike64x64.sub(spot64x64),
+                    false
+                );
+            }
+        }
     }
 
     function _mintShortTokenLoop(
         PoolStorage.Layout storage l,
         address buyer,
+        uint64 maturity,
+        int128 strike64x64,
         uint256 contractSize,
         uint256 premium,
-        uint256 shortTokenId,
         bool isCall
     ) internal {
-        uint256 tokenAmount;
-        uint256 apyFee;
+        uint256 shortTokenId = PoolStorage.formatTokenId(
+            PoolStorage.getTokenType(isCall, false),
+            maturity,
+            strike64x64
+        );
 
-        {
-            (, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(
-                shortTokenId
-            );
+        uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
+            contractSize,
+            strike64x64,
+            isCall
+        );
 
-            tokenAmount = l.contractSizeToBaseTokenAmount(
-                contractSize,
-                strike64x64,
-                isCall
-            );
+        // calculate anticipated APY fee so that it may be reserved
 
-            // calculate anticipated APY fee so that it may be reserved
-
-            apyFee = _calculateApyFee(l, shortTokenId, tokenAmount, maturity);
-        }
+        uint256 apyFee = _calculateApyFee(
+            l,
+            shortTokenId,
+            tokenAmount,
+            maturity
+        );
 
         while (tokenAmount > 0) {
             address underwriter = l.liquidityQueueAscending[isCall][address(0)];
@@ -803,36 +948,47 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
     function _burnShortTokenLoop(
         PoolStorage.Layout storage l,
+        uint64 maturity,
+        int128 strike64x64,
         uint256 contractSize,
-        uint256 exerciseValue,
-        uint256 shortTokenId,
-        bool isCall
+        uint256 payment,
+        bool isCall,
+        bool onlyBuybackLiquidity
     ) internal {
-        uint256 tokenAmount;
-        uint256 apyFee;
+        uint256 shortTokenId = PoolStorage.formatTokenId(
+            PoolStorage.getTokenType(isCall, false),
+            maturity,
+            strike64x64
+        );
 
-        {
-            (, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(
-                shortTokenId
-            );
+        uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
+            contractSize,
+            strike64x64,
+            isCall
+        );
 
-            tokenAmount = l.contractSizeToBaseTokenAmount(
-                contractSize,
-                strike64x64,
-                isCall
-            );
+        // calculate unconsumed APY fee so that it may be refunded
 
-            // calculate unconsumed APY fee so that it may be refunded
-
-            apyFee = _calculateApyFee(l, shortTokenId, tokenAmount, maturity);
-        }
+        uint256 apyFee = _calculateApyFee(
+            l,
+            shortTokenId,
+            tokenAmount,
+            maturity
+        );
 
         EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage
             .layout()
             .accountsByToken[shortTokenId];
 
+        uint256 index = underwriters.length();
+
         while (contractSize > 0) {
-            address underwriter = underwriters.at(underwriters.length() - 1);
+            address underwriter = underwriters.at(--index);
+
+            // skip underwriters who do not provide buyback liqudity, if applicable
+
+            if (onlyBuybackLiquidity && !l.isBuybackEnabled[underwriter])
+                continue;
 
             Interval memory interval;
 
@@ -846,12 +1002,10 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             // calculate derived interval variables
 
-            interval.payment =
-                (exerciseValue * interval.contractSize) /
-                contractSize;
             interval.tokenAmount =
                 (tokenAmount * interval.contractSize) /
                 contractSize;
+            interval.payment = (payment * interval.contractSize) / contractSize;
             interval.apyFee = (apyFee * interval.contractSize) / contractSize;
 
             _burnShortTokenInterval(
@@ -863,8 +1017,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             );
 
             contractSize -= interval.contractSize;
-            exerciseValue -= interval.payment;
             tokenAmount -= interval.tokenAmount;
+            payment -= interval.payment;
             apyFee -= interval.apyFee;
         }
     }
@@ -891,14 +1045,19 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         // burn short option tokens from underwriter
         _burn(underwriter, shortTokenId, interval.contractSize);
 
-        // mint free or reserved liquidity tokens for underwriter
-        if (l.getReinvestmentStatus(underwriter, isCallPool)) {
-            _addToDepositQueue(
-                underwriter,
-                interval.tokenAmount - interval.payment + refundWithRebate,
-                isCallPool
-            );
+        bool divest = !l.getReinvestmentStatus(underwriter, isCallPool);
 
+        _processAvailableFunds(
+            underwriter,
+            interval.tokenAmount - interval.payment + refundWithRebate,
+            isCallPool,
+            divest,
+            false
+        );
+
+        if (divest) {
+            _subUserTVL(l, underwriter, isCallPool, interval.tokenAmount);
+        } else {
             if (refundWithRebate > interval.payment) {
                 _addUserTVL(
                     l,
@@ -914,19 +1073,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     interval.payment - refundWithRebate
                 );
             }
-        } else {
-            _mint(
-                underwriter,
-                _getReservedLiquidityTokenId(isCallPool),
-                interval.tokenAmount - interval.payment + refundWithRebate
-            );
-
-            _subUserTVL(
-                l,
-                underwriter,
-                isCallPool,
-                interval.tokenAmount - interval.payment
-            );
         }
 
         emit AssignExercise(
@@ -1105,6 +1251,28 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             oldLiquidity64x64,
             newLiquidity64x64
         );
+    }
+
+    function _updateCLevelAverage(
+        PoolStorage.Layout storage l,
+        uint256 longTokenId,
+        uint256 contractSize,
+        int128 cLevel64x64
+    ) internal {
+        int128 supply64x64 = ABDKMath64x64Token.fromDecimals(
+            _totalSupply(longTokenId),
+            l.underlyingDecimals
+        );
+        int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
+            contractSize,
+            l.underlyingDecimals
+        );
+
+        l.avgCLevel64x64[longTokenId] = l
+            .avgCLevel64x64[longTokenId]
+            .mul(supply64x64)
+            .add(cLevel64x64.mul(contractSize64x64))
+            .div(supply64x64.add(contractSize64x64));
     }
 
     /**
@@ -1454,17 +1622,18 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             _reserveApyFee(l, to, id, intervalApyFee);
 
-            if (l.getReinvestmentStatus(from, isCall)) {
-                if (rebate > 0) {
-                    _addToDepositQueue(from, rebate, isCall);
-                }
+            bool divest = !l.getReinvestmentStatus(from, isCall);
 
-                _subUserTVL(l, from, isCall, collateral - rebate);
-            } else {
-                _mint(from, _getReservedLiquidityTokenId(isCall), rebate);
-
-                _subUserTVL(l, from, isCall, collateral);
+            if (rebate > 0) {
+                _processAvailableFunds(from, rebate, isCall, divest, false);
             }
+
+            _subUserTVL(
+                l,
+                from,
+                isCall,
+                divest ? collateral : collateral - rebate
+            );
 
             _addUserTVL(l, to, isCall, collateral);
         }
