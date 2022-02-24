@@ -198,13 +198,14 @@ contract PoolIO is IPoolIO, PoolSwap {
             newPrice64x64
         );
 
-        if (divest) {
-            _subUserTVL(l, msg.sender, isCall, baseCost + feeCost + amountOut);
-        } else {
-            _subUserTVL(l, msg.sender, isCall, baseCost + feeCost);
-        }
-
         _processAvailableFunds(msg.sender, amountOut, isCall, divest, true);
+
+        _subUserTVL(
+            l,
+            msg.sender,
+            isCall,
+            divest ? baseCost + feeCost + amountOut : baseCost + feeCost
+        );
     }
 
     /**
@@ -271,28 +272,19 @@ contract PoolIO is IPoolIO, PoolSwap {
                 reassignmentCost += feeCosts[i];
             }
 
-            if (divest) {
-                _subUserTVL(
-                    PoolStorage.layout(),
-                    msg.sender,
-                    true,
-                    reassignmentCost + amountOutCall
-                );
-            } else {
-                _subUserTVL(
-                    PoolStorage.layout(),
-                    msg.sender,
-                    true,
-                    reassignmentCost
-                );
-            }
-
             _processAvailableFunds(
                 msg.sender,
                 amountOutCall,
                 true,
                 divest,
                 true
+            );
+
+            _subUserTVL(
+                PoolStorage.layout(),
+                msg.sender,
+                true,
+                divest ? reassignmentCost + amountOutCall : reassignmentCost
             );
         }
 
@@ -306,28 +298,19 @@ contract PoolIO is IPoolIO, PoolSwap {
                 reassignmentCost += feeCosts[i];
             }
 
-            if (divest) {
-                _subUserTVL(
-                    PoolStorage.layout(),
-                    msg.sender,
-                    false,
-                    reassignmentCost + amountOutPut
-                );
-            } else {
-                _subUserTVL(
-                    PoolStorage.layout(),
-                    msg.sender,
-                    false,
-                    reassignmentCost
-                );
-            }
-
             _processAvailableFunds(
                 msg.sender,
                 amountOutPut,
                 false,
                 divest,
                 true
+            );
+
+            _subUserTVL(
+                PoolStorage.layout(),
+                msg.sender,
+                false,
+                divest ? reassignmentCost + amountOutPut : reassignmentCost
             );
         }
     }
@@ -409,18 +392,19 @@ contract PoolIO is IPoolIO, PoolSwap {
             isCall
         );
 
-        if (divest) {
-            _subUserTVL(l, msg.sender, isCall, tokenAmount);
-        } else {
-            _addUserTVL(l, msg.sender, isCall, collateralFreed - tokenAmount);
-        }
-
         _processAvailableFunds(
             msg.sender,
             collateralFreed,
             isCall,
             divest,
             true
+        );
+
+        _subUserTVL(
+            l,
+            msg.sender,
+            isCall,
+            divest ? tokenAmount : collateralFreed - tokenAmount
         );
     }
 
