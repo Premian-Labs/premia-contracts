@@ -30,20 +30,16 @@ import {
   PoolUtil,
 } from './PoolUtil';
 import chaiAlmost from 'chai-almost';
-import { BigNumber } from 'ethers';
 import { describeBehaviorOfProxy } from '@solidstate/spec';
 import {
   fixedFromFloat,
   fixedToNumber,
-  formatTokenId,
   getOptionTokenIds,
-  TokenType,
 } from '@premia/utils';
 import { createUniswap, IUniswap } from '../utils/uniswap';
+import { describeBehaviorOfPoolSell } from '../../spec/pool/PoolSell.behavior';
 
 chai.use(chaiAlmost(0.02));
-
-const oneMonth = 30 * 24 * 3600;
 
 describe('PoolProxy', function () {
   let owner: SignerWithAddress;
@@ -63,17 +59,6 @@ describe('PoolProxy', function () {
   let poolWeth: IPool;
   let p: PoolUtil;
   let premia: ERC20Mock;
-
-  const underlyingFreeLiqToken = formatTokenId({
-    tokenType: TokenType.UnderlyingFreeLiq,
-    maturity: BigNumber.from(0),
-    strike64x64: BigNumber.from(0),
-  });
-  const baseFreeLiqToken = formatTokenId({
-    tokenType: TokenType.BaseFreeLiq,
-    maturity: BigNumber.from(0),
-    strike64x64: BigNumber.from(0),
-  });
 
   const spotPrice = 2000;
 
@@ -150,6 +135,11 @@ describe('PoolProxy', function () {
     deploy: async () => instance,
     getPoolUtil: async () => p,
     getUniswap: async () => uniswap,
+  });
+
+  describeBehaviorOfPoolSell({
+    deploy: async () => instance,
+    getPoolUtil: async () => p,
   });
 
   describeBehaviorOfPoolSettings({
@@ -606,5 +596,39 @@ describe('PoolProxy', function () {
         });
       });
     }
+  });
+
+  describe('#safeTransferFrom', () => {
+    it('reverts if tokenId corresponds to locked free liquidity', async () => {
+      await p.depositLiquidity(owner, parseOption('100', true), true);
+
+      expect(
+        pool
+          .connect(owner)
+          .safeTransferFrom(
+            owner.address,
+            owner.address,
+            p.getFreeLiqTokenId(true),
+            '1',
+            ethers.utils.randomBytes(0),
+          ),
+      ).to.be.revertedWith('liq lock 1d');
+    });
+
+    it('reverts if tokenId corresponds to locked reserved liquidity', async () => {
+      await p.depositLiquidity(owner, parseOption('100', true), true);
+
+      expect(
+        pool
+          .connect(owner)
+          .safeTransferFrom(
+            owner.address,
+            owner.address,
+            p.getReservedLiqTokenId(true),
+            '1',
+            ethers.utils.randomBytes(0),
+          ),
+      ).to.be.revertedWith('liq lock 1d');
+    });
   });
 });

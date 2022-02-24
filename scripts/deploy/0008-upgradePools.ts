@@ -3,11 +3,13 @@ import {
   PoolBase__factory,
   PoolExercise__factory,
   PoolIO__factory,
+  PoolSell__factory,
   PoolSettings__factory,
   PoolView__factory,
   PoolWrite__factory,
 } from '../../typechain';
 import { fixedFromFloat } from '@premia/utils';
+import { diamondCut } from '../utils/diamond';
 
 function printFacets(implAddress: string, factory: any) {
   const facetCuts = [
@@ -100,6 +102,27 @@ async function main() {
   );
 
   printFacets(poolIO.address, poolIOFactory);
+
+  //
+
+  const poolSellFactory = new PoolSell__factory(
+    { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath },
+    deployer,
+  );
+  const poolSell = await poolSellFactory.deploy(
+    ivolOracle,
+    weth,
+    premiaMining,
+    feeReceiver,
+    feeDiscountAddress,
+    fee64x64,
+  );
+
+  console.log(
+    `PoolSell : ${poolSell.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64}`,
+  );
+
+  printFacets(poolSell.address, poolSellFactory);
 
   //
 
