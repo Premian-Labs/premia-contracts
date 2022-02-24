@@ -52,125 +52,6 @@ contract PoolSell is IPoolSell, PoolInternal {
         return PoolStorage.layout().isBuybackEnabled[account];
     }
 
-    /**
-     * @inheritdoc IPoolSell
-     */
-    function getBuyers(uint256 shortTokenId)
-        external
-        view
-        returns (address[] memory buyers, uint256[] memory amounts)
-    {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        ERC1155EnumerableStorage.Layout
-            storage erc1155EnumerableLayout = ERC1155EnumerableStorage.layout();
-
-        uint256 length = erc1155EnumerableLayout
-            .accountsByToken[shortTokenId]
-            .length();
-        uint256 i = 0;
-
-        buyers = new address[](length);
-        amounts = new uint256[](length);
-
-        for (uint256 j = 0; j < length; j++) {
-            address lp = erc1155EnumerableLayout
-                .accountsByToken[shortTokenId]
-                .at(j);
-            if (l.isBuybackEnabled[lp]) {
-                buyers[i] = lp;
-                amounts[i] = _balanceOf(lp, shortTokenId);
-                i++;
-            }
-        }
-
-        // Reduce array size
-        if (length > 0 && i < length - 1) {
-            assembly {
-                mstore(buyers, sub(mload(buyers), sub(length, i)))
-                mstore(amounts, sub(mload(amounts), sub(length, i)))
-            }
-        }
-    }
-
-    function _sellLoop(
-        PoolStorage.Layout storage l,
-        uint64 maturity,
-        int128 strike64x64,
-        bool isCall,
-        uint256 contractSize,
-        address[] memory buyers,
-        uint256 sellPrice
-    ) internal returns (uint256 amountFilled) {
-        uint256 shortTokenId = PoolStorage.formatTokenId(
-            PoolStorage.getTokenType(isCall, false),
-            maturity,
-            strike64x64
-        );
-
-        uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
-            contractSize,
-            strike64x64,
-            isCall
-        );
-
-        // calculate unconsumed APY fee so that it may be refunded
-
-        uint256 apyFee = _calculateApyFee(
-            l,
-            shortTokenId,
-            tokenAmount,
-            maturity
-        );
-
-        for (uint256 i = 0; i < buyers.length && contractSize > 0; i++) {
-            address underwriter = buyers[i];
-
-            if (!l.isBuybackEnabled[underwriter]) continue;
-
-            Interval memory interval;
-
-            // amount of liquidity provided by underwriter
-            interval.contractSize = _balanceOf(underwriter, shortTokenId);
-
-            // if underwriter has no liquidity, skip
-            // this should not be necessary because 0 value will prevent meaningful operations
-
-            if (interval.contractSize == 0) continue;
-
-            // truncate interval if underwriter has excess short position size
-
-            if (interval.contractSize > contractSize)
-                interval.contractSize = contractSize;
-
-            // calculate derived interval variables
-
-            interval.tokenAmount =
-                (tokenAmount * interval.contractSize) /
-                contractSize;
-            interval.payment =
-                (sellPrice * interval.contractSize) /
-                contractSize;
-            interval.apyFee = (apyFee * interval.contractSize) / contractSize;
-
-            _burnShortTokenInterval(
-                l,
-                underwriter,
-                shortTokenId,
-                interval,
-                isCall
-            );
-
-            contractSize -= interval.contractSize;
-            tokenAmount -= interval.tokenAmount;
-            sellPrice -= interval.payment;
-            apyFee -= interval.apyFee;
-
-            amountFilled += interval.contractSize;
-        }
-
-        return amountFilled;
-    }
-
     function sellQuote(
         address feePayer,
         uint64 maturity,
@@ -199,8 +80,7 @@ contract PoolSell is IPoolSell, PoolInternal {
         uint64 maturity,
         int128 strike64x64,
         bool isCall,
-        uint256 contractSize,
-        address[] memory buyers
+        uint256 contractSize
     ) external {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -232,14 +112,14 @@ contract PoolSell is IPoolSell, PoolInternal {
             );
         }
 
-        uint256 amountFilled = _sellLoop(
+        _burnShortTokenLoop(
             l,
             maturity,
             strike64x64,
-            isCall,
             contractSize,
-            buyers,
-            baseCost
+            baseCost,
+            isCall,
+            true
         );
 
         uint256 longTokenId = PoolStorage.formatTokenId(
@@ -248,12 +128,7 @@ contract PoolSell is IPoolSell, PoolInternal {
             strike64x64
         );
 
-        _burn(msg.sender, longTokenId, amountFilled);
-
-        require(amountFilled > 0, "no sell liq");
-
-        baseCost = (baseCost * amountFilled) / contractSize;
-        feeCost = (feeCost * amountFilled) / contractSize;
+        _burn(msg.sender, longTokenId, contractSize);
 
         _processAvailableFunds(
             msg.sender,

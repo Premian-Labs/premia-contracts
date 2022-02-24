@@ -519,12 +519,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             strike64x64
         );
 
-        uint256 shortTokenId = PoolStorage.formatTokenId(
-            PoolStorage.getTokenType(isCall, false),
-            maturity,
-            strike64x64
-        );
-
         _updateCLevelAverage(l, longTokenId, contractSize, quote.cLevel64x64);
 
         // mint long option token for buyer
@@ -535,9 +529,10 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         _mintShortTokenLoop(
             l,
             account,
+            maturity,
+            strike64x64,
             contractSize,
             baseCost,
-            shortTokenId,
             isCall
         );
         int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
@@ -699,14 +694,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         _burnShortTokenLoop(
             l,
+            maturity,
+            strike64x64,
             contractSize,
             exerciseValue,
-            PoolStorage.formatTokenId(
-                PoolStorage.getTokenType(isCall, false),
-                maturity,
-                strike64x64
-            ),
-            isCall
+            isCall,
+            false
         );
     }
 
@@ -739,29 +732,32 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     function _mintShortTokenLoop(
         PoolStorage.Layout storage l,
         address buyer,
+        uint64 maturity,
+        int128 strike64x64,
         uint256 contractSize,
         uint256 premium,
-        uint256 shortTokenId,
         bool isCall
     ) internal {
-        uint256 tokenAmount;
-        uint256 apyFee;
+        uint256 shortTokenId = PoolStorage.formatTokenId(
+            PoolStorage.getTokenType(isCall, false),
+            maturity,
+            strike64x64
+        );
 
-        {
-            (, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(
-                shortTokenId
-            );
+        uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
+            contractSize,
+            strike64x64,
+            isCall
+        );
 
-            tokenAmount = l.contractSizeToBaseTokenAmount(
-                contractSize,
-                strike64x64,
-                isCall
-            );
+        // calculate anticipated APY fee so that it may be reserved
 
-            // calculate anticipated APY fee so that it may be reserved
-
-            apyFee = _calculateApyFee(l, shortTokenId, tokenAmount, maturity);
-        }
+        uint256 apyFee = _calculateApyFee(
+            l,
+            shortTokenId,
+            tokenAmount,
+            maturity
+        );
 
         while (tokenAmount > 0) {
             address underwriter = l.liquidityQueueAscending[isCall][address(0)];
@@ -952,36 +948,47 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
     function _burnShortTokenLoop(
         PoolStorage.Layout storage l,
+        uint64 maturity,
+        int128 strike64x64,
         uint256 contractSize,
-        uint256 exerciseValue,
-        uint256 shortTokenId,
-        bool isCall
+        uint256 payment,
+        bool isCall,
+        bool onlyBuybackLiquidity
     ) internal {
-        uint256 tokenAmount;
-        uint256 apyFee;
+        uint256 shortTokenId = PoolStorage.formatTokenId(
+            PoolStorage.getTokenType(isCall, false),
+            maturity,
+            strike64x64
+        );
 
-        {
-            (, uint64 maturity, int128 strike64x64) = PoolStorage.parseTokenId(
-                shortTokenId
-            );
+        uint256 tokenAmount = l.contractSizeToBaseTokenAmount(
+            contractSize,
+            strike64x64,
+            isCall
+        );
 
-            tokenAmount = l.contractSizeToBaseTokenAmount(
-                contractSize,
-                strike64x64,
-                isCall
-            );
+        // calculate unconsumed APY fee so that it may be refunded
 
-            // calculate unconsumed APY fee so that it may be refunded
-
-            apyFee = _calculateApyFee(l, shortTokenId, tokenAmount, maturity);
-        }
+        uint256 apyFee = _calculateApyFee(
+            l,
+            shortTokenId,
+            tokenAmount,
+            maturity
+        );
 
         EnumerableSet.AddressSet storage underwriters = ERC1155EnumerableStorage
             .layout()
             .accountsByToken[shortTokenId];
 
+        uint256 index = underwriters.length();
+
         while (contractSize > 0) {
-            address underwriter = underwriters.at(underwriters.length() - 1);
+            address underwriter = underwriters.at(--index);
+
+            // skip underwriters who do not provide buyback liqudity, if applicable
+
+            if (onlyBuybackLiquidity && !l.isBuybackEnabled[underwriter])
+                continue;
 
             Interval memory interval;
 
@@ -998,9 +1005,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             interval.tokenAmount =
                 (tokenAmount * interval.contractSize) /
                 contractSize;
-            interval.payment =
-                (exerciseValue * interval.contractSize) /
-                contractSize;
+            interval.payment = (payment * interval.contractSize) / contractSize;
             interval.apyFee = (apyFee * interval.contractSize) / contractSize;
 
             _burnShortTokenInterval(
@@ -1013,7 +1018,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             contractSize -= interval.contractSize;
             tokenAmount -= interval.tokenAmount;
-            exerciseValue -= interval.payment;
+            payment -= interval.payment;
             apyFee -= interval.apyFee;
         }
     }
