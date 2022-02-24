@@ -50,11 +50,16 @@ interface IPoolIO {
      * @notice reassign short position to new underwriter
      * @param tokenId ERC1155 token id (long or short)
      * @param contractSize quantity of option contract tokens to reassign
+     * @param divest whether to withdraw freed funds after reassignment
      * @return baseCost quantity of tokens required to reassign short position
      * @return feeCost quantity of tokens required to pay fees
      * @return amountOut quantity of liquidity freed and transferred to owner
      */
-    function reassign(uint256 tokenId, uint256 contractSize)
+    function reassign(
+        uint256 tokenId,
+        uint256 contractSize,
+        bool divest
+    )
         external
         returns (
             uint256 baseCost,
@@ -66,6 +71,7 @@ interface IPoolIO {
      * @notice reassign set of short position to new underwriter
      * @param tokenIds array of ERC1155 token ids (long or short)
      * @param contractSizes array of quantities of option contract tokens to reassign
+     * @param divest whether to withdraw freed funds after reassignment
      * @return baseCosts quantities of tokens required to reassign each short position
      * @return feeCosts quantities of tokens required to pay fees
      * @return amountOutCall quantity of call pool liquidity freed and transferred to owner
@@ -73,7 +79,8 @@ interface IPoolIO {
      */
     function reassignBatch(
         uint256[] calldata tokenIds,
-        uint256[] calldata contractSizes
+        uint256[] calldata contractSizes,
+        bool divest
     )
         external
         returns (
@@ -119,8 +126,13 @@ interface IPoolIO {
      * @notice burn corresponding long and short option tokens and withdraw collateral
      * @param tokenId ERC1155 token id (long or short)
      * @param contractSize quantity of option contract tokens to annihilate
+     * @param divest whether to withdraw freed funds after annihilation
      */
-    function annihilate(uint256 tokenId, uint256 contractSize) external;
+    function annihilate(
+        uint256 tokenId,
+        uint256 contractSize,
+        bool divest
+    ) external;
 
     /**
      * @notice claim earned PREMIA emissions
