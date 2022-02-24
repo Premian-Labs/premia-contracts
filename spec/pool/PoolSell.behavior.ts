@@ -69,8 +69,6 @@ export function describeBehaviorOfPoolSell({
 
             const tokenIds = getOptionTokenIds(maturity, strike64x64, isCall);
 
-            const buyers = await instance.getBuyers(tokenIds.short);
-
             expect(
               bnToNumber(
                 await p.getToken(isCall).balanceOf(buyer.address),
@@ -98,13 +96,7 @@ export function describeBehaviorOfPoolSell({
 
             await instance
               .connect(buyer)
-              .sell(
-                maturity,
-                strike64x64,
-                isCall,
-                parseUnderlying('1'),
-                buyers.buyers,
-              );
+              .sell(maturity, strike64x64, isCall, parseUnderlying('1'));
 
             expect(
               bnToNumber(
@@ -150,9 +142,7 @@ export function describeBehaviorOfPoolSell({
             await expect(
               instance
                 .connect(buyer)
-                .sell(maturity, strike64x64, isCall, parseUnderlying('1'), [
-                  lp1.address,
-                ]),
+                .sell(maturity, strike64x64, isCall, parseUnderlying('1')),
             ).to.be.revertedWith('no sell liq');
           });
         });
@@ -166,41 +156,6 @@ export function describeBehaviorOfPoolSell({
         expect(await instance.isBuybackEnabled(lp1.address)).to.be.true;
         await instance.connect(lp1).setBuybackEnabled(false);
         expect(await instance.isBuybackEnabled(lp1.address)).to.be.false;
-      });
-    });
-
-    describe('#getBuyers', () => {
-      it('should return list of underwriters with buyback enabled', async () => {
-        const maturity = await getMaturity(10);
-        const isCall = true;
-        const spotPrice = 2000;
-        const strike64x64 = fixedFromFloat(getStrike(isCall, spotPrice));
-
-        const tokenId = getOptionTokenIds(maturity, strike64x64, isCall);
-
-        await poolMock.mint(lp1.address, tokenId.short, parseUnderlying('1'));
-        await poolMock.mint(lp2.address, tokenId.short, parseUnderlying('2'));
-        await poolMock.mint(
-          thirdParty.address,
-          tokenId.short,
-          parseUnderlying('3'),
-        );
-        await poolMock.mint(buyer.address, tokenId.short, parseUnderlying('4'));
-        await poolMock.mint(
-          feeReceiver.address,
-          tokenId.short,
-          parseUnderlying('5'),
-        );
-
-        await instance.connect(lp2).setBuybackEnabled(true);
-        await instance.connect(buyer).setBuybackEnabled(true);
-
-        const result = await instance.getBuyers(tokenId.short);
-        expect(result.buyers).to.deep.eq([lp2.address, buyer.address]);
-        expect(result.amounts).to.deep.eq([
-          parseUnderlying('2'),
-          parseUnderlying('4'),
-        ]);
       });
     });
   });

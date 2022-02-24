@@ -415,7 +415,7 @@ export function describeBehaviorOfPoolWrite({
           );
         });
 
-        it('processes divestment', async () => {
+        it('processes underwriter divestment', async () => {
           const isCall = true;
           const maturity = await getMaturity(10);
           const strike = getStrike(isCall, 2000);
@@ -480,6 +480,79 @@ export function describeBehaviorOfPoolWrite({
           );
           expect(newReservedLiquidityBalance).to.equal(
             oldReservedLiquidityBalance.add(divestedLiquidity),
+          );
+        });
+
+        it('avoids matching buyer to own liquidity', async () => {
+          const isCall = true;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const tokenAmount = amount;
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await p.depositLiquidity(
+            buyer,
+            tokenAmount.mul(ethers.constants.Two),
+            isCall,
+          );
+          await p.depositLiquidity(
+            lp1,
+            tokenAmount.mul(ethers.constants.Two),
+            isCall,
+          );
+
+          const { liquidityBeforePosition: buyerPosition } =
+            await instance.callStatic.getLiquidityQueuePosition(
+              buyer.address,
+              isCall,
+            );
+          const { liquidityBeforePosition: lpPosition } =
+            await instance.callStatic.getLiquidityQueuePosition(
+              lp1.address,
+              isCall,
+            );
+
+          expect(buyerPosition).to.be.lt(lpPosition);
+
+          const oldBuyerShortTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            shortTokenId,
+          );
+          const oldLPShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          const newBuyerShortTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            shortTokenId,
+          );
+          const newLPShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+
+          expect(newBuyerShortTokenBalance).to.equal(oldBuyerShortTokenBalance);
+          expect(newLPShortTokenBalance).to.equal(
+            oldLPShortTokenBalance.add(amount),
           );
         });
 
@@ -750,7 +823,7 @@ export function describeBehaviorOfPoolWrite({
           );
         });
 
-        it('processes divestment', async () => {
+        it('processes underwriter divestment', async () => {
           const isCall = false;
           const maturity = await getMaturity(10);
           const strike = getStrike(isCall, 2000);
@@ -817,6 +890,81 @@ export function describeBehaviorOfPoolWrite({
           );
           expect(newReservedLiquidityBalance).to.equal(
             oldReservedLiquidityBalance.add(divestedLiquidity),
+          );
+        });
+
+        it('avoids matching buyer to own liquidity', async () => {
+          const isCall = false;
+          const maturity = await getMaturity(10);
+          const strike = getStrike(isCall, 2000);
+          const strike64x64 = fixedFromFloat(strike);
+          const amount = parseUnderlying('1');
+
+          const tokenAmount = parseBase(formatUnderlying(amount)).mul(
+            fixedToNumber(strike64x64),
+          );
+
+          const shortTokenId = formatTokenId({
+            tokenType: getShort(isCall),
+            maturity,
+            strike64x64,
+          });
+
+          await p.depositLiquidity(
+            buyer,
+            tokenAmount.mul(ethers.constants.Two),
+            isCall,
+          );
+          await p.depositLiquidity(
+            lp1,
+            tokenAmount.mul(ethers.constants.Two),
+            isCall,
+          );
+
+          const { liquidityBeforePosition: buyerPosition } =
+            await instance.callStatic.getLiquidityQueuePosition(
+              buyer.address,
+              isCall,
+            );
+          const { liquidityBeforePosition: lpPosition } =
+            await instance.callStatic.getLiquidityQueuePosition(
+              lp1.address,
+              isCall,
+            );
+
+          expect(buyerPosition).to.be.lt(lpPosition);
+
+          const oldBuyerShortTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            shortTokenId,
+          );
+          const oldLPShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+
+          await instance
+            .connect(buyer)
+            .purchase(
+              maturity,
+              strike64x64,
+              amount,
+              isCall,
+              ethers.constants.MaxUint256,
+            );
+
+          const newBuyerShortTokenBalance = await instance.callStatic.balanceOf(
+            buyer.address,
+            shortTokenId,
+          );
+          const newLPShortTokenBalance = await instance.callStatic.balanceOf(
+            lp1.address,
+            shortTokenId,
+          );
+
+          expect(newBuyerShortTokenBalance).to.equal(oldBuyerShortTokenBalance);
+          expect(newLPShortTokenBalance).to.equal(
+            oldLPShortTokenBalance.add(amount),
           );
         });
 

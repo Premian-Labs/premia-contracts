@@ -73,6 +73,8 @@ export function describeBehaviorOfPoolIO({
       underlying = await getUnderlying();
     });
 
+    // TODO: test #annihilate, #reassign, and #reassignBatch with divest = false
+
     describe('#setDivestmentTimestamp', () => {
       it('sets divestment timestamp and unsets if zero timestamp is passed', async () => {
         const isCall = false;
@@ -642,7 +644,7 @@ export function describeBehaviorOfPoolIO({
 
           const tx = await instance
             .connect(lp1)
-            .reassign(shortTokenId, contractSizeReassigned);
+            .reassign(shortTokenId, contractSizeReassigned, true);
 
           const {
             blockNumber: reassignBlockNumber,
@@ -728,7 +730,7 @@ export function describeBehaviorOfPoolIO({
 
           await instance
             .connect(lp1)
-            .reassign(shortTokenId, contractSizeReassigned);
+            .reassign(shortTokenId, contractSizeReassigned, true);
 
           const newBalanceLP1 = await instance.callStatic.balanceOf(
             lp1.address,
@@ -801,7 +803,7 @@ export function describeBehaviorOfPoolIO({
 
           const tx = await instance
             .connect(lp1)
-            .reassign(shortTokenId, contractSizeReassigned);
+            .reassign(shortTokenId, contractSizeReassigned, true);
 
           const {
             blockNumber: reassignBlockNumber,
@@ -892,7 +894,7 @@ export function describeBehaviorOfPoolIO({
 
           const tx = await instance
             .connect(lp1)
-            .reassign(shortTokenId, contractSizeReassigned);
+            .reassign(shortTokenId, contractSizeReassigned, true);
 
           const {
             blockNumber: reassignBlockNumber,
@@ -984,7 +986,7 @@ export function describeBehaviorOfPoolIO({
 
           await instance
             .connect(lp1)
-            .reassign(shortTokenId, contractSizeReassigned);
+            .reassign(shortTokenId, contractSizeReassigned, true);
 
           const newBalanceLP1 = await instance.callStatic.balanceOf(
             lp1.address,
@@ -1069,7 +1071,7 @@ export function describeBehaviorOfPoolIO({
 
           const tx = await instance
             .connect(lp1)
-            .reassign(shortTokenId, contractSizeReassigned);
+            .reassign(shortTokenId, contractSizeReassigned, true);
 
           const {
             blockNumber: reassignBlockNumber,
@@ -1130,7 +1132,7 @@ export function describeBehaviorOfPoolIO({
           });
 
           await expect(
-            instance.connect(lp1).reassign(shortTokenId, '1'),
+            instance.connect(lp1).reassign(shortTokenId, '1', true),
           ).to.be.revertedWith('too small');
         });
 
@@ -1162,7 +1164,9 @@ export function describeBehaviorOfPoolIO({
           await ethers.provider.send('evm_increaseTime', [11 * 24 * 3600]);
 
           await expect(
-            instance.connect(lp1).reassign(shortTokenId, shortTokenBalance),
+            instance
+              .connect(lp1)
+              .reassign(shortTokenId, shortTokenBalance, true),
           ).to.be.revertedWith('expired');
         });
       });
@@ -1213,7 +1217,7 @@ export function describeBehaviorOfPoolIO({
 
           const tx = await instance
             .connect(lp1)
-            .reassignBatch([shortTokenId], [contractSizeReassigned]);
+            .reassignBatch([shortTokenId], [contractSizeReassigned], true);
 
           const {
             blockNumber: reassignBlockNumber,
@@ -1299,7 +1303,7 @@ export function describeBehaviorOfPoolIO({
 
           await instance
             .connect(lp1)
-            .reassignBatch([shortTokenId], [contractSizeReassigned]);
+            .reassignBatch([shortTokenId], [contractSizeReassigned], true);
 
           const newBalanceLP1 = await instance.callStatic.balanceOf(
             lp1.address,
@@ -1372,7 +1376,7 @@ export function describeBehaviorOfPoolIO({
 
           const tx = await instance
             .connect(lp1)
-            .reassignBatch([shortTokenId], [contractSizeReassigned]);
+            .reassignBatch([shortTokenId], [contractSizeReassigned], true);
 
           const {
             blockNumber: reassignBlockNumber,
@@ -1463,7 +1467,7 @@ export function describeBehaviorOfPoolIO({
 
           const tx = await instance
             .connect(lp1)
-            .reassignBatch([shortTokenId], [contractSizeReassigned]);
+            .reassignBatch([shortTokenId], [contractSizeReassigned], true);
 
           const {
             blockNumber: reassignBlockNumber,
@@ -1555,7 +1559,7 @@ export function describeBehaviorOfPoolIO({
 
           await instance
             .connect(lp1)
-            .reassignBatch([shortTokenId], [contractSizeReassigned]);
+            .reassignBatch([shortTokenId], [contractSizeReassigned], true);
 
           const newBalanceLP1 = await instance.callStatic.balanceOf(
             lp1.address,
@@ -1640,7 +1644,7 @@ export function describeBehaviorOfPoolIO({
 
           const tx = await instance
             .connect(lp1)
-            .reassignBatch([shortTokenId], [contractSizeReassigned]);
+            .reassignBatch([shortTokenId], [contractSizeReassigned], true);
 
           const {
             blockNumber: reassignBlockNumber,
@@ -1701,7 +1705,7 @@ export function describeBehaviorOfPoolIO({
           });
 
           await expect(
-            instance.connect(lp1).reassignBatch([shortTokenId], ['1']),
+            instance.connect(lp1).reassignBatch([shortTokenId], ['1'], true),
           ).to.be.revertedWith('too small');
         });
 
@@ -1735,7 +1739,7 @@ export function describeBehaviorOfPoolIO({
           await expect(
             instance
               .connect(lp1)
-              .reassignBatch([shortTokenId], [shortTokenBalance]),
+              .reassignBatch([shortTokenId], [shortTokenBalance], true),
           ).to.be.revertedWith('expired');
         });
       });
@@ -1796,7 +1800,7 @@ export function describeBehaviorOfPoolIO({
 
           await instance
             .connect(lp1)
-            .annihilate(shortTokenId, contractSizeAnnihilated);
+            .annihilate(shortTokenId, contractSizeAnnihilated, true);
 
           const newLongTokenBalance = await instance.callStatic.balanceOf(
             lp1.address,
@@ -1852,7 +1856,7 @@ export function describeBehaviorOfPoolIO({
 
           const tx = await instance
             .connect(lp1)
-            .annihilate(shortTokenId, contractSizeAnnihilated);
+            .annihilate(shortTokenId, contractSizeAnnihilated, true);
 
           const { blockNumber: reassignBlockNumber } = await tx.wait();
           const { timestamp: reassignTimestamp } =
@@ -1916,7 +1920,7 @@ export function describeBehaviorOfPoolIO({
 
           const tx = await instance
             .connect(lp1)
-            .annihilate(shortTokenId, contractSizeAnnihilated);
+            .annihilate(shortTokenId, contractSizeAnnihilated, true);
 
           const { blockNumber: annihilateBlockNumber } = await tx.wait();
           const { timestamp: annihilateTimestamp } =
@@ -1986,7 +1990,7 @@ export function describeBehaviorOfPoolIO({
 
           await instance
             .connect(lp1)
-            .annihilate(shortTokenId, contractSizeAnnihilated);
+            .annihilate(shortTokenId, contractSizeAnnihilated, true);
 
           const newLongTokenBalance = await instance.callStatic.balanceOf(
             lp1.address,
@@ -2043,7 +2047,7 @@ export function describeBehaviorOfPoolIO({
 
           const tx = await instance
             .connect(lp1)
-            .annihilate(shortTokenId, contractSizeAnnihilated);
+            .annihilate(shortTokenId, contractSizeAnnihilated, true);
 
           const { blockNumber: annihilateBlockNumber } = await tx.wait();
           const { timestamp: annihilateTimestamp } =
@@ -2107,7 +2111,7 @@ export function describeBehaviorOfPoolIO({
 
           const tx = await instance
             .connect(lp1)
-            .annihilate(shortTokenId, contractSizeAnnihilated);
+            .annihilate(shortTokenId, contractSizeAnnihilated, true);
 
           const { blockNumber: annihilateBlockNumber } = await tx.wait();
           const { timestamp: annihilateTimestamp } =
@@ -2166,7 +2170,7 @@ export function describeBehaviorOfPoolIO({
             );
 
           await expect(
-            instance.connect(lp1).annihilate(longTokenId, amount),
+            instance.connect(lp1).annihilate(longTokenId, amount, true),
           ).to.be.revertedWith('ERC1155: burn amount exceeds balances');
         });
 
@@ -2205,7 +2209,7 @@ export function describeBehaviorOfPoolIO({
             );
 
           await expect(
-            instance.connect(lp1).annihilate(shortTokenId, amount),
+            instance.connect(lp1).annihilate(shortTokenId, amount, true),
           ).to.be.revertedWith('ERC1155: burn amount exceeds balances');
         });
       });
