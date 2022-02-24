@@ -123,6 +123,17 @@ interface IPoolView is IERC1155Metadata {
         returns (uint256 liquidityBeforePosition, uint256 positionSize);
 
     /**
+     * @notice get the amount of APY fees reserved for given user and token id
+     * @param account account whose reserved fees to query
+     * @param shortTokenId short token id whose reserved fees to query
+     * @return amount quantity of fees reserved
+     */
+    function getFeesReserved(address account, uint256 shortTokenId)
+        external
+        view
+        returns (uint256 amount);
+
+    /**
      * @notice get the address of PremiaMining contract
      * @return address of PremiaMining contract
      */
