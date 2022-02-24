@@ -480,12 +480,14 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 isCall
             );
 
+            uint256 freeLiquidityTokenId = _getFreeLiquidityTokenId(isCall);
+
             require(
                 tokenAmount <=
-                    ERC1155EnumerableStorage.layout().totalSupply[
-                        _getFreeLiquidityTokenId(isCall)
-                    ] -
-                        l.totalPendingDeposits(isCall),
+                    _totalSupply(freeLiquidityTokenId) -
+                        l.totalPendingDeposits(isCall) -
+                        (_balanceOf(account, freeLiquidityTokenId) -
+                            l.pendingDepositsOf(account, isCall)),
                 "insuf liq"
             );
         }
@@ -568,7 +570,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @param newPrice64x64 64x64 fixed point representation of current spot price
      * @return baseCost quantity of tokens required to reassign short position
      * @return feeCost quantity of tokens required to pay fees
-     * @return amountOut quantity of liquidity freed
+     * @return netCollateralFreed quantity of liquidity freed
      */
     function _reassign(
         PoolStorage.Layout storage l,
@@ -583,7 +585,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         returns (
             uint256 baseCost,
             uint256 feeCost,
-            uint256 amountOut
+            uint256 netCollateralFreed
         )
     {
         (baseCost, feeCost) = _purchase(
@@ -596,7 +598,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             newPrice64x64
         );
 
-        uint256 collateralFreed = _annihilate(
+        uint256 totalCollateralFreed = _annihilate(
             l,
             account,
             maturity,
@@ -605,7 +607,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             contractSize
         );
 
-        amountOut = collateralFreed - baseCost - feeCost;
+        netCollateralFreed = totalCollateralFreed - baseCost - feeCost;
     }
 
     /**
@@ -760,19 +762,10 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         while (tokenAmount > 0) {
             address underwriter = l.liquidityQueueAscending[isCall][address(0)];
 
-            Interval memory interval;
-
             uint256 balance = _balanceOf(
                 underwriter,
                 _getFreeLiquidityTokenId(isCall)
             );
-
-            // if underwriter has insufficient liquidity, remove from queue
-
-            if (balance < l.getMinimumAmount(isCall)) {
-                l.removeUnderwriter(underwriter, isCall);
-                continue;
-            }
 
             // if underwriter is in process of divestment, remove from queue
 
@@ -789,7 +782,24 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 continue;
             }
 
+            // if underwriter has insufficient liquidity, remove from queue
+
+            if (balance < l.getMinimumAmount(isCall)) {
+                l.removeUnderwriter(underwriter, isCall);
+                continue;
+            }
+
+            // move interval to end of queue if underwriter is buyer
+
+            if (underwriter == buyer) {
+                l.removeUnderwriter(underwriter, isCall);
+                l.addUnderwriter(underwriter, isCall);
+                continue;
+            }
+
             balance -= l.pendingDepositsOf(underwriter, isCall);
+
+            Interval memory interval;
 
             // amount of liquidity provided by underwriter, accounting for reinvested premium
             interval.tokenAmount =
@@ -1492,10 +1502,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 l.tokenIds.add(id);
             }
 
-            if (
-                to == address(0) &&
-                ERC1155EnumerableStorage.layout().totalSupply[id] == 0
-            ) {
+            if (to == address(0) && _totalSupply(id) == 0) {
                 l.tokenIds.remove(id);
             }
 

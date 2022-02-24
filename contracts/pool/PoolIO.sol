@@ -158,7 +158,11 @@ contract PoolIO is IPoolIO, PoolSwap {
     /**
      * @inheritdoc IPoolIO
      */
-    function reassign(uint256 tokenId, uint256 contractSize)
+    function reassign(
+        uint256 tokenId,
+        uint256 contractSize,
+        bool divest
+    )
         external
         returns (
             uint256 baseCost,
@@ -169,14 +173,20 @@ contract PoolIO is IPoolIO, PoolSwap {
         PoolStorage.Layout storage l = PoolStorage.layout();
         int128 newPrice64x64 = _update(l);
 
-        (
-            PoolStorage.TokenType tokenType,
-            uint64 maturity,
-            int128 strike64x64
-        ) = PoolStorage.parseTokenId(tokenId);
+        uint64 maturity;
+        int128 strike64x64;
+        bool isCall;
 
-        bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL ||
-            tokenType == PoolStorage.TokenType.LONG_CALL;
+        {
+            PoolStorage.TokenType tokenType;
+            (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(
+                tokenId
+            );
+
+            isCall =
+                tokenType == PoolStorage.TokenType.SHORT_CALL ||
+                tokenType == PoolStorage.TokenType.LONG_CALL;
+        }
 
         (baseCost, feeCost, amountOut) = _reassign(
             l,
@@ -188,8 +198,14 @@ contract PoolIO is IPoolIO, PoolSwap {
             newPrice64x64
         );
 
-        _subUserTVL(l, msg.sender, isCall, baseCost + feeCost + amountOut);
-        _processAvailableFunds(msg.sender, amountOut, isCall, true, true);
+        _processAvailableFunds(msg.sender, amountOut, isCall, divest, true);
+
+        _subUserTVL(
+            l,
+            msg.sender,
+            isCall,
+            divest ? baseCost + feeCost + amountOut : baseCost + feeCost
+        );
     }
 
     /**
@@ -197,7 +213,8 @@ contract PoolIO is IPoolIO, PoolSwap {
      */
     function reassignBatch(
         uint256[] calldata tokenIds,
-        uint256[] calldata contractSizes
+        uint256[] calldata contractSizes,
+        bool divest
     )
         public
         returns (
@@ -246,29 +263,55 @@ contract PoolIO is IPoolIO, PoolSwap {
         }
 
         if (amountOutCall > 0) {
-            uint256 tvlToSubtract = amountOutCall;
+            uint256 reassignmentCost;
+
             for (uint256 i; i < tokenIds.length; i++) {
                 if (isCallToken[i] == false) continue;
 
-                tvlToSubtract += baseCosts[i];
-                tvlToSubtract += feeCosts[i];
+                reassignmentCost += baseCosts[i];
+                reassignmentCost += feeCosts[i];
             }
 
-            _subUserTVL(PoolStorage.layout(), msg.sender, true, tvlToSubtract);
-            _processAvailableFunds(msg.sender, amountOutCall, true, true, true);
+            _processAvailableFunds(
+                msg.sender,
+                amountOutCall,
+                true,
+                divest,
+                true
+            );
+
+            _subUserTVL(
+                PoolStorage.layout(),
+                msg.sender,
+                true,
+                divest ? reassignmentCost + amountOutCall : reassignmentCost
+            );
         }
 
         if (amountOutPut > 0) {
-            uint256 tvlToSubtract = amountOutPut;
+            uint256 reassignmentCost;
+
             for (uint256 i; i < tokenIds.length; i++) {
                 if (isCallToken[i] == true) continue;
 
-                tvlToSubtract += baseCosts[i];
-                tvlToSubtract += feeCosts[i];
+                reassignmentCost += baseCosts[i];
+                reassignmentCost += feeCosts[i];
             }
 
-            _subUserTVL(PoolStorage.layout(), msg.sender, false, tvlToSubtract);
-            _processAvailableFunds(msg.sender, amountOutPut, false, true, true);
+            _processAvailableFunds(
+                msg.sender,
+                amountOutPut,
+                false,
+                divest,
+                true
+            );
+
+            _subUserTVL(
+                PoolStorage.layout(),
+                msg.sender,
+                false,
+                divest ? reassignmentCost + amountOutPut : reassignmentCost
+            );
         }
     }
 
@@ -299,7 +342,8 @@ contract PoolIO is IPoolIO, PoolSwap {
 
         (baseCosts, feeCosts, amountOutCall, amountOutPut) = reassignBatch(
             tokenIds,
-            contractSizes
+            contractSizes,
+            true
         );
     }
 
@@ -317,7 +361,11 @@ contract PoolIO is IPoolIO, PoolSwap {
     /**
      * @inheritdoc IPoolIO
      */
-    function annihilate(uint256 tokenId, uint256 contractSize) external {
+    function annihilate(
+        uint256 tokenId,
+        uint256 contractSize,
+        bool divest
+    ) external {
         (
             PoolStorage.TokenType tokenType,
             uint64 maturity,
@@ -344,9 +392,20 @@ contract PoolIO is IPoolIO, PoolSwap {
             isCall
         );
 
-        _subUserTVL(l, msg.sender, isCall, tokenAmount);
+        _processAvailableFunds(
+            msg.sender,
+            collateralFreed,
+            isCall,
+            divest,
+            true
+        );
 
-        _processAvailableFunds(msg.sender, collateralFreed, isCall, true, true);
+        _subUserTVL(
+            l,
+            msg.sender,
+            isCall,
+            divest ? tokenAmount : collateralFreed - tokenAmount
+        );
     }
 
     /**
