@@ -617,25 +617,10 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         while (tokenAmount > 0) {
             address underwriter = l.liquidityQueueAscending[isCall][address(0)];
 
-            // move interval to end of queue if underwriter is buyer
-
-            if (underwriter == buyer) {
-                l.removeUnderwriter(underwriter, isCall);
-                l.addUnderwriter(underwriter, isCall);
-                continue;
-            }
-
             uint256 balance = _balanceOf(
                 underwriter,
                 _getFreeLiquidityTokenId(isCall)
             );
-
-            // if underwriter has insufficient liquidity, remove from queue
-
-            if (balance < l.getMinimumAmount(isCall)) {
-                l.removeUnderwriter(underwriter, isCall);
-                continue;
-            }
 
             // if underwriter is in process of divestment, remove from queue
 
@@ -649,6 +634,21 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     false
                 );
                 _subUserTVL(l, underwriter, isCall, balance);
+                continue;
+            }
+
+            // if underwriter has insufficient liquidity, remove from queue
+
+            if (balance < l.getMinimumAmount(isCall)) {
+                l.removeUnderwriter(underwriter, isCall);
+                continue;
+            }
+
+            // move interval to end of queue if underwriter is buyer
+
+            if (underwriter == buyer) {
+                l.removeUnderwriter(underwriter, isCall);
+                l.addUnderwriter(underwriter, isCall);
                 continue;
             }
 
