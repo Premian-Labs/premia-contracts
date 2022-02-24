@@ -40,6 +40,7 @@ async function main() {
     tokens.ETH,
     premia,
     fixedFromFloat(0.01),
+    fixedFromFloat(0.01),
     premiaMaker,
     premiaFeeDiscount,
     tokens,
