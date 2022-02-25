@@ -1338,6 +1338,10 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         }
 
         if (amount > credit) {
+            credit += _creditReservedLiquidity(amount - credit, isCallPool);
+        }
+
+        if (amount > credit) {
             require(
                 IERC20(token).transferFrom(
                     from,
@@ -1414,6 +1418,27 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             }
 
             IWETH(WETH_ADDRESS).deposit{value: credit}();
+        }
+    }
+
+    /**
+     * @notice calculate credit amount from reserved liquidity
+     * @param amount total deposit quantity
+     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
+     * @return credit quantity of credit to apply
+     */
+    function _creditReservedLiquidity(uint256 amount, bool isCallPool)
+        internal
+        returns (uint256 credit)
+    {
+        uint256 reservedLiqTokenId = _getReservedLiquidityTokenId(isCallPool);
+
+        uint256 balance = _balanceOf(msg.sender, reservedLiqTokenId);
+
+        if (balance > 0) {
+            credit = balance > amount ? amount : balance;
+
+            _burn(msg.sender, reservedLiqTokenId, credit);
         }
     }
 
