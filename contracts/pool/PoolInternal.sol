@@ -441,7 +441,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             msg.sender,
             l.getPoolToken(isCallPool),
             amount,
-            creditMessageValue ? _creditMessageValue(amount, isCallPool) : 0
+            isCallPool,
+            creditMessageValue
         );
 
         _addToDepositQueue(msg.sender, amount, isCallPool);
@@ -1320,14 +1321,22 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @param from address from which tokens are pulled from
      * @param token ERC20 token address
      * @param amount quantity of token to transfer
-     * @param credit amount already credited to depositor, to be deducted from transfer
+     * @param isCallPool whether funds correspond to call or put pool
+     * @param creditMessageValue whether to attempt to treat message value as credit
      */
     function _pullFrom(
         address from,
         address token,
         uint256 amount,
-        uint256 credit
+        uint256 isCallPool,
+        uint256 creditMessageValue
     ) internal {
+        uint256 credit;
+
+        if (creditMessageValue) {
+            credit = _creditMessageValue(amount, isCallPool);
+        }
+
         if (amount > credit) {
             require(
                 IERC20(token).transferFrom(
