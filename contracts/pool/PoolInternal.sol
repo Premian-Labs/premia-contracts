@@ -1328,8 +1328,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         address from,
         address token,
         uint256 amount,
-        uint256 isCallPool,
-        uint256 creditMessageValue
+        bool isCallPool,
+        bool creditMessageValue
     ) internal {
         uint256 credit;
 
