@@ -437,13 +437,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;
         _addUserTVL(l, msg.sender, isCallPool, amount);
-        _pullFrom(
-            msg.sender,
-            l.getPoolToken(isCallPool),
-            amount,
-            isCallPool,
-            creditMessageValue
-        );
+        _pullFrom(l, msg.sender, amount, isCallPool, creditMessageValue);
 
         _addToDepositQueue(msg.sender, amount, isCallPool);
 
@@ -1318,15 +1312,15 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
     /**
      * @notice transfer ERC20 tokens from message sender
+     * @param l storage layout struct
      * @param from address from which tokens are pulled from
-     * @param token ERC20 token address
      * @param amount quantity of token to transfer
      * @param isCallPool whether funds correspond to call or put pool
      * @param creditMessageValue whether to attempt to treat message value as credit
      */
     function _pullFrom(
+        PoolStorage.Layout storage l,
         address from,
-        address token,
         uint256 amount,
         bool isCallPool,
         bool creditMessageValue
@@ -1343,7 +1337,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         if (amount > credit) {
             require(
-                IERC20(token).transferFrom(
+                IERC20(l.getPoolToken(isCallPool)).transferFrom(
                     from,
                     address(this),
                     amount - credit

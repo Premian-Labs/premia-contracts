@@ -232,13 +232,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         interval.payment = interval.tokenAmount + interval.apyFee;
 
-        _pullFrom(
-            underwriter,
-            l.getPoolToken(isCall),
-            interval.payment,
-            isCall,
-            true
-        );
+        _pullFrom(l, underwriter, interval.payment, isCall, true);
 
         // mint long option token for designated receiver
         _mint(longReceiver, longTokenId, contractSize);
@@ -299,13 +293,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         require(amount <= maxCost, "excess slipp");
 
-        _pullFrom(
-            msg.sender,
-            l.getPoolToken(isCall),
-            amount,
-            isCall,
-            creditMessageValue
-        );
+        _pullFrom(l, msg.sender, amount, isCall, creditMessageValue);
     }
 
     /**
