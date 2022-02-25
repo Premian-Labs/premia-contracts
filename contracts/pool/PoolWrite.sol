@@ -213,8 +213,6 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         _verifyPurchase(maturity, strike64x64, isCall, _update(l));
 
-        address token = l.getPoolToken(isCall);
-
         Interval memory interval;
 
         interval.contractSize = contractSize;
@@ -234,7 +232,13 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
         interval.payment = interval.tokenAmount + interval.apyFee;
 
-        _pullFrom(underwriter, token, interval.payment, isCall, true);
+        _pullFrom(
+            underwriter,
+            l.getPoolToken(isCall),
+            interval.payment,
+            isCall,
+            true
+        );
 
         // mint long option token for designated receiver
         _mint(longReceiver, longTokenId, contractSize);
