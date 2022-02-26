@@ -1332,7 +1332,11 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         }
 
         if (amount > credit) {
-            credit += _creditReservedLiquidity(amount - credit, isCallPool);
+            credit += _creditReservedLiquidity(
+                from,
+                amount - credit,
+                isCallPool
+            );
         }
 
         if (amount > credit) {
@@ -1417,22 +1421,24 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
     /**
      * @notice calculate credit amount from reserved liquidity
+     * @param account address whose reserved liquidity to use as credit
      * @param amount total deposit quantity
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
      * @return credit quantity of credit to apply
      */
-    function _creditReservedLiquidity(uint256 amount, bool isCallPool)
-        internal
-        returns (uint256 credit)
-    {
+    function _creditReservedLiquidity(
+        address account,
+        uint256 amount,
+        bool isCallPool
+    ) internal returns (uint256 credit) {
         uint256 reservedLiqTokenId = _getReservedLiquidityTokenId(isCallPool);
 
-        uint256 balance = _balanceOf(msg.sender, reservedLiqTokenId);
+        uint256 balance = _balanceOf(account, reservedLiqTokenId);
 
         if (balance > 0) {
             credit = balance > amount ? amount : balance;
 
-            _burn(msg.sender, reservedLiqTokenId, credit);
+            _burn(account, reservedLiqTokenId, credit);
         }
     }
 
