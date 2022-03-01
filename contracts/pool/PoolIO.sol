@@ -318,38 +318,6 @@ contract PoolIO is IPoolIO, PoolSwap {
     /**
      * @inheritdoc IPoolIO
      */
-    function withdrawAllAndReassignBatch(
-        bool isCallPool,
-        uint256[] calldata tokenIds,
-        uint256[] calldata contractSizes
-    )
-        external
-        returns (
-            uint256[] memory baseCosts,
-            uint256[] memory feeCosts,
-            uint256 amountOutCall,
-            uint256 amountOutPut
-        )
-    {
-        uint256 balance = _balanceOf(
-            msg.sender,
-            _getFreeLiquidityTokenId(isCallPool)
-        );
-
-        if (balance > 0) {
-            withdraw(balance, isCallPool);
-        }
-
-        (baseCosts, feeCosts, amountOutCall, amountOutPut) = reassignBatch(
-            tokenIds,
-            contractSizes,
-            true
-        );
-    }
-
-    /**
-     * @inheritdoc IPoolIO
-     */
     function withdrawFees()
         external
         returns (uint256 amountOutCall, uint256 amountOutPut)
@@ -450,33 +418,5 @@ contract PoolIO is IPoolIO, PoolSwap {
             false,
             l.totalTVL[false]
         );
-    }
-
-    function increaseUserTVL(
-        address[] calldata accounts,
-        uint256[] calldata amounts,
-        bool isCallPool
-    ) external onlyProtocolOwner {
-        require(accounts.length == amounts.length);
-
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
-        for (uint256 i; i < accounts.length; i++) {
-            _addUserTVL(l, accounts[i], isCallPool, amounts[i]);
-        }
-    }
-
-    function decreaseUserTVL(
-        address[] calldata accounts,
-        uint256[] calldata amounts,
-        bool isCallPool
-    ) external onlyProtocolOwner {
-        require(accounts.length == amounts.length);
-
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
-        for (uint256 i; i < accounts.length; i++) {
-            _subUserTVL(l, accounts[i], isCallPool, amounts[i]);
-        }
     }
 }
