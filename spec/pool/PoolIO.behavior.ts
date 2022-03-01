@@ -615,11 +615,7 @@ export function describeBehaviorOfPoolIO({
 
             await instance
               .connect(lp1)
-              .withdrawAllAndReassignBatch(
-                isCall,
-                [shortTokenId],
-                [shortTokenBalance],
-              );
+              .reassign(shortTokenId, shortTokenBalance);
 
             expect(
               await instance.balanceOf(
@@ -750,10 +746,6 @@ export function describeBehaviorOfPoolIO({
           instance.connect(lp1).reassignBatch([shortTokenId], ['1']),
         ).to.be.revertedWith('too small');
       });
-    });
-
-    describe('#withdrawAllAndReassignBatch', () => {
-      it('todo');
     });
 
     describe('#withdrawFees', () => {

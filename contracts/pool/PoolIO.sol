@@ -318,38 +318,6 @@ contract PoolIO is IPoolIO, PoolSwap {
     /**
      * @inheritdoc IPoolIO
      */
-    function withdrawAllAndReassignBatch(
-        bool isCallPool,
-        uint256[] calldata tokenIds,
-        uint256[] calldata contractSizes
-    )
-        external
-        returns (
-            uint256[] memory baseCosts,
-            uint256[] memory feeCosts,
-            uint256 amountOutCall,
-            uint256 amountOutPut
-        )
-    {
-        uint256 balance = _balanceOf(
-            msg.sender,
-            _getFreeLiquidityTokenId(isCallPool)
-        );
-
-        if (balance > 0) {
-            withdraw(balance, isCallPool);
-        }
-
-        (baseCosts, feeCosts, amountOutCall, amountOutPut) = reassignBatch(
-            tokenIds,
-            contractSizes,
-            true
-        );
-    }
-
-    /**
-     * @inheritdoc IPoolIO
-     */
     function withdrawFees()
         external
         returns (uint256 amountOutCall, uint256 amountOutPut)
