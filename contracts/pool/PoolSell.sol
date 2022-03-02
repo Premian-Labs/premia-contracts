@@ -52,6 +52,26 @@ contract PoolSell is IPoolSell, PoolInternal {
         return PoolStorage.layout().isBuybackEnabled[account];
     }
 
+    /**
+     * @inheritdoc IPoolSell
+     */
+    function getAvailableBuybackLiquidity(
+        uint64 maturity,
+        int128 strike64x64,
+        bool isCall
+    ) external view returns (uint256) {
+        uint256 shortTokenId = PoolStorage.formatTokenId(
+            PoolStorage.getTokenType(isCall, false),
+            maturity,
+            strike64x64
+        );
+
+        return _getAvailableBuybackLiquidity(shortTokenId);
+    }
+
+    /**
+     * @inheritdoc IPoolSell
+     */
     function sellQuote(
         address feePayer,
         uint64 maturity,
