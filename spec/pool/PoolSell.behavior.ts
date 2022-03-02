@@ -49,6 +49,10 @@ export function describeBehaviorOfPoolSell({
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
           it('should correctly sell option back to the pool', async () => {
+            const initialTokenAmount = await p
+              .getToken(isCall)
+              .balanceOf(buyer.address);
+
             await instance.connect(lp1).setBuybackEnabled(true);
 
             const maturity = await getMaturity(10);
@@ -62,12 +66,6 @@ export function describeBehaviorOfPoolSell({
               strike64x64,
               isCall,
             );
-
-            const initialTokenAmount = isCall
-              ? parseUnderlying('100')
-              : parseBase('10000');
-
-            const tokenIds = getOptionTokenIds(maturity, strike64x64, isCall);
 
             expect(
               bnToNumber(
