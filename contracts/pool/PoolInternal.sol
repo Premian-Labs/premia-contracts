@@ -437,12 +437,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;
         _addUserTVL(l, msg.sender, isCallPool, amount);
-        _pullFrom(
-            msg.sender,
-            l.getPoolToken(isCallPool),
-            amount,
-            creditMessageValue ? _creditMessageValue(amount, isCallPool) : 0
-        );
+        _pullFrom(l, msg.sender, amount, isCallPool, creditMessageValue);
 
         _addToDepositQueue(msg.sender, amount, isCallPool);
 
@@ -1317,20 +1312,36 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
     /**
      * @notice transfer ERC20 tokens from message sender
+     * @param l storage layout struct
      * @param from address from which tokens are pulled from
-     * @param token ERC20 token address
      * @param amount quantity of token to transfer
-     * @param credit amount already credited to depositor, to be deducted from transfer
+     * @param isCallPool whether funds correspond to call or put pool
+     * @param creditMessageValue whether to attempt to treat message value as credit
      */
     function _pullFrom(
+        PoolStorage.Layout storage l,
         address from,
-        address token,
         uint256 amount,
-        uint256 credit
+        bool isCallPool,
+        bool creditMessageValue
     ) internal {
+        uint256 credit;
+
+        if (creditMessageValue) {
+            credit = _creditMessageValue(amount, isCallPool);
+        }
+
+        if (amount > credit) {
+            credit += _creditReservedLiquidity(
+                from,
+                amount - credit,
+                isCallPool
+            );
+        }
+
         if (amount > credit) {
             require(
-                IERC20(token).transferFrom(
+                IERC20(l.getPoolToken(isCallPool)).transferFrom(
                     from,
                     address(this),
                     amount - credit
@@ -1405,6 +1416,29 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             }
 
             IWETH(WETH_ADDRESS).deposit{value: credit}();
+        }
+    }
+
+    /**
+     * @notice calculate credit amount from reserved liquidity
+     * @param account address whose reserved liquidity to use as credit
+     * @param amount total deposit quantity
+     * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
+     * @return credit quantity of credit to apply
+     */
+    function _creditReservedLiquidity(
+        address account,
+        uint256 amount,
+        bool isCallPool
+    ) internal returns (uint256 credit) {
+        uint256 reservedLiqTokenId = _getReservedLiquidityTokenId(isCallPool);
+
+        uint256 balance = _balanceOf(account, reservedLiqTokenId);
+
+        if (balance > 0) {
+            credit = balance > amount ? amount : balance;
+
+            _burn(account, reservedLiqTokenId, credit);
         }
     }
 

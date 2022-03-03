@@ -17,6 +17,19 @@ interface IPoolSell {
     function isBuybackEnabled(address account) external view returns (bool);
 
     /**
+     * @notice calculate the total available buyback liquidity for an option
+     * @param maturity timestamp of option maturity
+     * @param strike64x64 64x64 fixed point representation of strike price
+     * @param isCall true for call, false for put
+     * @return total available buyback liquidity for this option
+     */
+    function getAvailableBuybackLiquidity(
+        uint64 maturity,
+        int128 strike64x64,
+        bool isCall
+    ) external view returns (uint256);
+
+    /**
      * @notice calculate price of option contract
      * @param feePayer address of the fee payer
      * @param maturity timestamp of option maturity

@@ -91,29 +91,6 @@ interface IPoolIO {
         );
 
     /**
-     * @notice withdraw all free liquidity and reassign set of short position to new underwriter
-     * @param isCallPool true for call, false for put
-     * @param tokenIds array of ERC1155 token ids (long or short)
-     * @param contractSizes array of quantities of option contract tokens to reassign
-     * @return baseCosts quantities of tokens required to reassign each short position
-     * @return feeCosts quantities of tokens required to pay fees
-     * @return amountOutCall quantity of call pool liquidity freed and transferred to owner
-     * @return amountOutPut quantity of put pool liquidity freed and transferred to owner
-     */
-    function withdrawAllAndReassignBatch(
-        bool isCallPool,
-        uint256[] calldata tokenIds,
-        uint256[] calldata contractSizes
-    )
-        external
-        returns (
-            uint256[] memory baseCosts,
-            uint256[] memory feeCosts,
-            uint256 amountOutCall,
-            uint256 amountOutPut
-        );
-
-    /**
      * @notice transfer accumulated fees to the fee receiver
      * @return amountOutCall quantity of underlying tokens transferred
      * @return amountOutPut quantity of base tokens transferred
