@@ -165,5 +165,14 @@ contract PoolSell is IPoolSell, PoolInternal {
             true,
             false
         );
+
+        emit Sell(
+            msg.sender,
+            longTokenId,
+            contractSize,
+            baseCost,
+            feeCost,
+            newPrice64x64
+        );
     }
 }
