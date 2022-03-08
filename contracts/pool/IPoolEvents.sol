@@ -12,6 +12,15 @@ interface IPoolEvents {
         int128 spot64x64
     );
 
+    event Sell(
+        address indexed user,
+        uint256 longTokenId,
+        uint256 contractSize,
+        uint256 baseCost,
+        uint256 feeCost,
+        int128 spot64x64
+    );
+
     event Exercise(
         address indexed user,
         uint256 longTokenId,

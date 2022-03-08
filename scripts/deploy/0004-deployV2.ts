@@ -40,12 +40,15 @@ async function main() {
     tokens.ETH,
     premia,
     fixedFromFloat(0.01),
+    fixedFromFloat(0.01),
     premiaMaker,
     premiaFeeDiscount,
     tokens,
     oracles,
     minimums,
     caps,
+    undefined,
+    '0x9e88fe5e5249CD6429269B072c9476b6908dCBf2',
   );
 }
 
