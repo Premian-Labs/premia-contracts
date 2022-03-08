@@ -106,10 +106,9 @@ contract PoolSell is IPoolSell, PoolInternal {
 
         uint256 baseCost;
         uint256 feeCost;
+        int128 newPrice64x64 = _update(l);
 
         {
-            int128 newPrice64x64 = _update(l);
-
             (int128 baseCost64x64, int128 feeCost64x64) = _quoteSalePrice(
                 PoolStorage.QuoteArgsInternal(
                     msg.sender,
@@ -164,6 +163,15 @@ contract PoolSell is IPoolSell, PoolInternal {
             isCall,
             true,
             false
+        );
+
+        emit Sell(
+            msg.sender,
+            longTokenId,
+            contractSize,
+            baseCost,
+            feeCost,
+            newPrice64x64
         );
     }
 }
