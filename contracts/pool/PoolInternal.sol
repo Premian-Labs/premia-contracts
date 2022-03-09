@@ -340,8 +340,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         (PoolStorage.TokenType tokenType, , ) = PoolStorage.parseTokenId(
             shortTokenId
         );
-        bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL ||
-            tokenType == PoolStorage.TokenType.LONG_CALL;
+        bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
 
         uint256 length = accounts.length();
 
