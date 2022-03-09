@@ -7,14 +7,17 @@ interface IPoolSell {
      * @notice Enable or disable buyback
      * @param state whether to enable or disable buyback
      */
-    function setBuybackEnabled(bool state) external;
+    function setBuybackEnabled(bool state, bool isCallPool) external;
 
     /**
      * @notice Get whether buyback is enabled or not for a given LP
      * @param account LP account for which to check
      * @return whether buyback is enabled or not
      */
-    function isBuybackEnabled(address account) external view returns (bool);
+    function isBuybackEnabled(address account, bool isCallPool)
+        external
+        view
+        returns (bool);
 
     /**
      * @notice calculate the total available buyback liquidity for an option
