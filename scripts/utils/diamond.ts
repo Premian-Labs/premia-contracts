@@ -6,12 +6,13 @@ export async function diamondCut(
   contractAddress: string,
   factory: ContractFactory,
   excludeList: string[] = [],
+  action: number = 0,
 ) {
   const registeredSelectors: string[] = [];
   const facetCuts = [
     {
       target: contractAddress,
-      action: 0,
+      action: action,
       selectors: Object.keys(factory.interface.functions)
         .filter((fn) => !excludeList.includes(factory.interface.getSighash(fn)))
         .map((fn) => {

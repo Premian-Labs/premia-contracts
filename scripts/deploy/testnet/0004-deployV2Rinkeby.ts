@@ -63,6 +63,7 @@ async function main() {
     weth,
     premia.address,
     fixedFromFloat(0.03),
+    fixedFromFloat(0.03),
     contracts.premiaMaker.address,
     contracts.xPremia.address,
     tokens,

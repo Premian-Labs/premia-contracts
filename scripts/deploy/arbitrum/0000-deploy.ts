@@ -78,6 +78,7 @@ async function main() {
     tokens.ETH,
     premia,
     fixedFromFloat(0.03),
+    fixedFromFloat(0.03),
     feeCollectorProxy.address,
     feeDiscountProxy.address,
     tokens,
