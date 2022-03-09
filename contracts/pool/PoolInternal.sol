@@ -394,7 +394,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
 
         _burn(account, longTokenId, contractSize);
-        _burn(account, shortTokenId, contractSize);
 
         uint256 rebate = _fulfillApyFee(
             l,
@@ -404,6 +403,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             intervalApyFee,
             isCall
         );
+
+        _burn(account, shortTokenId, contractSize);
 
         collateralFreed = tokenAmount + rebate + intervalApyFee;
 
