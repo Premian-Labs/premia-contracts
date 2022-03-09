@@ -53,7 +53,7 @@ export function describeBehaviorOfPoolSell({
               .getToken(isCall)
               .balanceOf(buyer.address);
 
-            await instance.connect(lp1).setBuybackEnabled(true);
+            await instance.connect(lp1).setBuybackEnabled(true, isCall);
 
             const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
@@ -123,7 +123,7 @@ export function describeBehaviorOfPoolSell({
           });
 
           it('should fail selling back to the pool if no buyer available', async () => {
-            await instance.connect(lp1).setBuybackEnabled(false);
+            await instance.connect(lp1).setBuybackEnabled(false, isCall);
 
             const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
@@ -149,11 +149,11 @@ export function describeBehaviorOfPoolSell({
 
     describe('#setBuybackEnabled', () => {
       it('should correctly enable/disable buyback', async () => {
-        expect(await instance.isBuybackEnabled(lp1.address)).to.be.false;
-        await instance.connect(lp1).setBuybackEnabled(true);
-        expect(await instance.isBuybackEnabled(lp1.address)).to.be.true;
-        await instance.connect(lp1).setBuybackEnabled(false);
-        expect(await instance.isBuybackEnabled(lp1.address)).to.be.false;
+        expect(await instance.isBuybackEnabled(lp1.address, true)).to.be.false;
+        await instance.connect(lp1).setBuybackEnabled(true, true);
+        expect(await instance.isBuybackEnabled(lp1.address, true)).to.be.true;
+        await instance.connect(lp1).setBuybackEnabled(false, true);
+        expect(await instance.isBuybackEnabled(lp1.address, true)).to.be.false;
       });
     });
   });
