@@ -28,31 +28,6 @@ export function describeBehaviorOfPoolSettings({
       instance = await deploy();
     });
 
-    describe('#setPoolCaps', () => {
-      it('updates deposit caps', async () => {
-        await instance.connect(protocolOwner).setPoolCaps('123', '456');
-
-        const poolView = PoolView__factory.connect(
-          instance.address,
-          ethers.provider,
-        );
-
-        const caps = await poolView.callStatic.getCapAmounts();
-        expect(caps.callTokenCapAmount).to.eq('456');
-        expect(caps.putTokenCapAmount).to.eq('123');
-      });
-
-      describe('reverts if', () => {
-        it('sender is not protocol owner', async () => {
-          await expect(
-            instance
-              .connect(nonProtocolOwner)
-              .setPoolCaps(ethers.constants.Zero, ethers.constants.Zero),
-          ).to.be.revertedWith('Not protocol owner');
-        });
-      });
-    });
-
     describe('#setMinimumAmounts', () => {
       it('todo');
 
