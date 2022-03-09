@@ -7,14 +7,6 @@ pragma solidity ^0.8.0;
  */
 interface IPoolSettings {
     /**
-     * @notice set pool deposit caps
-     * @param basePoolCap put pool cap
-     * @param underlyingPoolCap call pool cap
-     */
-    function setPoolCaps(uint256 basePoolCap, uint256 underlyingPoolCap)
-        external;
-
-    /**
      * @notice set minimum liquidity interval sizes
      * @param baseMinimum minimum base currency interval size
      * @param underlyingMinimum minimum underlying currency interval size

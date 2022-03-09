@@ -74,8 +74,8 @@ library PoolStorage {
         uint256 baseMinimum;
         uint256 underlyingMinimum;
         // deposit caps
-        uint256 basePoolCap;
-        uint256 underlyingPoolCap;
+        uint256 _deprecated_basePoolCap;
+        uint256 _deprecated_underlyingPoolCap;
         // market state
         int128 _deprecated_steepness64x64;
         int128 cLevelBase64x64;
@@ -199,14 +199,6 @@ library PoolStorage {
         returns (uint256 minimumAmount)
     {
         minimumAmount = isCall ? l.underlyingMinimum : l.baseMinimum;
-    }
-
-    function getPoolCapAmount(Layout storage l, bool isCall)
-        internal
-        view
-        returns (uint256 poolCapAmount)
-    {
-        poolCapAmount = isCall ? l.underlyingPoolCap : l.basePoolCap;
     }
 
     /**

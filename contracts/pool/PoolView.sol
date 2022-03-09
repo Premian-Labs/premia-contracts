@@ -142,18 +142,6 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getCapAmounts()
-        external
-        view
-        returns (uint256 callTokenCapAmount, uint256 putTokenCapAmount)
-    {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        return (l.getPoolCapAmount(true), l.getPoolCapAmount(false));
-    }
-
-    /**
-     * @inheritdoc IPoolView
-     */
     function getUserTVL(address user)
         external
         view
