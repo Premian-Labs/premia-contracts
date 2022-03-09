@@ -47,7 +47,7 @@ export const DECIMALS_UNDERLYING = 8;
 export const SYMBOL_BASE = 'SYMBOL_BASE';
 export const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 export const FEE_PREMIUM = 0.03;
-export const FEE_APY = 0.03;
+export const FEE_APY = 0.2;
 export const MIN_APY = 0.3;
 
 interface PoolUtilArgs {
@@ -64,7 +64,40 @@ interface PoolUtilArgs {
   feeReceiver: any;
 }
 
-const ONE_DAY = 3600 * 24;
+export const ONE_DAY = 3600 * 24;
+export const ONE_YEAR = ONE_DAY * 365;
+
+export function getFreeLiqTokenId(isCall: boolean) {
+  if (isCall) {
+    return formatTokenId({
+      tokenType: TokenType.UnderlyingFreeLiq,
+      maturity: BigNumber.from(0),
+      strike64x64: BigNumber.from(0),
+    });
+  } else {
+    return formatTokenId({
+      tokenType: TokenType.BaseFreeLiq,
+      maturity: BigNumber.from(0),
+      strike64x64: BigNumber.from(0),
+    });
+  }
+}
+
+export function getReservedLiqTokenId(isCall: boolean) {
+  if (isCall) {
+    return formatTokenId({
+      tokenType: TokenType.UnderlyingReservedLiq,
+      maturity: BigNumber.from(0),
+      strike64x64: BigNumber.from(0),
+    });
+  } else {
+    return formatTokenId({
+      tokenType: TokenType.BaseReservedLiq,
+      maturity: BigNumber.from(0),
+      strike64x64: BigNumber.from(0),
+    });
+  }
+}
 
 export function getTokenDecimals(isCall: boolean) {
   return isCall ? DECIMALS_UNDERLYING : DECIMALS_BASE;
@@ -119,6 +152,56 @@ export function getExerciseValue(
     return ((price - strike) * amount) / price;
   } else {
     return (strike - price) * amount;
+  }
+}
+
+export function getLong(isCall: boolean) {
+  return isCall ? TokenType.LongCall : TokenType.LongPut;
+}
+
+export function getShort(isCall: boolean) {
+  return isCall ? TokenType.ShortCall : TokenType.ShortPut;
+}
+
+export function getStrike(isCall: boolean, spotPrice: number) {
+  return isCall ? spotPrice * 1.25 : spotPrice * 0.75;
+}
+
+export async function getMaturity(days: number) {
+  const { timestamp } = await ethers.provider.getBlock('latest');
+
+  return BigNumber.from(
+    Math.floor(timestamp / ONE_DAY) * ONE_DAY + days * ONE_DAY,
+  );
+}
+
+export async function getMinPrice(collateralAmount: number, maturity: number) {
+  let { timestamp } = await ethers.provider.getBlock('latest');
+
+  return (
+    (collateralAmount * (MIN_APY * (maturity - timestamp))) / (365 * 24 * 3600)
+  );
+}
+
+export function getMaxCost(
+  baseCost64x64: BigNumber,
+  feeCost64x64: BigNumber,
+  isCall: boolean,
+) {
+  if (isCall) {
+    return parseUnderlying(
+      (
+        (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
+        1.03
+      ).toString(),
+    );
+  } else {
+    return parseBase(
+      (
+        (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
+        1.03
+      ).toString(),
+    );
   }
 }
 
@@ -537,134 +620,16 @@ export class PoolUtil {
     return isCall ? this.underlying : this.base;
   }
 
-  getTokenDecimals(isCall: boolean) {
-    return isCall ? DECIMALS_UNDERLYING : DECIMALS_BASE;
-  }
-
-  getLong(isCall: boolean) {
-    return isCall ? TokenType.LongCall : TokenType.LongPut;
-  }
-
-  getShort(isCall: boolean) {
-    return isCall ? TokenType.ShortCall : TokenType.ShortPut;
-  }
-
-  getStrike(isCall: boolean, spotPrice: number) {
-    return isCall ? spotPrice * 1.25 : spotPrice * 0.75;
-  }
-
-  getMaxCost(
-    baseCost64x64: BigNumber,
-    feeCost64x64: BigNumber,
-    isCall: boolean,
-  ) {
-    if (isCall) {
-      return parseUnderlying(
-        (
-          (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
-          1.03
-        ).toString(),
-      );
-    } else {
-      return parseBase(
-        (
-          (fixedToNumber(baseCost64x64) + fixedToNumber(feeCost64x64)) *
-          1.03
-        ).toString(),
-      );
-    }
-  }
-
-  async getMinPrice(collateralAmount: number, maturity: number) {
-    let { timestamp } = await ethers.provider.getBlock('latest');
-
-    return (
-      (collateralAmount * (MIN_APY * (maturity - timestamp))) /
-      (365 * 24 * 3600)
-    );
-  }
-
-  getFreeLiqTokenId(isCall: boolean) {
-    if (isCall) {
-      return formatTokenId({
-        tokenType: TokenType.UnderlyingFreeLiq,
-        maturity: BigNumber.from(0),
-        strike64x64: BigNumber.from(0),
-      });
-    } else {
-      return formatTokenId({
-        tokenType: TokenType.BaseFreeLiq,
-        maturity: BigNumber.from(0),
-        strike64x64: BigNumber.from(0),
-      });
-    }
-  }
-
-  getReservedLiqTokenId(isCall: boolean) {
-    if (isCall) {
-      return formatTokenId({
-        tokenType: TokenType.UnderlyingReservedLiq,
-        maturity: BigNumber.from(0),
-        strike64x64: BigNumber.from(0),
-      });
-    } else {
-      return formatTokenId({
-        tokenType: TokenType.BaseReservedLiq,
-        maturity: BigNumber.from(0),
-        strike64x64: BigNumber.from(0),
-      });
-    }
-  }
-
   async depositLiquidity(
     lp: SignerWithAddress,
     amount: BigNumberish,
     isCall: boolean,
   ) {
-    if (isCall) {
-      await this.underlying.mint(lp.address, amount);
-      await this.underlying
-        .connect(lp)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    } else {
-      await this.base.mint(lp.address, amount);
-      await this.base
-        .connect(lp)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    }
-
     await PoolIO__factory.connect(this.pool.address, lp)
       .connect(lp)
       .deposit(amount, isCall);
 
     await increaseTimestamp(300);
-  }
-
-  async writeOption(
-    operator: SignerWithAddress,
-    underwriter: SignerWithAddress,
-    longReceiver: SignerWithAddress,
-    maturity: BigNumber,
-    strike64x64: BigNumber,
-    amount: BigNumber,
-    isCall: boolean,
-  ) {
-    const toMint = isCall ? parseUnderlying('1') : parseBase('2');
-
-    await this.getToken(isCall).mint(underwriter.address, toMint);
-    await this.getToken(isCall)
-      .connect(underwriter)
-      .approve(this.pool.address, ethers.constants.MaxUint256);
-    await this.pool
-      .connect(operator)
-      .writeFrom(
-        underwriter.address,
-        longReceiver.address,
-        maturity,
-        strike64x64,
-        amount,
-        isCall,
-      );
   }
 
   async purchaseOption(
@@ -682,18 +647,6 @@ export class PoolUtil {
         : parseBase(formatUnderlying(amount)).mul(fixedToNumber(strike64x64)),
       isCall,
     );
-
-    if (isCall) {
-      await this.underlying.mint(buyer.address, parseUnderlying('100'));
-      await this.underlying
-        .connect(buyer)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    } else {
-      await this.base.mint(buyer.address, parseBase('10000'));
-      await this.base
-        .connect(buyer)
-        .approve(this.pool.address, ethers.constants.MaxUint256);
-    }
 
     const quote = await this.pool.quote(
       buyer.address,
@@ -714,13 +667,5 @@ export class PoolUtil {
       );
 
     return quote;
-  }
-
-  async getMaturity(days: number) {
-    const { timestamp } = await ethers.provider.getBlock('latest');
-
-    return BigNumber.from(
-      Math.floor(timestamp / ONE_DAY) * ONE_DAY + days * ONE_DAY,
-    );
   }
 }

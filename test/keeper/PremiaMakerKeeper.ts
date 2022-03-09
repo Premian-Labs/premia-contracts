@@ -9,7 +9,13 @@ import {
   PremiaMakerKeeper__factory,
   UniswapV2Pair,
 } from '../../typechain';
-import { DECIMALS_BASE, DECIMALS_UNDERLYING, PoolUtil } from '../pool/PoolUtil';
+import {
+  DECIMALS_BASE,
+  DECIMALS_UNDERLYING,
+  getFreeLiqTokenId,
+  getReservedLiqTokenId,
+  PoolUtil,
+} from '../pool/PoolUtil';
 import { ZERO_ADDRESS } from '../utils/constants';
 import { parseEther, parseUnits } from 'ethers/lib/utils';
 import {
@@ -126,7 +132,7 @@ describe('PremiaMakerKeeper', () => {
     const poolMock = PoolMock__factory.connect(p.pool.address, owner);
     await poolMock.mint(
       contracts.premiaMaker.address,
-      p.getReservedLiqTokenId(true),
+      getReservedLiqTokenId(true),
       parseUnits('0.001', DECIMALS_UNDERLYING),
     );
 
@@ -142,7 +148,7 @@ describe('PremiaMakerKeeper', () => {
     // Work to do for underlying because now above threshold
     await poolMock.mint(
       contracts.premiaMaker.address,
-      p.getReservedLiqTokenId(true),
+      getReservedLiqTokenId(true),
       parseUnits('100', DECIMALS_UNDERLYING),
     );
 
@@ -168,7 +174,7 @@ describe('PremiaMakerKeeper', () => {
     // Work to do for underlying + base
     await poolMock.mint(
       contracts.premiaMaker.address,
-      p.getReservedLiqTokenId(false),
+      getReservedLiqTokenId(false),
       parseUnits('10000', DECIMALS_BASE),
     );
 
@@ -203,12 +209,12 @@ describe('PremiaMakerKeeper', () => {
 
     await poolMock.mint(
       contracts.premiaMaker.address,
-      p.getReservedLiqTokenId(true),
+      getReservedLiqTokenId(true),
       parseUnits('100', DECIMALS_UNDERLYING),
     );
     await poolMock.mint(
       contracts.premiaMaker.address,
-      p.getReservedLiqTokenId(false),
+      getReservedLiqTokenId(false),
       parseUnits('10000', DECIMALS_BASE),
     );
 

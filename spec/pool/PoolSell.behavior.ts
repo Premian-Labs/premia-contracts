@@ -7,6 +7,8 @@ import {
   getTokenDecimals,
   parseBase,
   parseUnderlying,
+  getStrike,
+  getMaturity,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 import { bnToNumber } from '../../test/utils/math';
@@ -47,10 +49,14 @@ export function describeBehaviorOfPoolSell({
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
           it('should correctly sell option back to the pool', async () => {
+            const initialTokenAmount = await p
+              .getToken(isCall)
+              .balanceOf(buyer.address);
+
             await instance.connect(lp1).setBuybackEnabled(true);
 
-            const maturity = await p.getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const maturity = await getMaturity(10);
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
             const quote = await p.purchaseOption(
               lp1,
@@ -60,12 +66,6 @@ export function describeBehaviorOfPoolSell({
               strike64x64,
               isCall,
             );
-
-            const initialTokenAmount = isCall
-              ? parseUnderlying('100')
-              : parseBase('10000');
-
-            const tokenIds = getOptionTokenIds(maturity, strike64x64, isCall);
 
             expect(
               bnToNumber(
@@ -125,8 +125,8 @@ export function describeBehaviorOfPoolSell({
           it('should fail selling back to the pool if no buyer available', async () => {
             await instance.connect(lp1).setBuybackEnabled(false);
 
-            const maturity = await p.getMaturity(10);
-            const strike64x64 = fixedFromFloat(p.getStrike(isCall, 2000));
+            const maturity = await getMaturity(10);
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
             await p.purchaseOption(
               lp1,

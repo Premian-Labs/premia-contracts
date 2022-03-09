@@ -4,7 +4,15 @@ import { IPool, PoolExercise__factory } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { fixedFromFloat, getOptionTokenIds } from '@premia/utils';
 
-import { parseBase, parseUnderlying, PoolUtil } from '../../test/pool/PoolUtil';
+import {
+  parseBase,
+  parseUnderlying,
+  getFreeLiqTokenId,
+  getReservedLiqTokenId,
+  getStrike,
+  getMaturity,
+  PoolUtil,
+} from '../../test/pool/PoolUtil';
 
 interface PoolViewBehaviorArgs {
   deploy: () => Promise<IPool>;
@@ -52,8 +60,8 @@ export function describeBehaviorOfPoolView({
       it('should correctly list existing tokenIds', async () => {
         const isCallPool = true;
 
-        const maturity = await p.getMaturity(20);
-        const strike = p.getStrike(isCallPool, 2000);
+        const maturity = await getMaturity(20);
+        const strike = getStrike(isCallPool, 2000);
         const strike64x64 = fixedFromFloat(strike);
         const amount = parseUnderlying('1');
 
@@ -70,10 +78,10 @@ export function describeBehaviorOfPoolView({
 
         let tokenIds = await instance.getTokenIds();
         expect(tokenIds.length).to.eq(4);
-        expect(tokenIds[0]).to.eq(p.getFreeLiqTokenId(isCallPool));
+        expect(tokenIds[0]).to.eq(getFreeLiqTokenId(isCallPool));
         expect(tokenIds[1]).to.eq(optionId.long);
         expect(tokenIds[2]).to.eq(optionId.short);
-        expect(tokenIds[3]).to.eq(p.getReservedLiqTokenId(isCallPool));
+        expect(tokenIds[3]).to.eq(getReservedLiqTokenId(isCallPool));
 
         // await setTimestamp(maturity.add(100).toNumber());
         await ethers.provider.send('evm_setNextBlockTimestamp', [
@@ -98,8 +106,8 @@ export function describeBehaviorOfPoolView({
 
         tokenIds = await instance.getTokenIds();
         expect(tokenIds.length).to.eq(2);
-        expect(tokenIds[0]).to.eq(p.getFreeLiqTokenId(isCallPool));
-        expect(tokenIds[1]).to.eq(p.getReservedLiqTokenId(isCallPool));
+        expect(tokenIds[0]).to.eq(getFreeLiqTokenId(isCallPool));
+        expect(tokenIds[1]).to.eq(getReservedLiqTokenId(isCallPool));
       });
     });
 
