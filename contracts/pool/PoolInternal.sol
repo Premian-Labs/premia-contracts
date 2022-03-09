@@ -394,7 +394,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         );
 
         _burn(account, longTokenId, contractSize);
-        _burn(account, shortTokenId, contractSize);
 
         uint256 rebate = _fulfillApyFee(
             l,
@@ -404,6 +403,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             intervalApyFee,
             isCall
         );
+
+        _burn(account, shortTokenId, contractSize);
 
         collateralFreed = tokenAmount + rebate + intervalApyFee;
 
@@ -1109,6 +1110,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
     /**
      * @notice credit fee receiver with fees earned and calculate rebate for underwriter
+     * @dev short tokens which have acrrued fee must not be burned or transferred until after this helper is called
      * @param l storage layout struct
      * @param underwriter holder of short position who reserved fees
      * @param shortTokenId short token id whose reserved fees to pay and rebate
