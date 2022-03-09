@@ -26,13 +26,6 @@ async function main() {
     LINK: '5',
   };
 
-  const caps: TokenAmounts = {
-    DAI: '10000',
-    ETH: '2.5',
-    BTC: '0.15',
-    LINK: '300',
-  };
-
   const premiaMaker = '0xC4B2C51f969e0713E799De73b7f130Fb7Bb604CF';
   const premiaFeeDiscount = '0xF5aae75D1AD6fDD62Cce66137F2674c96FEda854';
 
@@ -46,7 +39,6 @@ async function main() {
     tokens,
     oracles,
     minimums,
-    caps,
     undefined,
     '0x9e88fe5e5249CD6429269B072c9476b6908dCBf2',
   );

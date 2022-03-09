@@ -51,13 +51,6 @@ async function main() {
     LINK: '5',
   };
 
-  const caps: TokenAmounts = {
-    DAI: '1000000',
-    ETH: '300',
-    BTC: '25',
-    LINK: '40000',
-  };
-
   const premiaDiamond = await deployV2(
     wbnb,
     premia.address,
@@ -68,7 +61,6 @@ async function main() {
     tokens,
     oracles,
     minimums,
-    caps,
   );
 
   const premiaMakerKeeper = await new PremiaMakerKeeper__factory(

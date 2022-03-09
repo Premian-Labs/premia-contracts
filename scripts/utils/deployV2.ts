@@ -50,7 +50,6 @@ export async function deployV2(
   tokens: TokenAddresses,
   oracles: TokenAddresses,
   minAmounts: TokenAmounts,
-  capAmounts: TokenAmounts,
   sushiswapFactoryOverride?: string,
   ivolOracleProxyAddress?: string,
 ) {
@@ -389,11 +388,6 @@ export async function deployV2(
   const minWbtc = fixedFromFloat(minAmounts.BTC);
   const minLink = fixedFromFloat(minAmounts.LINK);
 
-  const capDai = fixedFromFloat(capAmounts.DAI);
-  const capWeth = fixedFromFloat(capAmounts.ETH);
-  const capWbtc = fixedFromFloat(capAmounts.BTC);
-  const capLink = fixedFromFloat(capAmounts.LINK);
-
   const wethPoolAddress = await proxyManager.callStatic.deployPool(
     tokens.DAI,
     tokens.ETH,
@@ -402,9 +396,6 @@ export async function deployV2(
     // minimum amounts
     minDai,
     minWeth,
-    // deposit caps
-    capDai,
-    capWeth,
     100,
   );
 
@@ -416,16 +407,13 @@ export async function deployV2(
     // minimum amounts
     minDai,
     minWeth,
-    // deposit caps
-    capDai,
-    capWeth,
     100,
   );
 
   console.log(
     `WETH/DAI pool : ${wethPoolAddress} (${tokens.DAI}, ${tokens.ETH}, ${
       oracles.DAI
-    }, ${oracles.ETH}, ${minDai}, ${minWeth}, ${capDai}, ${capWeth}, ${100})`,
+    }, ${oracles.ETH}, ${minDai}, ${minWeth}, ${100})`,
   );
 
   await poolTx.wait(1);
@@ -438,9 +426,6 @@ export async function deployV2(
     // minimum amounts
     minDai,
     minWbtc,
-    // deposit caps
-    capDai,
-    capWbtc,
     100,
   );
 
@@ -452,16 +437,13 @@ export async function deployV2(
     // minimum amounts
     minDai,
     minWbtc,
-    // deposit caps
-    capDai,
-    capWbtc,
     100,
   );
 
   console.log(
     `WBTC/DAI pool : ${wbtcPoolAddress} (${tokens.DAI}, ${tokens.BTC}, ${
       oracles.DAI
-    }, ${oracles.BTC}, ${minDai}, ${minWbtc}, ${capDai}, ${capWbtc}, ${100})`,
+    }, ${oracles.BTC}, ${minDai}, ${minWbtc}, ${100})`,
   );
 
   await poolTx.wait(1);
@@ -474,9 +456,6 @@ export async function deployV2(
     // minimum amounts
     minDai,
     minLink,
-    // deposit caps
-    capDai,
-    capLink,
     100,
   );
 
@@ -488,16 +467,13 @@ export async function deployV2(
     // minimum amounts
     minDai,
     minLink,
-    // deposit caps
-    capDai,
-    capLink,
     100,
   );
 
   console.log(
     `LINK/DAI pool : ${linkPoolAddress} (${tokens.DAI}, ${tokens.LINK}, ${
       oracles.DAI
-    }, ${oracles.LINK}, ${minDai}, ${minLink}, ${capDai}, ${capLink}, ${100})`,
+    }, ${oracles.LINK}, ${minDai}, ${minLink}, ${100})`,
   );
 
   await poolTx.wait(1);

@@ -64,13 +64,6 @@ async function main() {
     LINK: '5',
   };
 
-  const caps: TokenAmounts = {
-    DAI: '10000',
-    ETH: '2.5',
-    BTC: '0.15',
-    LINK: '300',
-  };
-
   const ivolOracleProxyAddress = '0xC4B2C51f969e0713E799De73b7f130Fb7Bb604CF';
   const sushiswapFactory = '0xc35DADB65012eC5796536bD9864eD8773aBc74C4';
 
@@ -84,7 +77,6 @@ async function main() {
     tokens,
     oracles,
     minimums,
-    caps,
     sushiswapFactory,
     ivolOracleProxyAddress,
   );
