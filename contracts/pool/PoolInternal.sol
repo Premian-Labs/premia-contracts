@@ -59,7 +59,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     int128 internal constant MIN_APY_64x64 = 0x4ccccccccccccccd; // 0.3
 
     // This constant is used to replace real exponent by an integer with 4 decimals of precision
-    int128 internal constant SELL_CONSTANT_64x64 = 0x100068dce3484dce2; // e^(1 / 10^4)
+    int128 internal constant SELL_CONSTANT_64x64 = 0xfff9725cbe98e819; // e^(-1 / 10^4)
     uint256 internal constant SELL_CONSTANT_PRECISION = 4; // Decimals of precision to use with the sell constant
 
     constructor(
