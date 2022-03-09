@@ -26,7 +26,9 @@ const {
   PKEY_ETH_MAIN,
   PKEY_ETH_TEST,
   FORK_MODE,
+  FORK_BLOCK_NUMBER,
   REPORT_GAS,
+  CACHE_PATH,
 } = process.env;
 
 export default {
@@ -73,6 +75,9 @@ export default {
       },
     ],
   },
+  paths: {
+    cache: CACHE_PATH ?? './cache',
+  },
   networks: {
     hardhat: {
       allowUnlimitedContractSize: true,
@@ -81,7 +86,7 @@ export default {
         ? {
             forking: {
               url: `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`,
-              blockNumber: 13717777,
+              blockNumber: parseInt(FORK_BLOCK_NUMBER ?? '13717777'),
             },
           }
         : {}),

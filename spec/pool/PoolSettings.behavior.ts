@@ -45,7 +45,9 @@ export function describeBehaviorOfPoolSettings({
       describe('reverts if', () => {
         it('sender is not protocol owner', async () => {
           await expect(
-            instance.connect(nonProtocolOwner).setPoolCaps('123', '456'),
+            instance
+              .connect(nonProtocolOwner)
+              .setPoolCaps(ethers.constants.Zero, ethers.constants.Zero),
           ).to.be.revertedWith('Not protocol owner');
         });
       });
@@ -55,7 +57,13 @@ export function describeBehaviorOfPoolSettings({
       it('todo');
 
       describe('reverts if', () => {
-        it('sender is not protocol owner');
+        it('sender is not protocol owner', async () => {
+          await expect(
+            instance
+              .connect(nonProtocolOwner)
+              .setMinimumAmounts(ethers.constants.Zero, ethers.constants.Zero),
+          ).to.be.revertedWith('Not protocol owner');
+        });
       });
     });
 
@@ -65,7 +73,13 @@ export function describeBehaviorOfPoolSettings({
       it('emits UpdateSteepness event');
 
       describe('reverts if', () => {
-        it('sender is not protocol owner');
+        it('sender is not protocol owner', async () => {
+          await expect(
+            instance
+              .connect(nonProtocolOwner)
+              .setSteepness64x64(ethers.constants.Zero, false),
+          ).to.be.revertedWith('Not protocol owner');
+        });
       });
     });
 
@@ -75,7 +89,13 @@ export function describeBehaviorOfPoolSettings({
       it('emits UpdateCLevel event');
 
       describe('reverts if', () => {
-        it('sender is not protocol owner');
+        it('sender is not protocol owner', async () => {
+          await expect(
+            instance
+              .connect(nonProtocolOwner)
+              .setCLevel64x64(ethers.constants.Zero, false),
+          ).to.be.revertedWith('Not protocol owner');
+        });
       });
     });
   });

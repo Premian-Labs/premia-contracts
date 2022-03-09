@@ -6,7 +6,14 @@ import {
   ProcessExpiredKeeper,
   ProcessExpiredKeeper__factory,
 } from '../../typechain';
-import { parseOption, parseUnderlying, PoolUtil } from '../pool/PoolUtil';
+import {
+  parseOption,
+  parseUnderlying,
+  getMaturity,
+  getMaxCost,
+  getStrike,
+  PoolUtil,
+} from '../pool/PoolUtil';
 import { increaseTimestamp } from '../utils/evm';
 import { ZERO_ADDRESS } from '../utils/constants';
 import { fixedFromFloat, getOptionTokenIds } from '@premia/utils';
@@ -46,15 +53,24 @@ describe('ProcessExpiredKeeper', () => {
 
   it('should detect expired option to process', async () => {
     const isCall = true;
+    const maturity = await getMaturity(10);
+    const strike64x64 = fixedFromFloat(getStrike(isCall, spotPrice));
 
-    await p.depositLiquidity(
-      lp,
-      parseOption(isCall ? '100' : '100000', isCall),
-      isCall,
-    );
+    const liquidityAmount = parseOption(isCall ? '100' : '100000', isCall);
 
-    const maturity = await p.getMaturity(10);
-    const strike64x64 = fixedFromFloat(p.getStrike(isCall, spotPrice));
+    if (isCall) {
+      await p.underlying.mint(lp.address, liquidityAmount);
+      await p.underlying
+        .connect(lp)
+        .approve(p.pool.address, ethers.constants.MaxUint256);
+    } else {
+      await p.base.mint(lp.address, liquidityAmount);
+      await p.base
+        .connect(lp)
+        .approve(p.pool.address, ethers.constants.MaxUint256);
+    }
+
+    await p.depositLiquidity(lp, liquidityAmount, isCall);
 
     const purchaseAmountNb = 10;
     const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
@@ -82,7 +98,7 @@ describe('ProcessExpiredKeeper', () => {
         strike64x64,
         purchaseAmount,
         isCall,
-        p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+        getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
       );
 
     await increaseTimestamp(15 * 24 * 3600);
@@ -100,26 +116,35 @@ describe('ProcessExpiredKeeper', () => {
 
   it('should process multiple expired option', async () => {
     const isCall = true;
+    const strike64x64 = fixedFromFloat(getStrike(isCall, spotPrice));
 
-    await p.depositLiquidity(
-      lp,
-      parseOption(isCall ? '100' : '100000', isCall),
-      isCall,
-    );
+    const liquidityAmount = parseOption(isCall ? '100' : '100000', isCall);
 
-    const strike64x64 = fixedFromFloat(p.getStrike(isCall, spotPrice));
+    if (isCall) {
+      await p.underlying.mint(lp.address, liquidityAmount);
+      await p.underlying
+        .connect(lp)
+        .approve(p.pool.address, ethers.constants.MaxUint256);
+    } else {
+      await p.base.mint(lp.address, liquidityAmount);
+      await p.base
+        .connect(lp)
+        .approve(p.pool.address, ethers.constants.MaxUint256);
+    }
+
+    await p.depositLiquidity(lp, liquidityAmount, isCall);
 
     const purchaseAmountNb = 10;
     const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
 
     const mintAmount = parseOption('1000', isCall);
     const tokenIds1 = getOptionTokenIds(
-      await p.getMaturity(10),
+      await getMaturity(10),
       strike64x64,
       isCall,
     );
     const tokenIds2 = getOptionTokenIds(
-      await p.getMaturity(9),
+      await getMaturity(9),
       strike64x64,
       isCall,
     );
@@ -131,7 +156,7 @@ describe('ProcessExpiredKeeper', () => {
 
     let quote = await p.pool.quote(
       buyer.address,
-      await p.getMaturity(10),
+      await getMaturity(10),
       strike64x64,
       purchaseAmount,
       isCall,
@@ -140,16 +165,16 @@ describe('ProcessExpiredKeeper', () => {
     await p.pool
       .connect(buyer)
       .purchase(
-        await p.getMaturity(10),
+        await getMaturity(10),
         strike64x64,
         purchaseAmount,
         isCall,
-        p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+        getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
       );
 
     quote = await p.pool.quote(
       buyer.address,
-      await p.getMaturity(10),
+      await getMaturity(10),
       strike64x64,
       purchaseAmount,
       isCall,
@@ -158,11 +183,11 @@ describe('ProcessExpiredKeeper', () => {
     await p.pool
       .connect(buyer)
       .purchase(
-        await p.getMaturity(9),
+        await getMaturity(9),
         strike64x64,
         purchaseAmount,
         isCall,
-        p.getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
+        getMaxCost(quote.baseCost64x64, quote.feeCost64x64, isCall),
       );
 
     await increaseTimestamp(15 * 24 * 3600);
