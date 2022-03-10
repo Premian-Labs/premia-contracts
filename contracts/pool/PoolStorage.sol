@@ -106,8 +106,8 @@ library PoolStorage {
         // steepness values
         int128 steepnessBase64x64;
         int128 steepnessUnderlying64x64;
-        // User -> isBuybackEnabled
-        mapping(address => bool) isBuybackEnabled;
+        // User -> isCallPool -> isBuybackEnabled
+        mapping(address => mapping(bool => bool)) isBuybackEnabled;
         // LongTokenId -> averageC
         mapping(uint256 => int128) avgCLevel64x64;
         // APY fee tracking
@@ -647,7 +647,11 @@ library PoolStorage {
         }
     }
 
-    function setBuybackEnabled(Layout storage l, bool state) internal {
-        l.isBuybackEnabled[msg.sender] = state;
+    function setBuybackEnabled(
+        Layout storage l,
+        bool state,
+        bool isCallPool
+    ) internal {
+        l.isBuybackEnabled[msg.sender][isCallPool] = state;
     }
 }

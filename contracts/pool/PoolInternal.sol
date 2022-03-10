@@ -337,13 +337,17 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         EnumerableSet.AddressSet storage accounts = ERC1155EnumerableStorage
             .layout()
             .accountsByToken[shortTokenId];
+        (PoolStorage.TokenType tokenType, , ) = PoolStorage.parseTokenId(
+            shortTokenId
+        );
+        bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL;
 
         uint256 length = accounts.length();
 
         for (uint256 i = 0; i < length; i++) {
             address lp = accounts.at(i);
 
-            if (l.isBuybackEnabled[lp]) {
+            if (l.isBuybackEnabled[lp][isCall]) {
                 totalLiquidity += _balanceOf(lp, shortTokenId);
             }
         }
@@ -983,8 +987,9 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
             // skip underwriters who do not provide buyback liqudity, if applicable
 
-            if (onlyBuybackLiquidity && !l.isBuybackEnabled[underwriter])
-                continue;
+            if (
+                onlyBuybackLiquidity && !l.isBuybackEnabled[underwriter][isCall]
+            ) continue;
 
             Interval memory interval;
 
