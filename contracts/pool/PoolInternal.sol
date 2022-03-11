@@ -1009,7 +1009,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 underwriter,
                 shortTokenId,
                 interval,
-                isCall
+                isCall,
+                onlyBuybackLiquidity
             );
 
             contractSize -= interval.contractSize;
@@ -1024,7 +1025,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         address underwriter,
         uint256 shortTokenId,
         Interval memory interval,
-        bool isCallPool
+        bool isCallPool,
+        bool isSale
     ) internal {
         // track prepaid APY fees
 
@@ -1071,13 +1073,22 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             }
         }
 
-        emit AssignExercise(
-            underwriter,
-            shortTokenId,
-            interval.tokenAmount - interval.payment,
-            interval.contractSize,
-            0
-        );
+        if (isSale) {
+            emit AssignSale(
+                underwriter,
+                shortTokenId,
+                interval.tokenAmount - interval.payment,
+                interval.contractSize
+            );
+        } else {
+            emit AssignExercise(
+                underwriter,
+                shortTokenId,
+                interval.tokenAmount - interval.payment,
+                interval.contractSize,
+                0
+            );
+        }
     }
 
     function _calculateApyFee(
