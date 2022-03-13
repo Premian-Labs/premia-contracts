@@ -46,6 +46,13 @@ interface IPoolEvents {
         uint256 fee
     );
 
+    event AssignSale(
+        address indexed underwriter,
+        uint256 shortTokenId,
+        uint256 freedAmount,
+        uint256 intervalContractSize
+    );
+
     event Deposit(address indexed user, bool isCallPool, uint256 amount);
 
     event Withdrawal(
