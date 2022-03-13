@@ -559,9 +559,6 @@ export class PoolUtil {
       // minimum amounts
       fixedFromFloat(100),
       fixedFromFloat(0.1),
-      // deposit caps
-      fixedFromFloat(1000000),
-      fixedFromFloat(1000000),
       100,
     );
 
@@ -580,9 +577,6 @@ export class PoolUtil {
       // minimum amounts
       fixedFromFloat(100),
       fixedFromFloat(0.1),
-      // deposit caps
-      fixedFromFloat(1000000),
-      fixedFromFloat(1000000),
       100,
     );
 

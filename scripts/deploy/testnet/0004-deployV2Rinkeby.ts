@@ -52,13 +52,6 @@ async function main() {
     LINK: '5',
   };
 
-  const caps: TokenAmounts = {
-    DAI: '10000000',
-    ETH: '3000',
-    BTC: '250',
-    LINK: '400000',
-  };
-
   const premiaDiamond = await deployV2(
     weth,
     premia.address,
@@ -69,7 +62,6 @@ async function main() {
     tokens,
     oracles,
     minimums,
-    caps,
     '0xc35DADB65012eC5796536bD9864eD8773aBc74C4',
     '0x9e88fe5e5249CD6429269B072c9476b6908dCBf2',
   );

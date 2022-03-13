@@ -38,18 +38,6 @@ contract PoolSettings is IPoolSettings, PoolInternal {
     /**
      * @inheritdoc IPoolSettings
      */
-    function setPoolCaps(uint256 basePoolCap, uint256 underlyingPoolCap)
-        external
-        onlyProtocolOwner
-    {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        l.basePoolCap = basePoolCap;
-        l.underlyingPoolCap = underlyingPoolCap;
-    }
-
-    /**
-     * @inheritdoc IPoolSettings
-     */
     function setMinimumAmounts(uint256 baseMinimum, uint256 underlyingMinimum)
         external
         onlyProtocolOwner

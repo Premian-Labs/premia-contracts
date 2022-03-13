@@ -198,20 +198,6 @@ export function describeBehaviorOfPoolIO({
           ).to.changeEtherBalance(owner, -200);
         });
 
-        it('should revert if pool TVL exceeds limit', async () => {
-          const signers = (await ethers.getSigners()).slice(0, 10);
-
-          for (const signer of signers) {
-            await instance
-              .connect(signer)
-              .deposit(parseUnderlying((1000000 / 10).toString()), true);
-          }
-
-          await expect(instance.deposit(1, true)).to.be.revertedWith(
-            'pool deposit cap reached',
-          );
-        });
-
         it('increases user TVL and total TVL', async () => {
           const isCall = true;
           const amount = parseOption('10', isCall);

@@ -431,13 +431,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         // Reset gradual divestment timestamp
         delete l.divestmentTimestamps[msg.sender][isCallPool];
 
-        uint256 cap = l.getPoolCapAmount(isCallPool);
-
-        require(
-            l.totalTVL[isCallPool] + amount <= cap,
-            "pool deposit cap reached"
-        );
-
         _processPendingDeposits(l, isCallPool);
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;

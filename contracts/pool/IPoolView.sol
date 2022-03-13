@@ -80,16 +80,6 @@ interface IPoolView is IERC1155Metadata {
         returns (uint256 minCallTokenAmount, uint256 minPutTokenAmount);
 
     /**
-     * @notice get deposit cap amounts
-     * @return callTokenCapAmount call pool deposit cap
-     * @return putTokenCapAmount put pool deposit cap
-     */
-    function getCapAmounts()
-        external
-        view
-        returns (uint256 callTokenCapAmount, uint256 putTokenCapAmount);
-
-    /**
      * @notice get TVL (total value locked) for given address
      * @param account address whose TVL to query
      * @return underlyingTVL user total value locked in call pool (in underlying token amount)
