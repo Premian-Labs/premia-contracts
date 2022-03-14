@@ -16,9 +16,13 @@ contract TimelockMultisig {
     mapping(address => bool) authorized;
     mapping(address => bool) rejected;
 
-    address to;
-    uint256 amount;
-    uint256 eta;
+    struct Withdrawal {
+        address to;
+        uint256 amount;
+        uint256 eta;
+    }
+
+    Withdrawal public pendingWithdrawal;
 
     event StartWithdrawal(
         address indexed signer,
@@ -49,35 +53,43 @@ contract TimelockMultisig {
 
     receive() external payable {}
 
+    modifier isSigner() {
+        require(signers.contains(msg.sender), "not signer");
+        _;
+    }
+
     constructor(address[4] memory _signers) {
         for (uint256 i = 0; i < _signers.length; i++) {
             signers.add(_signers[i]);
         }
     }
 
-    function startWithdraw(address _to, uint256 _amount) external {
-        require(signers.contains(msg.sender), "not signer");
+    function startWithdraw(address to, uint256 amount) external isSigner {
         require(
-            to == address(0) && eta == 0 && amount == 0,
+            pendingWithdrawal.to == address(0) &&
+                pendingWithdrawal.eta == 0 &&
+                pendingWithdrawal.amount == 0,
             "pending withdrawal"
         );
 
-        to = _to;
-        amount = _amount;
-        eta = block.timestamp + 7 days;
+        uint256 eta = block.timestamp + 7 days;
+        pendingWithdrawal = Withdrawal(to, amount, eta);
 
-        delete rejected[msg.sender];
         authorized[msg.sender] = true;
 
-        emit StartWithdrawal(msg.sender, _to, _amount, eta);
+        emit StartWithdrawal(msg.sender, to, amount, eta);
     }
 
-    function authorize() external {
-        require(signers.contains(msg.sender), "not signer");
+    function authorize() external isSigner {
         delete rejected[msg.sender];
         authorized[msg.sender] = true;
 
-        emit SignAuthorization(msg.sender, to, amount, eta);
+        emit SignAuthorization(
+            msg.sender,
+            pendingWithdrawal.to,
+            pendingWithdrawal.amount,
+            pendingWithdrawal.eta
+        );
 
         uint256 authorizationCount;
         for (uint256 i = 0; i < signers.length(); i++) {
@@ -93,12 +105,16 @@ contract TimelockMultisig {
         }
     }
 
-    function reject() external {
-        require(signers.contains(msg.sender), "not signer");
+    function reject() external isSigner {
         delete authorized[msg.sender];
         rejected[msg.sender] = true;
 
-        emit SignRejection(msg.sender, to, amount, eta);
+        emit SignRejection(
+            msg.sender,
+            pendingWithdrawal.to,
+            pendingWithdrawal.amount,
+            pendingWithdrawal.eta
+        );
 
         uint256 rejectionCount;
         for (uint256 i = 0; i < signers.length(); i++) {
@@ -114,15 +130,17 @@ contract TimelockMultisig {
         }
     }
 
-    function doWithdraw() external {
-        require(eta > 0 && block.timestamp > eta, "not ready");
+    function doWithdraw() external isSigner {
+        require(
+            pendingWithdrawal.eta > 0 &&
+                block.timestamp > pendingWithdrawal.eta,
+            "not ready"
+        );
         _withdraw();
     }
 
     function _reset() internal {
-        delete to;
-        delete amount;
-        delete eta;
+        delete pendingWithdrawal;
 
         for (uint256 i = 0; i < signers.length(); i++) {
             delete authorized[signers.at(i)];
@@ -131,14 +149,14 @@ contract TimelockMultisig {
     }
 
     function _withdraw() internal {
-        address _to = to;
-        uint256 _amount = amount;
+        address to = pendingWithdrawal.to;
+        uint256 amount = pendingWithdrawal.amount;
 
         _reset();
 
-        (bool success, ) = _to.call{value: _amount}("");
+        (bool success, ) = to.call{value: amount}("");
         require(success, "transfer failed");
 
-        emit Withdraw(_to, _amount);
+        emit Withdraw(to, amount);
     }
 }
