@@ -141,7 +141,7 @@ export function describeBehaviorOfPoolSell({
               instance
                 .connect(buyer)
                 .sell(maturity, strike64x64, isCall, parseUnderlying('1')),
-            ).to.be.revertedWith('no sell liq');
+            ).to.be.revertedWith('0x11');
           });
         });
       }

@@ -2192,7 +2192,7 @@ export function describeBehaviorOfPoolIO({
 
           await expect(
             instance.connect(lp1).annihilate(shortTokenId, amount, true),
-          ).to.be.revertedWith('ERC1155: burn amount exceeds balances');
+          ).to.be.revertedWith('0x11');
         });
       });
     });
