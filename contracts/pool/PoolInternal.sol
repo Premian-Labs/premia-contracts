@@ -1583,7 +1583,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 if (to != address(0)) {
                     uint256 balance = _balanceOf(to, id);
 
-                    if (balance <= minimum && balance + amount > minimum) {
+                    if (balance <= minimum && balance + amount >= minimum) {
                         l.addUnderwriter(to, isCallPool);
                     }
                 }
