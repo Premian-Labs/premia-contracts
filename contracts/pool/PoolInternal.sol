@@ -58,9 +58,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     // The quote will return a minimum price corresponding to this APY
     int128 internal constant MIN_APY_64x64 = 0x4ccccccccccccccd; // 0.3
 
-    // This constant is used to replace real exponent by an integer with 4 decimals of precision
-    int128 internal constant SELL_CONSTANT_64x64 = 0xfff9725cbe98e819; // e^(-1 / 10^4)
-    uint256 internal constant SELL_CONSTANT_PRECISION = 4; // Decimals of precision to use with the sell constant
+    // Multiply sell quote by this constant
+    int128 internal constant SELL_COEFFICIENT_64x64 = 0xb333333333333333; // 0.7
 
     constructor(
         address ivolOracle,
@@ -265,12 +264,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             l.baseDecimals
         );
 
-        uint256 shortTokenId = PoolStorage.formatTokenId(
-            PoolStorage.getTokenType(args.isCall, false),
-            args.maturity,
-            args.strike64x64
-        );
-
         int128 sellCLevel64x64;
 
         {
@@ -294,21 +287,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             }
         }
 
-        uint256 availableLiquidity = _getAvailableBuybackLiquidity(
-            shortTokenId
-        );
-
-        require(availableLiquidity > 0, "no sell liq");
-
-        uint256 liquidityChange = (args.contractSize *
-            (10**SELL_CONSTANT_PRECISION)) / availableLiquidity;
-
         int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
             args.contractSize,
             l.underlyingDecimals
         );
 
-        baseCost64x64 = (SELL_CONSTANT_64x64.pow(liquidityChange))
+        baseCost64x64 = SELL_COEFFICIENT_64x64
             .mul(sellCLevel64x64)
             .mul(
                 blackScholesPrice64x64.mul(contractSize64x64).sub(
