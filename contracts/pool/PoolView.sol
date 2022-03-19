@@ -108,8 +108,25 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getPrice(uint256 timestamp) external view returns (int128) {
+    function getPrice64x64(uint256 timestamp) external view returns (int128) {
         return PoolStorage.layout().getPriceUpdate(timestamp);
+    }
+
+    /**
+     * @inheritdoc IPoolView
+     */
+    function getPriceAfter64x64(uint256 timestamp)
+        external
+        view
+        returns (int128 spot64x64)
+    {
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        spot64x64 = l.getPriceUpdateAfter(timestamp);
+
+        if (spot64x64 == 0) {
+            spot64x64 = l.fetchPriceUpdate();
+        }
     }
 
     /**

@@ -51,7 +51,17 @@ interface IPoolView is IERC1155Metadata {
      * @param timestamp timestamp to query
      * @return 64x64 fixed point representation of price
      */
-    function getPrice(uint256 timestamp) external view returns (int128);
+    function getPrice64x64(uint256 timestamp) external view returns (int128);
+
+    /**
+     * @notice get first oracle price update after timestamp. If no update has been registered yet, return current price feed spot price
+     * @param timestamp timestamp to query
+     * @return spot64x64 64x64 fixed point representation of price
+     */
+    function getPriceAfter64x64(uint256 timestamp)
+        external
+        view
+        returns (int128 spot64x64);
 
     /**
      * @notice get parameters for token id
