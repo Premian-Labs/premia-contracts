@@ -1,30 +1,27 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { describeBehaviorOfERC1155Enumerable } from '@solidstate/spec';
-import { IPool, ERC20Mock } from '../../typechain';
+import { ERC20Mock, IPool } from '../../typechain';
 import { BigNumber, ContractTransaction } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
-  formatTokenId,
   fixedFromFloat,
   fixedToNumber,
+  formatTokenId,
   TokenType,
 } from '@premia/utils';
 
 import {
-  FEE_APY,
-  ONE_YEAR,
-  getLong,
-  getShort,
-  getStrike,
-  getMaturity,
-  parseOption,
-  parseBase,
-  parseUnderlying,
-  formatBase,
   formatUnderlying,
   getFreeLiqTokenId,
+  getLong,
+  getMaturity,
   getReservedLiqTokenId,
+  getShort,
+  getStrike,
+  parseBase,
+  parseOption,
+  parseUnderlying,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 

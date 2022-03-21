@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { IPool, ERC20Mock } from '../../typechain';
+import { ERC20Mock, IPool } from '../../typechain';
 import { BigNumber } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
@@ -10,30 +10,22 @@ import {
   getOptionTokenIds,
 } from '@premia/utils';
 
-import { bnToNumber } from '../../test/utils/math';
-
 import { IUniswap } from '../../test/utils/uniswap';
 
 import {
-  DECIMALS_BASE,
-  DECIMALS_UNDERLYING,
   FEE_APY,
-  ONE_YEAR,
-  formatOption,
   formatUnderlying,
-  formatBase,
-  getTokenDecimals,
+  getFreeLiqTokenId,
+  getLong,
+  getMaturity,
+  getMinPrice,
+  getReservedLiqTokenId,
+  getShort,
+  getStrike,
+  ONE_YEAR,
   parseBase,
   parseOption,
   parseUnderlying,
-  getFreeLiqTokenId,
-  getReservedLiqTokenId,
-  getShort,
-  getLong,
-  getStrike,
-  getMaturity,
-  getMinPrice,
-  getMaxCost,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 

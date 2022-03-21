@@ -2,13 +2,12 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { IPool, PoolMock, PoolMock__factory } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { fixedFromFloat, fixedToBn, getOptionTokenIds } from '@premia/utils';
+import { fixedFromFloat, fixedToBn } from '@premia/utils';
 import {
-  getTokenDecimals,
-  parseBase,
-  parseUnderlying,
-  getStrike,
   getMaturity,
+  getStrike,
+  getTokenDecimals,
+  parseUnderlying,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 import { bnToNumber } from '../../test/utils/math';
