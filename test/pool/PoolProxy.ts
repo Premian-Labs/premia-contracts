@@ -17,31 +17,10 @@ import { describeBehaviorOfPoolSettings } from '../../spec/pool/PoolSettings.beh
 import { describeBehaviorOfPoolView } from '../../spec/pool/PoolView.behavior';
 import { describeBehaviorOfPoolWrite } from '../../spec/pool/PoolWrite.behavior';
 import { describeBehaviorOfPoolSell } from '../../spec/pool/PoolSell.behavior';
-import chai, { expect } from 'chai';
-import { increaseTimestamp } from '../utils/evm';
-import { parseUnits } from 'ethers/lib/utils';
-import {
-  DECIMALS_BASE,
-  DECIMALS_UNDERLYING,
-  formatOption,
-  formatOptionToNb,
-  getExerciseValue,
-  parseOption,
-  parseUnderlying,
-  getFreeLiqTokenId,
-  getReservedLiqTokenId,
-  getStrike,
-  getMaturity,
-  getMaxCost,
-  PoolUtil,
-} from './PoolUtil';
+import chai from 'chai';
+import { DECIMALS_BASE, DECIMALS_UNDERLYING, PoolUtil } from './PoolUtil';
 import chaiAlmost from 'chai-almost';
 import { describeBehaviorOfProxy } from '@solidstate/spec';
-import {
-  fixedFromFloat,
-  fixedToNumber,
-  getOptionTokenIds,
-} from '@premia/utils';
 import {
   createUniswap,
   createUniswapPair,

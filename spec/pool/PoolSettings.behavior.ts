@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { IPool, PoolView__factory } from '../../typechain';
+import { IPool } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 interface PoolSettingsBehaviorArgs {

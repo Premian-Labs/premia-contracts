@@ -1,36 +1,24 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { IPool, PoolIO__factory, ERC20Mock } from '../../typechain';
+import { ERC20Mock, IPool } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import {
-  fixedFromFloat,
-  fixedToNumber,
-  formatTokenId,
-  getOptionTokenIds,
-} from '@premia/utils';
+import { fixedFromFloat, fixedToNumber, formatTokenId } from '@premia/utils';
 
-import {
-  createUniswapPair,
-  depositUniswapLiquidity,
-  IUniswap,
-} from '../../test/utils/uniswap';
+import { IUniswap } from '../../test/utils/uniswap';
 
 import {
   FEE_APY,
-  ONE_YEAR,
-  DECIMALS_BASE,
-  DECIMALS_UNDERLYING,
   formatUnderlying,
-  formatBase,
+  getFreeLiqTokenId,
+  getLong,
+  getMaturity,
+  getReservedLiqTokenId,
+  getShort,
+  getStrike,
+  ONE_YEAR,
   parseBase,
   parseOption,
   parseUnderlying,
-  getFreeLiqTokenId,
-  getReservedLiqTokenId,
-  getShort,
-  getLong,
-  getStrike,
-  getMaturity,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 
@@ -2192,7 +2180,7 @@ export function describeBehaviorOfPoolIO({
 
           await expect(
             instance.connect(lp1).annihilate(shortTokenId, amount, true),
-          ).to.be.revertedWith('ERC1155: burn amount exceeds balances');
+          ).to.be.revertedWith('0x11');
         });
       });
     });

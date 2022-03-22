@@ -2,13 +2,12 @@ import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { IPool, PoolMock, PoolMock__factory } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { fixedFromFloat, fixedToBn, getOptionTokenIds } from '@premia/utils';
+import { fixedFromFloat, fixedToBn } from '@premia/utils';
 import {
-  getTokenDecimals,
-  parseBase,
-  parseUnderlying,
-  getStrike,
   getMaturity,
+  getStrike,
+  getTokenDecimals,
+  parseUnderlying,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 import { bnToNumber } from '../../test/utils/math';
@@ -141,7 +140,7 @@ export function describeBehaviorOfPoolSell({
               instance
                 .connect(buyer)
                 .sell(maturity, strike64x64, isCall, parseUnderlying('1')),
-            ).to.be.revertedWith('no sell liq');
+            ).to.be.revertedWith('0x11');
           });
         });
       }

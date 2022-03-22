@@ -5,12 +5,12 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { fixedFromFloat, getOptionTokenIds } from '@premia/utils';
 
 import {
-  parseBase,
-  parseUnderlying,
   getFreeLiqTokenId,
+  getMaturity,
   getReservedLiqTokenId,
   getStrike,
-  getMaturity,
+  parseBase,
+  parseUnderlying,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
 
