@@ -9,7 +9,7 @@ import {UintUtils} from "@solidstate/contracts/utils/UintUtils.sol";
 import {IPool} from "./pool/IPool.sol";
 import {PoolStorage} from "./pool/PoolStorage.sol";
 import {NFTDisplay} from "./libraries/NFTDisplay.sol";
-import {IPremiaOptionNFTDisplay} from "./interface/IPremiaOptionNFTDisplay.sol";
+import {IPremiaOptionNFTDisplay} from "./interfaces/IPremiaOptionNFTDisplay.sol";
 
 contract PremiaOptionNFTDisplay is IPremiaOptionNFTDisplay {
     using UintUtils for uint256;

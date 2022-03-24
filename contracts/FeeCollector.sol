@@ -6,7 +6,7 @@ pragma solidity ^0.8.0;
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 
-import {IFeeCollector} from "./interface/IFeeCollector.sol";
+import {IFeeCollector} from "./interfaces/IFeeCollector.sol";
 import {IPoolIO} from "./pool/IPoolIO.sol";
 
 // Contract used to facilitate withdrawal of fees to multisig on L2, in order to bridge to L1

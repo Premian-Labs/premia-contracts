@@ -11,7 +11,7 @@ import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import {PremiaMakerStorage} from "./PremiaMakerStorage.sol";
-import {IPremiaMaker} from "./interface/IPremiaMaker.sol";
+import {IPremiaMaker} from "./interfaces/IPremiaMaker.sol";
 import {IPoolIO} from "./pool/IPoolIO.sol";
 import {IPremiaStaking} from "./staking/IPremiaStaking.sol";
 
