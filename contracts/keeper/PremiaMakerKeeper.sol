@@ -8,8 +8,8 @@ import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {IERC1155} from "@solidstate/contracts/token/ERC1155/IERC1155.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
-import {IKeeperCompatible} from "../interface/IKeeperCompatible.sol";
-import {IPremiaMaker} from "../interface/IPremiaMaker.sol";
+import {IKeeperCompatible} from "../interfaces/IKeeperCompatible.sol";
+import {IPremiaMaker} from "../interfaces/IPremiaMaker.sol";
 import {IProxyManager} from "../core/IProxyManager.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
 import {PoolStorage} from "../pool/PoolStorage.sol";
