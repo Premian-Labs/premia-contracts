@@ -139,6 +139,16 @@ export default {
       // gasPrice: 100000000000,
       timeout: 100000,
     },
+    fantomDev: {
+      url: `https://rpc.ftm.tools/`,
+      accounts: [PKEY_ETH_TEST],
+      timeout: 100000,
+    },
+    fantom: {
+      url: `https://rpc.ftm.tools/`,
+      accounts: [PKEY_ETH_MAIN],
+      timeout: 100000,
+    },
   },
 
   abiExporter: {
