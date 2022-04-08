@@ -23,26 +23,28 @@ import { diamondCut } from './diamond';
 import { BigNumber, BigNumberish } from 'ethers';
 import { fixedFromFloat } from '@premia/utils';
 
-const UNISWAP_V2_FACTORY = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
-const SUSHISWAP_FACTORY = '0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac';
+const SOLIDLY_V1_FACTORY = '0x3fAaB499b519fdC5819e3D7ed0C26111904cbc28';
+const SPOOKYSWAP_FACTORY = '0x152eE697f2E276fA89E96742e9bB9aB1F2E61bE3';
 
-const UNISWAP_V2_INIT_HASH =
-  '96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f';
-const SUSHISWAP_INIT_HASH =
-  'e18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303';
+const SOLIDLY_V1_INIT_HASH =
+  '0x57ae84018c47ebdaf7ddb2d1216c8c36389d12481309af65428eb6d460f747a4';
+const SPOOKYSWAP_INIT_HASH =
+  '0xcdf2deca40a0bd56de8e3ce5c7df6727e5b1bf2ac96f283fa9c4b3e6b42ea9d2';
 
 export interface TokenAddresses {
-  ETH: string;
-  DAI: string;
-  BTC: string;
-  LINK: string;
+  FTM: string;
+  YFI: string;
+  WETH: string;
+  WBTC: string;
+  USDC: string;
 }
 
 export interface TokenAmounts {
-  ETH: BigNumberish;
-  DAI: BigNumberish;
-  BTC: BigNumberish;
-  LINK: BigNumberish;
+  FTM: BigNumberish;
+  YFI: BigNumberish;
+  WETH: BigNumberish;
+  WBTC: BigNumberish;
+  USDC: BigNumberish;
 }
 
 export async function deployV2(
@@ -60,8 +62,8 @@ export async function deployV2(
 ) {
   const [deployer] = await ethers.getSigners();
 
-  const getSushiswapFactory = () =>
-    sushiswapFactoryOverride ?? SUSHISWAP_FACTORY;
+  const getSpookyswapFactory = () =>
+    sushiswapFactoryOverride ?? SPOOKYSWAP_FACTORY;
 
   //
 
@@ -170,7 +172,7 @@ export async function deployV2(
   const poolBaseFactory = new PoolBase__factory(deployer);
   const poolBaseImpl = await poolBaseFactory.deploy(
     ivolOracle.address,
-    tokens.ETH,
+    tokens.WETH,
     premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
@@ -180,7 +182,7 @@ export async function deployV2(
   await poolBaseImpl.deployed();
 
   console.log(
-    `PoolBase Implementation : ${poolBaseImpl.address} (${ivolOracle.address}, ${tokens.ETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64})`,
+    `PoolBase Implementation : ${poolBaseImpl.address} (${ivolOracle.address}, ${tokens.WETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -200,25 +202,25 @@ export async function deployV2(
   );
   const poolWriteImpl = await poolWriteFactory.deploy(
     ivolOracle.address,
-    tokens.ETH,
+    tokens.WETH,
     premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
     utilizationFee64x64,
-    UNISWAP_V2_FACTORY,
-    getSushiswapFactory(),
-    UNISWAP_V2_INIT_HASH,
-    SUSHISWAP_INIT_HASH,
+    SOLIDLY_V1_FACTORY,
+    getSpookyswapFactory(),
+    SOLIDLY_V1_INIT_HASH,
+    SPOOKYSWAP_INIT_HASH,
   );
   await poolWriteImpl.deployed();
 
   console.log(
     `PoolWrite Implementation : ${poolWriteImpl.address} (${
       ivolOracle.address
-    }, ${tokens.ETH}, ${
+    }, ${tokens.WETH}, ${
       premiaMining.address
-    }, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}, ${UNISWAP_V2_FACTORY}, ${getSushiswapFactory()}) (OptionMath: ${
+    }, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}, ${SOLIDLY_V1_FACTORY}, ${getSpookyswapFactory()}) (OptionMath: ${
       optionMath.address
     })`,
   );
@@ -240,7 +242,7 @@ export async function deployV2(
   );
   const poolExerciseImpl = await poolExerciseFactory.deploy(
     ivolOracle.address,
-    tokens.ETH,
+    tokens.WETH,
     premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
@@ -250,7 +252,7 @@ export async function deployV2(
   await poolExerciseImpl.deployed();
 
   console.log(
-    `PoolExercise Implementation : ${poolExerciseImpl.address} (${ivolOracle.address}, ${tokens.ETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
+    `PoolExercise Implementation : ${poolExerciseImpl.address} (${ivolOracle.address}, ${tokens.WETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -271,7 +273,7 @@ export async function deployV2(
   const poolViewImpl = await poolViewFactory.deploy(
     nftDisplay.address,
     ivolOracle.address,
-    tokens.ETH,
+    tokens.WETH,
     premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
@@ -281,7 +283,7 @@ export async function deployV2(
   await poolViewImpl.deployed();
 
   console.log(
-    `PoolView Implementation : ${poolViewImpl.address} (${nftDisplay.address}, ${ivolOracle.address}, ${tokens.ETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
+    `PoolView Implementation : ${poolViewImpl.address} (${nftDisplay.address}, ${ivolOracle.address}, ${tokens.WETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -301,7 +303,7 @@ export async function deployV2(
   );
   const poolSellImpl = await poolSellFactory.deploy(
     ivolOracle.address,
-    tokens.ETH,
+    tokens.WETH,
     premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
@@ -311,7 +313,7 @@ export async function deployV2(
   await poolSellImpl.deployed();
 
   console.log(
-    `PoolSell Implementation : ${poolSellImpl.address} (${ivolOracle.address}, ${tokens.ETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
+    `PoolSell Implementation : ${poolSellImpl.address} (${ivolOracle.address}, ${tokens.WETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -328,7 +330,7 @@ export async function deployV2(
   const poolSettingsFactory = new PoolSettings__factory(deployer);
   const poolSettingsImpl = await poolSettingsFactory.deploy(
     ivolOracle.address,
-    tokens.ETH,
+    tokens.WETH,
     premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
@@ -338,7 +340,7 @@ export async function deployV2(
   await poolSettingsImpl.deployed();
 
   console.log(
-    `PoolSettings Implementation : ${poolSettingsImpl.address} (${ivolOracle.address}, ${tokens.ETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64})`,
+    `PoolSettings Implementation : ${poolSettingsImpl.address} (${ivolOracle.address}, ${tokens.WETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -358,25 +360,25 @@ export async function deployV2(
   );
   const poolIOImpl = await poolIOFactory.deploy(
     ivolOracle.address,
-    tokens.ETH,
+    tokens.WETH,
     premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
     utilizationFee64x64,
-    UNISWAP_V2_FACTORY,
-    getSushiswapFactory(),
-    UNISWAP_V2_INIT_HASH,
-    SUSHISWAP_INIT_HASH,
+    SOLIDLY_V1_FACTORY,
+    getSpookyswapFactory(),
+    SOLIDLY_V1_INIT_HASH,
+    SPOOKYSWAP_INIT_HASH,
   );
   await poolIOImpl.deployed();
 
   console.log(
     `PoolIO Implementation : ${poolIOImpl.address} (${ivolOracle.address}, ${
-      tokens.ETH
+      tokens.WETH
     }, ${
       premiaMining.address
-    }, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}, ${UNISWAP_V2_FACTORY}, ${getSushiswapFactory()}) (OptionMath: ${
+    }, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}, ${SOLIDLY_V1_FACTORY}, ${getSpookyswapFactory()}) (OptionMath: ${
       optionMath.address
     })`,
   );
@@ -392,110 +394,143 @@ export async function deployV2(
 
   //////////////////////////////////////////////
 
-  const minDai = fixedFromFloat(minAmounts.DAI);
-  const minWeth = fixedFromFloat(minAmounts.ETH);
-  const minWbtc = fixedFromFloat(minAmounts.BTC);
-  const minLink = fixedFromFloat(minAmounts.LINK);
+  const minWeth = fixedFromFloat(minAmounts.WETH);
+  const minWbtc = fixedFromFloat(minAmounts.WBTC);
+  const minUsdc = fixedFromFloat(minAmounts.USDC);
+  const minYfi = fixedFromFloat(minAmounts.YFI);
+  const minFtm = fixedFromFloat(minAmounts.FTM);
 
   const wethPoolAddress = await proxyManager.callStatic.deployPool(
-    tokens.DAI,
-    tokens.ETH,
-    oracles.DAI,
-    oracles.ETH,
+    tokens.USDC,
+    tokens.WETH,
+    oracles.USDC,
+    oracles.WETH,
     // minimum amounts
-    minDai,
+    minUsdc,
     minWeth,
     100,
   );
 
   let poolTx = await proxyManager.deployPool(
-    tokens.DAI,
-    tokens.ETH,
-    oracles.DAI,
-    oracles.ETH,
+    tokens.USDC,
+    tokens.WETH,
+    oracles.USDC,
+    oracles.WETH,
     // minimum amounts
-    minDai,
+    minUsdc,
     minWeth,
     100,
   );
 
   console.log(
-    `WETH/DAI pool : ${wethPoolAddress} (${tokens.DAI}, ${tokens.ETH}, ${
-      oracles.DAI
-    }, ${oracles.ETH}, ${minDai}, ${minWeth}, ${100})`,
+    `WETH/USDC pool : ${wethPoolAddress} (${tokens.USDC}, ${tokens.WETH}, ${
+      oracles.USDC
+    }, ${oracles.WETH}, ${minUsdc}, ${minWeth}, ${100})`,
   );
 
   await poolTx.wait(1);
 
   const wbtcPoolAddress = await proxyManager.callStatic.deployPool(
-    tokens.DAI,
-    tokens.BTC,
-    oracles.DAI,
-    oracles.BTC,
+    tokens.USDC,
+    tokens.WBTC,
+    oracles.USDC,
+    oracles.WBTC,
     // minimum amounts
-    minDai,
+    minUsdc,
     minWbtc,
     100,
   );
 
   poolTx = await proxyManager.deployPool(
-    tokens.DAI,
-    tokens.BTC,
-    oracles.DAI,
-    oracles.BTC,
+    tokens.USDC,
+    tokens.WBTC,
+    oracles.USDC,
+    oracles.WBTC,
     // minimum amounts
-    minDai,
+    minUsdc,
     minWbtc,
     100,
   );
 
   console.log(
-    `WBTC/DAI pool : ${wbtcPoolAddress} (${tokens.DAI}, ${tokens.BTC}, ${
-      oracles.DAI
-    }, ${oracles.BTC}, ${minDai}, ${minWbtc}, ${100})`,
+    `WBTC/USDC pool : ${wbtcPoolAddress} (${tokens.USDC}, ${tokens.WBTC}, ${
+      oracles.USDC
+    }, ${oracles.WBTC}, ${minUsdc}, ${minWbtc}, ${100})`,
   );
 
   await poolTx.wait(1);
 
-  const linkPoolAddress = await proxyManager.callStatic.deployPool(
-    tokens.DAI,
-    tokens.LINK,
-    oracles.DAI,
-    oracles.LINK,
+  const ftmPoolAddress = await proxyManager.callStatic.deployPool(
+    tokens.USDC,
+    tokens.FTM,
+    oracles.USDC,
+    oracles.FTM,
     // minimum amounts
-    minDai,
-    minLink,
+    minUsdc,
+    minFtm,
     100,
   );
 
   poolTx = await proxyManager.deployPool(
-    tokens.DAI,
-    tokens.LINK,
-    oracles.DAI,
-    oracles.LINK,
+    tokens.USDC,
+    tokens.FTM,
+    oracles.USDC,
+    oracles.FTM,
     // minimum amounts
-    minDai,
-    minLink,
+    minUsdc,
+    minFtm,
     100,
   );
 
   console.log(
-    `LINK/DAI pool : ${linkPoolAddress} (${tokens.DAI}, ${tokens.LINK}, ${
-      oracles.DAI
-    }, ${oracles.LINK}, ${minDai}, ${minLink}, ${100})`,
+    `FTM/USDC pool : ${ftmPoolAddress} (${tokens.USDC}, ${tokens.FTM}, ${
+      oracles.USDC
+    }, ${oracles.FTM}, ${minUsdc}, ${minFtm}, ${100})`,
+  );
+
+  await poolTx.wait(1);
+
+  const yfiPoolAddress = await proxyManager.callStatic.deployPool(
+    tokens.USDC,
+    tokens.YFI,
+    oracles.USDC,
+    oracles.YFI,
+    // minimum amounts
+    minUsdc,
+    minYfi,
+    100,
+  );
+
+  poolTx = await proxyManager.deployPool(
+    tokens.USDC,
+    tokens.YFI,
+    oracles.USDC,
+    oracles.YFI,
+    // minimum amounts
+    minUsdc,
+    minYfi,
+    100,
+  );
+
+  console.log(
+    `YFI/USDC pool : ${yfiPoolAddress} (${tokens.USDC}, ${tokens.YFI}, ${
+      oracles.USDC
+    }, ${oracles.YFI}, ${minUsdc}, ${minYfi}, ${100})`,
   );
 
   await poolTx.wait(1);
 
   console.log('\n\n------------------------------------------------\n\n');
 
-  console.log('daiToken', tokens.DAI);
-  console.log('wethToken', tokens.ETH);
-  console.log('wbtcToken', tokens.BTC);
-  console.log('linkToken', tokens.LINK);
-  console.log('wethPoolAddress', wethPoolAddress);
-  console.log('wbtcPoolAddress', wbtcPoolAddress);
-  console.log('linkPoolAddress', linkPoolAddress);
+  console.log('usdc token:', tokens.USDC);
+  console.log('weth token:', tokens.WETH);
+  console.log('wbtc token:', tokens.WBTC);
+  console.log('yfi token:', tokens.YFI);
+  console.log('ftm token:', tokens.FTM);
+  console.log('weth pool address:', wethPoolAddress);
+  console.log('wbtc pool address:', wbtcPoolAddress);
+  console.log('yfi pool address:', yfiPoolAddress);
+  console.log('ftm pool address:', ftmPoolAddress);
 
   console.log('PremiaMining implementation:', premiaMiningImpl.address);
   console.log('PremiaMining proxy:', premiaMiningProxy.address);
