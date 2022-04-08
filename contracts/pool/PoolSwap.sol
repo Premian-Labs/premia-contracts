@@ -24,6 +24,9 @@ abstract contract PoolSwap is PoolInternal {
     address internal immutable UNISWAP_V2_FACTORY;
     address internal immutable SUSHISWAP_FACTORY;
 
+    uint256 internal immutable UNISWAP_V2_INIT_HASH;
+    uint256 internal immutable SUSHISWAP_INIT_HASH;
+
     constructor(
         address ivolOracle,
         address weth,
@@ -33,7 +36,9 @@ abstract contract PoolSwap is PoolInternal {
         int128 feePremium64x64,
         int128 feeApy64x64,
         address uniswapV2Factory,
-        address sushiswapFactory
+        address sushiswapFactory,
+        uint256 uniswapV2InitHash,
+        uint256 sushiswapInitHash
     )
         PoolInternal(
             ivolOracle,
@@ -47,6 +52,8 @@ abstract contract PoolSwap is PoolInternal {
     {
         UNISWAP_V2_FACTORY = uniswapV2Factory;
         SUSHISWAP_FACTORY = sushiswapFactory;
+        UNISWAP_V2_INIT_HASH = uniswapV2InitHash;
+        SUSHISWAP_INIT_HASH = sushiswapInitHash;
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
