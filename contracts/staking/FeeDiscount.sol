@@ -61,7 +61,11 @@ contract FeeDiscount is IFeeDiscount {
         _stake(amount, period);
     }
 
+    function _beforeStake(uint256 amount, uint256 period) internal virtual {}
+
     function _stake(uint256 amount, uint256 period) internal {
+        _beforeStake(amount, period);
+
         FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
 
         require(
@@ -84,10 +88,14 @@ contract FeeDiscount is IFeeDiscount {
         emit Staked(msg.sender, amount, period, lockedUntil);
     }
 
+    function _beforeUnstake(uint256 amount) internal virtual {}
+
     /**
      * @inheritdoc IFeeDiscount
      */
     function unstake(uint256 amount) external {
+        _beforeUnstake(amount);
+
         FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
 
         FeeDiscountStorage.UserInfo storage user = l.userInfo[msg.sender];
