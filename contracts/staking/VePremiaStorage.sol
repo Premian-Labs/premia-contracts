@@ -7,8 +7,16 @@ library VePremiaStorage {
     bytes32 internal constant STORAGE_SLOT =
         keccak256("premia.contracts.staking.VePremia");
 
+    struct Vote {
+        uint256 amount;
+        uint256 chainId;
+        address poolAddress;
+    }
+
     struct Layout {
         uint256 totalVotingPower;
+        mapping(address => Vote[]) userVotes;
+        mapping(uint256 => mapping(address => uint256)) votes;
     }
 
     function layout() internal pure returns (Layout storage l) {

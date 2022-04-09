@@ -36,7 +36,7 @@ contract VePremia is IVePremia, FeeDiscount {
             l.totalVotingPower += newPower - currentPower;
         } else {
             // We can have newPower < currentPower if user add a small amount with a smaller stake period
-            l.totalVotingPower -= currentPower - newPower;
+            _subtractVotingPower(l, msg.sender, currentPower - newPower);
         }
     }
 
@@ -51,7 +51,27 @@ contract VePremia is IVePremia, FeeDiscount {
             amount,
             userInfo.stakePeriod
         );
-        l.totalVotingPower -= votingPowerUnstaked;
+
+        _subtractVotingPower(l, msg.sender, votingPowerUnstaked);
+    }
+
+    function _subtractVotingPower(
+        VePremiaStorage.Layout storage l,
+        address user,
+        uint256 amount
+    ) internal {
+        l.totalVotingPower -= amount;
+
+        uint256 toSubtract = amount;
+        for (uint256 i = l.userVotes[user].length + 1; i > 0; i--) {
+            if (toSubtract <= l.userVotes[user][i - 1].amount) {
+                l.userVotes[user][i - 1].amount -= toSubtract;
+                return;
+            }
+
+            toSubtract -= l.userVotes[user][i - 1].amount;
+            l.userVotes[user].pop();
+        }
     }
 
     function _calculateVotingPower(uint256 amount, uint256 period)
@@ -79,5 +99,16 @@ contract VePremia is IVePremia, FeeDiscount {
             .userInfo[user];
 
         return _calculateVotingPower(userInfo.balance, userInfo.stakePeriod);
+    }
+
+    /**
+     * @inheritdoc IVePremia
+     */
+    function getUserVotes(address user)
+        external
+        view
+        returns (VePremiaStorage.Vote[] memory)
+    {
+        return VePremiaStorage.layout().userVotes[user];
     }
 }
