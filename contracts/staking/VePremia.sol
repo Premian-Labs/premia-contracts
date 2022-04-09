@@ -6,12 +6,13 @@ pragma solidity ^0.8.0;
 import {FeeDiscount} from "./FeeDiscount.sol";
 import {FeeDiscountStorage} from "./FeeDiscountStorage.sol";
 import {VePremiaStorage} from "./VePremiaStorage.sol";
+import {IVePremia} from "./IVePremia.sol";
 
 /**
  * @author Premia
  * @title A contract allowing you to use your locked Premia as voting power for mining weights
  */
-contract VePremia is FeeDiscount {
+contract VePremia is IVePremia, FeeDiscount {
     constructor(address xPremia) FeeDiscount(xPremia) {}
 
     function _beforeStake(uint256 amount, uint256 period) internal override {
@@ -62,10 +63,16 @@ contract VePremia is FeeDiscount {
             (amount * _getStakePeriodMultiplier(period)) / INVERSE_BASIS_POINT;
     }
 
+    /**
+     * @inheritdoc IVePremia
+     */
     function getTotalVotingPower() external view returns (uint256) {
         return VePremiaStorage.layout().totalVotingPower;
     }
 
+    /**
+     * @inheritdoc IVePremia
+     */
     function getUserVotingPower(address user) external view returns (uint256) {
         FeeDiscountStorage.UserInfo memory userInfo = FeeDiscountStorage
             .layout()
