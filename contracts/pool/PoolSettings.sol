@@ -21,8 +21,7 @@ contract PoolSettings is IPoolSettings, PoolInternal {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 feePremium64x64,
-        int128 feeApy64x64
+        int128 feePremium64x64
     )
         PoolInternal(
             ivolOracle,
@@ -30,8 +29,7 @@ contract PoolSettings is IPoolSettings, PoolInternal {
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            feePremium64x64,
-            feeApy64x64
+            feePremium64x64
         )
     {}
 
