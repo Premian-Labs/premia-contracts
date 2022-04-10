@@ -27,4 +27,10 @@ interface IPoolSettings {
      * @param isCallPool true for call, false for put
      */
     function setCLevel64x64(int128 cLevel64x64, bool isCallPool) external;
+
+    /**
+     * @notice set APY fee amount
+     * @param feeApy64x64 64x64 fixed point representation of APY fee
+     */
+    function setFeeApy64x64(int128 feeApy64x64) external;
 }

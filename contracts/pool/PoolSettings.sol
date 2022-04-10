@@ -81,4 +81,11 @@ contract PoolSettings is IPoolSettings, PoolInternal {
             liquidity64x64
         );
     }
+
+    /**
+     * @inheritdoc IPoolSettings
+     */
+    function setFeeApy64x64(int128 feeApy64x64) external onlyProtocolOwner {
+        PoolStorage.layout().feeApy64x64 = feeApy64x64;
+    }
 }
