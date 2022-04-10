@@ -193,7 +193,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     oldLiquidity64x64,
                     oldLiquidity64x64.sub(collateral64x64),
                     0x10000000000000000, // 64x64 fixed point representation of 1
-                    l.feeApy64x64 * 12,
+                    l.getFeeApy64x64() * 12,
                     args.isCall
                 )
             );
@@ -1074,7 +1074,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) internal view returns (uint256 apyFee) {
         if (block.timestamp < maturity) {
             int128 apyFeeRate64x64 = _totalSupply(shortTokenId) == 0
-                ? l.feeApy64x64
+                ? l.getFeeApy64x64()
                 : l.feeReserveRates[shortTokenId];
 
             apyFee = apyFeeRate64x64.mulu(
@@ -1605,7 +1605,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) private {
         // total supply has already been updated, so compare to amount rather than 0
         if (from == address(0) && _totalSupply(id) == amount) {
-            l.feeReserveRates[id] = l.feeApy64x64;
+            l.feeReserveRates[id] = l.getFeeApy64x64();
         }
 
         if (to == address(0) && _totalSupply(id) == 0) {
