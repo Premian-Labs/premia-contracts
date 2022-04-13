@@ -23,11 +23,11 @@ import { diamondCut } from './diamond';
 import { BigNumber, BigNumberish } from 'ethers';
 import { fixedFromFloat } from '@premia/utils';
 
-const SOLIDLY_V1_FACTORY = '0x3fAaB499b519fdC5819e3D7ed0C26111904cbc28';
+const SPIRITSWAP_FACTORY = '0xef45d134b73241eda7703fa787148d9c9f4950b0';
 const SPOOKYSWAP_FACTORY = '0x152eE697f2E276fA89E96742e9bB9aB1F2E61bE3';
 
-const SOLIDLY_V1_INIT_HASH =
-  '0x57ae84018c47ebdaf7ddb2d1216c8c36389d12481309af65428eb6d460f747a4';
+const SPIRITSWAP_INIT_HASH =
+  '0xe242e798f6cee26a9cb0bbf24653bf066e5356ffeac160907fe2cc108e238617';
 const SPOOKYSWAP_INIT_HASH =
   '0xcdf2deca40a0bd56de8e3ce5c7df6727e5b1bf2ac96f283fa9c4b3e6b42ea9d2';
 
@@ -172,7 +172,7 @@ export async function deployV2(
   const poolBaseFactory = new PoolBase__factory(deployer);
   const poolBaseImpl = await poolBaseFactory.deploy(
     ivolOracle.address,
-    tokens.WETH,
+    weth,
     premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
@@ -182,7 +182,7 @@ export async function deployV2(
   await poolBaseImpl.deployed();
 
   console.log(
-    `PoolBase Implementation : ${poolBaseImpl.address} (${ivolOracle.address}, ${tokens.WETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64})`,
+    `PoolBase Implementation : ${poolBaseImpl.address} (${ivolOracle.address}, ${weth}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -202,15 +202,15 @@ export async function deployV2(
   );
   const poolWriteImpl = await poolWriteFactory.deploy(
     ivolOracle.address,
-    tokens.WETH,
+    weth,
     premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
     utilizationFee64x64,
-    SOLIDLY_V1_FACTORY,
+    SPIRITSWAP_FACTORY,
     getSpookyswapFactory(),
-    SOLIDLY_V1_INIT_HASH,
+    SPIRITSWAP_INIT_HASH,
     SPOOKYSWAP_INIT_HASH,
   );
   await poolWriteImpl.deployed();
@@ -218,9 +218,9 @@ export async function deployV2(
   console.log(
     `PoolWrite Implementation : ${poolWriteImpl.address} (${
       ivolOracle.address
-    }, ${tokens.WETH}, ${
+    }, ${weth}, ${
       premiaMining.address
-    }, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}, ${SOLIDLY_V1_FACTORY}, ${getSpookyswapFactory()}) (OptionMath: ${
+    }, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}, ${SPIRITSWAP_FACTORY}, ${getSpookyswapFactory()}) (OptionMath: ${
       optionMath.address
     })`,
   );
@@ -242,7 +242,7 @@ export async function deployV2(
   );
   const poolExerciseImpl = await poolExerciseFactory.deploy(
     ivolOracle.address,
-    tokens.WETH,
+    weth,
     premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
@@ -252,7 +252,7 @@ export async function deployV2(
   await poolExerciseImpl.deployed();
 
   console.log(
-    `PoolExercise Implementation : ${poolExerciseImpl.address} (${ivolOracle.address}, ${tokens.WETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
+    `PoolExercise Implementation : ${poolExerciseImpl.address} (${ivolOracle.address}, ${weth}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -273,7 +273,7 @@ export async function deployV2(
   const poolViewImpl = await poolViewFactory.deploy(
     nftDisplay.address,
     ivolOracle.address,
-    tokens.WETH,
+    weth,
     premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
@@ -283,7 +283,7 @@ export async function deployV2(
   await poolViewImpl.deployed();
 
   console.log(
-    `PoolView Implementation : ${poolViewImpl.address} (${nftDisplay.address}, ${ivolOracle.address}, ${tokens.WETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
+    `PoolView Implementation : ${poolViewImpl.address} (${nftDisplay.address}, ${ivolOracle.address}, ${weth}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -303,7 +303,7 @@ export async function deployV2(
   );
   const poolSellImpl = await poolSellFactory.deploy(
     ivolOracle.address,
-    tokens.WETH,
+    weth,
     premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
@@ -313,7 +313,7 @@ export async function deployV2(
   await poolSellImpl.deployed();
 
   console.log(
-    `PoolSell Implementation : ${poolSellImpl.address} (${ivolOracle.address}, ${tokens.WETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
+    `PoolSell Implementation : ${poolSellImpl.address} (${ivolOracle.address}, ${weth}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -330,7 +330,7 @@ export async function deployV2(
   const poolSettingsFactory = new PoolSettings__factory(deployer);
   const poolSettingsImpl = await poolSettingsFactory.deploy(
     ivolOracle.address,
-    tokens.WETH,
+    weth,
     premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
@@ -340,7 +340,7 @@ export async function deployV2(
   await poolSettingsImpl.deployed();
 
   console.log(
-    `PoolSettings Implementation : ${poolSettingsImpl.address} (${ivolOracle.address}, ${tokens.WETH}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64})`,
+    `PoolSettings Implementation : ${poolSettingsImpl.address} (${ivolOracle.address}, ${weth}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -360,25 +360,25 @@ export async function deployV2(
   );
   const poolIOImpl = await poolIOFactory.deploy(
     ivolOracle.address,
-    tokens.WETH,
+    weth,
     premiaMining.address,
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
     utilizationFee64x64,
-    SOLIDLY_V1_FACTORY,
+    SPIRITSWAP_FACTORY,
     getSpookyswapFactory(),
-    SOLIDLY_V1_INIT_HASH,
+    SPIRITSWAP_INIT_HASH,
     SPOOKYSWAP_INIT_HASH,
   );
   await poolIOImpl.deployed();
 
   console.log(
-    `PoolIO Implementation : ${poolIOImpl.address} (${ivolOracle.address}, ${
-      tokens.WETH
-    }, ${
+    `PoolIO Implementation : ${poolIOImpl.address} (${
+      ivolOracle.address
+    }, ${weth}, ${
       premiaMining.address
-    }, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}, ${SOLIDLY_V1_FACTORY}, ${getSpookyswapFactory()}) (OptionMath: ${
+    }, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}, ${SPIRITSWAP_FACTORY}, ${getSpookyswapFactory()}) (OptionMath: ${
       optionMath.address
     })`,
   );
