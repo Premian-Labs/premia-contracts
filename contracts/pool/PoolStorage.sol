@@ -246,8 +246,8 @@ library PoolStorage {
         feeApy64x64 = l.feeApy64x64;
 
         if (feeApy64x64 == 0) {
-            // if APY fee is not set, set to 0.03
-            feeApy64x64 = 0x7ae147ae147ae14;
+            // if APY fee is not set, set to 0.025
+            feeApy64x64 = 0x666666666666666;
         }
     }
 
