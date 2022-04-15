@@ -193,7 +193,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     oldLiquidity64x64,
                     oldLiquidity64x64.sub(collateral64x64),
                     0x10000000000000000, // 64x64 fixed point representation of 1
-                    l.getFeeApy64x64() * 12,
+                    l.getFeeApy64x64() * 8,
                     args.isCall
                 )
             );
