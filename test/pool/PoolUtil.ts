@@ -345,7 +345,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
     );
     await poolBaseImpl.deployed();
 
@@ -371,7 +370,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
       uniswapV2Factory ?? ZERO_ADDRESS,
       ZERO_ADDRESS,
     );
@@ -394,7 +392,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -418,7 +415,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -443,7 +439,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -467,7 +462,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
     );
     await poolSellImpl.deployed();
 
@@ -490,7 +484,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -514,7 +507,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
       uniswapV2Factory ?? ZERO_ADDRESS,
       ZERO_ADDRESS,
     );

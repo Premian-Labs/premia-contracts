@@ -34,7 +34,6 @@ describe('Pool', function () {
       ONE_ADDRESS,
       ethers.constants.AddressZero,
       fixedFromFloat(0.01),
-      fixedFromFloat(0.01),
     );
   });
 
