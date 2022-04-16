@@ -40,6 +40,12 @@ interface IPoolView is IERC1155Metadata {
     function getCLevel64x64(bool isCall) external view returns (int128);
 
     /**
+     * @notice get pool APY fee
+     * @return 64x64 fixed point representation of APY fee
+     */
+    function getApyFee64x64() external view returns (int128);
+
+    /**
      * @notice get steepness coefficient
      * @param isCall whether query is for call or put pool
      * @return 64x64 fixed point representation of C steepness of Pool

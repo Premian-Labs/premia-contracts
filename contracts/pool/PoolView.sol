@@ -95,6 +95,13 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
+    function getApyFee64x64() external view returns (int128 apyFee64x64) {
+        apyFee64x64 = PoolStorage.layout().getFeeApy64x64();
+    }
+
+    /**
+     * @inheritdoc IPoolView
+     */
     function getSteepness64x64(bool isCallPool) external view returns (int128) {
         if (isCallPool) {
             return PoolStorage.layout().steepnessUnderlying64x64;
