@@ -10,6 +10,8 @@ import {
   ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
 
+import { fixedFromFloat } from '@premia/utils';
+
 import { describeBehaviorOfPoolBase } from '../../spec/pool/PoolBase.behavior';
 import { describeBehaviorOfPoolExercise } from '../../spec/pool/PoolExercise.behavior';
 import { describeBehaviorOfPoolIO } from '../../spec/pool/PoolIO.behavior';
@@ -18,7 +20,12 @@ import { describeBehaviorOfPoolView } from '../../spec/pool/PoolView.behavior';
 import { describeBehaviorOfPoolWrite } from '../../spec/pool/PoolWrite.behavior';
 import { describeBehaviorOfPoolSell } from '../../spec/pool/PoolSell.behavior';
 import chai from 'chai';
-import { DECIMALS_BASE, DECIMALS_UNDERLYING, PoolUtil } from './PoolUtil';
+import {
+  DECIMALS_BASE,
+  DECIMALS_UNDERLYING,
+  FEE_APY,
+  PoolUtil,
+} from './PoolUtil';
 import chaiAlmost from 'chai-almost';
 import { describeBehaviorOfProxy } from '@solidstate/spec';
 import {
@@ -88,6 +95,8 @@ describe('PoolProxy', function () {
     underlying = p.underlying;
 
     instance = p.pool;
+
+    await instance.connect(owner).setFeeApy64x64(fixedFromFloat(FEE_APY));
 
     // mint ERC20 tokens and set approvals
 
@@ -184,6 +193,7 @@ describe('PoolProxy', function () {
     getUnderlying: async () => underlying,
     getFeeDiscount: async () => feeDiscount,
     getXPremia: async () => xPremia,
+    apyFeeRate: FEE_APY,
     getPoolUtil: async () => p,
   });
 
@@ -192,6 +202,7 @@ describe('PoolProxy', function () {
     getBase: async () => base,
     getUnderlying: async () => underlying,
     getPoolUtil: async () => p,
+    apyFeeRate: FEE_APY,
     getUniswap: async () => uniswap,
   });
 
@@ -216,6 +227,7 @@ describe('PoolProxy', function () {
     getBase: async () => base,
     getUnderlying: async () => underlying,
     getPoolUtil: async () => p,
+    apyFeeRate: FEE_APY,
     getUniswap: async () => uniswap,
   });
 });
