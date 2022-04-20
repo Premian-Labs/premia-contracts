@@ -704,7 +704,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 exerciseValue = l.contractSizeToBaseTokenAmount(
                     contractSize,
                     strike64x64.sub(spot64x64),
-                    false
+                    isCall
                 );
             }
         }
