@@ -23,6 +23,7 @@ Dotenv.config({ path: './.env.secret' });
 const {
   API_KEY_ALCHEMY,
   API_KEY_ETHERSCAN,
+  API_KEY_ARBISCAN,
   PKEY_ETH_MAIN,
   PKEY_ETH_TEST,
   FORK_MODE,
@@ -173,7 +174,10 @@ export default {
   },
 
   etherscan: {
-    apiKey: API_KEY_ETHERSCAN,
+    apiKey: {
+      mainnet: API_KEY_ETHERSCAN,
+      arbitrumOne: API_KEY_ARBISCAN,
+    },
   },
 
   gasReporter: {
