@@ -36,7 +36,7 @@ async function main() {
   const feeReceiver = '0x7bf2392bd078C8353069CffeAcc67c094079be23';
   const feeDiscountAddress = '0x7Fa86681A7c19416950bAE6c04A5116f3b07116D';
   const fee64x64 = fixedFromFloat(0.03);
-  const feeApy64x64 = fixedFromFloat(0.03);
+  const feeApy64x64 = fixedFromFloat(0.025);
   const optionMath = '0xC7A7275BC25a7Bf07C6D0c2f8784c5450Cb9B8f5';
   const uniswapV2Factory = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
   const sushiswapV2Factory = '0xc35DADB65012eC5796536bD9864eD8773aBc74C4';
