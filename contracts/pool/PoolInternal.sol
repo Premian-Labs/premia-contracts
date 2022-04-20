@@ -261,8 +261,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 args.strike64x64,
                 args.isCall
             ),
-            l.baseDecimals
+            args.isCall ? l.underlyingDecimals : l.baseDecimals
         );
+
+        if (args.isCall) {
+            exerciseValue64x64 = exerciseValue64x64.mul(args.spot64x64);
+        }
 
         int128 sellCLevel64x64;
 
