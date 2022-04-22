@@ -9,6 +9,9 @@ import {
   PoolWrite__factory,
 } from '../../../typechain';
 import { fixedFromFloat } from '@premia/utils';
+import { diamondCut } from '../../utils/diamond';
+import { Premia__factory } from '../../../typechain';
+import { ZERO_ADDRESS } from '../../../test/utils/constants';
 
 function printFacets(implAddress: string, factory: any) {
   const facetCuts = [
@@ -30,18 +33,43 @@ function printFacets(implAddress: string, factory: any) {
 async function main() {
   const [deployer] = await ethers.getSigners();
 
-  const ivolOracle = '0xC4B2C51f969e0713E799De73b7f130Fb7Bb604CF';
-  const weth = '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1';
-  const premiaMining = '0xbC3c01D954282eEd8433da4359C1ac1443a7d09A';
-  const feeReceiver = '0x7bf2392bd078C8353069CffeAcc67c094079be23';
-  const feeDiscountAddress = '0x7Fa86681A7c19416950bAE6c04A5116f3b07116D';
+  const ivolOracle = '0x9e88fe5e5249CD6429269B072c9476b6908dCBf2';
+  const weth = '0xc778417e063141139fce010982780140aa0cd5ab';
+  const premiaMining = '0x127cA21D2773229e1728D606921162733798b7B1';
+  const feeReceiver = '0xB447ae5Cf7367a29bF69ED7C961Eb1D20c10AB9E';
+  const feeDiscountAddress = '0x82f4E449476430246FDaa3A820E1910f303cD16D';
   const fee64x64 = fixedFromFloat(0.03);
   const feeApy64x64 = fixedFromFloat(0.025);
-  const optionMath = '0xC7A7275BC25a7Bf07C6D0c2f8784c5450Cb9B8f5';
+  const optionMath = '0x99e603c3Ac7b0cB5CE6460D878750C1930DdB356';
   const uniswapV2Factory = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
   const sushiswapV2Factory = '0xc35DADB65012eC5796536bD9864eD8773aBc74C4';
-  const nftDisplay = '0x9d22c080fde848f47b0c7654483715f27e44e433';
-  // const poolDiamond = '0xaD74c7C6485b65dc1E38342D390F72d85DeE3411';
+  const nftDisplay = '0x3bc3654819abceE7581940315ed156e2323f086a';
+  const poolDiamondAddress = '0xB07aEe041eF7aa301BDd8926886E6E45ae71D52b';
+
+  const poolDiamond = Premia__factory.connect(poolDiamondAddress, deployer);
+
+  const facets = (await poolDiamond.facets()).filter(
+    (el) => el.target !== poolDiamond.address,
+  );
+
+  const selectorsToRemove = [];
+  for (const el of facets) {
+    for (const sel of el.selectors) {
+      selectorsToRemove.push(sel);
+    }
+  }
+
+  if (selectorsToRemove.length > 0) {
+    await poolDiamond.diamondCut(
+      [{ target: ZERO_ADDRESS, selectors: selectorsToRemove, action: 2 }],
+      ZERO_ADDRESS,
+      '0x',
+    );
+  }
+
+  let registeredSelectors = [
+    poolDiamond.interface.getSighash('supportsInterface(bytes4)'),
+  ];
 
   const poolBaseFactory = new PoolBase__factory(deployer);
   const poolBase = await poolBaseFactory.deploy(
@@ -58,7 +86,19 @@ async function main() {
     `PoolBase : ${poolBase.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
   );
 
-  printFacets(poolBase.address, poolBaseFactory);
+  await poolBase.deployed();
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolBase.address,
+      poolBaseFactory,
+      registeredSelectors,
+    ),
+  );
+
+  // printFacets(poolBase.address, poolBaseFactory);
+
+  //
 
   const poolExerciseFactory = new PoolExercise__factory(
     { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath },
@@ -78,7 +118,17 @@ async function main() {
     `PoolExercise : ${poolExercise.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
   );
 
-  printFacets(poolExercise.address, poolExerciseFactory);
+  await poolExercise.deployed();
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolExercise.address,
+      poolExerciseFactory,
+      registeredSelectors,
+    ),
+  );
+
+  // printFacets(poolExercise.address, poolExerciseFactory);
 
   //
 
@@ -102,7 +152,17 @@ async function main() {
     `PoolIO : ${poolIO.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64} ${uniswapV2Factory} ${sushiswapV2Factory}`,
   );
 
-  printFacets(poolIO.address, poolIOFactory);
+  await poolIO.deployed();
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolIO.address,
+      poolIOFactory,
+      registeredSelectors,
+    ),
+  );
+
+  // printFacets(poolIO.address, poolIOFactory);
 
   //
 
@@ -124,7 +184,17 @@ async function main() {
     `PoolSell : ${poolSell.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
   );
 
-  printFacets(poolSell.address, poolSellFactory);
+  await poolSell.deployed();
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolSell.address,
+      poolSellFactory,
+      registeredSelectors,
+    ),
+  );
+
+  // printFacets(poolSell.address, poolSellFactory);
 
   //
 
@@ -139,11 +209,21 @@ async function main() {
     feeApy64x64,
   );
 
+  await poolSettings.deployed();
   console.log(
     `PoolSettings : ${poolSettings.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
   );
 
-  printFacets(poolSettings.address, poolSettingsFactory);
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolSettings.address,
+      poolSettingsFactory,
+      registeredSelectors,
+    ),
+  );
+
+  // printFacets(poolSettings.address, poolSettingsFactory);
 
   //
 
@@ -162,11 +242,21 @@ async function main() {
     feeApy64x64,
   );
 
+  await poolView.deployed();
   console.log(
     `PoolView : ${poolView.address} ${nftDisplay} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
   );
 
-  printFacets(poolView.address, poolViewFactory);
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolView.address,
+      poolViewFactory,
+      registeredSelectors,
+    ),
+  );
+
+  // printFacets(poolView.address, poolViewFactory);
 
   //
 
@@ -186,11 +276,21 @@ async function main() {
     sushiswapV2Factory,
   );
 
+  await poolWrite.deployed();
   console.log(
     `PoolWrite : ${poolWrite.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64} ${uniswapV2Factory} ${sushiswapV2Factory}`,
   );
 
-  printFacets(poolWrite.address, poolWriteFactory);
+  registeredSelectors = registeredSelectors.concat(
+    await diamondCut(
+      poolDiamond,
+      poolWrite.address,
+      poolWriteFactory,
+      registeredSelectors,
+    ),
+  );
+
+  // printFacets(poolWrite.address, poolWriteFactory);
 
   //
 }
