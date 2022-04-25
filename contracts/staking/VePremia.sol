@@ -72,7 +72,7 @@ contract VePremia is IVePremia, FeeDiscount {
             userInfo.stakePeriod
         );
         uint256 votingPowerUsed = _calculateUserVotingPowerUsed(user);
-        uint256 votingPowerLeftAfterUnstake = votingPower - votingPowerUnstaked;
+        uint256 votingPowerLeftAfterUnstake = votingPower - amountUnstaked;
 
         if (votingPowerUsed > votingPowerLeftAfterUnstake) {
             _subtractUserVotes(
