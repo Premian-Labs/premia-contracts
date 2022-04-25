@@ -32,11 +32,11 @@ contract VePremia is IVePremia, FeeDiscount {
             period
         );
 
-        if (newPower > currentPower) {
+        if (newPower >= currentPower) {
             l.totalVotingPower += newPower - currentPower;
         } else {
             // We can have newPower < currentPower if user add a small amount with a smaller stake period
-            _subtractVotingPower(l, msg.sender, currentPower - newPower);
+            _subtractExtraUserVotes(l, msg.sender, currentPower - newPower);
         }
     }
 
@@ -52,16 +52,47 @@ contract VePremia is IVePremia, FeeDiscount {
             userInfo.stakePeriod
         );
 
-        _subtractVotingPower(l, msg.sender, votingPowerUnstaked);
+        _subtractExtraUserVotes(l, msg.sender, votingPowerUnstaked);
     }
 
-    function _subtractVotingPower(
+    /**
+     * @notice subtract user votes, starting from the end of the list, if not enough voting power is left after amountUnstaked is unstaked
+     */
+    function _subtractExtraUserVotes(
+        VePremiaStorage.Layout storage l,
+        address user,
+        uint256 amountUnstaked
+    ) internal {
+        FeeDiscountStorage.UserInfo memory userInfo = FeeDiscountStorage
+            .layout()
+            .userInfo[user];
+
+        uint256 votingPower = _calculateVotingPower(
+            userInfo.balance,
+            userInfo.stakePeriod
+        );
+        uint256 votingPowerUsed = _calculateUserVotingPowerUsed(user);
+        uint256 votingPowerLeftAfterUnstake = votingPower - votingPowerUnstaked;
+
+        if (votingPowerUsed > votingPowerLeftAfterUnstake) {
+            _subtractUserVotes(
+                l,
+                user,
+                votingPowerUsed - votingPowerLeftAfterUnstake
+            );
+        }
+
+        l.totalVotingPower -= amountUnstaked;
+    }
+
+    /**
+     * @notice subtract user votes, starting from the end of the list
+     */
+    function _subtractUserVotes(
         VePremiaStorage.Layout storage l,
         address user,
         uint256 amount
     ) internal {
-        l.totalVotingPower -= amount;
-
         uint256 toSubtract = amount;
         for (uint256 i = l.userVotes[user].length + 1; i > 0; i--) {
             if (toSubtract <= l.userVotes[user][i - 1].amount) {
@@ -71,6 +102,20 @@ contract VePremia is IVePremia, FeeDiscount {
 
             toSubtract -= l.userVotes[user][i - 1].amount;
             l.userVotes[user].pop();
+        }
+    }
+
+    function _calculateUserVotingPowerUsed(address user)
+        internal
+        view
+        returns (uint256 votingPowerUsed)
+    {
+        VePremiaStorage.Vote[] memory userVotes = VePremiaStorage
+            .layout()
+            .userVotes[user];
+
+        for (uint256 i = 0; i < userVotes.length; i++) {
+            votingPowerUsed += userVotes[i].amount;
         }
     }
 
