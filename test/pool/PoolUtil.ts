@@ -606,8 +606,10 @@ export class PoolUtil {
     });
   }
 
-  async setUnderlyingPrice(price: BigNumber) {
-    await this.underlyingOracle.mock.latestAnswer.returns(price);
+  async setUnderlyingPrice(price: number) {
+    await this.underlyingOracle.mock.latestAnswer.returns(
+      parseUnits(price.toString(), 8),
+    );
   }
 
   getToken(isCall: boolean) {
