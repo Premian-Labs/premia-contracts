@@ -27,9 +27,13 @@ async function main() {
     treasury,
   );
 
+  await feeCollectorImpl.deployed();
+
   const feeCollectorProxy = await new ProxyUpgradeableOwnable__factory(
     deployer,
   ).deploy(feeCollectorImpl.address);
+
+  await feeCollectorProxy.deployed();
 
   console.log(
     `FeeCollector impl deployed at ${feeCollectorImpl.address} (Args: ${treasury})`,
@@ -40,6 +44,9 @@ async function main() {
   const feeDiscountImpl = await new FeeDiscount__factory(deployer).deploy(
     xPremia,
   );
+
+  await feeDiscountImpl.deployed();
+
   console.log(
     `FeeDiscount impl deployed at ${feeDiscountImpl.address} (Args: ${xPremia})`,
   );
@@ -47,6 +54,7 @@ async function main() {
   const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
     deployer,
   ).deploy(feeDiscountImpl.address);
+  await feeDiscountProxy.deployed();
   console.log(`FeeDiscount proxy deployed at ${feeDiscountProxy.address})`);
 
   const premia = '0x51fc0f6660482ea73330e414efd7808811a57fa2';

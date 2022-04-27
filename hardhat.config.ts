@@ -24,6 +24,7 @@ const {
   API_KEY_ALCHEMY,
   API_KEY_ETHERSCAN,
   API_KEY_ARBISCAN,
+  API_KEY_FTMSCAN,
   PKEY_ETH_MAIN,
   PKEY_ETH_TEST,
   FORK_MODE,
@@ -177,6 +178,7 @@ export default {
     apiKey: {
       mainnet: API_KEY_ETHERSCAN,
       arbitrumOne: API_KEY_ARBISCAN,
+      opera: API_KEY_FTMSCAN,
     },
   },
 

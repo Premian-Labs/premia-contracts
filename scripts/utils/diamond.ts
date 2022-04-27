@@ -23,7 +23,12 @@ export async function diamondCut(
     },
   ];
 
-  await diamond.diamondCut(facetCuts, ethers.constants.AddressZero, '0x');
+  const tx = await diamond.diamondCut(
+    facetCuts,
+    ethers.constants.AddressZero,
+    '0x',
+  );
+  await tx.wait(1);
 
   return registeredSelectors;
 }

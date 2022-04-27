@@ -73,16 +73,24 @@ export async function deployV2(
   //
 
   const optionMath = await new OptionMath__factory(deployer).deploy();
+  await optionMath.deployed();
+
   const premiaDiamond = await new Premia__factory(deployer).deploy();
+  await premiaDiamond.deployed();
+
   const poolDiamond = await new Premia__factory(deployer).deploy();
+  await poolDiamond.deployed();
 
   if (!ivolOracleProxyAddress) {
     const ivolOracleImpl = await new VolatilitySurfaceOracle__factory(
       deployer,
     ).deploy();
+    await ivolOracleImpl.deployed();
+
     const ivolOracleProxy = await new ProxyUpgradeableOwnable__factory(
       deployer,
     ).deploy(ivolOracleImpl.address);
+    await ivolOracleProxy.deployed();
     ivolOracleProxyAddress = ivolOracleProxy.address;
   }
 
@@ -105,10 +113,12 @@ export async function deployV2(
     premiaDiamond.address,
     premia,
   );
+  await premiaMiningImpl.deployed();
 
   const premiaMiningProxy = await new PremiaMiningProxy__factory(
     deployer,
   ).deploy(premiaMiningImpl.address, parseEther('0.5'));
+  await premiaMiningProxy.deployed();
 
   const premiaMining = PremiaMining__factory.connect(
     premiaMiningProxy.address,
@@ -125,11 +135,13 @@ export async function deployV2(
   );
 
   const nftSVGLib = await new NFTSVG__factory(deployer).deploy();
+  await nftSVGLib.deployed();
 
   const nftDisplayLib = await new NFTDisplay__factory(
     { ['contracts/libraries/NFTSVG.sol:NFTSVG']: nftSVGLib.address },
     deployer,
   ).deploy();
+  await nftDisplayLib.deployed();
 
   const nftDisplay = await new PremiaOptionNFTDisplay__factory(
     {
@@ -137,6 +149,7 @@ export async function deployV2(
     },
     deployer,
   ).deploy();
+  await nftDisplay.deployed();
 
   console.log(`NFT SVG : ${nftSVGLib.address}`);
   console.log(
@@ -458,7 +471,7 @@ export async function deployPool(
   );
 
   console.log(
-    `${underlyingTokenSymbol}/${baseTokenSymbol} pool : ${poolAddress} ${base.tokenAddress} ${underlying.tokenAddress} ${base.oracleAddress} ${underlying.oracleAddress} ${base.minimum} ${underlying.minimum} ${miningWeight}`,
+    `${underlyingTokenSymbol}/${baseTokenSymbol} pool : ${poolAddress} ${base.tokenAddress} ${underlying.tokenAddress} ${base.oracleAddress} ${underlying.oracleAddress} ${minBase64x64} ${minUnderlying64x64} ${miningWeight}`,
   );
 
   await poolTx.wait(1);
