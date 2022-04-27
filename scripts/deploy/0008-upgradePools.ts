@@ -9,7 +9,12 @@ import {
   PoolWrite__factory,
 } from '../../typechain';
 import { fixedFromFloat } from '@premia/utils';
-import { diamondCut } from '../utils/diamond';
+import {
+  SUSHISWAP_FACTORY,
+  SUSHISWAP_INIT_HASH,
+  UNISWAP_V2_FACTORY,
+  UNISWAP_V2_INIT_HASH,
+} from '../utils/deployV2';
 
 function printFacets(implAddress: string, factory: any) {
   const facetCuts = [
@@ -39,8 +44,6 @@ async function main() {
   const fee64x64 = fixedFromFloat(0.03);
   const feeApy64x64 = fixedFromFloat(0.025);
   const optionMath = '0x0F6E8eF18FB5bb61D545fEe60f779D8aED60408F';
-  const uniswapV2Factory = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
-  const sushiswapV2Factory = '0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac';
   const nftDisplay = '0x32248Ec445D3c72b42f16B040e55BCD5Cf5a8712';
   // const poolDiamond = '0x48D49466CB2EFbF05FaA5fa5E69f2984eDC8d1D7';
 
@@ -97,12 +100,14 @@ async function main() {
     feeDiscountAddress,
     fee64x64,
     feeApy64x64,
-    uniswapV2Factory,
-    sushiswapV2Factory,
+    UNISWAP_V2_FACTORY,
+    SUSHISWAP_FACTORY,
+    UNISWAP_V2_INIT_HASH,
+    SUSHISWAP_INIT_HASH,
   );
 
   console.log(
-    `PoolIO : ${poolIO.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64} ${uniswapV2Factory} ${sushiswapV2Factory}`,
+    `PoolIO : ${poolIO.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64} ${UNISWAP_V2_FACTORY} ${SUSHISWAP_FACTORY} ${UNISWAP_V2_INIT_HASH} ${SUSHISWAP_INIT_HASH}`,
   );
 
   printFacets(poolIO.address, poolIOFactory);
@@ -185,12 +190,14 @@ async function main() {
     feeDiscountAddress,
     fee64x64,
     feeApy64x64,
-    uniswapV2Factory,
-    sushiswapV2Factory,
+    UNISWAP_V2_FACTORY,
+    SUSHISWAP_FACTORY,
+    UNISWAP_V2_INIT_HASH,
+    SUSHISWAP_INIT_HASH,
   );
 
   console.log(
-    `PoolWrite : ${poolWrite.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64} ${uniswapV2Factory} ${sushiswapV2Factory}`,
+    `PoolWrite : ${poolWrite.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64} ${UNISWAP_V2_FACTORY} ${SUSHISWAP_FACTORY} ${UNISWAP_V2_INIT_HASH} ${SUSHISWAP_INIT_HASH}`,
   );
 
   printFacets(poolWrite.address, poolWriteFactory);
