@@ -31,7 +31,7 @@ async function main() {
   );
 
   const premiaMaker = PremiaMaker__factory.connect(proxy.address, deployer);
-  await premiaMaker.addWhitelistedRouter(uniswapRouters);
+  await premiaMaker.addWhitelistedRouters(uniswapRouters);
   console.log('Whitelisted uniswap routers on PremiaMaker');
 
   await proxy.transferOwnership(treasury);

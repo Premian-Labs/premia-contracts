@@ -1,34 +1,55 @@
+import { ethers } from 'hardhat';
+import {
+  ERC20Placeholder__factory,
+  FeeCollector__factory,
+  FeeDiscount__factory,
+  ProxyUpgradeableOwnable__factory,
+} from '../../../typechain';
 import { deployPool, deployV2, PoolToken } from '../../utils/deployV2';
 import { fixedFromFloat } from '@premia/utils';
-import {
-  PremiaErc20__factory,
-  PremiaMakerKeeper__factory,
-  ProcessExpiredKeeper__factory,
-} from '../../../typechain';
-import { ethers } from 'hardhat';
-import { deployV1 } from '../../utils/deployV1';
 
 async function main() {
   const [deployer] = await ethers.getSigners();
-  const premia = await new PremiaErc20__factory(deployer).deploy();
 
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  const treasury = '0x0b95674d635c4Cf3E73DD0E4B28b4dcfdccD2Ec2';
 
-  const contracts = await deployV1(
+  const xPremiaPlaceholder = await new ERC20Placeholder__factory(
     deployer,
-    deployer.address,
-    true,
-    true,
-    premia.address,
+  ).deploy();
+
+  await xPremiaPlaceholder.deployed();
+
+  const xPremia = xPremiaPlaceholder.address;
+
+  console.log('xPremia placeholder', xPremiaPlaceholder.address);
+
+  const feeCollectorImpl = await new FeeCollector__factory(deployer).deploy(
+    treasury,
   );
 
-  await new Promise((resolve) => setTimeout(resolve, 1000));
+  const feeCollectorProxy = await new ProxyUpgradeableOwnable__factory(
+    deployer,
+  ).deploy(feeCollectorImpl.address);
 
-  // const ftm = await new ERC20Mock__factory(deployer).deploy('FTM', 18);
-  // const weth = await new ERC20Mock__factory(deployer).deploy('WETH', 18);
-  // const wbtc = await new ERC20Mock__factory(deployer).deploy('WBTC', 8);
-  // const yfi = await new ERC20Mock__factory(deployer).deploy('YFI', 18);
-  // const usdc = await new ERC20Mock__factory(deployer).deploy('USDC', 6);
+  console.log(
+    `FeeCollector impl deployed at ${feeCollectorImpl.address} (Args: ${treasury})`,
+  );
+
+  console.log(`FeeCollector proxy deployed at ${feeCollectorProxy.address})`);
+
+  const feeDiscountImpl = await new FeeDiscount__factory(deployer).deploy(
+    xPremia,
+  );
+  console.log(
+    `FeeDiscount impl deployed at ${feeDiscountImpl.address} (Args: ${xPremia})`,
+  );
+
+  const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
+    deployer,
+  ).deploy(feeDiscountImpl.address);
+  console.log(`FeeDiscount proxy deployed at ${feeDiscountProxy.address})`);
+
+  const premia = '0x51fc0f6660482ea73330e414efd7808811a57fa2';
 
   const ftm: PoolToken = {
     tokenAddress: '0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83',
@@ -60,14 +81,16 @@ async function main() {
     minimum: '10',
   };
 
-  const { premiaDiamond, proxyManager } = await deployV2(
+  const ivolOracleProxyAddress = '0xD77203CDBd33B849Dc0B03A4f906F579A766C0A6';
+
+  const { proxyManager } = await deployV2(
     ftm.tokenAddress,
-    premia.address,
+    premia,
     fixedFromFloat(0.03),
     fixedFromFloat(0.025),
-    contracts.premiaMaker.address,
-    contracts.xPremia.address,
-    '0xD77203CDBd33B849Dc0B03A4f906F579A766C0A6',
+    feeCollectorProxy.address,
+    feeDiscountProxy.address,
+    ivolOracleProxyAddress,
     {
       // SpookySwap
       sushiswapFactory: '0x152eE697f2E276fA89E96742e9bB9aB1F2E61bE3',
@@ -85,17 +108,6 @@ async function main() {
   await deployPool(proxyManager, usdc, eth, 150);
   await deployPool(proxyManager, usdc, btc, 75);
   await deployPool(proxyManager, usdc, yfi, 75);
-
-  const premiaMakerKeeper = await new PremiaMakerKeeper__factory(
-    deployer,
-  ).deploy(contracts.premiaMaker.address, premiaDiamond.address);
-
-  const processExpiredKeeper = await new ProcessExpiredKeeper__factory(
-    deployer,
-  ).deploy(premiaDiamond.address);
-
-  console.log('PremiaMakerKeeper', premiaMakerKeeper.address);
-  console.log('ProcessExpiredKeeper', processExpiredKeeper.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere
