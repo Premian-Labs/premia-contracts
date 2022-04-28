@@ -1,4 +1,4 @@
-import { deployV2, TokenAddresses, TokenAmounts } from '../../utils/deployV2';
+import { deployPool, deployV2, PoolToken } from '../../utils/deployV2';
 import { fixedFromFloat } from '@premia/utils';
 import {
   ERC20Mock__factory,
@@ -24,52 +24,55 @@ async function main() {
   // Kovan addresses
   const weth = '0xd0A1E359811322d97991E03f863a0C30C2cF029C';
 
-  const eth = await new ERC20Mock__factory(deployer).deploy('ETH', 18);
-  const dai = await new ERC20Mock__factory(deployer).deploy('DAI', 18);
-  const wbtc = await new ERC20Mock__factory(deployer).deploy('WBTC', 8);
-  const link = await new ERC20Mock__factory(deployer).deploy('LINK', 18);
+  const ethToken = await new ERC20Mock__factory(deployer).deploy('ETH', 18);
+  const daiToken = await new ERC20Mock__factory(deployer).deploy('DAI', 18);
+  const wbtcToken = await new ERC20Mock__factory(deployer).deploy('WBTC', 8);
+  const linkToken = await new ERC20Mock__factory(deployer).deploy('LINK', 18);
 
-  const tokens: TokenAddresses = {
-    ETH: eth.address,
-    DAI: dai.address,
-    BTC: wbtc.address,
-    LINK: link.address,
+  const eth: PoolToken = {
+    tokenAddress: ethToken.address,
+    oracleAddress: '0x9326BFA02ADD2366b30bacB125260Af641031331',
+    minimum: '0.05',
   };
 
-  // Kovan addresses
-  const oracles: TokenAddresses = {
-    ETH: '0x9326BFA02ADD2366b30bacB125260Af641031331',
-    DAI: '0x777A68032a88E5A84678A77Af2CD65A7b3c0775a',
-    BTC: '0x6135b13325bfC4B00278B4abC5e20bbce2D6580e',
-    LINK: '0x396c5E36DD0a0F5a5D33dae44368D4193f69a1F0',
+  const dai: PoolToken = {
+    tokenAddress: daiToken.address,
+    oracleAddress: '0x777A68032a88E5A84678A77Af2CD65A7b3c0775a',
+    minimum: '200',
   };
 
-  const minimums: TokenAmounts = {
-    DAI: '100',
-    ETH: '0.05',
-    BTC: '0.005',
-    LINK: '5',
+  const btc: PoolToken = {
+    tokenAddress: wbtcToken.address,
+    oracleAddress: '0x6135b13325bfC4B00278B4abC5e20bbce2D6580e',
+    minimum: '0.005',
   };
 
-  const premiaDiamond = await deployV2(
+  const link: PoolToken = {
+    tokenAddress: linkToken.address,
+    oracleAddress: '0x396c5E36DD0a0F5a5D33dae44368D4193f69a1F0',
+    minimum: '5',
+  };
+
+  const { premiaDiamond, proxyManager } = await deployV2(
     weth,
     premia.address,
-    fixedFromFloat(0.01),
-    fixedFromFloat(0.01),
+    fixedFromFloat(0.03),
+    fixedFromFloat(0.025),
     contracts.premiaMaker.address,
     contracts.xPremia.address,
-    tokens,
-    oracles,
-    minimums,
   );
+
+  await deployPool(proxyManager, dai, eth, 100);
+  await deployPool(proxyManager, dai, btc, 100);
+  await deployPool(proxyManager, dai, link, 100);
 
   const premiaMakerKeeper = await new PremiaMakerKeeper__factory(
     deployer,
-  ).deploy(contracts.premiaMaker.address, premiaDiamond);
+  ).deploy(contracts.premiaMaker.address, premiaDiamond.address);
 
   const processExpiredKeeper = await new ProcessExpiredKeeper__factory(
     deployer,
-  ).deploy(premiaDiamond);
+  ).deploy(premiaDiamond.address);
 
   console.log('PremiaMakerKeeper', premiaMakerKeeper.address);
   console.log('ProcessExpiredKeeper', processExpiredKeeper.address);

@@ -1,11 +1,10 @@
 import { ethers } from 'hardhat';
 import {
-  ERC20Mock__factory,
   FeeCollector__factory,
   FeeDiscount__factory,
   ProxyUpgradeableOwnable__factory,
 } from '../../../typechain';
-import { deployV2, TokenAddresses, TokenAmounts } from '../../utils/deployV2';
+import { deployPool, deployV2, PoolToken } from '../../utils/deployV2';
 import { fixedFromFloat } from '@premia/utils';
 
 async function main() {
@@ -43,43 +42,47 @@ async function main() {
 
   const premia = '0x51fc0f6660482ea73330e414efd7808811a57fa2';
 
-  const tokens: TokenAddresses = {
-    ETH: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-    DAI: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1',
-    BTC: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',
-    LINK: '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4',
+  const eth: PoolToken = {
+    tokenAddress: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
+    oracleAddress: '0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612',
+    minimum: '0.05',
   };
 
-  const oracles: TokenAddresses = {
-    ETH: '0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612',
-    DAI: '0xc5C8E77B397E531B8EC06BFb0048328B30E9eCfB',
-    BTC: '0x6ce185860a4963106506C203335A2910413708e9',
-    LINK: '0x86E53CF1B870786351Da77A57575e79CB55812CB',
+  const dai: PoolToken = {
+    tokenAddress: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1',
+    oracleAddress: '0xc5C8E77B397E531B8EC06BFb0048328B30E9eCfB',
+    minimum: '200',
   };
 
-  const minimums: TokenAmounts = {
-    DAI: '200',
-    ETH: '0.05',
-    BTC: '0.005',
-    LINK: '5',
+  const btc: PoolToken = {
+    tokenAddress: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',
+    oracleAddress: '0x6ce185860a4963106506C203335A2910413708e9',
+    minimum: '0.005',
+  };
+
+  const link: PoolToken = {
+    tokenAddress: '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4',
+    oracleAddress: '0x86E53CF1B870786351Da77A57575e79CB55812CB',
+    minimum: '5',
   };
 
   const ivolOracleProxyAddress = '0xC4B2C51f969e0713E799De73b7f130Fb7Bb604CF';
   const sushiswapFactory = '0xc35DADB65012eC5796536bD9864eD8773aBc74C4';
 
-  await deployV2(
-    tokens.ETH,
+  const { proxyManager } = await deployV2(
+    eth.tokenAddress,
     premia,
     fixedFromFloat(0.03),
-    fixedFromFloat(0.03),
+    fixedFromFloat(0.025),
     feeCollectorProxy.address,
     feeDiscountProxy.address,
-    tokens,
-    oracles,
-    minimums,
-    sushiswapFactory,
     ivolOracleProxyAddress,
+    { sushiswapFactory },
   );
+
+  await deployPool(proxyManager, dai, eth, 100);
+  await deployPool(proxyManager, dai, btc, 100);
+  await deployPool(proxyManager, dai, link, 100);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

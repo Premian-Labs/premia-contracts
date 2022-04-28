@@ -34,7 +34,9 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         int128 feePremium64x64,
         int128 feeApy64x64,
         address uniswapV2Factory,
-        address sushiswapFactory
+        address sushiswapFactory,
+        uint256 uniswapV2InitHash,
+        uint256 sushiswapInitHash
     )
         PoolSwap(
             ivolOracle,
@@ -45,7 +47,9 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             feePremium64x64,
             feeApy64x64,
             uniswapV2Factory,
-            sushiswapFactory
+            sushiswapFactory,
+            uniswapV2InitHash,
+            sushiswapInitHash
         )
     {}
 

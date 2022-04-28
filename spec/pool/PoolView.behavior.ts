@@ -91,9 +91,7 @@ export function describeBehaviorOfPoolView({
         const tokenId = getOptionTokenIds(maturity, strike64x64, isCallPool);
 
         const price = isCallPool ? strike * 0.7 : strike * 1.4;
-        await p.setUnderlyingPrice(
-          ethers.utils.parseUnits(price.toString(), 8),
-        );
+        await p.setUnderlyingPrice(price);
 
         const poolExercise = PoolExercise__factory.connect(
           instance.address,
