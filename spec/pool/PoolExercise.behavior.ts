@@ -97,7 +97,7 @@ export function describeBehaviorOfPoolExercise({
           await ethers.provider.send('evm_increaseTime', [5 * 24 * 3600]);
 
           const price = strike * 1.4;
-          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+          await p.setUnderlyingPrice(price);
 
           await expect(
             instance
@@ -144,7 +144,7 @@ export function describeBehaviorOfPoolExercise({
             .setApprovalForAll(thirdParty.address, true);
 
           const price = strike * 1.4;
-          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+          await p.setUnderlyingPrice(price);
 
           const contractSizeExercised = amount.div(ethers.constants.Two);
 
@@ -214,7 +214,7 @@ export function describeBehaviorOfPoolExercise({
             .setApprovalForAll(thirdParty.address, true);
 
           const price = strike * 1.4;
-          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+          await p.setUnderlyingPrice(price);
 
           const contractSizeExercised = amount.div(ethers.constants.Two);
 
@@ -277,7 +277,7 @@ export function describeBehaviorOfPoolExercise({
             .setApprovalForAll(thirdParty.address, true);
 
           const price = strike * 1.4;
-          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+          await p.setUnderlyingPrice(price);
 
           const contractSizeExercised = amount.div(ethers.constants.Two);
 
@@ -351,7 +351,7 @@ export function describeBehaviorOfPoolExercise({
           await ethers.provider.send('evm_increaseTime', [5 * 24 * 3600]);
 
           const price = strike * 0.7;
-          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+          await p.setUnderlyingPrice(price);
 
           await expect(
             instance
@@ -402,7 +402,7 @@ export function describeBehaviorOfPoolExercise({
             .setApprovalForAll(thirdParty.address, true);
 
           const price = strike * 0.7;
-          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+          await p.setUnderlyingPrice(price);
 
           const contractSizeExercised = amount.div(ethers.constants.Two);
 
@@ -476,7 +476,7 @@ export function describeBehaviorOfPoolExercise({
             .setApprovalForAll(thirdParty.address, true);
 
           const price = strike * 0.7;
-          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+          await p.setUnderlyingPrice(price);
 
           const contractSizeExercised = amount.div(ethers.constants.Two);
 
@@ -543,7 +543,7 @@ export function describeBehaviorOfPoolExercise({
             .setApprovalForAll(thirdParty.address, true);
 
           const price = strike * 0.7;
-          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+          await p.setUnderlyingPrice(price);
 
           const contractSizeExercised = amount.div(ethers.constants.Two);
           const tokenAmount = parseBase(
@@ -820,7 +820,7 @@ export function describeBehaviorOfPoolExercise({
           ]);
 
           const price = strike * 1.4;
-          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+          await p.setUnderlyingPrice(price);
 
           const contractSizeProcessed = amount.div(ethers.constants.Two);
 
@@ -1040,7 +1040,7 @@ export function describeBehaviorOfPoolExercise({
           ]);
 
           const price = strike * 0.7;
-          await p.setUnderlyingPrice(parseUnderlying(price.toString()));
+          await p.setUnderlyingPrice(price);
 
           const contractSizeProcessed = amount.div(ethers.constants.Two);
           const tokenAmount = parseBase(

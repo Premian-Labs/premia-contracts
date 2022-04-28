@@ -41,6 +41,10 @@ import {
   TokenType,
 } from '@premia/utils';
 import { ZERO_ADDRESS } from '../utils/constants';
+import {
+  SUSHISWAP_INIT_HASH,
+  UNISWAP_V2_INIT_HASH,
+} from '../../scripts/utils/deployV2';
 
 export const DECIMALS_BASE = 18;
 export const DECIMALS_UNDERLYING = 8;
@@ -372,6 +376,8 @@ export class PoolUtil {
       fixedFromFloat(FEE_PREMIUM),
       uniswapV2Factory ?? ZERO_ADDRESS,
       ZERO_ADDRESS,
+      UNISWAP_V2_INIT_HASH,
+      SUSHISWAP_INIT_HASH,
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -509,6 +515,8 @@ export class PoolUtil {
       fixedFromFloat(FEE_PREMIUM),
       uniswapV2Factory ?? ZERO_ADDRESS,
       ZERO_ADDRESS,
+      UNISWAP_V2_INIT_HASH,
+      SUSHISWAP_INIT_HASH,
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -598,8 +606,10 @@ export class PoolUtil {
     });
   }
 
-  async setUnderlyingPrice(price: BigNumber) {
-    await this.underlyingOracle.mock.latestAnswer.returns(price);
+  async setUnderlyingPrice(price: number) {
+    await this.underlyingOracle.mock.latestAnswer.returns(
+      parseUnits(price.toString(), 8),
+    );
   }
 
   getToken(isCall: boolean) {

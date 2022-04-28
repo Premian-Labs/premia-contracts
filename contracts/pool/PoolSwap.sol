@@ -24,6 +24,9 @@ abstract contract PoolSwap is PoolInternal {
     address internal immutable UNISWAP_V2_FACTORY;
     address internal immutable SUSHISWAP_FACTORY;
 
+    uint256 internal immutable UNISWAP_V2_INIT_HASH;
+    uint256 internal immutable SUSHISWAP_INIT_HASH;
+
     constructor(
         address ivolOracle,
         address weth,
@@ -32,7 +35,9 @@ abstract contract PoolSwap is PoolInternal {
         address feeDiscountAddress,
         int128 feePremium64x64,
         address uniswapV2Factory,
-        address sushiswapFactory
+        address sushiswapFactory,
+        uint256 uniswapV2InitHash,
+        uint256 sushiswapInitHash
     )
         PoolInternal(
             ivolOracle,
@@ -45,6 +50,8 @@ abstract contract PoolSwap is PoolInternal {
     {
         UNISWAP_V2_FACTORY = uniswapV2Factory;
         SUSHISWAP_FACTORY = sushiswapFactory;
+        UNISWAP_V2_INIT_HASH = uniswapV2InitHash;
+        SUSHISWAP_INIT_HASH = sushiswapInitHash;
     }
 
     // calculates the CREATE2 address for a pair without making any external calls
@@ -53,7 +60,7 @@ abstract contract PoolSwap is PoolInternal {
         address tokenA,
         address tokenB,
         bool isSushi
-    ) internal pure returns (address pair) {
+    ) internal view returns (address pair) {
         (address token0, address token1) = _sortTokens(tokenA, tokenB);
         pair = address(
             uint160(
@@ -63,9 +70,7 @@ abstract contract PoolSwap is PoolInternal {
                             hex"ff",
                             factory,
                             keccak256(abi.encodePacked(token0, token1)),
-                            isSushi
-                                ? hex"e18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303"
-                                : hex"96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f" // init code hash
+                            isSushi ? SUSHISWAP_INIT_HASH : UNISWAP_V2_INIT_HASH // init code hash
                         )
                     )
                 )

@@ -8,6 +8,7 @@ https://premia.finance
 | ---------------- | ------------------------------------ |
 | Ethereum Mainnet | [📜](./docs/deployments/ETHEREUM.md) |
 | Arbitrum Mainnet | [📜](./docs/deployments/ARBITRUM.md) |
+| Fantom           | [📜](./docs/deployments/FANTOM.md)   |
 
 ## Development
 
