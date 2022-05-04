@@ -1166,16 +1166,22 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) internal {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
-        _mint(account, _getFreeLiquidityTokenId(isCallPool), amount);
+        uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCallPool);
 
-        uint256 nextBatch = (block.timestamp / BATCHING_PERIOD) *
-            BATCHING_PERIOD +
-            BATCHING_PERIOD;
-        l.pendingDeposits[account][nextBatch][isCallPool] += amount;
+        if (_totalSupply(freeLiqTokenId) > 0) {
+            uint256 nextBatch = (block.timestamp / BATCHING_PERIOD) *
+                BATCHING_PERIOD +
+                BATCHING_PERIOD;
+            l.pendingDeposits[account][nextBatch][isCallPool] += amount;
 
-        PoolStorage.BatchData storage batchData = l.nextDeposits[isCallPool];
-        batchData.totalPendingDeposits += amount;
-        batchData.eta = nextBatch;
+            PoolStorage.BatchData storage batchData = l.nextDeposits[
+                isCallPool
+            ];
+            batchData.totalPendingDeposits += amount;
+            batchData.eta = nextBatch;
+        }
+
+        _mint(account, freeLiqTokenId, amount);
     }
 
     function _processPendingDeposits(PoolStorage.Layout storage l, bool isCall)
