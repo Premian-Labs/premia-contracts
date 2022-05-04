@@ -645,19 +645,21 @@ export function describeBehaviorOfPoolIO({
             lp1.address,
           );
 
-          expect(newContractBalance).to.almost(
+          expect(newContractBalance).to.be.closeTo(
             oldContractBalance
               .sub(contractSizeReassigned)
               .add(baseCost)
               .add(feeCost)
               .sub(apyFeeRemaining),
+            1,
           );
-          expect(newLPBalance).to.almost(
+          expect(newLPBalance).to.be.closeTo(
             oldLPBalance
               .add(contractSizeReassigned)
               .sub(baseCost)
               .sub(feeCost)
               .add(apyFeeRemaining),
+            1,
           );
         });
 
@@ -802,15 +804,17 @@ export function describeBehaviorOfPoolIO({
           const { underlyingTVL: newTotalTVL } =
             await instance.callStatic.getTotalTVL();
 
-          expect(newUserTVL).to.almost(
+          expect(newUserTVL).to.be.closeTo(
             oldUserTVL.sub(contractSizeReassigned).sub(apyFeeRemaining),
+            1,
           );
-          expect(newTotalTVL).to.almost(
+          expect(newTotalTVL).to.be.closeTo(
             oldTotalTVL
               .sub(contractSizeReassigned)
               .add(baseCost)
               .sub(apyFeeRemaining)
               .sub(apyFeeRemaining),
+            1,
           );
         });
       });
@@ -893,19 +897,21 @@ export function describeBehaviorOfPoolIO({
           );
           const newLPBalance = await base.callStatic.balanceOf(lp1.address);
 
-          expect(newContractBalance).to.almost(
+          expect(newContractBalance).to.be.closeTo(
             oldContractBalance
               .sub(tokenAmount)
               .add(baseCost)
               .add(feeCost)
               .sub(apyFeeRemaining),
+            1,
           );
-          expect(newLPBalance).to.almost(
+          expect(newLPBalance).to.be.closeTo(
             oldLPBalance
               .add(tokenAmount)
               .sub(baseCost)
               .sub(feeCost)
               .add(apyFeeRemaining),
+            1,
           );
         });
 
@@ -1071,15 +1077,17 @@ export function describeBehaviorOfPoolIO({
           const { baseTVL: newTotalTVL } =
             await instance.callStatic.getTotalTVL();
 
-          expect(newUserTVL).to.almost(
+          expect(newUserTVL).to.be.closeTo(
             oldUserTVL.sub(tokenAmount).sub(apyFeeRemaining),
+            1,
           );
-          expect(newTotalTVL).to.almost(
+          expect(newTotalTVL).to.be.closeTo(
             oldTotalTVL
               .sub(tokenAmount)
               .add(baseCost)
               .sub(apyFeeRemaining)
               .sub(apyFeeRemaining),
+            1,
           );
         });
       });
@@ -1218,19 +1226,21 @@ export function describeBehaviorOfPoolIO({
             lp1.address,
           );
 
-          expect(newContractBalance).to.almost(
+          expect(newContractBalance).to.be.closeTo(
             oldContractBalance
               .sub(contractSizeReassigned)
               .add(baseCost)
               .add(feeCost)
               .sub(apyFeeRemaining),
+            1,
           );
-          expect(newLPBalance).to.almost(
+          expect(newLPBalance).to.be.closeTo(
             oldLPBalance
               .add(contractSizeReassigned)
               .sub(baseCost)
               .sub(feeCost)
               .add(apyFeeRemaining),
+            1,
           );
         });
 
@@ -1375,15 +1385,17 @@ export function describeBehaviorOfPoolIO({
           const { underlyingTVL: newTotalTVL } =
             await instance.callStatic.getTotalTVL();
 
-          expect(newUserTVL).to.almost(
+          expect(newUserTVL).to.be.closeTo(
             oldUserTVL.sub(contractSizeReassigned).sub(apyFeeRemaining),
+            1,
           );
-          expect(newTotalTVL).to.almost(
+          expect(newTotalTVL).to.be.closeTo(
             oldTotalTVL
               .sub(contractSizeReassigned)
               .add(baseCost)
               .sub(apyFeeRemaining)
               .sub(apyFeeRemaining),
+            1,
           );
         });
       });
@@ -1466,19 +1478,21 @@ export function describeBehaviorOfPoolIO({
           );
           const newLPBalance = await base.callStatic.balanceOf(lp1.address);
 
-          expect(newContractBalance).to.almost(
+          expect(newContractBalance).to.be.closeTo(
             oldContractBalance
               .sub(tokenAmount)
               .add(baseCost)
               .add(feeCost)
               .sub(apyFeeRemaining),
+            1,
           );
-          expect(newLPBalance).to.almost(
+          expect(newLPBalance).to.be.closeTo(
             oldLPBalance
               .add(tokenAmount)
               .sub(baseCost)
               .sub(feeCost)
               .add(apyFeeRemaining),
+            1,
           );
         });
 
@@ -1644,15 +1658,17 @@ export function describeBehaviorOfPoolIO({
           const { baseTVL: newTotalTVL } =
             await instance.callStatic.getTotalTVL();
 
-          expect(newUserTVL).to.almost(
+          expect(newUserTVL).to.be.closeTo(
             oldUserTVL.sub(tokenAmount).sub(apyFeeRemaining),
+            1,
           );
-          expect(newTotalTVL).to.almost(
+          expect(newTotalTVL).to.be.closeTo(
             oldTotalTVL
               .sub(tokenAmount)
               .add(baseCost)
               .sub(apyFeeRemaining)
               .sub(apyFeeRemaining),
+            1,
           );
         });
       });
@@ -1845,13 +1861,15 @@ export function describeBehaviorOfPoolIO({
             lp1.address,
           );
 
-          expect(newContractBalance).to.almost(
+          expect(newContractBalance).to.be.closeTo(
             oldContractBalance
               .sub(contractSizeAnnihilated)
               .sub(apyFeeRemaining),
+            1,
           );
-          expect(newLPBalance).to.almost(
+          expect(newLPBalance).to.be.closeTo(
             oldLPBalance.add(contractSizeAnnihilated).add(apyFeeRemaining),
+            1,
           );
         });
 
@@ -1907,9 +1925,13 @@ export function describeBehaviorOfPoolIO({
           const { underlyingTVL: newTotalTVL } =
             await instance.callStatic.getTotalTVL();
 
-          expect(newUserTVL).to.almost(oldUserTVL.sub(contractSizeAnnihilated));
-          expect(newTotalTVL).to.almost(
+          expect(newUserTVL).to.be.closeTo(
+            oldUserTVL.sub(contractSizeAnnihilated),
+            1,
+          );
+          expect(newTotalTVL).to.be.closeTo(
             oldTotalTVL.sub(contractSizeAnnihilated),
+            1,
           );
         });
       });
@@ -2034,11 +2056,13 @@ export function describeBehaviorOfPoolIO({
           );
           const newLPBalance = await base.callStatic.balanceOf(lp1.address);
 
-          expect(newContractBalance).to.almost(
+          expect(newContractBalance).to.be.closeTo(
             oldContractBalance.sub(tokenAmount).sub(apyFeeRemaining),
+            1,
           );
-          expect(newLPBalance).to.almost(
+          expect(newLPBalance).to.be.closeTo(
             oldLPBalance.add(tokenAmount).add(apyFeeRemaining),
+            1,
           );
         });
 
@@ -2099,8 +2123,8 @@ export function describeBehaviorOfPoolIO({
           const { baseTVL: newTotalTVL } =
             await instance.callStatic.getTotalTVL();
 
-          expect(newUserTVL).to.almost(oldUserTVL.sub(tokenAmount));
-          expect(newTotalTVL).to.almost(oldTotalTVL.sub(tokenAmount));
+          expect(newUserTVL).to.be.closeTo(oldUserTVL.sub(tokenAmount), 1);
+          expect(newTotalTVL).to.be.closeTo(oldTotalTVL.sub(tokenAmount), 1);
         });
       });
 

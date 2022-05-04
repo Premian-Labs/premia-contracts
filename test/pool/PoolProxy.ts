@@ -17,9 +17,7 @@ import { describeBehaviorOfPoolSettings } from '../../spec/pool/PoolSettings.beh
 import { describeBehaviorOfPoolView } from '../../spec/pool/PoolView.behavior';
 import { describeBehaviorOfPoolWrite } from '../../spec/pool/PoolWrite.behavior';
 import { describeBehaviorOfPoolSell } from '../../spec/pool/PoolSell.behavior';
-import chai from 'chai';
 import { DECIMALS_BASE, DECIMALS_UNDERLYING, PoolUtil } from './PoolUtil';
-import chaiAlmost from 'chai-almost';
 import { describeBehaviorOfProxy } from '@solidstate/spec';
 import {
   createUniswap,
@@ -27,8 +25,6 @@ import {
   depositUniswapLiquidity,
   IUniswap,
 } from '../utils/uniswap';
-
-chai.use(chaiAlmost(0.02));
 
 describe('PoolProxy', function () {
   let snapshotId: number;

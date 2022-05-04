@@ -399,11 +399,12 @@ export function describeBehaviorOfPoolWrite({
           expect(newLPShortTokenBalance).to.equal(
             oldLPShortTokenBalance.add(amount),
           );
-          expect(newLPFreeLiquidityBalance).to.equal(
+          expect(newLPFreeLiquidityBalance).to.be.closeTo(
             oldLPFreeLiquidityBalance
               .sub(tokenAmount)
               .add(baseCost)
               .sub(apyFee),
+            1,
           );
         });
 
@@ -596,8 +597,14 @@ export function describeBehaviorOfPoolWrite({
           const { underlyingTVL: newTotalTVL } =
             await instance.callStatic.getTotalTVL();
 
-          expect(newUserTVL).to.equal(oldUserTVL.add(baseCost).sub(apyFee));
-          expect(newTotalTVL).to.equal(oldTotalTVL.add(baseCost).sub(apyFee));
+          expect(newUserTVL).to.be.closeTo(
+            oldUserTVL.add(baseCost).sub(apyFee),
+            1,
+          );
+          expect(newTotalTVL).to.be.closeTo(
+            oldTotalTVL.add(baseCost).sub(apyFee),
+            1,
+          );
         });
 
         it('updates divesting user TVL', async () => {
@@ -807,11 +814,12 @@ export function describeBehaviorOfPoolWrite({
           expect(newLPShortTokenBalance).to.equal(
             oldLPShortTokenBalance.add(amount),
           );
-          expect(newLPFreeLiquidityBalance).to.equal(
+          expect(newLPFreeLiquidityBalance).to.be.closeTo(
             oldLPFreeLiquidityBalance
               .sub(tokenAmount)
               .add(baseCost)
               .sub(apyFee),
+            1,
           );
         });
 
@@ -1012,8 +1020,14 @@ export function describeBehaviorOfPoolWrite({
           const { baseTVL: newTotalTVL } =
             await instance.callStatic.getTotalTVL();
 
-          expect(newUserTVL).to.equal(oldUserTVL.add(baseCost).sub(apyFee));
-          expect(newTotalTVL).to.equal(oldTotalTVL.add(baseCost).sub(apyFee));
+          expect(newUserTVL).to.be.closeTo(
+            oldUserTVL.add(baseCost).sub(apyFee),
+            1,
+          );
+          expect(newTotalTVL).to.be.closeTo(
+            oldTotalTVL.add(baseCost).sub(apyFee),
+            1,
+          );
         });
 
         it('updates divesting user TVL', async () => {
@@ -1084,8 +1098,9 @@ export function describeBehaviorOfPoolWrite({
             await instance.callStatic.getTotalTVL();
 
           expect(newUserTVL).to.equal(oldUserTVL.sub(divestedLiquidity));
-          expect(newTotalTVL).to.equal(
+          expect(newTotalTVL).to.be.closeTo(
             oldTotalTVL.add(baseCost).sub(apyFee).sub(divestedLiquidity),
+            1,
           );
         });
 
@@ -1373,9 +1388,12 @@ export function describeBehaviorOfPoolWrite({
               longTokenId,
             );
 
-            expect(newPoolTokenBalance).to.eq(oldPoolTokenBalance);
+            expect(newPoolTokenBalance).to.be.closeTo(oldPoolTokenBalance, 1);
             // TODO: assert cost
-            expect(newLongTokenBalance).to.eq(oldLongTokenBalance.add(amount));
+            expect(newLongTokenBalance).to.be.closeTo(
+              oldLongTokenBalance.add(amount),
+              1,
+            );
           });
 
           it('executes purchase using ETH', async () => {
@@ -1439,9 +1457,12 @@ export function describeBehaviorOfPoolWrite({
               longTokenId,
             );
 
-            expect(newPoolTokenBalance).to.eq(oldPoolTokenBalance);
+            expect(newPoolTokenBalance).to.be.closeTo(oldPoolTokenBalance, 1);
             // TODO: assert cost
-            expect(newLongTokenBalance).to.eq(oldLongTokenBalance.add(amount));
+            expect(newLongTokenBalance).to.be.closeTo(
+              oldLongTokenBalance.add(amount),
+              1,
+            );
           });
         });
       }

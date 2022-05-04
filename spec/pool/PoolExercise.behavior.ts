@@ -306,12 +306,14 @@ export function describeBehaviorOfPoolExercise({
             .mul(ethers.utils.parseEther(FEE_APY.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
-          expect(newUserTVL).to.equal(
+          expect(newUserTVL).to.be.closeTo(
             oldUserTVL.sub(exerciseValue).add(apyFeeRemaining),
+            1,
           );
 
-          expect(newTotalTVL).to.equal(
+          expect(newTotalTVL).to.be.closeTo(
             oldTotalTVL.sub(exerciseValue).add(apyFeeRemaining),
+            1,
           );
         });
       });
@@ -581,12 +583,14 @@ export function describeBehaviorOfPoolExercise({
             .mul(ethers.utils.parseEther(FEE_APY.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
-          expect(newUserTVL).to.equal(
+          expect(newUserTVL).to.be.closeTo(
             oldUserTVL.sub(exerciseValue).add(apyFeeRemaining),
+            1,
           );
 
-          expect(newTotalTVL).to.equal(
+          expect(newTotalTVL).to.be.closeTo(
             oldTotalTVL.sub(exerciseValue).add(apyFeeRemaining),
+            1,
           );
         });
       });

@@ -41,9 +41,8 @@ describe('ABDKMath64x64Token', function () {
           for (let fixed of fixedPointValues.filter((f) => Number(f) > 0)) {
             const bn = ethers.constants.Zero.sub(ethers.BigNumber.from(fixed));
 
-            await expect(
-              instance.callStatic.toDecimals(bn, decimals),
-            ).to.be.revertedWith('Transaction reverted without a reason');
+            await expect(instance.callStatic.toDecimals(bn, decimals)).to.be
+              .reverted;
           }
         }
       });
@@ -109,9 +108,7 @@ describe('ABDKMath64x64Token', function () {
         for (let fixed of fixedPointValues.filter((f) => Number(f) > 0)) {
           const bn = ethers.constants.Zero.sub(ethers.BigNumber.from(fixed));
 
-          await expect(instance.callStatic.toWei(bn)).to.be.revertedWith(
-            'Transaction reverted without a reason',
-          );
+          await expect(instance.callStatic.toWei(bn)).to.be.reverted;
         }
       });
     });
