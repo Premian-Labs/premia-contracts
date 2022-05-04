@@ -425,7 +425,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         _addUserTVL(l, msg.sender, isCallPool, amount);
         _pullFrom(l, msg.sender, amount, isCallPool, creditMessageValue);
 
-        _addToDepositQueue(msg.sender, amount, isCallPool);
+        _processAvailableFunds(msg.sender, amount, isCallPool, false, false);
 
         emit Deposit(msg.sender, isCallPool, amount);
     }
