@@ -9,11 +9,6 @@ let admin: SignerWithAddress;
 let user1: SignerWithAddress;
 let treasury: SignerWithAddress;
 
-const chai = require('chai');
-const chaiAlmost = require('chai-almost');
-
-chai.use(chaiAlmost(0.01));
-
 const { API_KEY_ALCHEMY } = process.env;
 const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`;
 const blockNumber = 14051250;
