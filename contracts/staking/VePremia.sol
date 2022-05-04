@@ -3,7 +3,7 @@
 
 pragma solidity ^0.8.0;
 
-import {FeeDiscount} from "./FeeDiscount.sol";
+import {PremiaStakingWithFeeDiscount} from "./PremiaStakingWithFeeDiscount.sol";
 import {FeeDiscountStorage} from "./FeeDiscountStorage.sol";
 import {VePremiaStorage} from "./VePremiaStorage.sol";
 import {IVePremia} from "./IVePremia.sol";
@@ -12,8 +12,12 @@ import {IVePremia} from "./IVePremia.sol";
  * @author Premia
  * @title A contract allowing you to use your locked Premia as voting power for mining weights
  */
-contract VePremia is IVePremia, FeeDiscount {
-    constructor(address xPremia) FeeDiscount(xPremia) {}
+contract VePremia is IVePremia, PremiaStakingWithFeeDiscount {
+    constructor(
+        address premia,
+        address oldFeeDiscount,
+        address oldStaking
+    ) PremiaStakingWithFeeDiscount(premia, oldFeeDiscount, oldStaking) {}
 
     function _beforeStake(uint256 amount, uint256 period) internal override {
         FeeDiscountStorage.UserInfo memory userInfo = FeeDiscountStorage
@@ -155,5 +159,49 @@ contract VePremia is IVePremia, FeeDiscount {
         returns (VePremiaStorage.Vote[] memory)
     {
         return VePremiaStorage.layout().userVotes[user];
+    }
+
+    /**
+     * @inheritdoc IVePremia
+     */
+    function castVotes(VePremiaStorage.Vote[] memory votes) external {
+        VePremiaStorage.Layout storage l = VePremiaStorage.layout();
+
+        FeeDiscountStorage.UserInfo memory userInfo = FeeDiscountStorage
+            .layout()
+            .userInfo[msg.sender];
+
+        uint256 userVotingPower = _calculateVotingPower(
+            userInfo.balance,
+            userInfo.stakePeriod
+        );
+
+        // Remove previous votes
+        for (uint256 i = 0; i < l.userVotes[msg.sender].length; i++) {
+            VePremiaStorage.Vote memory vote = l.userVotes[msg.sender][i];
+
+            l.votes[vote.chainId][vote.poolAddress][vote.isCallPool] -= vote
+                .amount;
+        }
+
+        delete l.userVotes[msg.sender];
+
+        // Cast new votes
+        uint256 votingPowerUsed = 0;
+        for (uint256 i = 0; i < votes.length; i++) {
+            VePremiaStorage.Vote memory vote = votes[i];
+
+            votingPowerUsed += votes[i].amount;
+            require(
+                votingPowerUsed <= userVotingPower,
+                "not enough voting power"
+            );
+
+            l.userVotes[msg.sender].push(votes[i]);
+            l.votes[vote.chainId][vote.poolAddress][vote.isCallPool] += vote
+                .amount;
+        }
+
+        // ToDo : Handle pool updates
     }
 }

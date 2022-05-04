@@ -27,4 +27,10 @@ interface IVePremia {
         external
         view
         returns (VePremiaStorage.Vote[] memory);
+
+    /**
+     * @notice add or remove votes, in the limit of the user voting power
+     * @param votes votes to cast
+     */
+    function castVotes(VePremiaStorage.Vote[] memory votes) external;
 }
