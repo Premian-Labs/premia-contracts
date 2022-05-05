@@ -734,6 +734,11 @@
   dependencies:
     antlr4ts "^0.5.0-alpha.4"
 
+"@solidstate/abdk-math-extensions@^1.0.0":
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/@solidstate/abdk-math-extensions/-/abdk-math-extensions-1.0.0.tgz#89b346fd00d94b786463494522c3640fca32436a"
+  integrity sha512-JxOhjY/h0OUm0PTElRt1bS3hhorY2rM07aCE5fJL/FDF16/a1+3pz1ivhftFyub0YS3ycD8dnuQQmykxMv03UQ==
+
 "@solidstate/contracts@^0.0.30":
   version "0.0.30"
   resolved "https://registry.npmjs.org/@solidstate/contracts/-/contracts-0.0.30.tgz"

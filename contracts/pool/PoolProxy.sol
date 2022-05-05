@@ -3,6 +3,7 @@
 
 pragma solidity ^0.8.0;
 
+import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 import {ERC165Storage} from "@solidstate/contracts/introspection/ERC165Storage.sol";
 import {Proxy} from "@solidstate/contracts/proxy/Proxy.sol";
@@ -13,7 +14,6 @@ import {IERC165} from "@solidstate/contracts/introspection/IERC165.sol";
 
 import {IProxyManager} from "../core/IProxyManager.sol";
 import {PoolStorage} from "./PoolStorage.sol";
-import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 
 /**
  * @title Upgradeable proxy with centrally controlled Pool implementation
