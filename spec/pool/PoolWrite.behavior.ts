@@ -102,11 +102,11 @@ export function describeBehaviorOfPoolWrite({
             true,
           );
 
-          expect(fixedToNumber(q.baseCost64x64) * 2000).to.almost(24.62);
+          expect(fixedToNumber(q.baseCost64x64) * 2000).to.almost(40.6);
           expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
             fixedToNumber(q.baseCost64x64) * 0.01,
           );
-          expect(fixedToNumber(q.cLevel64x64)).to.almost(1.82);
+          expect(fixedToNumber(q.cLevel64x64)).to.almost(3);
           expect(
             (fixedToNumber(q.baseCost64x64) * 2000) /
               fixedToNumber(q.cLevel64x64) /
@@ -191,11 +191,11 @@ export function describeBehaviorOfPoolWrite({
             false,
           );
 
-          expect(fixedToNumber(q.baseCost64x64)).to.almost(45.14);
+          expect(fixedToNumber(q.baseCost64x64)).to.almost(74.43);
           expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
             fixedToNumber(q.baseCost64x64) * 0.03,
           );
-          expect(fixedToNumber(q.cLevel64x64)).to.almost(1.98);
+          expect(fixedToNumber(q.cLevel64x64)).to.almost(3.24);
           expect(
             fixedToNumber(q.baseCost64x64) /
               fixedToNumber(q.cLevel64x64) /

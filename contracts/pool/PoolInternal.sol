@@ -425,7 +425,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         _addUserTVL(l, msg.sender, isCallPool, amount);
         _pullFrom(l, msg.sender, amount, isCallPool, creditMessageValue);
 
-        _addToDepositQueue(msg.sender, amount, isCallPool);
+        _processAvailableFunds(msg.sender, amount, isCallPool, false, false);
 
         emit Deposit(msg.sender, isCallPool, amount);
     }
@@ -1166,16 +1166,22 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) internal {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
-        _mint(account, _getFreeLiquidityTokenId(isCallPool), amount);
+        uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCallPool);
 
-        uint256 nextBatch = (block.timestamp / BATCHING_PERIOD) *
-            BATCHING_PERIOD +
-            BATCHING_PERIOD;
-        l.pendingDeposits[account][nextBatch][isCallPool] += amount;
+        if (_totalSupply(freeLiqTokenId) > 0) {
+            uint256 nextBatch = (block.timestamp / BATCHING_PERIOD) *
+                BATCHING_PERIOD +
+                BATCHING_PERIOD;
+            l.pendingDeposits[account][nextBatch][isCallPool] += amount;
 
-        PoolStorage.BatchData storage batchData = l.nextDeposits[isCallPool];
-        batchData.totalPendingDeposits += amount;
-        batchData.eta = nextBatch;
+            PoolStorage.BatchData storage batchData = l.nextDeposits[
+                isCallPool
+            ];
+            batchData.totalPendingDeposits += amount;
+            batchData.eta = nextBatch;
+        }
+
+        _mint(account, freeLiqTokenId, amount);
     }
 
     function _processPendingDeposits(PoolStorage.Layout storage l, bool isCall)
