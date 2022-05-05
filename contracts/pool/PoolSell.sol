@@ -4,9 +4,8 @@
 pragma solidity ^0.8.0;
 
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
+import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
 import {EnumerableSet, ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155EnumerableStorage.sol";
-
-import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 
 import {IPoolSell} from "./IPoolSell.sol";
 import {PoolInternal} from "./PoolInternal.sol";
