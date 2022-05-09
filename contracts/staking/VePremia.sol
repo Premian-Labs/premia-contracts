@@ -98,7 +98,7 @@ contract VePremia is IVePremia, PremiaStakingWithFeeDiscount {
         uint256 amount
     ) internal {
         uint256 toSubtract = amount;
-        for (uint256 i = l.userVotes[user].length + 1; i > 0; i--) {
+        for (uint256 i = l.userVotes[user].length; i > 0; i--) {
             if (toSubtract <= l.userVotes[user][i - 1].amount) {
                 l.userVotes[user][i - 1].amount -= toSubtract;
                 return;
