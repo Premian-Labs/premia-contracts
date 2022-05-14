@@ -5,6 +5,13 @@ pragma solidity ^0.8.0;
 import {PremiaMiningStorage} from "./PremiaMiningStorage.sol";
 
 interface IPremiaMining {
+    struct PoolAllocPoints {
+        address pool;
+        bool isCallPool;
+        uint256 votes;
+        uint256 utilizationRate; // 100% = 1e4
+    }
+
     function addPremiaRewards(uint256 _amount) external;
 
     function premiaRewardsAvailable() external view returns (uint256);
@@ -20,10 +27,7 @@ interface IPremiaMining {
 
     function addPool(address _pool, uint256 _allocPoints) external;
 
-    function setPoolAllocPoints(
-        address[] memory _pools,
-        uint256[] memory _allocPoints
-    ) external;
+    function setPoolAllocPoints(PoolAllocPoints[] memory _data) external;
 
     function pendingPremia(
         address _pool,
