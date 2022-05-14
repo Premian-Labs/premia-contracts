@@ -21,6 +21,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
     address internal immutable DIAMOND;
     address internal immutable PREMIA;
+    address internal immutable RELAYER;
 
     uint256 private constant ONE_YEAR = 365 days;
     uint256 private constant INVERSE_BASIS_POINT = 1e4;
@@ -35,11 +36,16 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         address indexed pool,
         bool indexed isCallPool,
         uint256 votes,
-        uint256 utilizationRate
+        uint256 poolUtilizationRate
     );
 
-    constructor(address _diamond, address _premia) {
+    constructor(
+        address _diamond,
+        address _relayer,
+        address _premia
+    ) {
         DIAMOND = _diamond;
+        RELAYER = _relayer;
         PREMIA = _premia;
     }
 
@@ -48,11 +54,12 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         _;
     }
 
-    modifier onlyDiamondOrOwner() {
+    modifier onlyAuthorized() {
         require(
             msg.sender == DIAMOND ||
+                msg.sender == RELAYER ||
                 msg.sender == OwnableStorage.layout().owner,
-            "Not diamond or owner"
+            "Not authorized"
         );
         _;
     }
@@ -117,7 +124,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @notice Add a new option pool to the liquidity mining. Can only be called by the owner or premia diamond
      * @param _pool Address of option pool contract
      */
-    function addPool(address _pool, uint256) external onlyDiamondOrOwner {
+    function addPool(address _pool, uint256) external onlyAuthorized {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
         require(
             l.poolInfo[_pool][true].lastRewardTimestamp == 0 &&
@@ -142,14 +149,13 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     }
 
     /**
-     * @notice Set new alloc points for an option pool. Can only be called by the owner or premia diamond
+     * @notice Set new alloc points for an option pool. Can only be called by the owner or premia diamond.
+               Pools should be updated with IPoolIO(pool).updateMiningPools() before changing alloc points
      * @param _poolAllocPoints Pool alloc points data
      */
     function setPoolAllocPoints(
         IPremiaMining.PoolAllocPoints[] memory _poolAllocPoints
-    ) external onlyDiamondOrOwner {
-        // ToDo : Update all pools first
-
+    ) external onlyAuthorized {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
 
         for (uint256 i; i < _poolAllocPoints.length; i++) {
@@ -161,7 +167,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
                 "Pool does not exists"
             );
 
-            uint256 allocPoints = (data.votes * data.utilizationRate) /
+            uint256 allocPoints = (data.votes * data.poolUtilizationRate) /
                 INVERSE_BASIS_POINT;
 
             l.totalAllocPoint =
@@ -183,7 +189,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
                 data.pool,
                 data.isCallPool,
                 data.votes,
-                data.utilizationRate
+                data.poolUtilizationRate
             );
         }
     }

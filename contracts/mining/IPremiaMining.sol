@@ -9,7 +9,7 @@ interface IPremiaMining {
         address pool;
         bool isCallPool;
         uint256 votes;
-        uint256 utilizationRate; // 100% = 1e4
+        uint256 poolUtilizationRate; // 100% = 1e4
     }
 
     function addPremiaRewards(uint256 _amount) external;
