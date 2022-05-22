@@ -1122,8 +1122,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 intervalApyFee,
         bool isCallPool
     ) internal returns (uint256 rebate) {
-        if (intervalApyFee == 0) return 0;
-
         // calculate proportion of fees reserved corresponding to interval
 
         uint256 feesReserved = l.feesReserved[underwriter][shortTokenId];
