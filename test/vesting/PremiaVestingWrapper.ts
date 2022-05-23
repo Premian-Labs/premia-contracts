@@ -73,21 +73,21 @@ describe('PremiaVesting', () => {
 
     expect(
       Number(formatEther(await premia.balanceOf(user1.address))),
-    ).to.almost(VESTED_PREMIA / 730);
+    ).to.almost(VESTED_PREMIA / 730, 0.2);
 
     await increaseTimestamp(ONE_DAY);
     await premiaVestingWrapper.connect(user1).withdraw();
 
     expect(
       Number(formatEther(await premia.balanceOf(user1.address))),
-    ).to.almost((VESTED_PREMIA / 730) * 2);
+    ).to.almost((VESTED_PREMIA / 730) * 2, 0.2);
 
     await increaseTimestamp(ONE_DAY * 363);
     await premiaVestingWrapper.connect(user1).withdraw();
 
     expect(
       Number(formatEther(await premia.balanceOf(user1.address))),
-    ).to.almost(VESTED_PREMIA / 2);
+    ).to.almost(VESTED_PREMIA / 2, 0.2);
 
     await increaseTimestamp(ONE_DAY * 370);
     await premiaVestingWrapper.connect(user1).withdraw();
