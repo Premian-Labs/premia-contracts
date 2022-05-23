@@ -1,4 +1,4 @@
-import chai, { expect } from 'chai';
+import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import {
@@ -25,10 +25,7 @@ import {
   IUniswap,
 } from '../utils/uniswap';
 import { deployV1, IPremiaContracts } from '../../scripts/utils/deployV1';
-import chaiAlmost from 'chai-almost';
 import { bnToNumber } from '../utils/math';
-
-chai.use(chaiAlmost(0.01));
 
 describe('PremiaMakerKeeper', () => {
   let owner: SignerWithAddress;
