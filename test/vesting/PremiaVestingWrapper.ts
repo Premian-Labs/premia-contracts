@@ -1,5 +1,4 @@
-import chai, { expect } from 'chai';
-import chaiAlmost from 'chai-almost';
+import { expect } from 'chai';
 import {
   PremiaErc20,
   PremiaErc20__factory,
@@ -12,8 +11,6 @@ import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { increaseTimestamp, resetHardhat } from '../utils/evm';
 import { formatEther, parseEther } from 'ethers/lib/utils';
-
-chai.use(chaiAlmost(0.2));
 
 let owner: SignerWithAddress;
 let admin: SignerWithAddress;

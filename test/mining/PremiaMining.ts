@@ -1,4 +1,4 @@
-import chai, { expect } from 'chai';
+import { expect } from 'chai';
 import { getTokenDecimals, PoolUtil } from '../pool/PoolUtil';
 import { increaseTimestamp, mineBlockUntil, resetHardhat } from '../utils/evm';
 import { ethers, network } from 'hardhat';
@@ -12,9 +12,6 @@ import {
 } from '../../typechain';
 import { parseEther, parseUnits } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
-import chaiAlmost from 'chai-almost';
-
-chai.use(chaiAlmost(0.05));
 
 const oneDay = 24 * 3600;
 const oneMonth = 30 * oneDay;
