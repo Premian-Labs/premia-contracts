@@ -24,6 +24,7 @@ const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`;
 const blockNumber = 13366880;
 const ONE_DAY = 24 * 3600;
 const VESTED_PREMIA = 2500000;
+const CHAI_ALMOST_OVERRIDE = 0.2;
 
 describe('PremiaVesting', () => {
   beforeEach(async () => {
@@ -73,21 +74,21 @@ describe('PremiaVesting', () => {
 
     expect(
       Number(formatEther(await premia.balanceOf(user1.address))),
-    ).to.almost(VESTED_PREMIA / 730, 0.2);
+    ).to.almost(VESTED_PREMIA / 730, CHAI_ALMOST_OVERRIDE);
 
     await increaseTimestamp(ONE_DAY);
     await premiaVestingWrapper.connect(user1).withdraw();
 
     expect(
       Number(formatEther(await premia.balanceOf(user1.address))),
-    ).to.almost((VESTED_PREMIA / 730) * 2, 0.2);
+    ).to.almost((VESTED_PREMIA / 730) * 2, CHAI_ALMOST_OVERRIDE);
 
     await increaseTimestamp(ONE_DAY * 363);
     await premiaVestingWrapper.connect(user1).withdraw();
 
     expect(
       Number(formatEther(await premia.balanceOf(user1.address))),
-    ).to.almost(VESTED_PREMIA / 2, 0.2);
+    ).to.almost(VESTED_PREMIA / 2, CHAI_ALMOST_OVERRIDE);
 
     await increaseTimestamp(ONE_DAY * 370);
     await premiaVestingWrapper.connect(user1).withdraw();
