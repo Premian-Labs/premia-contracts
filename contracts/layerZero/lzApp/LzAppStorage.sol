@@ -1,5 +1,4 @@
-// SPDX-License-Identifier: BUSL-1.1
-// For further clarification please see https://license.premia.legal
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.0;
 

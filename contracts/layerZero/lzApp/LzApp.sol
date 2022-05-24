@@ -19,18 +19,21 @@ abstract contract LzApp is
 {
     ILayerZeroEndpoint public immutable lzEndpoint;
 
-    event SetTrustedRemote(uint16 _srcChainId, bytes _srcAddress);
+    event SetTrustedRemote(uint16 srcChainId, bytes srcAddress);
 
-    constructor(address _endpoint) {
-        lzEndpoint = ILayerZeroEndpoint(_endpoint);
+    constructor(address endpoint) {
+        lzEndpoint = ILayerZeroEndpoint(endpoint);
     }
 
+    /**
+     * @inheritdoc ILayerZeroReceiver
+     */
     function lzReceive(
-        uint16 _srcChainId,
-        bytes memory _srcAddress,
-        uint64 _nonce,
-        bytes memory _payload
-    ) public virtual override {
+        uint16 srcChainId,
+        bytes memory srcAddress,
+        uint64 nonce,
+        bytes memory payload
+    ) public virtual {
         // lzReceive must be called by the endpoint for security
         require(
             msg.sender == address(lzEndpoint),
@@ -39,110 +42,115 @@ abstract contract LzApp is
 
         LzAppStorage.Layout storage l = LzAppStorage.layout();
 
-        bytes memory trustedRemote = l.trustedRemoteLookup[_srcChainId];
+        bytes memory trustedRemote = l.trustedRemoteLookup[srcChainId];
         // if will still block the message pathway from (srcChainId, srcAddress). should not receive message from untrusted remote.
         require(
-            _srcAddress.length == trustedRemote.length &&
-                keccak256(_srcAddress) == keccak256(trustedRemote),
+            srcAddress.length == trustedRemote.length &&
+                keccak256(srcAddress) == keccak256(trustedRemote),
             "LzApp: invalid source sending contract"
         );
 
-        _blockingLzReceive(_srcChainId, _srcAddress, _nonce, _payload);
+        _blockingLzReceive(srcChainId, srcAddress, nonce, payload);
     }
 
     // abstract function - the default behaviour of LayerZero is blocking. See: NonblockingLzApp if you dont need to enforce ordered messaging
     function _blockingLzReceive(
-        uint16 _srcChainId,
-        bytes memory _srcAddress,
-        uint64 _nonce,
-        bytes memory _payload
+        uint16 srcChainId,
+        bytes memory srcAddress,
+        uint64 nonce,
+        bytes memory payload
     ) internal virtual;
 
     function _lzSend(
-        uint16 _dstChainId,
-        bytes memory _payload,
-        address payable _refundAddress,
-        address _zroPaymentAddress,
-        bytes memory _adapterParams
+        uint16 dstChainId,
+        bytes memory payload,
+        address payable refundAddress,
+        address zroPaymentAddress,
+        bytes memory adapterParams
     ) internal virtual {
         LzAppStorage.Layout storage l = LzAppStorage.layout();
 
-        bytes memory trustedRemote = l.trustedRemoteLookup[_dstChainId];
+        bytes memory trustedRemote = l.trustedRemoteLookup[dstChainId];
         require(
             trustedRemote.length != 0,
             "LzApp: destination chain is not a trusted source"
         );
         lzEndpoint.send{value: msg.value}(
-            _dstChainId,
+            dstChainId,
             trustedRemote,
-            _payload,
-            _refundAddress,
-            _zroPaymentAddress,
-            _adapterParams
+            payload,
+            refundAddress,
+            zroPaymentAddress,
+            adapterParams
         );
     }
 
     //---------------------------UserApplication config----------------------------------------
     function getConfig(
-        uint16 _version,
-        uint16 _chainId,
+        uint16 version,
+        uint16 chainId,
         address,
-        uint256 _configType
+        uint256 configType
     ) external view returns (bytes memory) {
         return
-            lzEndpoint.getConfig(
-                _version,
-                _chainId,
-                address(this),
-                _configType
-            );
+            lzEndpoint.getConfig(version, chainId, address(this), configType);
     }
 
-    // generic config for LayerZero user Application
+    /**
+     * @inheritdoc ILayerZeroUserApplicationConfig
+     */
     function setConfig(
-        uint16 _version,
-        uint16 _chainId,
-        uint256 _configType,
-        bytes calldata _config
-    ) external override onlyOwner {
-        lzEndpoint.setConfig(_version, _chainId, _configType, _config);
+        uint16 version,
+        uint16 chainId,
+        uint256 configType,
+        bytes calldata config
+    ) external onlyOwner {
+        lzEndpoint.setConfig(version, chainId, configType, config);
     }
 
-    function setSendVersion(uint16 _version) external override onlyOwner {
-        lzEndpoint.setSendVersion(_version);
+    /**
+     * @inheritdoc ILayerZeroUserApplicationConfig
+     */
+    function setSendVersion(uint16 version) external onlyOwner {
+        lzEndpoint.setSendVersion(version);
     }
 
-    function setReceiveVersion(uint16 _version) external override onlyOwner {
-        lzEndpoint.setReceiveVersion(_version);
+    /**
+     * @inheritdoc ILayerZeroUserApplicationConfig
+     */
+    function setReceiveVersion(uint16 version) external onlyOwner {
+        lzEndpoint.setReceiveVersion(version);
     }
 
-    function forceResumeReceive(uint16 _srcChainId, bytes calldata _srcAddress)
+    /**
+     * @inheritdoc ILayerZeroUserApplicationConfig
+     */
+    function forceResumeReceive(uint16 srcChainId, bytes calldata srcAddress)
         external
-        override
         onlyOwner
     {
-        lzEndpoint.forceResumeReceive(_srcChainId, _srcAddress);
+        lzEndpoint.forceResumeReceive(srcChainId, srcAddress);
     }
 
     // allow owner to set it multiple times.
-    function setTrustedRemote(uint16 _srcChainId, bytes calldata _srcAddress)
+    function setTrustedRemote(uint16 srcChainId, bytes calldata srcAddress)
         external
         onlyOwner
     {
         LzAppStorage.Layout storage l = LzAppStorage.layout();
-        l.trustedRemoteLookup[_srcChainId] = _srcAddress;
-        emit SetTrustedRemote(_srcChainId, _srcAddress);
+        l.trustedRemoteLookup[srcChainId] = srcAddress;
+        emit SetTrustedRemote(srcChainId, srcAddress);
     }
 
     //--------------------------- VIEW FUNCTION ----------------------------------------
 
-    function isTrustedRemote(uint16 _srcChainId, bytes calldata _srcAddress)
+    function isTrustedRemote(uint16 srcChainId, bytes calldata srcAddress)
         external
         view
         returns (bool)
     {
         LzAppStorage.Layout storage l = LzAppStorage.layout();
-        bytes memory trustedSource = l.trustedRemoteLookup[_srcChainId];
-        return keccak256(trustedSource) == keccak256(_srcAddress);
+        bytes memory trustedSource = l.trustedRemoteLookup[srcChainId];
+        return keccak256(trustedSource) == keccak256(srcAddress);
     }
 }
