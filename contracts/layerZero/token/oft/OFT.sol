@@ -33,14 +33,21 @@ contract OFT is OFTCore, ERC20, IOFT {
         address spender = msg.sender;
 
         if (from != spender) {
-            mapping(address => uint256) storage allowances = ERC20BaseStorage
-                .layout()
-                .allowances[spender];
+            unchecked {
+                mapping(address => uint256)
+                    storage allowances = ERC20BaseStorage.layout().allowances[
+                        spender
+                    ];
 
-            uint256 allowance = allowances[spender];
-            require(amount <= allowance, "insufficient allowance");
+                uint256 allowance = allowances[spender];
+                require(amount <= allowance, "insufficient allowance");
 
-            _approve(from, spender, allowances[spender] = allowance - amount);
+                _approve(
+                    from,
+                    spender,
+                    allowances[spender] = allowance - amount
+                );
+            }
         }
 
         _burn(from, amount);
