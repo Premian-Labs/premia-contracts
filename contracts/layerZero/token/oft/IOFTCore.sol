@@ -10,39 +10,39 @@ import {IERC165} from "@solidstate/contracts/introspection/IERC165.sol";
  */
 interface IOFTCore is IERC165 {
     /**
-     * @dev estimate send token `_tokenId` to (`_dstChainId`, `_toAddress`)
-     * _dstChainId - L0 defined chain id to send tokens too
-     * _toAddress - dynamic bytes array which contains the address to whom you are sending tokens to on the dstChain
-     * _amount - amount of the tokens to transfer
-     * _useZro - indicates to use zro to pay L0 fees
-     * _adapterParam - flexible bytes array to indicate messaging adapter services in L0
+     * @dev estimate send token `tokenId` to (`dstChainId`, `toAddress`)
+     * dstChainId - L0 defined chain id to send tokens too
+     * toAddress - dynamic bytes array which contains the address to whom you are sending tokens to on the dstChain
+     * amount - amount of the tokens to transfer
+     * useZro - indicates to use zro to pay L0 fees
+     * adapterParam - flexible bytes array to indicate messaging adapter services in L0
      */
     function estimateSendFee(
-        uint16 _dstChainId,
-        bytes calldata _toAddress,
-        uint256 _amount,
-        bool _useZro,
-        bytes calldata _adapterParams
+        uint16 dstChainId,
+        bytes calldata toAddress,
+        uint256 amount,
+        bool useZro,
+        bytes calldata adapterParams
     ) external view returns (uint256 nativeFee, uint256 zroFee);
 
     /**
-     * @dev send `_amount` amount of token to (`_dstChainId`, `_toAddress`) from `_from`
-     * `_from` the owner of token
-     * `_dstChainId` the destination chain identifier
-     * `_toAddress` can be any size depending on the `dstChainId`.
-     * `_amount` the quantity of tokens in wei
-     * `_refundAddress` the address LayerZero refunds if too much message fee is sent
-     * `_zroPaymentAddress` set to address(0x0) if not paying in ZRO (LayerZero Token)
-     * `_adapterParams` is a flexible bytes array to indicate messaging adapter services
+     * @dev send `amount` amount of token to (`dstChainId`, `toAddress`) from `from`
+     * `from` the owner of token
+     * `dstChainId` the destination chain identifier
+     * `toAddress` can be any size depending on the `dstChainId`.
+     * `amount` the quantity of tokens in wei
+     * `refundAddress` the address LayerZero refunds if too much message fee is sent
+     * `zroPaymentAddress` set to address(0x0) if not paying in ZRO (LayerZero Token)
+     * `adapterParams` is a flexible bytes array to indicate messaging adapter services
      */
     function sendFrom(
-        address _from,
-        uint16 _dstChainId,
-        bytes calldata _toAddress,
-        uint256 _amount,
-        address payable _refundAddress,
-        address _zroPaymentAddress,
-        bytes calldata _adapterParams
+        address from,
+        uint16 dstChainId,
+        bytes calldata toAddress,
+        uint256 amount,
+        address payable refundAddress,
+        address zroPaymentAddress,
+        bytes calldata adapterParams
     ) external payable;
 
     /**
@@ -51,26 +51,26 @@ interface IOFTCore is IERC165 {
     function circulatingSupply() external view returns (uint256);
 
     /**
-     * @dev Emitted when `_amount` tokens are moved from the `_sender` to (`_dstChainId`, `_toAddress`)
-     * `_nonce` is the outbound nonce
+     * @dev Emitted when `amount` tokens are moved from the `sender` to (`dstChainId`, `toAddress`)
+     * `nonce` is the outbound nonce
      */
     event SendToChain(
-        address indexed _sender,
-        uint16 indexed _dstChainId,
-        bytes indexed _toAddress,
-        uint256 _amount,
-        uint64 _nonce
+        address indexed sender,
+        uint16 indexed dstChainId,
+        bytes indexed toAddress,
+        uint256 amount,
+        uint64 nonce
     );
 
     /**
-     * @dev Emitted when `_amount` tokens are received from `_srcChainId` into the `_toAddress` on the local chain.
-     * `_nonce` is the inbound nonce.
+     * @dev Emitted when `amount` tokens are received from `srcChainId` into the `toAddress` on the local chain.
+     * `nonce` is the inbound nonce.
      */
     event ReceiveFromChain(
-        uint16 indexed _srcChainId,
-        bytes indexed _srcAddress,
-        address indexed _toAddress,
-        uint256 _amount,
-        uint64 _nonce
+        uint16 indexed srcChainId,
+        bytes indexed srcAddress,
+        address indexed toAddress,
+        uint256 amount,
+        uint64 nonce
     );
 }

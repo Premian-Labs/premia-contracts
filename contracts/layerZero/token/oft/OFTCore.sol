@@ -7,56 +7,56 @@ import {IOFTCore} from "./IOFTCore.sol";
 import {ERC165, IERC165} from "@solidstate/contracts/introspection/ERC165.sol";
 
 abstract contract OFTCore is NonblockingLzApp, ERC165, IOFTCore {
-    constructor(address _lzEndpoint) NonblockingLzApp(_lzEndpoint) {}
+    constructor(address lzEndpoint) NonblockingLzApp(lzEndpoint) {}
 
     function estimateSendFee(
-        uint16 _dstChainId,
-        bytes memory _toAddress,
-        uint256 _amount,
-        bool _useZro,
-        bytes memory _adapterParams
+        uint16 dstChainId,
+        bytes memory toAddress,
+        uint256 amount,
+        bool useZro,
+        bytes memory adapterParams
     ) public view virtual override returns (uint256 nativeFee, uint256 zroFee) {
         // mock the payload for send()
-        bytes memory payload = abi.encode(_toAddress, _amount);
+        bytes memory payload = abi.encode(toAddress, amount);
         return
             lzEndpoint.estimateFees(
-                _dstChainId,
+                dstChainId,
                 address(this),
                 payload,
-                _useZro,
-                _adapterParams
+                useZro,
+                adapterParams
             );
     }
 
     function sendFrom(
-        address _from,
-        uint16 _dstChainId,
-        bytes memory _toAddress,
-        uint256 _amount,
-        address payable _refundAddress,
-        address _zroPaymentAddress,
-        bytes memory _adapterParams
+        address from,
+        uint16 dstChainId,
+        bytes memory toAddress,
+        uint256 amount,
+        address payable refundAddress,
+        address zroPaymentAddress,
+        bytes memory adapterParams
     ) public payable virtual override {
         _send(
-            _from,
-            _dstChainId,
-            _toAddress,
-            _amount,
-            _refundAddress,
-            _zroPaymentAddress,
-            _adapterParams
+            from,
+            dstChainId,
+            toAddress,
+            amount,
+            refundAddress,
+            zroPaymentAddress,
+            adapterParams
         );
     }
 
     function _nonblockingLzReceive(
-        uint16 _srcChainId,
-        bytes memory _srcAddress,
-        uint64 _nonce,
-        bytes memory _payload
+        uint16 srcChainId,
+        bytes memory srcAddress,
+        uint64 nonce,
+        bytes memory payload
     ) internal virtual override {
         // decode and load the toAddress
         (bytes memory toAddressBytes, uint256 amount) = abi.decode(
-            _payload,
+            payload,
             (bytes, uint256)
         );
         address toAddress;
@@ -64,51 +64,45 @@ abstract contract OFTCore is NonblockingLzApp, ERC165, IOFTCore {
             toAddress := mload(add(toAddressBytes, 20))
         }
 
-        _creditTo(_srcChainId, toAddress, amount);
+        _creditTo(srcChainId, toAddress, amount);
 
-        emit ReceiveFromChain(
-            _srcChainId,
-            _srcAddress,
-            toAddress,
-            amount,
-            _nonce
-        );
+        emit ReceiveFromChain(srcChainId, srcAddress, toAddress, amount, nonce);
     }
 
     function _send(
-        address _from,
-        uint16 _dstChainId,
-        bytes memory _toAddress,
-        uint256 _amount,
-        address payable _refundAddress,
-        address _zroPaymentAddress,
-        bytes memory _adapterParams
+        address from,
+        uint16 dstChainId,
+        bytes memory toAddress,
+        uint256 amount,
+        address payable refundAddress,
+        address zroPaymentAddress,
+        bytes memory adapterParams
     ) internal virtual {
-        _debitFrom(_from, _dstChainId, _toAddress, _amount);
+        _debitFrom(from, dstChainId, toAddress, amount);
 
-        bytes memory payload = abi.encode(_toAddress, _amount);
+        bytes memory payload = abi.encode(toAddress, amount);
         _lzSend(
-            _dstChainId,
+            dstChainId,
             payload,
-            _refundAddress,
-            _zroPaymentAddress,
-            _adapterParams
+            refundAddress,
+            zroPaymentAddress,
+            adapterParams
         );
 
-        uint64 nonce = lzEndpoint.getOutboundNonce(_dstChainId, address(this));
-        emit SendToChain(_from, _dstChainId, _toAddress, _amount, nonce);
+        uint64 nonce = lzEndpoint.getOutboundNonce(dstChainId, address(this));
+        emit SendToChain(from, dstChainId, toAddress, amount, nonce);
     }
 
     function _debitFrom(
-        address _from,
-        uint16 _dstChainId,
-        bytes memory _toAddress,
-        uint256 _amount
+        address from,
+        uint16 dstChainId,
+        bytes memory toAddress,
+        uint256 amount
     ) internal virtual;
 
     function _creditTo(
-        uint16 _srcChainId,
-        address _toAddress,
-        uint256 _amount
+        uint16 srcChainId,
+        address toAddress,
+        uint256 amount
     ) internal virtual;
 }

@@ -12,7 +12,7 @@ import {IOFT} from "./IOFT.sol";
 
 // override decimal() function is needed
 contract OFT is OFTCore, ERC20, IOFT {
-    constructor(address _lzEndpoint) OFTCore(_lzEndpoint) {}
+    constructor(address lzEndpoint) OFTCore(lzEndpoint) {}
 
     function circulatingSupply()
         public
@@ -25,32 +25,32 @@ contract OFT is OFTCore, ERC20, IOFT {
     }
 
     function _debitFrom(
-        address _from,
+        address from,
         uint16,
         bytes memory,
-        uint256 _amount
+        uint256 amount
     ) internal virtual override {
         address spender = msg.sender;
 
-        if (_from != spender) {
+        if (from != spender) {
             mapping(address => uint256) storage allowances = ERC20BaseStorage
                 .layout()
                 .allowances[spender];
 
             uint256 allowance = allowances[spender];
-            require(_amount <= allowance, "insufficient allowance");
+            require(amount <= allowance, "insufficient allowance");
 
-            _approve(_from, spender, allowances[spender] = allowance - _amount);
+            _approve(from, spender, allowances[spender] = allowance - amount);
         }
 
-        _burn(_from, _amount);
+        _burn(from, amount);
     }
 
     function _creditTo(
         uint16,
-        address _toAddress,
-        uint256 _amount
+        address toAddress,
+        uint256 amount
     ) internal virtual override {
-        _mint(_toAddress, _amount);
+        _mint(toAddress, amount);
     }
 }
