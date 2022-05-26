@@ -5,7 +5,9 @@ pragma solidity ^0.8.0;
 import {PremiaStaking} from "../staking/PremiaStaking.sol";
 
 contract PremiaStakingMock is PremiaStaking {
-    constructor(address premia) PremiaStaking(premia) {}
+    constructor(address lzEndpoint, address premia)
+        PremiaStaking(lzEndpoint, premia)
+    {}
 
     function decay(
         uint256 pendingRewards,

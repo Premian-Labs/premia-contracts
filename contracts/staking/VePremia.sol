@@ -14,10 +14,18 @@ import {IVePremia} from "./IVePremia.sol";
  */
 contract VePremia is IVePremia, PremiaStakingWithFeeDiscount {
     constructor(
+        address lzEndpoint,
         address premia,
         address oldFeeDiscount,
         address oldStaking
-    ) PremiaStakingWithFeeDiscount(premia, oldFeeDiscount, oldStaking) {}
+    )
+        PremiaStakingWithFeeDiscount(
+            lzEndpoint,
+            premia,
+            oldFeeDiscount,
+            oldStaking
+        )
+    {}
 
     function _beforeStake(uint256 amount, uint256 period) internal override {
         FeeDiscountStorage.UserInfo memory userInfo = FeeDiscountStorage

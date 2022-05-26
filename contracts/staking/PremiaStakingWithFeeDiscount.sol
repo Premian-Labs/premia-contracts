@@ -27,10 +27,11 @@ contract PremiaStakingWithFeeDiscount is
     address private immutable OLD_STAKING;
 
     constructor(
+        address lzEndpoint,
         address premia,
         address oldFeeDiscount,
         address oldStaking
-    ) PremiaStaking(premia) FeeDiscount(address(this)) {
+    ) PremiaStaking(lzEndpoint, premia) FeeDiscount(address(this)) {
         OLD_FEE_DISCOUNT = oldFeeDiscount;
         OLD_STAKING = oldStaking;
     }

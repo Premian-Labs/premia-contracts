@@ -13,8 +13,9 @@ import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
 import {IPremiaStaking} from "./IPremiaStaking.sol";
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
+import {OFT} from "../layerZero/token/oft/OFT.sol";
 
-contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
+contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     using SafeERC20 for IERC20;
     using ABDKMath64x64 for int128;
 
@@ -23,7 +24,7 @@ contract PremiaStaking is IPremiaStaking, ERC20, ERC20Permit {
     int128 internal constant ONE_64x64 = 0x10000000000000000;
     int128 internal constant DECAY_RATE_64x64 = 0x487a423b63e; // 2.7e-7
 
-    constructor(address premia) {
+    constructor(address lzEndpoint, address premia) OFT(lzEndpoint) {
         PREMIA = premia;
     }
 
