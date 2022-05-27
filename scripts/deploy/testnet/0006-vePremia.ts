@@ -21,6 +21,7 @@ async function main() {
     throw new Error('ChainId not implemented');
   }
 
+  console.log('aa');
   const premia = await new PremiaErc20__factory(deployer).deploy();
 
   console.log('Premia : ', premia.address);
@@ -40,7 +41,7 @@ async function main() {
     vePremiaImpl.address,
   );
 
-  console.log('vePremia : ', vePremiaImpl.address);
+  console.log('vePremia : ', vePremiaProxy.address);
   await vePremiaProxy.deployed();
 }
 

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
+import {OwnableInternal} from "@solidstate/contracts/access/OwnableInternal.sol";
 
 import {ILayerZeroReceiver} from "../interfaces/ILayerZeroReceiver.sol";
 import {ILayerZeroUserApplicationConfig} from "../interfaces/ILayerZeroUserApplicationConfig.sol";
@@ -13,7 +13,7 @@ import {LzAppStorage} from "./LzAppStorage.sol";
  * a generic LzReceiver implementation
  */
 abstract contract LzApp is
-    Ownable,
+    OwnableInternal,
     ILayerZeroReceiver,
     ILayerZeroUserApplicationConfig
 {
