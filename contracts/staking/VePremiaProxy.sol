@@ -15,7 +15,7 @@ contract VePremiaProxy is ProxyUpgradeableOwnable {
         ProxyUpgradeableOwnable(implementation)
     {
         ERC20MetadataStorage.Layout storage l = ERC20MetadataStorage.layout();
-        l.setName("Voting Escrow Premia");
+        l.setName("vePREMIA");
         l.setSymbol("vePREMIA");
         l.setDecimals(18);
 

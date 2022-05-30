@@ -1,9 +1,5 @@
 import { ethers } from 'hardhat';
-import {
-  ProxyUpgradeableOwnable__factory,
-  VePremia,
-  VePremia__factory,
-} from '../../../typechain';
+import { VePremia, VePremia__factory } from '../../../typechain';
 import CHAIN_ID from '../../../constants/layerzeroChainId.json';
 
 async function main() {
