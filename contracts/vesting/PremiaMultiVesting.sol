@@ -9,8 +9,10 @@ import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 
-/// @author Premia
-/// @title A vesting contract allowing to set multiple deposits for multiple users, with 1 year vesting
+/**
+ * @author Premia
+ * @title A vesting contract allowing to set multiple deposits for multiple users, with 1 year vesting
+ */
 contract PremiaMultiVesting is Ownable {
     using SafeERC20 for IERC20;
 
@@ -20,7 +22,6 @@ contract PremiaMultiVesting is Ownable {
     }
 
     IERC20 public premia;
-    uint256 constant vestingPeriod = 365 days;
 
     // User -> Deposit id -> Deposit
     mapping(address => mapping(uint256 => Deposit)) public deposits;
@@ -42,6 +43,7 @@ contract PremiaMultiVesting is Ownable {
         uint256 depositId,
         uint256 amount
     );
+    event DepositCancelled(address indexed user, uint256 depositId);
 
     constructor(IERC20 _premia) {
         OwnableStorage.layout().owner = msg.sender;
@@ -49,11 +51,16 @@ contract PremiaMultiVesting is Ownable {
         premia = _premia;
     }
 
-    function addDeposits(address[] memory _users, uint256[] memory _amounts)
-        external
-        onlyOwner
-    {
-        require(_users.length == _amounts.length, "Array diff length");
+    function addDeposits(
+        address[] memory _users,
+        uint256[] memory _amounts,
+        uint256[] memory _vestingPeriods
+    ) external onlyOwner {
+        require(
+            _users.length == _amounts.length &&
+                _users.length == _vestingPeriods.length,
+            "Array diff length"
+        );
 
         uint256 total;
         for (uint256 i = 0; i < _users.length; ++i) {
@@ -62,16 +69,50 @@ contract PremiaMultiVesting is Ownable {
 
         premia.safeTransferFrom(msg.sender, address(this), total);
 
-        uint256 eta = block.timestamp + vestingPeriod;
-
         for (uint256 i = 0; i < _users.length; ++i) {
             if (_amounts[i] == 0) continue;
 
-            depositsLength[_users[i]] += 1;
-            uint256 depositId = depositsLength[_users[i]];
+            uint256 eta = block.timestamp + _vestingPeriods[i];
+
+            uint256 lastDepositId = depositsLength[_users[i]];
+            require(
+                lastDepositId == 0 ||
+                    deposits[_users[i]][lastDepositId].eta < eta,
+                "ETA must be > prev deposit ETA"
+            );
+
+            uint256 depositId = lastDepositId + 1;
+            depositsLength[_users[i]] = depositId;
+
             deposits[_users[i]][depositId] = Deposit(_amounts[i], eta);
 
             emit DepositAdded(_users[i], depositId, _amounts[i], eta);
+        }
+    }
+
+    function cancelVesting(address _user) external onlyOwner {
+        uint256 lastDepositId = depositsLength[_user];
+
+        if (lastDepositId == 0) return;
+
+        uint256 tokenAmount;
+
+        for (uint256 i = lastDepositId; i > 0; i--) {
+            // First deposit found which is claimable
+            if (deposits[_user][i].eta < block.timestamp) {
+                break;
+            }
+
+            tokenAmount += deposits[_user][i].amount;
+
+            delete deposits[_user][i];
+            depositsLength[_user] -= 1;
+
+            emit DepositCancelled(_user, i);
+        }
+
+        if (tokenAmount > 0) {
+            premia.transfer(OwnableStorage.layout().owner, tokenAmount);
         }
     }
 
