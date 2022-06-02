@@ -9,7 +9,7 @@ import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 
 /**
  * @author Premia
- * @title A vesting contract allowing to set multiple deposits for multiple users, with 1 year vesting
+ * @title A vesting contract allowing to set multiple deposits for multiple users
  */
 contract PremiaMultiVesting is SafeOwnable {
     struct Deposit {
