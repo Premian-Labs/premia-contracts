@@ -28,6 +28,68 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         PREMIA = premia;
     }
 
+    function _send(
+        address from,
+        uint16 dstChainId,
+        bytes memory,
+        uint256 amount,
+        address payable refundAddress,
+        address zroPaymentAddress,
+        bytes memory adapterParams
+    ) internal override {
+        _updateRewards();
+
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+
+        uint256 underlyingAmount = (amount * _getXPremiaToPremiaRatio()) / 1e18;
+
+        bytes memory toAddress = abi.encodePacked(from);
+        _debitFrom(from, dstChainId, toAddress, amount);
+
+        if (underlyingAmount > l.debt) {
+            l.debt -= underlyingAmount;
+        } else {
+            l.reserved += underlyingAmount - l.debt;
+            l.debt = 0;
+        }
+
+        bytes memory payload = abi.encode(toAddress, underlyingAmount);
+        _lzSend(
+            dstChainId,
+            payload,
+            refundAddress,
+            zroPaymentAddress,
+            adapterParams
+        );
+
+        uint64 nonce = lzEndpoint.getOutboundNonce(dstChainId, address(this));
+        emit SendToChain(from, dstChainId, toAddress, underlyingAmount, nonce);
+        emit BridgedOut(from, underlyingAmount, amount);
+    }
+
+    function _creditTo(
+        uint16,
+        address toAddress,
+        uint256 underlyingAmount
+    ) internal override {
+        _updateRewards();
+
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+
+        uint256 totalPremia = _getStakedPremiaAmount();
+
+        uint256 amount = _mintShares(toAddress, underlyingAmount, totalPremia);
+
+        if (underlyingAmount > l.reserved) {
+            l.reserved -= underlyingAmount;
+        } else {
+            l.debt += underlyingAmount - l.reserved;
+            l.reserved = 0;
+        }
+
+        emit BridgedIn(toAddress, underlyingAmount, amount);
+    }
+
     /**
      * @inheritdoc IPremiaStaking
      */
@@ -149,9 +211,19 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         // Gets the amount of xPremia in existence
         uint256 totalShares = _totalSupply();
 
+        uint256 availablePremiaAmount = _getAvailablePremiaAmount();
+        uint256 stakedPremiaAmount = availablePremiaAmount -
+            l.reserved +
+            l.debt;
+
         // Calculates the amount of Premia the xPremia is worth
-        uint256 premiaAmount = (amount * _getStakedPremiaAmount()) /
-            totalShares;
+        uint256 premiaAmount = (amount * stakedPremiaAmount) / totalShares;
+
+        require(
+            premiaAmount <= availablePremiaAmount,
+            "Not enough underlying available"
+        );
+
         _burn(msg.sender, amount);
         l.pendingWithdrawal += premiaAmount;
 
@@ -205,6 +277,10 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
      * @inheritdoc IPremiaStaking
      */
     function getXPremiaToPremiaRatio() external view returns (uint256) {
+        return _getXPremiaToPremiaRatio();
+    }
+
+    function _getXPremiaToPremiaRatio() internal view returns (uint256) {
         return
             ((_getStakedPremiaAmount() + _getPendingRewards()) * 1e18) /
             _totalSupply();
@@ -233,6 +309,18 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     }
 
     function _getStakedPremiaAmount() internal view returns (uint256) {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        return _getAvailablePremiaAmount() - l.reserved + l.debt;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getAvailablePremiaAmount() external view returns (uint256) {
+        return _getAvailablePremiaAmount();
+    }
+
+    function _getAvailablePremiaAmount() internal view returns (uint256) {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         return
             IERC20(PREMIA).balanceOf(address(this)) -

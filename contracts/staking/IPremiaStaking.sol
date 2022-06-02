@@ -13,6 +13,17 @@ interface IPremiaStaking {
     );
     event Withdrawal(address indexed user, uint256 amount);
 
+    event BridgedIn(
+        address indexed user,
+        uint256 underlyingAmount,
+        uint256 xPremiaAmount
+    );
+    event BridgedOut(
+        address indexed user,
+        uint256 underlyingAmount,
+        uint256 xPremiaAmount
+    );
+
     /**
      * @notice add premia tokens as available tokens to be distributed as rewards
      * @param amount amount of premia tokens to add as rewards
@@ -102,4 +113,10 @@ interface IPremiaStaking {
      * @return amount of PREMIA staked
      */
     function getStakedPremiaAmount() external view returns (uint256);
+
+    /**
+     * @notice get the amount of PREMIA available for withdrawal (Ignoring reserved and debt)
+     * @return amount of PREMIA available for withdrawal
+     */
+    function getAvailablePremiaAmount() external view returns (uint256);
 }
