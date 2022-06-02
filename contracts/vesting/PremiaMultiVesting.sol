@@ -6,15 +6,12 @@ pragma solidity ^0.8.0;
 import {SafeOwnable} from "@solidstate/contracts/access/SafeOwnable.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
-import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 
 /**
  * @author Premia
  * @title A vesting contract allowing to set multiple deposits for multiple users, with 1 year vesting
  */
 contract PremiaMultiVesting is SafeOwnable {
-    using SafeERC20 for IERC20;
-
     struct Deposit {
         uint256 amount; // Amount of tokens
         uint256 eta; // Timestamp at which tokens will unlock
@@ -66,7 +63,7 @@ contract PremiaMultiVesting is SafeOwnable {
             total += _amounts[i];
         }
 
-        premia.safeTransferFrom(msg.sender, address(this), total);
+        premia.transferFrom(msg.sender, address(this), total);
 
         for (uint256 i = 0; i < _users.length; ++i) {
             if (_amounts[i] == 0) continue;
