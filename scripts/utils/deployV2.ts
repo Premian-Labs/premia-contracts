@@ -111,6 +111,7 @@ export async function deployV2(
 
   const premiaMiningImpl = await new PremiaMining__factory(deployer).deploy(
     premiaDiamond.address,
+    ethers.constants.AddressZero,
     premia,
   );
   await premiaMiningImpl.deployed();

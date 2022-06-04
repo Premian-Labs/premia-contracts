@@ -72,6 +72,7 @@ describe('PremiaStakingWithFeeDiscount', () => {
     const xPremiaImpl = await new PremiaStakingWithFeeDiscount__factory(
       treasury,
     ).deploy(
+      ethers.constants.AddressZero,
       '0x6399c842dd2be3de30bf99bc7d1bbf6fa3650e70',
       feeDiscountOld.address,
       xPremiaOld.address,

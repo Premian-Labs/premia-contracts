@@ -13,6 +13,7 @@ import { increaseTimestamp } from '../utils/evm';
 import { parseEther } from 'ethers/lib/utils';
 import chaiAlmost from 'chai-almost';
 import { bnToNumber } from '../utils/math';
+import { beforeEach } from 'mocha';
 
 let admin: SignerWithAddress;
 let alice: SignerWithAddress;
@@ -27,13 +28,15 @@ chai.use(chaiAlmost(0.01));
 const ONE_DAY = 3600 * 24;
 
 describe('PremiaStaking', () => {
-  beforeEach(async () => {
+  let snapshotId: number;
+
+  before(async () => {
     [admin, alice, bob, carol] = await ethers.getSigners();
 
     premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
     premiaStakingImplementation = await new PremiaStakingMock__factory(
       admin,
-    ).deploy(premia.address);
+    ).deploy(ethers.constants.AddressZero, premia.address);
 
     const premiaStakingProxy = await new PremiaStakingProxy__factory(
       admin,
@@ -52,6 +55,14 @@ describe('PremiaStaking', () => {
     await premia
       .connect(admin)
       .approve(premiaStaking.address, ethers.constants.MaxUint256);
+  });
+
+  beforeEach(async () => {
+    snapshotId = await ethers.provider.send('evm_snapshot', []);
+  });
+
+  afterEach(async () => {
+    await ethers.provider.send('evm_revert', [snapshotId]);
   });
 
   it('should successfully enter with permit', async () => {
@@ -95,7 +106,7 @@ describe('PremiaStaking', () => {
 
     await expect(
       premiaStaking.connect(alice).startWithdraw('200'),
-    ).to.be.revertedWith('ERC20: burn amount exceeds balance');
+    ).to.be.revertedWith('Not enough underlying available');
   });
 
   it('should correctly handle withdrawal with delay', async () => {

@@ -7,7 +7,6 @@ import {
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { ZERO_ADDRESS } from '../utils/constants';
 import { beforeEach } from 'mocha';
 import { parseEther } from 'ethers/lib/utils';
 import { ONE_DAY } from '../pool/PoolUtil';
@@ -30,9 +29,10 @@ describe('VePremia', () => {
     premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
 
     vePremia = await new VePremia__factory(admin).deploy(
+      ethers.constants.AddressZero,
       premia.address,
-      ZERO_ADDRESS,
-      ZERO_ADDRESS,
+      ethers.constants.AddressZero,
+      ethers.constants.AddressZero,
     );
 
     for (const u of [alice, bob]) {

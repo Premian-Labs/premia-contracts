@@ -46,7 +46,7 @@ export async function deployV1(
 
   const xPremiaImpl = await new PremiaStakingWithFeeDiscount__factory(
     deployer,
-  ).deploy(premia.address, ZERO_ADDRESS, ZERO_ADDRESS);
+  ).deploy(ZERO_ADDRESS, premia.address, ZERO_ADDRESS, ZERO_ADDRESS);
   const xPremiaProxy = await new PremiaStakingProxy__factory(deployer).deploy(
     xPremiaImpl.address,
   );

@@ -36,7 +36,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         address payable refundAddress,
         address zroPaymentAddress,
         bytes memory adapterParams
-    ) internal override {
+    ) internal virtual override {
         _updateRewards();
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
