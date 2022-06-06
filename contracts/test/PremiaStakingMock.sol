@@ -35,7 +35,7 @@ contract PremiaStakingMock is PremiaStaking {
         bytes memory toAddress = abi.encodePacked(from);
         _debitFrom(from, dstChainId, toAddress, amount);
 
-        if (underlyingAmount > l.debt) {
+        if (underlyingAmount < l.debt) {
             l.debt -= underlyingAmount;
         } else {
             l.reserved += underlyingAmount - l.debt;

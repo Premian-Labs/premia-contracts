@@ -46,7 +46,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         bytes memory toAddress = abi.encodePacked(from);
         _debitFrom(from, dstChainId, toAddress, amount);
 
-        if (underlyingAmount > l.debt) {
+        if (underlyingAmount < l.debt) {
             l.debt -= underlyingAmount;
         } else {
             l.reserved += underlyingAmount - l.debt;
@@ -80,7 +80,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         uint256 amount = _mintShares(toAddress, underlyingAmount, totalPremia);
 
-        if (underlyingAmount > l.reserved) {
+        if (underlyingAmount < l.reserved) {
             l.reserved -= underlyingAmount;
         } else {
             l.debt += underlyingAmount - l.reserved;
