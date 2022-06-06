@@ -17,6 +17,14 @@ contract PremiaStakingMock is PremiaStaking {
         return _decay(pendingRewards, oldTimestamp, newTimestamp);
     }
 
+    function getUnderlyingAmount(uint256 amount)
+        external
+        view
+        returns (uint256)
+    {
+        return (amount * _getXPremiaToPremiaRatio()) / 1e18;
+    }
+
     function _send(
         address from,
         uint16 dstChainId,
