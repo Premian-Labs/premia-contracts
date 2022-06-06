@@ -276,6 +276,20 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
+    function getDebt() external view returns (uint256) {
+        return PremiaStakingStorage.layout().debt;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getReserved() external view returns (uint256) {
+        return PremiaStakingStorage.layout().reserved;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
     function getXPremiaToPremiaRatio() external view returns (uint256) {
         return _getXPremiaToPremiaRatio();
     }

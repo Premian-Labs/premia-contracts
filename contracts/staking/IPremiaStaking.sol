@@ -88,6 +88,18 @@ interface IPremiaStaking {
     function setWithdrawalDelay(uint256 delay) external;
 
     /**
+     * @notice get debt due to tokens bridged to other chains
+     * @return underlying debt due to tokens bridged from other chains
+     */
+    function getDebt() external view returns (uint256);
+
+    /**
+     * @notice get reserved amount due to tokens bridged to other chains
+     * @return underlying reserved due to tokens bridged to other chains
+     */
+    function getReserved() external view returns (uint256);
+
+    /**
      * @notice get the xPREMIA : PREMIA ratio (with 18 decimals)
      * @return xPREMIA : PREMIA ratio (with 18 decimals)
      */
