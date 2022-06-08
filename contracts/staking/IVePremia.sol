@@ -12,6 +12,17 @@ interface IVePremia {
     function getTotalVotingPower() external view returns (uint256);
 
     /**
+     * @notice get total votes for a specific pool
+     * @param pool address of the pool
+     * @param isCallPool boolean indicating whether the pool is a call pool
+     * @return total votes for a specific pool
+     */
+    function getPoolVotes(address pool, bool isCallPool)
+        external
+        view
+        returns (uint256);
+
+    /**
      * @notice get voting power of a user
      * @param user user for which to get voting power
      * @return voting power of the user

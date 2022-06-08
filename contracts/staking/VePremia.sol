@@ -150,6 +150,17 @@ contract VePremia is IVePremia, PremiaStakingWithFeeDiscount {
     /**
      * @inheritdoc IVePremia
      */
+    function getPoolVotes(address pool, bool isCallPool)
+        external
+        view
+        returns (uint256)
+    {
+        return VePremiaStorage.layout().votes[pool][isCallPool];
+    }
+
+    /**
+     * @inheritdoc IVePremia
+     */
     function getUserVotingPower(address user) external view returns (uint256) {
         FeeDiscountStorage.UserInfo memory userInfo = FeeDiscountStorage
             .layout()
