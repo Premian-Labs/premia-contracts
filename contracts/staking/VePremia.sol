@@ -188,8 +188,7 @@ contract VePremia is IVePremia, PremiaStakingWithFeeDiscount {
         for (uint256 i = 0; i < l.userVotes[msg.sender].length; i++) {
             VePremiaStorage.Vote memory vote = l.userVotes[msg.sender][i];
 
-            l.votes[vote.chainId][vote.poolAddress][vote.isCallPool] -= vote
-                .amount;
+            l.votes[vote.poolAddress][vote.isCallPool] -= vote.amount;
         }
 
         delete l.userVotes[msg.sender];
@@ -206,8 +205,7 @@ contract VePremia is IVePremia, PremiaStakingWithFeeDiscount {
             );
 
             l.userVotes[msg.sender].push(votes[i]);
-            l.votes[vote.chainId][vote.poolAddress][vote.isCallPool] += vote
-                .amount;
+            l.votes[vote.poolAddress][vote.isCallPool] += vote.amount;
         }
 
         // ToDo : Handle pool updates

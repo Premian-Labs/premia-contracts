@@ -9,7 +9,6 @@ library VePremiaStorage {
 
     struct Vote {
         uint256 amount;
-        uint256 chainId;
         address poolAddress;
         bool isCallPool;
     }
@@ -17,8 +16,8 @@ library VePremiaStorage {
     struct Layout {
         uint256 totalVotingPower;
         mapping(address => Vote[]) userVotes;
-        // ChainID -> Pool address -> Is Call Pool -> Vote amount
-        mapping(uint256 => mapping(address => mapping(bool => uint256))) votes;
+        // Pool address -> Is Call Pool -> Vote amount
+        mapping(address => mapping(bool => uint256)) votes;
     }
 
     function layout() internal pure returns (Layout storage l) {
