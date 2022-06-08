@@ -10,7 +10,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { beforeEach } from 'mocha';
 import { parseEther } from 'ethers/lib/utils';
 import { ONE_DAY } from '../pool/PoolUtil';
-import { BigNumber } from 'ethers';
 import { increaseTimestamp } from '../utils/evm';
 
 let admin: SignerWithAddress;
@@ -92,19 +91,16 @@ describe('VePremia', () => {
       const votes = [
         {
           amount: parseEther('1'),
-          chainId: BigNumber.from(10),
           poolAddress: '0x0000000000000000000000000000000000000001',
           isCallPool: true,
         },
         {
           amount: parseEther('15'),
-          chainId: BigNumber.from(12),
           poolAddress: '0x0000000000000000000000000000000000000002',
           isCallPool: true,
         },
         {
           amount: parseEther('4'),
-          chainId: BigNumber.from(12),
           poolAddress: '0x0000000000000000000000000000000000000002',
           isCallPool: false,
         },
@@ -116,7 +112,6 @@ describe('VePremia', () => {
         (await vePremia.getUserVotes(alice.address)).map((el) => {
           return {
             amount: el.amount,
-            chainId: el.chainId,
             poolAddress: el.poolAddress,
             isCallPool: el.isCallPool,
           };
@@ -133,7 +128,6 @@ describe('VePremia', () => {
         vePremia.connect(alice).castVotes([
           {
             amount: parseEther('1'),
-            chainId: 10,
             poolAddress: '0x0000000000000000000000000000000000000001',
             isCallPool: true,
           },
@@ -146,7 +140,6 @@ describe('VePremia', () => {
         vePremia.connect(alice).castVotes([
           {
             amount: parseEther('10'),
-            chainId: 10,
             poolAddress: '0x0000000000000000000000000000000000000001',
             isCallPool: true,
           },
@@ -162,7 +155,6 @@ describe('VePremia', () => {
       await vePremia.connect(alice).castVotes([
         {
           amount: parseEther('10'),
-          chainId: 10,
           poolAddress: '0x0000000000000000000000000000000000000001',
           isCallPool: true,
         },
@@ -171,7 +163,6 @@ describe('VePremia', () => {
       const votes = await vePremia.getUserVotes(alice.address);
       expect(votes.length).to.eq(1);
       expect(votes[0].amount).to.eq(parseEther('10'));
-      expect(votes[0].chainId).to.eq(10);
       expect(votes[0].poolAddress).to.eq(
         '0x0000000000000000000000000000000000000001',
       );
@@ -186,7 +177,6 @@ describe('VePremia', () => {
       await vePremia.connect(alice).castVotes([
         {
           amount: parseEther('10'),
-          chainId: 10,
           poolAddress: '0x0000000000000000000000000000000000000001',
           isCallPool: true,
         },
@@ -199,7 +189,6 @@ describe('VePremia', () => {
       const votes = await vePremia.getUserVotes(alice.address);
       expect(votes.length).to.eq(1);
       expect(votes[0].amount).to.eq(parseEther('5'));
-      expect(votes[0].chainId).to.eq(10);
       expect(votes[0].poolAddress).to.eq(
         '0x0000000000000000000000000000000000000001',
       );
