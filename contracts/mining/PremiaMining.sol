@@ -309,14 +309,10 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         pool.accPremiaPerShare += (premiaReward * 1e12) / _totalTVL;
         pool.lastRewardTimestamp = block.timestamp;
 
-        uint256 votes = IVePremia(VE_PREMIA).getPoolVotes([_pool]);
+        uint256 votes = IVePremia(VE_PREMIA).getPoolVotes(_pool, _isCallPool);
         _setPoolAllocPoints(
             l,
-            IPremiaMining.PoolAllocPoints(_pool, false, votes[0][0], 1e4) // ToDo : Get utilization rate from pool
-        );
-        _setPoolAllocPoints(
-            l,
-            IPremiaMining.PoolAllocPoints(_pool, true, votes[0][1], 1e4) // ToDo : Get utilization rate from pool
+            IPremiaMining.PoolAllocPoints(_pool, _isCallPool, votes, 1e4) // ToDo : Get utilization rate from pool
         );
     }
 
