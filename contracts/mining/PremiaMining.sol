@@ -159,40 +159,44 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
 
         for (uint256 i; i < _poolAllocPoints.length; i++) {
-            IPremiaMining.PoolAllocPoints memory data = _poolAllocPoints[i];
-
-            require(
-                l.poolInfo[data.pool][true].lastRewardTimestamp > 0 &&
-                    l.poolInfo[data.pool][false].lastRewardTimestamp > 0,
-                "Pool does not exists"
-            );
-
-            uint256 allocPoints = (data.votes * data.poolUtilizationRate) /
-                INVERSE_BASIS_POINT;
-
-            l.totalAllocPoint =
-                l.totalAllocPoint -
-                l.poolInfo[data.pool][data.isCallPool].allocPoint +
-                allocPoints;
-            l.poolInfo[data.pool][data.isCallPool].allocPoint = allocPoints;
-
-            // If alloc points set for a new pool, we initialize the last reward timestamp
-            if (
-                l.poolInfo[data.pool][data.isCallPool].lastRewardTimestamp == 0
-            ) {
-                l
-                .poolInfo[data.pool][data.isCallPool]
-                    .lastRewardTimestamp = block.timestamp;
-            }
-
-            emit UpdatePoolAlloc(
-                data.pool,
-                data.isCallPool,
-                data.votes,
-                data.poolUtilizationRate
-            );
+            _setPoolAllocPoints(l, _poolAllocPoints[i]);
         }
     }
+
+    function _setPoolAllocPoints(
+        PremiaMiningStorage.Layout storage l,
+        IPremiaMining.PoolAllocPoints memory _data
+    ) internal {
+        require(
+            l.poolInfo[_data.pool][true].lastRewardTimestamp > 0 &&
+                l.poolInfo[_data.pool][false].lastRewardTimestamp > 0,
+            "Pool does not exists"
+        );
+
+        uint256 allocPoints = (_data.votes * _data.poolUtilizationRate) /
+            INVERSE_BASIS_POINT;
+
+        l.totalAllocPoint =
+            l.totalAllocPoint -
+            l.poolInfo[_data.pool][_data.isCallPool].allocPoint +
+            allocPoints;
+        l.poolInfo[_data.pool][_data.isCallPool].allocPoint = allocPoints;
+
+        // If alloc points set for a new pool, we initialize the last reward timestamp
+        if (l.poolInfo[_data.pool][_data.isCallPool].lastRewardTimestamp == 0) {
+            l.poolInfo[_data.pool][_data.isCallPool].lastRewardTimestamp = block
+                .timestamp;
+        }
+
+        emit UpdatePoolAlloc(
+            _data.pool,
+            _data.isCallPool,
+            _data.votes,
+            _data.poolUtilizationRate
+        );
+    }
+
+    function updatePoolWeights() external {}
 
     /**
      * @notice Get pending premia reward for a user on a pool
