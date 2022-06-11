@@ -11,6 +11,7 @@ import {PremiaMiningStorage} from "./PremiaMiningStorage.sol";
 import {IPremiaMining} from "./IPremiaMining.sol";
 import {IPoolIO} from "../pool/IPoolIO.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
+import {IVePremia} from "../staking/IVePremia.sol";
 
 /**
  * @title Premia liquidity mining contract, derived from Sushiswap's MasterChef.sol ( https://github.com/sushiswap/sushiswap )
@@ -22,6 +23,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     address internal immutable DIAMOND;
     address internal immutable PREMIA;
     address internal immutable RELAYER;
+    address internal immutable VE_PREMIA;
 
     uint256 private constant ONE_YEAR = 365 days;
     uint256 private constant INVERSE_BASIS_POINT = 1e4;
@@ -42,11 +44,13 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     constructor(
         address _diamond,
         address _relayer,
-        address _premia
+        address _premia,
+        address _vePremia
     ) {
         DIAMOND = _diamond;
         RELAYER = _relayer;
         PREMIA = _premia;
+        VE_PREMIA = _vePremia;
     }
 
     modifier onlyPool(address _pool) {
@@ -196,8 +200,6 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         );
     }
 
-    function updatePoolWeights() external {}
-
     /**
      * @notice Get pending premia reward for a user on a pool
      * @param _pool Address of option pool contract
@@ -306,6 +308,16 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         l.premiaAvailable -= premiaReward;
         pool.accPremiaPerShare += (premiaReward * 1e12) / _totalTVL;
         pool.lastRewardTimestamp = block.timestamp;
+
+        uint256 votes = IVePremia(VE_PREMIA).getPoolVotes([_pool]);
+        _setPoolAllocPoints(
+            l,
+            IPremiaMining.PoolAllocPoints(_pool, false, votes[0][0], 1e4) // ToDo : Get utilization rate from pool
+        );
+        _setPoolAllocPoints(
+            l,
+            IPremiaMining.PoolAllocPoints(_pool, true, votes[0][1], 1e4) // ToDo : Get utilization rate from pool
+        );
     }
 
     /**
