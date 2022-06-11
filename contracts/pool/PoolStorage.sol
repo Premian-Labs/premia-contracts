@@ -406,27 +406,12 @@ library PoolStorage {
             C_DECAY_INTERVAL
         );
 
-        uint256 tokenId = formatTokenId(
-            isCall ? TokenType.UNDERLYING_FREE_LIQ : TokenType.BASE_FREE_LIQ,
-            0,
-            0
-        );
-
-        uint256 tvl = l.totalTVL[isCall];
-
-        int128 utilization = ABDKMath64x64.divu(
-            tvl -
-                (ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
-                    l.totalPendingDeposits(isCall)),
-            tvl
-        );
-
         return
             OptionMath.calculateCLevelDecay(
                 OptionMath.CalculateCLevelDecayArgs(
                     timeIntervalsElapsed64x64,
                     oldCLevel64x64,
-                    utilization,
+                    getUtilization64x64(l, isCall),
                     0xb333333333333333, // 0.7
                     0xe666666666666666, // 0.9
                     0x10000000000000000, // 1.0
@@ -435,6 +420,27 @@ library PoolStorage {
                     0x56fc2a2c515da32ea // 2e
                 )
             );
+    }
+
+    function getUtilization64x64(Layout storage l, bool isCall)
+        internal
+        view
+        returns (int128 utilization64x64)
+    {
+        uint256 tokenId = formatTokenId(
+            isCall ? TokenType.UNDERLYING_FREE_LIQ : TokenType.BASE_FREE_LIQ,
+            0,
+            0
+        );
+
+        uint256 tvl = l.totalTVL[isCall];
+
+        utilization64x64 = ABDKMath64x64.divu(
+            tvl -
+                (ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
+                    l.totalPendingDeposits(isCall)),
+            tvl
+        );
     }
 
     /**
