@@ -38,7 +38,8 @@ interface IPremiaMining {
     function updatePool(
         address _pool,
         bool _isCallPool,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) external;
 
     function allocatePending(
@@ -47,7 +48,8 @@ interface IPremiaMining {
         bool _isCallPool,
         uint256 _userTVLOld,
         uint256 _userTVLNew,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) external;
 
     function claim(
@@ -56,6 +58,7 @@ interface IPremiaMining {
         bool _isCallPool,
         uint256 _userTVLOld,
         uint256 _userTVLNew,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) external;
 }

@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
+import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
 
 import {IPoolIO} from "./IPoolIO.sol";
 import {PoolSwap} from "./PoolSwap.sol";
@@ -394,6 +395,7 @@ contract PoolIO is IPoolIO, PoolSwap {
         PoolStorage.Layout storage l = PoolStorage.layout();
         uint256 userTVL = l.userTVL[account][isCallPool];
         uint256 totalTVL = l.totalTVL[isCallPool];
+        int128 utilization64x64 = l.getUtilization64x64(isCallPool);
 
         IPremiaMining(PREMIA_MINING_ADDRESS).claim(
             account,
@@ -401,7 +403,8 @@ contract PoolIO is IPoolIO, PoolSwap {
             isCallPool,
             userTVL,
             userTVL,
-            totalTVL
+            totalTVL,
+            ABDKMath64x64Token.toDecimals(utilization64x64, 4)
         );
     }
 
@@ -414,13 +417,15 @@ contract PoolIO is IPoolIO, PoolSwap {
         IPremiaMining(PREMIA_MINING_ADDRESS).updatePool(
             address(this),
             true,
-            l.totalTVL[true]
+            l.totalTVL[true],
+            ABDKMath64x64Token.toDecimals(l.getUtilization64x64(true), 4)
         );
 
         IPremiaMining(PREMIA_MINING_ADDRESS).updatePool(
             address(this),
             false,
-            l.totalTVL[false]
+            l.totalTVL[false],
+            ABDKMath64x64Token.toDecimals(l.getUtilization64x64(false), 4)
         );
     }
 }

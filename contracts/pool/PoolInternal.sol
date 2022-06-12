@@ -1462,6 +1462,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) internal {
         uint256 userTVL = l.userTVL[user][isCallPool];
         uint256 totalTVL = l.totalTVL[isCallPool];
+        int128 utilization64x64 = l.getUtilization64x64(isCallPool);
 
         IPremiaMining(PREMIA_MINING_ADDRESS).allocatePending(
             user,
@@ -1469,7 +1470,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             isCallPool,
             userTVL,
             userTVL + amount,
-            totalTVL
+            totalTVL,
+            ABDKMath64x64Token.toDecimals(utilization64x64, 4)
         );
 
         l.userTVL[user][isCallPool] = userTVL + amount;
@@ -1484,6 +1486,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) internal {
         uint256 userTVL = l.userTVL[user][isCallPool];
         uint256 totalTVL = l.totalTVL[isCallPool];
+        int128 utilization64x64 = l.getUtilization64x64(isCallPool);
 
         uint256 newUserTVL;
         uint256 newTotalTVL;
@@ -1502,7 +1505,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             isCallPool,
             userTVL,
             newUserTVL,
-            totalTVL
+            totalTVL,
+            ABDKMath64x64Token.toDecimals(utilization64x64, 4)
         );
 
         l.userTVL[user][isCallPool] = newUserTVL;

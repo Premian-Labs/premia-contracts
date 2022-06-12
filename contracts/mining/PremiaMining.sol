@@ -260,13 +260,15 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @param _pool Address of option pool contract
      * @param _isCallPool True if for call option pool, False if for put option pool
      * @param _totalTVL Total amount of tokens deposited in the option pool
+     * @param _utilizationRate Utilization rate of the pool (1e4 = 100%)
      */
     function updatePool(
         address _pool,
         bool _isCallPool,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) external onlyPool(_pool) {
-        _updatePool(_pool, _isCallPool, _totalTVL);
+        _updatePool(_pool, _isCallPool, _totalTVL, _utilizationRate);
     }
 
     /**
@@ -274,11 +276,13 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @param _pool Address of option pool contract
      * @param _isCallPool True if for call option pool, False if for put option pool
      * @param _totalTVL Total amount of tokens deposited in the option pool
+     * @param _utilizationRate Utilization rate of the pool (1e4 = 100%)
      */
     function _updatePool(
         address _pool,
         bool _isCallPool,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) internal {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
 
@@ -312,7 +316,12 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         uint256 votes = IVePremia(VE_PREMIA).getPoolVotes(_pool, _isCallPool);
         _setPoolAllocPoints(
             l,
-            IPremiaMining.PoolAllocPoints(_pool, _isCallPool, votes, 1e4) // ToDo : Get utilization rate from pool
+            IPremiaMining.PoolAllocPoints(
+                _pool,
+                _isCallPool,
+                votes,
+                _utilizationRate
+            )
         );
     }
 
@@ -324,6 +333,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @param _userTVLOld Total amount of tokens deposited in the option pool by user before the allocation update
      * @param _userTVLNew Total amount of tokens deposited in the option pool by user after the allocation update
      * @param _totalTVL Total amount of tokens deposited in the option pool
+     * @param _utilizationRate Utilization rate of the pool (1e4 = 100%)
      */
     function allocatePending(
         address _user,
@@ -331,7 +341,8 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         bool _isCallPool,
         uint256 _userTVLOld,
         uint256 _userTVLNew,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) external onlyPool(_pool) {
         _allocatePending(
             _user,
@@ -339,7 +350,8 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
             _isCallPool,
             _userTVLOld,
             _userTVLNew,
-            _totalTVL
+            _totalTVL,
+            _utilizationRate
         );
     }
 
@@ -351,6 +363,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @param _userTVLOld Total amount of tokens deposited in the option pool by user before the allocation update
      * @param _userTVLNew Total amount of tokens deposited in the option pool by user after the allocation update
      * @param _totalTVL Total amount of tokens deposited in the option pool
+     * @param _utilizationRate Utilization rate of the pool (1e4 = 100%)
      */
     function _allocatePending(
         address _user,
@@ -358,7 +371,8 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         bool _isCallPool,
         uint256 _userTVLOld,
         uint256 _userTVLNew,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) internal {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
         PremiaMiningStorage.PoolInfo storage pool = l.poolInfo[_pool][
@@ -368,7 +382,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
             _isCallPool
         ][_user];
 
-        _updatePool(_pool, _isCallPool, _totalTVL);
+        _updatePool(_pool, _isCallPool, _totalTVL, _utilizationRate);
 
         user.reward +=
             ((_userTVLOld * pool.accPremiaPerShare) / 1e12) -
@@ -385,6 +399,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @param _userTVLOld Total amount of tokens deposited in the option pool by user before the allocation update
      * @param _userTVLNew Total amount of tokens deposited in the option pool by user after the allocation update
      * @param _totalTVL Total amount of tokens deposited in the option pool
+     * @param _utilizationRate Utilization rate of the pool (1e4 = 100%)
      */
     function claim(
         address _user,
@@ -392,7 +407,8 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         bool _isCallPool,
         uint256 _userTVLOld,
         uint256 _userTVLNew,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) external onlyPool(_pool) {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
 
@@ -402,7 +418,8 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
             _isCallPool,
             _userTVLOld,
             _userTVLNew,
-            _totalTVL
+            _totalTVL,
+            _utilizationRate
         );
 
         uint256 reward = l.userInfo[_pool][_isCallPool][_user].reward;
