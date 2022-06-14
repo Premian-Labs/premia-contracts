@@ -1488,13 +1488,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 newUserTVL;
         uint256 newTotalTVL;
 
-        if (userTVL > amount) {
-            newUserTVL = userTVL - amount;
+        if (userTVL < amount) {
+            amount = userTVL;
         }
 
-        if (totalTVL > amount) {
-            newTotalTVL = totalTVL - amount;
-        }
+        newUserTVL = userTVL - amount;
+        newTotalTVL = totalTVL - amount;
 
         IPremiaMining(PREMIA_MINING_ADDRESS).allocatePending(
             user,
