@@ -7,8 +7,9 @@ import {
 } from '../../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { setTimestamp } from '../utils/evm';
+import { increaseTimestamp, setTimestamp } from '../utils/evm';
 import { parseEther } from 'ethers/lib/utils';
+import { bnToNumber } from '../utils/math';
 
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
@@ -19,7 +20,9 @@ let premiaMultiVesting: PremiaMultiVesting;
 const oneMonth = 3600 * 24 * 30;
 
 describe('PremiaMultiVesting', () => {
-  beforeEach(async () => {
+  let snapshotId: number;
+
+  before(async () => {
     [admin, user1, user2] = await ethers.getSigners();
 
     premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
@@ -33,6 +36,14 @@ describe('PremiaMultiVesting', () => {
       .approve(premiaMultiVesting.address, parseEther('10000'));
   });
 
+  beforeEach(async () => {
+    snapshotId = await ethers.provider.send('evm_snapshot', []);
+  });
+
+  afterEach(async () => {
+    await ethers.provider.send('evm_revert', [snapshotId]);
+  });
+
   it('should correctly handle vesting for multiple deposits', async () => {
     const { timestamp: now } = await ethers.provider.getBlock('latest');
 
@@ -41,6 +52,7 @@ describe('PremiaMultiVesting', () => {
       .addDeposits(
         [user1.address, user2.address],
         [parseEther('100'), parseEther('200')],
+        [oneMonth * 12, oneMonth * 12],
       );
     await setTimestamp(now + oneMonth);
 
@@ -49,12 +61,13 @@ describe('PremiaMultiVesting', () => {
       .addDeposits(
         [user1.address, user2.address],
         [parseEther('100'), parseEther('200')],
+        [oneMonth * 12, oneMonth * 12],
       );
     await setTimestamp(now + oneMonth * 2);
 
     await premiaMultiVesting
       .connect(admin)
-      .addDeposits([user1.address], [parseEther('150')]);
+      .addDeposits([user1.address], [parseEther('150')], [oneMonth * 12]);
 
     const nbDepositsUser1 = await premiaMultiVesting.depositsLength(
       user1.address,
@@ -132,7 +145,11 @@ describe('PremiaMultiVesting', () => {
   it('should not include a deposit with an amount of 0', async () => {
     await premiaMultiVesting
       .connect(admin)
-      .addDeposits([user1.address, user2.address], [parseEther('100'), '0']);
+      .addDeposits(
+        [user1.address, user2.address],
+        [parseEther('100'), '0'],
+        [oneMonth * 12, oneMonth * 12],
+      );
     expect(
       (await premiaMultiVesting.getPendingDeposits(user1.address)).length,
     ).to.eq(1);
@@ -141,5 +158,115 @@ describe('PremiaMultiVesting', () => {
     ).to.eq(0);
     expect(await premiaMultiVesting.depositsLength(user1.address)).to.eq(1);
     expect(await premiaMultiVesting.depositsLength(user2.address)).to.eq(0);
+  });
+
+  it('should now allow a deposit with ETA < previous deposit ETA', async () => {
+    await premiaMultiVesting
+      .connect(admin)
+      .addDeposits([user1.address], [parseEther('100')], [oneMonth * 12]);
+
+    await expect(
+      premiaMultiVesting
+        .connect(admin)
+        .addDeposits([user1.address], [parseEther('100')], [oneMonth * 11]),
+    ).to.be.revertedWith('ETA must be > prev deposit ETA');
+  });
+
+  it('should successfully cancel vesting of deposits not yet unlocked', async () => {
+    await premiaMultiVesting
+      .connect(admin)
+      .addDeposits([user1.address], [parseEther('100')], [oneMonth * 12]);
+
+    await premiaMultiVesting
+      .connect(admin)
+      .addDeposits([user1.address], [parseEther('200')], [oneMonth * 14]);
+
+    await premiaMultiVesting
+      .connect(admin)
+      .addDeposits([user1.address], [parseEther('350')], [oneMonth * 16]);
+
+    expect(await premia.balanceOf(premiaMultiVesting.address)).to.eq(
+      parseEther('650'),
+    );
+
+    await increaseTimestamp(oneMonth * 15);
+
+    let deposits = await premiaMultiVesting.getPendingDeposits(user1.address);
+    expect(deposits.length).to.eq(3);
+    expect(deposits.map((el) => bnToNumber(el.amount))).to.deep.eq([
+      100, 200, 350,
+    ]);
+
+    await premiaMultiVesting.connect(admin).cancelVesting(user1.address);
+
+    expect(await premia.balanceOf(premiaMultiVesting.address)).to.eq(
+      parseEther('300'),
+    );
+
+    deposits = await premiaMultiVesting.getPendingDeposits(user1.address);
+    expect(deposits.length).to.eq(2);
+    expect(deposits.map((el) => bnToNumber(el.amount))).to.deep.eq([100, 200]);
+  });
+
+  it('should still work properly after cancelling vesting', async () => {
+    await premiaMultiVesting
+      .connect(admin)
+      .addDeposits([user1.address], [parseEther('100')], [oneMonth * 12]);
+
+    await premiaMultiVesting
+      .connect(admin)
+      .addDeposits([user1.address], [parseEther('200')], [oneMonth * 14]);
+
+    await premiaMultiVesting
+      .connect(admin)
+      .addDeposits([user1.address], [parseEther('350')], [oneMonth * 16]);
+
+    expect(await premia.balanceOf(premiaMultiVesting.address)).to.eq(
+      parseEther('650'),
+    );
+
+    await increaseTimestamp(oneMonth * 15);
+
+    let deposits = await premiaMultiVesting.getPendingDeposits(user1.address);
+    expect(deposits.length).to.eq(3);
+    expect(deposits.map((el) => bnToNumber(el.amount))).to.deep.eq([
+      100, 200, 350,
+    ]);
+
+    await premiaMultiVesting.connect(admin).cancelVesting(user1.address);
+
+    await premiaMultiVesting
+      .connect(admin)
+      .addDeposits([user1.address], [parseEther('100')], [oneMonth * 12]);
+
+    await premiaMultiVesting
+      .connect(admin)
+      .addDeposits([user1.address], [parseEther('200')], [oneMonth * 14]);
+
+    await premiaMultiVesting
+      .connect(admin)
+      .addDeposits([user1.address], [parseEther('300')], [oneMonth * 16]);
+
+    expect(await premia.balanceOf(premiaMultiVesting.address)).to.eq(
+      parseEther('900'),
+    );
+
+    deposits = await premiaMultiVesting.getPendingDeposits(user1.address);
+    expect(deposits.length).to.eq(5);
+    expect(deposits.map((el) => bnToNumber(el.amount))).to.deep.eq([
+      100, 200, 100, 200, 300,
+    ]);
+
+    await increaseTimestamp(oneMonth * 13);
+
+    await premiaMultiVesting.connect(user1).claimDeposits();
+    expect(await premia.balanceOf(user1.address)).to.eq(parseEther('400'));
+    expect(await premia.balanceOf(premiaMultiVesting.address)).to.eq(
+      parseEther('500'),
+    );
+
+    deposits = await premiaMultiVesting.getPendingDeposits(user1.address);
+    expect(deposits.length).to.eq(2);
+    expect(deposits.map((el) => bnToNumber(el.amount))).to.deep.eq([200, 300]);
   });
 });

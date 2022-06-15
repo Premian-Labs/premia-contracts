@@ -19,11 +19,6 @@ let treasury: SignerWithAddress;
 let uniswap: IUniswap;
 let premiaWeth: UniswapV2Pair;
 
-const chai = require('chai');
-const chaiAlmost = require('chai-almost');
-
-chai.use(chaiAlmost(0.01));
-
 describe('PremiaMaker', () => {
   beforeEach(async () => {
     // Keep to fix "should make premia successfully" test failing when running all tests

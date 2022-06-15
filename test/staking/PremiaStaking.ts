@@ -1,4 +1,4 @@
-import chai, { expect } from 'chai';
+import { expect } from 'chai';
 import {
   ERC20Mock,
   ERC20Mock__factory,
@@ -11,7 +11,6 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { signERC2612Permit } from 'eth-permit';
 import { increaseTimestamp } from '../utils/evm';
 import { parseEther } from 'ethers/lib/utils';
-import chaiAlmost from 'chai-almost';
 import { bnToNumber } from '../utils/math';
 import { beforeEach } from 'mocha';
 import { BigNumberish } from 'ethers';
@@ -24,8 +23,6 @@ let premia: ERC20Mock;
 let premiaStakingImplementation: PremiaStakingMock;
 let premiaStaking: PremiaStakingMock;
 let otherPremiaStaking: PremiaStakingMock;
-
-chai.use(chaiAlmost(0.01));
 
 const ONE_DAY = 3600 * 24;
 

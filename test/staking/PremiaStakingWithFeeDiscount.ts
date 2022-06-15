@@ -9,16 +9,13 @@ import {
   PremiaStakingWithFeeDiscount__factory,
   ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
-import chai, { expect } from 'chai';
+import { expect } from 'chai';
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
-import chaiAlmost from 'chai-almost';
 import { bnToNumber } from '../utils/math';
 import { parseEther } from 'ethers/lib/utils';
 import { resetHardhat } from '../utils/evm';
-
-chai.use(chaiAlmost(0.05));
 
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;

@@ -1,4 +1,4 @@
-import chai, { expect } from 'chai';
+import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
@@ -7,12 +7,9 @@ import {
   VolatilitySurfaceOracle,
   VolatilitySurfaceOracle__factory,
 } from '../../typechain';
-import chaiAlmost from 'chai-almost';
 import { BigNumber } from 'ethers';
 import { fixedFromFloat } from '@premia/utils';
 import { bnToNumber } from '../utils/math';
-
-chai.use(chaiAlmost(0.01));
 
 describe('VolatilitySurfaceOracle', () => {
   let owner: SignerWithAddress;

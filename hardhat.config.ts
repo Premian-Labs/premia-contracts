@@ -20,6 +20,10 @@ import './tasks/typechain_generate_types';
 Dotenv.config();
 Dotenv.config({ path: './.env.secret' });
 
+import chai from 'chai';
+import chaiAlmost from 'chai-almost';
+chai.use(chaiAlmost(0.01));
+
 const {
   API_KEY_ALCHEMY,
   API_KEY_ETHERSCAN,
