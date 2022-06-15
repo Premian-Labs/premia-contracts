@@ -1,10 +1,10 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { ERC20Mock, IPool } from '../../typechain';
+import { ERC20Mock, IExchangeHelper, IPool } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { fixedFromFloat, fixedToNumber, formatTokenId } from '@premia/utils';
 
-import { IUniswap } from '../../test/utils/uniswap';
+import { IUniswap, uniswapABIs } from '../../test/utils/uniswap';
 
 import {
   FEE_APY,
@@ -21,6 +21,7 @@ import {
   parseUnderlying,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
+import { wethSol } from '../../typechain/contracts';
 
 interface PoolIOBehaviorArgs {
   deploy: () => Promise<IPool>;
@@ -28,6 +29,7 @@ interface PoolIOBehaviorArgs {
   getUnderlying: () => Promise<ERC20Mock>;
   getPoolUtil: () => Promise<PoolUtil>;
   getUniswap: () => Promise<IUniswap>;
+  getExchangeHelper: () => Promise<IExchangeHelper>;
 }
 
 export function describeBehaviorOfPoolIO({
@@ -36,6 +38,7 @@ export function describeBehaviorOfPoolIO({
   getUnderlying,
   getPoolUtil,
   getUniswap,
+  getExchangeHelper,
 }: PoolIOBehaviorArgs) {
   describe('::PoolIO', () => {
     let owner: SignerWithAddress;
@@ -47,6 +50,7 @@ export function describeBehaviorOfPoolIO({
     let underlying: ERC20Mock;
     let p: PoolUtil;
     let uniswap: IUniswap;
+    let exchangeHelper: IExchangeHelper;
 
     before(async () => {
       [owner, buyer, lp1, lp2] = await ethers.getSigners();
@@ -59,6 +63,7 @@ export function describeBehaviorOfPoolIO({
       uniswap = await getUniswap();
       base = await getBase();
       underlying = await getUnderlying();
+      exchangeHelper = await getExchangeHelper();
     });
 
     // TODO: test #annihilate, #reassign, and #reassignBatch with divest = false
@@ -249,70 +254,179 @@ export function describeBehaviorOfPoolIO({
       for (const isCall of [true, false]) {
         describe(isCall ? 'call' : 'put', () => {
           it('executes deposit using non-pool ERC20 token', async () => {
-            const mintAmount = parseOption(
-              !isCall ? '1000' : '100000',
-              !isCall,
+            const amountBefore = await instance.balanceOf(
+              buyer.address,
+              getFreeLiqTokenId(isCall),
             );
 
             const amount = isCall
               ? parseOption('0.1', isCall)
               : parseOption('1000', isCall);
 
+            const swapTokenIn = isCall ? p.base.address : p.underlying.address;
+            const swapTokenOut = isCall ? p.underlying.address : p.base.address;
+
+            const uniswapPath = [
+              swapTokenIn,
+              uniswap.weth.address,
+              swapTokenOut,
+            ];
+
+            const maxTokenIn = isCall
+              ? ethers.utils.parseEther('10000')
+              : ethers.utils.parseEther('10');
+
+            const { timestamp } = await ethers.provider.getBlock('latest');
+
+            const iface = new ethers.utils.Interface(uniswapABIs);
+            const data = iface.encodeFunctionData('swapTokensForExactTokens', [
+              amount,
+              maxTokenIn,
+              uniswapPath,
+              exchangeHelper.address,
+              timestamp + 86400,
+            ]);
+
             await instance
               .connect(buyer)
               .swapAndDeposit(
+                swapTokenIn,
+                maxTokenIn,
                 amount,
+                uniswap.router.address,
+                data,
+                buyer.address,
                 isCall,
-                0,
-                ethers.utils.parseEther('10000'),
-                isCall
-                  ? [p.base.address, uniswap.weth.address, p.underlying.address]
-                  : [
-                      p.underlying.address,
-                      uniswap.weth.address,
-                      p.base.address,
-                    ],
-                false,
               );
 
-            expect(
-              await instance.balanceOf(
-                buyer.address,
-                getFreeLiqTokenId(isCall),
-              ),
-            ).to.eq(amount);
+            const amountAfter = await instance.balanceOf(
+              buyer.address,
+              getFreeLiqTokenId(isCall),
+            );
+
+            expect(amountAfter.sub(amountBefore)).to.eq(amount);
           });
 
           it('executes deposit using ETH', async () => {
-            const mintAmount = parseOption(
-              !isCall ? '1000' : '100000',
-              !isCall,
+            const amountBefore = await instance.balanceOf(
+              buyer.address,
+              getFreeLiqTokenId(isCall),
             );
 
             const amount = isCall
               ? parseOption('0.1', isCall)
               : parseOption('1000', isCall);
 
-            await instance
-              .connect(buyer)
-              .swapAndDeposit(
-                amount,
-                isCall,
-                0,
-                0,
-                isCall
-                  ? [uniswap.weth.address, p.underlying.address]
-                  : [uniswap.weth.address, p.base.address],
-                false,
-                { value: ethers.utils.parseEther('2') },
-              );
+            const tokenIn = uniswap.weth.address;
+            const uniswapPath = isCall
+              ? [uniswap.weth.address, p.underlying.address]
+              : [uniswap.weth.address, p.base.address];
 
-            expect(
-              await instance.balanceOf(
-                buyer.address,
-                getFreeLiqTokenId(isCall),
-              ),
-            ).to.eq(amount);
+            const { timestamp } = await ethers.provider.getBlock('latest');
+
+            const maxEthToPay = ethers.utils.parseEther('2');
+
+            const iface = new ethers.utils.Interface(uniswapABIs);
+
+            // eth will be wrap into weth, so we call uniswap to trade weth to pool token
+            const data = iface.encodeFunctionData('swapTokensForExactTokens', [
+              amount,
+              maxEthToPay,
+              uniswapPath,
+              exchangeHelper.address,
+              timestamp + 86400,
+            ]);
+
+            await instance.connect(buyer).swapAndDeposit(
+              tokenIn,
+              0, // amount in
+              amount,
+              uniswap.router.address,
+              data,
+              buyer.address,
+              isCall,
+              {
+                value: maxEthToPay,
+              },
+            );
+
+            const amountAfter = await instance.balanceOf(
+              buyer.address,
+              getFreeLiqTokenId(isCall),
+            );
+
+            expect(amountAfter.sub(amountBefore)).to.eq(amount);
+          });
+
+          it('executes swapAndDeposit using ETH and weth', async () => {
+            // only for put pool
+            if (isCall) return;
+
+            const amountBefore = await instance.balanceOf(
+              buyer.address,
+              getFreeLiqTokenId(isCall),
+            );
+
+            const amount = parseOption('1000', isCall);
+
+            const tokenIn = uniswap.weth.address;
+            const uniswapPath = [uniswap.weth.address, p.base.address];
+
+            const { timestamp } = await ethers.provider.getBlock('latest');
+
+            const totalAmountToPay = ethers.utils.parseEther('2');
+
+            const inAmountInEth = totalAmountToPay.div(2);
+            const inAmountInWeth = totalAmountToPay.sub(inAmountInEth);
+
+            // mint some weth
+            await uniswap.weth
+              .connect(buyer)
+              .deposit({ value: inAmountInWeth });
+            await uniswap.weth
+              .connect(buyer)
+              .approve(instance.address, ethers.constants.MaxUint256);
+
+            const [, expectedAmountOut] = await uniswap.router.getAmountsOut(
+              totalAmountToPay,
+              uniswapPath,
+            );
+
+            const iface = new ethers.utils.Interface(uniswapABIs);
+
+            const data = iface.encodeFunctionData('swapExactTokensForTokens', [
+              totalAmountToPay, // amountIn
+              amount, // amountOut min
+              uniswapPath,
+              exchangeHelper.address,
+              timestamp + 86400,
+            ]);
+
+            await instance.connect(buyer).swapAndDeposit(
+              tokenIn,
+              inAmountInWeth, // weth amount in
+              amount,
+              uniswap.router.address,
+              data,
+              buyer.address,
+              isCall,
+              {
+                value: inAmountInEth,
+              },
+            );
+
+            const wethBalanceAfter = await uniswap.weth.balanceOf(
+              buyer.address,
+            );
+
+            const amountAfter = await instance.balanceOf(
+              buyer.address,
+              getFreeLiqTokenId(isCall),
+            );
+
+            expect(wethBalanceAfter).to.eq(0);
+            expect(amountAfter.sub(amountBefore).eq(expectedAmountOut)).to.be
+              .true;
           });
         });
       }
@@ -1087,7 +1201,7 @@ export function describeBehaviorOfPoolIO({
               .add(baseCost)
               .sub(apyFeeRemaining)
               .sub(apyFeeRemaining),
-            1,
+            2,
           );
         });
       });
@@ -1395,7 +1509,7 @@ export function describeBehaviorOfPoolIO({
               .add(baseCost)
               .sub(apyFeeRemaining)
               .sub(apyFeeRemaining),
-            1,
+            2,
           );
         });
       });

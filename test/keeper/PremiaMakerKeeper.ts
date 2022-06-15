@@ -53,6 +53,7 @@ describe('PremiaMakerKeeper', () => {
       spotPrice,
       contracts.premiaMaker,
       ZERO_ADDRESS,
+      ZERO_ADDRESS,
     );
     keeper = await new PremiaMakerKeeper__factory(owner).deploy(
       contracts.premiaMaker.address,

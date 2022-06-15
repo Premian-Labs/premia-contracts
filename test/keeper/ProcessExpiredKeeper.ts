@@ -39,6 +39,7 @@ describe('ProcessExpiredKeeper', () => {
       spotPrice,
       feeReceiver,
       ZERO_ADDRESS,
+      ZERO_ADDRESS,
     );
     expKeeper = await new ProcessExpiredKeeper__factory(owner).deploy(
       p.premiaDiamond.address,
