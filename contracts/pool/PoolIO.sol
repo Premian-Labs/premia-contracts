@@ -30,10 +30,7 @@ contract PoolIO is IPoolIO, PoolSwap {
         address feeDiscountAddress,
         int128 feePremium64x64,
         int128 feeApy64x64,
-        address uniswapV2Factory,
-        address sushiswapFactory,
-        uint256 uniswapV2InitHash,
-        uint256 sushiswapInitHash
+        address exchangeProxy
     )
         PoolSwap(
             ivolOracle,
@@ -43,10 +40,7 @@ contract PoolIO is IPoolIO, PoolSwap {
             feeDiscountAddress,
             feePremium64x64,
             feeApy64x64,
-            uniswapV2Factory,
-            sushiswapFactory,
-            uniswapV2InitHash,
-            sushiswapInitHash
+            exchangeProxy
         )
     {}
 
@@ -71,39 +65,38 @@ contract PoolIO is IPoolIO, PoolSwap {
      * @inheritdoc IPoolIO
      */
     function deposit(uint256 amount, bool isCallPool) external payable {
-        _deposit(amount, isCallPool, true);
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        _pullFrom(l, msg.sender, amount, isCallPool, true);
+        _deposit(l, amount, isCallPool);
     }
 
     /**
      * @inheritdoc IPoolIO
      */
     function swapAndDeposit(
-        uint256 amount,
-        bool isCallPool,
-        uint256 amountOut,
+        address tokenIn,
         uint256 amountInMax,
-        address[] calldata path,
-        bool isSushi
+        uint256 amountOutMin,
+        address callee,
+        bytes calldata data,
+        address refundAddress,
+        bool isCallPool
     ) external payable {
-        // If value is passed, amountInMax must be 0, as the value wont be used
-        // If amountInMax is not 0, user wants to do a swap from an ERC20, and therefore no value should be attached
-        require(
-            msg.value == 0 || amountInMax == 0,
-            "value and amountInMax passed"
+        PoolStorage.Layout storage l = PoolStorage.layout();
+
+        address tokenOut = l.getPoolToken(isCallPool);
+
+        uint256 creditAmount = _swapForPoolTokens(
+            tokenIn,
+            tokenOut,
+            amountInMax,
+            amountOutMin,
+            callee,
+            data,
+            refundAddress
         );
 
-        // If no amountOut has been passed, we swap the exact deposit amount specified
-        if (amountOut == 0) {
-            amountOut = amount;
-        }
-
-        if (msg.value > 0) {
-            _swapETHForExactTokens(amountOut, path, isSushi);
-        } else {
-            _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
-        }
-
-        _deposit(amount, isCallPool, false);
+        _deposit(l, creditAmount, isCallPool);
     }
 
     /**

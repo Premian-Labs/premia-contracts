@@ -12,6 +12,7 @@ import {
 } from '../../typechain';
 import { parseEther, parseUnits } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
+import { ZERO_ADDRESS } from '../utils/constants';
 
 const oneDay = 24 * 3600;
 const oneMonth = 30 * oneDay;
@@ -72,6 +73,7 @@ describe('PremiaMining', () => {
       spotPrice,
       feeReceiver,
       feeDiscount.address,
+      ZERO_ADDRESS,
     );
 
     await premia.mint(owner.address, parseEther(totalRewardAmount.toString()));

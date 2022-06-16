@@ -406,15 +406,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
      * @param amount quantity of underlying currency to deposit
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
-     * @param creditMessageValue whether to apply message value as credit towards transfer
      */
     function _deposit(
+        PoolStorage.Layout storage l,
         uint256 amount,
-        bool isCallPool,
-        bool creditMessageValue
+        bool isCallPool
     ) internal {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
         // Reset gradual divestment timestamp
         delete l.divestmentTimestamps[msg.sender][isCallPool];
 
@@ -422,7 +419,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;
         _addUserTVL(l, msg.sender, isCallPool, amount);
-        _pullFrom(l, msg.sender, amount, isCallPool, creditMessageValue);
 
         _processAvailableFunds(msg.sender, amount, isCallPool, false, false);
 

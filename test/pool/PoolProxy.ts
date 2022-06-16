@@ -8,6 +8,8 @@ import {
   IPool,
   Proxy__factory,
   ProxyUpgradeableOwnable__factory,
+  IExchangeHelper,
+  ExchangeHelper__factory,
 } from '../../typechain';
 
 import { describeBehaviorOfPoolBase } from '../../spec/pool/PoolBase.behavior';
@@ -36,6 +38,7 @@ describe('PoolProxy', function () {
   let thirdParty: SignerWithAddress;
   let feeReceiver: SignerWithAddress;
   let uniswap: IUniswap;
+  let exchangeHelper: IExchangeHelper;
 
   let xPremia: ERC20Mock;
   let feeDiscount: FeeDiscount;
@@ -68,13 +71,15 @@ describe('PoolProxy', function () {
 
     uniswap = await createUniswap(owner);
 
+    exchangeHelper = await new ExchangeHelper__factory(owner).deploy();
+
     p = await PoolUtil.deploy(
       owner,
       premia.address,
       spotPrice,
       feeReceiver,
       feeDiscount.address,
-      uniswap.factory.address,
+      exchangeHelper.address,
       uniswap.weth.address,
     );
 
@@ -189,6 +194,7 @@ describe('PoolProxy', function () {
     getUnderlying: async () => underlying,
     getPoolUtil: async () => p,
     getUniswap: async () => uniswap,
+    getExchangeHelper: async () => exchangeHelper,
   });
 
   describeBehaviorOfPoolSell({
@@ -213,5 +219,6 @@ describe('PoolProxy', function () {
     getUnderlying: async () => underlying,
     getPoolUtil: async () => p,
     getUniswap: async () => uniswap,
+    getExchangeHelper: async () => exchangeHelper,
   });
 });

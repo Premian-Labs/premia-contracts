@@ -6,6 +6,7 @@ import {
   FeeDiscount__factory,
   PoolMock__factory,
   ProxyUpgradeableOwnable__factory,
+  ExchangeHelper__factory,
 } from '../../../typechain';
 
 const spotPrice = 2000;
@@ -30,6 +31,8 @@ async function main() {
     owner,
   );
 
+  const exchangeHelper = await new ExchangeHelper__factory(owner).deploy();
+
   const uniswap = await createUniswap(owner);
 
   const p = await PoolUtil.deploy(
@@ -38,7 +41,7 @@ async function main() {
     spotPrice,
     feeReceiver,
     feeDiscount.address,
-    uniswap.factory.address,
+    exchangeHelper.address,
     uniswap.weth.address,
   );
 
