@@ -161,8 +161,8 @@ contract PremiaMakerKeeper is IKeeperCompatible, Ownable {
     ) internal view returns (uint256) {
         if (_amount == 0) return 0;
 
-        address weth = IUniswapV2Router02(_router).WETH();
-        if (_token == weth) return _amount;
+        address nativeToken = IUniswapV2Router02(_router).WETH();
+        if (_token == nativeToken) return _amount;
 
         address[] memory path = IPremiaMaker(PREMIA_MAKER).getCustomPath(
             _token
@@ -171,7 +171,7 @@ contract PremiaMakerKeeper is IKeeperCompatible, Ownable {
         if (path.length == 0) {
             path = new address[](2);
             path[0] = _token;
-            path[1] = weth;
+            path[1] = nativeToken;
         }
 
         uint256[] memory amounts = IUniswapV2Router02(_router).getAmountsOut(

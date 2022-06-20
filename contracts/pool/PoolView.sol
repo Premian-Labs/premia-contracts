@@ -23,7 +23,7 @@ contract PoolView is IPoolView, PoolInternal {
     constructor(
         address nftDisplay,
         address ivolOracle,
-        address weth,
+        address nativeToken,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
@@ -32,7 +32,7 @@ contract PoolView is IPoolView, PoolInternal {
     )
         PoolInternal(
             ivolOracle,
-            weth,
+            nativeToken,
             premiaMining,
             feeReceiver,
             feeDiscountAddress,

@@ -15,7 +15,7 @@ import {IPoolExercise} from "./IPoolExercise.sol";
 contract PoolExercise is IPoolExercise, PoolInternal {
     constructor(
         address ivolOracle,
-        address weth,
+        address nativeToken,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
@@ -24,7 +24,7 @@ contract PoolExercise is IPoolExercise, PoolInternal {
     )
         PoolInternal(
             ivolOracle,
-            weth,
+            nativeToken,
             premiaMining,
             feeReceiver,
             feeDiscountAddress,

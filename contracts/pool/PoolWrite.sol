@@ -27,7 +27,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
     constructor(
         address ivolOracle,
-        address weth,
+        address nativeToken,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
@@ -37,7 +37,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
     )
         PoolSwap(
             ivolOracle,
-            weth,
+            nativeToken,
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
