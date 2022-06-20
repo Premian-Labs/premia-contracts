@@ -16,7 +16,7 @@ contract PoolMock is PoolBase {
 
     constructor(
         address ivolOracle,
-        address nativeToken,
+        address wrappedNativeToken,
         address premiaMining,
         address feeReceiver,
         address feeDiscount,
@@ -25,7 +25,7 @@ contract PoolMock is PoolBase {
     )
         PoolBase(
             ivolOracle,
-            nativeToken,
+            wrappedNativeToken,
             premiaMining,
             feeReceiver,
             feeDiscount,

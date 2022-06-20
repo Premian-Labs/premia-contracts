@@ -54,8 +54,8 @@ interface IPoolWrite {
 
     /**
      * @notice  swap tokens and purchase option
-     * @dev     any attached eth will be deposited into nativeToken.
-     *          if tokenIn is nativeToken, both attached eth and {amountInMax} amount of nativeToken will be used
+     * @dev     any attached msg.value will be wrapped.
+     *          if tokenIn is wrappedNativeToken, both msg.value {amountInMax} amount of wrappedNativeToken will be used
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param contractSize size of option contract

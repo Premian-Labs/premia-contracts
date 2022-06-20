@@ -35,7 +35,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 apyFee;
     }
 
-    address internal immutable NATIVE_TOKEN;
+    address internal immutable WRAPPED_NATIVE_TOKEN;
     address internal immutable PREMIA_MINING_ADDRESS;
     address internal immutable FEE_RECEIVER_ADDRESS;
     address internal immutable FEE_DISCOUNT_ADDRESS;
@@ -62,7 +62,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
     constructor(
         address ivolOracle,
-        address nativeToken,
+        address wrappedNativeToken,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
@@ -70,7 +70,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         int128 feeApy64x64
     ) {
         IVOL_ORACLE_ADDRESS = ivolOracle;
-        NATIVE_TOKEN = nativeToken;
+        WRAPPED_NATIVE_TOKEN = wrappedNativeToken;
         PREMIA_MINING_ADDRESS = premiaMining;
         FEE_RECEIVER_ADDRESS = feeReceiver;
         // PremiaFeeDiscount contract address
@@ -1397,7 +1397,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     {
         if (msg.value > 0) {
             require(
-                PoolStorage.layout().getPoolToken(isCallPool) == NATIVE_TOKEN,
+                PoolStorage.layout().getPoolToken(isCallPool) ==
+                    WRAPPED_NATIVE_TOKEN,
                 "not WETH deposit"
             );
 
@@ -1415,7 +1416,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 credit = msg.value;
             }
 
-            IWETH(NATIVE_TOKEN).deposit{value: credit}();
+            IWETH(WRAPPED_NATIVE_TOKEN).deposit{value: credit}();
         }
     }
 

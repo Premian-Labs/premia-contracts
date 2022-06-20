@@ -161,18 +161,18 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
 
         IERC20(token).safeIncreaseAllowance(router, amountMinusFee);
 
-        address nativeToken = IUniswapV2Router02(router).WETH();
+        address wrappedNativeToken = IUniswapV2Router02(router).WETH();
         uint256 premiaAmount;
 
         if (token != PREMIA) {
             address[] memory path;
 
-            if (token != nativeToken) {
+            if (token != wrappedNativeToken) {
                 path = l.customPath[token];
                 if (path.length == 0) {
                     path = new address[](3);
                     path[0] = token;
-                    path[1] = nativeToken;
+                    path[1] = wrappedNativeToken;
                     path[2] = PREMIA;
                 }
             } else {
