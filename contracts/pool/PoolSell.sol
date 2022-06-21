@@ -19,7 +19,7 @@ contract PoolSell is IPoolSell, PoolInternal {
 
     constructor(
         address ivolOracle,
-        address weth,
+        address wrappedNativeToken,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
@@ -28,7 +28,7 @@ contract PoolSell is IPoolSell, PoolInternal {
     )
         PoolInternal(
             ivolOracle,
-            weth,
+            wrappedNativeToken,
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
