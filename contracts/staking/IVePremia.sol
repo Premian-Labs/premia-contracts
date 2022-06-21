@@ -14,6 +14,16 @@ interface IVePremia {
     function earlyUnstake(uint256 amount) external;
 
     /**
+     * @notice get early unstake fee for given user
+     * @param user address of the user
+     * @return feePercentage % fee to pay for early unstake (1e4 = 100%)
+     */
+    function getEarlyUnstakeFee(address user)
+        external
+        view
+        returns (uint256 feePercentage);
+
+    /**
      * @notice get total voting power across all users
      * @return total voting power across all users
      */

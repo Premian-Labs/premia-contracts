@@ -26,11 +26,11 @@ contract VePremia is IVePremia, PremiaStakingWithFeeDiscount {
         FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
         FeeDiscountStorage.UserInfo storage user = l.userInfo[msg.sender];
 
-        // ToDo : Calculate the early unstake fee
-        uint256 fee = 0;
+        uint256 feePercentage = _getEarlyUnstakeFee(msg.sender);
 
         user.balance -= amount;
 
+        uint256 fee = (amount * feePercentage) / 1e4;
         if (fee > 0) {
             _addRewards(fee);
         }
@@ -39,6 +39,34 @@ contract VePremia is IVePremia, PremiaStakingWithFeeDiscount {
 
         emit Unstaked(msg.sender, amount);
         emit EarlyUnstake(msg.sender, amount, fee);
+    }
+
+    /**
+     * @inheritdoc IVePremia
+     */
+    function getEarlyUnstakeFee(address user)
+        external
+        view
+        returns (uint256 feePercentage)
+    {
+        return _getEarlyUnstakeFee(user);
+    }
+
+    function _getEarlyUnstakeFee(address user)
+        internal
+        view
+        returns (uint256 feePercentage)
+    {
+        FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
+        FeeDiscountStorage.UserInfo storage u = l.userInfo[user];
+
+        require(u.lockedUntil > block.timestamp, "Not locked");
+        uint256 lockLeft = u.lockedUntil - block.timestamp;
+
+        feePercentage = (lockLeft * 2500) / 365 days; // 25% fee per year left
+        if (feePercentage > 7500) {
+            feePercentage = 7500; // Capped at 75%
+        }
     }
 
     function _beforeStake(uint256 amount, uint256 period) internal override {
