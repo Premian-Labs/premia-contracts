@@ -13,18 +13,8 @@ import {IVePremia} from "./IVePremia.sol";
  * @title A contract allowing you to use your locked Premia as voting power for mining weights
  */
 contract VePremia is IVePremia, PremiaStakingWithFeeDiscount {
-    constructor(
-        address lzEndpoint,
-        address premia,
-        address oldFeeDiscount,
-        address oldStaking
-    )
-        PremiaStakingWithFeeDiscount(
-            lzEndpoint,
-            premia,
-            oldFeeDiscount,
-            oldStaking
-        )
+    constructor(address lzEndpoint, address premia)
+        PremiaStakingWithFeeDiscount(lzEndpoint, premia)
     {}
 
     /**
