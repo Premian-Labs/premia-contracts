@@ -245,12 +245,12 @@ contract FeeDiscount is IFeeDiscount {
         pure
         returns (uint256)
     {
-        if (period == 30 days) return 10000; // x1
-        if (period == 90 days) return 12500; // x1.25
-        if (period == 180 days) return 15000; // x1.5
-        if (period == 360 days) return 20000; // x2
+        uint256 oneYear = 365 days;
 
-        return 0;
+        if (period == 0) return 1e4; // x1
+        if (period >= 4 * oneYear) return 5e4; // x5
+
+        return 1e4 + (period * 1e4) / oneYear;
     }
 
     function _getStakeAmountWithBonus(address user)

@@ -6,6 +6,8 @@ import { increaseTimestamp } from '../utils/evm';
 import { signERC2612Permit } from 'eth-permit';
 import { deployV1, IPremiaContracts } from '../../scripts/utils/deployV1';
 import { parseEther } from 'ethers/lib/utils';
+import { beforeEach } from 'mocha';
+import { ONE_YEAR } from '../pool/PoolUtil';
 
 let p: IPremiaContracts;
 let admin: SignerWithAddress;
@@ -16,7 +18,9 @@ const stakeAmount = parseEther('120000');
 const oneMonth = 30 * 24 * 3600;
 
 describe('FeeDiscount', () => {
-  beforeEach(async () => {
+  let snapshotId: number;
+
+  before(async () => {
     [admin, user1, treasury] = await ethers.getSigners();
 
     p = await deployV1(admin, treasury.address, true);
@@ -29,6 +33,14 @@ describe('FeeDiscount', () => {
       .connect(user1)
       .increaseAllowance(p.feeDiscountStandalone.address, stakeAmount);
     await p.xPremia.connect(user1).deposit(stakeAmount);
+  });
+
+  beforeEach(async () => {
+    snapshotId = await ethers.provider.send('evm_snapshot', []);
+  });
+
+  afterEach(async () => {
+    await ethers.provider.send('evm_revert', [snapshotId]);
   });
 
   it('should fail staking if stake period does not exists', async () => {
@@ -135,5 +147,26 @@ describe('FeeDiscount', () => {
     userInfo = await p.feeDiscountStandalone.getUserInfo(user1.address);
     expect(userInfo.balance).to.eq(stakeAmount);
     expect(userInfo.stakePeriod).to.eq(6 * oneMonth);
+  });
+
+  it('should correctly calculate stake period multiplier', async () => {
+    expect(await p.feeDiscountStandalone.getStakePeriodMultiplier(0)).to.eq(
+      1e4,
+    );
+    expect(
+      await p.feeDiscountStandalone.getStakePeriodMultiplier(ONE_YEAR / 2),
+    ).to.eq(15e3);
+    expect(
+      await p.feeDiscountStandalone.getStakePeriodMultiplier(ONE_YEAR),
+    ).to.eq(2e4);
+    expect(
+      await p.feeDiscountStandalone.getStakePeriodMultiplier(2 * ONE_YEAR),
+    ).to.eq(3e4);
+    expect(
+      await p.feeDiscountStandalone.getStakePeriodMultiplier(4 * ONE_YEAR),
+    ).to.eq(5e4);
+    expect(
+      await p.feeDiscountStandalone.getStakePeriodMultiplier(5 * ONE_YEAR),
+    ).to.eq(5e4);
   });
 });
