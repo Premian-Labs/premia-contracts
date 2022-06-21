@@ -22,8 +22,8 @@ interface IPoolIO {
 
     /**
      * @notice  swap any token to collateral asset through exchange proxy and deposit
-     * @dev     any attached eth will be deposited into weth.
-     *          if tokenIn is weth, both attached eth and {amountInMax} amount of weth will be used
+     * @dev     any attached msg.value will be wrapped.
+     *          if tokenIn is wrappedNativeToken, both msg.value and {amountInMax} amount of wrappedNativeToken will be used
      * @param tokenIn token as swap input.
      * @param amountInMax max amount of token to trade.
      * @param amountOutMin min amount of token to taken out of the trade and deposit

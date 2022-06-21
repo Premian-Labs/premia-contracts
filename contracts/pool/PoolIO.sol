@@ -23,7 +23,7 @@ contract PoolIO is IPoolIO, PoolSwap {
 
     constructor(
         address ivolOracle,
-        address weth,
+        address wrappedNativeToken,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
@@ -33,7 +33,7 @@ contract PoolIO is IPoolIO, PoolSwap {
     )
         PoolSwap(
             ivolOracle,
-            weth,
+            wrappedNativeToken,
             premiaMining,
             feeReceiver,
             feeDiscountAddress,

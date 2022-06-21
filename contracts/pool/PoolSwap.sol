@@ -21,7 +21,7 @@ abstract contract PoolSwap is PoolInternal {
 
     constructor(
         address ivolOracle,
-        address weth,
+        address wrappedNativeToken,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
@@ -31,7 +31,7 @@ abstract contract PoolSwap is PoolInternal {
     )
         PoolInternal(
             ivolOracle,
-            weth,
+            wrappedNativeToken,
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
@@ -63,9 +63,9 @@ abstract contract PoolSwap is PoolInternal {
         address refundAddress
     ) internal returns (uint256 amountCredited) {
         if (msg.value > 0) {
-            require(tokenIn == WETH_ADDRESS, "wrong tokenIn");
-            IWETH(WETH_ADDRESS).deposit{value: msg.value}();
-            IWETH(WETH_ADDRESS).transfer(EXCHANGE_HELPER, msg.value);
+            require(tokenIn == WRAPPED_NATIVE_TOKEN, "wrong tokenIn");
+            IWETH(WRAPPED_NATIVE_TOKEN).deposit{value: msg.value}();
+            IWETH(WRAPPED_NATIVE_TOKEN).transfer(EXCHANGE_HELPER, msg.value);
         }
         if (amountInMax > 0) {
             IERC20(tokenIn).safeTransferFrom(
