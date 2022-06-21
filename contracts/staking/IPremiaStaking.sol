@@ -13,6 +13,8 @@ interface IPremiaStaking {
     );
     event Withdrawal(address indexed user, uint256 amount);
 
+    event RewardsAdded(uint256 amount);
+
     event BridgedIn(
         address indexed user,
         uint256 underlyingAmount,

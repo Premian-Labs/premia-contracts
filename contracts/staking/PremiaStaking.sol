@@ -94,12 +94,18 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
      * @inheritdoc IPremiaStaking
      */
     function addRewards(uint256 amount) external {
+        _addRewards(amount);
+    }
+
+    function _addRewards(uint256 amount) internal {
         _updateRewards();
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
         l.availableRewards += amount;
+
+        emit RewardsAdded(amount);
     }
 
     /**

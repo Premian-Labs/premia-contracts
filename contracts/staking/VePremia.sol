@@ -27,6 +27,30 @@ contract VePremia is IVePremia, PremiaStakingWithFeeDiscount {
         )
     {}
 
+    /**
+     * @inheritdoc IVePremia
+     */
+    function earlyUnstake(uint256 amount) external {
+        _beforeUnstake(amount);
+
+        FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
+        FeeDiscountStorage.UserInfo storage user = l.userInfo[msg.sender];
+
+        // ToDo : Calculate the early unstake fee
+        uint256 fee = 0;
+
+        user.balance -= amount;
+
+        if (fee > 0) {
+            _addRewards(fee);
+        }
+
+        _transferXPremia(address(this), msg.sender, amount - fee);
+
+        emit Unstaked(msg.sender, amount);
+        emit EarlyUnstake(msg.sender, amount, fee);
+    }
+
     function _beforeStake(uint256 amount, uint256 period) internal override {
         FeeDiscountStorage.UserInfo memory userInfo = FeeDiscountStorage
             .layout()
@@ -219,7 +243,5 @@ contract VePremia is IVePremia, PremiaStakingWithFeeDiscount {
             l.userVotes[msg.sender].push(votes[i]);
             l.votes[vote.poolAddress][vote.isCallPool] += vote.amount;
         }
-
-        // ToDo : Handle pool updates
     }
 }

@@ -97,7 +97,6 @@ contract FeeDiscount is IFeeDiscount {
         _beforeUnstake(amount);
 
         FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
-
         FeeDiscountStorage.UserInfo storage user = l.userInfo[msg.sender];
 
         // We allow unstake if the stakePeriod that the user used has been disabled

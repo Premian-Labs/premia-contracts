@@ -5,6 +5,14 @@ pragma solidity ^0.8.0;
 import {VePremiaStorage} from "./VePremiaStorage.sol";
 
 interface IVePremia {
+    event EarlyUnstake(address indexed user, uint256 amount, uint256 fee);
+
+    /**
+     * @notice unstake tokens before end of the lock period, for a fee
+     * @param amount the amount of vePremia to unstake
+     */
+    function earlyUnstake(uint256 amount) external;
+
     /**
      * @notice get total voting power across all users
      * @return total voting power across all users
