@@ -43,7 +43,12 @@ describe('PremiaMakerKeeper', () => {
   beforeEach(async () => {
     [owner, lp, treasury] = await ethers.getSigners();
 
-    contracts = await deployV1(owner, treasury.address, true);
+    contracts = await deployV1(
+      owner,
+      treasury.address,
+      ethers.constants.AddressZero,
+      true,
+    );
 
     p = await PoolUtil.deploy(
       owner,
@@ -224,11 +229,11 @@ describe('PremiaMakerKeeper', () => {
     );
 
     expect(
-      bnToNumber(await contracts.premia.balanceOf(contracts.xPremia.address)),
+      bnToNumber(await contracts.premia.balanceOf(contracts.vePremia.address)),
     ).to.eq(0);
     await keeper.performUpkeep(result.performData);
     expect(
-      bnToNumber(await contracts.premia.balanceOf(contracts.xPremia.address)),
+      bnToNumber(await contracts.premia.balanceOf(contracts.vePremia.address)),
     ).to.almost(49.07);
   });
 });

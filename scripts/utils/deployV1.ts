@@ -11,6 +11,9 @@ import {
   PremiaStakingWithFeeDiscount,
   PremiaStakingWithFeeDiscount__factory,
   ProxyUpgradeableOwnable__factory,
+  VePremia,
+  VePremia__factory,
+  VePremiaProxy__factory,
 } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { ZERO_ADDRESS } from '../../test/utils/constants';
@@ -18,6 +21,7 @@ import { ZERO_ADDRESS } from '../../test/utils/constants';
 export async function deployV1(
   deployer: SignerWithAddress,
   treasury: string,
+  lzEndpoint: string,
   isTest: boolean,
   log = false,
   premiaAddress?: string,
@@ -44,27 +48,25 @@ export async function deployV1(
 
   //
 
-  const xPremiaImpl = await new PremiaStakingWithFeeDiscount__factory(
-    deployer,
-  ).deploy(ZERO_ADDRESS, premia.address, ZERO_ADDRESS, ZERO_ADDRESS);
-  const xPremiaProxy = await new PremiaStakingProxy__factory(deployer).deploy(
-    xPremiaImpl.address,
+  const vePremiaImpl = await new VePremia__factory(deployer).deploy(
+    lzEndpoint,
+    premia.address,
+  );
+  const vePremiaProxy = await new VePremiaProxy__factory(deployer).deploy(
+    vePremiaImpl.address,
   );
 
-  const xPremia = PremiaStakingWithFeeDiscount__factory.connect(
-    xPremiaImpl.address,
-    deployer,
-  );
+  const vePremia = VePremia__factory.connect(vePremiaImpl.address, deployer);
 
   if (log) {
     console.log(
-      `PremiaStaking deployed at ${xPremiaProxy.address} (Args : ${xPremiaImpl.address})`,
+      `PremiaStaking deployed at ${vePremiaProxy.address} (Args : ${vePremiaImpl.address})`,
     );
   }
 
   const premiaMakerImpl = await new PremiaMaker__factory(deployer).deploy(
     premia.address,
-    xPremia.address,
+    vePremia.address,
     treasury,
   );
 
@@ -79,13 +81,13 @@ export async function deployV1(
 
   if (log) {
     console.log(
-      `PremiaMaker deployed at ${premiaMaker.address} (Args : ${premia.address} / ${xPremia.address} / ${treasury})`,
+      `PremiaMaker deployed at ${premiaMaker.address} (Args : ${premia.address} / ${vePremia.address} / ${treasury})`,
     );
   }
 
   const feeDiscountStandaloneImpl = await new FeeDiscount__factory(
     deployer,
-  ).deploy(xPremia.address);
+  ).deploy(vePremia.address);
   const feeDiscountStandaloneProxy = await new ProxyUpgradeableOwnable__factory(
     deployer,
   ).deploy(feeDiscountStandaloneImpl.address);
@@ -96,21 +98,21 @@ export async function deployV1(
 
   if (log) {
     console.log(
-      `PremiaFeeDiscount deployed at ${feeDiscountStandalone.address} (Args : ${xPremia.address})`,
+      `PremiaFeeDiscount deployed at ${feeDiscountStandalone.address} (Args : ${vePremia.address})`,
     );
   }
 
   return {
     premia,
     premiaMaker,
-    xPremia,
+    vePremia,
     feeDiscountStandalone,
   };
 }
 
 export interface IPremiaContracts {
   premia: PremiaErc20 | ERC20Mock;
-  xPremia: PremiaStakingWithFeeDiscount;
+  vePremia: VePremia;
   feeDiscountStandalone: FeeDiscount;
   premiaMaker: PremiaMaker;
 }

@@ -26,7 +26,12 @@ describe('PremiaMaker', () => {
 
     [admin, user1, treasury] = await ethers.getSigners();
 
-    p = await deployV1(admin, treasury.address, true);
+    p = await deployV1(
+      admin,
+      treasury.address,
+      ethers.constants.AddressZero,
+      true,
+    );
 
     uniswap = await createUniswap(admin, p.premia as PremiaErc20);
 
@@ -71,11 +76,13 @@ describe('PremiaMaker', () => {
       parseEther('2'),
     );
     expect(await uniswap.dai.balanceOf(p.premiaMaker.address)).to.eq(0);
-    expect(bnToNumber(await p.premia.balanceOf(p.xPremia.address))).to.almost(
+    expect(bnToNumber(await p.premia.balanceOf(p.vePremia.address))).to.almost(
       685.94,
     );
 
-    expect(bnToNumber(await p.xPremia.getAvailableRewards())).to.almost(685.94);
+    expect(bnToNumber(await p.vePremia.getAvailableRewards())).to.almost(
+      685.94,
+    );
   });
 
   it('should make premia successfully with WETH', async () => {
@@ -112,10 +119,10 @@ describe('PremiaMaker', () => {
       parseEther('2'),
     );
     expect(await uniswap.weth.balanceOf(p.premiaMaker.address)).to.eq(0);
-    expect(bnToNumber(await p.premia.balanceOf(p.xPremia.address))).to.almost(
+    expect(bnToNumber(await p.premia.balanceOf(p.vePremia.address))).to.almost(
       8885.91,
     );
-    expect(bnToNumber(await p.xPremia.getAvailableRewards())).to.almost(
+    expect(bnToNumber(await p.vePremia.getAvailableRewards())).to.almost(
       8885.91,
     );
   });
@@ -126,7 +133,7 @@ describe('PremiaMaker', () => {
 
     expect(await p.premia.balanceOf(treasury.address)).to.eq(parseEther('2'));
     expect(await p.premia.balanceOf(p.premiaMaker.address)).to.eq(0);
-    expect(await p.premia.balanceOf(p.xPremia.address)).to.eq(parseEther('8'));
-    expect(bnToNumber(await p.xPremia.getAvailableRewards())).to.almost(8);
+    expect(await p.premia.balanceOf(p.vePremia.address)).to.eq(parseEther('8'));
+    expect(bnToNumber(await p.vePremia.getAvailableRewards())).to.almost(8);
   });
 });

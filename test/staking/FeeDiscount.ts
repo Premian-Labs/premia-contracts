@@ -23,16 +23,21 @@ describe('FeeDiscount', () => {
   before(async () => {
     [admin, user1, treasury] = await ethers.getSigners();
 
-    p = await deployV1(admin, treasury.address, true);
+    p = await deployV1(
+      admin,
+      treasury.address,
+      ethers.constants.AddressZero,
+      true,
+    );
 
     await (p.premia as ERC20Mock).mint(user1.address, stakeAmount);
     await p.premia
       .connect(user1)
-      .increaseAllowance(p.xPremia.address, stakeAmount);
-    await p.xPremia
+      .increaseAllowance(p.vePremia.address, stakeAmount);
+    await p.vePremia
       .connect(user1)
-      .increaseAllowance(p.feeDiscountStandalone.address, stakeAmount);
-    await p.xPremia.connect(user1).deposit(stakeAmount);
+      .increaseAllowance(p.vePremia.address, stakeAmount);
+    await p.vePremia.connect(user1).deposit(stakeAmount);
   });
 
   beforeEach(async () => {
@@ -45,56 +50,48 @@ describe('FeeDiscount', () => {
 
   it('should fail staking if stake period does not exists', async () => {
     await expect(
-      p.feeDiscountStandalone.connect(user1).stake(stakeAmount, 2 * oneMonth),
+      p.vePremia.connect(user1).stake(stakeAmount, 2 * oneMonth),
     ).to.be.revertedWith('Stake period does not exists');
   });
 
   it('should stake and calculate discount successfully', async () => {
-    await p.feeDiscountStandalone
-      .connect(user1)
-      .stake(stakeAmount, 3 * oneMonth);
-    let amountWithBonus = await p.feeDiscountStandalone.getStakeAmountWithBonus(
+    await p.vePremia.connect(user1).stake(stakeAmount, 3 * oneMonth);
+    let amountWithBonus = await p.vePremia.getStakeAmountWithBonus(
       user1.address,
     );
     expect(amountWithBonus).to.eq(parseEther('150000'));
-    expect(await p.feeDiscountStandalone.getDiscount(user1.address)).to.eq(
-      6250,
-    );
+    expect(await p.vePremia.getDiscount(user1.address)).to.eq(6250);
 
     await increaseTimestamp(91 * 24 * 3600);
 
-    await p.feeDiscountStandalone.connect(user1).unstake(parseEther('10000'));
+    await p.vePremia.connect(user1).unstake(parseEther('10000'));
 
-    amountWithBonus = await p.feeDiscountStandalone.getStakeAmountWithBonus(
-      user1.address,
-    );
+    amountWithBonus = await p.vePremia.getStakeAmountWithBonus(user1.address);
 
     expect(amountWithBonus).to.eq(parseEther('137500'));
-    expect(await p.feeDiscountStandalone.getDiscount(user1.address)).to.eq(
-      6093,
-    );
+    expect(await p.vePremia.getDiscount(user1.address)).to.eq(6093);
   });
 
   it('should stake successfully with permit', async () => {
-    await p.xPremia
+    await p.vePremia
       .connect(user1)
-      .increaseAllowance(p.feeDiscountStandalone.address, stakeAmount);
+      .increaseAllowance(p.vePremia.address, stakeAmount);
 
-    await p.xPremia.connect(user1).approve(p.xPremia.address, 0);
+    await p.vePremia.connect(user1).approve(p.vePremia.address, 0);
 
     const { timestamp } = await ethers.provider.getBlock('latest');
     const deadline = timestamp + 3600;
 
     const result = await signERC2612Permit(
       user1.provider,
-      p.xPremia.address,
+      p.vePremia.address,
       user1.address,
-      p.feeDiscountStandalone.address,
+      p.vePremia.address,
       stakeAmount.toString(),
       deadline,
     );
 
-    await p.feeDiscountStandalone
+    await p.vePremia
       .connect(user1)
       .stakeWithPermit(
         stakeAmount,
@@ -105,20 +102,21 @@ describe('FeeDiscount', () => {
         result.s,
       );
 
-    const amountWithBonus =
-      await p.feeDiscountStandalone.getStakeAmountWithBonus(user1.address);
+    const amountWithBonus = await p.vePremia.getStakeAmountWithBonus(
+      user1.address,
+    );
     expect(amountWithBonus).to.eq(parseEther('150000'));
   });
 
   it('should fail unstaking if stake is still locked', async () => {
-    await p.feeDiscountStandalone.connect(user1).stake(stakeAmount, oneMonth);
-    await expect(
-      p.feeDiscountStandalone.connect(user1).unstake(1),
-    ).to.be.revertedWith('Stake still locked');
+    await p.vePremia.connect(user1).stake(stakeAmount, oneMonth);
+    await expect(p.vePremia.connect(user1).unstake(1)).to.be.revertedWith(
+      'Stake still locked',
+    );
   });
 
   it('should not allow adding to stake with smaller period than period of stake left', async () => {
-    await p.xPremia.approve(p.feeDiscountStandalone.address, 0);
+    await p.vePremia.approve(p.vePremia.address, 0);
     await p.feeDiscountStandalone
       .connect(user1)
       .stake(stakeAmount.div(2), 3 * oneMonth);

@@ -106,7 +106,7 @@ describe('PremiaMining', () => {
 
   it('should revert if calling update not from the option pool', async () => {
     await expect(
-      p.premiaMining.updatePool(p.pool.address, true, parseEther('1')),
+      p.premiaMining.updatePool(p.pool.address, true, parseEther('1'), 5000),
     ).to.be.revertedWith('Not pool');
   });
 

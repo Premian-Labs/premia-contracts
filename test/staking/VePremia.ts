@@ -30,8 +30,6 @@ describe('VePremia', () => {
     vePremia = await new VePremia__factory(admin).deploy(
       ethers.constants.AddressZero,
       premia.address,
-      ethers.constants.AddressZero,
-      ethers.constants.AddressZero,
     );
 
     for (const u of [alice, bob]) {

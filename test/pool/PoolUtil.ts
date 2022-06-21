@@ -40,11 +40,6 @@ import {
   formatTokenId,
   TokenType,
 } from '@premia/utils';
-import { ZERO_ADDRESS } from '../utils/constants';
-import {
-  SUSHISWAP_INIT_HASH,
-  UNISWAP_V2_INIT_HASH,
-} from '../../scripts/utils/deployV2';
 
 export const DECIMALS_BASE = 18;
 export const DECIMALS_UNDERLYING = 8;
@@ -242,7 +237,7 @@ export class PoolUtil {
     premia: string,
     priceUnderlying: number,
     feeReceiver: any,
-    premiaFeeDiscount: string,
+    vePremia: string,
     exchangeProxy: string,
     wethAddress?: string,
   ) {
@@ -305,6 +300,7 @@ export class PoolUtil {
       premiaDiamond.address,
       ethers.constants.AddressZero,
       premia,
+      ethers.constants.AddressZero,
     );
 
     const premiaMiningProxy = await new PremiaMiningProxy__factory(
@@ -349,7 +345,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver.address,
-      premiaFeeDiscount,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       fixedFromFloat(FEE_APY),
     );
@@ -375,7 +371,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver.address,
-      premiaFeeDiscount,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       fixedFromFloat(FEE_APY),
       exchangeProxy,
@@ -397,7 +393,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver.address,
-      premiaFeeDiscount,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       fixedFromFloat(FEE_APY),
     );
@@ -421,7 +417,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver.address,
-      premiaFeeDiscount,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       fixedFromFloat(FEE_APY),
     );
@@ -446,7 +442,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver.address,
-      premiaFeeDiscount,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       fixedFromFloat(FEE_APY),
     );
@@ -470,7 +466,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver.address,
-      premiaFeeDiscount,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       fixedFromFloat(FEE_APY),
     );
@@ -493,7 +489,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver.address,
-      premiaFeeDiscount,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       fixedFromFloat(FEE_APY),
     );
@@ -517,7 +513,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver.address,
-      premiaFeeDiscount,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       fixedFromFloat(FEE_APY),
       exchangeProxy,
