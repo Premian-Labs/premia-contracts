@@ -151,22 +151,22 @@ describe('FeeDiscount', () => {
 
   it('should correctly calculate stake period multiplier', async () => {
     expect(await p.feeDiscountStandalone.getStakePeriodMultiplier(0)).to.eq(
-      1e4,
+      2500,
     );
     expect(
       await p.feeDiscountStandalone.getStakePeriodMultiplier(ONE_YEAR / 2),
-    ).to.eq(15e3);
+    ).to.eq(7500);
     expect(
       await p.feeDiscountStandalone.getStakePeriodMultiplier(ONE_YEAR),
-    ).to.eq(2e4);
+    ).to.eq(12500);
     expect(
       await p.feeDiscountStandalone.getStakePeriodMultiplier(2 * ONE_YEAR),
-    ).to.eq(3e4);
+    ).to.eq(22500);
     expect(
       await p.feeDiscountStandalone.getStakePeriodMultiplier(4 * ONE_YEAR),
-    ).to.eq(5e4);
+    ).to.eq(42500);
     expect(
       await p.feeDiscountStandalone.getStakePeriodMultiplier(5 * ONE_YEAR),
-    ).to.eq(5e4);
+    ).to.eq(42500);
   });
 });

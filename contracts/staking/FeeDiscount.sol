@@ -247,10 +247,10 @@ contract FeeDiscount is IFeeDiscount {
     {
         uint256 oneYear = 365 days;
 
-        if (period == 0) return 1e4; // x1
-        if (period >= 4 * oneYear) return 5e4; // x5
+        if (period == 0) return 2500; // x0.25
+        if (period >= 4 * oneYear) return 42500; // x4.25
 
-        return 1e4 + (period * 1e4) / oneYear;
+        return 2500 + (period * 1e4) / oneYear; // 0.25x + 1.0x per year lockup
     }
 
     function _getStakeAmountWithBonus(address user)
