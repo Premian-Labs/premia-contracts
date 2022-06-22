@@ -235,7 +235,11 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         ][_user];
         uint256 accPremiaPerShare = pool.accPremiaPerShare;
 
-        if (block.timestamp > pool.lastRewardTimestamp && TVL != 0) {
+        if (
+            block.timestamp > pool.lastRewardTimestamp &&
+            TVL > 0 &&
+            pool.allocPoint > 0
+        ) {
             uint256 premiaReward = (((block.timestamp -
                 pool.lastRewardTimestamp) * l.premiaPerYear) *
                 pool.allocPoint) /
@@ -299,18 +303,22 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
             return;
         }
 
-        uint256 premiaReward = (((block.timestamp - pool.lastRewardTimestamp) *
-            l.premiaPerYear) * pool.allocPoint) /
-            l.totalAllocPoint /
-            ONE_YEAR;
+        if (pool.allocPoint > 0) {
+            uint256 premiaReward = (((block.timestamp -
+                pool.lastRewardTimestamp) * l.premiaPerYear) *
+                pool.allocPoint) /
+                l.totalAllocPoint /
+                ONE_YEAR;
 
-        // If we are running out of rewards to distribute, distribute whats left
-        if (premiaReward > l.premiaAvailable) {
-            premiaReward = l.premiaAvailable;
+            // If we are running out of rewards to distribute, distribute whats left
+            if (premiaReward > l.premiaAvailable) {
+                premiaReward = l.premiaAvailable;
+            }
+
+            l.premiaAvailable -= premiaReward;
+            pool.accPremiaPerShare += (premiaReward * 1e12) / _totalTVL;
         }
 
-        l.premiaAvailable -= premiaReward;
-        pool.accPremiaPerShare += (premiaReward * 1e12) / _totalTVL;
         pool.lastRewardTimestamp = block.timestamp;
 
         uint256 votes = IVePremia(VE_PREMIA).getPoolVotes(_pool, _isCallPool);

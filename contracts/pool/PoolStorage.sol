@@ -435,6 +435,8 @@ library PoolStorage {
 
         uint256 tvl = l.totalTVL[isCall];
 
+        if (tvl == 0) return 0;
+
         utilization64x64 = ABDKMath64x64.divu(
             tvl -
                 (ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
