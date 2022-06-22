@@ -22,7 +22,6 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
     address internal immutable DIAMOND;
     address internal immutable PREMIA;
-    address internal immutable RELAYER;
     address internal immutable VE_PREMIA;
 
     uint256 private constant ONE_YEAR = 365 days;
@@ -43,28 +42,16 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
     constructor(
         address _diamond,
-        address _relayer,
         address _premia,
         address _vePremia
     ) {
         DIAMOND = _diamond;
-        RELAYER = _relayer;
         PREMIA = _premia;
         VE_PREMIA = _vePremia;
     }
 
     modifier onlyPool(address _pool) {
         require(msg.sender == _pool, "Not pool");
-        _;
-    }
-
-    modifier onlyAuthorized() {
-        require(
-            msg.sender == DIAMOND ||
-                msg.sender == RELAYER ||
-                msg.sender == OwnableStorage.layout().owner,
-            "Not authorized"
-        );
         _;
     }
 
@@ -124,59 +111,10 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         PremiaMiningStorage.layout().premiaPerYear = _premiaPerYear;
     }
 
-    /**
-     * @notice Add a new option pool to the liquidity mining. Can only be called by the owner or premia diamond
-     * @param _pool Address of option pool contract
-     */
-    function addPool(address _pool, uint256) external onlyAuthorized {
-        PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
-        require(
-            l.poolInfo[_pool][true].lastRewardTimestamp == 0 &&
-                l.poolInfo[_pool][false].lastRewardTimestamp == 0,
-            "Pool exists"
-        );
-
-        l.poolInfo[_pool][true] = PremiaMiningStorage.PoolInfo({
-            allocPoint: 0,
-            lastRewardTimestamp: block.timestamp,
-            accPremiaPerShare: 0
-        });
-
-        l.poolInfo[_pool][false] = PremiaMiningStorage.PoolInfo({
-            allocPoint: 0,
-            lastRewardTimestamp: block.timestamp,
-            accPremiaPerShare: 0
-        });
-
-        emit UpdatePoolAlloc(_pool, true, 0, 0);
-        emit UpdatePoolAlloc(_pool, false, 0, 0);
-    }
-
-    /**
-     * @notice Set new alloc points for an option pool. Can only be called by the owner or premia diamond.
-               Pools should be updated with IPoolIO(pool).updateMiningPools() before changing alloc points
-     * @param _poolAllocPoints Pool alloc points data
-     */
-    function setPoolAllocPoints(
-        IPremiaMining.PoolAllocPoints[] memory _poolAllocPoints
-    ) external onlyAuthorized {
-        PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
-
-        for (uint256 i; i < _poolAllocPoints.length; i++) {
-            _setPoolAllocPoints(l, _poolAllocPoints[i]);
-        }
-    }
-
     function _setPoolAllocPoints(
         PremiaMiningStorage.Layout storage l,
         IPremiaMining.PoolAllocPoints memory _data
     ) internal {
-        require(
-            l.poolInfo[_data.pool][true].lastRewardTimestamp > 0 &&
-                l.poolInfo[_data.pool][false].lastRewardTimestamp > 0,
-            "Pool does not exists"
-        );
-
         uint256 allocPoints = (_data.votes * _data.poolUtilizationRate) /
             INVERSE_BASIS_POINT;
 
@@ -321,6 +259,10 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
         pool.lastRewardTimestamp = block.timestamp;
 
+        _updatePoolAllocPoints();
+    }
+
+    function _updatePoolAllocPoints() internal virtual {
         uint256 votes = IVePremia(VE_PREMIA).getPoolVotes(_pool, _isCallPool);
         _setPoolAllocPoints(
             l,
