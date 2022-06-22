@@ -10,7 +10,6 @@ import {ProxyManagerStorage} from "./ProxyManagerStorage.sol";
 import {PoolProxy} from "../pool/PoolProxy.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
-import {IPremiaMining} from "../mining/IPremiaMining.sol";
 
 /**
  * @title Options pair management contract
@@ -69,7 +68,6 @@ contract ProxyManager is IProxyManager, OwnableInternal {
      * @param underlyingOracle Chainlink price aggregator for underlying
      * @param baseMinimum64x64 64x64 fixed point representation of minimum base currency amount
      * @param underlyingMinimum64x64 64x64 fixed point representation of minimum underlying currency amount
-     * @param miningAllocPoints alloc points attributed per pool (call and put) for liquidity mining
      * @return deployment address
      */
     function deployPool(
@@ -78,8 +76,7 @@ contract ProxyManager is IProxyManager, OwnableInternal {
         address baseOracle,
         address underlyingOracle,
         int128 baseMinimum64x64,
-        int128 underlyingMinimum64x64,
-        uint256 miningAllocPoints
+        int128 underlyingMinimum64x64
     ) external onlyOwner returns (address) {
         ProxyManagerStorage.Layout storage l = ProxyManagerStorage.layout();
 
@@ -104,11 +101,6 @@ contract ProxyManager is IProxyManager, OwnableInternal {
         l.setPool(base, underlying, underlyingOracle);
 
         l.poolList.push(pool);
-
-        IPremiaMining(IPoolView(DIAMOND).getPremiaMining()).addPool(
-            pool,
-            miningAllocPoints
-        );
 
         emit DeployPool(
             base,

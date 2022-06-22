@@ -25,10 +25,6 @@ interface IPremiaMining {
 
     function getPremiaPerYear() external view returns (uint256);
 
-    function addPool(address _pool, uint256 _allocPoints) external;
-
-    function setPoolAllocPoints(PoolAllocPoints[] memory _data) external;
-
     function pendingPremia(
         address _pool,
         bool _isCallPool,

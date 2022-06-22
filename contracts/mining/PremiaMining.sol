@@ -259,18 +259,23 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
         pool.lastRewardTimestamp = block.timestamp;
 
-        _updatePoolAllocPoints();
+        _updatePoolAllocPoints(l, _pool, _isCallPool, _utilizationRate);
     }
 
-    function _updatePoolAllocPoints() internal virtual {
-        uint256 votes = IVePremia(VE_PREMIA).getPoolVotes(_pool, _isCallPool);
+    function _updatePoolAllocPoints(
+        PremiaMiningStorage.Layout storage l,
+        address pool,
+        bool isCallPool,
+        uint256 utilizationRate
+    ) internal virtual {
+        uint256 votes = IVePremia(VE_PREMIA).getPoolVotes(pool, isCallPool);
         _setPoolAllocPoints(
             l,
             IPremiaMining.PoolAllocPoints(
-                _pool,
-                _isCallPool,
+                pool,
+                isCallPool,
                 votes,
-                _utilizationRate
+                utilizationRate
             )
         );
     }
