@@ -1,5 +1,9 @@
 import { expect } from 'chai';
-import { getTokenDecimals, PoolUtil } from '../pool/PoolUtil';
+import {
+  deployVePremiaMocked,
+  getTokenDecimals,
+  PoolUtil,
+} from '../pool/PoolUtil';
 import { increaseTimestamp, mineBlockUntil, resetHardhat } from '../utils/evm';
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
@@ -56,23 +60,14 @@ describe('PremiaMining', () => {
 
     [owner, lp1, lp2, lp3, buyer, feeReceiver] = await ethers.getSigners();
 
-    const erc20Factory = new ERC20Mock__factory(owner);
-    premia = await erc20Factory.deploy('PREMIA', 18);
-    xPremia = await erc20Factory.deploy('xPREMIA', 18);
-    const feeDiscountImpl = await new FeeDiscount__factory(owner).deploy(
-      xPremia.address,
-    );
-    const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
-      owner,
-    ).deploy(feeDiscountImpl.address);
-    feeDiscount = FeeDiscount__factory.connect(feeDiscountProxy.address, owner);
+    const { premia, vePremia } = await deployVePremiaMocked(owner);
 
     p = await PoolUtil.deploy(
       owner,
       premia.address,
       spotPrice,
-      feeReceiver,
-      feeDiscount.address,
+      feeReceiver.address,
+      vePremia.address,
       ZERO_ADDRESS,
     );
 

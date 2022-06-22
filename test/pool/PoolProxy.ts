@@ -19,7 +19,12 @@ import { describeBehaviorOfPoolSettings } from '../../spec/pool/PoolSettings.beh
 import { describeBehaviorOfPoolView } from '../../spec/pool/PoolView.behavior';
 import { describeBehaviorOfPoolWrite } from '../../spec/pool/PoolWrite.behavior';
 import { describeBehaviorOfPoolSell } from '../../spec/pool/PoolSell.behavior';
-import { DECIMALS_BASE, DECIMALS_UNDERLYING, PoolUtil } from './PoolUtil';
+import {
+  DECIMALS_BASE,
+  DECIMALS_UNDERLYING,
+  deployVePremiaMocked,
+  PoolUtil,
+} from './PoolUtil';
 import { describeBehaviorOfProxy } from '@solidstate/spec';
 import {
   createUniswap,
@@ -56,18 +61,7 @@ describe('PoolProxy', function () {
     [owner, lp1, lp2, buyer, thirdParty, feeReceiver] =
       await ethers.getSigners();
 
-    const erc20Factory = new ERC20Mock__factory(owner);
-
-    premia = await erc20Factory.deploy('PREMIA', 18);
-    xPremia = await erc20Factory.deploy('xPREMIA', 18);
-
-    const feeDiscountImpl = await new FeeDiscount__factory(owner).deploy(
-      xPremia.address,
-    );
-    const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
-      owner,
-    ).deploy(feeDiscountImpl.address);
-    feeDiscount = FeeDiscount__factory.connect(feeDiscountProxy.address, owner);
+    const { premia, vePremia } = await deployVePremiaMocked(owner);
 
     uniswap = await createUniswap(owner);
 
@@ -77,8 +71,8 @@ describe('PoolProxy', function () {
       owner,
       premia.address,
       spotPrice,
-      feeReceiver,
-      feeDiscount.address,
+      feeReceiver.address,
+      vePremia.address,
       exchangeHelper.address,
       uniswap.weth.address,
     );

@@ -1,33 +1,14 @@
 import { ethers } from 'hardhat';
-import { PoolUtil } from '../../../test/pool/PoolUtil';
+import { deployVePremiaMocked, PoolUtil } from '../../../test/pool/PoolUtil';
 import { createUniswap } from '../../../test/utils/uniswap';
-import {
-  ERC20Mock__factory,
-  ExchangeHelper__factory,
-  PoolMock__factory,
-  VePremia__factory,
-  VePremiaProxy__factory,
-} from '../../../typechain';
+import { ExchangeHelper__factory, PoolMock__factory } from '../../../typechain';
 
 const spotPrice = 2000;
 
 async function main() {
   const [owner, feeReceiver] = await ethers.getSigners();
 
-  const erc20Factory = new ERC20Mock__factory(owner);
-
-  const premia = await erc20Factory.deploy('PREMIA', 18);
-
-  const vePremiaImpl = await new VePremia__factory(owner).deploy(
-    ethers.constants.AddressZero,
-    premia.address,
-  );
-
-  const vePremiaProxy = await new VePremiaProxy__factory(owner).deploy(
-    vePremiaImpl.address,
-  );
-
-  const vePremia = VePremia__factory.connect(vePremiaProxy.address, owner);
+  const { vePremia, premia } = await deployVePremiaMocked(owner);
 
   const exchangeHelper = await new ExchangeHelper__factory(owner).deploy();
 
@@ -37,7 +18,7 @@ async function main() {
     owner,
     premia.address,
     spotPrice,
-    feeReceiver,
+    feeReceiver.address,
     vePremia.address,
     exchangeHelper.address,
     uniswap.weth.address,
