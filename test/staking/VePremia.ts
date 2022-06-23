@@ -8,7 +8,7 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { beforeEach } from 'mocha';
-import { parseEther } from 'ethers/lib/utils';
+import { formatEther, parseEther } from 'ethers/lib/utils';
 import { ONE_DAY } from '../pool/PoolUtil';
 import { increaseTimestamp } from '../utils/evm';
 
@@ -53,30 +53,30 @@ describe('VePremia', () => {
       expect(await vePremia.getTotalVotingPower()).to.eq(0);
 
       await vePremia.connect(alice).deposit(parseEther('10'));
-      await vePremia.connect(alice).stake(parseEther('1'), ONE_DAY * 360);
+      await vePremia.connect(alice).stake(parseEther('1'), ONE_DAY * 365);
 
-      expect(await vePremia.getTotalVotingPower()).to.eq(parseEther('2'));
+      expect(await vePremia.getTotalVotingPower()).to.eq(parseEther('1.25'));
 
       await vePremia.connect(bob).deposit(parseEther('10'));
-      await vePremia.connect(bob).stake(parseEther('3'), ONE_DAY * 180);
+      await vePremia.connect(bob).stake(parseEther('3'), (ONE_DAY * 365) / 2);
 
-      expect(await vePremia.getTotalVotingPower()).to.eq(parseEther('6.5'));
+      expect(await vePremia.getTotalVotingPower()).to.eq(parseEther('3.5'));
     });
   });
 
   describe('#getUserVotingPower', () => {
     it('should successfully return user vorting power', async () => {
       await vePremia.connect(alice).deposit(parseEther('10'));
-      await vePremia.connect(alice).stake(parseEther('1'), ONE_DAY * 360);
+      await vePremia.connect(alice).stake(parseEther('1'), ONE_DAY * 365);
 
       await vePremia.connect(bob).deposit(parseEther('10'));
-      await vePremia.connect(bob).stake(parseEther('3'), ONE_DAY * 180);
+      await vePremia.connect(bob).stake(parseEther('3'), (ONE_DAY * 365) / 2);
 
       expect(await vePremia.getUserVotingPower(alice.address)).to.eq(
-        parseEther('2'),
+        parseEther('1.25'),
       );
       expect(await vePremia.getUserVotingPower(bob.address)).to.eq(
-        parseEther('4.5'),
+        parseEther('2.25'),
       );
     });
   });
@@ -84,7 +84,7 @@ describe('VePremia', () => {
   describe('#getUserVotes', () => {
     it('should successfully return user votes', async () => {
       await vePremia.connect(alice).deposit(parseEther('10'));
-      await vePremia.connect(alice).stake(parseEther('10'), ONE_DAY * 360);
+      await vePremia.connect(alice).stake(parseEther('10'), ONE_DAY * 365);
 
       const votes = [
         {
@@ -93,12 +93,12 @@ describe('VePremia', () => {
           isCallPool: true,
         },
         {
-          amount: parseEther('15'),
+          amount: parseEther('10'),
           poolAddress: '0x0000000000000000000000000000000000000002',
           isCallPool: true,
         },
         {
-          amount: parseEther('4'),
+          amount: parseEther('1.5'),
           poolAddress: '0x0000000000000000000000000000000000000002',
           isCallPool: false,
         },
@@ -132,7 +132,7 @@ describe('VePremia', () => {
         ]),
       ).to.be.revertedWith('not enough voting power');
 
-      await vePremia.connect(alice).stake(parseEther('1'), ONE_DAY * 360);
+      await vePremia.connect(alice).stake(parseEther('1'), ONE_DAY * 365);
 
       await expect(
         vePremia.connect(alice).castVotes([
@@ -148,11 +148,11 @@ describe('VePremia', () => {
     it('should successfully cast user votes', async () => {
       await vePremia.connect(alice).deposit(parseEther('10'));
 
-      await vePremia.connect(alice).stake(parseEther('5'), ONE_DAY * 360);
+      await vePremia.connect(alice).stake(parseEther('5'), ONE_DAY * 365);
 
       await vePremia.connect(alice).castVotes([
         {
-          amount: parseEther('10'),
+          amount: parseEther('6.25'),
           poolAddress: '0x0000000000000000000000000000000000000001',
           isCallPool: true,
         },
@@ -160,7 +160,7 @@ describe('VePremia', () => {
 
       const votes = await vePremia.getUserVotes(alice.address);
       expect(votes.length).to.eq(1);
-      expect(votes[0].amount).to.eq(parseEther('10'));
+      expect(votes[0].amount).to.eq(parseEther('6.25'));
       expect(votes[0].poolAddress).to.eq(
         '0x0000000000000000000000000000000000000001',
       );
@@ -170,30 +170,30 @@ describe('VePremia', () => {
     it('should remove some user votes if some tokens are withdrawn', async () => {
       await vePremia.connect(alice).deposit(parseEther('10'));
 
-      await vePremia.connect(alice).stake(parseEther('5'), ONE_DAY * 360);
+      await vePremia.connect(alice).stake(parseEther('5'), ONE_DAY * 365);
 
       await vePremia.connect(alice).castVotes([
         {
-          amount: parseEther('10'),
+          amount: parseEther('6.25'),
           poolAddress: '0x0000000000000000000000000000000000000001',
           isCallPool: true,
         },
       ]);
 
-      await increaseTimestamp(ONE_DAY * 361);
+      await increaseTimestamp(ONE_DAY * 366);
 
       await vePremia.connect(alice).unstake(parseEther('2.5'));
 
       const votes = await vePremia.getUserVotes(alice.address);
       expect(votes.length).to.eq(1);
-      expect(votes[0].amount).to.eq(parseEther('5'));
+      expect(votes[0].amount).to.eq(parseEther('3.125'));
       expect(votes[0].poolAddress).to.eq(
         '0x0000000000000000000000000000000000000001',
       );
       expect(votes[0].isCallPool).to.be.true;
 
       expect(await vePremia.getUserVotingPower(alice.address)).to.eq(
-        parseEther('5'),
+        parseEther('3.125'),
       );
     });
   });
