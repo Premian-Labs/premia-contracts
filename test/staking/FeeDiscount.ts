@@ -33,10 +33,13 @@ describe('FeeDiscount', () => {
     await (p.premia as ERC20Mock).mint(user1.address, stakeAmount);
     await p.premia
       .connect(user1)
-      .increaseAllowance(p.vePremia.address, stakeAmount);
+      .increaseAllowance(p.vePremia.address, ethers.constants.MaxUint256);
     await p.vePremia
       .connect(user1)
-      .increaseAllowance(p.vePremia.address, stakeAmount);
+      .increaseAllowance(
+        p.feeDiscountStandalone.address,
+        ethers.constants.MaxUint256,
+      );
     await p.vePremia.connect(user1).deposit(stakeAmount);
   });
 
@@ -48,21 +51,15 @@ describe('FeeDiscount', () => {
     await ethers.provider.send('evm_revert', [snapshotId]);
   });
 
-  it('should fail staking if stake period does not exists', async () => {
-    await expect(
-      p.vePremia.connect(user1).stake(stakeAmount, 2 * oneMonth),
-    ).to.be.revertedWith('Stake period does not exists');
-  });
-
   it('should stake and calculate discount successfully', async () => {
-    await p.vePremia.connect(user1).stake(stakeAmount, 3 * oneMonth);
+    await p.vePremia.connect(user1).stake(stakeAmount, ONE_YEAR);
     let amountWithBonus = await p.vePremia.getStakeAmountWithBonus(
       user1.address,
     );
     expect(amountWithBonus).to.eq(parseEther('150000'));
     expect(await p.vePremia.getDiscount(user1.address)).to.eq(6250);
 
-    await increaseTimestamp(91 * 24 * 3600);
+    await increaseTimestamp(ONE_YEAR + 1);
 
     await p.vePremia.connect(user1).unstake(parseEther('10000'));
 
@@ -95,7 +92,7 @@ describe('FeeDiscount', () => {
       .connect(user1)
       .stakeWithPermit(
         stakeAmount,
-        3 * oneMonth,
+        ONE_YEAR,
         deadline,
         result.v,
         result.r,
@@ -116,7 +113,6 @@ describe('FeeDiscount', () => {
   });
 
   it('should not allow adding to stake with smaller period than period of stake left', async () => {
-    await p.vePremia.approve(p.vePremia.address, 0);
     await p.feeDiscountStandalone
       .connect(user1)
       .stake(stakeAmount.div(2), 3 * oneMonth);
