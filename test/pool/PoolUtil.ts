@@ -318,7 +318,6 @@ export class PoolUtil {
 
     const premiaMiningImpl = await new PremiaMining__factory(deployer).deploy(
       premiaDiamond.address,
-      ethers.constants.AddressZero,
       premia,
       vePremia,
     );
@@ -579,7 +578,6 @@ export class PoolUtil {
       // minimum amounts
       fixedFromFloat(100),
       fixedFromFloat(0.1),
-      100,
     );
 
     let events = (await tx.wait()).events;
@@ -597,7 +595,6 @@ export class PoolUtil {
       // minimum amounts
       fixedFromFloat(100),
       fixedFromFloat(0.1),
-      100,
     );
 
     events = (await tx.wait()).events;
