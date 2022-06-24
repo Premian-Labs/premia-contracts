@@ -1510,6 +1510,49 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         l.totalTVL[isCallPool] = newTotalTVL;
     }
 
+    function _transferUserTVL(
+        PoolStorage.Layout storage l,
+        address from,
+        address to,
+        bool isCallPool,
+        uint256 amount
+    ) internal {
+        uint256 fromTVL = l.userTVL[from][isCallPool];
+        uint256 toTVL = l.userTVL[to][isCallPool];
+        uint256 totalTVL = l.totalTVL[isCallPool];
+        int128 utilization64x64 = l.getUtilization64x64(isCallPool);
+
+        uint256 newFromTVL;
+        if (fromTVL > amount) {
+            newFromTVL = fromTVL - amount;
+        }
+
+        uint256 newToTVL = toTVL + amount;
+
+        IPremiaMining(PREMIA_MINING_ADDRESS).allocatePending(
+            from,
+            address(this),
+            isCallPool,
+            fromTVL,
+            newFromTVL,
+            totalTVL,
+            ABDKMath64x64Token.toDecimals(utilization64x64, 4)
+        );
+
+        IPremiaMining(PREMIA_MINING_ADDRESS).allocatePending(
+            to,
+            address(this),
+            isCallPool,
+            toTVL,
+            newToTVL,
+            totalTVL,
+            ABDKMath64x64Token.toDecimals(utilization64x64, 4)
+        );
+
+        l.userTVL[from][isCallPool] = newFromTVL;
+        l.userTVL[to][isCallPool] = newToTVL;
+    }
+
     /**
      * @notice ERC1155 hook: track eligible underwriters
      * @param operator transaction sender
@@ -1585,8 +1628,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     }
 
                     if (to != address(0)) {
-                        _subUserTVL(l, from, isCallPool, amount);
-                        _addUserTVL(l, to, isCallPool, amount);
+                        _transferUserTVL(l, from, to, isCallPool, amount);
                     }
                 }
 
