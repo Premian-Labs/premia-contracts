@@ -4,40 +4,30 @@ import {
   getTokenDecimals,
   PoolUtil,
 } from '../pool/PoolUtil';
-import { increaseTimestamp, mineBlockUntil, resetHardhat } from '../utils/evm';
-import { ethers, network } from 'hardhat';
+import { increaseTimestamp, mineBlockUntil } from '../utils/evm';
+import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import {
-  ERC20Mock,
-  ERC20Mock__factory,
-  FeeDiscount,
-  FeeDiscount__factory,
-  ProxyUpgradeableOwnable__factory,
-} from '../../typechain';
+import { ERC20Mock } from '../../typechain';
 import { parseEther, parseUnits } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
 import { ZERO_ADDRESS } from '../utils/constants';
+import { beforeEach } from 'mocha';
 
 const oneDay = 24 * 3600;
-const oneMonth = 30 * oneDay;
 
-const { API_KEY_ALCHEMY } = process.env;
-const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`;
-const blockNumber = 13569795;
 const CHAI_ALMOST_OVERRIDE = 0.05;
 
 describe('PremiaMining', () => {
+  let snapshotId: number;
+
   let owner: SignerWithAddress;
   let lp1: SignerWithAddress;
   let lp2: SignerWithAddress;
   let lp3: SignerWithAddress;
   let buyer: SignerWithAddress;
   let feeReceiver: SignerWithAddress;
-  let multisig: SignerWithAddress;
 
   let premia: ERC20Mock;
-  let xPremia: ERC20Mock;
-  let feeDiscount: FeeDiscount;
 
   let p: PoolUtil;
 
@@ -45,19 +35,6 @@ describe('PremiaMining', () => {
   const totalRewardAmount = 200000;
 
   beforeEach(async () => {
-    await ethers.provider.send('hardhat_reset', [
-      { forking: { jsonRpcUrl, blockNumber } },
-    ]);
-
-    // Impersonate multisig
-    await network.provider.request({
-      method: 'hardhat_impersonateAccount',
-      params: ['0xc22FAe86443aEed038A4ED887bbA8F5035FD12F0'],
-    });
-    multisig = await ethers.getSigner(
-      '0xc22FAe86443aEed038A4ED887bbA8F5035FD12F0',
-    );
-
     [owner, lp1, lp2, lp3, buyer, feeReceiver] = await ethers.getSigners();
 
     const { premia, vePremia } = await deployVePremiaMocked(owner);
@@ -95,8 +72,12 @@ describe('PremiaMining', () => {
     }
   });
 
+  beforeEach(async () => {
+    snapshotId = await ethers.provider.send('evm_snapshot', []);
+  });
+
   afterEach(async () => {
-    await resetHardhat();
+    await ethers.provider.send('evm_revert', [snapshotId]);
   });
 
   it('should revert if calling update not from the option pool', async () => {
