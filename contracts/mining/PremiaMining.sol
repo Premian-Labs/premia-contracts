@@ -26,6 +26,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
     uint256 private constant ONE_YEAR = 365 days;
     uint256 private constant INVERSE_BASIS_POINT = 1e4;
+    uint256 private constant MIN_POINT_MULTIPLIER = 2500; // 25% -> If utilization rate is less than this value, we use this value instead
 
     event Claim(
         address indexed user,
@@ -115,6 +116,10 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         PremiaMiningStorage.Layout storage l,
         IPremiaMining.PoolAllocPoints memory _data
     ) internal {
+        if (_data.poolUtilizationRate < MIN_POINT_MULTIPLIER) {
+            _data.poolUtilizationRate = MIN_POINT_MULTIPLIER;
+        }
+
         uint256 allocPoints = (_data.votes * _data.poolUtilizationRate) /
             INVERSE_BASIS_POINT;
 
@@ -236,12 +241,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
             return;
         }
 
-        if (_totalTVL == 0) {
-            pool.lastRewardTimestamp = block.timestamp;
-            return;
-        }
-
-        if (pool.allocPoint > 0) {
+        if (_totalTVL > 0 && pool.allocPoint > 0) {
             uint256 premiaReward = (((block.timestamp -
                 pool.lastRewardTimestamp) * l.premiaPerYear) *
                 pool.allocPoint) /
