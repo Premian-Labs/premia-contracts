@@ -106,6 +106,7 @@ contract PoolSell is IPoolSell, PoolInternal {
         uint256 contractSize
     ) external {
         PoolStorage.Layout storage l = PoolStorage.layout();
+        int128 utilization64x64 = l.getUtilization64x64(isCall);
 
         uint256 baseCost;
         uint256 feeCost;
@@ -141,7 +142,8 @@ contract PoolSell is IPoolSell, PoolInternal {
             contractSize,
             baseCost,
             isCall,
-            true
+            true,
+            utilization64x64
         );
 
         uint256 longTokenId = PoolStorage.formatTokenId(

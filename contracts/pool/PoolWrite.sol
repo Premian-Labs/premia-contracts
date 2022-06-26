@@ -189,6 +189,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         );
 
         PoolStorage.Layout storage l = PoolStorage.layout();
+        int128 utilization64x64 = l.getUtilization64x64(isCall);
 
         _verifyPurchase(maturity, strike64x64, isCall, _update(l));
 
@@ -222,7 +223,8 @@ contract PoolWrite is IPoolWrite, PoolSwap {
             longReceiver,
             shortTokenId,
             interval,
-            isCall
+            isCall,
+            utilization64x64
         );
     }
 
