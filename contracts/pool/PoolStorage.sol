@@ -434,14 +434,13 @@ library PoolStorage {
         );
 
         uint256 tvl = l.totalTVL[isCall];
+        uint256 pendingDeposits = l.totalPendingDeposits(isCall);
 
-        if (tvl == 0) return 0;
+        if (tvl - pendingDeposits == 0) return 0;
 
         utilization64x64 = ABDKMath64x64.divu(
-            tvl -
-                (ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
-                    l.totalPendingDeposits(isCall)),
-            tvl
+            tvl - ERC1155EnumerableStorage.layout().totalSupply[tokenId],
+            tvl - pendingDeposits
         );
     }
 
