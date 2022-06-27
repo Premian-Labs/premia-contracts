@@ -173,14 +173,14 @@ describe('VePremia', () => {
 
       const votes = await vePremia.getUserVotes(alice.address);
       expect(votes.length).to.eq(1);
-      expect(votes[0].amount).to.eq(parseEther('3.125'));
+      expect(votes[0].amount).to.eq(parseEther('6.25'));
       expect(votes[0].poolAddress).to.eq(
         '0x0000000000000000000000000000000000000001',
       );
       expect(votes[0].isCallPool).to.be.true;
 
       expect(await vePremia.getUserVotingPower(alice.address)).to.eq(
-        parseEther('3.125'),
+        parseEther('6.25'),
       );
     });
   });
