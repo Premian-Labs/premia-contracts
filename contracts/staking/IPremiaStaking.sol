@@ -3,7 +3,6 @@
 pragma solidity ^0.8.0;
 
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
-import {FeeDiscountStorage} from "./FeeDiscountStorage.sol";
 
 interface IPremiaStaking {
     event Deposit(address indexed user, uint256 amount);
@@ -199,5 +198,5 @@ interface IPremiaStaking {
     function getUserInfo(address user)
         external
         view
-        returns (FeeDiscountStorage.UserInfo memory);
+        returns (PremiaStakingStorage.UserInfo memory);
 }

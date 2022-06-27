@@ -185,6 +185,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         _beforeStake(amount, period);
 
+        _upgradeUser(msg.sender);
+
         ////////////////////////////////////////////////////////////////////////////////
         // Deposit logic
 
@@ -200,14 +202,10 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         ////////////////////////////////////////////////////////////////////////////////
 
-        _lock(amount, period);
-    }
-
-    function _lock(uint256 amount, uint256 period) internal {
-        FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
         require(period <= MAX_PERIOD, "Gt max period");
-        FeeDiscountStorage.UserInfo storage user = l.userInfo[msg.sender];
+        PremiaStakingStorage.UserInfo storage user = l.userInfo[msg.sender];
 
         uint256 lockedUntil = block.timestamp + period;
         require(
@@ -222,6 +220,43 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         emit Staked(msg.sender, amount, period, lockedUntil);
     }
 
+    function upgrade(address[] memory users) external onlyOwner {
+        for (uint256 i = 0; i < users.length; i++) {
+            _upgradeUser(users[i]);
+        }
+    }
+
+    function _upgradeUser(address userAddress) internal {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage user = l.userInfo[userAddress];
+        if (user.upgraded) return;
+
+        uint256 balance = _balanceOf(userAddress);
+
+        FeeDiscountStorage.Layout storage oldL = FeeDiscountStorage.layout();
+        FeeDiscountStorage.UserInfo storage oldUser = oldL.userInfo[
+            userAddress
+        ];
+
+        uint256 oldUserBalance = oldUser.balance;
+        balance += oldUserBalance;
+
+        user.lockedUntil = oldUser.lockedUntil;
+        user.stakePeriod = oldUser.stakePeriod;
+        user.balance = (balance * _getXPremiaToPremiaRatio()) / 1e18;
+        user.upgraded = true;
+
+        delete oldL.userInfo[userAddress];
+
+        l.totalPower +=
+            (user.balance * _getStakePeriodMultiplier(user.stakePeriod)) /
+            INVERSE_BASIS_POINT;
+
+        _transfer(address(this), userAddress, oldUserBalance);
+
+        // ToDo : Event ?
+    }
+
     function _beforeUnstake(uint256 amount) internal virtual {}
 
     /**
@@ -230,47 +265,42 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     function startWithdraw(uint256 amount) external {
         _updateRewards();
 
-        {
-            FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
-            FeeDiscountStorage.UserInfo storage user = l.userInfo[msg.sender];
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage user = l.userInfo[msg.sender];
 
-            require(user.lockedUntil <= block.timestamp, "Stake still locked");
+        require(user.lockedUntil <= block.timestamp, "Stake still locked");
 
-            _beforeUnstake(amount);
+        _beforeUnstake(amount);
 
-            user.balance -= amount;
+        user.balance -= amount;
 
-            emit Unstaked(msg.sender, amount);
-        }
+        emit Unstaked(msg.sender, amount);
 
-        {
-            PremiaStakingStorage.Layout storage l = PremiaStakingStorage
-                .layout();
+        //
 
-            // Gets the amount of xPremia in existence
-            uint256 totalShares = _totalSupply();
+        // Gets the amount of xPremia in existence
+        uint256 totalShares = _totalSupply();
 
-            uint256 availablePremiaAmount = _getAvailablePremiaAmount();
-            uint256 stakedPremiaAmount = availablePremiaAmount -
-                l.reserved +
-                l.debt;
+        uint256 availablePremiaAmount = _getAvailablePremiaAmount();
+        uint256 stakedPremiaAmount = availablePremiaAmount -
+            l.reserved +
+            l.debt;
 
-            // Calculates the amount of Premia the xPremia is worth
-            uint256 premiaAmount = (amount * stakedPremiaAmount) / totalShares;
+        // Calculates the amount of Premia the xPremia is worth
+        uint256 premiaAmount = (amount * stakedPremiaAmount) / totalShares;
 
-            require(
-                premiaAmount <= availablePremiaAmount,
-                "Not enough underlying available"
-            );
+        require(
+            premiaAmount <= availablePremiaAmount,
+            "Not enough underlying available"
+        );
 
-            _burn(msg.sender, amount);
-            l.pendingWithdrawal += premiaAmount;
+        _burn(msg.sender, amount);
+        l.pendingWithdrawal += premiaAmount;
 
-            l.withdrawals[msg.sender].amount += premiaAmount;
-            l.withdrawals[msg.sender].startDate = block.timestamp;
+        l.withdrawals[msg.sender].amount += premiaAmount;
+        l.withdrawals[msg.sender].startDate = block.timestamp;
 
-            emit StartWithdrawal(msg.sender, premiaAmount, block.timestamp);
-        }
+        emit StartWithdrawal(msg.sender, premiaAmount, block.timestamp);
     }
 
     /**
@@ -382,9 +412,9 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     function getUserInfo(address user)
         external
         view
-        returns (FeeDiscountStorage.UserInfo memory)
+        returns (PremiaStakingStorage.UserInfo memory)
     {
-        return FeeDiscountStorage.layout().userInfo[user];
+        return PremiaStakingStorage.layout().userInfo[user];
     }
 
     function _mintShares(
@@ -533,9 +563,9 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         view
         returns (uint256)
     {
-        FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
-        FeeDiscountStorage.UserInfo memory userInfo = l.userInfo[user];
+        PremiaStakingStorage.UserInfo memory userInfo = l.userInfo[user];
         return
             (userInfo.balance *
                 _getStakePeriodMultiplier(userInfo.stakePeriod)) /
