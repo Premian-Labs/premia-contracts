@@ -201,8 +201,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         ////////////////////////////////////////////////////////////////////////////////
 
         _lock(amount, period);
-
-        emit Staked(msg.sender, amount, period, lockedUntil);
     }
 
     function _lock(uint256 amount, uint256 period) internal {
@@ -221,7 +219,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         user.lockedUntil = lockedUntil.toUint64();
         user.stakePeriod = period.toUint64();
 
-        // ToDo : Event ?
+        emit Staked(msg.sender, amount, period, lockedUntil);
     }
 
     function _beforeUnstake(uint256 amount) internal virtual {}
