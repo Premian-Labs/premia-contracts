@@ -5,9 +5,10 @@ import {
   PremiaErc20__factory,
   PremiaStaking,
   PremiaStaking__factory,
-  PremiaStakingWithFeeDiscount,
-  PremiaStakingWithFeeDiscount__factory,
+  PremiaStakingMigrator,
+  PremiaStakingMigrator__factory,
   ProxyUpgradeableOwnable__factory,
+  VePremia,
 } from '../../typechain';
 import { expect } from 'chai';
 import { ethers, network } from 'hardhat';
@@ -16,6 +17,7 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-wit
 import { bnToNumber } from '../utils/math';
 import { parseEther } from 'ethers/lib/utils';
 import { resetHardhat } from '../utils/evm';
+import { deployV1 } from '../../scripts/utils/deployV1';
 
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
@@ -26,9 +28,10 @@ const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`;
 const blockNumber = 13639700;
 
 let premia: PremiaErc20;
-let xPremia: PremiaStakingWithFeeDiscount;
+let migrator: PremiaStakingMigrator;
 let xPremiaOld: PremiaStaking;
 let feeDiscountOld: IPremiaFeeDiscountOld;
+let vePremia: VePremia;
 
 describe('PremiaStakingWithFeeDiscount', () => {
   beforeEach(async () => {
@@ -66,29 +69,32 @@ describe('PremiaStakingWithFeeDiscount', () => {
 
     //
 
-    const xPremiaImpl = await new PremiaStakingWithFeeDiscount__factory(
+    const p = await deployV1(
       treasury,
-    ).deploy(
+      treasury.address,
       ethers.constants.AddressZero,
-      '0x6399c842dd2be3de30bf99bc7d1bbf6fa3650e70',
-    );
-    const xPremiaProxy = await new ProxyUpgradeableOwnable__factory(
-      treasury,
-    ).deploy(xPremiaImpl.address);
-
-    xPremia = PremiaStakingWithFeeDiscount__factory.connect(
-      xPremiaProxy.address,
-      treasury,
+      true,
+      false,
+      premia.address,
     );
 
-    await feeDiscountOld.connect(treasury).setNewContract(xPremia.address);
+    vePremia = p.vePremia;
+
+    migrator = await new PremiaStakingMigrator__factory(treasury).deploy(
+      premia.address,
+      feeDiscountOld.address,
+      xPremiaOld.address,
+      vePremia.address,
+    );
+
+    await feeDiscountOld.connect(treasury).setNewContract(vePremia.address);
   });
 
   afterEach(async () => {
     await resetHardhat();
   });
 
-  // ToDo : Move migrate tests
+  // ToDo : Update migrate tests
 
   // it('should successfully migrate locked tokens', async () => {
   //   const staker = await ethers.getSigner(

@@ -14,6 +14,7 @@ import { parseEther } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
 import { beforeEach } from 'mocha';
 import { BigNumberish } from 'ethers';
+import { ONE_YEAR } from '../pool/PoolUtil';
 
 let admin: SignerWithAddress;
 let alice: SignerWithAddress;
@@ -98,7 +99,124 @@ describe('PremiaStaking', () => {
     await ethers.provider.send('evm_revert', [snapshotId]);
   });
 
-  it('should successfully enter with permit', async () => {
+  describe('FeeDiscount', () => {
+    const stakeAmount = parseEther('120000');
+    const oneMonth = 30 * 24 * 3600;
+
+    beforeEach(async () => {
+      await premia.mint(alice.address, stakeAmount);
+      await premia
+        .connect(alice)
+        .increaseAllowance(premiaStaking.address, ethers.constants.MaxUint256);
+    });
+
+    it('should stake and calculate discount successfully', async () => {
+      await premiaStaking.connect(alice).stake(stakeAmount, ONE_YEAR);
+      let amountWithBonus = await premiaStaking.getStakeAmountWithBonus(
+        alice.address,
+      );
+      expect(amountWithBonus).to.eq(parseEther('150000'));
+      expect(await premiaStaking.getDiscount(alice.address)).to.eq(6250);
+
+      await increaseTimestamp(ONE_YEAR + 1);
+
+      await premiaStaking.connect(alice).startWithdraw(parseEther('10000'));
+
+      amountWithBonus = await premiaStaking.getStakeAmountWithBonus(
+        alice.address,
+      );
+
+      expect(amountWithBonus).to.eq(parseEther('137500'));
+      expect(await premiaStaking.getDiscount(alice.address)).to.eq(6093);
+    });
+
+    it('should stake successfully with permit', async () => {
+      const { timestamp } = await ethers.provider.getBlock('latest');
+      const deadline = timestamp + 3600;
+
+      const result = await signERC2612Permit(
+        alice.provider,
+        premia.address,
+        alice.address,
+        premiaStaking.address,
+        stakeAmount.toString(),
+        deadline,
+      );
+
+      await premiaStaking
+        .connect(alice)
+        .stakeWithPermit(
+          stakeAmount,
+          ONE_YEAR,
+          deadline,
+          result.v,
+          result.r,
+          result.s,
+        );
+
+      const amountWithBonus = await premiaStaking.getStakeAmountWithBonus(
+        alice.address,
+      );
+      expect(amountWithBonus).to.eq(parseEther('150000'));
+    });
+
+    it('should fail unstaking if stake is still locked', async () => {
+      await premiaStaking.connect(alice).stake(stakeAmount, oneMonth);
+      await expect(
+        premiaStaking.connect(alice).startWithdraw(1),
+      ).to.be.revertedWith('Stake still locked');
+    });
+
+    it('should not allow adding to stake with smaller period than period of stake left', async () => {
+      await premiaStaking
+        .connect(alice)
+        .stake(stakeAmount.div(2), 3 * oneMonth);
+
+      await increaseTimestamp(oneMonth);
+
+      // Fail setting one month stake
+      await expect(
+        premiaStaking.connect(alice).stake(stakeAmount.div(4), oneMonth),
+      ).to.be.revertedWith('Cannot add stake with lower stake period');
+
+      // Success adding 3 months stake
+      await premiaStaking
+        .connect(alice)
+        .stake(stakeAmount.div(4), 3 * oneMonth);
+      let userInfo = await premiaStaking.getUserInfo(alice.address);
+      expect(userInfo.balance).to.eq(stakeAmount.div(4).mul(3));
+      expect(userInfo.stakePeriod).to.eq(3 * oneMonth);
+
+      // Success adding for 6 months stake
+      await premiaStaking
+        .connect(alice)
+        .stake(stakeAmount.div(4), 6 * oneMonth);
+      userInfo = await premiaStaking.getUserInfo(alice.address);
+      expect(userInfo.balance).to.eq(stakeAmount);
+      expect(userInfo.stakePeriod).to.eq(6 * oneMonth);
+    });
+
+    it('should correctly calculate stake period multiplier', async () => {
+      expect(await premiaStaking.getStakePeriodMultiplier(0)).to.eq(2500);
+      expect(await premiaStaking.getStakePeriodMultiplier(ONE_YEAR / 2)).to.eq(
+        7500,
+      );
+      expect(await premiaStaking.getStakePeriodMultiplier(ONE_YEAR)).to.eq(
+        12500,
+      );
+      expect(await premiaStaking.getStakePeriodMultiplier(2 * ONE_YEAR)).to.eq(
+        22500,
+      );
+      expect(await premiaStaking.getStakePeriodMultiplier(4 * ONE_YEAR)).to.eq(
+        42500,
+      );
+      expect(await premiaStaking.getStakePeriodMultiplier(5 * ONE_YEAR)).to.eq(
+        42500,
+      );
+    });
+  });
+
+  it('should successfully stake with permit', async () => {
     const { timestamp } = await ethers.provider.getBlock('latest');
     const deadline = timestamp + 3600;
 
@@ -113,21 +231,21 @@ describe('PremiaStaking', () => {
 
     await premiaStaking
       .connect(alice)
-      .depositWithPermit('100', deadline, result.v, result.r, result.s);
+      .stakeWithPermit('100', 0, deadline, result.v, result.r, result.s);
     const balance = await premiaStaking.balanceOf(alice.address);
     expect(balance).to.eq(100);
   });
 
   it('should not allow enter if not enough approve', async () => {
     await expect(
-      premiaStaking.connect(alice).deposit('100'),
+      premiaStaking.connect(alice).stake('100', 0),
     ).to.be.revertedWith('ERC20: transfer amount exceeds allowance');
     await premia.connect(alice).approve(premiaStaking.address, '50');
     await expect(
-      premiaStaking.connect(alice).deposit('100'),
+      premiaStaking.connect(alice).stake('100', 0),
     ).to.be.revertedWith('ERC20: transfer amount exceeds allowance');
     await premia.connect(alice).approve(premiaStaking.address, '100');
-    await premiaStaking.connect(alice).deposit('100');
+    await premiaStaking.connect(alice).stake('100', 0);
 
     const balance = await premiaStaking.balanceOf(alice.address);
     expect(balance).to.eq(100);
@@ -135,7 +253,7 @@ describe('PremiaStaking', () => {
 
   it('should not allow withdraw more than what you have', async () => {
     await premia.connect(alice).approve(premiaStaking.address, '100');
-    await premiaStaking.connect(alice).deposit('100');
+    await premiaStaking.connect(alice).stake('100', 0);
 
     await expect(
       premiaStaking.connect(alice).startWithdraw('200'),
@@ -144,7 +262,7 @@ describe('PremiaStaking', () => {
 
   it('should correctly handle withdrawal with delay', async () => {
     await premia.connect(alice).approve(premiaStaking.address, '100');
-    await premiaStaking.connect(alice).deposit('100');
+    await premiaStaking.connect(alice).stake('100', 0);
 
     await expect(premiaStaking.connect(alice).withdraw()).to.be.revertedWith(
       'No pending withdrawal',
@@ -176,9 +294,9 @@ describe('PremiaStaking', () => {
     await premia.connect(carol).approve(premiaStaking.address, '100');
 
     // Alice enters and gets 20 shares. Bob enters and gets 10 shares.
-    await premiaStaking.connect(alice).deposit('30');
-    await premiaStaking.connect(bob).deposit('10');
-    await premiaStaking.connect(carol).deposit('10');
+    await premiaStaking.connect(alice).stake('30', 0);
+    await premiaStaking.connect(bob).stake('10', 0);
+    await premiaStaking.connect(carol).stake('10', 0);
 
     let aliceBalance = await premiaStaking.balanceOf(alice.address);
     let bobBalance = await premiaStaking.balanceOf(bob.address);
@@ -214,9 +332,9 @@ describe('PremiaStaking', () => {
     await premia.connect(carol).approve(premiaStaking.address, '100');
 
     // Alice enters and gets 20 shares. Bob enters and gets 10 shares.
-    await premiaStaking.connect(alice).deposit('30');
-    await premiaStaking.connect(bob).deposit('10');
-    await premiaStaking.connect(carol).deposit('10');
+    await premiaStaking.connect(alice).stake('30', 0);
+    await premiaStaking.connect(bob).stake('10', 0);
+    await premiaStaking.connect(carol).stake('10', 0);
 
     let aliceBalance = await premiaStaking.balanceOf(alice.address);
     let bobBalance = await premiaStaking.balanceOf(bob.address);
@@ -241,7 +359,7 @@ describe('PremiaStaking', () => {
     await increaseTimestamp(ONE_DAY * 300000);
 
     // Bob deposits 50 more PREMIAs. She should receive 50*50/100 = 25 shares.
-    await premiaStaking.connect(bob).deposit('50');
+    await premiaStaking.connect(bob).stake('50', 0);
 
     expect(await premiaStaking.getXPremiaToPremiaRatio()).to.eq(
       parseEther('2'),
@@ -325,7 +443,7 @@ describe('PremiaStaking', () => {
   it('should correctly bridge to other contract', async () => {
     await premia.connect(alice).approve(premiaStaking.address, '100');
 
-    await premiaStaking.connect(alice).deposit('100');
+    await premiaStaking.connect(alice).stake('100', 0);
     await premiaStaking.connect(alice).approve(premiaStaking.address, '100');
 
     await bridge(premiaStaking, otherPremiaStaking, alice, '10');
@@ -344,13 +462,13 @@ describe('PremiaStaking', () => {
     await premia.mint(alice.address, '100');
 
     await premia.connect(alice).approve(premiaStaking.address, '100');
-    await premiaStaking.connect(alice).deposit('100');
+    await premiaStaking.connect(alice).stake('100', 0);
     await premia.mint(premiaStaking.address, '100');
 
     await premiaStaking.connect(alice).approve(premiaStaking.address, '100');
 
     await premia.connect(alice).approve(otherPremiaStaking.address, '100');
-    await otherPremiaStaking.connect(alice).deposit('100');
+    await otherPremiaStaking.connect(alice).stake('100', 0);
     await premia.mint(otherPremiaStaking.address, '300');
 
     await premiaStaking

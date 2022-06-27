@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { ERC20Mock, FeeDiscount, IPool } from '../../typechain';
+import { ERC20Mock, IPool } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { fixedFromFloat, fixedToNumber, formatTokenId } from '@premia/utils';
 
@@ -24,8 +24,6 @@ interface PoolExerciseBehaviorArgs {
   deploy: () => Promise<IPool>;
   getBase: () => Promise<ERC20Mock>;
   getUnderlying: () => Promise<ERC20Mock>;
-  getFeeDiscount: () => Promise<FeeDiscount>;
-  getXPremia: () => Promise<ERC20Mock>;
   getPoolUtil: () => Promise<PoolUtil>;
 }
 
@@ -33,8 +31,6 @@ export function describeBehaviorOfPoolExercise({
   deploy,
   getUnderlying,
   getBase,
-  getFeeDiscount,
-  getXPremia,
   getPoolUtil,
 }: PoolExerciseBehaviorArgs) {
   describe('::PoolExercise', () => {

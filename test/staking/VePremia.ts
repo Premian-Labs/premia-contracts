@@ -52,12 +52,10 @@ describe('VePremia', () => {
     it('should successfully return total voting power', async () => {
       expect(await vePremia.getTotalVotingPower()).to.eq(0);
 
-      await vePremia.connect(alice).deposit(parseEther('10'));
       await vePremia.connect(alice).stake(parseEther('1'), ONE_DAY * 365);
 
       expect(await vePremia.getTotalVotingPower()).to.eq(parseEther('1.25'));
 
-      await vePremia.connect(bob).deposit(parseEther('10'));
       await vePremia.connect(bob).stake(parseEther('3'), (ONE_DAY * 365) / 2);
 
       expect(await vePremia.getTotalVotingPower()).to.eq(parseEther('3.5'));
@@ -66,10 +64,8 @@ describe('VePremia', () => {
 
   describe('#getUserVotingPower', () => {
     it('should successfully return user vorting power', async () => {
-      await vePremia.connect(alice).deposit(parseEther('10'));
       await vePremia.connect(alice).stake(parseEther('1'), ONE_DAY * 365);
 
-      await vePremia.connect(bob).deposit(parseEther('10'));
       await vePremia.connect(bob).stake(parseEther('3'), (ONE_DAY * 365) / 2);
 
       expect(await vePremia.getUserVotingPower(alice.address)).to.eq(
@@ -83,7 +79,6 @@ describe('VePremia', () => {
 
   describe('#getUserVotes', () => {
     it('should successfully return user votes', async () => {
-      await vePremia.connect(alice).deposit(parseEther('10'));
       await vePremia.connect(alice).stake(parseEther('10'), ONE_DAY * 365);
 
       const votes = [
@@ -120,8 +115,6 @@ describe('VePremia', () => {
 
   describe('#castVotes', () => {
     it('should fail casting user vote if not enough voting power', async () => {
-      await vePremia.connect(alice).deposit(parseEther('10'));
-
       await expect(
         vePremia.connect(alice).castVotes([
           {
@@ -146,8 +139,6 @@ describe('VePremia', () => {
     });
 
     it('should successfully cast user votes', async () => {
-      await vePremia.connect(alice).deposit(parseEther('10'));
-
       await vePremia.connect(alice).stake(parseEther('5'), ONE_DAY * 365);
 
       await vePremia.connect(alice).castVotes([
@@ -168,8 +159,6 @@ describe('VePremia', () => {
     });
 
     it('should remove some user votes if some tokens are withdrawn', async () => {
-      await vePremia.connect(alice).deposit(parseEther('10'));
-
       await vePremia.connect(alice).stake(parseEther('5'), ONE_DAY * 365);
 
       await vePremia.connect(alice).castVotes([
@@ -181,8 +170,6 @@ describe('VePremia', () => {
       ]);
 
       await increaseTimestamp(ONE_DAY * 366);
-
-      await vePremia.connect(alice).unstake(parseEther('2.5'));
 
       const votes = await vePremia.getUserVotes(alice.address);
       expect(votes.length).to.eq(1);

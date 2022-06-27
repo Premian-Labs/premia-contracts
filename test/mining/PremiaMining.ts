@@ -63,7 +63,6 @@ describe('PremiaMining', () => {
     // Set pool weights through votes
     await premia.mint(owner.address, parseEther('1000'));
     await premia.connect(owner).approve(vePremia.address, parseEther('1000'));
-    await vePremia.connect(owner).deposit(parseEther('1000'));
     await vePremia.connect(owner).stake(parseEther('1000'), oneDay * 365);
     await vePremia.connect(owner).castVotes([
       {

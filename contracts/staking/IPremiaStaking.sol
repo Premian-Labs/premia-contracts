@@ -3,6 +3,7 @@
 pragma solidity ^0.8.0;
 
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
+import {FeeDiscountStorage} from "./FeeDiscountStorage.sol";
 
 interface IPremiaStaking {
     event Deposit(address indexed user, uint256 amount);
@@ -26,6 +27,19 @@ interface IPremiaStaking {
         uint256 xPremiaAmount
     );
 
+    event Staked(
+        address indexed user,
+        uint256 amount,
+        uint256 stakePeriod,
+        uint256 lockedUntil
+    );
+    event Unstaked(address indexed user, uint256 amount);
+
+    struct StakeLevel {
+        uint256 amount; // Amount to stake
+        uint256 discount; // Discount when amount is reached
+    }
+
     /**
      * @notice add premia tokens as available tokens to be distributed as rewards
      * @param amount amount of premia tokens to add as rewards
@@ -43,39 +57,6 @@ interface IPremiaStaking {
      * @return amount of tokens pending to be distributed as rewards
      */
     function getPendingRewards() external view returns (uint256);
-
-    /**
-     * @notice stake PREMIA using IERC2612 permit
-     * @param amount quantity of PREMIA to stake
-     * @param deadline timestamp after which permit will fail
-     * @param v signature "v" value
-     * @param r signature "r" value
-     * @param s signature "s" value
-     */
-    function depositWithPermit(
-        uint256 amount,
-        uint256 deadline,
-        uint8 v,
-        bytes32 r,
-        bytes32 s
-    ) external;
-
-    /**
-     * @notice stake PREMIA in exchange for xPremia
-     * @param amount quantity of PREMIA to stake
-     */
-    function deposit(uint256 amount) external;
-
-    /**
-     * @notice Initiate the withdrawal process by burning xPremia, starting the delay period
-     * @param amount quantity of xPremia to unstake
-     */
-    function startWithdraw(uint256 amount) external;
-
-    /**
-     * @notice withdraw PREMIA after withdrawal delay has passed
-     */
-    function withdraw() external;
 
     /**
      * @notice get current withdrawal delay
@@ -133,4 +114,90 @@ interface IPremiaStaking {
      * @return amount of PREMIA available for withdrawal
      */
     function getAvailablePremiaAmount() external view returns (uint256);
+
+    /**
+     * @notice Stake using IERC2612 permit
+     * @param amount The amount of xPremia to stake
+     * @param period The lockup period (in seconds)
+     * @param deadline Deadline after which permit will fail
+     * @param v V
+     * @param r R
+     * @param s S
+     */
+    function stakeWithPermit(
+        uint256 amount,
+        uint256 period,
+        uint256 deadline,
+        uint8 v,
+        bytes32 r,
+        bytes32 s
+    ) external;
+
+    /**
+     * @notice Lockup xPremia for protocol fee discounts
+     *          Longer period of locking will apply a multiplier on the amount staked, in the fee discount calculation
+     * @param amount The amount of xPremia to stake
+     * @param period The lockup period (in seconds)
+     */
+    function stake(uint256 amount, uint256 period) external;
+
+    /**
+     * @notice Initiate the withdrawal process by burning xPremia, starting the delay period
+     * @param amount quantity of xPremia to unstake
+     */
+    function startWithdraw(uint256 amount) external;
+
+    /**
+     * @notice Withdraw underlying premia
+     */
+    function withdraw() external;
+
+    //////////
+    // View //
+    //////////
+
+    /**
+     * Calculate the stake amount of a user, after applying the bonus from the lockup period chosen
+     * @param user The user from which to query the stake amount
+     * @return The user stake amount after applying the bonus
+     */
+    function getStakeAmountWithBonus(address user)
+        external
+        view
+        returns (uint256);
+
+    /**
+     * @notice Calculate the % of fee discount for user, based on his stake
+     * @param user The _user for which the discount is for
+     * @return Percentage of protocol fee discount (in basis point)
+     *         Ex : 1000 = 10% fee discount
+     */
+    function getDiscount(address user) external view returns (uint256);
+
+    /**
+     * @notice Get stake levels
+     * @return Stake levels
+     *         Ex : 2500 = -25%
+     */
+    function getStakeLevels() external returns (StakeLevel[] memory);
+
+    /**
+     * @notice Get stake period multiplier
+     * @param period The duration (in seconds) for which tokens are locked
+     * @return The multiplier for this staking period
+     *         Ex : 20000 = x2
+     */
+    function getStakePeriodMultiplier(uint256 period)
+        external
+        returns (uint256);
+
+    /**
+     * @notice Get staking infos of a user
+     * @param user The user address for which to get staking infos
+     * @return The staking infos of the user
+     */
+    function getUserInfo(address user)
+        external
+        view
+        returns (FeeDiscountStorage.UserInfo memory);
 }

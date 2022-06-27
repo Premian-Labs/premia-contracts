@@ -2,14 +2,11 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ethers } from 'hardhat';
 import {
   ERC20Mock,
-  ERC20Mock__factory,
-  FeeDiscount,
-  FeeDiscount__factory,
+  ExchangeHelper__factory,
+  IExchangeHelper,
   IPool,
   Proxy__factory,
-  ProxyUpgradeableOwnable__factory,
-  IExchangeHelper,
-  ExchangeHelper__factory,
+  VePremia,
 } from '../../typechain';
 
 import { describeBehaviorOfPoolBase } from '../../spec/pool/PoolBase.behavior';
@@ -46,7 +43,7 @@ describe('PoolProxy', function () {
   let exchangeHelper: IExchangeHelper;
 
   let xPremia: ERC20Mock;
-  let feeDiscount: FeeDiscount;
+  let vePremia: VePremia;
 
   let base: ERC20Mock;
   let underlying: ERC20Mock;
@@ -177,8 +174,6 @@ describe('PoolProxy', function () {
     deploy: async () => instance,
     getBase: async () => base,
     getUnderlying: async () => underlying,
-    getFeeDiscount: async () => feeDiscount,
-    getXPremia: async () => xPremia,
     getPoolUtil: async () => p,
   });
 

@@ -3,7 +3,7 @@
 
 pragma solidity ^0.8.0;
 
-import {PremiaStakingWithFeeDiscount} from "./PremiaStakingWithFeeDiscount.sol";
+import {PremiaStaking} from "./PremiaStaking.sol";
 import {FeeDiscountStorage} from "./FeeDiscountStorage.sol";
 import {VePremiaStorage} from "./VePremiaStorage.sol";
 import {IVePremia} from "./IVePremia.sol";
@@ -12,9 +12,9 @@ import {IVePremia} from "./IVePremia.sol";
  * @author Premia
  * @title A contract allowing you to use your locked Premia as voting power for mining weights
  */
-contract VePremia is IVePremia, PremiaStakingWithFeeDiscount {
+contract VePremia is IVePremia, PremiaStaking {
     constructor(address lzEndpoint, address premia)
-        PremiaStakingWithFeeDiscount(lzEndpoint, premia)
+        PremiaStaking(lzEndpoint, premia)
     {}
 
     /**
@@ -35,7 +35,7 @@ contract VePremia is IVePremia, PremiaStakingWithFeeDiscount {
             _addRewards(fee);
         }
 
-        _transferXPremia(address(this), msg.sender, amount - fee);
+        // _transferXPremia(address(this), msg.sender, amount - fee);
 
         emit Unstaked(msg.sender, amount);
         emit EarlyUnstake(msg.sender, amount, fee);

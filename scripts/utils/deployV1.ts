@@ -1,22 +1,16 @@
 import {
   ERC20Mock,
   ERC20Mock__factory,
-  FeeDiscount,
-  FeeDiscount__factory,
   PremiaErc20,
   PremiaErc20__factory,
   PremiaMaker,
   PremiaMaker__factory,
-  PremiaStakingProxy__factory,
-  PremiaStakingWithFeeDiscount,
-  PremiaStakingWithFeeDiscount__factory,
   ProxyUpgradeableOwnable__factory,
   VePremia,
   VePremia__factory,
   VePremiaProxy__factory,
 } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { ZERO_ADDRESS } from '../../test/utils/constants';
 
 export async function deployV1(
   deployer: SignerWithAddress,
@@ -85,34 +79,15 @@ export async function deployV1(
     );
   }
 
-  const feeDiscountStandaloneImpl = await new FeeDiscount__factory(
-    deployer,
-  ).deploy(vePremia.address);
-  const feeDiscountStandaloneProxy = await new ProxyUpgradeableOwnable__factory(
-    deployer,
-  ).deploy(feeDiscountStandaloneImpl.address);
-  const feeDiscountStandalone = FeeDiscount__factory.connect(
-    feeDiscountStandaloneProxy.address,
-    deployer,
-  );
-
-  if (log) {
-    console.log(
-      `PremiaFeeDiscount deployed at ${feeDiscountStandalone.address} (Args : ${vePremia.address})`,
-    );
-  }
-
   return {
     premia,
     premiaMaker,
     vePremia,
-    feeDiscountStandalone,
   };
 }
 
 export interface IPremiaContracts {
   premia: PremiaErc20 | ERC20Mock;
   vePremia: VePremia;
-  feeDiscountStandalone: FeeDiscount;
   premiaMaker: PremiaMaker;
 }

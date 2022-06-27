@@ -14,7 +14,7 @@ import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
 import {IPremiaMining} from "../mining/IPremiaMining.sol";
 import {IVolatilitySurfaceOracle} from "../oracle/IVolatilitySurfaceOracle.sol";
-import {IFeeDiscount} from "../staking/IFeeDiscount.sol";
+import {IPremiaStaking} from "../staking/IPremiaStaking.sol";
 import {IPoolEvents} from "./IPoolEvents.sol";
 import {PoolStorage} from "./PoolStorage.sol";
 
@@ -116,7 +116,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     {
         if (FEE_DISCOUNT_ADDRESS != address(0)) {
             discount64x64 = ABDKMath64x64.divu(
-                IFeeDiscount(FEE_DISCOUNT_ADDRESS).getDiscount(feePayer),
+                IPremiaStaking(FEE_DISCOUNT_ADDRESS).getDiscount(feePayer),
                 INVERSE_BASIS_POINT
             );
         }

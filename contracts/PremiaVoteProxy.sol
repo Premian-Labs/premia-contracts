@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 
-import {IFeeDiscount} from "./staking/IFeeDiscount.sol";
 import {IPremiaStaking} from "./staking/IPremiaStaking.sol";
 
 contract PremiaVoteProxy {
@@ -43,7 +42,7 @@ contract PremiaVoteProxy {
         uint256 _votes = IERC20(PREMIA).balanceOf(_voter);
 
         uint256 totalXPremia = IERC20(xPREMIA).balanceOf(_voter) +
-            IFeeDiscount(FEE_DISCOUNT).getUserInfo(_voter).balance;
+            IPremiaStaking(FEE_DISCOUNT).getUserInfo(_voter).balance;
 
         uint256 xPremiaToPremiaRatio = IPremiaStaking(xPREMIA)
             .getXPremiaToPremiaRatio();

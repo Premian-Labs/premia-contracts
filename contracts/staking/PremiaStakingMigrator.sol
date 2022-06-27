@@ -102,7 +102,7 @@ contract PremiaStakingMigrator {
         uint256 premiaBalance = IERC20(PREMIA).balanceOf(address(this));
 
         IERC20(PREMIA).approve(NEW_STAKING, amount);
-        IPremiaStaking(NEW_STAKING).deposit(amount);
+        IPremiaStaking(NEW_STAKING).stake(amount, 0);
 
         uint256 vePremiaBalance = IERC20(NEW_STAKING).balanceOf(address(this));
         IERC20(NEW_STAKING).transfer(to, vePremiaBalance);

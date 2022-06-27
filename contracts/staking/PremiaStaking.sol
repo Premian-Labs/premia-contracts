@@ -3,6 +3,7 @@
 
 pragma solidity ^0.8.0;
 
+import {SafeCast} from "@solidstate/contracts/utils/SafeCast.sol";
 import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@solidstate/contracts/token/ERC20/ERC20.sol";
@@ -11,6 +12,7 @@ import {ERC20Permit} from "@solidstate/contracts/token/ERC20/permit/ERC20Permit.
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
+import {FeeDiscountStorage} from "./FeeDiscountStorage.sol";
 import {IPremiaStaking} from "./IPremiaStaking.sol";
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 import {OFT} from "../layerZero/token/oft/OFT.sol";
@@ -18,11 +20,14 @@ import {OFT} from "../layerZero/token/oft/OFT.sol";
 contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     using SafeERC20 for IERC20;
     using ABDKMath64x64 for int128;
+    using SafeCast for uint256;
 
     address internal immutable PREMIA;
 
     int128 internal constant ONE_64x64 = 0x10000000000000000;
     int128 internal constant DECAY_RATE_64x64 = 0x487a423b63e; // 2.7e-7
+    uint256 internal constant INVERSE_BASIS_POINT = 1e4;
+    uint256 internal constant MAX_PERIOD = 4 * 365 days;
 
     constructor(address lzEndpoint, address premia) OFT(lzEndpoint) {
         PREMIA = premia;
@@ -146,14 +151,15 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function depositWithPermit(
+    function stakeWithPermit(
         uint256 amount,
+        uint256 period,
         uint256 deadline,
         uint8 v,
         bytes32 r,
         bytes32 s
     ) external {
-        IERC2612(PREMIA).permit(
+        IERC2612(address(PREMIA)).permit(
             msg.sender,
             address(this),
             amount,
@@ -162,18 +168,25 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             r,
             s
         );
-        _deposit(amount);
+        _stake(amount, period);
     }
 
     /**
      * @inheritdoc IPremiaStaking
      */
-    function deposit(uint256 amount) external {
-        _deposit(amount);
+    function stake(uint256 amount, uint256 period) external {
+        _stake(amount, period);
     }
 
-    function _deposit(uint256 amount) internal {
+    function _beforeStake(uint256 amount, uint256 period) internal virtual {}
+
+    function _stake(uint256 amount, uint256 period) internal {
         _updateRewards();
+
+        _beforeStake(amount, period);
+
+        ////////////////////////////////////////////////////////////////////////////////
+        // Deposit logic
 
         // Gets the amount of Premia locked in the contract
         uint256 totalPremia = _getStakedPremiaAmount();
@@ -184,27 +197,34 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
 
         emit Deposit(msg.sender, amount);
+
+        ////////////////////////////////////////////////////////////////////////////////
+
+        _lock(amount, period);
+
+        emit Staked(msg.sender, amount, period, lockedUntil);
     }
 
-    function _mintShares(
-        address to,
-        uint256 amount,
-        uint256 totalPremia
-    ) internal returns (uint256) {
-        // Gets the amount of xPremia in existence
-        uint256 totalShares = _totalSupply();
-        // If no xPremia exists, mint it 1:1 to the amount put in
-        if (totalShares == 0 || totalPremia == 0) {
-            _mint(to, amount);
-            return amount;
-        }
-        // Calculate and mint the amount of xPremia the Premia is worth. The ratio will change overtime, as xPremia is burned/minted and Premia deposited + gained from fees / withdrawn.
-        else {
-            uint256 shares = (amount * totalShares) / totalPremia;
-            _mint(to, shares);
-            return shares;
-        }
+    function _lock(uint256 amount, uint256 period) internal {
+        FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
+
+        require(period <= MAX_PERIOD, "Gt max period");
+        FeeDiscountStorage.UserInfo storage user = l.userInfo[msg.sender];
+
+        uint256 lockedUntil = block.timestamp + period;
+        require(
+            lockedUntil > user.lockedUntil,
+            "Cannot add stake with lower stake period"
+        );
+
+        user.balance = user.balance + amount;
+        user.lockedUntil = lockedUntil.toUint64();
+        user.stakePeriod = period.toUint64();
+
+        // ToDo : Event ?
     }
+
+    function _beforeUnstake(uint256 amount) internal virtual {}
 
     /**
      * @inheritdoc IPremiaStaking
@@ -212,31 +232,47 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     function startWithdraw(uint256 amount) external {
         _updateRewards();
 
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        {
+            FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
+            FeeDiscountStorage.UserInfo storage user = l.userInfo[msg.sender];
 
-        // Gets the amount of xPremia in existence
-        uint256 totalShares = _totalSupply();
+            require(user.lockedUntil <= block.timestamp, "Stake still locked");
 
-        uint256 availablePremiaAmount = _getAvailablePremiaAmount();
-        uint256 stakedPremiaAmount = availablePremiaAmount -
-            l.reserved +
-            l.debt;
+            _beforeUnstake(amount);
 
-        // Calculates the amount of Premia the xPremia is worth
-        uint256 premiaAmount = (amount * stakedPremiaAmount) / totalShares;
+            user.balance -= amount;
 
-        require(
-            premiaAmount <= availablePremiaAmount,
-            "Not enough underlying available"
-        );
+            emit Unstaked(msg.sender, amount);
+        }
 
-        _burn(msg.sender, amount);
-        l.pendingWithdrawal += premiaAmount;
+        {
+            PremiaStakingStorage.Layout storage l = PremiaStakingStorage
+                .layout();
 
-        l.withdrawals[msg.sender].amount += premiaAmount;
-        l.withdrawals[msg.sender].startDate = block.timestamp;
+            // Gets the amount of xPremia in existence
+            uint256 totalShares = _totalSupply();
 
-        emit StartWithdrawal(msg.sender, premiaAmount, block.timestamp);
+            uint256 availablePremiaAmount = _getAvailablePremiaAmount();
+            uint256 stakedPremiaAmount = availablePremiaAmount -
+                l.reserved +
+                l.debt;
+
+            // Calculates the amount of Premia the xPremia is worth
+            uint256 premiaAmount = (amount * stakedPremiaAmount) / totalShares;
+
+            require(
+                premiaAmount <= availablePremiaAmount,
+                "Not enough underlying available"
+            );
+
+            _burn(msg.sender, amount);
+            l.pendingWithdrawal += premiaAmount;
+
+            l.withdrawals[msg.sender].amount += premiaAmount;
+            l.withdrawals[msg.sender].startDate = block.timestamp;
+
+            emit StartWithdrawal(msg.sender, premiaAmount, block.timestamp);
+        }
     }
 
     /**
@@ -263,6 +299,114 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         IERC20(PREMIA).safeTransfer(msg.sender, amount);
 
         emit Withdrawal(msg.sender, amount);
+
+        //
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getStakeAmountWithBonus(address user)
+        external
+        view
+        returns (uint256)
+    {
+        return _getStakeAmountWithBonus(user);
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getDiscount(address user) external view returns (uint256) {
+        uint256 userBalance = _getStakeAmountWithBonus(user);
+
+        IPremiaStaking.StakeLevel[] memory stakeLevels = _getStakeLevels();
+
+        for (uint256 i = 0; i < stakeLevels.length; i++) {
+            IPremiaStaking.StakeLevel memory level = stakeLevels[i];
+
+            if (userBalance < level.amount) {
+                uint256 amountPrevLevel;
+                uint256 discountPrevLevel;
+
+                // If stake is lower, user is in this level, and we need to LERP with prev level to get discount value
+                if (i > 0) {
+                    amountPrevLevel = stakeLevels[i - 1].amount;
+                    discountPrevLevel = stakeLevels[i - 1].discount;
+                } else {
+                    // If this is the first level, prev level is 0 / 0
+                    amountPrevLevel = 0;
+                    discountPrevLevel = 0;
+                }
+
+                uint256 remappedDiscount = level.discount - discountPrevLevel;
+
+                uint256 remappedAmount = level.amount - amountPrevLevel;
+                uint256 remappedBalance = userBalance - amountPrevLevel;
+                uint256 levelProgress = (remappedBalance *
+                    INVERSE_BASIS_POINT) / remappedAmount;
+
+                return
+                    discountPrevLevel +
+                    ((remappedDiscount * levelProgress) / INVERSE_BASIS_POINT);
+            }
+        }
+
+        // If no match found it means user is >= max possible stake, and therefore has max discount possible
+        return stakeLevels[stakeLevels.length - 1].discount;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getStakeLevels()
+        external
+        pure
+        returns (IPremiaStaking.StakeLevel[] memory stakeLevels)
+    {
+        return _getStakeLevels();
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getStakePeriodMultiplier(uint256 period)
+        external
+        pure
+        returns (uint256)
+    {
+        return _getStakePeriodMultiplier(period);
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getUserInfo(address user)
+        external
+        view
+        returns (FeeDiscountStorage.UserInfo memory)
+    {
+        return FeeDiscountStorage.layout().userInfo[user];
+    }
+
+    function _mintShares(
+        address to,
+        uint256 amount,
+        uint256 totalPremia
+    ) internal returns (uint256) {
+        // Gets the amount of xPremia in existence
+        uint256 totalShares = _totalSupply();
+        // If no xPremia exists, mint it 1:1 to the amount put in
+        if (totalShares == 0 || totalPremia == 0) {
+            _mint(to, amount);
+            return amount;
+        }
+        // Calculate and mint the amount of xPremia the Premia is worth. The ratio will change overtime, as xPremia is burned/minted and Premia deposited + gained from fees / withdrawn.
+        else {
+            uint256 shares = (amount * totalShares) / totalPremia;
+            _mint(to, shares);
+            return shares;
+        }
     }
 
     /**
@@ -358,5 +502,45 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
                 .sub(DECAY_RATE_64x64)
                 .pow(newTimestamp - oldTimestamp)
                 .mulu(pendingRewards);
+    }
+
+    function _getStakeLevels()
+        internal
+        pure
+        returns (IPremiaStaking.StakeLevel[] memory stakeLevels)
+    {
+        stakeLevels = new IPremiaStaking.StakeLevel[](4);
+
+        stakeLevels[0] = IPremiaStaking.StakeLevel(5000 * 1e18, 2500); // -25%
+        stakeLevels[1] = IPremiaStaking.StakeLevel(50000 * 1e18, 5000); // -50%
+        stakeLevels[2] = IPremiaStaking.StakeLevel(250000 * 1e18, 7500); // -75%
+        stakeLevels[3] = IPremiaStaking.StakeLevel(500000 * 1e18, 9500); // -95%
+    }
+
+    function _getStakePeriodMultiplier(uint256 period)
+        internal
+        pure
+        returns (uint256)
+    {
+        uint256 oneYear = 365 days;
+
+        if (period == 0) return 2500; // x0.25
+        if (period >= 4 * oneYear) return 42500; // x4.25
+
+        return 2500 + (period * 1e4) / oneYear; // 0.25x + 1.0x per year lockup
+    }
+
+    function _getStakeAmountWithBonus(address user)
+        internal
+        view
+        returns (uint256)
+    {
+        FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
+
+        FeeDiscountStorage.UserInfo memory userInfo = l.userInfo[user];
+        return
+            (userInfo.balance *
+                _getStakePeriodMultiplier(userInfo.stakePeriod)) /
+            INVERSE_BASIS_POINT;
     }
 }
