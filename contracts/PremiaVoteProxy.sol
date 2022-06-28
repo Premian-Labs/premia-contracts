@@ -42,7 +42,7 @@ contract PremiaVoteProxy {
         uint256 _votes = IERC20(PREMIA).balanceOf(_voter);
 
         uint256 totalXPremia = IERC20(xPREMIA).balanceOf(_voter) +
-            IPremiaStaking(FEE_DISCOUNT).getUserInfo(_voter).balance;
+            IERC20(FEE_DISCOUNT).balanceOf(_voter);
 
         uint256 xPremiaToPremiaRatio = IPremiaStaking(xPREMIA)
             .getXPremiaToPremiaRatio();

@@ -13,7 +13,7 @@ library PremiaStakingStorage {
     }
 
     struct UserInfo {
-        uint256 balance; // Amount of premia staked by user
+        uint256 rewardDebt;
         uint64 stakePeriod; // Stake period selected by user
         uint64 lockedUntil; // Timestamp at which the lock ends
         bool upgraded; // Whether user has been upgraded to new staking contract structure or not
@@ -29,6 +29,7 @@ library PremiaStakingStorage {
         uint256 debt; // Underlying debt due to tokens bridged from other chains. This count as if those were staked Premia in the contract
         uint256 totalPower; // Total power of all staked tokens (underlying amount with multiplier applied)
         mapping(address => UserInfo) userInfo;
+        uint256 accRewardPerShare;
     }
 
     function layout() internal pure returns (Layout storage l) {

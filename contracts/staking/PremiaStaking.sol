@@ -28,6 +28,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     int128 internal constant DECAY_RATE_64x64 = 0x487a423b63e; // 2.7e-7
     uint256 internal constant INVERSE_BASIS_POINT = 1e4;
     uint256 internal constant MAX_PERIOD = 4 * 365 days;
+    uint256 internal constant ACC_REWARD_PRECISION = 1e12;
 
     constructor(address lzEndpoint, address premia) OFT(lzEndpoint) {
         PREMIA = premia;
@@ -181,27 +182,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     function _beforeStake(uint256 amount, uint256 period) internal virtual {}
 
     function _stake(uint256 amount, uint256 period) internal {
-        _updateRewards();
-
-        _beforeStake(amount, period);
-
-        _upgradeUser(msg.sender);
-
-        ////////////////////////////////////////////////////////////////////////////////
-        // Deposit logic
-
-        // Gets the amount of Premia locked in the contract
-        uint256 totalPremia = _getStakedPremiaAmount();
-
-        _mintShares(msg.sender, amount, totalPremia);
-
-        // Lock the Premia in the contract
-        IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
-
-        emit Deposit(msg.sender, amount);
-
-        ////////////////////////////////////////////////////////////////////////////////
-
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
         require(period <= MAX_PERIOD, "Gt max period");
@@ -213,48 +193,56 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             "Cannot add stake with lower stake period"
         );
 
-        user.balance = user.balance + amount;
+        _updateRewards();
+
+        _beforeStake(amount, period);
+        _upgradeUser(msg.sender);
+
+        IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
+
+        uint256 balance = _balanceOf(msg.sender);
+
+        uint256 reward = ((l.accRewardPerShare * balance) /
+            ACC_REWARD_PRECISION) - user.rewardDebt;
+        user.rewardDebt = (balance + reward + amount) * l.accRewardPerShare;
+
+        uint256 currentPower;
+        if (balance > 0) {
+            currentPower = _calculateStakeAmountWithBonus(
+                balance,
+                user.stakePeriod
+            );
+        }
+
         user.lockedUntil = lockedUntil.toUint64();
         user.stakePeriod = period.toUint64();
 
+        uint256 newPower = _calculateStakeAmountWithBonus(
+            balance + amount + reward,
+            user.stakePeriod
+        );
+
+        _updateTotalPower(l, currentPower, newPower);
+
+        _mint(msg.sender, amount + reward);
+
+        // ToDo : Keep both ?
+        emit Deposit(msg.sender, amount);
         emit Staked(msg.sender, amount, period, lockedUntil);
     }
 
-    function upgrade(address[] memory users) external onlyOwner {
-        for (uint256 i = 0; i < users.length; i++) {
-            _upgradeUser(users[i]);
+    function _updateTotalPower(
+        PremiaStakingStorage.Layout storage l,
+        uint256 oldUserPower,
+        uint256 newUserPower
+    ) internal {
+        if (newUserPower == oldUserPower) return;
+
+        if (newUserPower > oldUserPower) {
+            l.totalPower += newUserPower - oldUserPower;
+        } else {
+            l.totalPower -= oldUserPower - newUserPower;
         }
-    }
-
-    function _upgradeUser(address userAddress) internal {
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage user = l.userInfo[userAddress];
-        if (user.upgraded) return;
-
-        uint256 balance = _balanceOf(userAddress);
-
-        FeeDiscountStorage.Layout storage oldL = FeeDiscountStorage.layout();
-        FeeDiscountStorage.UserInfo storage oldUser = oldL.userInfo[
-            userAddress
-        ];
-
-        uint256 oldUserBalance = oldUser.balance;
-        balance += oldUserBalance;
-
-        user.lockedUntil = oldUser.lockedUntil;
-        user.stakePeriod = oldUser.stakePeriod;
-        user.balance = (balance * _getXPremiaToPremiaRatio()) / 1e18;
-        user.upgraded = true;
-
-        delete oldL.userInfo[userAddress];
-
-        l.totalPower +=
-            (user.balance * _getStakePeriodMultiplier(user.stakePeriod)) /
-            INVERSE_BASIS_POINT;
-
-        _transfer(address(this), userAddress, oldUserBalance);
-
-        // ToDo : Event ?
     }
 
     function _beforeUnstake(uint256 amount) internal virtual {}
@@ -339,14 +327,27 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         view
         returns (uint256)
     {
-        return _getStakeAmountWithBonus(user);
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+
+        PremiaStakingStorage.UserInfo memory userInfo = l.userInfo[msg.sender];
+        return
+            _calculateStakeAmountWithBonus(
+                userInfo.balance,
+                userInfo.stakePeriod
+            );
     }
 
     /**
      * @inheritdoc IPremiaStaking
      */
     function getDiscount(address user) external view returns (uint256) {
-        uint256 userBalance = _getStakeAmountWithBonus(user);
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo memory userInfo = l.userInfo[user];
+
+        uint256 userBalance = _calculateStakeAmountWithBonus(
+            userInfo.balance,
+            userInfo.stakePeriod
+        );
 
         IPremiaStaking.StakeLevel[] memory stakeLevels = _getStakeLevels();
 
@@ -465,19 +466,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         return PremiaStakingStorage.layout().reserved;
     }
 
-    /**
-     * @inheritdoc IPremiaStaking
-     */
-    function getXPremiaToPremiaRatio() external view returns (uint256) {
-        return _getXPremiaToPremiaRatio();
-    }
-
-    function _getXPremiaToPremiaRatio() internal view returns (uint256) {
-        return
-            ((_getStakedPremiaAmount() + _getPendingRewards()) * 1e18) /
-            _totalSupply();
-    }
-
     function getPendingWithdrawal(address user)
         external
         view
@@ -491,33 +479,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         amount = l.withdrawals[user].amount;
         startDate = l.withdrawals[user].startDate;
         unlockDate = startDate + l.withdrawalDelay;
-    }
-
-    /**
-     * @inheritdoc IPremiaStaking
-     */
-    function getStakedPremiaAmount() external view returns (uint256) {
-        return _getStakedPremiaAmount() + _getPendingRewards();
-    }
-
-    function _getStakedPremiaAmount() internal view returns (uint256) {
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        return _getAvailablePremiaAmount() - l.reserved + l.debt;
-    }
-
-    /**
-     * @inheritdoc IPremiaStaking
-     */
-    function getAvailablePremiaAmount() external view returns (uint256) {
-        return _getAvailablePremiaAmount();
-    }
-
-    function _getAvailablePremiaAmount() internal view returns (uint256) {
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        return
-            IERC20(PREMIA).balanceOf(address(this)) -
-            l.pendingWithdrawal -
-            l.availableRewards;
     }
 
     function _decay(
@@ -558,17 +519,95 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         return 2500 + (period * 1e4) / oneYear; // 0.25x + 1.0x per year lockup
     }
 
-    function _getStakeAmountWithBonus(address user)
+    function _calculateStakeAmountWithBonus(uint256 balance, uint64 stakePeriod)
         internal
-        view
+        pure
         returns (uint256)
     {
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-
-        PremiaStakingStorage.UserInfo memory userInfo = l.userInfo[user];
         return
-            (userInfo.balance *
-                _getStakePeriodMultiplier(userInfo.stakePeriod)) /
+            (balance * _getStakePeriodMultiplier(stakePeriod)) /
             INVERSE_BASIS_POINT;
+    }
+
+    /////////////
+    // UPGRADE //
+    /////////////
+
+    function upgrade(address[] memory users) external onlyOwner {
+        for (uint256 i = 0; i < users.length; i++) {
+            _upgradeUser(users[i]);
+        }
+    }
+
+    function _upgradeUser(address userAddress) internal {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage user = l.userInfo[userAddress];
+        if (user.upgraded) return;
+
+        uint256 balance = _balanceOf(userAddress);
+
+        FeeDiscountStorage.Layout storage oldL = FeeDiscountStorage.layout();
+        FeeDiscountStorage.UserInfo storage oldUser = oldL.userInfo[
+            userAddress
+        ];
+
+        uint256 oldUserBalance = oldUser.balance;
+        balance += oldUserBalance;
+
+        user.lockedUntil = oldUser.lockedUntil;
+        user.stakePeriod = oldUser.stakePeriod;
+        user.balance = (balance * _getXPremiaToPremiaRatio()) / 1e18;
+        user.upgraded = true;
+
+        delete oldL.userInfo[userAddress];
+
+        l.totalPower += _calculateStakeAmountWithBonus(
+            user.balance,
+            user.stakePeriod
+        );
+
+        _transfer(address(this), userAddress, oldUserBalance);
+
+        // ToDo : Event ?
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getXPremiaToPremiaRatio() external view returns (uint256) {
+        return _getXPremiaToPremiaRatio();
+    }
+
+    function _getXPremiaToPremiaRatio() internal view returns (uint256) {
+        return
+            ((_getStakedPremiaAmount() + _getPendingRewards()) * 1e18) /
+            _totalSupply();
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getStakedPremiaAmount() external view returns (uint256) {
+        return _getStakedPremiaAmount() + _getPendingRewards();
+    }
+
+    function _getStakedPremiaAmount() internal view returns (uint256) {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        return _getAvailablePremiaAmount() - l.reserved + l.debt;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getAvailablePremiaAmount() external view returns (uint256) {
+        return _getAvailablePremiaAmount();
+    }
+
+    function _getAvailablePremiaAmount() internal view returns (uint256) {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        return
+            IERC20(PREMIA).balanceOf(address(this)) -
+            l.pendingWithdrawal -
+            l.availableRewards;
     }
 }
