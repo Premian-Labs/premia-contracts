@@ -145,7 +145,12 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         if (l.availableRewards == 0) return;
 
-        l.availableRewards -= _getPendingRewards();
+        uint256 pendingRewards = _getPendingRewards();
+
+        l.accRewardPerShare +=
+            (pendingRewards * ACC_REWARD_PRECISION) /
+            l.totalPower;
+        l.availableRewards -= pendingRewards;
         l.lastRewardUpdate = block.timestamp;
     }
 
