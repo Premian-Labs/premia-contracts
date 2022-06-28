@@ -195,15 +195,16 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         _updateRewards();
 
-        _beforeStake(amount, period);
-        _upgradeUser(msg.sender);
+        uint256 balance = _balanceOf(msg.sender);
+        uint256 reward = ((l.accRewardPerShare * balance) /
+            ACC_REWARD_PRECISION) - user.rewardDebt;
+
+        // ToDo : Event for reward ?
+
+        _beforeStake(amount + reward, period);
 
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
 
-        uint256 balance = _balanceOf(msg.sender);
-
-        uint256 reward = ((l.accRewardPerShare * balance) /
-            ACC_REWARD_PRECISION) - user.rewardDebt;
         user.rewardDebt = (balance + reward + amount) * l.accRewardPerShare;
 
         uint256 currentPower;
@@ -258,37 +259,34 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         require(user.lockedUntil <= block.timestamp, "Stake still locked");
 
+        // ToDo : Upgrade user ?
+
         _beforeUnstake(amount);
 
-        user.balance -= amount;
+        uint256 balance = _balanceOf(msg.sender);
+        uint256 reward = ((l.accRewardPerShare * balance) /
+            ACC_REWARD_PRECISION) - user.rewardDebt;
+
+        _burn(msg.sender, amount);
+        balance -= amount;
+
+        user.rewardDebt = balance * l.accRewardPerShare;
+
+        l.totalPower -= _calculateStakeAmountWithBonus(
+            amount,
+            user.stakePeriod
+        );
 
         emit Unstaked(msg.sender, amount);
 
         //
 
-        // Gets the amount of xPremia in existence
-        uint256 totalShares = _totalSupply();
+        // ToDo : Omnichain logic to check there is enough Premia available on this chain
 
-        uint256 availablePremiaAmount = _getAvailablePremiaAmount();
-        uint256 stakedPremiaAmount = availablePremiaAmount -
-            l.reserved +
-            l.debt;
-
-        // Calculates the amount of Premia the xPremia is worth
-        uint256 premiaAmount = (amount * stakedPremiaAmount) / totalShares;
-
-        require(
-            premiaAmount <= availablePremiaAmount,
-            "Not enough underlying available"
-        );
-
-        _burn(msg.sender, amount);
-        l.pendingWithdrawal += premiaAmount;
-
-        l.withdrawals[msg.sender].amount += premiaAmount;
+        l.withdrawals[msg.sender].amount += amount + reward;
         l.withdrawals[msg.sender].startDate = block.timestamp;
 
-        emit StartWithdrawal(msg.sender, premiaAmount, block.timestamp);
+        emit StartWithdrawal(msg.sender, amount + reward, block.timestamp);
     }
 
     /**
@@ -308,8 +306,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         );
 
         uint256 amount = l.withdrawals[msg.sender].amount;
-
-        l.pendingWithdrawal -= amount;
         delete l.withdrawals[msg.sender];
 
         IERC20(PREMIA).safeTransfer(msg.sender, amount);
@@ -332,7 +328,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         PremiaStakingStorage.UserInfo memory userInfo = l.userInfo[msg.sender];
         return
             _calculateStakeAmountWithBonus(
-                userInfo.balance,
+                _balanceOf(user),
                 userInfo.stakePeriod
             );
     }
@@ -345,7 +341,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         PremiaStakingStorage.UserInfo memory userInfo = l.userInfo[user];
 
         uint256 userBalance = _calculateStakeAmountWithBonus(
-            userInfo.balance,
+            _balanceOf(user),
             userInfo.stakePeriod
         );
 
@@ -527,48 +523,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         return
             (balance * _getStakePeriodMultiplier(stakePeriod)) /
             INVERSE_BASIS_POINT;
-    }
-
-    /////////////
-    // UPGRADE //
-    /////////////
-
-    function upgrade(address[] memory users) external onlyOwner {
-        for (uint256 i = 0; i < users.length; i++) {
-            _upgradeUser(users[i]);
-        }
-    }
-
-    function _upgradeUser(address userAddress) internal {
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage user = l.userInfo[userAddress];
-        if (user.upgraded) return;
-
-        uint256 balance = _balanceOf(userAddress);
-
-        FeeDiscountStorage.Layout storage oldL = FeeDiscountStorage.layout();
-        FeeDiscountStorage.UserInfo storage oldUser = oldL.userInfo[
-            userAddress
-        ];
-
-        uint256 oldUserBalance = oldUser.balance;
-        balance += oldUserBalance;
-
-        user.lockedUntil = oldUser.lockedUntil;
-        user.stakePeriod = oldUser.stakePeriod;
-        user.balance = (balance * _getXPremiaToPremiaRatio()) / 1e18;
-        user.upgraded = true;
-
-        delete oldL.userInfo[userAddress];
-
-        l.totalPower += _calculateStakeAmountWithBonus(
-            user.balance,
-            user.stakePeriod
-        );
-
-        _transfer(address(this), userAddress, oldUserBalance);
-
-        // ToDo : Event ?
     }
 
     /**

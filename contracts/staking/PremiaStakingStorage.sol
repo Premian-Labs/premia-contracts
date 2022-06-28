@@ -16,7 +16,6 @@ library PremiaStakingStorage {
         uint256 rewardDebt;
         uint64 stakePeriod; // Stake period selected by user
         uint64 lockedUntil; // Timestamp at which the lock ends
-        bool upgraded; // Whether user has been upgraded to new staking contract structure or not
     }
 
     struct Layout {

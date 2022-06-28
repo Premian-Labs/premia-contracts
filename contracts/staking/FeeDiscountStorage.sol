@@ -16,6 +16,7 @@ library FeeDiscountStorage {
     struct Layout {
         // User data with xPREMIA balance staked and date at which lock ends
         mapping(address => UserInfo) userInfo;
+        uint256 xPremiaToPremiaRatio;
     }
 
     function layout() internal pure returns (Layout storage l) {
