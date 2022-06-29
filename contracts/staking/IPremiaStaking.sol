@@ -82,12 +82,6 @@ interface IPremiaStaking {
     function getReserved() external view returns (uint256);
 
     /**
-     * @notice get the xPREMIA : PREMIA ratio (with 18 decimals)
-     * @return xPREMIA : PREMIA ratio (with 18 decimals)
-     */
-    function getXPremiaToPremiaRatio() external view returns (uint256);
-
-    /**
      * @notice get pending withdrawal data of a user
      * @return amount pending withdrawal amount
      * @return startDate start timestamp of withdrawal

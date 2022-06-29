@@ -49,34 +49,35 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         address zroPaymentAddress,
         bytes memory adapterParams
     ) internal virtual override {
-        _updateRewards();
-
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-
-        uint256 underlyingAmount = (amount * _getXPremiaToPremiaRatio()) / 1e18;
-
-        bytes memory toAddress = abi.encodePacked(from);
-        _debitFrom(from, dstChainId, toAddress, amount);
-
-        if (underlyingAmount < l.debt) {
-            l.debt -= underlyingAmount;
-        } else {
-            l.reserved += underlyingAmount - l.debt;
-            l.debt = 0;
-        }
-
-        bytes memory payload = abi.encode(toAddress, underlyingAmount);
-        _lzSend(
-            dstChainId,
-            payload,
-            refundAddress,
-            zroPaymentAddress,
-            adapterParams
-        );
-
-        uint64 nonce = lzEndpoint.getOutboundNonce(dstChainId, address(this));
-        emit SendToChain(from, dstChainId, toAddress, underlyingAmount, nonce);
-        emit BridgedOut(from, underlyingAmount, amount);
+        // ToDo : Implement
+        //        _updateRewards();
+        //
+        //        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        //
+        //        uint256 underlyingAmount = (amount * _getXPremiaToPremiaRatio()) / 1e18;
+        //
+        //        bytes memory toAddress = abi.encodePacked(from);
+        //        _debitFrom(from, dstChainId, toAddress, amount);
+        //
+        //        if (underlyingAmount < l.debt) {
+        //            l.debt -= underlyingAmount;
+        //        } else {
+        //            l.reserved += underlyingAmount - l.debt;
+        //            l.debt = 0;
+        //        }
+        //
+        //        bytes memory payload = abi.encode(toAddress, underlyingAmount);
+        //        _lzSend(
+        //            dstChainId,
+        //            payload,
+        //            refundAddress,
+        //            zroPaymentAddress,
+        //            adapterParams
+        //        );
+        //
+        //        uint64 nonce = lzEndpoint.getOutboundNonce(dstChainId, address(this));
+        //        emit SendToChain(from, dstChainId, toAddress, underlyingAmount, nonce);
+        //        emit BridgedOut(from, underlyingAmount, amount);
     }
 
     function _creditTo(
@@ -551,21 +552,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getXPremiaToPremiaRatio() external view returns (uint256) {
-        return _getXPremiaToPremiaRatio();
-    }
-
-    function _getXPremiaToPremiaRatio() internal view returns (uint256) {
-        return
-            ((_getStakedPremiaAmount() + _getPendingRewards()) * 1e18) /
-            _totalSupply();
-    }
-
-    /**
-     * @inheritdoc IPremiaStaking
-     */
     function getStakedPremiaAmount() external view returns (uint256) {
-        return _getStakedPremiaAmount() + _getPendingRewards();
+        return _getStakedPremiaAmount();
     }
 
     function _getStakedPremiaAmount() internal view returns (uint256) {
@@ -582,9 +570,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
     function _getAvailablePremiaAmount() internal view returns (uint256) {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        return
-            IERC20(PREMIA).balanceOf(address(this)) -
-            l.pendingWithdrawal -
-            l.availableRewards;
+        return IERC20(PREMIA).balanceOf(address(this)) - l.pendingWithdrawal;
     }
 }

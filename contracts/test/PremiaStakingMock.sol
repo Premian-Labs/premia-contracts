@@ -19,13 +19,13 @@ contract PremiaStakingMock is PremiaStaking {
         return _decay(pendingRewards, oldTimestamp, newTimestamp);
     }
 
-    function getUnderlyingAmount(uint256 amount)
-        external
-        view
-        returns (uint256)
-    {
-        return (amount * _getXPremiaToPremiaRatio()) / 1e18;
-    }
+    //    function getUnderlyingAmount(uint256 amount)
+    //        external
+    //        view
+    //        returns (uint256)
+    //    {
+    //        return (amount * _getXPremiaToPremiaRatio()) / 1e18;
+    //    }
 
     function _send(
         address from,
@@ -36,23 +36,24 @@ contract PremiaStakingMock is PremiaStaking {
         address,
         bytes memory
     ) internal override {
-        _updateRewards();
-
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-
-        uint256 underlyingAmount = (amount * _getXPremiaToPremiaRatio()) / 1e18;
-
-        bytes memory toAddress = abi.encodePacked(from);
-        _debitFrom(from, dstChainId, toAddress, amount);
-
-        if (underlyingAmount < l.debt) {
-            l.debt -= underlyingAmount;
-        } else {
-            l.reserved += underlyingAmount - l.debt;
-            l.debt = 0;
-        }
-
-        emit BridgedOut(from, underlyingAmount, amount);
+        // ToDo : Implement
+        //        _updateRewards();
+        //
+        //        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        //
+        //        uint256 underlyingAmount = (amount * _getXPremiaToPremiaRatio()) / 1e18;
+        //
+        //        bytes memory toAddress = abi.encodePacked(from);
+        //        _debitFrom(from, dstChainId, toAddress, amount);
+        //
+        //        if (underlyingAmount < l.debt) {
+        //            l.debt -= underlyingAmount;
+        //        } else {
+        //            l.reserved += underlyingAmount - l.debt;
+        //            l.debt = 0;
+        //        }
+        //
+        //        emit BridgedOut(from, underlyingAmount, amount);
     }
 
     function creditTo(address toAddress, uint256 underlyingAmount) external {
