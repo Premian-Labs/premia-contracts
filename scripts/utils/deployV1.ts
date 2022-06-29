@@ -1,4 +1,6 @@
 import {
+  ERC20,
+  ERC20__factory,
   ERC20Mock,
   ERC20Mock__factory,
   PremiaErc20,
@@ -19,8 +21,10 @@ export async function deployV1(
   isTest: boolean,
   log = false,
   premiaAddress?: string,
+  rewardTokenAddress?: string,
 ): Promise<IPremiaContracts> {
   let premia: PremiaErc20 | ERC20Mock;
+  let rewardToken: ERC20 | ERC20Mock;
 
   if (isTest) {
     if (!premiaAddress) {
@@ -28,12 +32,23 @@ export async function deployV1(
     } else {
       premia = PremiaErc20__factory.connect(premiaAddress, deployer);
     }
+
+    if (!rewardTokenAddress) {
+      rewardToken = await new ERC20Mock__factory(deployer).deploy('USDC', 6);
+    } else {
+      rewardToken = ERC20Mock__factory.connect(rewardTokenAddress, deployer);
+    }
   } else {
     if (!premiaAddress) {
       throw new Error('Premia address not set');
     }
-    // premia = await new PremiaErc20__factory(deployer).deploy();
+
+    if (!rewardTokenAddress) {
+      throw new Error('Reward token address not set');
+    }
+
     premia = PremiaErc20__factory.connect(premiaAddress, deployer);
+    rewardToken = ERC20__factory.connect(rewardTokenAddress, deployer);
   }
 
   if (log) {
@@ -45,6 +60,7 @@ export async function deployV1(
   const vePremiaImpl = await new VePremia__factory(deployer).deploy(
     lzEndpoint,
     premia.address,
+    rewardToken.address,
   );
   const vePremiaProxy = await new VePremiaProxy__factory(deployer).deploy(
     vePremiaImpl.address,

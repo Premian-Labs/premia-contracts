@@ -17,6 +17,7 @@ let alice: SignerWithAddress;
 let bob: SignerWithAddress;
 
 let premia: ERC20Mock;
+let usdc: ERC20Mock;
 let vePremia: VePremia;
 
 describe('VePremia', () => {
@@ -26,10 +27,12 @@ describe('VePremia', () => {
     [admin, alice, bob] = await ethers.getSigners();
 
     premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
+    usdc = await new ERC20Mock__factory(admin).deploy('USDC', 6);
 
     vePremia = await new VePremia__factory(admin).deploy(
       ethers.constants.AddressZero,
       premia.address,
+      usdc.address,
     );
 
     for (const u of [alice, bob]) {

@@ -210,10 +210,12 @@ export function getMaxCost(
 export async function deployVePremiaMocked(owner: SignerWithAddress) {
   const erc20Factory = new ERC20Mock__factory(owner);
   const premia = await erc20Factory.deploy('PREMIA', 18);
+  const rewardToken = await erc20Factory.deploy('USDC', 6);
 
   const vePremiaImpl = await new VePremia__factory(owner).deploy(
     ethers.constants.AddressZero,
     premia.address,
+    rewardToken.address,
   );
 
   const vePremiaProxy = await new VePremiaProxy__factory(owner).deploy(
@@ -222,7 +224,7 @@ export async function deployVePremiaMocked(owner: SignerWithAddress) {
 
   const vePremia = VePremia__factory.connect(vePremiaProxy.address, owner);
 
-  return { vePremia, premia };
+  return { vePremia, premia, rewardToken };
 }
 
 export class PoolUtil {
