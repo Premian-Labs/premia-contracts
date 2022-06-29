@@ -13,7 +13,8 @@ library PremiaStakingStorage {
     }
 
     struct UserInfo {
-        uint256 rewardDebt;
+        uint256 reward; // Amount of rewards accrued which havent been claimed yet
+        uint256 rewardDebt; // Debt to subtract from reward calculation
         uint64 stakePeriod; // Stake period selected by user
         uint64 lockedUntil; // Timestamp at which the lock ends
     }

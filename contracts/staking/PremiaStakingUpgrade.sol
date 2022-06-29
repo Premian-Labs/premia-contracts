@@ -38,9 +38,15 @@ contract PremiaStakingUpgrade is ERC20, OwnableInternal {
 
     function upgrade(address[] memory users) external onlyOwner {
         FeeDiscountStorage.Layout storage oldL = FeeDiscountStorage.layout();
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
         if (oldL.xPremiaToPremiaRatio == 0) {
             oldL.xPremiaToPremiaRatio = _getXPremiaToPremiaRatio();
+        }
+
+        // We distribute all available PREMIA rewards, as going forward this will be stable instead of PREMIA
+        if (l.availableRewards > 0) {
+            l.availableRewards = 0;
         }
 
         for (uint256 i = 0; i < users.length; i++) {
@@ -112,9 +118,6 @@ contract PremiaStakingUpgrade is ERC20, OwnableInternal {
 
     function _getAvailablePremiaAmount() internal view returns (uint256) {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        return
-            IERC20(PREMIA).balanceOf(address(this)) -
-            l.pendingWithdrawal -
-            l.availableRewards;
+        return IERC20(PREMIA).balanceOf(address(this)) - l.pendingWithdrawal;
     }
 }

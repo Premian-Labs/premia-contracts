@@ -23,6 +23,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     using SafeCast for uint256;
 
     address internal immutable PREMIA;
+    address internal immutable REWARD_TOKEN;
 
     int128 internal constant ONE_64x64 = 0x10000000000000000;
     int128 internal constant DECAY_RATE_64x64 = 0x487a423b63e; // 2.7e-7
@@ -30,8 +31,13 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     uint256 internal constant MAX_PERIOD = 4 * 365 days;
     uint256 internal constant ACC_REWARD_PRECISION = 1e12;
 
-    constructor(address lzEndpoint, address premia) OFT(lzEndpoint) {
+    constructor(
+        address lzEndpoint,
+        address premia,
+        address rewardToken
+    ) OFT(lzEndpoint) {
         PREMIA = premia;
+        REWARD_TOKEN = rewardToken;
     }
 
     function _send(
@@ -108,7 +114,11 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
-        IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(REWARD_TOKEN).safeTransferFrom(
+            msg.sender,
+            address(this),
+            amount
+        );
         l.availableRewards += amount;
 
         emit RewardsAdded(amount);
@@ -206,11 +216,12 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         // ToDo : Event for reward ?
 
-        _beforeStake(amount + reward, period);
+        _beforeStake(amount, period);
 
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
 
-        user.rewardDebt = (balance + reward + amount) * l.accRewardPerShare;
+        user.reward += reward;
+        user.rewardDebt = (balance + amount) * l.accRewardPerShare;
 
         uint256 currentPower;
         if (balance > 0) {
@@ -224,17 +235,21 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         user.stakePeriod = period.toUint64();
 
         uint256 newPower = _calculateStakeAmountWithBonus(
-            balance + amount + reward,
+            balance + amount,
             user.stakePeriod
         );
 
         _updateTotalPower(l, currentPower, newPower);
 
-        _mint(msg.sender, amount + reward);
+        _mint(msg.sender, amount);
 
         // ToDo : Keep both ?
         emit Deposit(msg.sender, amount);
         emit Staked(msg.sender, amount, period, lockedUntil);
+    }
+
+    function harvest(bool compound) external {
+        // ToDo : Implement
     }
 
     function _updateTotalPower(
@@ -275,7 +290,10 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         _burn(msg.sender, amount);
         balance -= amount;
 
+        user.reward = reward;
         user.rewardDebt = balance * l.accRewardPerShare;
+
+        // ToDo : Reward event
 
         l.totalPower -= _calculateStakeAmountWithBonus(
             amount,
@@ -288,10 +306,10 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         // ToDo : Omnichain logic to check there is enough Premia available on this chain
 
-        l.withdrawals[msg.sender].amount += amount + reward;
+        l.withdrawals[msg.sender].amount += amount;
         l.withdrawals[msg.sender].startDate = block.timestamp;
 
-        emit StartWithdrawal(msg.sender, amount + reward, block.timestamp);
+        emit StartWithdrawal(msg.sender, amount, block.timestamp);
     }
 
     /**
