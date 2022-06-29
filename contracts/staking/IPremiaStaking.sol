@@ -15,16 +15,8 @@ interface IPremiaStaking {
 
     event RewardsAdded(uint256 amount);
 
-    event BridgedIn(
-        address indexed user,
-        uint256 underlyingAmount,
-        uint256 xPremiaAmount
-    );
-    event BridgedOut(
-        address indexed user,
-        uint256 underlyingAmount,
-        uint256 xPremiaAmount
-    );
+    event BridgedIn(address indexed user, uint256 amount);
+    event BridgedOut(address indexed user, uint256 amount);
 
     event Staked(
         address indexed user,

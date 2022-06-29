@@ -49,58 +49,76 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         address zroPaymentAddress,
         bytes memory adapterParams
     ) internal virtual override {
-        // ToDo : Implement
-        //        _updateRewards();
-        //
-        //        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        //
-        //        uint256 underlyingAmount = (amount * _getXPremiaToPremiaRatio()) / 1e18;
-        //
-        //        bytes memory toAddress = abi.encodePacked(from);
-        //        _debitFrom(from, dstChainId, toAddress, amount);
-        //
-        //        if (underlyingAmount < l.debt) {
-        //            l.debt -= underlyingAmount;
-        //        } else {
-        //            l.reserved += underlyingAmount - l.debt;
-        //            l.debt = 0;
-        //        }
-        //
-        //        bytes memory payload = abi.encode(toAddress, underlyingAmount);
-        //        _lzSend(
-        //            dstChainId,
-        //            payload,
-        //            refundAddress,
-        //            zroPaymentAddress,
-        //            adapterParams
-        //        );
-        //
-        //        uint64 nonce = lzEndpoint.getOutboundNonce(dstChainId, address(this));
-        //        emit SendToChain(from, dstChainId, toAddress, underlyingAmount, nonce);
-        //        emit BridgedOut(from, underlyingAmount, amount);
+        _updateRewards();
+
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage user = l.userInfo[from];
+
+        uint256 balance = _balanceOf(from);
+        uint256 reward = user.reward +
+            _calculateReward(l.accRewardPerShare, balance, user.rewardDebt);
+
+        bytes memory toAddress = abi.encodePacked(from);
+        _debitFrom(from, dstChainId, toAddress, amount);
+
+        user.rewardDebt = (balance - amount) * l.accRewardPerShare;
+        user.reward += reward;
+
+        // ToDo : Reward event
+
+        if (amount < l.debt) {
+            l.debt -= amount;
+        } else {
+            l.reserved += amount - l.debt;
+            l.debt = 0;
+        }
+
+        bytes memory payload = abi.encode(toAddress, amount);
+        _lzSend(
+            dstChainId,
+            payload,
+            refundAddress,
+            zroPaymentAddress,
+            adapterParams
+        );
+
+        uint64 nonce = lzEndpoint.getOutboundNonce(dstChainId, address(this));
+        emit SendToChain(from, dstChainId, toAddress, amount, nonce);
+        emit BridgedOut(from, amount);
     }
 
     function _creditTo(
         uint16,
         address toAddress,
-        uint256 underlyingAmount
+        uint256 amount
     ) internal override {
         _updateRewards();
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage user = l.userInfo[toAddress];
 
-        uint256 totalPremia = _getStakedPremiaAmount();
+        uint256 balance = _balanceOf(msg.sender);
+        uint256 reward = _calculateReward(
+            l.accRewardPerShare,
+            balance,
+            user.rewardDebt
+        );
 
-        uint256 amount = _mintShares(toAddress, underlyingAmount, totalPremia);
+        _mint(toAddress, amount);
 
-        if (underlyingAmount < l.reserved) {
-            l.reserved -= underlyingAmount;
+        user.rewardDebt = (balance + amount) * l.accRewardPerShare;
+        user.reward += reward;
+
+        // ToDo : Reward event
+
+        if (amount < l.reserved) {
+            l.reserved -= amount;
         } else {
-            l.debt += underlyingAmount - l.reserved;
+            l.debt += amount - l.reserved;
             l.reserved = 0;
         }
 
-        emit BridgedIn(toAddress, underlyingAmount, amount);
+        emit BridgedIn(toAddress, amount);
     }
 
     /**
@@ -224,8 +242,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
 
-        user.reward += reward;
         user.rewardDebt = (balance + amount) * l.accRewardPerShare;
+        user.reward += reward;
 
         uint256 currentPower;
         if (balance > 0) {
@@ -344,8 +362,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         _burn(msg.sender, amount);
         balance -= amount;
 
-        user.reward = reward;
         user.rewardDebt = balance * l.accRewardPerShare;
+        user.reward += reward;
 
         // ToDo : Reward event
 

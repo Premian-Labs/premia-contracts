@@ -56,7 +56,7 @@ contract PremiaStakingMock is PremiaStaking {
         //        emit BridgedOut(from, underlyingAmount, amount);
     }
 
-    function creditTo(address toAddress, uint256 underlyingAmount) external {
-        _creditTo(0, toAddress, underlyingAmount);
+    function creditTo(address toAddress, uint256 amount) external {
+        _creditTo(0, toAddress, amount);
     }
 }

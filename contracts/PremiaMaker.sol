@@ -15,6 +15,8 @@ import {IPremiaMaker} from "./interfaces/IPremiaMaker.sol";
 import {IPoolIO} from "./pool/IPoolIO.sol";
 import {IPremiaStaking} from "./staking/IPremiaStaking.sol";
 
+// ToDo : Update contract for USDC rewards
+
 /// @author Premia
 /// @title A contract receiving all protocol fees, swapping them for premia
 contract PremiaMaker is IPremiaMaker, OwnableInternal {
