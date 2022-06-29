@@ -349,7 +349,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
-        PremiaStakingStorage.UserInfo memory userInfo = l.userInfo[msg.sender];
+        PremiaStakingStorage.UserInfo memory userInfo = l.userInfo[user];
         return
             _calculateStakeAmountWithBonus(
                 _balanceOf(user),
