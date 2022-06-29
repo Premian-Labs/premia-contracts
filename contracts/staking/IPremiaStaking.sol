@@ -135,6 +135,12 @@ interface IPremiaStaking {
     function stake(uint256 amount, uint256 period) external;
 
     /**
+     * @notice Harvest rewards
+     * @param compound Whether to compound rewards or to withdraw to wallet. Compounding will swap rewards to PREMIA, and add them to the stake without modifying the lock
+     */
+    function harvest(bool compound) external;
+
+    /**
      * @notice Initiate the withdrawal process by burning xPremia, starting the delay period
      * @param amount quantity of xPremia to unstake
      */
