@@ -4,7 +4,7 @@
 pragma solidity ^0.8.0;
 
 import {PremiaStaking} from "./PremiaStaking.sol";
-import {FeeDiscountStorage} from "./FeeDiscountStorage.sol";
+import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 import {VePremiaStorage} from "./VePremiaStorage.sol";
 import {IVePremia} from "./IVePremia.sol";
 
@@ -23,21 +23,23 @@ contract VePremia is IVePremia, PremiaStaking {
      * @inheritdoc IVePremia
      */
     function earlyUnstake(uint256 amount) external {
+        // ToDo : Update to work with USDC rewards
         _beforeUnstake(amount);
 
-        FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
-        FeeDiscountStorage.UserInfo storage user = l.userInfo[msg.sender];
+        // ToDo : Update rewards
+
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
         uint256 feePercentage = _getEarlyUnstakeFee(msg.sender);
 
-        user.balance -= amount;
+        _burn(msg.sender, amount);
 
         uint256 fee = (amount * feePercentage) / 1e4;
         if (fee > 0) {
             _addRewards(fee);
         }
 
-        // _transferXPremia(address(this), msg.sender, amount - fee);
+        // _transferXPremia(address(this), msg.sender, amount - fee); // ToDo : update
 
         emit Unstaked(msg.sender, amount);
         emit EarlyUnstake(msg.sender, amount, fee);
@@ -59,8 +61,8 @@ contract VePremia is IVePremia, PremiaStaking {
         view
         returns (uint256 feePercentage)
     {
-        FeeDiscountStorage.Layout storage l = FeeDiscountStorage.layout();
-        FeeDiscountStorage.UserInfo storage u = l.userInfo[user];
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[user];
 
         require(u.lockedUntil > block.timestamp, "Not locked");
         uint256 lockLeft = u.lockedUntil - block.timestamp;
@@ -72,21 +74,20 @@ contract VePremia is IVePremia, PremiaStaking {
     }
 
     function _beforeStake(uint256 amount, uint256 period) internal override {
-        FeeDiscountStorage.UserInfo memory userInfo = FeeDiscountStorage
+        PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
             .layout()
             .userInfo[msg.sender];
 
         VePremiaStorage.Layout storage l = VePremiaStorage.layout();
 
+        uint256 balance = _balanceOf(msg.sender);
+
         uint256 currentPower = _calculateVotingPower(
-            userInfo.balance,
+            balance,
             userInfo.stakePeriod
         );
 
-        uint256 newPower = _calculateVotingPower(
-            amount + userInfo.balance,
-            period
-        );
+        uint256 newPower = _calculateVotingPower(amount + balance, period);
 
         if (newPower >= currentPower) {
             l.totalVotingPower += newPower - currentPower;
@@ -97,7 +98,7 @@ contract VePremia is IVePremia, PremiaStaking {
     }
 
     function _beforeUnstake(uint256 amount) internal override {
-        FeeDiscountStorage.UserInfo memory userInfo = FeeDiscountStorage
+        PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
             .layout()
             .userInfo[msg.sender];
 
@@ -119,12 +120,14 @@ contract VePremia is IVePremia, PremiaStaking {
         address user,
         uint256 amountUnstaked
     ) internal {
-        FeeDiscountStorage.UserInfo memory userInfo = FeeDiscountStorage
+        PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
             .layout()
             .userInfo[user];
 
+        uint256 balance = _balanceOf(user); // ToDo : Directly pass new balance ?
+
         uint256 votingPower = _calculateVotingPower(
-            userInfo.balance,
+            balance,
             userInfo.stakePeriod
         );
         uint256 votingPowerUsed = _calculateUserVotingPowerUsed(user);
@@ -207,11 +210,12 @@ contract VePremia is IVePremia, PremiaStaking {
      * @inheritdoc IVePremia
      */
     function getUserVotingPower(address user) external view returns (uint256) {
-        FeeDiscountStorage.UserInfo memory userInfo = FeeDiscountStorage
+        PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
             .layout()
             .userInfo[user];
 
-        return _calculateVotingPower(userInfo.balance, userInfo.stakePeriod);
+        uint256 balance = _balanceOf(user);
+        return _calculateVotingPower(balance, userInfo.stakePeriod);
     }
 
     /**
@@ -231,12 +235,13 @@ contract VePremia is IVePremia, PremiaStaking {
     function castVotes(VePremiaStorage.Vote[] memory votes) external {
         VePremiaStorage.Layout storage l = VePremiaStorage.layout();
 
-        FeeDiscountStorage.UserInfo memory userInfo = FeeDiscountStorage
+        PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
             .layout()
             .userInfo[msg.sender];
 
+        uint256 balance = _balanceOf(msg.sender);
         uint256 userVotingPower = _calculateVotingPower(
-            userInfo.balance,
+            balance,
             userInfo.stakePeriod
         );
 

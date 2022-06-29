@@ -12,7 +12,6 @@ import {ERC20Permit} from "@solidstate/contracts/token/ERC20/permit/ERC20Permit.
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
-import {FeeDiscountStorage} from "./FeeDiscountStorage.sol";
 import {IPremiaStaking} from "./IPremiaStaking.sol";
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 import {OFT} from "../layerZero/token/oft/OFT.sol";
