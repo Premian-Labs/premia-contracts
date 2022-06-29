@@ -138,7 +138,17 @@ interface IPremiaStaking {
      * @notice Harvest rewards
      * @param compound Whether to compound rewards or to withdraw to wallet. Compounding will swap rewards to PREMIA, and add them to the stake without modifying the lock
      */
-    function harvest(bool compound) external;
+    function collectRewards(bool compound) external;
+
+    /**
+     * @notice Get pending rewards amount, including pending pool update
+     * @param user User for which to calculate pending rewards
+     * @return amount of pending rewards
+     */
+    function getPendingUserRewards(address user)
+        external
+        view
+        returns (uint256);
 
     /**
      * @notice Initiate the withdrawal process by burning xPremia, starting the delay period

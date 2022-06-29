@@ -198,9 +198,9 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     function _beforeStake(uint256 amount, uint256 period) internal virtual {}
 
     function _stake(uint256 amount, uint256 period) internal {
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-
         require(period <= MAX_PERIOD, "Gt max period");
+
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage user = l.userInfo[msg.sender];
 
         uint256 lockedUntil = block.timestamp + period;
@@ -212,8 +212,11 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         _updateRewards();
 
         uint256 balance = _balanceOf(msg.sender);
-        uint256 reward = ((l.accRewardPerShare * balance) /
-            ACC_REWARD_PRECISION) - user.rewardDebt;
+        uint256 reward = _calculateReward(
+            l.accRewardPerShare,
+            balance,
+            user.rewardDebt
+        );
 
         // ToDo : Event for reward ?
 
@@ -249,7 +252,54 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         emit Staked(msg.sender, amount, period, lockedUntil);
     }
 
-    function harvest(bool compound) external {
+    function getPendingUserRewards(address user)
+        external
+        view
+        returns (uint256)
+    {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[user];
+
+        uint256 accRewardPerShare = l.accRewardPerShare;
+        if (l.lastRewardUpdate > 0 && l.availableRewards > 0) {
+            uint256 pendingRewards = _getPendingRewards();
+
+            accRewardPerShare +=
+                (pendingRewards * ACC_REWARD_PRECISION) /
+                l.totalPower;
+        }
+
+        return
+            u.reward +
+            _calculateReward(accRewardPerShare, _balanceOf(user), u.rewardDebt);
+    }
+
+    function collectRewards(bool compound) external {
+        _updateRewards();
+
+        if (compound) {
+            _compound();
+        } else {
+            _harvest();
+        }
+    }
+
+    function _harvest() internal {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage user = l.userInfo[msg.sender];
+
+        uint256 balance = _balanceOf(msg.sender);
+        uint256 amount = user.reward +
+            _calculateReward(l.accRewardPerShare, balance, user.rewardDebt);
+
+        user.rewardDebt = balance * l.accRewardPerShare;
+        user.reward = 0;
+
+        IERC20(REWARD_TOKEN).safeTransfer(msg.sender, amount);
+        // ToDo : Event for reward
+    }
+
+    function _compound() internal {
         // ToDo : Implement
     }
 
@@ -285,8 +335,11 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         _beforeUnstake(amount);
 
         uint256 balance = _balanceOf(msg.sender);
-        uint256 reward = ((l.accRewardPerShare * balance) /
-            ACC_REWARD_PRECISION) - user.rewardDebt;
+        uint256 reward = _calculateReward(
+            l.accRewardPerShare,
+            balance,
+            user.rewardDebt
+        );
 
         _burn(msg.sender, amount);
         balance -= amount;
@@ -547,6 +600,15 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         return
             (balance * _getStakePeriodMultiplier(stakePeriod)) /
             INVERSE_BASIS_POINT;
+    }
+
+    function _calculateReward(
+        uint256 accRewardPerShare,
+        uint256 balance,
+        uint256 rewardDebt
+    ) internal pure returns (uint256) {
+        return
+            ((accRewardPerShare * balance) / ACC_REWARD_PRECISION) - rewardDebt;
     }
 
     /**
