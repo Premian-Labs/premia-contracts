@@ -413,13 +413,16 @@ library PoolStorage {
         );
 
         uint256 tvl = l.totalTVL[isCall];
+        uint256 availableSupply = (ERC1155EnumerableStorage
+            .layout()
+            .totalSupply[tokenId] - l.totalPendingDeposits(isCall));
 
-        int128 utilization = ABDKMath64x64.divu(
-            tvl -
-                (ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
-                    l.totalPendingDeposits(isCall)),
-            tvl
-        );
+        if (tvl < availableSupply) {
+            // workaround for TVL underflow issue
+            availableSupply = tvl;
+        }
+
+        int128 utilization = ABDKMath64x64.divu(tvl - availableSupply, tvl);
 
         return
             OptionMath.calculateCLevelDecay(
