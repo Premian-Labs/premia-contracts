@@ -363,6 +363,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         user.rewardDebt = balance * l.accRewardPerShare;
         user.reward += reward;
+        l.pendingWithdrawal += amount;
 
         // ToDo : Reward event
 
@@ -400,6 +401,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         );
 
         uint256 amount = l.withdrawals[msg.sender].amount;
+        l.pendingWithdrawal -= amount;
         delete l.withdrawals[msg.sender];
 
         IERC20(PREMIA).safeTransfer(msg.sender, amount);
