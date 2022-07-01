@@ -262,7 +262,7 @@ describe('PremiaStaking', () => {
 
     await expect(
       premiaStaking.connect(alice).startWithdraw('200'),
-    ).to.be.revertedWith('Not enough underlying available');
+    ).to.be.revertedWith('ERC20: burn amount exceeds balance');
   });
 
   it('should correctly handle withdrawal with delay', async () => {

@@ -340,14 +340,13 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
      * @inheritdoc IPremiaStaking
      */
     function startWithdraw(uint256 amount) external {
-        _updateRewards();
-
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage user = l.userInfo[msg.sender];
 
         require(user.lockedUntil <= block.timestamp, "Stake still locked");
+        require(_getAvailablePremiaAmount() >= amount, "Not enough liquidity");
 
-        // ToDo : Upgrade user ?
+        _updateRewards();
 
         _beforeUnstake(amount);
 
@@ -373,10 +372,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         );
 
         emit Unstaked(msg.sender, amount);
-
-        //
-
-        // ToDo : Omnichain logic to check there is enough Premia available on this chain
 
         l.withdrawals[msg.sender].amount += amount;
         l.withdrawals[msg.sender].startDate = block.timestamp;
