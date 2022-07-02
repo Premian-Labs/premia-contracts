@@ -61,6 +61,14 @@ contract TimelockMultisig {
         _;
     }
 
+    modifier hasPendingWithdrawal(bool status) {
+        require(
+            (pendingWithdrawal.createdAt > 0) == status,
+            "invalid pending withdrawal status"
+        );
+        _;
+    }
+
     constructor(address token, address[4] memory _signers) {
         TOKEN = token;
 
@@ -69,9 +77,11 @@ contract TimelockMultisig {
         }
     }
 
-    function startWithdraw(address to, uint256 amount) external isSigner {
-        require(pendingWithdrawal.createdAt == 0, "pending withdrawal");
-
+    function startWithdraw(address to, uint256 amount)
+        external
+        isSigner
+        hasPendingWithdrawal(false)
+    {
         uint256 createdAt = block.timestamp;
         pendingWithdrawal = Withdrawal(to, amount, createdAt);
 
@@ -80,7 +90,7 @@ contract TimelockMultisig {
         emit StartWithdrawal(msg.sender, to, amount, createdAt);
     }
 
-    function authorize() external isSigner {
+    function authorize() external isSigner hasPendingWithdrawal(true) {
         delete rejected[msg.sender];
         authorized[msg.sender] = true;
 
@@ -105,7 +115,7 @@ contract TimelockMultisig {
         }
     }
 
-    function reject() external isSigner {
+    function reject() external isSigner hasPendingWithdrawal(true) {
         delete authorized[msg.sender];
         rejected[msg.sender] = true;
 
@@ -130,10 +140,9 @@ contract TimelockMultisig {
         }
     }
 
-    function doWithdraw() external isSigner {
+    function doWithdraw() external isSigner hasPendingWithdrawal(true) {
         require(
-            pendingWithdrawal.createdAt != 0 &&
-                block.timestamp > pendingWithdrawal.createdAt + 7 days,
+            block.timestamp > pendingWithdrawal.createdAt + 7 days,
             "not ready"
         );
         _withdraw();
