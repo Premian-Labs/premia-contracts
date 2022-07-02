@@ -183,7 +183,7 @@ contract TimelockMultisig {
             if (rejectionTimestamps[length] - 3 > block.timestamp - 10 days) {
                 IERC20(TOKEN).safeTransfer(
                     PANIC_ADDRESS,
-                    IERC20(TOKEN).balanceOf(address(this))
+                    IERC20(TOKEN).balanceOf(address(this) / 4)
                 );
             }
         }
