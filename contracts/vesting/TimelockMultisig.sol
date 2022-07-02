@@ -24,7 +24,7 @@ contract TimelockMultisig {
     struct Withdrawal {
         address to;
         uint256 amount;
-        uint256 eta;
+        uint256 createdAt;
     }
 
     Withdrawal public pendingWithdrawal;
@@ -33,21 +33,21 @@ contract TimelockMultisig {
         address indexed signer,
         address to,
         uint256 amount,
-        uint256 eta
+        uint256 createdAt
     );
 
     event SignAuthorization(
         address indexed signer,
         address to,
         uint256 amount,
-        uint256 eta
+        uint256 createdAt
     );
 
     event SignRejection(
         address indexed signer,
         address to,
         uint256 amount,
-        uint256 eta
+        uint256 createdAt
     );
 
     event Withdraw(address indexed to, uint256 amount);
@@ -70,19 +70,14 @@ contract TimelockMultisig {
     }
 
     function startWithdraw(address to, uint256 amount) external isSigner {
-        require(
-            pendingWithdrawal.to == address(0) &&
-                pendingWithdrawal.eta == 0 &&
-                pendingWithdrawal.amount == 0,
-            "pending withdrawal"
-        );
+        require(pendingWithdrawal.createdAt == 0, "pending withdrawal");
 
-        uint256 eta = block.timestamp + 7 days;
-        pendingWithdrawal = Withdrawal(to, amount, eta);
+        uint256 createdAt = block.timestamp;
+        pendingWithdrawal = Withdrawal(to, amount, createdAt);
 
         authorized[msg.sender] = true;
 
-        emit StartWithdrawal(msg.sender, to, amount, eta);
+        emit StartWithdrawal(msg.sender, to, amount, createdAt);
     }
 
     function authorize() external isSigner {
@@ -93,7 +88,7 @@ contract TimelockMultisig {
             msg.sender,
             pendingWithdrawal.to,
             pendingWithdrawal.amount,
-            pendingWithdrawal.eta
+            pendingWithdrawal.createdAt
         );
 
         uint256 authorizationCount;
@@ -118,7 +113,7 @@ contract TimelockMultisig {
             msg.sender,
             pendingWithdrawal.to,
             pendingWithdrawal.amount,
-            pendingWithdrawal.eta
+            pendingWithdrawal.createdAt
         );
 
         uint256 rejectionCount;
@@ -137,8 +132,8 @@ contract TimelockMultisig {
 
     function doWithdraw() external isSigner {
         require(
-            pendingWithdrawal.eta > 0 &&
-                block.timestamp > pendingWithdrawal.eta,
+            pendingWithdrawal.createdAt != 0 &&
+                block.timestamp > pendingWithdrawal.createdAt + 7 days,
             "not ready"
         );
         _withdraw();
