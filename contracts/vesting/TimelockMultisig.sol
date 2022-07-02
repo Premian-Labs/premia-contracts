@@ -136,6 +136,25 @@ contract TimelockMultisig {
             if (rejectionCount == REJECTION_REQUIRED) {
                 emit RejectionSuccess();
                 _reset();
+
+                rejectionTimestamps.push(block.timestamp);
+
+                uint256 length = rejectionTimestamps.length;
+
+                if (length > 3) {
+                    delete rejectionTimestamps[length - 4];
+
+                    if (
+                        rejectionTimestamps[length] - 3 >
+                        block.timestamp - 10 days
+                    ) {
+                        IERC20(TOKEN).safeTransfer(
+                            PANIC_ADDRESS,
+                            IERC20(TOKEN).balanceOf(address(this)) / 4
+                        );
+                    }
+                }
+
                 return;
             }
         }
@@ -171,21 +190,6 @@ contract TimelockMultisig {
         for (uint256 i = 0; i < signers.length(); i++) {
             delete authorized[signers.at(i)];
             delete rejected[signers.at(i)];
-        }
-
-        rejectionTimestamps.push(block.timestamp);
-
-        uint256 length = rejectionTimestamps.length;
-
-        if (length > 3) {
-            delete rejectionTimestamps[length - 4];
-
-            if (rejectionTimestamps[length] - 3 > block.timestamp - 10 days) {
-                IERC20(TOKEN).safeTransfer(
-                    PANIC_ADDRESS,
-                    IERC20(TOKEN).balanceOf(address(this) / 4)
-                );
-            }
         }
     }
 
