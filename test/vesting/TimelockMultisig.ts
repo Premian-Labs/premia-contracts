@@ -36,6 +36,7 @@ describe('TimelockMultisig', () => {
 
     timelockMultisig = await new TimelockMultisig__factory(admin).deploy(
       token.address,
+      ethers.constants.AddressZero,
       [signer1.address, signer2.address, signer3.address, signer4.address],
     );
 

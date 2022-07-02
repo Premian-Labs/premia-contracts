@@ -18,9 +18,12 @@ contract TimelockMultisig {
     uint256 internal constant REJECTION_REQUIRED = 2;
 
     address public immutable TOKEN;
+    address public immutable PANIC_ADDRESS;
 
     mapping(address => bool) authorized;
     mapping(address => bool) rejected;
+
+    uint256[] private rejectionTimestamps;
 
     struct Withdrawal {
         address to;
@@ -70,8 +73,13 @@ contract TimelockMultisig {
         _;
     }
 
-    constructor(address token, address[4] memory _signers) {
+    constructor(
+        address token,
+        address panicAddress,
+        address[4] memory _signers
+    ) {
         TOKEN = token;
+        PANIC_ADDRESS = panicAddress;
 
         for (uint256 i = 0; i < _signers.length; i++) {
             signers.add(_signers[i]);
@@ -163,6 +171,21 @@ contract TimelockMultisig {
         for (uint256 i = 0; i < signers.length(); i++) {
             delete authorized[signers.at(i)];
             delete rejected[signers.at(i)];
+        }
+
+        rejectionTimestamps.push(block.timestamp);
+
+        uint256 length = rejectionTimestamps.length;
+
+        if (length > 3) {
+            delete rejectionTimestamps[length - 4];
+
+            if (rejectionTimestamps[length] - 3 > block.timestamp - 10 days) {
+                IERC20(TOKEN).safeTransfer(
+                    PANIC_ADDRESS,
+                    IERC20(TOKEN).balanceOf(address(this))
+                );
+            }
         }
     }
 
