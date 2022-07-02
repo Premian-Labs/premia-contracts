@@ -13,7 +13,8 @@ contract TimelockMultisig {
 
     EnumerableSet.AddressSet signers;
 
-    uint256 internal constant AUTHORIZATION_REQUIRED = 3;
+    uint256 internal constant AUTHORIZATION_REQUIRED_INSTANT = 3;
+    uint256 internal constant AUTHORIZATION_REQUIRED_EXPEDITED = 2;
     uint256 internal constant REJECTION_REQUIRED = 2;
 
     address public immutable TOKEN;
@@ -101,17 +102,9 @@ contract TimelockMultisig {
             pendingWithdrawal.createdAt
         );
 
-        uint256 authorizationCount;
-        for (uint256 i = 0; i < signers.length(); i++) {
-            if (authorized[signers.at(i)]) {
-                authorizationCount++;
-            }
-
-            if (authorizationCount == AUTHORIZATION_REQUIRED) {
-                emit AuthorizationSuccess();
-                _withdraw();
-                return;
-            }
+        if (_canWithdraw()) {
+            emit AuthorizationSuccess();
+            _withdraw();
         }
     }
 
@@ -141,11 +134,27 @@ contract TimelockMultisig {
     }
 
     function doWithdraw() external isSigner hasPendingWithdrawal(true) {
-        require(
-            block.timestamp > pendingWithdrawal.createdAt + 7 days,
-            "not ready"
-        );
+        require(_canWithdraw(), "not ready");
         _withdraw();
+    }
+
+    function _canWithdraw() internal view returns (bool) {
+        if (pendingWithdrawal.createdAt + 7 days < block.timestamp) return true;
+
+        uint256 authorizationCount;
+
+        for (uint256 i = 0; i < signers.length(); i++) {
+            if (authorized[signers.at(i)]) authorizationCount++;
+        }
+
+        if (authorizationCount >= AUTHORIZATION_REQUIRED_INSTANT) return true;
+
+        if (
+            authorizationCount >= AUTHORIZATION_REQUIRED_EXPEDITED &&
+            pendingWithdrawal.createdAt + 2 days < block.timestamp
+        ) return true;
+
+        return false;
     }
 
     function _reset() internal {
