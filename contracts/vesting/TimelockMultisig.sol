@@ -3,15 +3,20 @@
 
 pragma solidity ^0.8.0;
 
+import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
+import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 
 contract TimelockMultisig {
     using EnumerableSet for EnumerableSet.AddressSet;
+    using SafeERC20 for IERC20;
 
     EnumerableSet.AddressSet signers;
 
     uint256 internal constant AUTHORIZATION_REQUIRED = 3;
     uint256 internal constant REJECTION_REQUIRED = 2;
+
+    address public immutable TOKEN;
 
     mapping(address => bool) authorized;
     mapping(address => bool) rejected;
@@ -51,14 +56,14 @@ contract TimelockMultisig {
 
     event AuthorizationSuccess();
 
-    receive() external payable {}
-
     modifier isSigner() {
         require(signers.contains(msg.sender), "not signer");
         _;
     }
 
-    constructor(address[4] memory _signers) {
+    constructor(address token, address[4] memory _signers) {
+        TOKEN = token;
+
         for (uint256 i = 0; i < _signers.length; i++) {
             signers.add(_signers[i]);
         }
@@ -154,8 +159,7 @@ contract TimelockMultisig {
 
         _reset();
 
-        (bool success, ) = to.call{value: amount}("");
-        require(success, "transfer failed");
+        IERC20(TOKEN).safeTransfer(to, amount);
 
         emit Withdraw(to, amount);
     }

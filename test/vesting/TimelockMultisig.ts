@@ -1,5 +1,10 @@
 import { expect } from 'chai';
-import { TimelockMultisig, TimelockMultisig__factory } from '../../typechain';
+import {
+  ERC20Mock,
+  ERC20Mock__factory,
+  TimelockMultisig,
+  TimelockMultisig__factory,
+} from '../../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { getEthBalance, increaseTimestamp } from '../utils/evm';
@@ -13,6 +18,7 @@ let signer3: SignerWithAddress;
 let signer4: SignerWithAddress;
 let otherUser: SignerWithAddress;
 let receiver: SignerWithAddress;
+let token: ERC20Mock;
 let timelockMultisig: TimelockMultisig;
 
 describe('TimelockMultisig', () => {
@@ -26,17 +32,16 @@ describe('TimelockMultisig', () => {
     [admin, signer1, signer2, signer3, signer4, otherUser, receiver] =
       await ethers.getSigners();
 
-    timelockMultisig = await new TimelockMultisig__factory(admin).deploy([
-      signer1.address,
-      signer2.address,
-      signer3.address,
-      signer4.address,
-    ]);
+    token = await new ERC20Mock__factory(admin).deploy('', 18);
 
-    await admin.sendTransaction({
-      to: timelockMultisig.address,
-      value: parseEther('100'),
-    });
+    timelockMultisig = await new TimelockMultisig__factory(admin).deploy(
+      token.address,
+      [signer1.address, signer2.address, signer3.address, signer4.address],
+    );
+
+    await token
+      .connect(admin)
+      .mint(timelockMultisig.address, parseEther('100'));
   });
 
   it('should fail initiating withdrawal if not signer', async () => {
@@ -74,7 +79,7 @@ describe('TimelockMultisig', () => {
 
     await expect(() =>
       timelockMultisig.connect(signer1).doWithdraw(),
-    ).to.changeEtherBalance(receiver, parseEther('10'));
+    ).to.changeTokenBalance(token, receiver, parseEther('10'));
   });
 
   it('should instantly transfer ETH if 3/4 authorize', async () => {
@@ -82,7 +87,7 @@ describe('TimelockMultisig', () => {
     await timelockMultisig.connect(signer3).authorize();
     await expect(() =>
       timelockMultisig.connect(signer4).authorize(),
-    ).to.changeEtherBalance(receiver, parseEther('10'));
+    ).to.changeTokenBalance(token, receiver, parseEther('10'));
 
     const pendingWithdrawal = await timelockMultisig.pendingWithdrawal();
     expect(pendingWithdrawal.to).to.eq(ZERO_ADDRESS);
@@ -97,7 +102,7 @@ describe('TimelockMultisig', () => {
     const pendingWithdrawal = await timelockMultisig.pendingWithdrawal();
     expect(pendingWithdrawal.to).to.eq(ZERO_ADDRESS);
     expect(pendingWithdrawal.amount).to.eq(0);
-    expect(await getEthBalance(timelockMultisig.address)).to.eq(
+    expect(await token.callStatic.balanceOf(timelockMultisig.address)).to.eq(
       parseEther('100'),
     );
   });
