@@ -251,6 +251,14 @@ library PoolStorage {
         }
     }
 
+    function getMinApy64x64(Layout storage l)
+        internal
+        view
+        returns (int128 feeApy64x64)
+    {
+        feeApy64x64 = l.getFeeApy64x64() << 3;
+    }
+
     function addUnderwriter(
         Layout storage l,
         address account,
