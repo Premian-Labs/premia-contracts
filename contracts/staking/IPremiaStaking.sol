@@ -62,18 +62,6 @@ interface IPremiaStaking {
     function setWithdrawalDelay(uint256 delay) external;
 
     /**
-     * @notice get debt due to tokens bridged to other chains
-     * @return underlying debt due to tokens bridged from other chains
-     */
-    function getDebt() external view returns (uint256);
-
-    /**
-     * @notice get reserved amount due to tokens bridged to other chains
-     * @return underlying reserved due to tokens bridged to other chains
-     */
-    function getReserved() external view returns (uint256);
-
-    /**
      * @notice get pending withdrawal data of a user
      * @return amount pending withdrawal amount
      * @return startDate start timestamp of withdrawal
@@ -89,13 +77,7 @@ interface IPremiaStaking {
         );
 
     /**
-     * @notice get the amount of PREMIA staked (subtracting all pending withdrawals)
-     * @return amount of PREMIA staked
-     */
-    function getStakedPremiaAmount() external view returns (uint256);
-
-    /**
-     * @notice get the amount of PREMIA available for withdrawal (Ignoring reserved and debt)
+     * @notice get the amount of PREMIA available for withdrawal
      * @return amount of PREMIA available for withdrawal
      */
     function getAvailablePremiaAmount() external view returns (uint256);

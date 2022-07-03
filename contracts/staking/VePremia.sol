@@ -28,8 +28,6 @@ contract VePremia is IVePremia, PremiaStaking {
 
         // ToDo : Update rewards
 
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-
         uint256 feePercentage = _getEarlyUnstakeFee(msg.sender);
 
         _burn(msg.sender, amount);
@@ -38,6 +36,8 @@ contract VePremia is IVePremia, PremiaStaking {
         if (fee > 0) {
             _addRewards(fee);
         }
+
+        // ToDo : Withdrawal delay ?
 
         // _transferXPremia(address(this), msg.sender, amount - fee); // ToDo : update
 

@@ -65,13 +65,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         // ToDo : Reward event
 
-        if (amount < l.debt) {
-            l.debt -= amount;
-        } else {
-            l.reserved += amount - l.debt;
-            l.debt = 0;
-        }
-
         bytes memory payload = abi.encode(toAddress, amount);
         _lzSend(
             dstChainId,
@@ -109,13 +102,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         user.reward += reward;
 
         // ToDo : Reward event
-
-        if (amount < l.reserved) {
-            l.reserved -= amount;
-        } else {
-            l.debt += amount - l.reserved;
-            l.reserved = 0;
-        }
 
         emit BridgedIn(toAddress, amount);
     }
@@ -539,20 +525,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         PremiaStakingStorage.layout().withdrawalDelay = delay;
     }
 
-    /**
-     * @inheritdoc IPremiaStaking
-     */
-    function getDebt() external view returns (uint256) {
-        return PremiaStakingStorage.layout().debt;
-    }
-
-    /**
-     * @inheritdoc IPremiaStaking
-     */
-    function getReserved() external view returns (uint256) {
-        return PremiaStakingStorage.layout().reserved;
-    }
-
     function getPendingWithdrawal(address user)
         external
         view
@@ -623,18 +595,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     ) internal pure returns (uint256) {
         return
             ((accRewardPerShare * balance) / ACC_REWARD_PRECISION) - rewardDebt;
-    }
-
-    /**
-     * @inheritdoc IPremiaStaking
-     */
-    function getStakedPremiaAmount() external view returns (uint256) {
-        return _getStakedPremiaAmount();
-    }
-
-    function _getStakedPremiaAmount() internal view returns (uint256) {
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        return _getAvailablePremiaAmount() - l.reserved + l.debt;
     }
 
     /**
