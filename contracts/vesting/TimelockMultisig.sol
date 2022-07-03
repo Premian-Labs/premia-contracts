@@ -141,8 +141,10 @@ contract TimelockMultisig {
 
                 uint256 length = rejectionTimestamps.length;
 
-                if (length > 3) {
-                    delete rejectionTimestamps[length - 4];
+                if (length >= 3) {
+                    if (length >= 4) {
+                        delete rejectionTimestamps[length - 4];
+                    }
 
                     if (
                         rejectionTimestamps[length] - 3 >
