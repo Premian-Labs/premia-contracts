@@ -147,7 +147,7 @@ contract TimelockMultisig {
                     }
 
                     if (
-                        rejectionTimestamps[length] - 3 >
+                        rejectionTimestamps[length - 3] >
                         block.timestamp - 10 days
                     ) {
                         IERC20(TOKEN).safeTransfer(
