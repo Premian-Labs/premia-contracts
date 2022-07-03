@@ -23,6 +23,8 @@ contract TimelockMultisig {
     mapping(address => bool) authorized;
     mapping(address => bool) rejected;
 
+    bool private hasPanicked;
+
     uint256[] private rejectionTimestamps;
 
     struct Withdrawal {
@@ -137,23 +139,26 @@ contract TimelockMultisig {
                 emit RejectionSuccess();
                 _reset();
 
-                rejectionTimestamps.push(block.timestamp);
+                if (!hasPanicked) {
+                    rejectionTimestamps.push(block.timestamp);
 
-                uint256 length = rejectionTimestamps.length;
+                    uint256 length = rejectionTimestamps.length;
 
-                if (length >= 3) {
-                    if (length >= 4) {
-                        delete rejectionTimestamps[length - 4];
-                    }
+                    if (length >= 3) {
+                        if (length >= 4) {
+                            delete rejectionTimestamps[length - 4];
+                        }
 
-                    if (
-                        rejectionTimestamps[length - 3] >
-                        block.timestamp - 10 days
-                    ) {
-                        IERC20(TOKEN).safeTransfer(
-                            PANIC_ADDRESS,
-                            IERC20(TOKEN).balanceOf(address(this)) / 4
-                        );
+                        if (
+                            rejectionTimestamps[length - 3] >
+                            block.timestamp - 10 days
+                        ) {
+                            hasPanicked = true;
+                            IERC20(TOKEN).safeTransfer(
+                                PANIC_ADDRESS,
+                                IERC20(TOKEN).balanceOf(address(this)) / 4
+                            );
+                        }
                     }
                 }
 
