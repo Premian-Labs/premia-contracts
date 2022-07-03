@@ -132,6 +132,6 @@ describe('TimelockMultisig', () => {
     await timelockMultisig.connect(signer2).reject();
     await expect(() =>
       timelockMultisig.connect(signer3).reject(),
-    ).to.changeTokenBalance(token, panic, parseEther('2.5'));
+    ).to.changeTokenBalance(token, panic, parseEther('25'));
   });
 });
