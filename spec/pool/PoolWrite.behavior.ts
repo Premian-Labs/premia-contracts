@@ -77,7 +77,7 @@ export function describeBehaviorOfPoolWrite({
       exchangeHelper = await getExchangeHelper();
     });
 
-    describe.only('#quote', function () {
+    describe('#quote', function () {
       it('should revert if no liquidity', async () => {
         const maturity = await getMaturity(17);
         const strike64x64 = fixedFromFloat(2000 * 1.25);
