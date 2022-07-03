@@ -3,15 +3,14 @@
 
 pragma solidity ^0.8.0;
 
+import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@solidstate/contracts/token/ERC20/ERC20.sol";
 import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 import {ERC20Permit} from "@solidstate/contracts/token/ERC20/permit/ERC20Permit.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
-
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
-import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {IPremiaStaking} from "./IPremiaStaking.sol";
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 

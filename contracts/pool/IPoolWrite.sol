@@ -53,16 +53,18 @@ interface IPoolWrite {
     ) external payable returns (uint256 baseCost, uint256 feeCost);
 
     /**
-     * @notice swap tokens and purchase option
+     * @notice  swap tokens and purchase option
+     * @dev     any attached msg.value will be wrapped.
+     *          if tokenIn is wrappedNativeToken, both msg.value {amountInMax} amount of wrappedNativeToken will be used
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param contractSize size of option contract
      * @param isCall true for call, false for put
-     * @param maxCost maximum acceptable cost after accounting for slippage
-     * @param amountOut amount out of tokens requested. If 0, we will swap exact amount necessary to pay the quote
-     * @param amountInMax amount in max of tokens
-     * @param path swap path
-     * @param isSushi whether we use sushi or uniV2 for the swap
+     * @param tokenIn token to pass in to swap
+     * @param amountInMax amount of tokenIn to trade.
+     * @param amountOutMin min amount out to be used to purchase
+     * @param callee exchange address to call to execute the trade.
+     * @param data data to execute the trade
      * @return baseCost quantity of tokens required to purchase long position
      * @return feeCost quantity of tokens required to pay fees
      */
@@ -71,11 +73,12 @@ interface IPoolWrite {
         int128 strike64x64,
         uint256 contractSize,
         bool isCall,
-        uint256 maxCost,
-        uint256 amountOut,
+        address tokenIn,
         uint256 amountInMax,
-        address[] calldata path,
-        bool isSushi
+        uint256 amountOutMin,
+        address callee,
+        bytes calldata data,
+        address refundAddress
     ) external payable returns (uint256 baseCost, uint256 feeCost);
 
     /**

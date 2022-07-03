@@ -1,4 +1,4 @@
-import chai, { expect } from 'chai';
+import { expect } from 'chai';
 import { getTokenDecimals, PoolUtil } from '../pool/PoolUtil';
 import { increaseTimestamp, mineBlockUntil, resetHardhat } from '../utils/evm';
 import { ethers, network } from 'hardhat';
@@ -12,9 +12,7 @@ import {
 } from '../../typechain';
 import { parseEther, parseUnits } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
-import chaiAlmost from 'chai-almost';
-
-chai.use(chaiAlmost(0.05));
+import { ZERO_ADDRESS } from '../utils/constants';
 
 const oneDay = 24 * 3600;
 const oneMonth = 30 * oneDay;
@@ -22,6 +20,7 @@ const oneMonth = 30 * oneDay;
 const { API_KEY_ALCHEMY } = process.env;
 const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`;
 const blockNumber = 13569795;
+const CHAI_ALMOST_OVERRIDE = 0.05;
 
 describe('PremiaMining', () => {
   let owner: SignerWithAddress;
@@ -74,6 +73,7 @@ describe('PremiaMining', () => {
       spotPrice,
       feeReceiver,
       feeDiscount.address,
+      ZERO_ADDRESS,
     );
 
     await premia.mint(owner.address, parseEther(totalRewardAmount.toString()));
@@ -135,7 +135,7 @@ describe('PremiaMining', () => {
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
       ),
-    ).to.almost(500);
+    ).to.almost(500, CHAI_ALMOST_OVERRIDE);
 
     await increaseTimestamp(3 * oneDay);
     await p.pool
@@ -151,7 +151,7 @@ describe('PremiaMining', () => {
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
       ),
-    ).to.almost(833.33);
+    ).to.almost(833.33, CHAI_ALMOST_OVERRIDE);
 
     // LP2 should have pending reward of: 3*2/3*250 + 2*2/6*250 + 5*2/7*250 = 1023.81
     await increaseTimestamp(5 * oneDay);
@@ -162,7 +162,7 @@ describe('PremiaMining', () => {
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp2.address),
       ),
-    ).to.almost(1023.81);
+    ).to.almost(1023.81, CHAI_ALMOST_OVERRIDE);
 
     await increaseTimestamp(oneDay);
     await p.pool
@@ -181,6 +181,7 @@ describe('PremiaMining', () => {
 
     expect(bnToNumber(await p.premiaMining.premiaRewardsAvailable())).to.almost(
       totalRewardAmount - 15000 / 4,
+      CHAI_ALMOST_OVERRIDE,
     );
 
     // LP1 should have: 833.33 + 5*2/7*250 + 1*2/6.5*250 = 1267.4
@@ -188,36 +189,39 @@ describe('PremiaMining', () => {
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
       ),
-    ).to.almost(1267.4);
+    ).to.almost(1267.4, CHAI_ALMOST_OVERRIDE);
     // LP2 should have: 1023.81 + 1*1.5/6.5 * 250 + 1*1.5/4.5*250 = 1164.84
     expect(
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp2.address),
       ),
-    ).to.almost(1164.84);
+    ).to.almost(1164.84, CHAI_ALMOST_OVERRIDE);
     // LP3 should have: 2*3/6*250 + 5*3/7*250 + 1*3/6.5*250 + 1*3/4.5*250 + 1*250 = 1317.77
     expect(
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp3.address),
       ),
-    ).to.almost(1317.77);
+    ).to.almost(1317.77, CHAI_ALMOST_OVERRIDE);
     expect(
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, false, lp1.address),
       ),
-    ).to.almost(4000);
+    ).to.almost(4000, CHAI_ALMOST_OVERRIDE);
 
     await p.pool.connect(lp1)['claimRewards(bool)'](true);
     await p.pool.connect(lp2)['claimRewards(bool)'](true);
     await p.pool.connect(lp3)['claimRewards(bool)'](true);
     await expect(bnToNumber(await premia.balanceOf(lp1.address))).to.almost(
       1267.4,
+      CHAI_ALMOST_OVERRIDE,
     );
     await expect(bnToNumber(await premia.balanceOf(lp2.address))).to.almost(
       1164.84,
+      CHAI_ALMOST_OVERRIDE,
     );
     await expect(bnToNumber(await premia.balanceOf(lp3.address))).to.almost(
       1317.77,
+      CHAI_ALMOST_OVERRIDE,
     );
   });
 

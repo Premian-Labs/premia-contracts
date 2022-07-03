@@ -3,13 +3,13 @@
 
 pragma solidity ^0.8.0;
 
-import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
+import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155BaseStorage} from "@solidstate/contracts/token/ERC1155/base/ERC1155BaseStorage.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
+import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
-import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
 import {PoolSwap} from "./PoolSwap.sol";
 import {PoolStorage} from "./PoolStorage.sol";
 import {IPoolWrite} from "./IPoolWrite.sol";
@@ -27,27 +27,21 @@ contract PoolWrite is IPoolWrite, PoolSwap {
 
     constructor(
         address ivolOracle,
-        address weth,
+        address wrappedNativeToken,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 feePremium64x64,
-        address uniswapV2Factory,
-        address sushiswapFactory,
-        uint256 uniswapV2InitHash,
-        uint256 sushiswapInitHash
+        address exchangeProxy
     )
         PoolSwap(
             ivolOracle,
-            weth,
+            wrappedNativeToken,
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
             feePremium64x64,
-            uniswapV2Factory,
-            sushiswapFactory,
-            uniswapV2InitHash,
-            sushiswapInitHash
+            exchangeProxy
         )
     {}
 
@@ -109,15 +103,15 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         bool isCall,
         uint256 maxCost
     ) external payable returns (uint256 baseCost, uint256 feeCost) {
-        return
-            _verifyAndPurchase(
-                maturity,
-                strike64x64,
-                contractSize,
-                isCall,
-                maxCost,
-                true
-            );
+        (baseCost, feeCost) = _verifyAndPurchase(
+            maturity,
+            strike64x64,
+            contractSize,
+            isCall,
+            maxCost
+        );
+        PoolStorage.Layout storage l = PoolStorage.layout();
+        _pullFrom(l, msg.sender, baseCost + feeCost, isCall, true);
     }
 
     /**
@@ -128,57 +122,38 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         int128 strike64x64,
         uint256 contractSize,
         bool isCall,
-        uint256 maxCost,
-        uint256 amountOut,
+        address tokenIn,
         uint256 amountInMax,
-        address[] calldata path,
-        bool isSushi
+        uint256 amountOutMin,
+        address callee,
+        bytes calldata data,
+        address refundAddress
     ) public payable returns (uint256 baseCost, uint256 feeCost) {
-        // If value is passed, amountInMax must be 0, as the value wont be used
-        // If amountInMax is not 0, user wants to do a swap from an ERC20, and therefore no value should be attached
-        require(
-            msg.value == 0 || amountInMax == 0,
-            "value and amountInMax passed"
+        address tokenOut = PoolStorage.layout().getPoolToken(isCall);
+
+        uint256 creditAmount = _swapForPoolTokens(
+            tokenIn,
+            tokenOut,
+            amountInMax,
+            amountOutMin,
+            callee,
+            data,
+            refundAddress
         );
 
-        // If no amountOut has been passed, we swap the exact amount required to pay the quote
-        if (amountOut == 0) {
-            PoolStorage.Layout storage l = PoolStorage.layout();
-
-            int128 newPrice64x64 = _update(l);
-
-            PoolStorage.QuoteArgsInternal memory quoteArgs;
-            quoteArgs.feePayer = msg.sender;
-            quoteArgs.maturity = maturity;
-            quoteArgs.strike64x64 = strike64x64;
-            quoteArgs.spot64x64 = newPrice64x64;
-            quoteArgs.contractSize = contractSize;
-            quoteArgs.isCall = isCall;
-
-            PoolStorage.QuoteResultInternal
-                memory purchaseQuote = _quotePurchasePrice(quoteArgs);
-
-            amountOut = ABDKMath64x64Token.toDecimals(
-                purchaseQuote.baseCost64x64.add(purchaseQuote.feeCost64x64),
-                l.getTokenDecimals(isCall)
-            );
+        // if baseCost + feeCost > creditAmount, it will revert
+        (baseCost, feeCost) = _verifyAndPurchase(
+            maturity,
+            strike64x64,
+            contractSize,
+            isCall,
+            creditAmount
+        );
+        uint256 totalCost = baseCost + feeCost;
+        if (creditAmount > totalCost) {
+            // refund extra token got from the swap.
+            _pushTo(refundAddress, tokenOut, creditAmount - totalCost);
         }
-
-        if (msg.value > 0) {
-            _swapETHForExactTokens(amountOut, path, isSushi);
-        } else {
-            _swapTokensForExactTokens(amountOut, amountInMax, path, isSushi);
-        }
-
-        return
-            _verifyAndPurchase(
-                maturity,
-                strike64x64,
-                contractSize,
-                isCall,
-                maxCost,
-                false
-            );
     }
 
     /**
@@ -257,13 +232,12 @@ contract PoolWrite is IPoolWrite, PoolSwap {
     }
 
     /**
-     * @notice verify parameters, purchase option, and transfer payment into contract
+     * @notice verify parameters and purchase option
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param contractSize size of option contract
      * @param isCall true for call, false for put
      * @param maxCost maximum acceptable cost after accounting for slippage
-     * @param creditMessageValue whether to apply message value as credit towards transfer
      * @return baseCost quantity of tokens required to purchase long position
      * @return feeCost quantity of tokens required to pay fees
      */
@@ -272,8 +246,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         int128 strike64x64,
         uint256 contractSize,
         bool isCall,
-        uint256 maxCost,
-        bool creditMessageValue
+        uint256 maxCost
     ) internal returns (uint256 baseCost, uint256 feeCost) {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -294,8 +267,6 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         uint256 amount = baseCost + feeCost;
 
         require(amount <= maxCost, "excess slipp");
-
-        _pullFrom(l, msg.sender, amount, isCall, creditMessageValue);
     }
 
     /**

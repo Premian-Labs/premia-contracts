@@ -66,6 +66,7 @@ interface PoolUtilArgs {
   premiaMining: PremiaMining;
   ivolOracle: VolatilitySurfaceOracle;
   feeReceiver: any;
+  exchangeProxy: string; // 0x exchange proxy addr
 }
 
 export const ONE_DAY = 3600 * 24;
@@ -242,7 +243,7 @@ export class PoolUtil {
     priceUnderlying: number,
     feeReceiver: any,
     premiaFeeDiscount: string,
-    uniswapV2Factory?: string,
+    exchangeProxy: string,
     wethAddress?: string,
   ) {
     const erc20Factory = new ERC20Mock__factory(deployer);
@@ -374,10 +375,7 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      uniswapV2Factory ?? ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      UNISWAP_V2_INIT_HASH,
-      SUSHISWAP_INIT_HASH,
+      exchangeProxy,
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -513,10 +511,7 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      uniswapV2Factory ?? ZERO_ADDRESS,
-      ZERO_ADDRESS,
-      UNISWAP_V2_INIT_HASH,
-      SUSHISWAP_INIT_HASH,
+      exchangeProxy,
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -592,6 +587,7 @@ export class PoolUtil {
     );
 
     return new PoolUtil({
+      exchangeProxy,
       premiaDiamond,
       pool,
       poolWeth,

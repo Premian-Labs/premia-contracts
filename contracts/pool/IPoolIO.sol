@@ -21,22 +21,25 @@ interface IPoolIO {
     function deposit(uint256 amount, bool isCallPool) external payable;
 
     /**
-     * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
-     * @param amount quantity of underlying currency to deposit
+     * @notice  swap any token to collateral asset through exchange proxy and deposit
+     * @dev     any attached msg.value will be wrapped.
+     *          if tokenIn is wrappedNativeToken, both msg.value and {amountInMax} amount of wrappedNativeToken will be used
+     * @param tokenIn token as swap input.
+     * @param amountInMax max amount of token to trade.
+     * @param amountOutMin min amount of token to taken out of the trade and deposit
+     * @param callee exchange address to call to execute the trade.
+     * @param data calldata to execute the trade
+     * @param refundAddress where to send the un-used tokenIn, in any
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
-
-     * @param amountOut amount out of tokens requested. If 0, we will swap exact amount necessary to pay the quote
-     * @param amountInMax amount in max of tokens
-     * @param path swap path
-     * @param isSushi whether we use sushi or uniV2 for the swap
      */
     function swapAndDeposit(
-        uint256 amount,
-        bool isCallPool,
-        uint256 amountOut,
+        address tokenIn,
         uint256 amountInMax,
-        address[] calldata path,
-        bool isSushi
+        uint256 amountOutMin,
+        address callee,
+        bytes calldata data,
+        address refundAddress,
+        bool isCallPool
     ) external payable;
 
     /**

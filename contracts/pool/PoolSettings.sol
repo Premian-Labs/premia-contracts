@@ -17,7 +17,7 @@ contract PoolSettings is IPoolSettings, PoolInternal {
 
     constructor(
         address ivolOracle,
-        address weth,
+        address wrappedNativeToken,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
@@ -25,7 +25,7 @@ contract PoolSettings is IPoolSettings, PoolInternal {
     )
         PoolInternal(
             ivolOracle,
-            weth,
+            wrappedNativeToken,
             premiaMining,
             feeReceiver,
             feeDiscountAddress,

@@ -15,6 +15,12 @@ import {
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { BigNumberish } from 'ethers';
 
+export const uniswapABIs = [
+  'function swapExactTokensForTokens(uint,uint,address[],address,uint) returns (uint[])',
+  'function swapExactETHForTokens(uint, address[], address to, uint) returns (uint[])',
+  'function swapTokensForExactTokens(uint,uint,address[],address,uint) returns (uint[])',
+  'function swapETHForExactTokens(uint,address[],address,uint) returns (uint[])',
+];
 export interface IUniswap {
   weth: WETH9;
   dai: ERC20Mock;

@@ -3,21 +3,20 @@
 
 pragma solidity ^0.8.0;
 
+import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
 import {IERC173} from "@solidstate/contracts/access/IERC173.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155EnumerableInternal, ERC1155EnumerableStorage, EnumerableSet} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
 import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
-
-import {PoolStorage} from "./PoolStorage.sol";
-
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
-import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
+
 import {OptionMath} from "../libraries/OptionMath.sol";
-import {IFeeDiscount} from "../staking/IFeeDiscount.sol";
-import {IPoolEvents} from "./IPoolEvents.sol";
 import {IPremiaMining} from "../mining/IPremiaMining.sol";
 import {IVolatilitySurfaceOracle} from "../oracle/IVolatilitySurfaceOracle.sol";
+import {IFeeDiscount} from "../staking/IFeeDiscount.sol";
+import {IPoolEvents} from "./IPoolEvents.sol";
+import {PoolStorage} from "./PoolStorage.sol";
 
 /**
  * @title Premia option pool
@@ -36,7 +35,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 apyFee;
     }
 
-    address internal immutable WETH_ADDRESS;
+    address internal immutable WRAPPED_NATIVE_TOKEN;
     address internal immutable PREMIA_MINING_ADDRESS;
     address internal immutable FEE_RECEIVER_ADDRESS;
     address internal immutable FEE_DISCOUNT_ADDRESS;
@@ -58,14 +57,14 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
     constructor(
         address ivolOracle,
-        address weth,
+        address wrappedNativeToken,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
         int128 feePremium64x64
     ) {
         IVOL_ORACLE_ADDRESS = ivolOracle;
-        WETH_ADDRESS = weth;
+        WRAPPED_NATIVE_TOKEN = wrappedNativeToken;
         PREMIA_MINING_ADDRESS = premiaMining;
         FEE_RECEIVER_ADDRESS = feeReceiver;
         // PremiaFeeDiscount contract address
@@ -400,15 +399,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @notice deposit underlying currency, underwriting calls of that currency with respect to base currency
      * @param amount quantity of underlying currency to deposit
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
-     * @param creditMessageValue whether to apply message value as credit towards transfer
      */
     function _deposit(
+        PoolStorage.Layout storage l,
         uint256 amount,
-        bool isCallPool,
-        bool creditMessageValue
+        bool isCallPool
     ) internal {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-
         // Reset gradual divestment timestamp
         delete l.divestmentTimestamps[msg.sender][isCallPool];
 
@@ -416,9 +412,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;
         _addUserTVL(l, msg.sender, isCallPool, amount);
-        _pullFrom(l, msg.sender, amount, isCallPool, creditMessageValue);
 
-        _addToDepositQueue(msg.sender, amount, isCallPool);
+        _processAvailableFunds(msg.sender, amount, isCallPool, false, false);
 
         emit Deposit(msg.sender, isCallPool, amount);
     }
@@ -1159,16 +1154,22 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) internal {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
-        _mint(account, _getFreeLiquidityTokenId(isCallPool), amount);
+        uint256 freeLiqTokenId = _getFreeLiquidityTokenId(isCallPool);
 
-        uint256 nextBatch = (block.timestamp / BATCHING_PERIOD) *
-            BATCHING_PERIOD +
-            BATCHING_PERIOD;
-        l.pendingDeposits[account][nextBatch][isCallPool] += amount;
+        if (_totalSupply(freeLiqTokenId) > 0) {
+            uint256 nextBatch = (block.timestamp / BATCHING_PERIOD) *
+                BATCHING_PERIOD +
+                BATCHING_PERIOD;
+            l.pendingDeposits[account][nextBatch][isCallPool] += amount;
 
-        PoolStorage.BatchData storage batchData = l.nextDeposits[isCallPool];
-        batchData.totalPendingDeposits += amount;
-        batchData.eta = nextBatch;
+            PoolStorage.BatchData storage batchData = l.nextDeposits[
+                isCallPool
+            ];
+            batchData.totalPendingDeposits += amount;
+            batchData.eta = nextBatch;
+        }
+
+        _mint(account, freeLiqTokenId, amount);
     }
 
     function _processPendingDeposits(PoolStorage.Layout storage l, bool isCall)
@@ -1389,7 +1390,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     {
         if (msg.value > 0) {
             require(
-                PoolStorage.layout().getPoolToken(isCallPool) == WETH_ADDRESS,
+                PoolStorage.layout().getPoolToken(isCallPool) ==
+                    WRAPPED_NATIVE_TOKEN,
                 "not WETH deposit"
             );
 
@@ -1407,7 +1409,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 credit = msg.value;
             }
 
-            IWETH(WETH_ADDRESS).deposit{value: credit}();
+            IWETH(WRAPPED_NATIVE_TOKEN).deposit{value: credit}();
         }
     }
 
@@ -1476,13 +1478,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         uint256 newUserTVL;
         uint256 newTotalTVL;
 
-        if (userTVL > amount) {
-            newUserTVL = userTVL - amount;
+        if (userTVL < amount) {
+            amount = userTVL;
         }
 
-        if (totalTVL > amount) {
-            newTotalTVL = totalTVL - amount;
-        }
+        newUserTVL = userTVL - amount;
+        newTotalTVL = totalTVL - amount;
 
         IPremiaMining(PREMIA_MINING_ADDRESS).allocatePending(
             user,

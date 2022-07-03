@@ -18,7 +18,7 @@ import {PoolInternal} from "./PoolInternal.sol";
 contract PoolBase is PoolInternal, ERC1155Enumerable, ERC165, Multicall {
     constructor(
         address ivolOracle,
-        address weth,
+        address wrappedNativeToken,
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
@@ -26,7 +26,7 @@ contract PoolBase is PoolInternal, ERC1155Enumerable, ERC165, Multicall {
     )
         PoolInternal(
             ivolOracle,
-            weth,
+            wrappedNativeToken,
             premiaMining,
             feeReceiver,
             feeDiscountAddress,

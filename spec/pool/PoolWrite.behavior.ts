@@ -1,16 +1,17 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { ERC20Mock, IPool } from '../../typechain';
+import { ERC20Mock, IExchangeHelper, IPool } from '../../typechain';
 import { BigNumber, BigNumberish } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
   fixedFromFloat,
+  fixedToBn,
   fixedToNumber,
   formatTokenId,
   getOptionTokenIds,
 } from '@premia/utils';
 
-import { IUniswap } from '../../test/utils/uniswap';
+import { IUniswap, uniswapABIs } from '../../test/utils/uniswap';
 
 import {
   formatUnderlying,
@@ -21,6 +22,7 @@ import {
   getReservedLiqTokenId,
   getShort,
   getStrike,
+  getTokenDecimals,
   ONE_YEAR,
   parseBase,
   parseOption,
@@ -35,6 +37,7 @@ interface PoolWriteBehaviorArgs {
   getPoolUtil: () => Promise<PoolUtil>;
   apyFeeRate: BigNumberish;
   getUniswap: () => Promise<IUniswap>;
+  getExchangeHelper: () => Promise<IExchangeHelper>;
 }
 
 export function describeBehaviorOfPoolWrite({
@@ -44,6 +47,7 @@ export function describeBehaviorOfPoolWrite({
   getPoolUtil,
   apyFeeRate,
   getUniswap,
+  getExchangeHelper,
 }: PoolWriteBehaviorArgs) {
   describe('::PoolWrite', () => {
     let owner: SignerWithAddress;
@@ -57,6 +61,7 @@ export function describeBehaviorOfPoolWrite({
     let underlying: ERC20Mock;
     let p: PoolUtil;
     let uniswap: IUniswap;
+    let exchangeHelper: IExchangeHelper;
 
     before(async () => {
       [owner, buyer, lp1, lp2] = await ethers.getSigners();
@@ -70,6 +75,7 @@ export function describeBehaviorOfPoolWrite({
       feeReceiver = p.feeReceiver;
       base = await getBase();
       underlying = await getUnderlying();
+      exchangeHelper = await getExchangeHelper();
     });
 
     describe('#quote', function () {
@@ -103,11 +109,11 @@ export function describeBehaviorOfPoolWrite({
             true,
           );
 
-          expect(fixedToNumber(q.baseCost64x64) * 2000).to.almost(24.62);
+          expect(fixedToNumber(q.baseCost64x64) * 2000).to.almost(40.6);
           expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
             fixedToNumber(q.baseCost64x64) * 0.01,
           );
-          expect(fixedToNumber(q.cLevel64x64)).to.almost(1.82);
+          expect(fixedToNumber(q.cLevel64x64)).to.almost(3);
           expect(
             (fixedToNumber(q.baseCost64x64) * 2000) /
               fixedToNumber(q.cLevel64x64) /
@@ -121,7 +127,7 @@ export function describeBehaviorOfPoolWrite({
           const strike = 3900;
           const strike64x64 = fixedFromFloat(strike);
           let { timestamp } = await ethers.provider.getBlock('latest');
-          const maturity = timestamp + 24 * 3600;
+          const maturity = timestamp + 24 * 3600 + 1;
 
           const q = await instance.quote(
             ethers.constants.AddressZero,
@@ -192,11 +198,11 @@ export function describeBehaviorOfPoolWrite({
             false,
           );
 
-          expect(fixedToNumber(q.baseCost64x64)).to.almost(45.14);
+          expect(fixedToNumber(q.baseCost64x64)).to.almost(74.43);
           expect(fixedToNumber(q.feeCost64x64)).to.almost.eq(
             fixedToNumber(q.baseCost64x64) * 0.03,
           );
-          expect(fixedToNumber(q.cLevel64x64)).to.almost(1.98);
+          expect(fixedToNumber(q.cLevel64x64)).to.almost(3.24);
           expect(
             fixedToNumber(q.baseCost64x64) /
               fixedToNumber(q.cLevel64x64) /
@@ -210,7 +216,7 @@ export function describeBehaviorOfPoolWrite({
           const strike = 1500;
           const strike64x64 = fixedFromFloat(strike);
           let { timestamp } = await ethers.provider.getBlock('latest');
-          const maturity = timestamp + 24 * 3600;
+          const maturity = timestamp + 24 * 3600 + 1;
 
           const q = await instance.quote(
             ethers.constants.AddressZero,
@@ -400,11 +406,12 @@ export function describeBehaviorOfPoolWrite({
           expect(newLPShortTokenBalance).to.equal(
             oldLPShortTokenBalance.add(amount),
           );
-          expect(newLPFreeLiquidityBalance).to.equal(
+          expect(newLPFreeLiquidityBalance).to.be.closeTo(
             oldLPFreeLiquidityBalance
               .sub(tokenAmount)
               .add(baseCost)
               .sub(apyFee),
+            1,
           );
         });
 
@@ -597,8 +604,14 @@ export function describeBehaviorOfPoolWrite({
           const { underlyingTVL: newTotalTVL } =
             await instance.callStatic.getTotalTVL();
 
-          expect(newUserTVL).to.equal(oldUserTVL.add(baseCost).sub(apyFee));
-          expect(newTotalTVL).to.equal(oldTotalTVL.add(baseCost).sub(apyFee));
+          expect(newUserTVL).to.be.closeTo(
+            oldUserTVL.add(baseCost).sub(apyFee),
+            1,
+          );
+          expect(newTotalTVL).to.be.closeTo(
+            oldTotalTVL.add(baseCost).sub(apyFee),
+            1,
+          );
         });
 
         it('updates divesting user TVL', async () => {
@@ -808,11 +821,12 @@ export function describeBehaviorOfPoolWrite({
           expect(newLPShortTokenBalance).to.equal(
             oldLPShortTokenBalance.add(amount),
           );
-          expect(newLPFreeLiquidityBalance).to.equal(
+          expect(newLPFreeLiquidityBalance).to.be.closeTo(
             oldLPFreeLiquidityBalance
               .sub(tokenAmount)
               .add(baseCost)
               .sub(apyFee),
+            1,
           );
         });
 
@@ -1013,8 +1027,14 @@ export function describeBehaviorOfPoolWrite({
           const { baseTVL: newTotalTVL } =
             await instance.callStatic.getTotalTVL();
 
-          expect(newUserTVL).to.equal(oldUserTVL.add(baseCost).sub(apyFee));
-          expect(newTotalTVL).to.equal(oldTotalTVL.add(baseCost).sub(apyFee));
+          expect(newUserTVL).to.be.closeTo(
+            oldUserTVL.add(baseCost).sub(apyFee),
+            1,
+          );
+          expect(newTotalTVL).to.be.closeTo(
+            oldTotalTVL.add(baseCost).sub(apyFee),
+            1,
+          );
         });
 
         it('updates divesting user TVL', async () => {
@@ -1085,8 +1105,9 @@ export function describeBehaviorOfPoolWrite({
             await instance.callStatic.getTotalTVL();
 
           expect(newUserTVL).to.equal(oldUserTVL.sub(divestedLiquidity));
-          expect(newTotalTVL).to.equal(
+          expect(newTotalTVL).to.be.closeTo(
             oldTotalTVL.add(baseCost).sub(apyFee).sub(divestedLiquidity),
+            1,
           );
         });
 
@@ -1324,59 +1345,98 @@ export function describeBehaviorOfPoolWrite({
             const maturity = await getMaturity(10);
             const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
 
+            // amount of option to buy
+            const purchaseAmount = parseUnderlying('1');
+
+            const { baseCost64x64, feeCost64x64 } = await instance.quote(
+              buyer.address,
+              maturity,
+              strike64x64,
+              purchaseAmount,
+              isCall,
+            );
+            const expectedCostPoolToken = fixedToBn(
+              baseCost64x64.add(feeCost64x64),
+              getTokenDecimals(isCall),
+            );
+            const uniswapPath = isCall
+              ? [base.address, uniswap.weth.address, underlying.address]
+              : [underlying.address, uniswap.weth.address, base.address];
+
+            // how much needed to get expected cost
+            const [expectedInputAmount] = await uniswap.router.getAmountsIn(
+              expectedCostPoolToken,
+              uniswapPath,
+            );
+            // input as 120% of price.
+            const swapMaxTokenIn = expectedInputAmount.mul(120).div(100);
+
+            // amount out from the swap, we can set to 0 because the tx will revert if the amount is not enough to purchase
+            // const swapMinTokenOut = 0
+
             const longTokenId = formatTokenId({
               tokenType: getLong(isCall),
               maturity,
               strike64x64,
             });
 
-            const amount = parseUnderlying('1');
-
-            const oldPoolTokenBalance = await (isCall
-              ? underlying
-              : base
-            ).callStatic.balanceOf(buyer.address);
             const oldNonPoolTokenBalance = await (isCall
               ? base
               : underlying
-            ).callStatic.balanceOf(buyer.address);
+            ).balanceOf(buyer.address);
+
             const oldLongTokenBalance = await instance.balanceOf(
               buyer.address,
               longTokenId,
             );
 
-            await instance
-              .connect(buyer)
-              .swapAndPurchase(
-                maturity,
-                strike64x64,
-                amount,
-                isCall,
-                ethers.constants.MaxUint256,
-                ethers.constants.Zero,
-                ethers.constants.MaxUint256,
-                isCall
-                  ? [base.address, uniswap.weth.address, underlying.address]
-                  : [underlying.address, uniswap.weth.address, base.address],
-                false,
-              );
+            const tokenIn = isCall ? p.base.address : p.underlying.address;
 
-            const newPoolTokenBalance = await (isCall
-              ? underlying
-              : base
-            ).callStatic.balanceOf(buyer.address);
+            const { timestamp } = await ethers.provider.getBlock('latest');
+
+            const iface = new ethers.utils.Interface(uniswapABIs);
+            // pull exact token from user, => swap for pool token => purchase, additional pool token will be refunded
+            const data = iface.encodeFunctionData('swapExactTokensForTokens', [
+              swapMaxTokenIn,
+              expectedCostPoolToken,
+              uniswapPath,
+              exchangeHelper.address,
+              timestamp + 86400,
+            ]);
+
+            await instance.connect(buyer).swapAndPurchase(
+              maturity,
+              strike64x64,
+              purchaseAmount,
+              isCall,
+              tokenIn,
+              swapMaxTokenIn,
+              0, // how much to take out from swap. Uniswap will assert it
+              uniswap.router.address, // exchange to trade on
+              data,
+              buyer.address,
+            );
+
             const newNonPoolTokenBalance = await (isCall
               ? base
               : underlying
             ).callStatic.balanceOf(buyer.address);
+
             const newLongTokenBalance = await instance.balanceOf(
               buyer.address,
               longTokenId,
             );
 
-            expect(newPoolTokenBalance).to.eq(oldPoolTokenBalance);
+            expect(newNonPoolTokenBalance).to.be.closeTo(
+              oldNonPoolTokenBalance.sub(swapMaxTokenIn),
+              1,
+            );
+
             // TODO: assert cost
-            expect(newLongTokenBalance).to.eq(oldLongTokenBalance.add(amount));
+            expect(newLongTokenBalance).to.be.closeTo(
+              oldLongTokenBalance.add(purchaseAmount),
+              1,
+            );
           });
 
           it('executes purchase using ETH', async () => {
@@ -1395,54 +1455,176 @@ export function describeBehaviorOfPoolWrite({
               strike64x64,
             });
 
-            const amount = parseUnderlying('1');
+            // amount of option to buy
+            const purchaseAmount = parseUnderlying('1');
 
-            const oldPoolTokenBalance = await (isCall
-              ? underlying
-              : base
-            ).callStatic.balanceOf(buyer.address);
-            const oldNonPoolTokenBalance = await (isCall
-              ? base
-              : underlying
-            ).callStatic.balanceOf(buyer.address);
+            const { baseCost64x64, feeCost64x64 } = await instance.quote(
+              buyer.address,
+              maturity,
+              strike64x64,
+              purchaseAmount,
+              isCall,
+            );
+            const expectedCostPoolToken = fixedToBn(
+              baseCost64x64.add(feeCost64x64),
+              getTokenDecimals(isCall),
+            );
+
+            // mock exchange swap data.
+            const uniswapPath = isCall
+              ? [uniswap.weth.address, underlying.address]
+              : [uniswap.weth.address, base.address];
+
+            // how much needed to get expected cost
+            const [expectedInputAmount] = await uniswap.router.getAmountsIn(
+              expectedCostPoolToken,
+              uniswapPath,
+            );
+
+            // input as 120% of price.
+            const maxEthToPay = expectedInputAmount.mul(120).div(100);
+
             const oldLongTokenBalance = await instance.balanceOf(
               buyer.address,
               longTokenId,
             );
 
-            await instance
-              .connect(buyer)
-              .swapAndPurchase(
-                maturity,
-                strike64x64,
-                amount,
-                isCall,
-                ethers.constants.MaxUint256,
-                ethers.constants.Zero,
-                ethers.constants.Zero,
-                isCall
-                  ? [uniswap.weth.address, underlying.address]
-                  : [uniswap.weth.address, base.address],
-                false,
-                { value: ethers.utils.parseEther('2') },
-              );
+            const { timestamp } = await ethers.provider.getBlock('latest');
 
-            const newPoolTokenBalance = await (isCall
-              ? underlying
-              : base
-            ).callStatic.balanceOf(buyer.address);
-            const newNonPoolTokenBalance = await (isCall
-              ? base
-              : underlying
-            ).callStatic.balanceOf(buyer.address);
+            const iface = new ethers.utils.Interface(uniswapABIs);
+
+            // eth will be wrap into weth, so we call uniswap to trade weth to pool token
+            const data = iface.encodeFunctionData('swapTokensForExactTokens', [
+              expectedCostPoolToken,
+              maxEthToPay,
+              uniswapPath,
+              exchangeHelper.address,
+              timestamp + 86400,
+            ]);
+
+            await instance.connect(buyer).swapAndPurchase(
+              maturity,
+              strike64x64,
+              purchaseAmount,
+              isCall,
+              uniswap.weth.address, // tokenIn
+              0,
+              0,
+              uniswap.router.address, // exchange to trade on
+              data,
+              buyer.address,
+              { value: maxEthToPay },
+            );
+
             const newLongTokenBalance = await instance.balanceOf(
               buyer.address,
               longTokenId,
             );
 
-            expect(newPoolTokenBalance).to.eq(oldPoolTokenBalance);
-            // TODO: assert cost
-            expect(newLongTokenBalance).to.eq(oldLongTokenBalance.add(amount));
+            expect(newLongTokenBalance).to.be.closeTo(
+              oldLongTokenBalance.add(purchaseAmount),
+              1,
+            );
+          });
+
+          it('executes purchase with ETH and weth', async () => {
+            // only for put pool
+            if (isCall) return;
+
+            await p.depositLiquidity(
+              lp1,
+              parseOption('100000', isCall),
+              isCall,
+            );
+
+            const maturity = await getMaturity(10);
+            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
+
+            const longTokenId = formatTokenId({
+              tokenType: getLong(isCall),
+              maturity,
+              strike64x64,
+            });
+
+            // amount of option to buy
+            const purchaseAmount = parseUnderlying('1');
+
+            const { baseCost64x64, feeCost64x64 } = await instance.quote(
+              buyer.address,
+              maturity,
+              strike64x64,
+              purchaseAmount,
+              isCall,
+            );
+            const expectedCostPoolToken = fixedToBn(
+              baseCost64x64.add(feeCost64x64),
+              getTokenDecimals(isCall),
+            );
+
+            const uniswapPath = [uniswap.weth.address, base.address];
+
+            // how much needed to get expected cost
+            const [expectedInputAmount] = await uniswap.router.getAmountsIn(
+              expectedCostPoolToken,
+              uniswapPath,
+            );
+
+            // const totalEthToPay = expectedInputAmount;
+            const ethToPay = expectedInputAmount.div(2);
+            const wethToPay = expectedInputAmount.sub(ethToPay);
+
+            await uniswap.weth.connect(buyer).deposit({ value: wethToPay });
+            await uniswap.weth
+              .connect(buyer)
+              .approve(instance.address, ethers.constants.MaxUint256);
+
+            const oldLongTokenBalance = await instance.balanceOf(
+              buyer.address,
+              longTokenId,
+            );
+
+            const { timestamp } = await ethers.provider.getBlock('latest');
+
+            const iface = new ethers.utils.Interface(uniswapABIs);
+
+            // eth will be wrap into weth, so we call uniswap to trade weth to pool token, with amount = msg.value + maxTokenIn
+            const data = iface.encodeFunctionData('swapTokensForExactTokens', [
+              expectedCostPoolToken,
+              expectedInputAmount,
+              uniswapPath,
+              exchangeHelper.address,
+              timestamp + 86400,
+            ]);
+
+            await instance.connect(buyer).swapAndPurchase(
+              maturity,
+              strike64x64,
+              purchaseAmount,
+              isCall,
+              uniswap.weth.address, // tokenIn
+              wethToPay,
+              expectedCostPoolToken,
+              uniswap.router.address, // exchange to trade on
+              data,
+              buyer.address,
+              { value: ethToPay },
+            );
+
+            const nonPoolTokenAfter = await uniswap.weth.balanceOf(
+              buyer.address,
+            );
+            const newLongTokenBalance = await instance.balanceOf(
+              buyer.address,
+              longTokenId,
+            );
+
+            // all weth were spent and swapped to dai.
+            expect(nonPoolTokenAfter.eq(0)).to.be.true;
+
+            expect(newLongTokenBalance).to.be.closeTo(
+              oldLongTokenBalance.add(purchaseAmount),
+              1,
+            );
           });
         });
       }

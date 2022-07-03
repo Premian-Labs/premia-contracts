@@ -5,10 +5,10 @@ pragma solidity ^0.8.0;
 
 import {AggregatorInterface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorInterface.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
+import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
 import {EnumerableSet, ERC1155EnumerableStorage} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155EnumerableStorage.sol";
-
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
-import {ABDKMath64x64Token} from "../libraries/ABDKMath64x64Token.sol";
+
 import {OptionMath} from "../libraries/OptionMath.sol";
 
 library PoolStorage {
@@ -429,13 +429,16 @@ library PoolStorage {
         );
 
         uint256 tvl = l.totalTVL[isCall];
+        uint256 availableSupply = (ERC1155EnumerableStorage
+            .layout()
+            .totalSupply[tokenId] - l.totalPendingDeposits(isCall));
 
-        int128 utilization = ABDKMath64x64.divu(
-            tvl -
-                (ERC1155EnumerableStorage.layout().totalSupply[tokenId] -
-                    l.totalPendingDeposits(isCall)),
-            tvl
-        );
+        if (tvl < availableSupply) {
+            // workaround for TVL underflow issue
+            availableSupply = tvl;
+        }
+
+        int128 utilization = ABDKMath64x64.divu(tvl - availableSupply, tvl);
 
         return
             OptionMath.calculateCLevelDecay(

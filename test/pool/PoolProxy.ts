@@ -8,6 +8,8 @@ import {
   IPool,
   Proxy__factory,
   ProxyUpgradeableOwnable__factory,
+  IExchangeHelper,
+  ExchangeHelper__factory,
 } from '../../typechain';
 
 import { fixedFromFloat } from '@premia/utils';
@@ -19,14 +21,12 @@ import { describeBehaviorOfPoolSettings } from '../../spec/pool/PoolSettings.beh
 import { describeBehaviorOfPoolView } from '../../spec/pool/PoolView.behavior';
 import { describeBehaviorOfPoolWrite } from '../../spec/pool/PoolWrite.behavior';
 import { describeBehaviorOfPoolSell } from '../../spec/pool/PoolSell.behavior';
-import chai from 'chai';
 import {
   DECIMALS_BASE,
   DECIMALS_UNDERLYING,
   FEE_APY,
   PoolUtil,
 } from './PoolUtil';
-import chaiAlmost from 'chai-almost';
 import { describeBehaviorOfProxy } from '@solidstate/spec';
 import {
   createUniswap,
@@ -34,8 +34,6 @@ import {
   depositUniswapLiquidity,
   IUniswap,
 } from '../utils/uniswap';
-
-chai.use(chaiAlmost(0.02));
 
 describe('PoolProxy', function () {
   let snapshotId: number;
@@ -47,6 +45,7 @@ describe('PoolProxy', function () {
   let thirdParty: SignerWithAddress;
   let feeReceiver: SignerWithAddress;
   let uniswap: IUniswap;
+  let exchangeHelper: IExchangeHelper;
 
   let xPremia: ERC20Mock;
   let feeDiscount: FeeDiscount;
@@ -79,13 +78,15 @@ describe('PoolProxy', function () {
 
     uniswap = await createUniswap(owner);
 
+    exchangeHelper = await new ExchangeHelper__factory(owner).deploy();
+
     p = await PoolUtil.deploy(
       owner,
       premia.address,
       spotPrice,
       feeReceiver,
       feeDiscount.address,
-      uniswap.factory.address,
+      exchangeHelper.address,
       uniswap.weth.address,
     );
 
@@ -204,6 +205,7 @@ describe('PoolProxy', function () {
     getPoolUtil: async () => p,
     apyFeeRate: FEE_APY,
     getUniswap: async () => uniswap,
+    getExchangeHelper: async () => exchangeHelper,
   });
 
   describeBehaviorOfPoolSell({
@@ -229,5 +231,6 @@ describe('PoolProxy', function () {
     getPoolUtil: async () => p,
     apyFeeRate: FEE_APY,
     getUniswap: async () => uniswap,
+    getExchangeHelper: async () => exchangeHelper,
   });
 });

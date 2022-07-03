@@ -57,7 +57,7 @@ async function main() {
   await feeDiscountProxy.deployed();
   console.log(`FeeDiscount proxy deployed at ${feeDiscountProxy.address})`);
 
-  const premia = '0x51fc0f6660482ea73330e414efd7808811a57fa2';
+  const premia = '0x3028b4395F98777123C7da327010c40f3c7Cc4Ef';
 
   const ftm: PoolToken = {
     tokenAddress: '0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83',
