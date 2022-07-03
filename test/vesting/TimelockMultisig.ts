@@ -16,6 +16,7 @@ let signer1: SignerWithAddress;
 let signer2: SignerWithAddress;
 let signer3: SignerWithAddress;
 let signer4: SignerWithAddress;
+let panic: SignerWithAddress;
 let otherUser: SignerWithAddress;
 let receiver: SignerWithAddress;
 let token: ERC20Mock;
@@ -29,14 +30,14 @@ describe('TimelockMultisig', () => {
   }
 
   beforeEach(async () => {
-    [admin, signer1, signer2, signer3, signer4, otherUser, receiver] =
+    [admin, signer1, signer2, signer3, signer4, panic, otherUser, receiver] =
       await ethers.getSigners();
 
     token = await new ERC20Mock__factory(admin).deploy('', 18);
 
     timelockMultisig = await new TimelockMultisig__factory(admin).deploy(
       token.address,
-      ethers.constants.AddressZero,
+      panic.address,
       [signer1.address, signer2.address, signer3.address, signer4.address],
     );
 
@@ -83,6 +84,16 @@ describe('TimelockMultisig', () => {
     ).to.changeTokenBalance(token, receiver, parseEther('10'));
   });
 
+  it('should successfully transfer ETH after expedited timelock passed', async () => {
+    await startWithdrawal(signer1);
+    await timelockMultisig.connect(signer2).authorize();
+    await increaseTimestamp(2 * 24 * 3600 + 1);
+
+    await expect(() =>
+      timelockMultisig.connect(signer1).doWithdraw(),
+    ).to.changeTokenBalance(token, receiver, parseEther('10'));
+  });
+
   it('should instantly transfer ETH if 3/4 authorize', async () => {
     await startWithdrawal(signer1);
     await timelockMultisig.connect(signer3).authorize();
@@ -106,5 +117,21 @@ describe('TimelockMultisig', () => {
     expect(await token.callStatic.balanceOf(timelockMultisig.address)).to.eq(
       parseEther('100'),
     );
+  });
+
+  it('should successfully transfer 25% of balance to panic address if 3 rejections in 10 days', async () => {
+    await startWithdrawal(signer1);
+    await timelockMultisig.connect(signer2).reject();
+    await timelockMultisig.connect(signer3).reject();
+
+    await startWithdrawal(signer1);
+    await timelockMultisig.connect(signer2).reject();
+    await timelockMultisig.connect(signer3).reject();
+
+    await startWithdrawal(signer1);
+    await timelockMultisig.connect(signer2).reject();
+    await expect(() =>
+      timelockMultisig.connect(signer3).reject(),
+    ).to.changeTokenBalance(token, panic, parseEther('2.5'));
   });
 });
