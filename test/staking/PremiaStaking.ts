@@ -34,24 +34,21 @@ async function bridge(
   user: SignerWithAddress,
   amount: BigNumberish,
 ) {
-  throw new Error('Not implement'); // ToDo : Implement
-  // const underlyingAmount = await premiaStaking.getUnderlyingAmount(amount);
-  //
-  // // Mocked bridge out
-  // await premiaStaking
-  //   .connect(alice)
-  //   .sendFrom(
-  //     user.address,
-  //     0,
-  //     user.address,
-  //     amount,
-  //     user.address,
-  //     ethers.constants.AddressZero,
-  //     '0x',
-  //   );
-  //
-  // // Mocked bridge in
-  // await otherPremiaStaking.creditTo(user.address, underlyingAmount);
+  // Mocked bridge out
+  await premiaStaking
+    .connect(alice)
+    .sendFrom(
+      user.address,
+      0,
+      user.address,
+      amount,
+      user.address,
+      ethers.constants.AddressZero,
+      '0x',
+    );
+
+  // Mocked bridge in
+  await otherPremiaStaking.creditTo(user.address, amount);
 }
 
 describe('PremiaStaking', () => {
@@ -448,77 +445,17 @@ describe('PremiaStaking', () => {
   it('should correctly bridge to other contract', async () => {
     await premia.connect(alice).approve(premiaStaking.address, '100');
 
-    await premiaStaking.connect(alice).stake('100', 0);
+    await premiaStaking.connect(alice).stake('100', 365 * 24 * 3600);
     await premiaStaking.connect(alice).approve(premiaStaking.address, '100');
+
+    expect(await premiaStaking.totalSupply()).to.eq(100);
+    expect(await otherPremiaStaking.totalSupply()).to.eq(0);
 
     await bridge(premiaStaking, otherPremiaStaking, alice, '10');
 
-    // expect(await premiaStaking.getDebt()).to.eq(0);
-    // expect(await premiaStaking.getReserved()).to.eq(10);
-    //
-    // expect(await otherPremiaStaking.getDebt()).to.eq(10);
-    // expect(await otherPremiaStaking.getReserved()).to.eq(0);
-
     expect(await premia.balanceOf(premiaStaking.address)).to.eq(100);
     expect(await premia.balanceOf(otherPremiaStaking.address)).to.eq(0);
-  });
-
-  it('should correctly normalize underlying with ratio when bridging', async () => {
-    // ToDo : Update
-    // await premia.mint(alice.address, '100');
-    //
-    // await premia.connect(alice).approve(premiaStaking.address, '100');
-    // await premiaStaking.connect(alice).stake('100', 0);
-    // await premia.mint(premiaStaking.address, '100');
-    //
-    // await premiaStaking.connect(alice).approve(premiaStaking.address, '100');
-    //
-    // await premia.connect(alice).approve(otherPremiaStaking.address, '100');
-    // await otherPremiaStaking.connect(alice).stake('100', 0);
-    // await premia.mint(otherPremiaStaking.address, '300');
-    //
-    // await premiaStaking
-    //   .connect(alice)
-    //   .approve(otherPremiaStaking.address, '100');
-    //
-    // const ratio1 = await premiaStaking.getXPremiaToPremiaRatio();
-    // const ratio2 = await otherPremiaStaking.getXPremiaToPremiaRatio();
-    // const ratio1Nb = bnToNumber(ratio1);
-    // const ratio2Nb = bnToNumber(ratio2);
-    //
-    // const balance1Before = await premiaStaking.balanceOf(alice.address);
-    // const balance2Before = await otherPremiaStaking.balanceOf(alice.address);
-    //
-    // await bridge(premiaStaking, otherPremiaStaking, alice, '10');
-    //
-    // const balance1After = await premiaStaking.balanceOf(alice.address);
-    // const balance2After = await otherPremiaStaking.balanceOf(alice.address);
-    //
-    // expect(await premiaStaking.getXPremiaToPremiaRatio()).to.eq(ratio1);
-    // expect(await otherPremiaStaking.getXPremiaToPremiaRatio()).to.eq(ratio2);
-    //
-    // expect(balance1Before.sub(balance1After).mul(ratio1Nb)).to.eq(
-    //   balance2After.sub(balance2Before).mul(ratio2Nb),
-    // );
-    //
-    // const underlying1 = await premiaStaking.getUnderlyingAmount(
-    //   await premiaStaking.totalSupply(),
-    // );
-    // const underlying2 = await otherPremiaStaking.getUnderlyingAmount(
-    //   await otherPremiaStaking.totalSupply(),
-    // );
-    //
-    // expect(underlying1.add(underlying2)).to.eq(600);
-    //
-    // expect(await premiaStaking.balanceOf(alice.address)).to.eq(90);
-    // expect(await otherPremiaStaking.balanceOf(alice.address)).to.eq(105);
-    // expect(await premiaStaking.getDebt()).to.eq(0);
-    // expect(await premiaStaking.getReserved()).to.eq(20);
-    //
-    // expect(await otherPremiaStaking.getDebt()).to.eq(20);
-    // expect(await otherPremiaStaking.getReserved()).to.eq(0);
-    //
-    // expect(await premia.balanceOf(premiaStaking.address)).to.eq(200);
-    // expect(await premia.balanceOf(otherPremiaStaking.address)).to.eq(400);
+    expect(await premiaStaking.totalSupply()).to.eq(90);
+    expect(await otherPremiaStaking.totalSupply()).to.eq(10);
   });
 });
