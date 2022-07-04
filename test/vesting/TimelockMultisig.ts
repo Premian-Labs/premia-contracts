@@ -7,7 +7,7 @@ import {
 } from '../../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { getEthBalance, increaseTimestamp } from '../utils/evm';
+import { increaseTimestamp, setTimestamp } from '../utils/evm';
 import { parseEther } from 'ethers/lib/utils';
 import { ZERO_ADDRESS } from '../utils/constants';
 
@@ -75,7 +75,7 @@ describe('TimelockMultisig', () => {
     ).to.be.revertedWith('not ready');
   });
 
-  it('should successfully transfer ETH after timelock passed', async () => {
+  it('should successfully transfer tokens after timelock passed', async () => {
     await startWithdrawal(signer1);
     await increaseTimestamp(7 * 24 * 3600 + 1);
 
@@ -84,7 +84,7 @@ describe('TimelockMultisig', () => {
     ).to.changeTokenBalance(token, receiver, parseEther('10'));
   });
 
-  it('should successfully transfer ETH after expedited timelock passed', async () => {
+  it('should successfully transfer tokens after expedited timelock passed', async () => {
     await startWithdrawal(signer1);
     await timelockMultisig.connect(signer2).authorize();
     await increaseTimestamp(2 * 24 * 3600 + 1);
@@ -94,7 +94,7 @@ describe('TimelockMultisig', () => {
     ).to.changeTokenBalance(token, receiver, parseEther('10'));
   });
 
-  it('should instantly transfer ETH if 3/4 authorize', async () => {
+  it('should instantly transfer tokens if 3/4 authorize', async () => {
     await startWithdrawal(signer1);
     await timelockMultisig.connect(signer3).authorize();
     await expect(() =>
@@ -120,6 +120,8 @@ describe('TimelockMultisig', () => {
   });
 
   it('should successfully transfer 25% of balance to panic address if 3 rejections in 10 days', async () => {
+    let { timestamp } = await ethers.provider.getBlock('latest');
+
     await startWithdrawal(signer1);
     await timelockMultisig.connect(signer2).reject();
     await timelockMultisig.connect(signer3).reject();
@@ -127,11 +129,35 @@ describe('TimelockMultisig', () => {
     await startWithdrawal(signer1);
     await timelockMultisig.connect(signer2).reject();
     await timelockMultisig.connect(signer3).reject();
+
+    await setTimestamp(timestamp + 10 * 24 * 3600 - 1);
 
     await startWithdrawal(signer1);
     await timelockMultisig.connect(signer2).reject();
     await expect(() =>
       timelockMultisig.connect(signer3).reject(),
     ).to.changeTokenBalance(token, panic, parseEther('25'));
+  });
+
+  it('should not transfer 25% of balance if 3 rejections in more than 10 days', async () => {
+    let { timestamp } = await ethers.provider.getBlock('latest');
+
+    await startWithdrawal(signer1);
+    await timelockMultisig.connect(signer2).reject();
+    await timelockMultisig.connect(signer3).reject();
+
+    await startWithdrawal(signer1);
+    await timelockMultisig.connect(signer2).reject();
+    await timelockMultisig.connect(signer3).reject();
+
+    await setTimestamp(timestamp + 10 * 24 * 3600 + 1);
+
+    await startWithdrawal(signer1);
+    await timelockMultisig.connect(signer2).reject();
+    await timelockMultisig.connect(signer3).reject();
+
+    expect(await token.balanceOf(timelockMultisig.address)).to.eq(
+      parseEther('100'),
+    );
   });
 });
