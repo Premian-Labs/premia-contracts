@@ -250,9 +250,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         _mint(msg.sender, amount);
 
-        // ToDo : Keep both ?
-        emit Deposit(msg.sender, amount);
-        emit Staked(msg.sender, amount, period, lockedUntil);
+        emit Stake(msg.sender, amount, period, lockedUntil);
     }
 
     function getPendingUserRewards(address user)
@@ -357,12 +355,12 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             user.stakePeriod
         );
 
-        emit Unstaked(msg.sender, amount);
+        emit Unstake(msg.sender, amount);
 
         l.withdrawals[msg.sender].amount += amount;
         l.withdrawals[msg.sender].startDate = block.timestamp;
 
-        emit StartWithdrawal(msg.sender, amount, block.timestamp);
+        emit StartWithdraw(msg.sender, amount, block.timestamp);
     }
 
     /**
@@ -387,7 +385,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         IERC20(PREMIA).safeTransfer(msg.sender, amount);
 
-        emit Withdrawal(msg.sender, amount);
+        emit Withdraw(msg.sender, amount);
 
         //
     }

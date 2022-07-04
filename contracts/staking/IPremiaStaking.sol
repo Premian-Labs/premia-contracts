@@ -5,26 +5,26 @@ pragma solidity ^0.8.0;
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 
 interface IPremiaStaking {
-    event Deposit(address indexed user, uint256 amount);
-    event StartWithdrawal(
-        address indexed user,
-        uint256 premiaAmount,
-        uint256 startDate
-    );
-    event Withdrawal(address indexed user, uint256 amount);
-
-    event RewardsAdded(uint256 amount);
-
-    event BridgedIn(address indexed user, uint256 amount);
-    event BridgedOut(address indexed user, uint256 amount);
-
-    event Staked(
+    event Stake(
         address indexed user,
         uint256 amount,
         uint256 stakePeriod,
         uint256 lockedUntil
     );
-    event Unstaked(address indexed user, uint256 amount);
+
+    event Unstake(address indexed user, uint256 amount);
+
+    event StartWithdraw(
+        address indexed user,
+        uint256 premiaAmount,
+        uint256 startDate
+    );
+    event Withdraw(address indexed user, uint256 amount);
+
+    event RewardsAdded(uint256 amount);
+
+    event BridgedIn(address indexed user, uint256 amount);
+    event BridgedOut(address indexed user, uint256 amount);
 
     struct StakeLevel {
         uint256 amount; // Amount to stake

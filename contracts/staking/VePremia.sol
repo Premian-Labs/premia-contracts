@@ -41,7 +41,7 @@ contract VePremia is IVePremia, PremiaStaking {
 
         // _transferXPremia(address(this), msg.sender, amount - fee); // ToDo : update
 
-        emit Unstaked(msg.sender, amount);
+        emit Unstake(msg.sender, amount);
         emit EarlyUnstake(msg.sender, amount, fee);
     }
 
