@@ -3,23 +3,34 @@
 
 pragma solidity ^0.8.0;
 
+import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
+import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 
 contract TimelockMultisig {
     using EnumerableSet for EnumerableSet.AddressSet;
+    using SafeERC20 for IERC20;
 
     EnumerableSet.AddressSet signers;
 
-    uint256 internal constant AUTHORIZATION_REQUIRED = 3;
+    uint256 internal constant AUTHORIZATION_REQUIRED_INSTANT = 3;
+    uint256 internal constant AUTHORIZATION_REQUIRED_EXPEDITED = 2;
     uint256 internal constant REJECTION_REQUIRED = 2;
+
+    address public immutable TOKEN;
+    address public immutable PANIC_ADDRESS;
 
     mapping(address => bool) authorized;
     mapping(address => bool) rejected;
 
+    bool private hasPanicked;
+
+    uint256[] private rejectionTimestamps;
+
     struct Withdrawal {
         address to;
         uint256 amount;
-        uint256 eta;
+        uint256 createdAt;
     }
 
     Withdrawal public pendingWithdrawal;
@@ -28,21 +39,21 @@ contract TimelockMultisig {
         address indexed signer,
         address to,
         uint256 amount,
-        uint256 eta
+        uint256 createdAt
     );
 
     event SignAuthorization(
         address indexed signer,
         address to,
         uint256 amount,
-        uint256 eta
+        uint256 createdAt
     );
 
     event SignRejection(
         address indexed signer,
         address to,
         uint256 amount,
-        uint256 eta
+        uint256 createdAt
     );
 
     event Withdraw(address indexed to, uint256 amount);
@@ -51,36 +62,46 @@ contract TimelockMultisig {
 
     event AuthorizationSuccess();
 
-    receive() external payable {}
-
     modifier isSigner() {
         require(signers.contains(msg.sender), "not signer");
         _;
     }
 
-    constructor(address[4] memory _signers) {
+    modifier hasPendingWithdrawal(bool status) {
+        require(
+            (pendingWithdrawal.createdAt > 0) == status,
+            "invalid pending withdrawal status"
+        );
+        _;
+    }
+
+    constructor(
+        address token,
+        address panicAddress,
+        address[4] memory _signers
+    ) {
+        TOKEN = token;
+        PANIC_ADDRESS = panicAddress;
+
         for (uint256 i = 0; i < _signers.length; i++) {
             signers.add(_signers[i]);
         }
     }
 
-    function startWithdraw(address to, uint256 amount) external isSigner {
-        require(
-            pendingWithdrawal.to == address(0) &&
-                pendingWithdrawal.eta == 0 &&
-                pendingWithdrawal.amount == 0,
-            "pending withdrawal"
-        );
-
-        uint256 eta = block.timestamp + 7 days;
-        pendingWithdrawal = Withdrawal(to, amount, eta);
+    function startWithdraw(address to, uint256 amount)
+        external
+        isSigner
+        hasPendingWithdrawal(false)
+    {
+        uint256 createdAt = block.timestamp;
+        pendingWithdrawal = Withdrawal(to, amount, createdAt);
 
         authorized[msg.sender] = true;
 
-        emit StartWithdrawal(msg.sender, to, amount, eta);
+        emit StartWithdrawal(msg.sender, to, amount, createdAt);
     }
 
-    function authorize() external isSigner {
+    function authorize() external isSigner hasPendingWithdrawal(true) {
         delete rejected[msg.sender];
         authorized[msg.sender] = true;
 
@@ -88,24 +109,16 @@ contract TimelockMultisig {
             msg.sender,
             pendingWithdrawal.to,
             pendingWithdrawal.amount,
-            pendingWithdrawal.eta
+            pendingWithdrawal.createdAt
         );
 
-        uint256 authorizationCount;
-        for (uint256 i = 0; i < signers.length(); i++) {
-            if (authorized[signers.at(i)]) {
-                authorizationCount++;
-            }
-
-            if (authorizationCount == AUTHORIZATION_REQUIRED) {
-                emit AuthorizationSuccess();
-                _withdraw();
-                return;
-            }
+        if (_canWithdraw()) {
+            emit AuthorizationSuccess();
+            _withdraw();
         }
     }
 
-    function reject() external isSigner {
+    function reject() external isSigner hasPendingWithdrawal(true) {
         delete authorized[msg.sender];
         rejected[msg.sender] = true;
 
@@ -113,7 +126,7 @@ contract TimelockMultisig {
             msg.sender,
             pendingWithdrawal.to,
             pendingWithdrawal.amount,
-            pendingWithdrawal.eta
+            pendingWithdrawal.createdAt
         );
 
         uint256 rejectionCount;
@@ -125,18 +138,57 @@ contract TimelockMultisig {
             if (rejectionCount == REJECTION_REQUIRED) {
                 emit RejectionSuccess();
                 _reset();
+
+                if (!hasPanicked) {
+                    rejectionTimestamps.push(block.timestamp);
+
+                    uint256 length = rejectionTimestamps.length;
+
+                    if (length >= 3) {
+                        if (length >= 4) {
+                            delete rejectionTimestamps[length - 4];
+                        }
+
+                        if (
+                            rejectionTimestamps[length - 3] >
+                            block.timestamp - 10 days
+                        ) {
+                            hasPanicked = true;
+                            IERC20(TOKEN).safeTransfer(
+                                PANIC_ADDRESS,
+                                IERC20(TOKEN).balanceOf(address(this)) / 4
+                            );
+                        }
+                    }
+                }
+
                 return;
             }
         }
     }
 
-    function doWithdraw() external isSigner {
-        require(
-            pendingWithdrawal.eta > 0 &&
-                block.timestamp > pendingWithdrawal.eta,
-            "not ready"
-        );
+    function doWithdraw() external isSigner hasPendingWithdrawal(true) {
+        require(_canWithdraw(), "not ready");
         _withdraw();
+    }
+
+    function _canWithdraw() internal view returns (bool) {
+        if (pendingWithdrawal.createdAt + 7 days < block.timestamp) return true;
+
+        uint256 authorizationCount;
+
+        for (uint256 i = 0; i < signers.length(); i++) {
+            if (authorized[signers.at(i)]) authorizationCount++;
+        }
+
+        if (authorizationCount >= AUTHORIZATION_REQUIRED_INSTANT) return true;
+
+        if (
+            authorizationCount >= AUTHORIZATION_REQUIRED_EXPEDITED &&
+            pendingWithdrawal.createdAt + 2 days < block.timestamp
+        ) return true;
+
+        return false;
     }
 
     function _reset() internal {
@@ -154,8 +206,7 @@ contract TimelockMultisig {
 
         _reset();
 
-        (bool success, ) = to.call{value: amount}("");
-        require(success, "transfer failed");
+        IERC20(TOKEN).safeTransfer(to, amount);
 
         emit Withdraw(to, amount);
     }
