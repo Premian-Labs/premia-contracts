@@ -76,7 +76,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         uint64 nonce = lzEndpoint.getOutboundNonce(dstChainId, address(this));
         emit SendToChain(from, dstChainId, toAddress, amount, nonce);
-        emit BridgedOut(from, amount);
     }
 
     function _creditTo(
@@ -102,8 +101,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         user.reward += reward;
 
         // ToDo : Reward event
-
-        emit BridgedIn(toAddress, amount);
     }
 
     /**

@@ -31,9 +31,6 @@ interface IPremiaStaking {
 
     event RewardsAdded(uint256 amount);
 
-    event BridgedIn(address indexed user, uint256 amount);
-    event BridgedOut(address indexed user, uint256 amount);
-
     struct StakeLevel {
         uint256 amount; // Amount to stake
         uint256 discount; // Discount when amount is reached
