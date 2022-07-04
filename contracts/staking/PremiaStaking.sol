@@ -297,11 +297,13 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         user.reward = 0;
 
         IERC20(REWARD_TOKEN).safeTransfer(msg.sender, amount);
-        // ToDo : Event for reward
+
+        emit Harvest(msg.sender, amount);
     }
 
     function _compound() internal {
         // ToDo : Implement
+        // emit Compound(msg.sender, tokenAmount, premiaAmount);
     }
 
     function _updateTotalPower(

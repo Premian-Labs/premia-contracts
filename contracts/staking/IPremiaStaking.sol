@@ -14,6 +14,14 @@ interface IPremiaStaking {
 
     event Unstake(address indexed user, uint256 amount);
 
+    event Harvest(address indexed user, uint256 amount);
+
+    event Compound(
+        address indexed user,
+        uint256 tokenAmount,
+        uint256 premiaAmount
+    );
+
     event StartWithdraw(
         address indexed user,
         uint256 premiaAmount,
