@@ -21,6 +21,13 @@ contract PremiaStakingUpgrade is ERC20, OwnableInternal {
         uint256 newBalance
     );
 
+    event Stake(
+        address indexed user,
+        uint256 amount,
+        uint256 stakePeriod,
+        uint256 lockedUntil
+    );
+
     address internal immutable PREMIA;
     uint256 internal constant INVERSE_BASIS_POINT = 1e4;
 
@@ -79,6 +86,9 @@ contract PremiaStakingUpgrade is ERC20, OwnableInternal {
 
         _burn(address(this), oldStake);
         _mint(userAddress, newBalance - oldBalance);
+
+        // We emit this event to initialize data correctly for the subgraph
+        emit Stake(userAddress, newBalance, stakePeriod, user.lockedUntil);
 
         emit UserUpgraded(
             userAddress,
