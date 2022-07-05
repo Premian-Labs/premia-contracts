@@ -60,7 +60,10 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         bytes memory toAddress = abi.encodePacked(from);
         _debitFrom(from, dstChainId, toAddress, amount);
 
-        user.rewardDebt = (balance - amount) * l.accRewardPerShare;
+        user.rewardDebt = _calculateRewardDebt(
+            l.accRewardPerShare,
+            balance - amount
+        );
         user.reward += reward;
 
         // ToDo : Reward event
@@ -97,7 +100,10 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         _mint(toAddress, amount);
 
-        user.rewardDebt = (balance + amount) * l.accRewardPerShare;
+        user.rewardDebt = _calculateRewardDebt(
+            l.accRewardPerShare,
+            balance + amount
+        );
         user.reward += reward;
 
         // ToDo : Reward event
@@ -224,7 +230,10 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
 
-        user.rewardDebt = (balance + amount) * l.accRewardPerShare;
+        user.rewardDebt = _calculateRewardDebt(
+            l.accRewardPerShare,
+            balance + amount
+        );
         user.reward += reward;
 
         uint256 currentPower;
@@ -290,7 +299,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         uint256 amount = user.reward +
             _calculateReward(l.accRewardPerShare, balance, user.rewardDebt);
 
-        user.rewardDebt = balance * l.accRewardPerShare;
+        user.rewardDebt = _calculateRewardDebt(l.accRewardPerShare, balance);
         user.reward = 0;
 
         IERC20(REWARD_TOKEN).safeTransfer(msg.sender, amount);
@@ -343,7 +352,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         _burn(msg.sender, amount);
         balance -= amount;
 
-        user.rewardDebt = balance * l.accRewardPerShare;
+        user.rewardDebt = _calculateRewardDebt(l.accRewardPerShare, balance);
         user.reward += reward;
         l.pendingWithdrawal += amount;
 
@@ -592,6 +601,14 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     ) internal pure returns (uint256) {
         return
             ((accRewardPerShare * balance) / ACC_REWARD_PRECISION) - rewardDebt;
+    }
+
+    function _calculateRewardDebt(uint256 accRewardPerShare, uint256 balance)
+        internal
+        pure
+        returns (uint256)
+    {
+        return (balance * accRewardPerShare) / ACC_REWARD_PRECISION;
     }
 
     /**
