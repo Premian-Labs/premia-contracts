@@ -149,10 +149,7 @@ interface IPremiaStaking {
      * @param user The user from which to query the stake amount
      * @return The user stake amount after applying the bonus
      */
-    function getStakeAmountWithBonus(address user)
-        external
-        view
-        returns (uint256);
+    function getUserPower(address user) external view returns (uint256);
 
     /**
      * @notice Calculate the % of fee discount for user, based on his stake
