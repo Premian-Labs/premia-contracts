@@ -224,36 +224,34 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         _updateRewards();
 
         uint256 balance = _balanceOf(msg.sender);
-        uint256 reward = _calculateReward(
-            l.accRewardPerShare,
-            _calculateUserPower(balance, user.stakePeriod),
-            user.rewardDebt
-        );
-
-        // ToDo : Event for reward ?
 
         _beforeStake(amount, period);
 
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
-
-        user.rewardDebt = _calculateRewardDebt(
-            l.accRewardPerShare,
-            _calculateUserPower(balance + amount, user.stakePeriod)
-        );
-        user.reward += reward;
 
         uint256 currentPower;
         if (balance > 0) {
             currentPower = _calculateUserPower(balance, user.stakePeriod);
         }
 
-        user.lockedUntil = lockedUntil.toUint64();
-        user.stakePeriod = period.toUint64();
-
         uint256 newPower = _calculateUserPower(
             balance + amount,
             user.stakePeriod
         );
+
+        uint256 reward = _calculateReward(
+            l.accRewardPerShare,
+            currentPower,
+            user.rewardDebt
+        );
+
+        // ToDo : Event for reward ?
+
+        user.rewardDebt = _calculateRewardDebt(l.accRewardPerShare, newPower);
+        user.reward += reward;
+
+        user.lockedUntil = lockedUntil.toUint64();
+        user.stakePeriod = period.toUint64();
 
         _updateTotalPower(l, currentPower, newPower);
 
@@ -303,17 +301,11 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         PremiaStakingStorage.UserInfo storage user = l.userInfo[msg.sender];
 
         uint256 balance = _balanceOf(msg.sender);
+        uint256 power = _calculateUserPower(balance, user.stakePeriod);
         uint256 amount = user.reward +
-            _calculateReward(
-                l.accRewardPerShare,
-                _calculateUserPower(balance, user.stakePeriod),
-                user.rewardDebt
-            );
+            _calculateReward(l.accRewardPerShare, power, user.rewardDebt);
 
-        user.rewardDebt = _calculateRewardDebt(
-            l.accRewardPerShare,
-            _calculateUserPower(balance, user.stakePeriod)
-        );
+        user.rewardDebt = _calculateRewardDebt(l.accRewardPerShare, power);
         user.reward = 0;
 
         IERC20(REWARD_TOKEN).safeTransfer(msg.sender, amount);
