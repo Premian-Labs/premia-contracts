@@ -51,24 +51,24 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         _updateRewards();
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage user = l.userInfo[from];
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[from];
 
         uint256 balance = _balanceOf(from);
-        uint256 reward = user.reward +
+        uint256 reward = u.reward +
             _calculateReward(
                 l.accRewardPerShare,
-                _calculateUserPower(balance, user.stakePeriod),
-                user.rewardDebt
+                _calculateUserPower(balance, u.stakePeriod),
+                u.rewardDebt
             );
 
         bytes memory toAddress = abi.encodePacked(from);
         _debitFrom(from, dstChainId, toAddress, amount);
 
-        user.rewardDebt = _calculateRewardDebt(
+        u.rewardDebt = _calculateRewardDebt(
             l.accRewardPerShare,
-            _calculateUserPower(balance - amount, user.stakePeriod)
+            _calculateUserPower(balance - amount, u.stakePeriod)
         );
-        user.reward += reward;
+        u.reward += reward;
 
         // ToDo : Reward event
 
@@ -93,22 +93,22 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         _updateRewards();
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage user = l.userInfo[toAddress];
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[toAddress];
 
         uint256 balance = _balanceOf(msg.sender);
         uint256 reward = _calculateReward(
             l.accRewardPerShare,
-            _calculateUserPower(balance, user.stakePeriod),
-            user.rewardDebt
+            _calculateUserPower(balance, u.stakePeriod),
+            u.rewardDebt
         );
 
         _mint(toAddress, amount);
 
-        user.rewardDebt = _calculateRewardDebt(
+        u.rewardDebt = _calculateRewardDebt(
             l.accRewardPerShare,
-            _calculateUserPower(balance + amount, user.stakePeriod)
+            _calculateUserPower(balance + amount, u.stakePeriod)
         );
-        user.reward += reward;
+        u.reward += reward;
 
         // ToDo : Reward event
     }
@@ -213,11 +213,11 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         require(period <= MAX_PERIOD, "Gt max period");
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage user = l.userInfo[msg.sender];
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
 
         uint256 lockedUntil = block.timestamp + period;
         require(
-            lockedUntil > user.lockedUntil,
+            lockedUntil > u.lockedUntil,
             "Cannot add stake with lower stake period"
         );
 
@@ -231,27 +231,24 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         uint256 currentPower;
         if (balance > 0) {
-            currentPower = _calculateUserPower(balance, user.stakePeriod);
+            currentPower = _calculateUserPower(balance, u.stakePeriod);
         }
 
-        uint256 newPower = _calculateUserPower(
-            balance + amount,
-            user.stakePeriod
-        );
+        uint256 newPower = _calculateUserPower(balance + amount, u.stakePeriod);
 
         uint256 reward = _calculateReward(
             l.accRewardPerShare,
             currentPower,
-            user.rewardDebt
+            u.rewardDebt
         );
 
         // ToDo : Event for reward ?
 
-        user.rewardDebt = _calculateRewardDebt(l.accRewardPerShare, newPower);
-        user.reward += reward;
+        u.rewardDebt = _calculateRewardDebt(l.accRewardPerShare, newPower);
+        u.reward += reward;
 
-        user.lockedUntil = lockedUntil.toUint64();
-        user.stakePeriod = period.toUint64();
+        u.lockedUntil = lockedUntil.toUint64();
+        u.stakePeriod = period.toUint64();
 
         _updateTotalPower(l, currentPower, newPower);
 
@@ -298,15 +295,15 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
     function _harvest() internal {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage user = l.userInfo[msg.sender];
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
 
         uint256 balance = _balanceOf(msg.sender);
-        uint256 power = _calculateUserPower(balance, user.stakePeriod);
-        uint256 amount = user.reward +
-            _calculateReward(l.accRewardPerShare, power, user.rewardDebt);
+        uint256 power = _calculateUserPower(balance, u.stakePeriod);
+        uint256 amount = u.reward +
+            _calculateReward(l.accRewardPerShare, power, u.rewardDebt);
 
-        user.rewardDebt = _calculateRewardDebt(l.accRewardPerShare, power);
-        user.reward = 0;
+        u.rewardDebt = _calculateRewardDebt(l.accRewardPerShare, power);
+        u.reward = 0;
 
         IERC20(REWARD_TOKEN).safeTransfer(msg.sender, amount);
 
@@ -339,9 +336,9 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
      */
     function startWithdraw(uint256 amount) external {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage user = l.userInfo[msg.sender];
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
 
-        require(user.lockedUntil <= block.timestamp, "Stake still locked");
+        require(u.lockedUntil <= block.timestamp, "Stake still locked");
         require(_getAvailablePremiaAmount() >= amount, "Not enough liquidity");
 
         _updateRewards();
@@ -351,23 +348,23 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         uint256 balance = _balanceOf(msg.sender);
         uint256 reward = _calculateReward(
             l.accRewardPerShare,
-            _calculateUserPower(balance, user.stakePeriod),
-            user.rewardDebt
+            _calculateUserPower(balance, u.stakePeriod),
+            u.rewardDebt
         );
 
         _burn(msg.sender, amount);
         balance -= amount;
 
-        user.rewardDebt = _calculateRewardDebt(
+        u.rewardDebt = _calculateRewardDebt(
             l.accRewardPerShare,
-            _calculateUserPower(balance, user.stakePeriod)
+            _calculateUserPower(balance, u.stakePeriod)
         );
-        user.reward += reward;
+        u.reward += reward;
         l.pendingWithdrawal += amount;
 
         // ToDo : Reward event
 
-        l.totalPower -= _calculateUserPower(amount, user.stakePeriod);
+        l.totalPower -= _calculateUserPower(amount, u.stakePeriod);
 
         emit Unstake(msg.sender, amount);
 
@@ -410,8 +407,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     function getUserPower(address user) external view returns (uint256) {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
-        PremiaStakingStorage.UserInfo memory userInfo = l.userInfo[user];
-        return _calculateUserPower(_balanceOf(user), userInfo.stakePeriod);
+        PremiaStakingStorage.UserInfo memory u = l.userInfo[user];
+        return _calculateUserPower(_balanceOf(user), u.stakePeriod);
     }
 
     /**
@@ -419,11 +416,11 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
      */
     function getDiscount(address user) external view returns (uint256) {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo memory userInfo = l.userInfo[user];
+        PremiaStakingStorage.UserInfo memory u = l.userInfo[user];
 
         uint256 userBalance = _calculateUserPower(
             _balanceOf(user),
-            userInfo.stakePeriod
+            u.stakePeriod
         );
 
         IPremiaStaking.StakeLevel[] memory stakeLevels = _getStakeLevels();
