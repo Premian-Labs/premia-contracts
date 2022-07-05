@@ -81,12 +81,12 @@ describe('PremiaStaking', () => {
       admin,
     );
 
-    await premia.mint(admin.address, '1000');
+    await usdc.mint(admin.address, '1000');
     await premia.mint(alice.address, '100');
     await premia.mint(bob.address, '100');
     await premia.mint(carol.address, '100');
 
-    await premia
+    await usdc
       .connect(admin)
       .approve(premiaStaking.address, ethers.constants.MaxUint256);
   });
@@ -112,9 +112,7 @@ describe('PremiaStaking', () => {
 
     it('should stake and calculate discount successfully', async () => {
       await premiaStaking.connect(alice).stake(stakeAmount, ONE_YEAR);
-      let amountWithBonus = await premiaStaking.getStakeAmountWithBonus(
-        alice.address,
-      );
+      let amountWithBonus = await premiaStaking.getUserPower(alice.address);
       expect(amountWithBonus).to.eq(parseEther('150000'));
       expect(await premiaStaking.getDiscount(alice.address)).to.eq(6250);
 
@@ -122,9 +120,7 @@ describe('PremiaStaking', () => {
 
       await premiaStaking.connect(alice).startWithdraw(parseEther('10000'));
 
-      amountWithBonus = await premiaStaking.getStakeAmountWithBonus(
-        alice.address,
-      );
+      amountWithBonus = await premiaStaking.getUserPower(alice.address);
 
       expect(amountWithBonus).to.eq(parseEther('137500'));
       expect(await premiaStaking.getDiscount(alice.address)).to.eq(6093);
@@ -154,9 +150,7 @@ describe('PremiaStaking', () => {
           result.s,
         );
 
-      const amountWithBonus = await premiaStaking.getStakeAmountWithBonus(
-        alice.address,
-      );
+      const amountWithBonus = await premiaStaking.getUserPower(alice.address);
       expect(amountWithBonus).to.eq(parseEther('150000'));
     });
 
@@ -372,7 +366,7 @@ describe('PremiaStaking', () => {
     carolBalance = await premiaStaking.balanceOf(carol.address);
 
     expect(aliceBalance).to.eq(30);
-    expect(bobBalance).to.eq(35);
+    expect(bobBalance).to.eq(60);
     expect(carolBalance).to.eq(10);
 
     await premiaStaking.connect(alice).startWithdraw('5');
@@ -383,7 +377,7 @@ describe('PremiaStaking', () => {
     carolBalance = await premiaStaking.balanceOf(carol.address);
 
     expect(aliceBalance).to.eq(25);
-    expect(bobBalance).to.eq(15);
+    expect(bobBalance).to.eq(40);
     expect(carolBalance).to.eq(10);
 
     // Pending withdrawals should not count anymore as staked
@@ -406,13 +400,15 @@ describe('PremiaStaking', () => {
     let alicePremiaBalance = await premia.balanceOf(alice.address);
     let bobPremiaBalance = await premia.balanceOf(bob.address);
 
-    // Alice = 100 - 30 + (5 * 2)
-    expect(alicePremiaBalance).to.eq(80);
-    // Bob = 100 - 10 - 50 + 40
-    expect(bobPremiaBalance).to.eq(80);
+    // ToDo : Add tests for pending user rewards
+
+    // Alice = 100 - 30 + 5
+    expect(alicePremiaBalance).to.eq(75);
+    // Bob = 100 - 10 - 50 + 20
+    expect(bobPremiaBalance).to.eq(60);
 
     await premiaStaking.connect(alice).startWithdraw('25');
-    await premiaStaking.connect(bob).startWithdraw('15');
+    await premiaStaking.connect(bob).startWithdraw('40');
     await premiaStaking.connect(carol).startWithdraw('10');
 
     await increaseTimestamp(10 * ONE_DAY + 1);
@@ -426,9 +422,11 @@ describe('PremiaStaking', () => {
     const carolPremiaBalance = await premia.balanceOf(carol.address);
 
     expect(await premiaStaking.totalSupply()).to.eq(0);
-    expect(alicePremiaBalance).to.eq(180);
-    expect(bobPremiaBalance).to.eq(140);
-    expect(carolPremiaBalance).to.eq(130);
+    expect(alicePremiaBalance).to.eq(100);
+    expect(bobPremiaBalance).to.eq(100);
+    expect(carolPremiaBalance).to.eq(100);
+
+    // ToDo : Add tests for pending user rewards
   });
 
   it('should correctly calculate decay', async () => {
