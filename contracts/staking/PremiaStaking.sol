@@ -255,7 +255,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     function getPendingUserRewards(address user)
         external
         view
-        returns (uint256)
+        returns (uint256 reward, uint256 unstakeReward)
     {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage u = l.userInfo[user];
@@ -269,13 +269,19 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
                 l.totalPower;
         }
 
-        return
+        reward =
             u.reward +
             _calculateReward(
                 accRewardPerShare,
                 _calculateUserPower(_balanceOf(user), u.stakePeriod),
                 u.rewardDebt
             );
+
+        unstakeReward = _calculateReward(
+            l.accUnstakeRewardPerShare,
+            _calculateUserPower(_balanceOf(user), u.stakePeriod),
+            u.unstakeRewardDebt
+        );
     }
 
     /**

@@ -124,12 +124,13 @@ interface IPremiaStaking {
     /**
      * @notice Get pending rewards amount, including pending pool update
      * @param user User for which to calculate pending rewards
-     * @return amount of pending rewards
+     * @return reward amount of pending rewards from protocol fees (in REWARD_TOKEN)
+     * @return unstakeReward amount of pending rewards from early unstake fees (in PREMIA)
      */
     function getPendingUserRewards(address user)
         external
         view
-        returns (uint256);
+        returns (uint256 reward, uint256 unstakeReward);
 
     /**
      * @notice unstake tokens before end of the lock period, for a fee
