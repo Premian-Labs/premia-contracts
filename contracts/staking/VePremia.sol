@@ -19,7 +19,7 @@ contract VePremia is IVePremia, PremiaStaking {
         address rewardToken
     ) PremiaStaking(lzEndpoint, premia, rewardToken) {}
 
-    function _beforeStake(uint256 amount, uint256 period) internal override {
+    function _beforeStake(uint256 amount, uint64 period) internal override {
         PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
             .layout()
             .userInfo[msg.sender];
@@ -124,7 +124,7 @@ contract VePremia is IVePremia, PremiaStaking {
         }
     }
 
-    function _calculateVotingPower(uint256 amount, uint256 period)
+    function _calculateVotingPower(uint256 amount, uint64 period)
         internal
         pure
         returns (uint256)

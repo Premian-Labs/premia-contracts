@@ -3,7 +3,6 @@
 
 pragma solidity ^0.8.0;
 
-import {SafeCast} from "@solidstate/contracts/utils/SafeCast.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@solidstate/contracts/token/ERC20/ERC20.sol";
 import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
@@ -18,7 +17,6 @@ import {OFT} from "../layerZero/token/oft/OFT.sol";
 contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     using SafeERC20 for IERC20;
     using ABDKMath64x64 for int128;
-    using SafeCast for uint256;
 
     address internal immutable PREMIA;
     address internal immutable REWARD_TOKEN;
@@ -26,7 +24,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     int128 internal constant ONE_64x64 = 0x10000000000000000;
     int128 internal constant DECAY_RATE_64x64 = 0x487a423b63e; // 2.7e-7 -> Distribute around half of the current balance over a month
     uint256 internal constant INVERSE_BASIS_POINT = 1e4;
-    uint256 internal constant MAX_PERIOD = 4 * 365 days;
+    uint64 internal constant MAX_PERIOD = 4 * 365 days;
     uint256 internal constant ACC_REWARD_PRECISION = 1e12;
 
     struct UpdateInternalArgs {
@@ -184,7 +182,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
      */
     function stakeWithPermit(
         uint256 amount,
-        uint256 period,
+        uint64 period,
         uint256 deadline,
         uint8 v,
         bytes32 r,
@@ -205,19 +203,19 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function stake(uint256 amount, uint256 period) external {
+    function stake(uint256 amount, uint64 period) external {
         _stake(amount, period);
     }
 
-    function _beforeStake(uint256 amount, uint256 period) internal virtual {}
+    function _beforeStake(uint256 amount, uint64 period) internal virtual {}
 
-    function _stake(uint256 amount, uint256 period) internal {
+    function _stake(uint256 amount, uint64 period) internal {
         require(period <= MAX_PERIOD, "Gt max period");
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
 
-        uint256 lockedUntil = block.timestamp + period;
+        uint64 lockedUntil = uint64(block.timestamp) + period;
         require(
             lockedUntil > u.lockedUntil,
             "Cannot add stake with lower stake period"
@@ -233,8 +231,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             msg.sender
         );
 
-        u.lockedUntil = lockedUntil.toUint64();
-        u.stakePeriod = period.toUint64();
+        u.lockedUntil = lockedUntil;
+        u.stakePeriod = period;
 
         args.newPower = _calculateUserPower(
             args.balance + amount + args.unstakeReward,
@@ -700,7 +698,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         uint256 unstakeReward
     ) internal {
         u.reward += reward;
-        // ToDo : Add event
 
         if (unstakeReward > 0) {
             _mint(user, unstakeReward);

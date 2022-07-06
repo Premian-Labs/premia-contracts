@@ -8,8 +8,8 @@ interface IPremiaStaking {
     event Stake(
         address indexed user,
         uint256 amount,
-        uint256 stakePeriod,
-        uint256 lockedUntil
+        uint64 stakePeriod,
+        uint64 lockedUntil
     );
 
     event Unstake(address indexed user, uint256 amount);
@@ -102,7 +102,7 @@ interface IPremiaStaking {
      */
     function stakeWithPermit(
         uint256 amount,
-        uint256 period,
+        uint64 period,
         uint256 deadline,
         uint8 v,
         bytes32 r,
@@ -115,7 +115,7 @@ interface IPremiaStaking {
      * @param amount The amount of xPremia to stake
      * @param period The lockup period (in seconds)
      */
-    function stake(uint256 amount, uint256 period) external;
+    function stake(uint256 amount, uint64 period) external;
 
     /**
      * @notice Harvest rewards
