@@ -345,9 +345,17 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
      * @inheritdoc IPremiaStaking
      */
     function earlyUnstake(uint256 amount) external {
+        _updateRewards();
         _beforeUnstake(amount);
 
-        // ToDo : Update rewards
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
+
+        UpdateInternalArgs memory args = _getInitialUpdateInternalArgs(
+            l,
+            u,
+            msg.sender
+        );
 
         uint256 feePercentage = _getEarlyUnstakeFee(msg.sender);
 
@@ -355,21 +363,25 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         uint256 fee = (amount * feePercentage) / 1e4;
         if (fee > 0) {
-            PremiaStakingStorage.Layout storage l = PremiaStakingStorage
-                .layout();
-
             l.accUnstakeRewardPerShare +=
                 (fee * ACC_REWARD_PRECISION) /
-                l.totalPower;
+                (l.totalPower - args.oldPower); // User who unstake doesnt collect any of the fee
 
             emit EarlyUnstake(msg.sender, amount, fee);
         }
 
-        // ToDo : Withdrawal delay ?
+        args.newPower = _calculateUserPower(
+            args.balance - amount,
+            u.stakePeriod
+        );
 
-        // _transferXPremia(address(this), msg.sender, amount - fee); // ToDo : update
+        _updateUser(l, u, args);
+
+        l.withdrawals[msg.sender].amount += amount - fee;
+        l.withdrawals[msg.sender].startDate = block.timestamp;
 
         emit Unstake(msg.sender, amount);
+        emit StartWithdraw(msg.sender, amount - fee, block.timestamp);
     }
 
     /**
