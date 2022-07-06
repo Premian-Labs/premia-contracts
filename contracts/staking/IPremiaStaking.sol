@@ -31,6 +31,8 @@ interface IPremiaStaking {
 
     event RewardsAdded(uint256 amount);
 
+    event EarlyUnstake(address indexed user, uint256 amount, uint256 fee);
+
     struct StakeLevel {
         uint256 amount; // Amount to stake
         uint256 discount; // Discount when amount is reached
@@ -128,6 +130,22 @@ interface IPremiaStaking {
         external
         view
         returns (uint256);
+
+    /**
+     * @notice unstake tokens before end of the lock period, for a fee
+     * @param amount the amount of vePremia to unstake
+     */
+    function earlyUnstake(uint256 amount) external;
+
+    /**
+     * @notice get early unstake fee for given user
+     * @param user address of the user
+     * @return feePercentage % fee to pay for early unstake (1e4 = 100%)
+     */
+    function getEarlyUnstakeFee(address user)
+        external
+        view
+        returns (uint256 feePercentage);
 
     /**
      * @notice Initiate the withdrawal process by burning xPremia, starting the delay period

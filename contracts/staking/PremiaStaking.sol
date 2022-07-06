@@ -257,6 +257,9 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         emit Stake(msg.sender, amount, period, lockedUntil);
     }
 
+    /**
+     * @inheritdoc IPremiaStaking
+     */
     function getPendingUserRewards(address user)
         external
         view
@@ -283,6 +286,9 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             );
     }
 
+    /**
+     * @inheritdoc IPremiaStaking
+     */
     function collectRewards(bool compound) external {
         _updateRewards();
 
@@ -330,6 +336,60 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     }
 
     function _beforeUnstake(uint256 amount) internal virtual {}
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function earlyUnstake(uint256 amount) external {
+        // ToDo : Update to work with USDC rewards
+        _beforeUnstake(amount);
+
+        // ToDo : Update rewards
+
+        uint256 feePercentage = _getEarlyUnstakeFee(msg.sender);
+
+        _burn(msg.sender, amount);
+
+        uint256 fee = (amount * feePercentage) / 1e4;
+        if (fee > 0) {
+            _addRewards(fee);
+        }
+
+        // ToDo : Withdrawal delay ?
+
+        // _transferXPremia(address(this), msg.sender, amount - fee); // ToDo : update
+
+        emit Unstake(msg.sender, amount);
+        emit EarlyUnstake(msg.sender, amount, fee);
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getEarlyUnstakeFee(address user)
+        external
+        view
+        returns (uint256 feePercentage)
+    {
+        return _getEarlyUnstakeFee(user);
+    }
+
+    function _getEarlyUnstakeFee(address user)
+        internal
+        view
+        returns (uint256 feePercentage)
+    {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[user];
+
+        require(u.lockedUntil > block.timestamp, "Not locked");
+        uint256 lockLeft = u.lockedUntil - block.timestamp;
+
+        feePercentage = (lockLeft * 2500) / 365 days; // 25% fee per year left
+        if (feePercentage > 7500) {
+            feePercentage = 7500; // Capped at 75%
+        }
+    }
 
     /**
      * @inheritdoc IPremiaStaking
