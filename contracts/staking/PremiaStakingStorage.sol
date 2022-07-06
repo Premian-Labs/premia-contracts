@@ -15,6 +15,7 @@ library PremiaStakingStorage {
     struct UserInfo {
         uint256 reward; // Amount of rewards accrued which havent been claimed yet
         uint256 rewardDebt; // Debt to subtract from reward calculation
+        uint256 unstakeRewardDebt; // Debt to subtract from reward calculation from early unstake fee
         uint64 stakePeriod; // Stake period selected by user
         uint64 lockedUntil; // Timestamp at which the lock ends
     }
@@ -28,6 +29,7 @@ library PremiaStakingStorage {
         uint256 totalPower; // Total power of all staked tokens (underlying amount with multiplier applied)
         mapping(address => UserInfo) userInfo;
         uint256 accRewardPerShare;
+        uint256 accUnstakeRewardPerShare;
     }
 
     function layout() internal pure returns (Layout storage l) {
