@@ -16,6 +16,8 @@ interface IPremiaStaking {
 
     event Harvest(address indexed user, uint256 amount);
 
+    event EarlyUnstakeFeeCollected(address indexed user, uint256 amount);
+
     event Compound(
         address indexed user,
         uint256 tokenAmount,

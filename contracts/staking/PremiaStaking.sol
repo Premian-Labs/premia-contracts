@@ -704,7 +704,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         if (unstakeReward > 0) {
             _mint(user, unstakeReward);
-            // ToDo : Add event
+            emit EarlyUnstakeFeeCollected(user, unstakeReward);
         }
     }
 
