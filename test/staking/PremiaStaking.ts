@@ -247,13 +247,22 @@ describe('PremiaStaking', () => {
     expect(balance).to.eq(100);
   });
 
-  it('should not allow withdraw more than what you have', async () => {
+  it('should only allow to withdraw what is available', async () => {
     await premia.connect(alice).approve(premiaStaking.address, '100');
     await premiaStaking.connect(alice).stake('100', 0);
 
+    await premia.connect(bob).approve(otherPremiaStaking.address, '40');
+    await otherPremiaStaking.connect(bob).stake('20', 0);
+
+    await bridge(premiaStaking, otherPremiaStaking, alice, '50');
+
+    await premiaStaking.connect(alice).startWithdraw('50');
+    await otherPremiaStaking.connect(alice).startWithdraw('10');
+    await otherPremiaStaking.connect(bob).startWithdraw('5');
+
     await expect(
-      premiaStaking.connect(alice).startWithdraw('200'),
-    ).to.be.revertedWith('ERC20: burn amount exceeds balance');
+      otherPremiaStaking.connect(alice).startWithdraw('10'),
+    ).to.be.revertedWith('Not enough liquidity');
   });
 
   it('should correctly handle withdrawal with delay', async () => {
@@ -317,9 +326,7 @@ describe('PremiaStaking', () => {
     await premiaStaking.connect(bob).withdraw();
 
     await premiaStaking.connect(carol).startWithdraw('10');
-    expect((await premiaStaking.getPendingWithdrawal(carol.address))[0]).to.eq(
-      '16',
-    );
+    expect(await premiaStaking.getPendingUserRewards(carol.address)).to.eq('5');
   });
 
   it('should work with more than one participant', async () => {
