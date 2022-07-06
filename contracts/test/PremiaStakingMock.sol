@@ -31,17 +31,23 @@ contract PremiaStakingMock is PremiaStaking {
         _updateRewards();
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage user = l.userInfo[from];
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[from];
 
-        uint256 balance = _balanceOf(from);
-        uint256 reward = user.reward +
-            _calculateReward(l.accRewardPerShare, balance, user.rewardDebt);
+        UpdateInternalArgs memory args = _getInitialUpdateInternalArgs(
+            l,
+            u,
+            from
+        );
 
         bytes memory toAddress = abi.encodePacked(from);
         _debitFrom(from, dstChainId, toAddress, amount);
 
-        user.rewardDebt = (balance - amount) * l.accRewardPerShare;
-        user.reward += reward;
+        args.newPower = _calculateUserPower(
+            args.balance - amount + args.unstakeReward,
+            u.stakePeriod
+        );
+
+        _updateUser(l, u, args);
 
         emit SendToChain(from, dstChainId, toAddress, amount, 0);
     }
