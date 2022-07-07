@@ -10,6 +10,7 @@ import {ERC20Permit} from "@solidstate/contracts/token/ERC20/permit/ERC20Permit.
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
+import {IExchangeHelper} from "../interfaces/IExchangeHelper.sol";
 import {IPremiaStaking} from "./IPremiaStaking.sol";
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 import {OFT} from "../layerZero/token/oft/OFT.sol";
@@ -20,6 +21,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
     address internal immutable PREMIA;
     address internal immutable REWARD_TOKEN;
+    address internal immutable EXCHANGE_HELPER;
 
     int128 internal constant ONE_64x64 = 0x10000000000000000;
     int128 internal constant DECAY_RATE_64x64 = 0x487a423b63e; // 2.7e-7 -> Distribute around half of the current balance over a month
@@ -39,10 +41,12 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     constructor(
         address lzEndpoint,
         address premia,
-        address rewardToken
+        address rewardToken,
+        address exchangeHelper
     ) OFT(lzEndpoint) {
         PREMIA = premia;
         REWARD_TOKEN = rewardToken;
+        EXCHANGE_HELPER = exchangeHelper;
     }
 
     function _send(
@@ -281,20 +285,55 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         );
     }
 
-    /**
-     * @inheritdoc IPremiaStaking
-     */
-    function collectRewards(bool compound) external {
+    function compound(
+        address callee,
+        bytes memory data,
+        uint256 amountOutMin
+    ) external returns (uint256 amountCredited) {
         _updateRewards();
 
-        if (compound) {
-            _compound();
-        } else {
-            _harvest();
-        }
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
+
+        UpdateInternalArgs memory args = _getInitialUpdateInternalArgs(
+            l,
+            u,
+            msg.sender
+        );
+
+        uint256 amount = u.reward + args.reward;
+        u.reward = 0;
+        args.reward = 0;
+
+        IERC20(REWARD_TOKEN).safeTransfer(EXCHANGE_HELPER, amount);
+
+        amountCredited = IExchangeHelper(EXCHANGE_HELPER).swapWithToken(
+            REWARD_TOKEN,
+            PREMIA,
+            amount,
+            callee,
+            data,
+            msg.sender
+        );
+
+        require(amountCredited >= amountOutMin, "not enough output from trade");
+
+        args.newPower = _calculateUserPower(
+            args.balance + args.unstakeReward + amountCredited,
+            u.stakePeriod
+        );
+
+        _beforeStake(amountCredited, u.stakePeriod);
+        _mint(msg.sender, amountCredited);
+
+        _updateUser(l, u, args);
+
+        emit Compound(msg.sender, amount, amountCredited);
     }
 
-    function _harvest() internal {
+    function harvest() external {
+        _updateRewards();
+
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
 
@@ -321,11 +360,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         IERC20(REWARD_TOKEN).safeTransfer(msg.sender, amount);
 
         emit Harvest(msg.sender, amount);
-    }
-
-    function _compound() internal {
-        // ToDo : Implement
-        // emit Compound(msg.sender, tokenAmount, premiaAmount);
     }
 
     function _updateTotalPower(

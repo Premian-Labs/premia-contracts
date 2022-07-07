@@ -16,8 +16,9 @@ contract VePremia is IVePremia, PremiaStaking {
     constructor(
         address lzEndpoint,
         address premia,
-        address rewardToken
-    ) PremiaStaking(lzEndpoint, premia, rewardToken) {}
+        address rewardToken,
+        address exchangeHelper
+    ) PremiaStaking(lzEndpoint, premia, rewardToken, exchangeHelper) {}
 
     function _beforeStake(uint256 amount, uint64 period) internal override {
         PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage

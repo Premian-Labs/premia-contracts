@@ -8,8 +8,9 @@ contract PremiaStakingMock is PremiaStaking {
     constructor(
         address lzEndpoint,
         address premia,
-        address rewardToken
-    ) PremiaStaking(lzEndpoint, premia, rewardToken) {}
+        address rewardToken,
+        address exchangeHelper
+    ) PremiaStaking(lzEndpoint, premia, rewardToken, exchangeHelper) {}
 
     function decay(
         uint256 pendingRewards,

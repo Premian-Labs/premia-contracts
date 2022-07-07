@@ -116,10 +116,22 @@ interface IPremiaStaking {
     function stake(uint256 amount, uint64 period) external;
 
     /**
-     * @notice Harvest rewards
-     * @param compound Whether to compound rewards or to withdraw to wallet. Compounding will swap rewards to PREMIA, and add them to the stake without modifying the lock
+     * @notice Harvest rewards directly to user wallet
      */
-    function collectRewards(bool compound) external;
+    function harvest() external;
+
+    /**
+     * @notice Add pending rewards to current stake without impacting current lock after swapping rewards to PREMIA tokens
+     * @param callee exchange address to call to execute the trade.
+     * @param data calldata to execute the trade
+     * @param amountOutMin minimum amount taken from the trade.
+     * @return amountCredited amount of tokenOut we got from the trade.
+     */
+    function compound(
+        address callee,
+        bytes memory data,
+        uint256 amountOutMin
+    ) external returns (uint256 amountCredited);
 
     /**
      * @notice Get pending rewards amount, including pending pool update
