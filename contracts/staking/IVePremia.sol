@@ -3,8 +3,9 @@
 pragma solidity ^0.8.0;
 
 import {VePremiaStorage} from "./VePremiaStorage.sol";
+import {IPremiaStaking} from "./IPremiaStaking.sol";
 
-interface IVePremia {
+interface IVePremia is IPremiaStaking {
     /**
      * @notice get total voting power across all users
      * @return total voting power across all users
