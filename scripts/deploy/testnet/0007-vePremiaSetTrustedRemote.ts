@@ -12,8 +12,8 @@ async function main() {
   let srcChainId: number;
 
   const vePremiaAddress = {
-    rinkeby: '0x20cAaf03FCAcD451E851Cce193d3fF55Fbb95A45',
-    rinkebyArbitrum: '0x05bfe074FA3C34464cE26841860cd68357D7dC06',
+    rinkeby: '0x35C853A4dA06124C08eb00A345818accF7906391',
+    rinkebyArbitrum: '0x4BD51e75141634919870661b439769D361F3103c',
   };
 
   if (chainId === 4) {
