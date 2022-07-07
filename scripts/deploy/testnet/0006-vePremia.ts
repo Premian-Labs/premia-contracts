@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import {
-  PremiaErc20__factory,
+  ERC20Mock__factory,
   VePremia__factory,
   VePremiaProxy__factory,
 } from '../../../typechain';
@@ -22,7 +22,7 @@ async function main() {
   }
 
   console.log('aa');
-  const premia = await new PremiaErc20__factory(deployer).deploy();
+  const premia = await new ERC20Mock__factory(deployer).deploy('PREMIA', 18);
 
   console.log('Premia : ', premia.address);
   await premia.deployed();
