@@ -46,9 +46,13 @@ interface IPremiaStaking {
 
     /**
      * @notice get amount of tokens that have not yet been distributed as rewards
-     * @return amount of tokens not yet distributed as rewards
+     * @return rewards amount of tokens not yet distributed as rewards
+     * @return unstakeRewards amount of PREMIA not yet claimed from early unstake fees
      */
-    function getAvailableRewards() external view returns (uint256);
+    function getAvailableRewards()
+        external
+        view
+        returns (uint256 rewards, uint256 unstakeRewards);
 
     /**
      * @notice get pending amount of tokens to be distributed as rewards to stakers

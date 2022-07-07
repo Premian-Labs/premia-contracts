@@ -142,10 +142,14 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getAvailableRewards() external view returns (uint256) {
-        return
-            PremiaStakingStorage.layout().availableRewards -
-            _getPendingRewards();
+    function getAvailableRewards()
+        external
+        view
+        returns (uint256 rewards, uint256 unstakeRewards)
+    {
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        rewards = l.availableRewards - _getPendingRewards();
+        unstakeRewards = l.availableUnstakeRewards;
     }
 
     /**
@@ -458,6 +462,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             l.accUnstakeRewardPerShare +=
                 (fee * ACC_REWARD_PRECISION) /
                 (l.totalPower - args.oldPower); // User who early unstake doesnt collect any of the fee
+
+            l.availableUnstakeRewards += fee;
         }
 
         args.newPower = _calculateUserPower(
@@ -692,6 +698,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     }
 
     function _creditRewards(
+        PremiaStakingStorage.Layout storage l,
         PremiaStakingStorage.UserInfo storage u,
         address user,
         uint256 reward,
@@ -701,6 +708,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         if (unstakeReward > 0) {
             _beforeStake(unstakeReward, u.stakePeriod);
+            l.availableUnstakeRewards -= unstakeReward;
             _mint(user, unstakeReward);
             emit EarlyUnstakeRewardCollected(user, unstakeReward);
         }
@@ -759,7 +767,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         UpdateInternalArgs memory args
     ) internal {
         _updateRewardDebt(l, u, args.newPower);
-        _creditRewards(u, args.user, args.reward, args.unstakeReward);
+        _creditRewards(l, u, args.user, args.reward, args.unstakeReward);
         _updateTotalPower(l, args.oldPower, args.newPower);
     }
 

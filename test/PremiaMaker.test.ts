@@ -80,7 +80,7 @@ describe('PremiaMaker', () => {
       685.94,
     );
 
-    expect(bnToNumber(await p.vePremia.getAvailableRewards())).to.almost(
+    expect(bnToNumber((await p.vePremia.getAvailableRewards())[0])).to.almost(
       685.94,
     );
   });
@@ -122,7 +122,7 @@ describe('PremiaMaker', () => {
     expect(bnToNumber(await p.premia.balanceOf(p.vePremia.address))).to.almost(
       8885.91,
     );
-    expect(bnToNumber(await p.vePremia.getAvailableRewards())).to.almost(
+    expect(bnToNumber((await p.vePremia.getAvailableRewards())[0])).to.almost(
       8885.91,
     );
   });
@@ -134,6 +134,8 @@ describe('PremiaMaker', () => {
     expect(await p.premia.balanceOf(treasury.address)).to.eq(parseEther('2'));
     expect(await p.premia.balanceOf(p.premiaMaker.address)).to.eq(0);
     expect(await p.premia.balanceOf(p.vePremia.address)).to.eq(parseEther('8'));
-    expect(bnToNumber(await p.vePremia.getAvailableRewards())).to.almost(8);
+    expect(bnToNumber((await p.vePremia.getAvailableRewards())[0])).to.almost(
+      8,
+    );
   });
 });

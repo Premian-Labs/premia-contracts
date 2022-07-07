@@ -30,8 +30,7 @@ library PremiaStakingStorage {
         mapping(address => UserInfo) userInfo;
         uint256 accRewardPerShare;
         uint256 accUnstakeRewardPerShare;
-
-        // ToDo : Add variable to track total undistributed early unstake fees
+        uint256 availableUnstakeRewards;
     }
 
     function layout() internal pure returns (Layout storage l) {
