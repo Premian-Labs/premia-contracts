@@ -12,7 +12,12 @@ interface IPremiaStaking {
         uint64 lockedUntil
     );
 
-    event Unstake(address indexed user, uint256 amount);
+    event Unstake(
+        address indexed user,
+        uint256 amount,
+        uint256 fee,
+        uint256 startDate
+    );
 
     event Harvest(address indexed user, uint256 amount);
 
@@ -24,16 +29,9 @@ interface IPremiaStaking {
         uint256 premiaAmount
     );
 
-    event StartWithdraw(
-        address indexed user,
-        uint256 premiaAmount,
-        uint256 startDate
-    );
     event Withdraw(address indexed user, uint256 amount);
 
     event RewardsAdded(uint256 amount);
-
-    event EarlyUnstake(address indexed user, uint256 amount, uint256 fee);
 
     struct StakeLevel {
         uint256 amount; // Amount to stake

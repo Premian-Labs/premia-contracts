@@ -348,43 +348,13 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
      * @inheritdoc IPremiaStaking
      */
     function earlyUnstake(uint256 amount) external {
-        _updateRewards();
-        _beforeUnstake(amount);
-
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
 
-        UpdateInternalArgs memory args = _getInitialUpdateInternalArgs(
-            l,
-            u,
-            msg.sender
-        );
-
         uint256 feePercentage = _getEarlyUnstakeFee(msg.sender);
-
-        _burn(msg.sender, amount);
-
         uint256 fee = (amount * feePercentage) / 1e4;
-        if (fee > 0) {
-            l.accUnstakeRewardPerShare +=
-                (fee * ACC_REWARD_PRECISION) /
-                (l.totalPower - args.oldPower); // User who unstake doesnt collect any of the fee
 
-            emit EarlyUnstake(msg.sender, amount, fee);
-        }
-
-        args.newPower = _calculateUserPower(
-            args.balance - amount,
-            u.stakePeriod
-        );
-
-        _updateUser(l, u, args);
-
-        l.withdrawals[msg.sender].amount += amount - fee;
-        l.withdrawals[msg.sender].startDate = block.timestamp;
-
-        emit Unstake(msg.sender, amount);
-        emit StartWithdraw(msg.sender, amount - fee, block.timestamp);
+        _startWithdraw(l, u, amount, fee);
     }
 
     /**
@@ -423,10 +393,22 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
 
         require(u.lockedUntil <= block.timestamp, "Stake still locked");
-        require(_getAvailablePremiaAmount() >= amount, "Not enough liquidity");
+
+        _startWithdraw(l, u, amount, 0);
+    }
+
+    function _startWithdraw(
+        PremiaStakingStorage.Layout storage l,
+        PremiaStakingStorage.UserInfo storage u,
+        uint256 amount,
+        uint256 fee
+    ) internal {
+        require(
+            _getAvailablePremiaAmount() >= amount - fee,
+            "Not enough liquidity"
+        );
 
         _updateRewards();
-
         _beforeUnstake(amount);
 
         UpdateInternalArgs memory args = _getInitialUpdateInternalArgs(
@@ -436,7 +418,13 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         );
 
         _burn(msg.sender, amount);
-        l.pendingWithdrawal += amount;
+        l.pendingWithdrawal += amount - fee;
+
+        if (fee > 0) {
+            l.accUnstakeRewardPerShare +=
+                (fee * ACC_REWARD_PRECISION) /
+                (l.totalPower - args.oldPower); // User who early unstake doesnt collect any of the fee
+        }
 
         args.newPower = _calculateUserPower(
             args.balance - amount + args.unstakeReward,
@@ -445,12 +433,10 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         _updateUser(l, u, args);
 
-        emit Unstake(msg.sender, amount);
-
         l.withdrawals[msg.sender].amount += amount;
         l.withdrawals[msg.sender].startDate = block.timestamp;
 
-        emit StartWithdraw(msg.sender, amount, block.timestamp);
+        emit Unstake(msg.sender, amount, fee, block.timestamp);
     }
 
     /**
@@ -680,6 +666,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         u.reward += reward;
 
         if (unstakeReward > 0) {
+            _beforeStake(unstakeReward, u.stakePeriod);
             _mint(user, unstakeReward);
             emit EarlyUnstakeRewardCollected(user, unstakeReward);
         }
