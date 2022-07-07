@@ -331,7 +331,9 @@ describe('PremiaStaking', () => {
     await premiaStaking.connect(bob).withdraw();
 
     await premiaStaking.connect(carol).startWithdraw('10');
-    expect(await premiaStaking.getPendingUserRewards(carol.address)).to.eq('5');
+    expect((await premiaStaking.getPendingUserRewards(carol.address))[0]).to.eq(
+      '5',
+    );
   });
 
   it('should work with more than one participant', async () => {
