@@ -13,6 +13,7 @@ import {
   VePremiaProxy__factory,
 } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
+import { ethers } from 'ethers';
 
 export async function deployV1(
   deployer: SignerWithAddress,
@@ -22,6 +23,7 @@ export async function deployV1(
   log = false,
   premiaAddress?: string,
   rewardTokenAddress?: string,
+  exchangeProxy?: string,
 ): Promise<IPremiaContracts> {
   let premia: PremiaErc20 | ERC20Mock;
   let rewardToken: ERC20 | ERC20Mock;
@@ -61,6 +63,7 @@ export async function deployV1(
     lzEndpoint,
     premia.address,
     rewardToken.address,
+    exchangeProxy ?? ethers.constants.AddressZero,
   );
   const vePremiaProxy = await new VePremiaProxy__factory(deployer).deploy(
     vePremiaImpl.address,

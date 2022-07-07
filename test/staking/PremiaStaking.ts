@@ -61,7 +61,12 @@ describe('PremiaStaking', () => {
     usdc = await new ERC20Mock__factory(admin).deploy('USDC', 6);
     premiaStakingImplementation = await new PremiaStakingMock__factory(
       admin,
-    ).deploy(ethers.constants.AddressZero, premia.address, usdc.address);
+    ).deploy(
+      ethers.constants.AddressZero,
+      premia.address,
+      usdc.address,
+      ethers.constants.AddressZero,
+    );
 
     const premiaStakingProxy = await new PremiaStakingProxy__factory(
       admin,

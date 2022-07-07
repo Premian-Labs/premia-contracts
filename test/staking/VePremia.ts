@@ -33,6 +33,7 @@ describe('VePremia', () => {
       ethers.constants.AddressZero,
       premia.address,
       usdc.address,
+      ethers.constants.AddressZero,
     );
 
     for (const u of [alice, bob]) {

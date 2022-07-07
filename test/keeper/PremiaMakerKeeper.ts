@@ -12,7 +12,6 @@ import {
 import {
   DECIMALS_BASE,
   DECIMALS_UNDERLYING,
-  getFreeLiqTokenId,
   getReservedLiqTokenId,
   PoolUtil,
 } from '../pool/PoolUtil';
