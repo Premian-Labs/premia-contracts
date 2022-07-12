@@ -307,7 +307,9 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             _toParameter64x64(params[3]).mul(timeToMaturity64x64) +
             _toParameter64x64(params[4]).mul(M64x64).mul(timeToMaturity64x64);
 
-        if (volatility64x64 > atmVolatility64x64.mul(0x40000000000000000)) {
+        if (
+            volatility64x64 > atmVolatility64x64.mul(MAX_ATM_VOLATILITY_64x64)
+        ) {
             return atmVolatility64x64;
         }
 
