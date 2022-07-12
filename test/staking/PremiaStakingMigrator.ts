@@ -7,15 +7,10 @@ import {
   PremiaStaking__factory,
   PremiaStakingMigrator,
   PremiaStakingMigrator__factory,
-  ProxyUpgradeableOwnable__factory,
   VePremia,
 } from '../../typechain';
-import { expect } from 'chai';
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-
-import { bnToNumber } from '../utils/math';
-import { parseEther } from 'ethers/lib/utils';
 import { resetHardhat } from '../utils/evm';
 import { deployV1 } from '../../scripts/utils/deployV1';
 
