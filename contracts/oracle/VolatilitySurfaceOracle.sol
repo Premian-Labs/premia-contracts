@@ -20,9 +20,10 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     using ABDKMath64x64 for int128;
 
     uint256 private constant DECIMALS = 12;
+
     int128 private constant MIN_TIME_TO_MATURITY_64x64 = 0x21aa6ed1021aa6f; // 3d (3/365)
-    int128 internal constant ONE_64x64 = 0x10000000000000000;
-    int128 internal constant MAX_ATM_VOLATILITY_64x64 = 0x40000000000000000; // How many times greater than the ATM volatility, the volatility for any strike can be (This is used as a safeguard mechanism)
+    int128 private constant MIN_MONEYNESS_64x64 = 0x8000000000000000; // 0.5
+    int128 private constant MAX_MONEYNESS_64x64 = 0x20000000000000000; // 2.0
 
     event UpdateParameters(
         address indexed base,
@@ -293,27 +294,23 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             l.getParams(base, underlying)
         );
 
-        int128 atmVolatility64x64 = _toParameter64x64(params[0]) +
-            _toParameter64x64(params[3]).mul(timeToMaturity64x64);
+        int128 moneyness64x64 = spot64x64.div(strike64x64);
+
+        if (moneyness64x64 < MIN_MONEYNESS_64x64) {
+            moneyness64x64 = MIN_MONEYNESS_64x64;
+        } else if (moneyness64x64 > MAX_MONEYNESS_64x64) {
+            moneyness64x64 = MAX_MONEYNESS_64x64;
+        }
 
         // Time adjusted log moneyness
-        int128 M64x64 = spot64x64.div(strike64x64).ln().div(
-            timeToMaturity64x64.sqrt()
-        );
+        int128 M64x64 = moneyness64x64.ln().div(timeToMaturity64x64.sqrt());
 
-        int128 volatility64x64 = _toParameter64x64(params[0]) +
+        return
+            _toParameter64x64(params[0]) +
             _toParameter64x64(params[1]).mul(M64x64) +
             _toParameter64x64(params[2]).mul(M64x64.mul(M64x64)) +
             _toParameter64x64(params[3]).mul(timeToMaturity64x64) +
             _toParameter64x64(params[4]).mul(M64x64).mul(timeToMaturity64x64);
-
-        if (
-            volatility64x64 > atmVolatility64x64.mul(MAX_ATM_VOLATILITY_64x64)
-        ) {
-            return atmVolatility64x64;
-        }
-
-        return volatility64x64;
     }
 
     /**
