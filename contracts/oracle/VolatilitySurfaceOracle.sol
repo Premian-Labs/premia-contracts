@@ -20,7 +20,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     using ABDKMath64x64 for int128;
 
     uint256 private constant DECIMALS = 12;
-    int128 private constant MIN_TIME_TO_MATURITY_64x64 = 0xb38cf9b00b38d0; // 1d (1/365)
+    int128 private constant MIN_TIME_TO_MATURITY_64x64 = 0x21aa6ed1021aa6f; // 3d (3/365)
 
     event UpdateParameters(
         address indexed base,
@@ -280,10 +280,9 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 strike64x64,
         int128 timeToMaturity64x64
     ) private view returns (int128) {
-        require(
-            timeToMaturity64x64 >= MIN_TIME_TO_MATURITY_64x64,
-            "exp < 1 day"
-        );
+        if (timeToMaturity64x64 < MIN_TIME_TO_MATURITY_64x64) {
+            timeToMaturity64x64 = MIN_TIME_TO_MATURITY_64x64;
+        }
 
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
