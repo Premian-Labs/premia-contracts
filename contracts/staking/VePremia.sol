@@ -101,13 +101,27 @@ contract VePremia is IVePremia, PremiaStaking {
     ) internal {
         uint256 toSubtract = amount;
         for (uint256 i = l.userVotes[user].length; i > 0; i--) {
-            if (toSubtract <= l.userVotes[user][i - 1].amount) {
+            VePremiaStorage.Vote memory vote = l.userVotes[user][i - 1];
+
+            uint256 votesRemoved;
+            if (toSubtract <= vote.amount) {
+                votesRemoved = toSubtract;
                 l.userVotes[user][i - 1].amount -= toSubtract;
-                return;
+            } else {
+                votesRemoved = vote.amount;
+                l.userVotes[user].pop();
             }
 
-            toSubtract -= l.userVotes[user][i - 1].amount;
-            l.userVotes[user].pop();
+            toSubtract -= votesRemoved;
+
+            emit RemoveVote(
+                user,
+                vote.poolAddress,
+                vote.isCallPool,
+                votesRemoved
+            );
+
+            if (toSubtract == 0) return;
         }
     }
 
@@ -197,6 +211,12 @@ contract VePremia is IVePremia, PremiaStaking {
             VePremiaStorage.Vote memory vote = l.userVotes[msg.sender][i];
 
             l.votes[vote.poolAddress][vote.isCallPool] -= vote.amount;
+            emit RemoveVote(
+                msg.sender,
+                vote.poolAddress,
+                vote.isCallPool,
+                vote.amount
+            );
         }
 
         delete l.userVotes[msg.sender];
@@ -214,6 +234,13 @@ contract VePremia is IVePremia, PremiaStaking {
 
             l.userVotes[msg.sender].push(votes[i]);
             l.votes[vote.poolAddress][vote.isCallPool] += vote.amount;
+
+            emit AddVote(
+                msg.sender,
+                vote.poolAddress,
+                vote.isCallPool,
+                vote.amount
+            );
         }
     }
 }

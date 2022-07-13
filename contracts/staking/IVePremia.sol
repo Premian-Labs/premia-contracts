@@ -6,6 +6,19 @@ import {VePremiaStorage} from "./VePremiaStorage.sol";
 import {IPremiaStaking} from "./IPremiaStaking.sol";
 
 interface IVePremia is IPremiaStaking {
+    event AddVote(
+        address indexed voter,
+        address indexed pool,
+        bool indexed isCall,
+        uint256 amount
+    );
+    event RemoveVote(
+        address indexed voter,
+        address indexed pool,
+        bool indexed isCall,
+        uint256 amount
+    );
+
     /**
      * @notice get total voting power across all users
      * @return total voting power across all users
