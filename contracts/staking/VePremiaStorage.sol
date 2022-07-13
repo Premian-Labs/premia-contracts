@@ -14,7 +14,6 @@ library VePremiaStorage {
     }
 
     struct Layout {
-        uint256 totalVotingPower;
         mapping(address => Vote[]) userVotes;
         // Pool address -> Is Call Pool -> Vote amount
         mapping(address => mapping(bool => uint256)) votes;

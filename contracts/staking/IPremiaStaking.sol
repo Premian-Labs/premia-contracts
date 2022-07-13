@@ -187,6 +187,12 @@ interface IPremiaStaking {
     function getUserPower(address user) external view returns (uint256);
 
     /**
+     * Return the total power across all users (applying the bonus from lockup period chosen)
+     * @return The total power across all users
+     */
+    function getTotalPower() external view returns (uint256);
+
+    /**
      * @notice Calculate the % of fee discount for user, based on his stake
      * @param user The _user for which the discount is for
      * @return Percentage of protocol fee discount (in basis point)

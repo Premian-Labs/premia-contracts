@@ -20,12 +20,6 @@ interface IVePremia is IPremiaStaking {
     );
 
     /**
-     * @notice get total voting power across all users
-     * @return total voting power across all users
-     */
-    function getTotalVotingPower() external view returns (uint256);
-
-    /**
      * @notice get total votes for specific pools
      * @param pool address of the pool
      * @param isCallPool whether the pool is call or put

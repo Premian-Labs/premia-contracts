@@ -6,7 +6,6 @@ pragma solidity ^0.8.0;
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 
 import {IPremiaStaking} from "./staking/IPremiaStaking.sol";
-import {IVePremia} from "./staking/IVePremia.sol";
 
 contract PremiaVoteProxy {
     address internal immutable VE_PREMIA;
@@ -28,10 +27,10 @@ contract PremiaVoteProxy {
     }
 
     function totalSupply() external view returns (uint256) {
-        return IVePremia(VE_PREMIA).getTotalVotingPower();
+        return IPremiaStaking(VE_PREMIA).getTotalPower();
     }
 
     function balanceOf(address voter) external view returns (uint256) {
-        return IVePremia(VE_PREMIA).getUserVotingPower(voter);
+        return IPremiaStaking(VE_PREMIA).getUserPower(voter);
     }
 }

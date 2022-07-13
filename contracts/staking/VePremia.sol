@@ -36,9 +36,7 @@ contract VePremia is IVePremia, PremiaStaking {
 
         uint256 newPower = _calculateUserPower(amount + balance, period);
 
-        if (newPower >= currentPower) {
-            l.totalVotingPower += newPower - currentPower;
-        } else {
+        if (newPower < currentPower) {
             // We can have newPower < currentPower if user add a small amount with a smaller stake period
             _subtractExtraUserVotes(l, msg.sender, currentPower - newPower);
         }
@@ -87,8 +85,6 @@ contract VePremia is IVePremia, PremiaStaking {
                 votingPowerUsed - votingPowerLeftAfterUnstake
             );
         }
-
-        l.totalVotingPower -= amountUnstaked;
     }
 
     /**
@@ -137,13 +133,6 @@ contract VePremia is IVePremia, PremiaStaking {
         for (uint256 i = 0; i < userVotes.length; i++) {
             votingPowerUsed += userVotes[i].amount;
         }
-    }
-
-    /**
-     * @inheritdoc IVePremia
-     */
-    function getTotalVotingPower() external view returns (uint256) {
-        return VePremiaStorage.layout().totalVotingPower;
     }
 
     /**

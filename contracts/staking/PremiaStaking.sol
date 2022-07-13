@@ -509,6 +509,13 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
+    function getTotalPower() external view returns (uint256) {
+        return PremiaStakingStorage.layout().totalPower;
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
     function getUserPower(address user) external view returns (uint256) {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo memory u = l.userInfo[user];
