@@ -215,7 +215,11 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         _stake(amount, period);
     }
 
-    function _beforeStake(uint256 amount, uint64 period) internal virtual {}
+    function _beforeStake(
+        address user,
+        uint256 amount,
+        uint64 period
+    ) internal virtual {}
 
     function _stake(uint256 amount, uint64 period) internal {
         require(period <= MAX_PERIOD, "Gt max period");
@@ -230,7 +234,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         );
 
         _updateRewards();
-        _beforeStake(amount, period);
+        _beforeStake(msg.sender, amount, period);
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
 
         UpdateInternalArgs memory args = _getInitialUpdateInternalArgs(
@@ -327,7 +331,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             u.stakePeriod
         );
 
-        _beforeStake(amountCredited, u.stakePeriod);
+        _beforeStake(msg.sender, amountCredited, u.stakePeriod);
         _mint(msg.sender, amountCredited);
 
         _updateUser(l, u, args);
@@ -380,7 +384,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         }
     }
 
-    function _beforeUnstake(uint256 amount) internal virtual {}
+    function _beforeUnstake(address user, uint256 amount) internal virtual {}
 
     /**
      * @inheritdoc IPremiaStaking
@@ -447,7 +451,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         );
 
         _updateRewards();
-        _beforeUnstake(amount);
+        _beforeUnstake(msg.sender, amount);
 
         UpdateInternalArgs memory args = _getInitialUpdateInternalArgs(
             l,
@@ -713,7 +717,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         u.reward += reward;
 
         if (unstakeReward > 0) {
-            _beforeStake(unstakeReward, u.stakePeriod);
+            _beforeStake(user, unstakeReward, u.stakePeriod);
             l.availableUnstakeRewards -= unstakeReward;
             _mint(user, unstakeReward);
             emit EarlyUnstakeRewardCollected(user, unstakeReward);

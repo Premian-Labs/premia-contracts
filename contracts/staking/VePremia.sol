@@ -20,14 +20,18 @@ contract VePremia is IVePremia, PremiaStaking {
         address exchangeHelper
     ) PremiaStaking(lzEndpoint, premia, rewardToken, exchangeHelper) {}
 
-    function _beforeStake(uint256 amount, uint64 period) internal override {
+    function _beforeStake(
+        address user,
+        uint256 amount,
+        uint64 period
+    ) internal override {
         PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
             .layout()
-            .userInfo[msg.sender];
+            .userInfo[user];
 
         VePremiaStorage.Layout storage l = VePremiaStorage.layout();
 
-        uint256 balance = _balanceOf(msg.sender);
+        uint256 balance = _balanceOf(user);
 
         uint256 currentPower = _calculateUserPower(
             balance,
@@ -38,14 +42,14 @@ contract VePremia is IVePremia, PremiaStaking {
 
         if (newPower < currentPower) {
             // We can have newPower < currentPower if user add a small amount with a smaller stake period
-            _subtractExtraUserVotes(l, msg.sender, currentPower - newPower);
+            _subtractExtraUserVotes(l, user, currentPower - newPower);
         }
     }
 
-    function _beforeUnstake(uint256 amount) internal override {
+    function _beforeUnstake(address user, uint256 amount) internal override {
         PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
             .layout()
-            .userInfo[msg.sender];
+            .userInfo[user];
 
         VePremiaStorage.Layout storage l = VePremiaStorage.layout();
 
@@ -54,7 +58,7 @@ contract VePremia is IVePremia, PremiaStaking {
             userInfo.stakePeriod
         );
 
-        _subtractExtraUserVotes(l, msg.sender, votingPowerUnstaked);
+        _subtractExtraUserVotes(l, user, votingPowerUnstaked);
     }
 
     /**
