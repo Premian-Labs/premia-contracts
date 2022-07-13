@@ -8,7 +8,7 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { beforeEach } from 'mocha';
-import { formatEther, parseEther } from 'ethers/lib/utils';
+import { parseEther } from 'ethers/lib/utils';
 import { ONE_DAY } from '../pool/PoolUtil';
 import { increaseTimestamp } from '../utils/evm';
 
@@ -50,35 +50,6 @@ describe('VePremia', () => {
 
   afterEach(async () => {
     await ethers.provider.send('evm_revert', [snapshotId]);
-  });
-
-  describe('#getTotalVotingPower', () => {
-    it('should successfully return total voting power', async () => {
-      expect(await vePremia.getTotalVotingPower()).to.eq(0);
-
-      await vePremia.connect(alice).stake(parseEther('1'), ONE_DAY * 365);
-
-      expect(await vePremia.getTotalVotingPower()).to.eq(parseEther('1.25'));
-
-      await vePremia.connect(bob).stake(parseEther('3'), (ONE_DAY * 365) / 2);
-
-      expect(await vePremia.getTotalVotingPower()).to.eq(parseEther('3.5'));
-    });
-  });
-
-  describe('#getUserVotingPower', () => {
-    it('should successfully return user vorting power', async () => {
-      await vePremia.connect(alice).stake(parseEther('1'), ONE_DAY * 365);
-
-      await vePremia.connect(bob).stake(parseEther('3'), (ONE_DAY * 365) / 2);
-
-      expect(await vePremia.getUserVotingPower(alice.address)).to.eq(
-        parseEther('1.25'),
-      );
-      expect(await vePremia.getUserVotingPower(bob.address)).to.eq(
-        parseEther('2.25'),
-      );
-    });
   });
 
   describe('#getUserVotes', () => {
@@ -183,7 +154,7 @@ describe('VePremia', () => {
       );
       expect(votes[0].isCallPool).to.be.true;
 
-      expect(await vePremia.getUserVotingPower(alice.address)).to.eq(
+      expect(await vePremia.getUserPower(alice.address)).to.eq(
         parseEther('6.25'),
       );
     });
