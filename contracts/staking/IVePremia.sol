@@ -37,13 +37,6 @@ interface IVePremia is IPremiaStaking {
         returns (uint256);
 
     /**
-     * @notice get voting power of a user
-     * @param user user for which to get voting power
-     * @return voting power of the user
-     */
-    function getUserVotingPower(address user) external view returns (uint256);
-
-    /**
      * @notice get votes of user
      * @param user user from which to get votes
      * @return votes of user

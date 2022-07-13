@@ -29,12 +29,12 @@ contract VePremia is IVePremia, PremiaStaking {
 
         uint256 balance = _balanceOf(msg.sender);
 
-        uint256 currentPower = _calculateVotingPower(
+        uint256 currentPower = _calculateUserPower(
             balance,
             userInfo.stakePeriod
         );
 
-        uint256 newPower = _calculateVotingPower(amount + balance, period);
+        uint256 newPower = _calculateUserPower(amount + balance, period);
 
         if (newPower >= currentPower) {
             l.totalVotingPower += newPower - currentPower;
@@ -51,7 +51,7 @@ contract VePremia is IVePremia, PremiaStaking {
 
         VePremiaStorage.Layout storage l = VePremiaStorage.layout();
 
-        uint256 votingPowerUnstaked = _calculateVotingPower(
+        uint256 votingPowerUnstaked = _calculateUserPower(
             amount,
             userInfo.stakePeriod
         );
@@ -73,7 +73,7 @@ contract VePremia is IVePremia, PremiaStaking {
 
         uint256 balance = _balanceOf(user); // ToDo : Directly pass new balance ?
 
-        uint256 votingPower = _calculateVotingPower(
+        uint256 votingPower = _calculateUserPower(
             balance,
             userInfo.stakePeriod
         );
@@ -139,15 +139,6 @@ contract VePremia is IVePremia, PremiaStaking {
         }
     }
 
-    function _calculateVotingPower(uint256 amount, uint64 period)
-        internal
-        pure
-        returns (uint256)
-    {
-        return
-            (amount * _getStakePeriodMultiplier(period)) / INVERSE_BASIS_POINT;
-    }
-
     /**
      * @inheritdoc IVePremia
      */
@@ -165,18 +156,6 @@ contract VePremia is IVePremia, PremiaStaking {
     {
         VePremiaStorage.Layout storage l = VePremiaStorage.layout();
         return l.votes[pool][isCallPool];
-    }
-
-    /**
-     * @inheritdoc IVePremia
-     */
-    function getUserVotingPower(address user) external view returns (uint256) {
-        PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
-            .layout()
-            .userInfo[user];
-
-        uint256 balance = _balanceOf(user);
-        return _calculateVotingPower(balance, userInfo.stakePeriod);
     }
 
     /**
@@ -201,7 +180,7 @@ contract VePremia is IVePremia, PremiaStaking {
             .userInfo[msg.sender];
 
         uint256 balance = _balanceOf(msg.sender);
-        uint256 userVotingPower = _calculateVotingPower(
+        uint256 userVotingPower = _calculateUserPower(
             balance,
             userInfo.stakePeriod
         );
