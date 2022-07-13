@@ -641,6 +641,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         uint256 oldTimestamp,
         uint256 newTimestamp
     ) internal pure returns (uint256) {
+        if (oldTimestamp == newTimestamp) return 0;
+
         return
             ONE_64x64
                 .sub(DECAY_RATE_64x64)
