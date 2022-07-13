@@ -169,12 +169,14 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     function _updateRewards() internal {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
-        if (l.lastRewardUpdate == 0 || l.totalPower == 0) {
+        if (
+            l.lastRewardUpdate == 0 ||
+            l.totalPower == 0 ||
+            l.availableRewards == 0
+        ) {
             l.lastRewardUpdate = block.timestamp;
             return;
         }
-
-        if (l.availableRewards == 0) return;
 
         uint256 pendingRewards = _getPendingRewards();
 
