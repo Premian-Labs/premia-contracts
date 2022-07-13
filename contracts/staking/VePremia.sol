@@ -69,10 +69,8 @@ contract VePremia is IVePremia, PremiaStaking {
             .layout()
             .userInfo[user];
 
-        uint256 balance = _balanceOf(user); // ToDo : Directly pass new balance ?
-
         uint256 votingPower = _calculateUserPower(
-            balance,
+            _balanceOf(user),
             userInfo.stakePeriod
         );
         uint256 votingPowerUsed = _calculateUserVotingPowerUsed(user);
