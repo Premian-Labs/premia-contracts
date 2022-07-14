@@ -122,30 +122,6 @@ export function describeBehaviorOfPoolSell({
             );
           });
 
-          it('should fail to sell option back to the pool if maturity < 1d', async () => {
-            await instance.connect(lp1).setBuybackEnabled(false, isCall);
-
-            const maturity = await getMaturity(2);
-            const strike64x64 = fixedFromFloat(getStrike(isCall, 2000));
-
-            await p.purchaseOption(
-              lp1,
-              buyer,
-              parseUnderlying('1'),
-              maturity,
-              strike64x64,
-              isCall,
-            );
-
-            await increaseTimestamp(3600 * 24 + 1);
-
-            await expect(
-              instance
-                .connect(buyer)
-                .sell(maturity, strike64x64, isCall, parseUnderlying('1')),
-            ).to.be.revertedWith('exp < 1 day');
-          });
-
           it('should fail selling back to the pool if no buyer available', async () => {
             await instance.connect(lp1).setBuybackEnabled(false, isCall);
 
