@@ -276,8 +276,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                 args.strike64x64
             );
 
-            // Initialize to avg value, and replace by current if avg not set or current is lower
-            sellCLevel64x64 = l.avgCLevel64x64[longTokenId];
+            // Initialize to min value, and replace by current if min not set or current is lower
+            sellCLevel64x64 = l.minCLevel64x64[longTokenId];
 
             {
                 (int128 currentCLevel64x64, ) = l.getRealPoolState(args.isCall);
@@ -495,7 +495,12 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             strike64x64
         );
 
-        _updateCLevelAverage(l, longTokenId, contractSize, quote.cLevel64x64);
+        {
+            int128 minCLevel64x64 = l.minCLevel64x64[longTokenId];
+            if (minCLevel64x64 == 0 || quote.cLevel64x64 < minCLevel64x64) {
+                l.minCLevel64x64[longTokenId] = quote.cLevel64x64;
+            }
+        }
 
         // mint long option token for buyer
         _mint(account, longTokenId, contractSize);
@@ -1244,28 +1249,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
             oldLiquidity64x64,
             newLiquidity64x64
         );
-    }
-
-    function _updateCLevelAverage(
-        PoolStorage.Layout storage l,
-        uint256 longTokenId,
-        uint256 contractSize,
-        int128 cLevel64x64
-    ) internal {
-        int128 supply64x64 = ABDKMath64x64Token.fromDecimals(
-            _totalSupply(longTokenId),
-            l.underlyingDecimals
-        );
-        int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
-            contractSize,
-            l.underlyingDecimals
-        );
-
-        l.avgCLevel64x64[longTokenId] = l
-            .avgCLevel64x64[longTokenId]
-            .mul(supply64x64)
-            .add(cLevel64x64.mul(contractSize64x64))
-            .div(supply64x64.add(contractSize64x64));
     }
 
     /**

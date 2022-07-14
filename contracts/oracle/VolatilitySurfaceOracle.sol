@@ -20,7 +20,10 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     using ABDKMath64x64 for int128;
 
     uint256 private constant DECIMALS = 12;
-    int128 private constant MIN_TIME_TO_MATURITY_64x64 = 0xb38cf9b00b38d0; // 1d (1/365)
+
+    int128 private constant MIN_TIME_TO_MATURITY_64x64 = 0x21aa6ed1021aa6f; // 3d (3/365)
+    int128 private constant MIN_MONEYNESS_64x64 = 0x8000000000000000; // 0.5
+    int128 private constant MAX_MONEYNESS_64x64 = 0x20000000000000000; // 2.0
 
     event UpdateParameters(
         address indexed base,
@@ -280,10 +283,9 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
         int128 strike64x64,
         int128 timeToMaturity64x64
     ) private view returns (int128) {
-        require(
-            timeToMaturity64x64 >= MIN_TIME_TO_MATURITY_64x64,
-            "exp < 1 day"
-        );
+        if (timeToMaturity64x64 < MIN_TIME_TO_MATURITY_64x64) {
+            timeToMaturity64x64 = MIN_TIME_TO_MATURITY_64x64;
+        }
 
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
@@ -292,10 +294,16 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
             l.getParams(base, underlying)
         );
 
+        int128 moneyness64x64 = spot64x64.div(strike64x64);
+
+        if (moneyness64x64 < MIN_MONEYNESS_64x64) {
+            moneyness64x64 = MIN_MONEYNESS_64x64;
+        } else if (moneyness64x64 > MAX_MONEYNESS_64x64) {
+            moneyness64x64 = MAX_MONEYNESS_64x64;
+        }
+
         // Time adjusted log moneyness
-        int128 M64x64 = spot64x64.div(strike64x64).ln().div(
-            timeToMaturity64x64.sqrt()
-        );
+        int128 M64x64 = moneyness64x64.ln().div(timeToMaturity64x64.sqrt());
 
         return
             _toParameter64x64(params[0]) +

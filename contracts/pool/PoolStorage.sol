@@ -108,8 +108,8 @@ library PoolStorage {
         int128 steepnessUnderlying64x64;
         // User -> isCallPool -> isBuybackEnabled
         mapping(address => mapping(bool => bool)) isBuybackEnabled;
-        // LongTokenId -> averageC
-        mapping(uint256 => int128) avgCLevel64x64;
+        // LongTokenId -> minC
+        mapping(uint256 => int128) minCLevel64x64;
         // APY fee tracking
         // underwriter -> shortTokenId -> amount
         mapping(address => mapping(uint256 => uint256)) feesReserved;
