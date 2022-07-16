@@ -51,8 +51,8 @@ export const DECIMALS_UNDERLYING = 8;
 export const SYMBOL_BASE = 'SYMBOL_BASE';
 export const SYMBOL_UNDERLYING = 'SYMBOL_UNDERLYING';
 export const FEE_PREMIUM = 0.03;
-export const FEE_APY = 0.2;
-export const MIN_APY = 0.3;
+export const FEE_APY = 0.025;
+export const MIN_APY = FEE_APY * 8;
 
 interface PoolUtilArgs {
   premiaDiamond: Premia;
@@ -350,7 +350,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
     );
     await poolBaseImpl.deployed();
 
@@ -376,7 +375,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
       exchangeProxy,
     );
     registeredSelectors = registeredSelectors.concat(
@@ -398,7 +396,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -422,7 +419,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -447,7 +443,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -471,7 +466,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
     );
     await poolSellImpl.deployed();
 
@@ -494,7 +488,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -518,7 +511,6 @@ export class PoolUtil {
       feeReceiver.address,
       premiaFeeDiscount,
       fixedFromFloat(FEE_PREMIUM),
-      fixedFromFloat(FEE_APY),
       exchangeProxy,
     );
     registeredSelectors = registeredSelectors.concat(

@@ -1,13 +1,13 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { ERC20Mock, IExchangeHelper, IPool } from '../../typechain';
+import { BigNumberish } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { fixedFromFloat, fixedToNumber, formatTokenId } from '@premia/utils';
 
 import { IUniswap, uniswapABIs } from '../../test/utils/uniswap';
 
 import {
-  FEE_APY,
   formatUnderlying,
   getFreeLiqTokenId,
   getLong,
@@ -28,6 +28,7 @@ interface PoolIOBehaviorArgs {
   getBase: () => Promise<ERC20Mock>;
   getUnderlying: () => Promise<ERC20Mock>;
   getPoolUtil: () => Promise<PoolUtil>;
+  apyFeeRate: BigNumberish;
   getUniswap: () => Promise<IUniswap>;
   getExchangeHelper: () => Promise<IExchangeHelper>;
 }
@@ -37,6 +38,7 @@ export function describeBehaviorOfPoolIO({
   getBase,
   getUnderlying,
   getPoolUtil,
+  apyFeeRate,
   getUniswap,
   getExchangeHelper,
 }: PoolIOBehaviorArgs) {
@@ -749,7 +751,7 @@ export function describeBehaviorOfPoolIO({
           const apyFeeRemaining = maturity
             .sub(ethers.BigNumber.from(reassignTimestamp))
             .mul(contractSizeReassigned)
-            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .mul(ethers.utils.parseEther(apyFeeRate.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
           const newContractBalance = await underlying.callStatic.balanceOf(
@@ -910,7 +912,7 @@ export function describeBehaviorOfPoolIO({
           const apyFeeRemaining = maturity
             .sub(ethers.BigNumber.from(reassignTimestamp))
             .mul(contractSizeReassigned)
-            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .mul(ethers.utils.parseEther(apyFeeRate.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
           const { underlyingTVL: newUserTVL } =
@@ -1003,7 +1005,7 @@ export function describeBehaviorOfPoolIO({
           const apyFeeRemaining = maturity
             .sub(ethers.BigNumber.from(reassignTimestamp))
             .mul(tokenAmount)
-            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .mul(ethers.utils.parseEther(apyFeeRate.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
           const newContractBalance = await base.callStatic.balanceOf(
@@ -1182,7 +1184,7 @@ export function describeBehaviorOfPoolIO({
           const apyFeeRemaining = maturity
             .sub(ethers.BigNumber.from(reassignTimestamp))
             .mul(tokenAmount)
-            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .mul(ethers.utils.parseEther(apyFeeRate.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
           const { baseTVL: newUserTVL } = await instance.callStatic.getUserTVL(
@@ -1330,7 +1332,7 @@ export function describeBehaviorOfPoolIO({
           const apyFeeRemaining = maturity
             .sub(ethers.BigNumber.from(reassignTimestamp))
             .mul(contractSizeReassigned)
-            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .mul(ethers.utils.parseEther(apyFeeRate.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
           const newContractBalance = await underlying.callStatic.balanceOf(
@@ -1491,7 +1493,7 @@ export function describeBehaviorOfPoolIO({
           const apyFeeRemaining = maturity
             .sub(ethers.BigNumber.from(reassignTimestamp))
             .mul(contractSizeReassigned)
-            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .mul(ethers.utils.parseEther(apyFeeRate.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
           const { underlyingTVL: newUserTVL } =
@@ -1584,7 +1586,7 @@ export function describeBehaviorOfPoolIO({
           const apyFeeRemaining = maturity
             .sub(ethers.BigNumber.from(reassignTimestamp))
             .mul(tokenAmount)
-            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .mul(ethers.utils.parseEther(apyFeeRate.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
           const newContractBalance = await base.callStatic.balanceOf(
@@ -1763,7 +1765,7 @@ export function describeBehaviorOfPoolIO({
           const apyFeeRemaining = maturity
             .sub(ethers.BigNumber.from(reassignTimestamp))
             .mul(tokenAmount)
-            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .mul(ethers.utils.parseEther(apyFeeRate.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
           const { baseTVL: newUserTVL } = await instance.callStatic.getUserTVL(
@@ -1965,7 +1967,7 @@ export function describeBehaviorOfPoolIO({
           const apyFeeRemaining = maturity
             .sub(ethers.BigNumber.from(reassignTimestamp))
             .mul(contractSizeAnnihilated)
-            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .mul(ethers.utils.parseEther(apyFeeRate.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
           const newContractBalance = await underlying.callStatic.balanceOf(
@@ -2031,7 +2033,7 @@ export function describeBehaviorOfPoolIO({
           const apyFeeRemaining = maturity
             .sub(ethers.BigNumber.from(annihilateTimestamp))
             .mul(contractSizeAnnihilated)
-            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .mul(ethers.utils.parseEther(apyFeeRate.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
           const { underlyingTVL: newUserTVL } =
@@ -2162,7 +2164,7 @@ export function describeBehaviorOfPoolIO({
           const apyFeeRemaining = maturity
             .sub(ethers.BigNumber.from(annihilateTimestamp))
             .mul(tokenAmount)
-            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .mul(ethers.utils.parseEther(apyFeeRate.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
           const newContractBalance = await base.callStatic.balanceOf(
@@ -2228,7 +2230,7 @@ export function describeBehaviorOfPoolIO({
           const apyFeeRemaining = maturity
             .sub(ethers.BigNumber.from(annihilateTimestamp))
             .mul(tokenAmount)
-            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .mul(ethers.utils.parseEther(apyFeeRate.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
           const { baseTVL: newUserTVL } = await instance.callStatic.getUserTVL(

@@ -12,6 +12,8 @@ import {
   ExchangeHelper__factory,
 } from '../../typechain';
 
+import { fixedFromFloat } from '@premia/utils';
+
 import { describeBehaviorOfPoolBase } from '../../spec/pool/PoolBase.behavior';
 import { describeBehaviorOfPoolExercise } from '../../spec/pool/PoolExercise.behavior';
 import { describeBehaviorOfPoolIO } from '../../spec/pool/PoolIO.behavior';
@@ -19,7 +21,12 @@ import { describeBehaviorOfPoolSettings } from '../../spec/pool/PoolSettings.beh
 import { describeBehaviorOfPoolView } from '../../spec/pool/PoolView.behavior';
 import { describeBehaviorOfPoolWrite } from '../../spec/pool/PoolWrite.behavior';
 import { describeBehaviorOfPoolSell } from '../../spec/pool/PoolSell.behavior';
-import { DECIMALS_BASE, DECIMALS_UNDERLYING, PoolUtil } from './PoolUtil';
+import {
+  DECIMALS_BASE,
+  DECIMALS_UNDERLYING,
+  FEE_APY,
+  PoolUtil,
+} from './PoolUtil';
 import { describeBehaviorOfProxy } from '@solidstate/spec';
 import {
   createUniswap,
@@ -89,6 +96,8 @@ describe('PoolProxy', function () {
     underlying = p.underlying;
 
     instance = p.pool;
+
+    await instance.connect(owner).setFeeApy64x64(fixedFromFloat(FEE_APY));
 
     // mint ERC20 tokens and set approvals
 
@@ -185,6 +194,7 @@ describe('PoolProxy', function () {
     getUnderlying: async () => underlying,
     getFeeDiscount: async () => feeDiscount,
     getXPremia: async () => xPremia,
+    apyFeeRate: FEE_APY,
     getPoolUtil: async () => p,
   });
 
@@ -193,6 +203,7 @@ describe('PoolProxy', function () {
     getBase: async () => base,
     getUnderlying: async () => underlying,
     getPoolUtil: async () => p,
+    apyFeeRate: FEE_APY,
     getUniswap: async () => uniswap,
     getExchangeHelper: async () => exchangeHelper,
   });
@@ -218,6 +229,7 @@ describe('PoolProxy', function () {
     getBase: async () => base,
     getUnderlying: async () => underlying,
     getPoolUtil: async () => p,
+    apyFeeRate: FEE_APY,
     getUniswap: async () => uniswap,
     getExchangeHelper: async () => exchangeHelper,
   });
