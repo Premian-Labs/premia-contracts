@@ -386,7 +386,6 @@ describe('PremiaStaking', () => {
       .connect(carol)
       .approve(premiaStaking.address, parseEther('100'));
 
-    // Alice enters and gets 20 shares. Bob enters and gets 10 shares.
     await premiaStaking.connect(alice).stake(parseEther('30'), 0);
     await premiaStaking.connect(bob).stake(parseEther('10'), 0);
     await premiaStaking.connect(carol).stake(parseEther('10'), 0);
@@ -401,7 +400,7 @@ describe('PremiaStaking', () => {
     expect(carolBalance).to.eq(parseEther('10'));
     expect(contractBalance).to.eq(parseEther('50'));
 
-    // PremiaStaking get 20 more PREMIAs from an external source.
+    // PremiaStaking get 50 USDC rewards
     await premiaStaking.connect(admin).addRewards(parseUSDC('50'));
 
     await premiaStaking.connect(bob).startWithdraw(parseEther('10'));
@@ -428,7 +427,6 @@ describe('PremiaStaking', () => {
       .connect(carol)
       .approve(premiaStaking.address, parseEther('100'));
 
-    // Alice enters and gets 20 shares. Bob enters and gets 10 shares.
     await premiaStaking.connect(alice).stake(parseEther('30'), 0);
     await premiaStaking.connect(bob).stake(parseEther('10'), 0);
     await premiaStaking.connect(carol).stake(parseEther('10'), 0);
@@ -449,7 +447,8 @@ describe('PremiaStaking', () => {
 
     await increaseTimestamp(ONE_DAY * 30);
 
-    let pendingRewards = await premiaStaking.getPendingRewards();
+    const pendingRewards1 = await premiaStaking.getPendingRewards();
+    let availableRewards = await premiaStaking.getAvailableRewards();
 
     let decayValue = BigNumber.from(
       Math.floor(
@@ -457,19 +456,36 @@ describe('PremiaStaking', () => {
           Math.pow(10, USDC_DECIMALS),
       ),
     );
-    expect(pendingRewards).to.eq(parseUSDC('50').sub(decayValue));
-    // expect(await premiaStaking.getXPremiaToPremiaRatio()).to.eq(
-    //   parseEther('1.52'),
-    // ); // ToDo : Update
+
+    expect(pendingRewards1).to.eq(parseUSDC('50').sub(decayValue));
+    expect(availableRewards[0]).to.eq(
+      parseUSDC('50').sub(parseUSDC('50').sub(decayValue)),
+    );
+    expect(availableRewards[1]).to.eq(0);
+
+    expect((await premiaStaking.getPendingUserRewards(alice.address))[0]).to.eq(
+      pendingRewards1.mul(30).div(50),
+    );
+    expect((await premiaStaking.getPendingUserRewards(bob.address))[0]).to.eq(
+      pendingRewards1.mul(10).div(50),
+    );
+    expect((await premiaStaking.getPendingUserRewards(carol.address))[0]).to.eq(
+      pendingRewards1.mul(10).div(50),
+    );
 
     await increaseTimestamp(ONE_DAY * 300000);
 
-    // Bob deposits 50 more PREMIAs. She should receive 50*50/100 = 25 shares.
-    await premiaStaking.connect(bob).stake(parseEther('50'), 0);
+    expect((await premiaStaking.getPendingUserRewards(alice.address))[0]).to.eq(
+      parseUSDC('50').mul(30).div(50),
+    );
+    expect((await premiaStaking.getPendingUserRewards(bob.address))[0]).to.eq(
+      parseUSDC('50').mul(10).div(50),
+    );
+    expect((await premiaStaking.getPendingUserRewards(carol.address))[0]).to.eq(
+      parseUSDC('50').mul(10).div(50),
+    );
 
-    // expect(await premiaStaking.getXPremiaToPremiaRatio()).to.eq(
-    //   parseEther('2'),
-    // ); // ToDo : Update
+    await premiaStaking.connect(bob).stake(parseEther('50'), 0);
 
     aliceBalance = await premiaStaking.balanceOf(alice.address);
     bobBalance = await premiaStaking.balanceOf(bob.address);
@@ -496,29 +512,38 @@ describe('PremiaStaking', () => {
 
     await increaseTimestamp(ONE_DAY * 30);
 
-    pendingRewards = await premiaStaking.getPendingRewards();
+    const pendingRewards2 = await premiaStaking.getPendingRewards();
+    availableRewards = await premiaStaking.getAvailableRewards();
     decayValue = BigNumber.from(
       Math.floor(
         decay(100, timestamp, timestamp + ONE_DAY * 30) *
           Math.pow(10, USDC_DECIMALS),
       ),
     );
-    expect(pendingRewards).to.eq(parseUSDC('100').sub(decayValue));
+
+    expect(pendingRewards2).to.eq(parseUSDC('100').sub(decayValue));
+    expect(availableRewards[0]).to.eq(
+      parseUSDC('100').sub(parseUSDC('100').sub(decayValue)),
+    );
+    expect(availableRewards[1]).to.eq(0);
+
+    expect((await premiaStaking.getPendingUserRewards(alice.address))[0]).to.eq(
+      parseUSDC('50').mul(30).div(50).add(pendingRewards2.mul(25).div(75)),
+    );
+    expect((await premiaStaking.getPendingUserRewards(bob.address))[0]).to.eq(
+      parseUSDC('50').mul(10).div(50).add(pendingRewards2.mul(40).div(75)),
+    );
+    expect((await premiaStaking.getPendingUserRewards(carol.address))[0]).to.eq(
+      parseUSDC('50').mul(10).div(50).add(pendingRewards2.mul(10).div(75)),
+    );
 
     await increaseTimestamp(ONE_DAY * 300000);
 
-    // expect(await premiaStaking.getXPremiaToPremiaRatio()).to.eq(
-    //   parseEther('4'),
-    // ); // ToDo : Update
-
-    await increaseTimestamp(10 * ONE_DAY + 1);
     await premiaStaking.connect(alice).withdraw();
     await premiaStaking.connect(bob).withdraw();
 
     let alicePremiaBalance = await premia.balanceOf(alice.address);
     let bobPremiaBalance = await premia.balanceOf(bob.address);
-
-    // ToDo : Add tests for pending user rewards
 
     // Alice = 100 - 30 + 5
     expect(alicePremiaBalance).to.eq(parseEther('75'));
@@ -544,7 +569,15 @@ describe('PremiaStaking', () => {
     expect(bobPremiaBalance).to.eq(parseEther('100'));
     expect(carolPremiaBalance).to.eq(parseEther('100'));
 
-    // ToDo : Add tests for pending user rewards
+    expect((await premiaStaking.getPendingUserRewards(alice.address))[0]).to.eq(
+      parseUSDC('50').mul(30).div(50).add(parseUSDC('100').mul(25).div(75)),
+    );
+    expect((await premiaStaking.getPendingUserRewards(bob.address))[0]).to.eq(
+      parseUSDC('50').mul(10).div(50).add(parseUSDC('100').mul(40).div(75)),
+    );
+    expect((await premiaStaking.getPendingUserRewards(carol.address))[0]).to.eq(
+      parseUSDC('50').mul(10).div(50).add(parseUSDC('100').mul(10).div(75)),
+    );
   });
 
   it('should correctly calculate decay', async () => {
