@@ -9,7 +9,7 @@ import {
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { signERC2612Permit } from 'eth-permit';
-import { increaseTimestamp } from '../utils/evm';
+import { increaseTimestamp, setTimestamp } from '../utils/evm';
 import { parseEther, parseUnits } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
 import { beforeEach } from 'mocha';
@@ -614,5 +614,37 @@ describe('PremiaStaking', () => {
     expect(await premia.balanceOf(otherPremiaStaking.address)).to.eq(0);
     expect(await premiaStaking.totalSupply()).to.eq(parseEther('90'));
     expect(await otherPremiaStaking.totalSupply()).to.eq(parseEther('10'));
+  });
+
+  describe('#harvest', () => {
+    it('should correctly harvest pending rewards of user', async () => {
+      await premia
+        .connect(alice)
+        .approve(premiaStaking.address, parseEther('100'));
+      await premia
+        .connect(bob)
+        .approve(premiaStaking.address, parseEther('100'));
+      await premia
+        .connect(carol)
+        .approve(premiaStaking.address, parseEther('100'));
+
+      await premiaStaking.connect(alice).stake(parseEther('30'), 0);
+      await premiaStaking.connect(bob).stake(parseEther('10'), 0);
+      await premiaStaking.connect(carol).stake(parseEther('10'), 0);
+
+      await premiaStaking.connect(admin).addRewards(parseUSDC('50'));
+
+      await increaseTimestamp(ONE_DAY * 30);
+
+      const aliceRewards = await premiaStaking.getPendingUserRewards(
+        alice.address,
+      );
+
+      await premiaStaking.connect(alice).harvest();
+      expect(await usdc.balanceOf(alice.address)).to.eq(aliceRewards[0].add(3)); // Amount is slightly higher because block timestamp increase by 1 second on harvest
+      expect(
+        (await premiaStaking.getPendingUserRewards(alice.address))[0],
+      ).to.eq(0);
+    });
   });
 });
