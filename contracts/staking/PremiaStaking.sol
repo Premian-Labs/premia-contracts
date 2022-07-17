@@ -479,7 +479,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         _updateUser(l, u, args);
 
-        l.withdrawals[msg.sender].amount += amount;
+        l.withdrawals[msg.sender].amount += amount - fee;
         l.withdrawals[msg.sender].startDate = block.timestamp;
 
         emit Unstake(msg.sender, amount, fee, block.timestamp);
