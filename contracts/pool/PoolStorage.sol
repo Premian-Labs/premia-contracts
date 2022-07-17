@@ -115,6 +115,9 @@ library PoolStorage {
         mapping(address => mapping(uint256 => uint256)) feesReserved;
         // shortTokenId -> 64x64 fixed point representation of apy fee
         mapping(uint256 => int128) feeReserveRates;
+        // APY fee paid by underwriters
+        // Also used along with multiplier to calculate minimum option price as APY
+        int128 feeApy64x64;
     }
 
     function layout() internal pure returns (Layout storage l) {
@@ -233,6 +236,27 @@ library PoolStorage {
     ) internal view returns (bool) {
         uint256 timestamp = l.divestmentTimestamps[account][isCallPool];
         return timestamp == 0 || timestamp > block.timestamp;
+    }
+
+    function getFeeApy64x64(Layout storage l)
+        internal
+        view
+        returns (int128 feeApy64x64)
+    {
+        feeApy64x64 = l.feeApy64x64;
+
+        if (feeApy64x64 == 0) {
+            // if APY fee is not set, set to 0.025
+            feeApy64x64 = 0x666666666666666;
+        }
+    }
+
+    function getMinApy64x64(Layout storage l)
+        internal
+        view
+        returns (int128 feeApy64x64)
+    {
+        feeApy64x64 = l.getFeeApy64x64() << 3;
     }
 
     function addUnderwriter(

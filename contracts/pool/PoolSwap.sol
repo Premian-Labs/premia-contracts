@@ -26,7 +26,6 @@ abstract contract PoolSwap is PoolInternal {
         address feeReceiver,
         address feeDiscountAddress,
         int128 feePremium64x64,
-        int128 feeApy64x64,
         address exchangeHelper
     )
         PoolInternal(
@@ -35,8 +34,7 @@ abstract contract PoolSwap is PoolInternal {
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            feePremium64x64,
-            feeApy64x64
+            feePremium64x64
         )
     {
         EXCHANGE_HELPER = exchangeHelper;

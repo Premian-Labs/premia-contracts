@@ -1,11 +1,11 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
 import { ERC20Mock, IPool } from '../../typechain';
+import { BigNumberish } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { fixedFromFloat, fixedToNumber, formatTokenId } from '@premia/utils';
 
 import {
-  FEE_APY,
   formatUnderlying,
   getExerciseValue,
   getFreeLiqTokenId,
@@ -25,6 +25,7 @@ interface PoolExerciseBehaviorArgs {
   getBase: () => Promise<ERC20Mock>;
   getUnderlying: () => Promise<ERC20Mock>;
   getPoolUtil: () => Promise<PoolUtil>;
+  apyFeeRate: BigNumberish;
 }
 
 export function describeBehaviorOfPoolExercise({
@@ -32,6 +33,7 @@ export function describeBehaviorOfPoolExercise({
   getUnderlying,
   getBase,
   getPoolUtil,
+  apyFeeRate,
 }: PoolExerciseBehaviorArgs) {
   describe('::PoolExercise', () => {
     let owner: SignerWithAddress;
@@ -299,7 +301,7 @@ export function describeBehaviorOfPoolExercise({
           const apyFeeRemaining = maturity
             .sub(ethers.BigNumber.from(timestamp))
             .mul(contractSizeExercised)
-            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .mul(ethers.utils.parseEther(apyFeeRate.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
           expect(newUserTVL).to.be.closeTo(
@@ -576,7 +578,7 @@ export function describeBehaviorOfPoolExercise({
           const apyFeeRemaining = maturity
             .sub(ethers.BigNumber.from(timestamp))
             .mul(tokenAmount)
-            .mul(ethers.utils.parseEther(FEE_APY.toString()))
+            .mul(ethers.utils.parseEther(apyFeeRate.toString()))
             .div(ethers.utils.parseEther(ONE_YEAR.toString()));
 
           expect(newUserTVL).to.be.closeTo(

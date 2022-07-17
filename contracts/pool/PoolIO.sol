@@ -45,7 +45,6 @@ contract PoolIO is IPoolIO, PoolSwap {
         address feeReceiver,
         address feeDiscountAddress,
         int128 feePremium64x64,
-        int128 feeApy64x64,
         address exchangeProxy
     )
         PoolSwap(
@@ -55,7 +54,6 @@ contract PoolIO is IPoolIO, PoolSwap {
             feeReceiver,
             feeDiscountAddress,
             feePremium64x64,
-            feeApy64x64,
             exchangeProxy
         )
     {}

@@ -42,7 +42,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     address internal immutable IVOL_ORACLE_ADDRESS;
 
     int128 internal immutable FEE_PREMIUM_64x64;
-    int128 internal immutable FEE_APY_64x64;
 
     uint256 internal immutable UNDERLYING_FREE_LIQ_TOKEN_ID;
     uint256 internal immutable BASE_FREE_LIQ_TOKEN_ID;
@@ -53,10 +52,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     uint256 internal constant INVERSE_BASIS_POINT = 1e4;
     uint256 internal constant BATCHING_PERIOD = 260;
 
-    // Minimum APY for capital locked up to underwrite options.
-    // The quote will return a minimum price corresponding to this APY
-    int128 internal constant MIN_APY_64x64 = 0x4ccccccccccccccd; // 0.3
-
     // Multiply sell quote by this constant
     int128 internal constant SELL_COEFFICIENT_64x64 = 0xb333333333333333; // 0.7
 
@@ -66,8 +61,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 feePremium64x64,
-        int128 feeApy64x64
+        int128 feePremium64x64
     ) {
         IVOL_ORACLE_ADDRESS = ivolOracle;
         WRAPPED_NATIVE_TOKEN = wrappedNativeToken;
@@ -76,7 +70,6 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         // PremiaFeeDiscount contract address
         FEE_DISCOUNT_ADDRESS = feeDiscountAddress;
         FEE_PREMIUM_64x64 = feePremium64x64;
-        FEE_APY_64x64 = feeApy64x64;
 
         UNDERLYING_FREE_LIQ_TOKEN_ID = PoolStorage.formatTokenId(
             PoolStorage.TokenType.UNDERLYING_FREE_LIQ,
@@ -199,7 +192,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
                     oldLiquidity64x64,
                     oldLiquidity64x64.sub(collateral64x64),
                     0x10000000000000000, // 64x64 fixed point representation of 1
-                    MIN_APY_64x64,
+                    l.getMinApy64x64(),
                     args.isCall
                 )
             );
@@ -1107,7 +1100,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) internal view returns (uint256 apyFee) {
         if (block.timestamp < maturity) {
             int128 apyFeeRate64x64 = _totalSupply(shortTokenId) == 0
-                ? FEE_APY_64x64
+                ? l.getFeeApy64x64()
                 : l.feeReserveRates[shortTokenId];
 
             apyFee = apyFeeRate64x64.mulu(
@@ -1687,7 +1680,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     ) private {
         // total supply has already been updated, so compare to amount rather than 0
         if (from == address(0) && _totalSupply(id) == amount) {
-            l.feeReserveRates[id] = FEE_APY_64x64;
+            l.feeReserveRates[id] = l.getFeeApy64x64();
         }
 
         if (to == address(0) && _totalSupply(id) == 0) {
