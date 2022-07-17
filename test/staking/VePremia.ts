@@ -138,24 +138,54 @@ describe('VePremia', () => {
 
       await vePremia.connect(alice).castVotes([
         {
-          amount: parseEther('6.25'),
+          amount: parseEther('1'),
           poolAddress: '0x0000000000000000000000000000000000000001',
           isCallPool: true,
+        },
+        {
+          amount: parseEther('3'),
+          poolAddress: '0x0000000000000000000000000000000000000002',
+          isCallPool: true,
+        },
+        {
+          amount: parseEther('2.25'),
+          poolAddress: '0x0000000000000000000000000000000000000003',
+          isCallPool: false,
         },
       ]);
 
       await increaseTimestamp(ONE_DAY * 366);
 
-      const votes = await vePremia.getUserVotes(alice.address);
-      expect(votes.length).to.eq(1);
-      expect(votes[0].amount).to.eq(parseEther('6.25'));
-      expect(votes[0].poolAddress).to.eq(
-        '0x0000000000000000000000000000000000000001',
-      );
-      expect(votes[0].isCallPool).to.be.true;
+      let votes = await vePremia.getUserVotes(alice.address);
+      expect(votes).to.deep.eq([
+        [parseEther('1'), '0x0000000000000000000000000000000000000001', true],
+        [parseEther('3'), '0x0000000000000000000000000000000000000002', true],
+        [
+          parseEther('2.25'),
+          '0x0000000000000000000000000000000000000003',
+          false,
+        ],
+      ]);
 
       expect(await vePremia.getUserPower(alice.address)).to.eq(
         parseEther('6.25'),
+      );
+
+      await vePremia.connect(alice).startWithdraw(parseEther('2.5'));
+
+      votes = await vePremia.getUserVotes(alice.address);
+
+      expect(votes).to.deep.eq([
+        [parseEther('1'), '0x0000000000000000000000000000000000000001', true],
+        [
+          parseEther('2.125'),
+          '0x0000000000000000000000000000000000000002',
+          true,
+        ],
+      ]);
+
+      expect(await vePremia.getUserPower(alice.address)).to.eq(
+        parseEther('3.125'),
       );
     });
   });
