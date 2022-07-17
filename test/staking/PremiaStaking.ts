@@ -400,21 +400,21 @@ describe('PremiaStaking', () => {
     expect(carolBalance).to.eq(parseEther('10'));
     expect(contractBalance).to.eq(parseEther('50'));
 
+    await premiaStaking.connect(bob).startWithdraw(parseEther('10'));
+
     // PremiaStaking get 50 USDC rewards
     await premiaStaking.connect(admin).addRewards(parseUSDC('50'));
 
-    await premiaStaking.connect(bob).startWithdraw(parseEther('10'));
     expect((await premiaStaking.getPendingWithdrawal(bob.address))[0]).to.eq(
       parseEther('10'),
     );
 
     await increaseTimestamp(ONE_DAY * 30);
 
-    await premiaStaking.connect(bob).withdraw();
+    const pendingRewards = await premiaStaking.getPendingRewards();
 
-    await premiaStaking.connect(carol).startWithdraw(parseEther('10'));
     expect((await premiaStaking.getPendingUserRewards(carol.address))[0]).to.eq(
-      parseUSDC('5'),
+      pendingRewards.mul(10).div(40),
     );
   });
 
