@@ -27,7 +27,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     int128 internal constant DECAY_RATE_64x64 = 0x487a423b63e; // 2.7e-7 -> Distribute around half of the current balance over a month
     uint256 internal constant INVERSE_BASIS_POINT = 1e4;
     uint64 internal constant MAX_PERIOD = 4 * 365 days;
-    uint256 internal constant ACC_REWARD_PRECISION = 1e12;
+    uint256 internal constant ACC_REWARD_PRECISION = 1e30;
 
     struct UpdateInternalArgs {
         address user;
