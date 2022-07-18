@@ -164,7 +164,7 @@ describe('PremiaStaking', () => {
 
   describe('FeeDiscount', () => {
     const stakeAmount = parseEther('120000');
-    const oneMonth = 30 * 24 * 3600;
+    const oneMonth = 30 * ONE_DAY;
 
     beforeEach(async () => {
       await premia.mint(alice.address, stakeAmount);
@@ -187,6 +187,14 @@ describe('PremiaStaking', () => {
 
       expect(amountWithBonus).to.eq(parseEther('137500'));
       expect(await premiaStaking.getDiscount(alice.address)).to.eq(6093);
+
+      await premia.mint(alice.address, parseEther('1000000'));
+      await premia
+        .connect(alice)
+        .approve(premiaStaking.address, parseEther('1000000'));
+      await premiaStaking.connect(alice).stake(parseEther('1000000'), ONE_YEAR);
+
+      expect(await premiaStaking.getDiscount(alice.address)).to.eq(9500);
     });
 
     it('should stake successfully with permit', async () => {
@@ -581,7 +589,7 @@ describe('PremiaStaking', () => {
   });
 
   it('should correctly calculate decay', async () => {
-    const oneMonth = 30 * 24 * 3600;
+    const oneMonth = 30 * ONE_DAY;
     expect(
       bnToNumber(await premiaStaking.decay(parseEther('100'), 0, oneMonth)),
     ).to.almost(49.66);
@@ -596,9 +604,7 @@ describe('PremiaStaking', () => {
       .connect(alice)
       .approve(premiaStaking.address, parseEther('100'));
 
-    await premiaStaking
-      .connect(alice)
-      .stake(parseEther('100'), 365 * 24 * 3600);
+    await premiaStaking.connect(alice).stake(parseEther('100'), 365 * ONE_DAY);
     await premiaStaking
       .connect(alice)
       .approve(premiaStaking.address, parseEther('100'));
@@ -668,6 +674,75 @@ describe('PremiaStaking', () => {
       expect(
         (await premiaStaking.getPendingUserRewards(alice.address))[0],
       ).to.eq(0);
+    });
+  });
+
+  describe('#earlyUnstake', () => {
+    it('should correctly apply early unstake fee and distribute it to stakers', async () => {
+      await premia
+        .connect(bob)
+        .approve(premiaStaking.address, parseEther('50'));
+
+      await premiaStaking.connect(bob).stake(parseEther('50'), 365 * ONE_DAY);
+
+      //
+
+      await premia
+        .connect(carol)
+        .approve(premiaStaking.address, parseEther('100'));
+
+      await premiaStaking
+        .connect(carol)
+        .stake(parseEther('100'), 365 * ONE_DAY);
+
+      //
+
+      await premia
+        .connect(alice)
+        .approve(premiaStaking.address, parseEther('100'));
+
+      await premiaStaking
+        .connect(alice)
+        .stake(parseEther('100'), 4 * 365 * ONE_DAY);
+
+      //
+
+      expect(await premiaStaking.getEarlyUnstakeFee(alice.address)).to.eq(7500);
+
+      await increaseTimestamp(2 * 365 * ONE_DAY);
+
+      expect(await premiaStaking.getEarlyUnstakeFee(alice.address)).to.eq(5000);
+
+      await premiaStaking.connect(alice).earlyUnstake(parseEther('100'));
+
+      expect(
+        (await premiaStaking.connect(alice).getPendingWithdrawal(alice.address))
+          .amount,
+      ).to.eq(parseEther('50.01')); // Small difference due to block timestamp increase by 1 second on new block mined
+
+      const totalFee = parseEther('100').sub(parseEther('50.01'));
+      const bobFeeReward = totalFee.div(3);
+      const carolFeeReward = totalFee.mul(2).div(3);
+
+      expect(
+        (await premiaStaking.getPendingUserRewards(bob.address)).unstakeReward,
+      ).to.eq(bobFeeReward);
+      expect(
+        (await premiaStaking.getPendingUserRewards(carol.address))
+          .unstakeReward,
+      ).to.eq(carolFeeReward);
+
+      await premiaStaking.connect(bob).harvest();
+
+      expect(await premiaStaking.balanceOf(bob.address)).to.eq(
+        parseEther('50').add(bobFeeReward),
+      );
+
+      await premiaStaking.connect(carol).harvest();
+
+      expect(await premiaStaking.balanceOf(carol.address)).to.eq(
+        parseEther('100').add(carolFeeReward),
+      );
     });
   });
 });
