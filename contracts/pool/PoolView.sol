@@ -260,4 +260,15 @@ contract PoolView is IPoolView, PoolInternal {
                 tokenId
             );
     }
+
+    /**
+     * @inheritdoc IPoolView
+     */
+    function getSpotOffset64x64()
+        external
+        view
+        returns (int128 spotOffset64x64)
+    {
+        spotOffset64x64 = PoolStorage.layout().spotOffset64x64;
+    }
 }
