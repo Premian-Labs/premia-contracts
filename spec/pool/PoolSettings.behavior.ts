@@ -73,5 +73,33 @@ export function describeBehaviorOfPoolSettings({
         });
       });
     });
+
+    describe('#setSpotOffset64x64', () => {
+      describe('reverts if', () => {
+        it('sender is not protocol owner', async () => {
+          await expect(
+            instance
+              .connect(nonProtocolOwner)
+              .setSpotOffset64x64(ethers.constants.Zero),
+          ).to.be.revertedWith('Not protocol owner');
+        });
+
+        it('offset is negative', async () => {
+          await expect(
+            instance
+              .connect(protocolOwner)
+              .setSpotOffset64x64(ethers.constants.NegativeOne),
+          ).to.be.revertedWith('too low');
+        });
+
+        it('offset exceeds maximum', async () => {
+          await expect(
+            instance
+              .connect(protocolOwner)
+              .setSpotOffset64x64(ethers.constants.Two.pow(64)),
+          ).to.be.revertedWith('too high');
+        });
+      });
+    });
   });
 }
