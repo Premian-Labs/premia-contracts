@@ -129,6 +129,11 @@ export default {
       //gasPrice: 10,
       timeout: 300000,
     },
+    optimism: {
+      url: `https://mainnet.optimism.io`,
+      accounts: [PKEY_ETH_MAIN],
+      timeout: 300000,
+    },
     arbitrum: {
       url: `https://arb1.arbitrum.io/rpc`,
       accounts: [PKEY_ETH_MAIN],
