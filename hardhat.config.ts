@@ -27,6 +27,7 @@ chai.use(chaiAlmost(0.01));
 const {
   API_KEY_ALCHEMY,
   API_KEY_ETHERSCAN,
+  API_KEY_OPTIMISM,
   API_KEY_ARBISCAN,
   API_KEY_FTMSCAN,
   PKEY_ETH_MAIN,
@@ -188,6 +189,7 @@ export default {
       mainnet: API_KEY_ETHERSCAN,
       arbitrumOne: API_KEY_ARBISCAN,
       opera: API_KEY_FTMSCAN,
+      optimisticEthereum: API_KEY_OPTIMISM,
     },
   },
 
