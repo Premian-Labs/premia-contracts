@@ -75,6 +75,14 @@ export function describeBehaviorOfPoolSettings({
     });
 
     describe('#setSpotOffset64x64', () => {
+      it('emits UpdateSpotOffset event', async () => {
+        const offset = ethers.constants.Two;
+
+        await expect(instance.connect(protocolOwner).setSpotOffset64x64(offset))
+          .to.emit(instance, 'UpdateSpotOffset')
+          .withArgs(offset);
+      });
+
       describe('reverts if', () => {
         it('sender is not protocol owner', async () => {
           await expect(

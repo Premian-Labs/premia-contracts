@@ -170,5 +170,7 @@ contract PoolSettings is IPoolSettings, PoolInternal {
         require(spotOffset64x64 >= 0, "too low");
         require(spotOffset64x64 < OptionMath.ONE_64x64, "too high");
         PoolStorage.layout().spotOffset64x64 = spotOffset64x64;
+
+        emit UpdateSpotOffset(spotOffset64x64);
     }
 }
