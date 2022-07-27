@@ -118,6 +118,8 @@ library PoolStorage {
         // APY fee paid by underwriters
         // Also used along with multiplier to calculate minimum option price as APY
         int128 feeApy64x64;
+        // adjustment applied to spot price for puchase calculations
+        int128 spotOffset64x64;
     }
 
     function layout() internal pure returns (Layout storage l) {

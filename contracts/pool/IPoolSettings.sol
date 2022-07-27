@@ -33,4 +33,10 @@ interface IPoolSettings {
      * @param feeApy64x64 64x64 fixed point representation of APY fee
      */
     function setFeeApy64x64(int128 feeApy64x64) external;
+
+    /**
+     * @notice set spot price offset rate to account for Chainlink price feed lag
+     * @param spotOffset64x64 64x64 fixed point representation of spot price offset
+     */
+    function setSpotOffset64x64(int128 spotOffset64x64) external;
 }

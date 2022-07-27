@@ -158,4 +158,13 @@ interface IPoolView is IERC1155Metadata {
             uint256 callDivestmentTimestamp,
             uint256 putDivestmentTimestamp
         );
+
+    /**
+     * @notice get the spot price offset used to account for price feed lag
+     * @return spotOffset64x64 64x64 fixed point representation of spot price offset
+     */
+    function getSpotOffset64x64()
+        external
+        view
+        returns (int128 spotOffset64x64);
 }

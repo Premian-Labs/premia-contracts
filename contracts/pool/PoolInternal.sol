@@ -147,6 +147,18 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         PoolStorage.Layout storage l = PoolStorage.layout();
 
+        // pessimistically adjust spot price to account for price feed lag
+
+        if (args.isCall) {
+            args.spot64x64 = args.spot64x64.add(
+                args.spot64x64.mul(l.spotOffset64x64)
+            );
+        } else {
+            args.spot64x64 = args.spot64x64.sub(
+                args.spot64x64.mul(l.spotOffset64x64)
+            );
+        }
+
         int128 contractSize64x64 = ABDKMath64x64Token.fromDecimals(
             args.contractSize,
             l.underlyingDecimals
