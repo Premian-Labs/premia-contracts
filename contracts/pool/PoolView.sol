@@ -273,4 +273,15 @@ contract PoolView is IPoolView, PoolInternal {
     {
         spotOffset64x64 = PoolStorage.layout().spotOffset64x64;
     }
+
+    /**
+     * @inheritdoc IPoolView
+     */
+    function getExchangeHelper()
+        external
+        view
+        returns (address exchangeHelper)
+    {
+        exchangeHelper = EXCHANGE_HELPER;
+    }
 }
