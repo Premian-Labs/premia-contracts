@@ -22,7 +22,8 @@ contract PoolBase is PoolInternal, ERC1155Enumerable, ERC165, Multicall {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 feePremium64x64
+        int128 feePremium64x64,
+        address exchangeHelper
     )
         PoolInternal(
             ivolOracle,
@@ -30,7 +31,8 @@ contract PoolBase is PoolInternal, ERC1155Enumerable, ERC165, Multicall {
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            feePremium64x64
+            feePremium64x64,
+            exchangeHelper
         )
     {}
 

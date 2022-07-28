@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 
 /**
  * @title Premia Exchange Helper
- * @dev deployed standalone and referenced by internal PoolSwap functions
+ * @dev deployed standalone and referenced by internal functions
  * @dev do NOT set approval to this contract!
  */
 interface IExchangeHelper {
