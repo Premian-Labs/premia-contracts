@@ -79,7 +79,12 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         _updateUser(l, u, args);
 
-        bytes memory payload = abi.encode(toAddress, amount);
+        bytes memory payload = abi.encode(
+            toAddress,
+            amount,
+            u.stakePeriod,
+            u.lockedUntil
+        );
         _lzSend(
             dstChainId,
             payload,
@@ -92,11 +97,35 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         emit SendToChain(from, dstChainId, toAddress, amount, nonce);
     }
 
+    function _nonblockingLzReceive(
+        uint16 srcChainId,
+        bytes memory srcAddress,
+        uint64 nonce,
+        bytes memory payload
+    ) internal virtual override {
+        // decode and load the toAddress
+        (
+            bytes memory toAddressBytes,
+            uint256 amount,
+            uint64 stakePeriod,
+            uint64 lockedUntil
+        ) = abi.decode(payload, (bytes, uint256, uint64, uint64));
+        address toAddress;
+        assembly {
+            toAddress := mload(add(toAddressBytes, 20))
+        }
+
+        _creditTo(toAddress, amount, stakePeriod, lockedUntil);
+
+        emit ReceiveFromChain(srcChainId, srcAddress, toAddress, amount, nonce);
+    }
+
     function _creditTo(
-        uint16,
         address toAddress,
-        uint256 amount
-    ) internal override {
+        uint256 amount,
+        uint64 stakePeriod,
+        uint64 lockedUntil
+    ) internal {
         _updateRewards();
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
@@ -107,6 +136,23 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             u,
             toAddress
         );
+
+        // Extend lock if target chain has earlier unlock timestamp
+        if (u.lockedUntil < lockedUntil) {
+            u.lockedUntil = lockedUntil;
+        }
+
+        if (u.stakePeriod > stakePeriod) {
+            u.stakePeriod = stakePeriod;
+
+            if (u.lockedUntil > block.timestamp) {
+                uint64 toLock = uint64(block.timestamp) - u.lockedUntil;
+                // If the time to lock expiration is greater than the stake period, this value becomes the new stake period
+                if (toLock > u.stakePeriod) {
+                    u.stakePeriod = toLock;
+                }
+            }
+        }
 
         _mint(toAddress, amount);
 
