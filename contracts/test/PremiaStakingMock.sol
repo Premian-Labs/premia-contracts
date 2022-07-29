@@ -53,7 +53,12 @@ contract PremiaStakingMock is PremiaStaking {
         emit SendToChain(from, dstChainId, toAddress, amount, 0);
     }
 
-    function creditTo(address toAddress, uint256 amount) external {
-        _creditTo(0, toAddress, amount);
+    function creditTo(
+        address toAddress,
+        uint256 amount,
+        uint64 stakePeriod,
+        uint64 lockedUntil
+    ) external {
+        _creditTo(toAddress, amount, stakePeriod, lockedUntil);
     }
 }

@@ -46,6 +46,8 @@ async function bridge(
   otherPremiaStaking: PremiaStakingMock,
   user: SignerWithAddress,
   amount: BigNumberish,
+  stakePeriod: number,
+  lockedUntil: number,
 ) {
   // Mocked bridge out
   await premiaStaking
@@ -61,7 +63,12 @@ async function bridge(
     );
 
   // Mocked bridge in
-  await otherPremiaStaking.creditTo(user.address, amount);
+  await otherPremiaStaking.creditTo(
+    user.address,
+    amount,
+    stakePeriod,
+    lockedUntil,
+  );
 }
 
 describe('PremiaStaking', () => {
@@ -340,7 +347,14 @@ describe('PremiaStaking', () => {
       .approve(otherPremiaStaking.address, parseEther('40'));
     await otherPremiaStaking.connect(bob).stake(parseEther('20'), 0);
 
-    await bridge(premiaStaking, otherPremiaStaking, alice, parseEther('50'));
+    await bridge(
+      premiaStaking,
+      otherPremiaStaking,
+      alice,
+      parseEther('50'),
+      0,
+      0,
+    );
 
     await premiaStaking.connect(alice).startWithdraw(parseEther('50'));
     await otherPremiaStaking.connect(alice).startWithdraw(parseEther('10'));
@@ -612,7 +626,14 @@ describe('PremiaStaking', () => {
     expect(await premiaStaking.totalSupply()).to.eq(parseEther('100'));
     expect(await otherPremiaStaking.totalSupply()).to.eq(0);
 
-    await bridge(premiaStaking, otherPremiaStaking, alice, parseEther('10'));
+    await bridge(
+      premiaStaking,
+      otherPremiaStaking,
+      alice,
+      parseEther('10'),
+      0,
+      0,
+    );
 
     expect(await premia.balanceOf(premiaStaking.address)).to.eq(
       parseEther('100'),

@@ -38,6 +38,16 @@ interface IPremiaStaking {
         uint256 discount; // Discount when amount is reached
     }
 
+    event ReceiveFromChain(
+        uint16 indexed srcChainId,
+        bytes indexed srcAddress,
+        address indexed toAddress,
+        uint256 amount,
+        uint64 nonce,
+        uint64 stakePeriod,
+        uint64 lockedUntil
+    );
+
     /**
      * @notice add premia tokens as available tokens to be distributed as rewards
      * @param amount amount of premia tokens to add as rewards
