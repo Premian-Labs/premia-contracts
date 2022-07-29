@@ -1,6 +1,7 @@
 import { ethers } from 'hardhat';
 import {
   ERC20Placeholder__factory,
+  ExchangeHelper__factory,
   FeeCollector__factory,
   FeeDiscount__factory,
   ProxyUpgradeableOwnable__factory,
@@ -90,26 +91,16 @@ async function main() {
   };
 
   const ivolOracleProxyAddress = '0xD77203CDBd33B849Dc0B03A4f906F579A766C0A6';
+  const exchangeHelper = await new ExchangeHelper__factory(deployer).deploy();
 
   const { proxyManager } = await deployV2(
     ftm.tokenAddress,
+    exchangeHelper.address,
     premia,
     fixedFromFloat(0.03),
-    fixedFromFloat(0.025),
     feeCollectorProxy.address,
     feeDiscountProxy.address,
     ivolOracleProxyAddress,
-    {
-      // SpookySwap
-      sushiswapFactory: '0x152eE697f2E276fA89E96742e9bB9aB1F2E61bE3',
-      sushiswapInitHash:
-        '0xcdf2deca40a0bd56de8e3ce5c7df6727e5b1bf2ac96f283fa9c4b3e6b42ea9d2',
-
-      // SpiritSwap
-      uniswapV2Factory: '0xef45d134b73241eda7703fa787148d9c9f4950b0',
-      uniswapV2InitHash:
-        '0xe242e798f6cee26a9cb0bbf24653bf066e5356ffeac160907fe2cc108e238617',
-    },
   );
 
   await deployPool(proxyManager, usdc, ftm, 100);
