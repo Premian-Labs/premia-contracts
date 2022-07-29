@@ -117,18 +117,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         _creditTo(toAddress, amount, stakePeriod, lockedUntil);
 
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage u = l.userInfo[toAddress];
-
-        emit ReceiveFromChain(
-            srcChainId,
-            srcAddress,
-            toAddress,
-            amount,
-            nonce,
-            u.stakePeriod,
-            u.lockedUntil
-        );
+        emit ReceiveFromChain(srcChainId, srcAddress, toAddress, amount, nonce);
     }
 
     function _creditTo(
@@ -164,6 +153,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
                 }
             }
         }
+
+        emit BridgeLock(toAddress, u.stakePeriod, u.lockedUntil);
 
         _mint(toAddress, amount);
 

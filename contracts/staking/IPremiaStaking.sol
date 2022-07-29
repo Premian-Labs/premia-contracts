@@ -38,12 +38,8 @@ interface IPremiaStaking {
         uint256 discount; // Discount when amount is reached
     }
 
-    event ReceiveFromChain(
-        uint16 indexed srcChainId,
-        bytes indexed srcAddress,
-        address indexed toAddress,
-        uint256 amount,
-        uint64 nonce,
+    event BridgeLock(
+        address indexed user,
         uint64 stakePeriod,
         uint64 lockedUntil
     );
