@@ -6,11 +6,13 @@ pragma solidity ^0.8.0;
 import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
 import {IERC173} from "@solidstate/contracts/access/IERC173.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
+import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC1155EnumerableInternal, ERC1155EnumerableStorage, EnumerableSet} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
 import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
+import {IExchangeHelper} from "../interfaces/IExchangeHelper.sol";
 import {OptionMath} from "../libraries/OptionMath.sol";
 import {IPremiaMining} from "../mining/IPremiaMining.sol";
 import {IVolatilitySurfaceOracle} from "../oracle/IVolatilitySurfaceOracle.sol";
@@ -27,6 +29,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
     using PoolStorage for PoolStorage.Layout;
+    using SafeERC20 for IERC20;
 
     struct Interval {
         uint256 contractSize;
@@ -40,6 +43,7 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
     address internal immutable FEE_RECEIVER_ADDRESS;
     address internal immutable FEE_DISCOUNT_ADDRESS;
     address internal immutable IVOL_ORACLE_ADDRESS;
+    address internal immutable EXCHANGE_HELPER;
 
     int128 internal immutable FEE_PREMIUM_64x64;
 
@@ -61,7 +65,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 feePremium64x64
+        int128 feePremium64x64,
+        address exchangeHelper
     ) {
         IVOL_ORACLE_ADDRESS = ivolOracle;
         WRAPPED_NATIVE_TOKEN = wrappedNativeToken;
@@ -70,6 +75,8 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
         // PremiaFeeDiscount contract address
         FEE_DISCOUNT_ADDRESS = feeDiscountAddress;
         FEE_PREMIUM_64x64 = feePremium64x64;
+
+        EXCHANGE_HELPER = exchangeHelper;
 
         UNDERLYING_FREE_LIQ_TOKEN_ID = PoolStorage.formatTokenId(
             PoolStorage.TokenType.UNDERLYING_FREE_LIQ,
@@ -1489,6 +1496,50 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
         l.userTVL[user][isCallPool] = newUserTVL;
         l.totalTVL[isCallPool] = newTotalTVL;
+    }
+
+    /**
+     * @dev pull token from user, send to exchangeHelper and trigger a trade from exchangeHelper
+     * @param tokenIn token to be taken from user
+     * @param tokenOut token to swap for. should always equal to the pool token.
+     * @param amountInMax maximum amount to used for swap. The reset will be refunded
+     * @param amountOutMin minimum amount taken from the trade.
+     * @param refundAddress where to send the un-used tokenIn, in any
+     * @param callee exchange address to execute the trade
+     * @param data calldata to execute the trade
+     * @return amountCredited amount of tokenOut we got from the trade.
+     */
+    function _swapForPoolTokens(
+        address tokenIn,
+        address tokenOut,
+        uint256 amountInMax,
+        uint256 amountOutMin,
+        address callee,
+        bytes memory data,
+        address refundAddress
+    ) internal returns (uint256 amountCredited) {
+        if (msg.value > 0) {
+            require(tokenIn == WRAPPED_NATIVE_TOKEN, "wrong tokenIn");
+            IWETH(WRAPPED_NATIVE_TOKEN).deposit{value: msg.value}();
+            IWETH(WRAPPED_NATIVE_TOKEN).transfer(EXCHANGE_HELPER, msg.value);
+        }
+        if (amountInMax > 0) {
+            IERC20(tokenIn).safeTransferFrom(
+                msg.sender,
+                EXCHANGE_HELPER,
+                amountInMax
+            );
+        }
+
+        amountCredited = IExchangeHelper(EXCHANGE_HELPER).swapWithToken(
+            tokenIn,
+            tokenOut,
+            amountInMax + msg.value,
+            callee,
+            data,
+            refundAddress
+        );
+        require(amountCredited >= amountOutMin, "not enough output from trade");
     }
 
     /**

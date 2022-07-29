@@ -23,7 +23,8 @@ contract PoolSell is IPoolSell, PoolInternal {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 feePremium64x64
+        int128 feePremium64x64,
+        address exchangeHelper
     )
         PoolInternal(
             ivolOracle,
@@ -31,7 +32,8 @@ contract PoolSell is IPoolSell, PoolInternal {
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            feePremium64x64
+            feePremium64x64,
+            exchangeHelper
         )
     {}
 

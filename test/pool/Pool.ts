@@ -6,6 +6,7 @@ import {
   OptionMath__factory,
   PoolMock,
   PoolMock__factory,
+  ExchangeHelper__factory,
 } from '../../typechain';
 import { ONE_ADDRESS } from '../utils/constants';
 import {
@@ -27,6 +28,8 @@ describe('Pool', function () {
 
   beforeEach(async function () {
     optionMath = await new OptionMath__factory(owner).deploy();
+    const exchangeHelper = await new ExchangeHelper__factory(owner).deploy();
+
     instance = await new PoolMock__factory(owner).deploy(
       ethers.constants.AddressZero,
       ethers.constants.AddressZero,
@@ -34,20 +37,9 @@ describe('Pool', function () {
       ONE_ADDRESS,
       ethers.constants.AddressZero,
       fixedFromFloat(0.01),
+      exchangeHelper.address,
     );
   });
-
-  // describeBehaviorOfPoolBase(
-  //   {
-  //     deploy: async () => instance,
-  //     getPoolUtil: async () => p,
-  //     mintERC1155: (recipient, tokenId, amount) =>
-  //       instance['mint(address,uint256,uint256)'](recipient, tokenId, amount),
-  //     burnERC1155: (recipient, tokenId, amount) =>
-  //       instance['burn(address,uint256,uint256)'](recipient, tokenId, amount),
-  //   },
-  //   ['#supportsInterface'],
-  // );
 
   describe('__internal', function () {
     describe('#_formatTokenId', function () {

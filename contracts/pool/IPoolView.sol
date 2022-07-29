@@ -167,4 +167,10 @@ interface IPoolView is IERC1155Metadata {
         external
         view
         returns (int128 spotOffset64x64);
+
+    /**
+     * @notice get the exchange helper address
+     * @return exchangeHelper exchange helper address
+     */
+    function getExchangeHelper() external view returns (address exchangeHelper);
 }

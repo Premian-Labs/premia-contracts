@@ -37,7 +37,6 @@ interface PoolWriteBehaviorArgs {
   getPoolUtil: () => Promise<PoolUtil>;
   apyFeeRate: BigNumberish;
   getUniswap: () => Promise<IUniswap>;
-  getExchangeHelper: () => Promise<IExchangeHelper>;
 }
 
 export function describeBehaviorOfPoolWrite({
@@ -47,7 +46,6 @@ export function describeBehaviorOfPoolWrite({
   getPoolUtil,
   apyFeeRate,
   getUniswap,
-  getExchangeHelper,
 }: PoolWriteBehaviorArgs) {
   describe('::PoolWrite', () => {
     let owner: SignerWithAddress;
@@ -61,7 +59,7 @@ export function describeBehaviorOfPoolWrite({
     let underlying: ERC20Mock;
     let p: PoolUtil;
     let uniswap: IUniswap;
-    let exchangeHelper: IExchangeHelper;
+    let exchangeHelperAddress: string;
 
     before(async () => {
       [owner, buyer, lp1, lp2] = await ethers.getSigners();
@@ -75,7 +73,7 @@ export function describeBehaviorOfPoolWrite({
       feeReceiver = p.feeReceiver;
       base = await getBase();
       underlying = await getUnderlying();
-      exchangeHelper = await getExchangeHelper();
+      exchangeHelperAddress = await instance.callStatic.getExchangeHelper();
     });
 
     describe('#quote', function () {
@@ -1493,7 +1491,7 @@ export function describeBehaviorOfPoolWrite({
               swapMaxTokenIn,
               expectedCostPoolToken,
               uniswapPath,
-              exchangeHelper.address,
+              exchangeHelperAddress,
               timestamp + 86400,
             ]);
 
@@ -1591,7 +1589,7 @@ export function describeBehaviorOfPoolWrite({
               expectedCostPoolToken,
               maxEthToPay,
               uniswapPath,
-              exchangeHelper.address,
+              exchangeHelperAddress,
               timestamp + 86400,
             ]);
 
@@ -1685,7 +1683,7 @@ export function describeBehaviorOfPoolWrite({
               expectedCostPoolToken,
               expectedInputAmount,
               uniswapPath,
-              exchangeHelper.address,
+              exchangeHelperAddress,
               timestamp + 86400,
             ]);
 
