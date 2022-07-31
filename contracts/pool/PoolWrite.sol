@@ -10,7 +10,7 @@ import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
-import {PoolSwap} from "./PoolSwap.sol";
+import {PoolInternal} from "./PoolInternal.sol";
 import {PoolStorage} from "./PoolStorage.sol";
 import {IPoolWrite} from "./IPoolWrite.sol";
 
@@ -18,7 +18,7 @@ import {IPoolWrite} from "./IPoolWrite.sol";
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolWrite is IPoolWrite, PoolSwap {
+contract PoolWrite is IPoolWrite, PoolInternal {
     using SafeERC20 for IERC20;
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
@@ -34,7 +34,7 @@ contract PoolWrite is IPoolWrite, PoolSwap {
         int128 feePremium64x64,
         address exchangeProxy
     )
-        PoolSwap(
+        PoolInternal(
             ivolOracle,
             wrappedNativeToken,
             premiaMining,

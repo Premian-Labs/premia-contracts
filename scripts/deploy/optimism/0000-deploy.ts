@@ -2,18 +2,21 @@ import { ethers } from 'hardhat';
 import {
   ExchangeHelper__factory,
   FeeCollector__factory,
-  FeeDiscount__factory,
   ProxyUpgradeableOwnable__factory,
 } from '../../../typechain';
 import { deployPool, deployV2, PoolToken } from '../../utils/deployV2';
 import { fixedFromFloat } from '@premia/utils';
+import { ZERO_ADDRESS } from '../../../test/utils/constants';
 
 async function main() {
   const [deployer] = await ethers.getSigners();
 
-  const treasury = '0xa079C6B032133b95Cf8b3d273D27eeb6B110a469';
+  const treasury = '0xfc5538E1E9814eD6487b407FaD7b5710739A1cC2';
 
-  const xPremia = '0x0d7d0eFdCbfe5466b387e127709F24603920f671';
+  const premia = ZERO_ADDRESS;
+  const feeDiscount = ZERO_ADDRESS;
+
+  // const xPremia = '';
 
   const feeCollectorImpl = await new FeeCollector__factory(deployer).deploy(
     treasury,
@@ -29,42 +32,42 @@ async function main() {
 
   console.log(`FeeCollector proxy deployed at ${feeCollectorProxy.address})`);
 
-  const feeDiscountImpl = await new FeeDiscount__factory(deployer).deploy(
-    xPremia,
-  );
-  console.log(
-    `FeeDiscount impl deployed at ${feeDiscountImpl.address} (Args: ${xPremia})`,
-  );
+  // const feeDiscountImpl = await new FeeDiscount__factory(deployer).deploy(
+  //   xPremia,
+  // );
+  // console.log(
+  //   `FeeDiscount impl deployed at ${feeDiscountImpl.address} (Args: ${xPremia})`,
+  // );
 
-  const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
-    deployer,
-  ).deploy(feeDiscountImpl.address);
-  console.log(`FeeDiscount proxy deployed at ${feeDiscountProxy.address})`);
+  // const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
+  //   deployer,
+  // ).deploy(feeDiscountImpl.address);
+  // console.log(`FeeDiscount proxy deployed at ${feeDiscountProxy.address})`);
 
-  const premia = '0x51fc0f6660482ea73330e414efd7808811a57fa2';
+  // const premia = '0x51fc0f6660482ea73330e414efd7808811a57fa2';
 
   const eth: PoolToken = {
-    tokenAddress: '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1',
-    oracleAddress: '0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612',
+    tokenAddress: '0x4200000000000000000000000000000000000006',
+    oracleAddress: '0x13e3ee699d1909e989722e753853ae30b17e08c5',
     minimum: '0.05',
   };
 
-  const dai: PoolToken = {
-    tokenAddress: '0xDA10009cBd5D07dd0CeCc66161FC93D7c9000da1',
-    oracleAddress: '0xc5C8E77B397E531B8EC06BFb0048328B30E9eCfB',
+  const usdc: PoolToken = {
+    tokenAddress: '0x7F5c764cBc14f9669B88837ca1490cCa17c31607',
+    oracleAddress: '0x16a9fa2fda030272ce99b29cf780dfa30361e0f3',
     minimum: '200',
   };
 
   const btc: PoolToken = {
-    tokenAddress: '0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f',
-    oracleAddress: '0x6ce185860a4963106506C203335A2910413708e9',
+    tokenAddress: '0x68f180fcCe6836688e9084f035309E29Bf0A2095',
+    oracleAddress: '0xd702dd976fb76fffc2d3963d037dfdae5b04e593',
     minimum: '0.005',
   };
 
-  const link: PoolToken = {
-    tokenAddress: '0xf97f4df75117a78c1A5a0DBb814Af92458539FB4',
-    oracleAddress: '0x86E53CF1B870786351Da77A57575e79CB55812CB',
-    minimum: '5',
+  const op: PoolToken = {
+    tokenAddress: '0x4200000000000000000000000000000000000042',
+    oracleAddress: '0x0d276fc14719f9292d5c1ea2198673d1f4269246',
+    minimum: '100',
   };
 
   const ivolOracleProxyAddress = '0xC4B2C51f969e0713E799De73b7f130Fb7Bb604CF';
@@ -76,13 +79,13 @@ async function main() {
     premia,
     fixedFromFloat(0.03),
     feeCollectorProxy.address,
-    feeDiscountProxy.address,
+    feeDiscount,
     ivolOracleProxyAddress,
   );
 
-  await deployPool(proxyManager, dai, eth, 100);
-  await deployPool(proxyManager, dai, btc, 100);
-  await deployPool(proxyManager, dai, link, 100);
+  await deployPool(proxyManager, usdc, eth, 100);
+  await deployPool(proxyManager, usdc, btc, 100);
+  await deployPool(proxyManager, usdc, op, 100);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

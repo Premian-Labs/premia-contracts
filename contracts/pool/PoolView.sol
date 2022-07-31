@@ -27,7 +27,8 @@ contract PoolView is IPoolView, PoolInternal {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 feePremium64x64
+        int128 feePremium64x64,
+        address exchangeHelper
     )
         PoolInternal(
             ivolOracle,
@@ -35,7 +36,8 @@ contract PoolView is IPoolView, PoolInternal {
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            feePremium64x64
+            feePremium64x64,
+            exchangeHelper
         )
     {
         NFT_DISPLAY_ADDRESS = nftDisplay;
@@ -259,5 +261,27 @@ contract PoolView is IPoolView, PoolInternal {
                 address(this),
                 tokenId
             );
+    }
+
+    /**
+     * @inheritdoc IPoolView
+     */
+    function getSpotOffset64x64()
+        external
+        view
+        returns (int128 spotOffset64x64)
+    {
+        spotOffset64x64 = PoolStorage.layout().spotOffset64x64;
+    }
+
+    /**
+     * @inheritdoc IPoolView
+     */
+    function getExchangeHelper()
+        external
+        view
+        returns (address exchangeHelper)
+    {
+        exchangeHelper = EXCHANGE_HELPER;
     }
 }

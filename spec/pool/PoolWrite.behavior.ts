@@ -37,7 +37,6 @@ interface PoolWriteBehaviorArgs {
   getPoolUtil: () => Promise<PoolUtil>;
   apyFeeRate: BigNumberish;
   getUniswap: () => Promise<IUniswap>;
-  getExchangeHelper: () => Promise<IExchangeHelper>;
 }
 
 export function describeBehaviorOfPoolWrite({
@@ -47,7 +46,6 @@ export function describeBehaviorOfPoolWrite({
   getPoolUtil,
   apyFeeRate,
   getUniswap,
-  getExchangeHelper,
 }: PoolWriteBehaviorArgs) {
   describe('::PoolWrite', () => {
     let owner: SignerWithAddress;
@@ -61,7 +59,7 @@ export function describeBehaviorOfPoolWrite({
     let underlying: ERC20Mock;
     let p: PoolUtil;
     let uniswap: IUniswap;
-    let exchangeHelper: IExchangeHelper;
+    let exchangeHelperAddress: string;
 
     before(async () => {
       [owner, buyer, lp1, lp2] = await ethers.getSigners();
@@ -75,7 +73,7 @@ export function describeBehaviorOfPoolWrite({
       feeReceiver = p.feeReceiver;
       base = await getBase();
       underlying = await getUnderlying();
-      exchangeHelper = await getExchangeHelper();
+      exchangeHelperAddress = await instance.callStatic.getExchangeHelper();
     });
 
     describe('#quote', function () {
@@ -181,6 +179,51 @@ export function describeBehaviorOfPoolWrite({
               (await getMinPrice(purchaseAmountNb, maturity.toNumber())),
           );
         });
+
+        it('accounts for spot price adjustment', async () => {
+          const isCall = true;
+
+          // set offset to 1%
+          await instance
+            .connect(owner)
+            .setSpotOffset64x64(ethers.BigNumber.from('0x28f5c28f5c28f5c'));
+
+          await p.depositLiquidity(
+            owner,
+            parseOption(isCall ? '100' : '100000', isCall),
+            isCall,
+          );
+          await instance
+            .connect(owner)
+            .setCLevel64x64(fixedFromFloat('0.1'), isCall);
+
+          const maturity = await getMaturity(5);
+          const strike64x64 = fixedFromFloat(getStrike(!isCall, 2000 * 1.01));
+          const purchaseAmountNb = 10;
+          const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+          const quote = await instance.callStatic.quote(
+            buyer.address,
+            maturity,
+            strike64x64,
+            purchaseAmount,
+            isCall,
+          );
+
+          const spot64x64 = fixedFromFloat(2000 * 1.01);
+
+          expect(strike64x64).to.be.lt(spot64x64);
+
+          const intrinsicValue64x64 = spot64x64
+            .sub(strike64x64)
+            .mul(BigNumber.from(purchaseAmountNb))
+            .div(BigNumber.from(2000 * 1.01));
+
+          expect(fixedToNumber(quote.baseCost64x64)).to.almost(
+            fixedToNumber(intrinsicValue64x64) +
+              (await getMinPrice(purchaseAmountNb, maturity.toNumber())),
+          );
+        });
       });
 
       describe('put', () => {
@@ -268,6 +311,54 @@ export function describeBehaviorOfPoolWrite({
             fixedToNumber(intrinsicValue64x64) +
               (await getMinPrice(
                 purchaseAmountNb * getStrike(!isCall, 2000),
+                maturity.toNumber(),
+              )),
+            0.1,
+          );
+        });
+
+        it('accounts for spot price adjustment', async () => {
+          const isCall = false;
+
+          // set offset to 1%
+          await instance
+            .connect(owner)
+            .setSpotOffset64x64(ethers.BigNumber.from('0x28f5c28f5c28f5c'));
+
+          await p.depositLiquidity(
+            owner,
+            parseOption(isCall ? '100' : '100000', isCall),
+            isCall,
+          );
+          await instance
+            .connect(owner)
+            .setCLevel64x64(fixedFromFloat('0.1'), isCall);
+
+          const maturity = await getMaturity(5);
+          const strike64x64 = fixedFromFloat(getStrike(!isCall, 2000 * 0.99));
+          const purchaseAmountNb = 5;
+          const purchaseAmount = parseUnderlying(purchaseAmountNb.toString());
+
+          const quote = await instance.callStatic.quote(
+            buyer.address,
+            maturity,
+            strike64x64,
+            purchaseAmount,
+            isCall,
+          );
+
+          const spot64x64 = fixedFromFloat(2000 * 0.99);
+
+          expect(strike64x64).to.be.gt(spot64x64);
+
+          const intrinsicValue64x64 = strike64x64
+            .sub(spot64x64)
+            .mul(BigNumber.from(purchaseAmountNb));
+
+          expect(fixedToNumber(quote.baseCost64x64)).to.almost(
+            fixedToNumber(intrinsicValue64x64) +
+              (await getMinPrice(
+                purchaseAmountNb * getStrike(!isCall, 2000 * 0.99),
                 maturity.toNumber(),
               )),
             0.1,
@@ -1400,7 +1491,7 @@ export function describeBehaviorOfPoolWrite({
               swapMaxTokenIn,
               expectedCostPoolToken,
               uniswapPath,
-              exchangeHelper.address,
+              exchangeHelperAddress,
               timestamp + 86400,
             ]);
 
@@ -1498,7 +1589,7 @@ export function describeBehaviorOfPoolWrite({
               expectedCostPoolToken,
               maxEthToPay,
               uniswapPath,
-              exchangeHelper.address,
+              exchangeHelperAddress,
               timestamp + 86400,
             ]);
 
@@ -1592,7 +1683,7 @@ export function describeBehaviorOfPoolWrite({
               expectedCostPoolToken,
               expectedInputAmount,
               uniswapPath,
-              exchangeHelper.address,
+              exchangeHelperAddress,
               timestamp + 86400,
             ]);
 

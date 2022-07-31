@@ -25,50 +25,22 @@ import { diamondCut } from './diamond';
 import { BigNumber } from 'ethers';
 import { fixedFromFloat } from '@premia/utils';
 
-export const UNISWAP_V2_FACTORY = '0x5C69bEe701ef814a2B6a3EDD4B1652CB9cc5aA6f';
-export const SUSHISWAP_FACTORY = '0xC0AEe478e3658e2610c5F7A4A2E1777cE9e4f2Ac';
-
-export const UNISWAP_V2_INIT_HASH =
-  '0x96e8ac4277198ff8b6f785478aa9a39f403cb768dd02cbee326c3e7da348845f';
-export const SUSHISWAP_INIT_HASH =
-  '0xe18a34eb0e04b04f7a0ac29a6e80748dca96319b42c54d679cb821dca90c6303';
-
 export interface PoolToken {
   tokenAddress: string;
   oracleAddress: string;
   minimum: string;
 }
 
-export interface DEXOverrides {
-  uniswapV2Factory?: string;
-  uniswapV2InitHash?: string;
-  sushiswapFactory?: string;
-  sushiswapInitHash?: string;
-}
-
 export async function deployV2(
   weth: string,
+  exchangeHelper: string,
   premia: string,
   fee64x64: BigNumber,
-  utilizationFee64x64: BigNumber,
   feeReceiver: string,
   premiaFeeDiscount: string,
   ivolOracleProxyAddress?: string,
-  dexOverrides?: DEXOverrides,
 ) {
   const [deployer] = await ethers.getSigners();
-
-  const getSushiswapFactory = () =>
-    dexOverrides?.sushiswapFactory ?? SUSHISWAP_FACTORY;
-
-  const getUniswapV2Factory = () =>
-    dexOverrides?.uniswapV2Factory ?? UNISWAP_V2_FACTORY;
-
-  const getSushiswapInitHash = () =>
-    dexOverrides?.sushiswapInitHash ?? SUSHISWAP_INIT_HASH;
-
-  const getUniswapV2InitHash = () =>
-    dexOverrides?.uniswapV2InitHash ?? UNISWAP_V2_INIT_HASH;
 
   //
 
@@ -196,12 +168,12 @@ export async function deployV2(
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
-    utilizationFee64x64,
+    exchangeHelper,
   );
   await poolBaseImpl.deployed();
 
   console.log(
-    `PoolBase Implementation : ${poolBaseImpl.address} (${ivolOracle.address}, ${weth}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64})`,
+    `PoolBase Implementation : ${poolBaseImpl.address} ${ivolOracle.address} ${weth} ${premiaMining.address} ${feeReceiver} ${premiaFeeDiscount} ${fee64x64} ${exchangeHelper}`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -226,22 +198,12 @@ export async function deployV2(
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
-    utilizationFee64x64,
-    getUniswapV2Factory(),
-    getSushiswapFactory(),
-    getUniswapV2InitHash(),
-    getSushiswapInitHash(),
+    exchangeHelper,
   );
   await poolWriteImpl.deployed();
 
   console.log(
-    `PoolWrite Implementation : ${poolWriteImpl.address} (${
-      ivolOracle.address
-    }, ${weth}, ${
-      premiaMining.address
-    }, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}, ${getUniswapV2Factory()}, ${getSushiswapFactory()} ${getUniswapV2InitHash()} ${getSushiswapInitHash()}) (OptionMath: ${
-      optionMath.address
-    })`,
+    `PoolWrite Implementation : ${poolWriteImpl.address} ${ivolOracle.address} ${weth} ${premiaMining.address} ${feeReceiver} ${premiaFeeDiscount} ${fee64x64} ${exchangeHelper} (OptionMath: ${optionMath.address})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -266,12 +228,12 @@ export async function deployV2(
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
-    utilizationFee64x64,
+    exchangeHelper,
   );
   await poolExerciseImpl.deployed();
 
   console.log(
-    `PoolExercise Implementation : ${poolExerciseImpl.address} (${ivolOracle.address}, ${weth}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
+    `PoolExercise Implementation : ${poolExerciseImpl.address} ${ivolOracle.address} ${weth} ${premiaMining.address} ${feeReceiver} ${premiaFeeDiscount} ${fee64x64} ${exchangeHelper} (OptionMath: ${optionMath.address})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -297,12 +259,12 @@ export async function deployV2(
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
-    utilizationFee64x64,
+    exchangeHelper,
   );
   await poolViewImpl.deployed();
 
   console.log(
-    `PoolView Implementation : ${poolViewImpl.address} (${nftDisplay.address}, ${ivolOracle.address}, ${weth}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
+    `PoolView Implementation : ${poolViewImpl.address} ${nftDisplay.address} ${ivolOracle.address} ${weth} ${premiaMining.address} ${feeReceiver} ${premiaFeeDiscount} ${fee64x64} ${exchangeHelper} (OptionMath: ${optionMath.address})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -327,12 +289,12 @@ export async function deployV2(
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
-    utilizationFee64x64,
+    exchangeHelper,
   );
   await poolSellImpl.deployed();
 
   console.log(
-    `PoolSell Implementation : ${poolSellImpl.address} (${ivolOracle.address}, ${weth}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}) (OptionMath: ${optionMath.address})`,
+    `PoolSell Implementation : ${poolSellImpl.address} ${ivolOracle.address} ${weth} ${premiaMining.address} ${feeReceiver} ${premiaFeeDiscount} ${fee64x64} ${exchangeHelper} (OptionMath: ${optionMath.address})`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -354,12 +316,12 @@ export async function deployV2(
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
-    utilizationFee64x64,
+    exchangeHelper,
   );
   await poolSettingsImpl.deployed();
 
   console.log(
-    `PoolSettings Implementation : ${poolSettingsImpl.address} (${ivolOracle.address}, ${weth}, ${premiaMining.address}, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64})`,
+    `PoolSettings Implementation : ${poolSettingsImpl.address} ${ivolOracle.address} ${weth} ${premiaMining.address} ${feeReceiver} ${premiaFeeDiscount} ${fee64x64} ${exchangeHelper}`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -384,22 +346,12 @@ export async function deployV2(
     feeReceiver,
     premiaFeeDiscount,
     fee64x64,
-    utilizationFee64x64,
-    getUniswapV2Factory(),
-    getSushiswapFactory(),
-    getUniswapV2InitHash(),
-    getSushiswapInitHash(),
+    exchangeHelper,
   );
   await poolIOImpl.deployed();
 
   console.log(
-    `PoolIO Implementation : ${poolIOImpl.address} (${
-      ivolOracle.address
-    }, ${weth}, ${
-      premiaMining.address
-    }, ${feeReceiver}, ${premiaFeeDiscount}, ${fee64x64}, ${utilizationFee64x64}, ${getUniswapV2Factory()}, ${getSushiswapFactory()} ${getUniswapV2InitHash()} ${getSushiswapInitHash()}) (OptionMath: ${
-      optionMath.address
-    })`,
+    `PoolIO Implementation : ${poolIOImpl.address} ${ivolOracle.address} ${weth} ${premiaMining.address} ${feeReceiver} ${premiaFeeDiscount} ${fee64x64} ${exchangeHelper} (OptionMath: ${optionMath.address})`,
   );
 
   registeredSelectors = registeredSelectors.concat(

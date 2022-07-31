@@ -17,11 +17,13 @@ import {
 interface PoolViewBehaviorArgs {
   deploy: () => Promise<IPool>;
   getPoolUtil: () => Promise<PoolUtil>;
+  getExchangeHelper: () => Promise<string>;
 }
 
 export function describeBehaviorOfPoolView({
   deploy,
   getPoolUtil,
+  getExchangeHelper,
 }: PoolViewBehaviorArgs) {
   describe('::PoolView', () => {
     let buyer: SignerWithAddress;
@@ -195,6 +197,14 @@ export function describeBehaviorOfPoolView({
         );
         expect(result.liquidityBeforePosition).to.eq(parseUnderlying('425'));
         expect(result.positionSize).to.eq(0);
+      });
+    });
+
+    describe('#getExchangeHelper', () => {
+      it('returns exchange helper address', async () => {
+        expect(await instance.callStatic.getExchangeHelper()).to.equal(
+          await getExchangeHelper(),
+        );
       });
     });
   });

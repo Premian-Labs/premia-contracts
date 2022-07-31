@@ -30,7 +30,6 @@ interface PoolIOBehaviorArgs {
   getPoolUtil: () => Promise<PoolUtil>;
   apyFeeRate: BigNumberish;
   getUniswap: () => Promise<IUniswap>;
-  getExchangeHelper: () => Promise<IExchangeHelper>;
 }
 
 export function describeBehaviorOfPoolIO({
@@ -40,7 +39,6 @@ export function describeBehaviorOfPoolIO({
   getPoolUtil,
   apyFeeRate,
   getUniswap,
-  getExchangeHelper,
 }: PoolIOBehaviorArgs) {
   describe('::PoolIO', () => {
     let owner: SignerWithAddress;
@@ -52,7 +50,7 @@ export function describeBehaviorOfPoolIO({
     let underlying: ERC20Mock;
     let p: PoolUtil;
     let uniswap: IUniswap;
-    let exchangeHelper: IExchangeHelper;
+    let exchangeHelperAddress: string;
 
     before(async () => {
       [owner, buyer, lp1, lp2] = await ethers.getSigners();
@@ -65,7 +63,7 @@ export function describeBehaviorOfPoolIO({
       uniswap = await getUniswap();
       base = await getBase();
       underlying = await getUnderlying();
-      exchangeHelper = await getExchangeHelper();
+      exchangeHelperAddress = await instance.callStatic.getExchangeHelper();
     });
 
     // TODO: test #annihilate, #reassign, and #reassignBatch with divest = false
@@ -285,7 +283,7 @@ export function describeBehaviorOfPoolIO({
               amount,
               maxTokenIn,
               uniswapPath,
-              exchangeHelper.address,
+              exchangeHelperAddress,
               timestamp + 86400,
             ]);
 
@@ -335,7 +333,7 @@ export function describeBehaviorOfPoolIO({
               amount,
               maxEthToPay,
               uniswapPath,
-              exchangeHelper.address,
+              exchangeHelperAddress,
               timestamp + 86400,
             ]);
 
@@ -400,7 +398,7 @@ export function describeBehaviorOfPoolIO({
               totalAmountToPay, // amountIn
               amount, // amountOut min
               uniswapPath,
-              exchangeHelper.address,
+              exchangeHelperAddress,
               timestamp + 86400,
             ]);
 

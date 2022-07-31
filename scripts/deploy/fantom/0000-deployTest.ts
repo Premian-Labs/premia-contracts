@@ -1,6 +1,7 @@
 import { deployPool, deployV2, PoolToken } from '../../utils/deployV2';
 import { fixedFromFloat } from '@premia/utils';
 import {
+  ExchangeHelper__factory,
   PremiaErc20__factory,
   PremiaMakerKeeper__factory,
   ProcessExpiredKeeper__factory,
@@ -60,25 +61,16 @@ async function main() {
     minimum: '10',
   };
 
+  const exchangeHelper = await new ExchangeHelper__factory(deployer).deploy();
+
   const { premiaDiamond, proxyManager } = await deployV2(
     ftm.tokenAddress,
+    exchangeHelper.address,
     premia.address,
     fixedFromFloat(0.03),
-    fixedFromFloat(0.025),
     contracts.premiaMaker.address,
     contracts.xPremia.address,
     '0xD77203CDBd33B849Dc0B03A4f906F579A766C0A6',
-    {
-      // SpookySwap
-      sushiswapFactory: '0x152eE697f2E276fA89E96742e9bB9aB1F2E61bE3',
-      sushiswapInitHash:
-        '0xcdf2deca40a0bd56de8e3ce5c7df6727e5b1bf2ac96f283fa9c4b3e6b42ea9d2',
-
-      // SpiritSwap
-      uniswapV2Factory: '0xef45d134b73241eda7703fa787148d9c9f4950b0',
-      uniswapV2InitHash:
-        '0xe242e798f6cee26a9cb0bbf24653bf066e5356ffeac160907fe2cc108e238617',
-    },
   );
 
   await deployPool(proxyManager, usdc, ftm, 100);

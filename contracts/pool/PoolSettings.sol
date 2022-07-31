@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
+import {OptionMath} from "../libraries/OptionMath.sol";
 import {IPoolSettings} from "./IPoolSettings.sol";
 import {PoolInternal} from "./PoolInternal.sol";
 import {PoolStorage} from "./PoolStorage.sol";
@@ -31,7 +32,8 @@ contract PoolSettings is IPoolSettings, PoolInternal {
         address premiaMining,
         address feeReceiver,
         address feeDiscountAddress,
-        int128 feePremium64x64
+        int128 feePremium64x64,
+        address exchangeHelper
     )
         PoolInternal(
             ivolOracle,
@@ -39,7 +41,8 @@ contract PoolSettings is IPoolSettings, PoolInternal {
             premiaMining,
             feeReceiver,
             feeDiscountAddress,
-            feePremium64x64
+            feePremium64x64,
+            exchangeHelper
         )
     {}
 
@@ -157,5 +160,19 @@ contract PoolSettings is IPoolSettings, PoolInternal {
      */
     function setFeeApy64x64(int128 feeApy64x64) external onlyProtocolOwner {
         PoolStorage.layout().feeApy64x64 = feeApy64x64;
+    }
+
+    /**
+     * @inheritdoc IPoolSettings
+     */
+    function setSpotOffset64x64(int128 spotOffset64x64)
+        external
+        onlyProtocolOwner
+    {
+        require(spotOffset64x64 >= 0, "too low");
+        require(spotOffset64x64 < OptionMath.ONE_64x64, "too high");
+        PoolStorage.layout().spotOffset64x64 = spotOffset64x64;
+
+        emit UpdateSpotOffset(spotOffset64x64);
     }
 }

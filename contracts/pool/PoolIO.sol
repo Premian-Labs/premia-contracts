@@ -8,7 +8,7 @@ import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
 
 import {IPoolIO} from "./IPoolIO.sol";
-import {PoolSwap} from "./PoolSwap.sol";
+import {PoolInternal} from "./PoolInternal.sol";
 import {PoolStorage} from "./PoolStorage.sol";
 import {IPremiaMining} from "../mining/IPremiaMining.sol";
 
@@ -16,7 +16,7 @@ import {IPremiaMining} from "../mining/IPremiaMining.sol";
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolIO is IPoolIO, PoolSwap {
+contract PoolIO is IPoolIO, PoolInternal {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -47,7 +47,7 @@ contract PoolIO is IPoolIO, PoolSwap {
         int128 feePremium64x64,
         address exchangeProxy
     )
-        PoolSwap(
+        PoolInternal(
             ivolOracle,
             wrappedNativeToken,
             premiaMining,

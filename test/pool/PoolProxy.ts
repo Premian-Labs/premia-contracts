@@ -190,7 +190,6 @@ describe('PoolProxy', function () {
     getPoolUtil: async () => p,
     apyFeeRate: FEE_APY,
     getUniswap: async () => uniswap,
-    getExchangeHelper: async () => exchangeHelper,
   });
 
   describeBehaviorOfPoolSell({
@@ -207,6 +206,7 @@ describe('PoolProxy', function () {
   describeBehaviorOfPoolView({
     deploy: async () => instance,
     getPoolUtil: async () => p,
+    getExchangeHelper: async () => exchangeHelper.address,
   });
 
   describeBehaviorOfPoolWrite({
@@ -216,6 +216,5 @@ describe('PoolProxy', function () {
     getPoolUtil: async () => p,
     apyFeeRate: FEE_APY,
     getUniswap: async () => uniswap,
-    getExchangeHelper: async () => exchangeHelper,
   });
 });

@@ -63,7 +63,7 @@ interface PoolUtilArgs {
   premiaMining: PremiaMining;
   ivolOracle: VolatilitySurfaceOracle;
   feeReceiver: any;
-  exchangeProxy: string; // 0x exchange proxy addr
+  exchangeHelper: string; // 0x exchange proxy addr
 }
 
 export const ONE_DAY = 3600 * 24;
@@ -209,7 +209,7 @@ export function getMaxCost(
 
 export async function deployVePremiaMocked(
   owner: SignerWithAddress,
-  exchangeProxy?: string,
+  exchangeHelper?: string,
 ) {
   const erc20Factory = new ERC20Mock__factory(owner);
   const premia = await erc20Factory.deploy('PREMIA', 18);
@@ -219,7 +219,7 @@ export async function deployVePremiaMocked(
     ethers.constants.AddressZero,
     premia.address,
     rewardToken.address,
-    exchangeProxy ?? ethers.constants.AddressZero,
+    exchangeHelper ?? ethers.constants.AddressZero,
   );
 
   const vePremiaProxy = await new VePremiaProxy__factory(owner).deploy(
@@ -264,7 +264,7 @@ export class PoolUtil {
     priceUnderlying: number,
     feeReceiver: string,
     vePremia: string,
-    exchangeProxy: string,
+    exchangeHelper: string,
     wethAddress?: string,
   ) {
     const erc20Factory = new ERC20Mock__factory(deployer);
@@ -372,6 +372,7 @@ export class PoolUtil {
       feeReceiver,
       vePremia,
       fixedFromFloat(FEE_PREMIUM),
+      exchangeHelper,
     );
     await poolBaseImpl.deployed();
 
@@ -397,7 +398,7 @@ export class PoolUtil {
       feeReceiver,
       vePremia,
       fixedFromFloat(FEE_PREMIUM),
-      exchangeProxy,
+      exchangeHelper,
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -418,6 +419,7 @@ export class PoolUtil {
       feeReceiver,
       vePremia,
       fixedFromFloat(FEE_PREMIUM),
+      exchangeHelper,
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -441,6 +443,7 @@ export class PoolUtil {
       feeReceiver,
       vePremia,
       fixedFromFloat(FEE_PREMIUM),
+      exchangeHelper,
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -465,6 +468,7 @@ export class PoolUtil {
       feeReceiver,
       vePremia,
       fixedFromFloat(FEE_PREMIUM),
+      exchangeHelper,
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -488,6 +492,7 @@ export class PoolUtil {
       feeReceiver,
       vePremia,
       fixedFromFloat(FEE_PREMIUM),
+      exchangeHelper,
     );
     await poolSellImpl.deployed();
 
@@ -510,6 +515,7 @@ export class PoolUtil {
       feeReceiver,
       vePremia,
       fixedFromFloat(FEE_PREMIUM),
+      exchangeHelper,
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -533,7 +539,7 @@ export class PoolUtil {
       feeReceiver,
       vePremia,
       fixedFromFloat(FEE_PREMIUM),
-      exchangeProxy,
+      exchangeHelper,
     );
     registeredSelectors = registeredSelectors.concat(
       await diamondCut(
@@ -607,7 +613,7 @@ export class PoolUtil {
     );
 
     return new PoolUtil({
-      exchangeProxy,
+      exchangeHelper,
       premiaDiamond,
       pool,
       poolWeth,

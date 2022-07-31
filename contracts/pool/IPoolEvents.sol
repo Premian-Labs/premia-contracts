@@ -82,4 +82,6 @@ interface IPoolEvents {
     );
 
     event UpdateSteepness(int128 steepness64x64, bool isCallPool);
+
+    event UpdateSpotOffset(int128 spotOffset64x64);
 }
