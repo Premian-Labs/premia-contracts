@@ -49,6 +49,14 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         EXCHANGE_HELPER = exchangeHelper;
     }
 
+    function _beforeTokenTransfer(
+        address from,
+        address to,
+        uint256
+    ) internal virtual override {
+        require(from == address(0) || to == address(0), "cant transfer token");
+    }
+
     function _send(
         address from,
         uint16 dstChainId,

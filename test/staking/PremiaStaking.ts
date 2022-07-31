@@ -290,6 +290,17 @@ describe('PremiaStaking', () => {
     });
   });
 
+  it('should fail transferring token', async () => {
+    await premia
+      .connect(alice)
+      .approve(premiaStaking.address, parseEther('100'));
+    await premiaStaking.connect(alice).stake(parseEther('100'), 0);
+
+    await expect(
+      premiaStaking.connect(alice).transfer(bob.address, parseEther('1')),
+    ).to.be.revertedWith('cant transfer token');
+  });
+
   it('should successfully stake with permit', async () => {
     const { timestamp } = await ethers.provider.getBlock('latest');
     const deadline = timestamp + 3600;
