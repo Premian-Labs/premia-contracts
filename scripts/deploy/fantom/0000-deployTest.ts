@@ -78,15 +78,10 @@ async function main() {
   await deployPool(proxyManager, usdc, btc, 75);
   await deployPool(proxyManager, usdc, yfi, 75);
 
-  const premiaMakerKeeper = await new PremiaMakerKeeper__factory(
-    deployer,
-  ).deploy(contracts.premiaMaker.address, premiaDiamond.address);
-
   const processExpiredKeeper = await new ProcessExpiredKeeper__factory(
     deployer,
   ).deploy(premiaDiamond.address);
 
-  console.log('PremiaMakerKeeper', premiaMakerKeeper.address);
   console.log('ProcessExpiredKeeper', processExpiredKeeper.address);
 }
 

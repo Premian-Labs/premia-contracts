@@ -2,7 +2,6 @@ import { deployPool, deployV2, PoolToken } from '../../utils/deployV2';
 import { fixedFromFloat } from '@premia/utils';
 import {
   PremiaErc20__factory,
-  PremiaMakerKeeper__factory,
   ProcessExpiredKeeper__factory,
 } from '../../../typechain';
 import { ethers } from 'hardhat';
@@ -69,15 +68,10 @@ async function main() {
   await deployPool(proxyManager, dai, btc, 100);
   await deployPool(proxyManager, dai, link, 100);
 
-  const premiaMakerKeeper = await new PremiaMakerKeeper__factory(
-    deployer,
-  ).deploy(contracts.premiaMaker.address, premiaDiamond.address);
-
   const processExpiredKeeper = await new ProcessExpiredKeeper__factory(
     deployer,
   ).deploy(premiaDiamond.address);
 
-  console.log('PremiaMakerKeeper', premiaMakerKeeper.address);
   console.log('ProcessExpiredKeeper', processExpiredKeeper.address);
 }
 
