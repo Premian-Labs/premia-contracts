@@ -15,17 +15,15 @@ import {IPremiaMaker} from "./interfaces/IPremiaMaker.sol";
 import {IPoolIO} from "./pool/IPoolIO.sol";
 import {IPremiaStaking} from "./staking/IPremiaStaking.sol";
 
-// ToDo : Update contract for USDC rewards
-
 /// @author Premia
 /// @title A contract receiving all protocol fees, swapping them for premia
 contract PremiaMaker is IPremiaMaker, OwnableInternal {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
 
-    // The premia token
-    address private immutable PREMIA;
-    // The premia staking contract (xPremia)
+    // The USDC token
+    address private immutable USDC;
+    // The premia staking contract
     address private immutable PREMIA_STAKING;
 
     // The treasury address which will receive a portion of the protocol fees
@@ -39,15 +37,15 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
     //////////////////////////////////////////////////
     //////////////////////////////////////////////////
 
-    // @param premia The premia token
-    // @param premiaStaking The premia staking contract (xPremia)
+    // @param usdc The USDC token
+    // @param premiaStaking The premia staking contract
     // @param treasury The treasury address which will receive a portion of the protocol fees
     constructor(
-        address premia,
+        address usdc,
         address premiaStaking,
         address treasury
     ) {
-        PREMIA = premia;
+        USDC = usdc;
         PREMIA_STAKING = premiaStaking;
         TREASURY = treasury;
     }
@@ -164,9 +162,9 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
         IERC20(token).safeIncreaseAllowance(router, amountMinusFee);
 
         address wrappedNativeToken = IUniswapV2Router02(router).WETH();
-        uint256 premiaAmount;
+        uint256 usdcAmount;
 
-        if (token != PREMIA) {
+        if (token != USDC) {
             address[] memory path;
 
             if (token != wrappedNativeToken) {
@@ -175,12 +173,12 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
                     path = new address[](3);
                     path[0] = token;
                     path[1] = wrappedNativeToken;
-                    path[2] = PREMIA;
+                    path[2] = USDC;
                 }
             } else {
                 path = new address[](2);
                 path[0] = token;
-                path[1] = PREMIA;
+                path[1] = USDC;
             }
 
             uint256[] memory amounts = IUniswapV2Router02(router)
@@ -192,24 +190,24 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
                     block.timestamp
                 );
 
-            premiaAmount = amounts[amounts.length - 1];
+            usdcAmount = amounts[amounts.length - 1];
         } else {
-            premiaAmount = amountMinusFee;
+            usdcAmount = amountMinusFee;
 
             // Just for the event
             router = address(0);
         }
 
-        if (premiaAmount > 0) {
-            IERC20(PREMIA).approve(PREMIA_STAKING, premiaAmount);
-            IPremiaStaking(PREMIA_STAKING).addRewards(premiaAmount);
+        if (usdcAmount > 0) {
+            IERC20(USDC).approve(PREMIA_STAKING, usdcAmount);
+            IPremiaStaking(PREMIA_STAKING).addRewards(usdcAmount);
 
             emit Converted(
                 msg.sender,
                 router,
                 token,
                 amountMinusFee,
-                premiaAmount
+                usdcAmount
             );
         }
     }
