@@ -136,14 +136,19 @@ contract PremiaMaker is IPremiaMaker, OwnableInternal {
         IPoolIO(pool).withdrawFees();
 
         for (uint256 i = 0; i < tokens.length; i++) {
-            convert(router, tokens[i]);
+            _convert(router, tokens[i]);
         }
+    }
+
+    function convert(address router, address token) external {
+        _convert(router, token);
     }
 
     /// @notice Convert tokens into Premia, and send Premia to PremiaStaking contract
     /// @param router The UniswapRouter contract to use to perform the swap (Must be whitelisted)
     /// @param token The token to swap to premia
-    function convert(address router, address token) public {
+    function _convert(address router, address token) internal {
+        require(msg.sender == tx.origin, "cant convert from contract");
         PremiaMakerStorage.Layout storage l = PremiaMakerStorage.layout();
 
         require(
