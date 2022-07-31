@@ -54,7 +54,15 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         address to,
         uint256
     ) internal virtual override {
-        require(from == address(0) || to == address(0), "cant transfer token");
+        if (from == address(0) || to == address(0)) return;
+
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[from];
+
+        require(
+            u.lockedUntil <= block.timestamp,
+            "cant transfer tokens while locked"
+        );
     }
 
     function _send(
