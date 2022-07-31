@@ -1,6 +1,7 @@
 import { deployPool, deployV2, PoolToken } from '../../utils/deployV2';
 import { fixedFromFloat } from '@premia/utils';
 import {
+  ExchangeHelper__factory,
   PremiaErc20__factory,
   ProcessExpiredKeeper__factory,
 } from '../../../typechain';
@@ -14,6 +15,7 @@ async function main() {
   const contracts = await deployV1(
     deployer,
     deployer.address,
+    ethers.constants.AddressZero,
     true,
     true,
     premia.address,
@@ -53,15 +55,16 @@ async function main() {
     minimum: '5',
   };
 
+  const exchangeHelper = await ExchangeHelper__factory(deployer).deploy();
+
   const { premiaDiamond, proxyManager } = await deployV2(
     weth,
+    exchangeHelper.address,
     premia.address,
     fixedFromFloat(0.03),
-    fixedFromFloat(0.025),
     contracts.premiaMaker.address,
-    contracts.xPremia.address,
+    contracts.vePremia.address,
     '0x9e88fe5e5249CD6429269B072c9476b6908dCBf2',
-    { sushiswapFactory: '0xc35DADB65012eC5796536bD9864eD8773aBc74C4' },
   );
 
   await deployPool(proxyManager, dai, eth, 100);
