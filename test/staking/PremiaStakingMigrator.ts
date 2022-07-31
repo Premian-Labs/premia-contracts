@@ -10,9 +10,11 @@ import {
   VePremia,
 } from '../../typechain';
 import { ethers, network } from 'hardhat';
+import { expect } from 'chai';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { resetHardhat } from '../utils/evm';
 import { deployV1 } from '../../scripts/utils/deployV1';
+import { bnToNumber } from '../utils/math';
 
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
@@ -28,7 +30,7 @@ let xPremiaOld: PremiaStaking;
 let feeDiscountOld: IPremiaFeeDiscountOld;
 let vePremia: VePremia;
 
-describe('PremiaStakingWithFeeDiscount', () => {
+describe('PremiaStakingMigrator', () => {
   beforeEach(async () => {
     await ethers.provider.send('hardhat_reset', [
       { forking: { jsonRpcUrl, blockNumber } },
@@ -79,65 +81,36 @@ describe('PremiaStakingWithFeeDiscount', () => {
       premia.address,
       feeDiscountOld.address,
       xPremiaOld.address,
-      vePremia.address,
     );
 
-    await feeDiscountOld.connect(treasury).setNewContract(vePremia.address);
+    await feeDiscountOld.connect(treasury).setNewContract(migrator.address);
   });
 
   afterEach(async () => {
     await resetHardhat();
   });
 
-  // ToDo : Update migrate tests
+  it('should successfully withdraw locked tokens', async () => {
+    const staker = await ethers.getSigner(
+      '0x6e4be9b794b1432a8b735ef5b3040392a27b4372',
+    );
 
-  // it('should successfully migrate locked tokens', async () => {
-  //   const staker = await ethers.getSigner(
-  //     '0x6e4be9b794b1432a8b735ef5b3040392a27b4372',
-  //   );
-  //
-  //   await network.provider.request({
-  //     method: 'hardhat_impersonateAccount',
-  //     params: [staker.address],
-  //   });
-  //
-  //   await feeDiscountOld.connect(staker).migrateStake();
-  //   expect(bnToNumber(await premia.balanceOf(xPremia.address))).to.almost(500);
-  //   expect(bnToNumber(await xPremia.balanceOf(xPremia.address))).to.almost(500);
-  //
-  //   const userInfo = await xPremia.getUserInfo(staker.address);
-  //   expect(bnToNumber(userInfo.balance)).to.almost(500);
-  //   expect(userInfo.stakePeriod).to.eq(15552000);
-  //   expect(userInfo.lockedUntil).to.eq(1652794739);
-  // });
+    await network.provider.request({
+      method: 'hardhat_impersonateAccount',
+      params: [staker.address],
+    });
 
-  // it('should successfully migrate old xPremia to new xPremia', async () => {
-  //   const staker = await ethers.getSigner(
-  //     '0xb45b74eb35790d20e5f4225b0ac49d5bb074696e',
-  //   );
-  //
-  //   await network.provider.request({
-  //     method: 'hardhat_impersonateAccount',
-  //     params: [staker.address],
-  //   });
-  //
-  //   await premia.connect(treasury).approve(xPremia.address, 1000);
-  //   await xPremia.connect(treasury).deposit(1000);
-  //   await premia.connect(treasury).transfer(xPremia.address, 1000);
-  //
-  //   const xPremiaOldAmount = await xPremiaOld.balanceOf(staker.address);
-  //   await xPremiaOld
-  //     .connect(staker)
-  //     .approve(xPremia.address, parseEther('1000000'));
-  //   await xPremia.connect(staker).migrateWithoutLock(xPremiaOldAmount);
-  //
-  //   expect(await xPremiaOld.balanceOf(staker.address)).to.eq(0);
-  //
-  //   expect(bnToNumber(await xPremia.balanceOf(staker.address))).to.almost(
-  //     117281.23,
-  //   );
-  //   expect(bnToNumber(await premia.balanceOf(xPremia.address))).to.almost(
-  //     234562.46,
-  //   );
-  // });
+    const oldPremiaBalance = await premia.balanceOf(xPremiaOld.address);
+
+    expect(await premia.balanceOf(staker.address)).to.eq(0);
+
+    await feeDiscountOld.connect(staker).migrateStake();
+
+    expect(
+      bnToNumber(
+        oldPremiaBalance.sub(await premia.balanceOf(xPremiaOld.address)),
+      ),
+    ).to.almost(500);
+    expect(bnToNumber(await premia.balanceOf(staker.address))).to.almost(500);
+  });
 });
