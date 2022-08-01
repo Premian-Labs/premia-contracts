@@ -40,9 +40,7 @@ async function main() {
   const feeReceiver = '0xB447ae5Cf7367a29bF69ED7C961Eb1D20c10AB9E';
   const feeDiscountAddress = '0x82f4E449476430246FDaa3A820E1910f303cD16D';
   const fee64x64 = fixedFromFloat(0.03);
-  const feeApy64x64 = fixedFromFloat(0.025);
   const optionMath = '0x99e603c3Ac7b0cB5CE6460D878750C1930DdB356';
-  const sushiswapFactory = '0xc35DADB65012eC5796536bD9864eD8773aBc74C4';
   const nftDisplay = '0x3bc3654819abceE7581940315ed156e2323f086a';
   const poolDiamondAddress = '0xB07aEe041eF7aa301BDd8926886E6E45ae71D52b';
 
@@ -85,7 +83,7 @@ async function main() {
   );
 
   console.log(
-    `PoolBase : ${poolBase.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
+    `PoolBase : ${poolBase.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper.address}`,
   );
 
   await poolBase.deployed();
@@ -117,7 +115,7 @@ async function main() {
   );
 
   console.log(
-    `PoolExercise : ${poolExercise.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
+    `PoolExercise : ${poolExercise.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper.address}`,
   );
 
   await poolExercise.deployed();
@@ -149,7 +147,7 @@ async function main() {
   );
 
   console.log(
-    `PoolIO : ${poolIO.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64} ${UNISWAP_V2_FACTORY} ${sushiswapFactory} ${UNISWAP_V2_INIT_HASH} ${SUSHISWAP_INIT_HASH}`,
+    `PoolIO : ${poolIO.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper.address}`,
   );
 
   await poolIO.deployed();
@@ -181,7 +179,7 @@ async function main() {
   );
 
   console.log(
-    `PoolSell : ${poolSell.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
+    `PoolSell : ${poolSell.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper.address}`,
   );
 
   await poolSell.deployed();
@@ -211,7 +209,7 @@ async function main() {
 
   await poolSettings.deployed();
   console.log(
-    `PoolSettings : ${poolSettings.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
+    `PoolSettings : ${poolSettings.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper.address}`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -244,7 +242,7 @@ async function main() {
 
   await poolView.deployed();
   console.log(
-    `PoolView : ${poolView.address} ${nftDisplay} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
+    `PoolView : ${poolView.address} ${nftDisplay} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper.address}`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -276,7 +274,7 @@ async function main() {
 
   await poolWrite.deployed();
   console.log(
-    `PoolWrite : ${poolWrite.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64} ${UNISWAP_V2_FACTORY} ${sushiswapFactory} ${UNISWAP_V2_INIT_HASH} ${SUSHISWAP_INIT_HASH}`,
+    `PoolWrite : ${poolWrite.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper.address}`,
   );
 
   registeredSelectors = registeredSelectors.concat(
