@@ -687,6 +687,10 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         PremiaStakingStorage.layout().withdrawalDelay = delay;
     }
 
+    function getPendingWithdrawals() external view returns (uint256) {
+        return PremiaStakingStorage.layout().pendingWithdrawal;
+    }
+
     function getPendingWithdrawal(address user)
         external
         view

@@ -1,4 +1,4 @@
 {
   "require": "hardhat/register",
-  "timeout": 60000
+  "timeout": 600000
 }

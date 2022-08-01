@@ -16,7 +16,6 @@ contract PremiaStakingUpgrade is ERC20, OwnableInternal {
     event UserUpgraded(
         address indexed user,
         uint256 oldStake,
-        uint256 stakePeriod,
         uint256 oldBalance,
         uint256 newBalance
     );
@@ -78,9 +77,9 @@ contract PremiaStakingUpgrade is ERC20, OwnableInternal {
         uint256 newBalance = ((oldBalance + oldStake) *
             oldL.xPremiaToPremiaRatio) / 1e18;
 
-        uint256 stakePeriod = user.stakePeriod;
-
         delete oldL.userInfo[userAddress];
+
+        if (oldBalance + oldStake == 0) return;
 
         l.totalPower += _calculateStakeAmountWithBonus(newBalance, 0);
 
@@ -88,15 +87,9 @@ contract PremiaStakingUpgrade is ERC20, OwnableInternal {
         _mint(userAddress, newBalance - oldBalance);
 
         // We emit this event to initialize data correctly for the subgraph
-        emit Stake(userAddress, newBalance, stakePeriod, user.lockedUntil);
+        emit Stake(userAddress, newBalance, 0, block.timestamp);
 
-        emit UserUpgraded(
-            userAddress,
-            oldStake,
-            stakePeriod,
-            oldBalance,
-            newBalance
-        );
+        emit UserUpgraded(userAddress, oldStake, oldBalance, newBalance);
     }
 
     function _getStakePeriodMultiplier(uint256 period)
