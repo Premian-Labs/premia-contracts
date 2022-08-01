@@ -28,6 +28,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     uint256 internal constant INVERSE_BASIS_POINT = 1e4;
     uint64 internal constant MAX_PERIOD = 4 * 365 days;
     uint256 internal constant ACC_REWARD_PRECISION = 1e30;
+    uint256 internal constant MAX_CONTRACT_DISCOUNT = 3000; // -30%
 
     struct UpdateInternalArgs {
         address user;
@@ -603,6 +604,11 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             _balanceOf(user),
             u.stakePeriod
         );
+
+        // If user is a contract, we use a different formula based on % of total power owned by the contract
+        if (msg.sender != tx.origin) {
+            return (userBalance * MAX_CONTRACT_DISCOUNT) / l.totalPower;
+        }
 
         IPremiaStaking.StakeLevel[] memory stakeLevels = _getStakeLevels();
 
