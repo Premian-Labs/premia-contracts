@@ -1,5 +1,6 @@
 import { ethers } from 'hardhat';
 import {
+  ExchangeHelper__factory,
   PoolBase__factory,
   PoolExercise__factory,
   PoolIO__factory,
@@ -12,11 +13,6 @@ import { fixedFromFloat } from '@premia/utils';
 import { diamondCut } from '../../utils/diamond';
 import { Premia__factory } from '../../../typechain';
 import { ZERO_ADDRESS } from '../../../test/utils/constants';
-import {
-  SUSHISWAP_INIT_HASH,
-  UNISWAP_V2_FACTORY,
-  UNISWAP_V2_INIT_HASH,
-} from '../../utils/deployV2';
 
 function printFacets(implAddress: string, factory: any) {
   const facetCuts = [
@@ -49,6 +45,8 @@ async function main() {
   const sushiswapFactory = '0xc35DADB65012eC5796536bD9864eD8773aBc74C4';
   const nftDisplay = '0x3bc3654819abceE7581940315ed156e2323f086a';
   const poolDiamondAddress = '0xB07aEe041eF7aa301BDd8926886E6E45ae71D52b';
+
+  const exchangeHelper = await new ExchangeHelper__factory(deployer).deploy();
 
   const poolDiamond = Premia__factory.connect(poolDiamondAddress, deployer);
 
@@ -83,7 +81,7 @@ async function main() {
     feeReceiver,
     feeDiscountAddress,
     fee64x64,
-    feeApy64x64,
+    exchangeHelper.address,
   );
 
   console.log(
@@ -115,7 +113,7 @@ async function main() {
     feeReceiver,
     feeDiscountAddress,
     fee64x64,
-    feeApy64x64,
+    exchangeHelper.address,
   );
 
   console.log(
@@ -147,11 +145,7 @@ async function main() {
     feeReceiver,
     feeDiscountAddress,
     fee64x64,
-    feeApy64x64,
-    UNISWAP_V2_FACTORY,
-    sushiswapFactory,
-    UNISWAP_V2_INIT_HASH,
-    SUSHISWAP_INIT_HASH,
+    exchangeHelper.address,
   );
 
   console.log(
@@ -183,7 +177,7 @@ async function main() {
     feeReceiver,
     feeDiscountAddress,
     fee64x64,
-    feeApy64x64,
+    exchangeHelper.address,
   );
 
   console.log(
@@ -212,7 +206,7 @@ async function main() {
     feeReceiver,
     feeDiscountAddress,
     fee64x64,
-    feeApy64x64,
+    exchangeHelper.address,
   );
 
   await poolSettings.deployed();
@@ -245,7 +239,7 @@ async function main() {
     feeReceiver,
     feeDiscountAddress,
     fee64x64,
-    feeApy64x64,
+    exchangeHelper.address,
   );
 
   await poolView.deployed();
@@ -277,11 +271,7 @@ async function main() {
     feeReceiver,
     feeDiscountAddress,
     fee64x64,
-    feeApy64x64,
-    UNISWAP_V2_FACTORY,
-    sushiswapFactory,
-    UNISWAP_V2_INIT_HASH,
-    SUSHISWAP_INIT_HASH,
+    exchangeHelper.address,
   );
 
   await poolWrite.deployed();
