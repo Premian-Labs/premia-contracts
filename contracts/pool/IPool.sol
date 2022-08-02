@@ -12,6 +12,7 @@ import {IPoolView} from "./IPoolView.sol";
 import {IPoolWrite} from "./IPoolWrite.sol";
 
 interface IPool is
+    IPoolInternal,
     IPoolBase,
     IPoolEvents,
     IPoolExercise,
