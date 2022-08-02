@@ -2,10 +2,12 @@
 
 pragma solidity ^0.8.0;
 
+import {IPoolSwap} from "./IPoolSwap.sol";
+
 /**
  * @notice Pool option writing interface
  */
-interface IPoolWrite {
+interface IPoolWrite is IPoolSwap {
     /**
      * @notice calculate price of option contract
      * @param feePayer address of the fee payer
@@ -56,29 +58,20 @@ interface IPoolWrite {
      * @notice  swap tokens and purchase option
      * @dev     any attached msg.value will be wrapped.
      *          if tokenIn is wrappedNativeToken, both msg.value {amountInMax} amount of wrappedNativeToken will be used
+     * @param s swap arguments
      * @param maturity timestamp of option maturity
      * @param strike64x64 64x64 fixed point representation of strike price
      * @param contractSize size of option contract
      * @param isCall true for call, false for put
-     * @param tokenIn token to pass in to swap
-     * @param amountInMax amount of tokenIn to trade.
-     * @param amountOutMin min amount out to be used to purchase
-     * @param callee exchange address to call to execute the trade.
-     * @param data data to execute the trade
      * @return baseCost quantity of tokens required to purchase long position
      * @return feeCost quantity of tokens required to pay fees
      */
     function swapAndPurchase(
+        IPoolSwap.SwapArgs memory s,
         uint64 maturity,
         int128 strike64x64,
         uint256 contractSize,
-        bool isCall,
-        address tokenIn,
-        uint256 amountInMax,
-        uint256 amountOutMin,
-        address callee,
-        bytes calldata data,
-        address refundAddress
+        bool isCall
     ) external payable returns (uint256 baseCost, uint256 feeCost);
 
     /**

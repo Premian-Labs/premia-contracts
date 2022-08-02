@@ -1,6 +1,6 @@
 import { ethers } from 'hardhat';
 import { expect } from 'chai';
-import { ERC20Mock, IExchangeHelper, IPool } from '../../typechain';
+import { ERC20Mock, IPool } from '../../typechain';
 import { BigNumberish } from 'ethers';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { fixedFromFloat, fixedToNumber, formatTokenId } from '@premia/utils';
@@ -21,7 +21,6 @@ import {
   parseUnderlying,
   PoolUtil,
 } from '../../test/pool/PoolUtil';
-import { wethSol } from '../../typechain/contracts';
 
 interface PoolIOBehaviorArgs {
   deploy: () => Promise<IPool>;
@@ -287,17 +286,18 @@ export function describeBehaviorOfPoolIO({
               timestamp + 86400,
             ]);
 
-            await instance
-              .connect(buyer)
-              .swapAndDeposit(
-                swapTokenIn,
-                maxTokenIn,
-                amount,
-                uniswap.router.address,
+            await instance.connect(buyer).swapAndDeposit(
+              {
+                tokenIn: swapTokenIn,
+                amountInMax: maxTokenIn,
+                amountOutMin: amount,
+                callee: uniswap.router.address,
+                allowanceTarget: uniswap.router.address,
                 data,
-                buyer.address,
-                isCall,
-              );
+                refundAddress: buyer.address,
+              },
+              isCall,
+            );
 
             const amountAfter = await instance.balanceOf(
               buyer.address,
@@ -338,12 +338,15 @@ export function describeBehaviorOfPoolIO({
             ]);
 
             await instance.connect(buyer).swapAndDeposit(
-              tokenIn,
-              0, // amount in
-              amount,
-              uniswap.router.address,
-              data,
-              buyer.address,
+              {
+                tokenIn,
+                amountInMax: 0,
+                amountOutMin: amount,
+                callee: uniswap.router.address,
+                allowanceTarget: uniswap.router.address,
+                data,
+                refundAddress: buyer.address,
+              },
               isCall,
               {
                 value: maxEthToPay,
@@ -403,12 +406,15 @@ export function describeBehaviorOfPoolIO({
             ]);
 
             await instance.connect(buyer).swapAndDeposit(
-              tokenIn,
-              inAmountInWeth, // weth amount in
-              amount,
-              uniswap.router.address,
-              data,
-              buyer.address,
+              {
+                tokenIn,
+                amountInMax: inAmountInWeth,
+                amountOutMin: amount,
+                callee: uniswap.router.address,
+                allowanceTarget: uniswap.router.address,
+                data,
+                refundAddress: buyer.address,
+              },
               isCall,
               {
                 value: inAmountInEth,

@@ -2,10 +2,12 @@
 
 pragma solidity ^0.8.0;
 
+import {IPoolSwap} from "./IPoolSwap.sol";
+
 /**
  * @notice Pool interface for LP position and platform fee management functions
  */
-interface IPoolIO {
+interface IPoolIO is IPoolSwap {
     /**
      * @notice set timestamp after which reinvestment is disabled
      * @param timestamp timestamp to begin divestment
@@ -24,23 +26,12 @@ interface IPoolIO {
      * @notice  swap any token to collateral asset through exchange proxy and deposit
      * @dev     any attached msg.value will be wrapped.
      *          if tokenIn is wrappedNativeToken, both msg.value and {amountInMax} amount of wrappedNativeToken will be used
-     * @param tokenIn token as swap input.
-     * @param amountInMax max amount of token to trade.
-     * @param amountOutMin min amount of token to taken out of the trade and deposit
-     * @param callee exchange address to call to execute the trade.
-     * @param data calldata to execute the trade
-     * @param refundAddress where to send the un-used tokenIn, in any
+     * @param s swap arguments
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
      */
-    function swapAndDeposit(
-        address tokenIn,
-        uint256 amountInMax,
-        uint256 amountOutMin,
-        address callee,
-        bytes calldata data,
-        address refundAddress,
-        bool isCallPool
-    ) external payable;
+    function swapAndDeposit(IPoolSwap.SwapArgs memory s, bool isCallPool)
+        external
+        payable;
 
     /**
      * @notice redeem pool share tokens for underlying asset

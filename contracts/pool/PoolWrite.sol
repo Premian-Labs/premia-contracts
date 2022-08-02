@@ -13,6 +13,7 @@ import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {PoolInternal} from "./PoolInternal.sol";
 import {PoolStorage} from "./PoolStorage.sol";
 import {IPoolWrite} from "./IPoolWrite.sol";
+import {IPoolSwap} from "./IPoolSwap.sol";
 
 /**
  * @title Premia option pool
@@ -118,28 +119,15 @@ contract PoolWrite is IPoolWrite, PoolInternal {
      * @inheritdoc IPoolWrite
      */
     function swapAndPurchase(
+        IPoolSwap.SwapArgs memory s,
         uint64 maturity,
         int128 strike64x64,
         uint256 contractSize,
-        bool isCall,
-        address tokenIn,
-        uint256 amountInMax,
-        uint256 amountOutMin,
-        address callee,
-        bytes calldata data,
-        address refundAddress
+        bool isCall
     ) public payable returns (uint256 baseCost, uint256 feeCost) {
         address tokenOut = PoolStorage.layout().getPoolToken(isCall);
 
-        uint256 creditAmount = _swapForPoolTokens(
-            tokenIn,
-            tokenOut,
-            amountInMax,
-            amountOutMin,
-            callee,
-            data,
-            refundAddress
-        );
+        uint256 creditAmount = _swapForPoolTokens(s, tokenOut);
 
         // if baseCost + feeCost > creditAmount, it will revert
         (baseCost, feeCost) = _verifyAndPurchase(
@@ -152,7 +140,7 @@ contract PoolWrite is IPoolWrite, PoolInternal {
         uint256 totalCost = baseCost + feeCost;
         if (creditAmount > totalCost) {
             // refund extra token got from the swap.
-            _pushTo(refundAddress, tokenOut, creditAmount - totalCost);
+            _pushTo(s.refundAddress, tokenOut, creditAmount - totalCost);
         }
     }
 
