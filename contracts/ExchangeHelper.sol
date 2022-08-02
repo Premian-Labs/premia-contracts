@@ -31,7 +31,12 @@ contract ExchangeHelper is IExchangeHelper {
         IERC20(sourceToken).approve(allowanceTarget, sourceTokenAmount);
 
         (bool success, ) = callee.call(data);
-        require(success, "swap failed");
+        if (!success) {
+            assembly {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+        }
 
         // refund unused sourceToken
         uint256 sourceLeft = IERC20(sourceToken).balanceOf(address(this));
