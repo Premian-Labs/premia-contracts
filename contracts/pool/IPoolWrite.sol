@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import {IPoolSwap} from "./IPoolSwap.sol";
+import {IPoolInternal} from "./IPoolInternal.sol";
 
 /**
  * @notice Pool option writing interface
  */
-interface IPoolWrite is IPoolSwap {
+interface IPoolWrite {
     /**
      * @notice calculate price of option contract
      * @param feePayer address of the fee payer
@@ -67,7 +67,7 @@ interface IPoolWrite is IPoolSwap {
      * @return feeCost quantity of tokens required to pay fees
      */
     function swapAndPurchase(
-        IPoolSwap.SwapArgs memory s,
+        IPoolInternal.SwapArgs memory s,
         uint64 maturity,
         int128 strike64x64,
         uint256 contractSize,

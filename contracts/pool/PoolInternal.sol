@@ -18,14 +18,14 @@ import {IPremiaMining} from "../mining/IPremiaMining.sol";
 import {IVolatilitySurfaceOracle} from "../oracle/IVolatilitySurfaceOracle.sol";
 import {IFeeDiscount} from "../staking/IFeeDiscount.sol";
 import {IPoolEvents} from "./IPoolEvents.sol";
-import {IPoolSwap} from "./IPoolSwap.sol";
+import {IPoolInternal} from "./IPoolInternal.sol";
 import {PoolStorage} from "./PoolStorage.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
+contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -1505,10 +1505,10 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
      * @param tokenOut token to swap for. should always equal to the pool token.
      * @return amountCredited amount of tokenOut we got from the trade.
      */
-    function _swapForPoolTokens(IPoolSwap.SwapArgs memory s, address tokenOut)
-        internal
-        returns (uint256 amountCredited)
-    {
+    function _swapForPoolTokens(
+        IPoolInternal.SwapArgs memory s,
+        address tokenOut
+    ) internal returns (uint256 amountCredited) {
         if (msg.value > 0) {
             require(s.tokenIn == WRAPPED_NATIVE_TOKEN, "wrong tokenIn");
             IWETH(WRAPPED_NATIVE_TOKEN).deposit{value: msg.value}();

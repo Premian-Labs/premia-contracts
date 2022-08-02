@@ -2,12 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-import {IPoolSwap} from "./IPoolSwap.sol";
+import {IPoolInternal} from "./IPoolInternal.sol";
 
 /**
  * @notice Pool interface for LP position and platform fee management functions
  */
-interface IPoolIO is IPoolSwap {
+interface IPoolIO {
     /**
      * @notice set timestamp after which reinvestment is disabled
      * @param timestamp timestamp to begin divestment
@@ -29,7 +29,7 @@ interface IPoolIO is IPoolSwap {
      * @param s swap arguments
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
      */
-    function swapAndDeposit(IPoolSwap.SwapArgs memory s, bool isCallPool)
+    function swapAndDeposit(IPoolInternal.SwapArgs memory s, bool isCallPool)
         external
         payable;
 

@@ -7,7 +7,7 @@ import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
 import {IPoolIO} from "./IPoolIO.sol";
-import {IPoolSwap} from "./IPoolSwap.sol";
+import {IPoolInternal} from "./IPoolInternal.sol";
 import {PoolInternal} from "./PoolInternal.sol";
 import {PoolStorage} from "./PoolStorage.sol";
 import {IPremiaMining} from "../mining/IPremiaMining.sol";
@@ -71,7 +71,7 @@ contract PoolIO is IPoolIO, PoolInternal {
     /**
      * @inheritdoc IPoolIO
      */
-    function swapAndDeposit(IPoolSwap.SwapArgs memory s, bool isCallPool)
+    function swapAndDeposit(IPoolInternal.SwapArgs memory s, bool isCallPool)
         external
         payable
     {

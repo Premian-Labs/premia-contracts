@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-interface IPoolSwap {
+interface IPoolInternal {
     struct SwapArgs {
         // token to pass in to swap
         address tokenIn;

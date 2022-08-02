@@ -13,7 +13,7 @@ import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {PoolInternal} from "./PoolInternal.sol";
 import {PoolStorage} from "./PoolStorage.sol";
 import {IPoolWrite} from "./IPoolWrite.sol";
-import {IPoolSwap} from "./IPoolSwap.sol";
+import {IPoolInternal} from "./IPoolInternal.sol";
 
 /**
  * @title Premia option pool
@@ -119,7 +119,7 @@ contract PoolWrite is IPoolWrite, PoolInternal {
      * @inheritdoc IPoolWrite
      */
     function swapAndPurchase(
-        IPoolSwap.SwapArgs memory s,
+        IPoolInternal.SwapArgs memory s,
         uint64 maturity,
         int128 strike64x64,
         uint256 contractSize,
