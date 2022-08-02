@@ -18,13 +18,14 @@ import {IPremiaMining} from "../mining/IPremiaMining.sol";
 import {IVolatilitySurfaceOracle} from "../oracle/IVolatilitySurfaceOracle.sol";
 import {IPremiaStaking} from "../staking/IPremiaStaking.sol";
 import {IPoolEvents} from "./IPoolEvents.sol";
+import {IPoolInternal} from "./IPoolInternal.sol";
 import {PoolStorage} from "./PoolStorage.sol";
 
 /**
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
+contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
     using ABDKMath64x64 for int128;
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
@@ -1569,46 +1570,40 @@ contract PoolInternal is IPoolEvents, ERC1155EnumerableInternal {
 
     /**
      * @dev pull token from user, send to exchangeHelper and trigger a trade from exchangeHelper
-     * @param tokenIn token to be taken from user
+     * @param s swap arguments
      * @param tokenOut token to swap for. should always equal to the pool token.
-     * @param amountInMax maximum amount to used for swap. The reset will be refunded
-     * @param amountOutMin minimum amount taken from the trade.
-     * @param refundAddress where to send the un-used tokenIn, in any
-     * @param callee exchange address to execute the trade
-     * @param data calldata to execute the trade
      * @return amountCredited amount of tokenOut we got from the trade.
      */
     function _swapForPoolTokens(
-        address tokenIn,
-        address tokenOut,
-        uint256 amountInMax,
-        uint256 amountOutMin,
-        address callee,
-        bytes memory data,
-        address refundAddress
+        IPoolInternal.SwapArgs memory s,
+        address tokenOut
     ) internal returns (uint256 amountCredited) {
         if (msg.value > 0) {
-            require(tokenIn == WRAPPED_NATIVE_TOKEN, "wrong tokenIn");
+            require(s.tokenIn == WRAPPED_NATIVE_TOKEN, "wrong tokenIn");
             IWETH(WRAPPED_NATIVE_TOKEN).deposit{value: msg.value}();
             IWETH(WRAPPED_NATIVE_TOKEN).transfer(EXCHANGE_HELPER, msg.value);
         }
-        if (amountInMax > 0) {
-            IERC20(tokenIn).safeTransferFrom(
+        if (s.amountInMax > 0) {
+            IERC20(s.tokenIn).safeTransferFrom(
                 msg.sender,
                 EXCHANGE_HELPER,
-                amountInMax
+                s.amountInMax
             );
         }
 
         amountCredited = IExchangeHelper(EXCHANGE_HELPER).swapWithToken(
-            tokenIn,
+            s.tokenIn,
             tokenOut,
-            amountInMax + msg.value,
-            callee,
-            data,
-            refundAddress
+            s.amountInMax + msg.value,
+            s.callee,
+            s.allowanceTarget,
+            s.data,
+            s.refundAddress
         );
-        require(amountCredited >= amountOutMin, "not enough output from trade");
+        require(
+            amountCredited >= s.amountOutMin,
+            "not enough output from trade"
+        );
     }
 
     /**

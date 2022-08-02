@@ -14,6 +14,7 @@ interface IExchangeHelper {
      * @param targetToken target token to buy
      * @param pullAmount amount of source token to start the trade
      * @param callee exchange address to call to execute the trade.
+     * @param allowanceTarget address for which to set allowance for the trade
      * @param data calldata to execute the trade
      * @param refundAddress address that un-used source token goes to
      * @return amountOut quantity of targetToken yielded by swap
@@ -23,6 +24,7 @@ interface IExchangeHelper {
         address targetToken,
         uint256 pullAmount,
         address callee,
+        address allowanceTarget,
         bytes calldata data,
         address refundAddress
     ) external returns (uint256 amountOut);
