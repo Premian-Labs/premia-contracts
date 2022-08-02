@@ -17,26 +17,26 @@ contract ExchangeHelper is IExchangeHelper {
     using SafeERC20 for IERC20;
 
     /**
-     * get token from caller, and perform any transaction
-     * @param sourceToken source token to pull into this address
-     * @param targetToken target token to buy
-     * @param sourceTokenAmount amount of source token to trade
-     * @param callee exchange address to call to execute the trade.
-     * @param data calldata to execute the trade
-     * @param refundAddress address that un-used source token goes to
+     * @inheritdoc IExchangeHelper
      */
     function swapWithToken(
         address sourceToken,
         address targetToken,
         uint256 sourceTokenAmount,
         address callee,
+        address allowanceTarget,
         bytes calldata data,
         address refundAddress
     ) external returns (uint256 amountOut) {
-        IERC20(sourceToken).approve(callee, sourceTokenAmount);
+        IERC20(sourceToken).approve(allowanceTarget, sourceTokenAmount);
 
         (bool success, ) = callee.call(data);
-        require(success, "swap failed");
+        if (!success) {
+            assembly {
+                returndatacopy(0, 0, returndatasize())
+                revert(0, returndatasize())
+            }
+        }
 
         // refund unused sourceToken
         uint256 sourceLeft = IERC20(sourceToken).balanceOf(address(this));

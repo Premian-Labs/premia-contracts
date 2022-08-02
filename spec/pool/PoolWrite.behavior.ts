@@ -1496,16 +1496,19 @@ export function describeBehaviorOfPoolWrite({
             ]);
 
             await instance.connect(buyer).swapAndPurchase(
+              {
+                tokenIn,
+                amountInMax: swapMaxTokenIn,
+                amountOutMin: 0,
+                callee: uniswap.router.address,
+                allowanceTarget: uniswap.router.address,
+                data,
+                refundAddress: buyer.address,
+              },
               maturity,
               strike64x64,
               purchaseAmount,
               isCall,
-              tokenIn,
-              swapMaxTokenIn,
-              0, // how much to take out from swap. Uniswap will assert it
-              uniswap.router.address, // exchange to trade on
-              data,
-              buyer.address,
             );
 
             const newNonPoolTokenBalance = await (isCall
@@ -1594,16 +1597,19 @@ export function describeBehaviorOfPoolWrite({
             ]);
 
             await instance.connect(buyer).swapAndPurchase(
+              {
+                tokenIn: uniswap.weth.address,
+                amountInMax: 0,
+                amountOutMin: 0,
+                callee: uniswap.router.address,
+                allowanceTarget: uniswap.router.address,
+                data,
+                refundAddress: buyer.address,
+              },
               maturity,
               strike64x64,
               purchaseAmount,
               isCall,
-              uniswap.weth.address, // tokenIn
-              0,
-              0,
-              uniswap.router.address, // exchange to trade on
-              data,
-              buyer.address,
               { value: maxEthToPay },
             );
 
@@ -1688,16 +1694,19 @@ export function describeBehaviorOfPoolWrite({
             ]);
 
             await instance.connect(buyer).swapAndPurchase(
+              {
+                tokenIn: uniswap.weth.address,
+                amountInMax: wethToPay,
+                amountOutMin: expectedCostPoolToken,
+                callee: uniswap.router.address,
+                allowanceTarget: uniswap.router.address,
+                data,
+                refundAddress: buyer.address,
+              },
               maturity,
               strike64x64,
               purchaseAmount,
               isCall,
-              uniswap.weth.address, // tokenIn
-              wethToPay,
-              expectedCostPoolToken,
-              uniswap.router.address, // exchange to trade on
-              data,
-              buyer.address,
               { value: ethToPay },
             );
 
