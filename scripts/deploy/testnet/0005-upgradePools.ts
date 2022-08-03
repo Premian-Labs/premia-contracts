@@ -1,5 +1,6 @@
 import { ethers } from 'hardhat';
 import {
+  ExchangeHelper__factory,
   PoolBase__factory,
   PoolExercise__factory,
   PoolIO__factory,
@@ -7,16 +8,11 @@ import {
   PoolSettings__factory,
   PoolView__factory,
   PoolWrite__factory,
+  Premia__factory,
 } from '../../../typechain';
 import { fixedFromFloat } from '@premia/utils';
 import { diamondCut } from '../../utils/diamond';
-import { Premia__factory } from '../../../typechain';
 import { ZERO_ADDRESS } from '../../../test/utils/constants';
-import {
-  SUSHISWAP_INIT_HASH,
-  UNISWAP_V2_FACTORY,
-  UNISWAP_V2_INIT_HASH,
-} from '../../utils/deployV2';
 
 function printFacets(implAddress: string, factory: any) {
   const facetCuts = [
@@ -44,11 +40,12 @@ async function main() {
   const feeReceiver = '0xB447ae5Cf7367a29bF69ED7C961Eb1D20c10AB9E';
   const feeDiscountAddress = '0x82f4E449476430246FDaa3A820E1910f303cD16D';
   const fee64x64 = fixedFromFloat(0.03);
-  const feeApy64x64 = fixedFromFloat(0.025);
   const optionMath = '0x99e603c3Ac7b0cB5CE6460D878750C1930DdB356';
   const sushiswapFactory = '0xc35DADB65012eC5796536bD9864eD8773aBc74C4';
   const nftDisplay = '0x3bc3654819abceE7581940315ed156e2323f086a';
   const poolDiamondAddress = '0xB07aEe041eF7aa301BDd8926886E6E45ae71D52b';
+
+  const exchangeHelper = await new ExchangeHelper__factory(deployer).deploy();
 
   const poolDiamond = Premia__factory.connect(poolDiamondAddress, deployer);
 
@@ -83,11 +80,11 @@ async function main() {
     feeReceiver,
     feeDiscountAddress,
     fee64x64,
-    feeApy64x64,
+    exchangeHelper.address,
   );
 
   console.log(
-    `PoolBase : ${poolBase.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
+    `PoolBase : ${poolBase.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper.address}`,
   );
 
   await poolBase.deployed();
@@ -115,11 +112,11 @@ async function main() {
     feeReceiver,
     feeDiscountAddress,
     fee64x64,
-    feeApy64x64,
+    exchangeHelper.address,
   );
 
   console.log(
-    `PoolExercise : ${poolExercise.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
+    `PoolExercise : ${poolExercise.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper.address}`,
   );
 
   await poolExercise.deployed();
@@ -147,15 +144,11 @@ async function main() {
     feeReceiver,
     feeDiscountAddress,
     fee64x64,
-    feeApy64x64,
-    UNISWAP_V2_FACTORY,
-    sushiswapFactory,
-    UNISWAP_V2_INIT_HASH,
-    SUSHISWAP_INIT_HASH,
+    exchangeHelper.address,
   );
 
   console.log(
-    `PoolIO : ${poolIO.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64} ${UNISWAP_V2_FACTORY} ${sushiswapFactory} ${UNISWAP_V2_INIT_HASH} ${SUSHISWAP_INIT_HASH}`,
+    `PoolIO : ${poolIO.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper.address}`,
   );
 
   await poolIO.deployed();
@@ -183,11 +176,11 @@ async function main() {
     feeReceiver,
     feeDiscountAddress,
     fee64x64,
-    feeApy64x64,
+    exchangeHelper.address,
   );
 
   console.log(
-    `PoolSell : ${poolSell.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
+    `PoolSell : ${poolSell.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper.address}`,
   );
 
   await poolSell.deployed();
@@ -212,12 +205,12 @@ async function main() {
     feeReceiver,
     feeDiscountAddress,
     fee64x64,
-    feeApy64x64,
+    exchangeHelper.address,
   );
 
   await poolSettings.deployed();
   console.log(
-    `PoolSettings : ${poolSettings.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
+    `PoolSettings : ${poolSettings.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper.address}`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -245,12 +238,12 @@ async function main() {
     feeReceiver,
     feeDiscountAddress,
     fee64x64,
-    feeApy64x64,
+    exchangeHelper.address,
   );
 
   await poolView.deployed();
   console.log(
-    `PoolView : ${poolView.address} ${nftDisplay} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64}`,
+    `PoolView : ${poolView.address} ${nftDisplay} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper.address}`,
   );
 
   registeredSelectors = registeredSelectors.concat(
@@ -277,16 +270,12 @@ async function main() {
     feeReceiver,
     feeDiscountAddress,
     fee64x64,
-    feeApy64x64,
-    UNISWAP_V2_FACTORY,
-    sushiswapFactory,
-    UNISWAP_V2_INIT_HASH,
-    SUSHISWAP_INIT_HASH,
+    exchangeHelper.address,
   );
 
   await poolWrite.deployed();
   console.log(
-    `PoolWrite : ${poolWrite.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${feeApy64x64} ${UNISWAP_V2_FACTORY} ${sushiswapFactory} ${UNISWAP_V2_INIT_HASH} ${SUSHISWAP_INIT_HASH}`,
+    `PoolWrite : ${poolWrite.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper.address}`,
   );
 
   registeredSelectors = registeredSelectors.concat(
