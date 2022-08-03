@@ -41,7 +41,6 @@ async function main() {
   const feeDiscountAddress = '0x82f4E449476430246FDaa3A820E1910f303cD16D';
   const fee64x64 = fixedFromFloat(0.03);
   const optionMath = '0x99e603c3Ac7b0cB5CE6460D878750C1930DdB356';
-  const sushiswapFactory = '0xc35DADB65012eC5796536bD9864eD8773aBc74C4';
   const nftDisplay = '0x3bc3654819abceE7581940315ed156e2323f086a';
   const poolDiamondAddress = '0xB07aEe041eF7aa301BDd8926886E6E45ae71D52b';
 
