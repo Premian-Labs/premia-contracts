@@ -38,11 +38,7 @@ async function main() {
   const fee64x64 = fixedFromFloat(0.03);
   const optionMath = '0x0F6E8eF18FB5bb61D545fEe60f779D8aED60408F';
   const nftDisplay = '0x32248Ec445D3c72b42f16B040e55BCD5Cf5a8712';
-  const exchangeHelper = ''; // ToDo : add exchange helper
-
-  if (exchangeHelper.length == 0) {
-    throw new Error('Exchange helper address is not set');
-  }
+  const exchangeHelper = '0x380Eb51db6FE77a8876cB0735164cB8AF7f80Cb5';
 
   // const poolDiamond = '0x48D49466CB2EFbF05FaA5fa5E69f2984eDC8d1D7';
 
