@@ -8,10 +8,10 @@ import {
   PoolSettings__factory,
   PoolView__factory,
   PoolWrite__factory,
+  Premia__factory,
 } from '../../../typechain';
 import { fixedFromFloat } from '@premia/utils';
 import { diamondCut } from '../../utils/diamond';
-import { Premia__factory } from '../../../typechain';
 import { ZERO_ADDRESS } from '../../../test/utils/constants';
 
 function printFacets(implAddress: string, factory: any) {
