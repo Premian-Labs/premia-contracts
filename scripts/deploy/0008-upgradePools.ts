@@ -58,6 +58,7 @@ async function main() {
   );
 
   printFacets(poolBase.address, poolBaseFactory);
+  await poolBase.deployed();
 
   //
 
@@ -80,6 +81,7 @@ async function main() {
   );
 
   printFacets(poolExercise.address, poolExerciseFactory);
+  await poolExercise.deployed();
 
   //
 
@@ -102,6 +104,7 @@ async function main() {
   );
 
   printFacets(poolIO.address, poolIOFactory);
+  await poolIO.deployed();
 
   //
 
@@ -124,6 +127,7 @@ async function main() {
   );
 
   printFacets(poolSell.address, poolSellFactory);
+  await poolSell.deployed();
 
   //
 
@@ -143,6 +147,7 @@ async function main() {
   );
 
   printFacets(poolSettings.address, poolSettingsFactory);
+  await poolSettings.deployed();
 
   //
 
@@ -166,6 +171,7 @@ async function main() {
   );
 
   printFacets(poolView.address, poolViewFactory);
+  await poolView.deployed();
 
   //
 
@@ -188,6 +194,7 @@ async function main() {
   );
 
   printFacets(poolWrite.address, poolWriteFactory);
+  await poolWrite.deployed();
 
   //
 }
