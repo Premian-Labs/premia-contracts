@@ -7,7 +7,7 @@ import {
   PoolSettings__factory,
   PoolView__factory,
   PoolWrite__factory,
-} from '../../typechain';
+} from '../../../typechain';
 import { fixedFromFloat } from '@premia/utils';
 
 function printFacets(implAddress: string, factory: any) {
@@ -30,22 +30,23 @@ function printFacets(implAddress: string, factory: any) {
 async function main() {
   const [deployer] = await ethers.getSigners();
 
-  const ivolOracle = '0x3A87bB29b984d672664Aa1dD2d19D2e8b24f0f2A';
-  const weth = '0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2';
-  const premiaMining = '0x9aBB27581c2E46A114F8C367355851e0580e9703';
-  const feeReceiver = '0xC4B2C51f969e0713E799De73b7f130Fb7Bb604CF';
-  const feeDiscountAddress = '0xF1bB87563A122211d40d393eBf1c633c330377F9';
+  const ivolOracle = '0xD77203CDBd33B849Dc0B03A4f906F579A766C0A6';
+  const wftm = '0x21be370D5312f44cB42ce377BC9b8a0cEF1A4C83';
+  const premiaMining = '0x0389996552F5Da35fa6Ddc80B083F78622df3A6f';
+  const feeReceiver = '0xfE817b00f2Cd0e062a5F66067E9A9ef789144Cbf';
+  const feeDiscountAddress = '0xb5Ab6ccd7CaC6bba5DC31EcE0845f282BCD7E527';
   const fee64x64 = fixedFromFloat(0.03);
-  const optionMath = '0x0F6E8eF18FB5bb61D545fEe60f779D8aED60408F';
-  const nftDisplay = '0x32248Ec445D3c72b42f16B040e55BCD5Cf5a8712';
-  const exchangeHelper = '0x380Eb51db6FE77a8876cB0735164cB8AF7f80Cb5';
+  const optionMath = '0x25c1445d8FAc6645Ec88Ff62BaC777e3e7b4840F';
+  const nftDisplay = '0x8D69eAcDFfEE59c5F4C9936aDaBE72EAF891745D';
 
-  // const poolDiamond = '0x48D49466CB2EFbF05FaA5fa5E69f2984eDC8d1D7';
+  const exchangeHelper = '0x5Af7a354C9C35B58b4278aB0e1E934fab01b26Ab';
+
+  // const poolDiamond = '0x834C025fA5Eb6726803a2D67f160fcfABC49a174';
 
   const poolBaseFactory = new PoolBase__factory(deployer);
   const poolBase = await poolBaseFactory.deploy(
     ivolOracle,
-    weth,
+    wftm,
     premiaMining,
     feeReceiver,
     feeDiscountAddress,
@@ -54,13 +55,11 @@ async function main() {
   );
 
   console.log(
-    `PoolBase : ${poolBase.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper}`,
+    `PoolBase : ${poolBase.address} ${ivolOracle} ${wftm} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper}`,
   );
 
   printFacets(poolBase.address, poolBaseFactory);
   await poolBase.deployed();
-
-  //
 
   const poolExerciseFactory = new PoolExercise__factory(
     { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath },
@@ -68,7 +67,7 @@ async function main() {
   );
   const poolExercise = await poolExerciseFactory.deploy(
     ivolOracle,
-    weth,
+    wftm,
     premiaMining,
     feeReceiver,
     feeDiscountAddress,
@@ -77,7 +76,7 @@ async function main() {
   );
 
   console.log(
-    `PoolExercise : ${poolExercise.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper}`,
+    `PoolExercise : ${poolExercise.address} ${ivolOracle} ${wftm} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper}`,
   );
 
   printFacets(poolExercise.address, poolExerciseFactory);
@@ -91,7 +90,7 @@ async function main() {
   );
   const poolIO = await poolIOFactory.deploy(
     ivolOracle,
-    weth,
+    wftm,
     premiaMining,
     feeReceiver,
     feeDiscountAddress,
@@ -100,7 +99,7 @@ async function main() {
   );
 
   console.log(
-    `PoolIO : ${poolIO.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper}`,
+    `PoolIO : ${poolIO.address} ${ivolOracle} ${wftm} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper}`,
   );
 
   printFacets(poolIO.address, poolIOFactory);
@@ -114,7 +113,7 @@ async function main() {
   );
   const poolSell = await poolSellFactory.deploy(
     ivolOracle,
-    weth,
+    wftm,
     premiaMining,
     feeReceiver,
     feeDiscountAddress,
@@ -123,7 +122,7 @@ async function main() {
   );
 
   console.log(
-    `PoolSell : ${poolSell.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper}`,
+    `PoolSell : ${poolSell.address} ${ivolOracle} ${wftm} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper}`,
   );
 
   printFacets(poolSell.address, poolSellFactory);
@@ -134,7 +133,7 @@ async function main() {
   const poolSettingsFactory = new PoolSettings__factory(deployer);
   const poolSettings = await poolSettingsFactory.deploy(
     ivolOracle,
-    weth,
+    wftm,
     premiaMining,
     feeReceiver,
     feeDiscountAddress,
@@ -143,7 +142,7 @@ async function main() {
   );
 
   console.log(
-    `PoolSettings : ${poolSettings.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper}`,
+    `PoolSettings : ${poolSettings.address} ${ivolOracle} ${wftm} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper}`,
   );
 
   printFacets(poolSettings.address, poolSettingsFactory);
@@ -158,7 +157,7 @@ async function main() {
   const poolView = await poolViewFactory.deploy(
     nftDisplay,
     ivolOracle,
-    weth,
+    wftm,
     premiaMining,
     feeReceiver,
     feeDiscountAddress,
@@ -167,7 +166,7 @@ async function main() {
   );
 
   console.log(
-    `PoolView : ${poolView.address} ${nftDisplay} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper}`,
+    `PoolView : ${poolView.address} ${nftDisplay} ${ivolOracle} ${wftm} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper}`,
   );
 
   printFacets(poolView.address, poolViewFactory);
@@ -181,7 +180,7 @@ async function main() {
   );
   const poolWrite = await poolWriteFactory.deploy(
     ivolOracle,
-    weth,
+    wftm,
     premiaMining,
     feeReceiver,
     feeDiscountAddress,
@@ -190,7 +189,7 @@ async function main() {
   );
 
   console.log(
-    `PoolWrite : ${poolWrite.address} ${ivolOracle} ${weth} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper}`,
+    `PoolWrite : ${poolWrite.address} ${ivolOracle} ${wftm} ${premiaMining} ${feeReceiver} ${feeDiscountAddress} ${fee64x64} ${exchangeHelper}`,
   );
 
   printFacets(poolWrite.address, poolWriteFactory);

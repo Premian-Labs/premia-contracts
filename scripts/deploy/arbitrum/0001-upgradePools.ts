@@ -39,11 +39,7 @@ async function main() {
   const optionMath = '0xC7A7275BC25a7Bf07C6D0c2f8784c5450Cb9B8f5';
   const nftDisplay = '0x9d22c080fde848f47b0c7654483715f27e44e433';
 
-  const exchangeHelper = ''; // ToDo : add exchange helper
-
-  if (exchangeHelper.length == 0) {
-    throw new Error('Exchange helper address is not set');
-  }
+  const exchangeHelper = '0xD8A0D357171beBC63CeA559c4e9CD182c1bf25ef';
 
   // const poolDiamond = '0xaD74c7C6485b65dc1E38342D390F72d85DeE3411';
 
@@ -63,6 +59,7 @@ async function main() {
   );
 
   printFacets(poolBase.address, poolBaseFactory);
+  await poolBase.deployed();
 
   const poolExerciseFactory = new PoolExercise__factory(
     { ['contracts/libraries/OptionMath.sol:OptionMath']: optionMath },
@@ -83,6 +80,7 @@ async function main() {
   );
 
   printFacets(poolExercise.address, poolExerciseFactory);
+  await poolExercise.deployed();
 
   //
 
@@ -105,6 +103,7 @@ async function main() {
   );
 
   printFacets(poolIO.address, poolIOFactory);
+  await poolIO.deployed();
 
   //
 
@@ -127,6 +126,7 @@ async function main() {
   );
 
   printFacets(poolSell.address, poolSellFactory);
+  await poolSell.deployed();
 
   //
 
@@ -146,6 +146,7 @@ async function main() {
   );
 
   printFacets(poolSettings.address, poolSettingsFactory);
+  await poolSettings.deployed();
 
   //
 
@@ -169,6 +170,7 @@ async function main() {
   );
 
   printFacets(poolView.address, poolViewFactory);
+  await poolView.deployed();
 
   //
 
@@ -191,6 +193,7 @@ async function main() {
   );
 
   printFacets(poolWrite.address, poolWriteFactory);
+  await poolWrite.deployed();
 
   //
 }
