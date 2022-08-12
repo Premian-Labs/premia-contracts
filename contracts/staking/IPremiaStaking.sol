@@ -133,12 +133,14 @@ interface IPremiaStaking {
     /**
      * @notice Add pending rewards to current stake without impacting current lock after swapping rewards to PREMIA tokens
      * @param callee exchange address to call to execute the trade.
+     * @param allowanceTarget address for which to set allowance for the trade
      * @param data calldata to execute the trade
      * @param amountOutMin minimum amount taken from the trade.
      * @return amountCredited amount of tokenOut we got from the trade.
      */
     function compound(
         address callee,
+        address allowanceTarget,
         bytes memory data,
         uint256 amountOutMin
     ) external returns (uint256 amountCredited);

@@ -360,8 +360,12 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         );
     }
 
+    /**
+     * @inheritdoc IPremiaStaking
+     */
     function compound(
         address callee,
+        address allowanceTarget,
         bytes memory data,
         uint256 amountOutMin
     ) external returns (uint256 amountCredited) {
@@ -387,6 +391,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             PREMIA,
             amount,
             callee,
+            allowanceTarget,
             data,
             msg.sender
         );
