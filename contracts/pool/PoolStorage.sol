@@ -462,7 +462,7 @@ library PoolStorage {
         uint256 tvl = l.totalTVL[isCall];
         uint256 pendingDeposits = l.totalPendingDeposits(isCall);
 
-        if (tvl - pendingDeposits == 0) return 0;
+        if (tvl <= pendingDeposits) return 0;
 
         uint256 availableSupply = (ERC1155EnumerableStorage
             .layout()
