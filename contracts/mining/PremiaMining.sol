@@ -38,7 +38,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         address indexed pool,
         bool indexed isCallPool,
         uint256 votes,
-        uint256 poolUtilizationRate
+        uint256 poolUtilizationRateBPS
     );
 
     constructor(
@@ -116,11 +116,11 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         PremiaMiningStorage.Layout storage l,
         IPremiaMining.PoolAllocPoints memory _data
     ) internal {
-        if (_data.poolUtilizationRate < MIN_POINT_MULTIPLIER) {
-            _data.poolUtilizationRate = MIN_POINT_MULTIPLIER;
+        if (_data.poolUtilizationRateBPS < MIN_POINT_MULTIPLIER) {
+            _data.poolUtilizationRateBPS = MIN_POINT_MULTIPLIER;
         }
 
-        uint256 allocPoints = (_data.votes * _data.poolUtilizationRate) /
+        uint256 allocPoints = (_data.votes * _data.poolUtilizationRateBPS) /
             INVERSE_BASIS_POINT;
 
         l.totalAllocPoint =
@@ -139,7 +139,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
             _data.pool,
             _data.isCallPool,
             _data.votes,
-            _data.poolUtilizationRate
+            _data.poolUtilizationRateBPS
         );
     }
 
