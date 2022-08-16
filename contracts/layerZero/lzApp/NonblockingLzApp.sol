@@ -84,7 +84,7 @@ abstract contract NonblockingLzApp is LzApp {
             "NonblockingLzApp: invalid payload"
         );
         // clear the stored message
-        l.failedMessages[srcChainId][srcAddress][nonce] = bytes32(0);
+        delete l.failedMessages[srcChainId][srcAddress][nonce];
         // execute the message. revert if it fails again
         _nonblockingLzReceive(srcChainId, srcAddress, nonce, payload);
     }
