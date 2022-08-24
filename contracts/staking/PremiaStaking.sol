@@ -612,7 +612,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         // If user is a contract, we use a different formula based on % of total power owned by the contract
         if (msg.sender != tx.origin) {
-            return (userPower * MAX_CONTRACT_DISCOUNT) / l.totalPower;
+            return (userPower * MAX_CONTRACT_DISCOUNT) / (l.totalPower / 2); // Require 50% of overall staked power for contract to have max discount
         }
 
         IPremiaStaking.StakeLevel[] memory stakeLevels = _getStakeLevels();
