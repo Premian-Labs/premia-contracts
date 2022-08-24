@@ -605,14 +605,14 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo memory u = l.userInfo[user];
 
-        uint256 userBalance = _calculateUserPower(
+        uint256 userPower = _calculateUserPower(
             _balanceOf(user),
             u.stakePeriod
         );
 
         // If user is a contract, we use a different formula based on % of total power owned by the contract
         if (msg.sender != tx.origin) {
-            return (userBalance * MAX_CONTRACT_DISCOUNT) / l.totalPower;
+            return (userPower * MAX_CONTRACT_DISCOUNT) / l.totalPower;
         }
 
         IPremiaStaking.StakeLevel[] memory stakeLevels = _getStakeLevels();
@@ -620,7 +620,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         for (uint256 i = 0; i < stakeLevels.length; i++) {
             IPremiaStaking.StakeLevel memory level = stakeLevels[i];
 
-            if (userBalance < level.amount) {
+            if (userPower < level.amount) {
                 uint256 amountPrevLevel;
                 uint256 discountPrevLevel;
 
@@ -637,9 +637,9 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
                 uint256 remappedDiscount = level.discount - discountPrevLevel;
 
                 uint256 remappedAmount = level.amount - amountPrevLevel;
-                uint256 remappedBalance = userBalance - amountPrevLevel;
-                uint256 levelProgress = (remappedBalance *
-                    INVERSE_BASIS_POINT) / remappedAmount;
+                uint256 remappedPower = userPower - amountPrevLevel;
+                uint256 levelProgress = (remappedPower * INVERSE_BASIS_POINT) /
+                    remappedAmount;
 
                 return
                     discountPrevLevel +
