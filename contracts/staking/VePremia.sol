@@ -25,6 +25,7 @@ contract VePremia is IVePremia, PremiaStaking {
         uint256 amount,
         uint64 period
     ) internal override {
+        super._beforeStake(user, amount, period);
         PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
             .layout()
             .userInfo[user];
