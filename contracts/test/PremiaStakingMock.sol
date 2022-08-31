@@ -34,7 +34,7 @@ contract PremiaStakingMock is PremiaStaking {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage u = l.userInfo[from];
 
-        UpdateInternalArgs memory args = _getInitialUpdateInternalArgs(
+        UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
             l,
             u,
             from

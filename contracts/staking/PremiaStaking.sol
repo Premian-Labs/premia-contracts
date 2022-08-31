@@ -30,7 +30,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     uint256 internal constant ACC_REWARD_PRECISION = 1e30;
     uint256 internal constant MAX_CONTRACT_DISCOUNT = 3000; // -30%
 
-    struct UpdateInternalArgs {
+    struct UpdateArgsInternal {
         address user;
         uint256 balance;
         uint256 oldPower;
@@ -80,7 +80,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage u = l.userInfo[from];
 
-        UpdateInternalArgs memory args = _getInitialUpdateInternalArgs(
+        UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
             l,
             u,
             from
@@ -148,7 +148,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage u = l.userInfo[toAddress];
 
-        UpdateInternalArgs memory args = _getInitialUpdateInternalArgs(
+        UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
             l,
             u,
             toAddress
@@ -304,7 +304,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         _beforeStake(msg.sender, amount, period);
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
 
-        UpdateInternalArgs memory args = _getInitialUpdateInternalArgs(
+        UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
             l,
             u,
             msg.sender
@@ -374,7 +374,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
 
-        UpdateInternalArgs memory args = _getInitialUpdateInternalArgs(
+        UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
             l,
             u,
             msg.sender
@@ -417,7 +417,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
 
-        UpdateInternalArgs memory args = _getInitialUpdateInternalArgs(
+        UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
             l,
             u,
             msg.sender
@@ -525,7 +525,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         _updateRewards();
         _beforeUnstake(msg.sender, amount);
 
-        UpdateInternalArgs memory args = _getInitialUpdateInternalArgs(
+        UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
             l,
             u,
             msg.sender
@@ -822,12 +822,12 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         );
     }
 
-    function _getInitialUpdateInternalArgs(
+    function _getInitialUpdateArgsInternal(
         PremiaStakingStorage.Layout storage l,
         PremiaStakingStorage.UserInfo storage u,
         address user
-    ) internal view returns (UpdateInternalArgs memory) {
-        UpdateInternalArgs memory args;
+    ) internal view returns (UpdateArgsInternal memory) {
+        UpdateArgsInternal memory args;
         args.user = user;
         args.balance = _balanceOf(user);
 
@@ -860,7 +860,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     function _updateUser(
         PremiaStakingStorage.Layout storage l,
         PremiaStakingStorage.UserInfo storage u,
-        UpdateInternalArgs memory args
+        UpdateArgsInternal memory args
     ) internal {
         _updateRewardDebt(l, u, args.newPower);
         _creditRewards(l, u, args.user, args.reward, args.unstakeReward);
