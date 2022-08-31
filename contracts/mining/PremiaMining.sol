@@ -28,19 +28,6 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     uint256 private constant INVERSE_BASIS_POINT = 1e4;
     uint256 private constant MIN_POINT_MULTIPLIER = 2500; // 25% -> If utilization rate is less than this value, we use this value instead
 
-    event Claim(
-        address indexed user,
-        address indexed pool,
-        bool indexed isCallPool,
-        uint256 rewardAmount
-    );
-    event UpdatePoolAlloc(
-        address indexed pool,
-        bool indexed isCallPool,
-        uint256 votes,
-        uint256 poolUtilizationRateBPS
-    );
-
     constructor(
         address _diamond,
         address _premia,

@@ -12,6 +12,20 @@ interface IPremiaMining {
         uint256 poolUtilizationRateBPS; // 100% = 1e4
     }
 
+    event Claim(
+        address indexed user,
+        address indexed pool,
+        bool indexed isCallPool,
+        uint256 rewardAmount
+    );
+
+    event UpdatePoolAlloc(
+        address indexed pool,
+        bool indexed isCallPool,
+        uint256 votes,
+        uint256 poolUtilizationRateBPS
+    );
+
     function addPremiaRewards(uint256 _amount) external;
 
     function premiaRewardsAvailable() external view returns (uint256);
