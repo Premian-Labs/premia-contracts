@@ -381,8 +381,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         );
 
         uint256 amount = u.reward + args.reward;
-        u.reward = 0;
-        args.reward = 0;
+        delete u.reward;
+        delete args.reward;
 
         IERC20(REWARD_TOKEN).safeTransfer(EXCHANGE_HELPER, amount);
 
