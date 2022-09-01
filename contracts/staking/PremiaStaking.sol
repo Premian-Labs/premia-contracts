@@ -3,6 +3,7 @@
 
 pragma solidity ^0.8.0;
 
+import {AddressUtils} from "@solidstate/contracts/utils/AddressUtils.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
 import {ERC20} from "@solidstate/contracts/token/ERC20/ERC20.sol";
 import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
@@ -18,6 +19,7 @@ import {OFT} from "../layerZero/token/oft/OFT.sol";
 contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     using SafeERC20 for IERC20;
     using ABDKMath64x64 for int128;
+    using AddressUtils for address;
 
     address internal immutable PREMIA;
     address internal immutable REWARD_TOKEN;
@@ -611,7 +613,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         );
 
         // If user is a contract, we use a different formula based on % of total power owned by the contract
-        if (msg.sender != tx.origin) {
+        if (user.isContract()) {
             // Require 50% of overall staked power for contract to have max discount
             if (userPower >= l.totalPower / 2) {
                 return MAX_CONTRACT_DISCOUNT;
