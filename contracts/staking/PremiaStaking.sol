@@ -601,11 +601,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getDiscount(address user, bool isContract)
-        external
-        view
-        returns (uint256)
-    {
+    function getDiscount(address user) external view returns (uint256) {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo memory u = l.userInfo[user];
 
@@ -615,7 +611,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         );
 
         // If user is a contract, we use a different formula based on % of total power owned by the contract
-        if (isContract) {
+        if (msg.sender != tx.origin) {
             // Require 50% of overall staked power for contract to have max discount
             if (userPower >= l.totalPower / 2) {
                 return MAX_CONTRACT_DISCOUNT;

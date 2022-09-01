@@ -117,10 +117,7 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
     {
         if (FEE_DISCOUNT_ADDRESS != address(0)) {
             discount64x64 = ABDKMath64x64.divu(
-                IPremiaStaking(FEE_DISCOUNT_ADDRESS).getDiscount(
-                    feePayer,
-                    msg.sender != tx.origin
-                ),
+                IPremiaStaking(FEE_DISCOUNT_ADDRESS).getDiscount(feePayer),
                 INVERSE_BASIS_POINT
             );
         }
