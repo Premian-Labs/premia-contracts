@@ -203,10 +203,14 @@ interface IPremiaStaking {
     /**
      * @notice Calculate the % of fee discount for user, based on his stake
      * @param user The _user for which the discount is for
+     * @param isContract Whether discount is calculated for a contract or an EOA
      * @return Percentage of protocol fee discount (in basis point)
      *         Ex : 1000 = 10% fee discount
      */
-    function getDiscount(address user) external view returns (uint256);
+    function getDiscount(address user, bool isContract)
+        external
+        view
+        returns (uint256);
 
     /**
      * @notice Get stake levels

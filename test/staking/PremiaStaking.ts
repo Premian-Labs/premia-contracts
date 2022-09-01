@@ -184,7 +184,7 @@ describe('PremiaStaking', () => {
       await premiaStaking.connect(alice).stake(stakeAmount, ONE_YEAR);
       let amountWithBonus = await premiaStaking.getUserPower(alice.address);
       expect(amountWithBonus).to.eq(parseEther('150000'));
-      expect(await premiaStaking.getDiscount(alice.address)).to.eq(6250);
+      expect(await premiaStaking.getDiscount(alice.address, false)).to.eq(6250);
 
       await increaseTimestamp(ONE_YEAR + 1);
 
@@ -193,7 +193,7 @@ describe('PremiaStaking', () => {
       amountWithBonus = await premiaStaking.getUserPower(alice.address);
 
       expect(amountWithBonus).to.eq(parseEther('137500'));
-      expect(await premiaStaking.getDiscount(alice.address)).to.eq(6093);
+      expect(await premiaStaking.getDiscount(alice.address, false)).to.eq(6093);
 
       await premia.mint(alice.address, parseEther('1000000'));
       await premia
@@ -201,7 +201,7 @@ describe('PremiaStaking', () => {
         .approve(premiaStaking.address, parseEther('1000000'));
       await premiaStaking.connect(alice).stake(parseEther('1000000'), ONE_YEAR);
 
-      expect(await premiaStaking.getDiscount(alice.address)).to.eq(9500);
+      expect(await premiaStaking.getDiscount(alice.address, false)).to.eq(9500);
     });
 
     it('should stake successfully with permit', async () => {
