@@ -60,6 +60,8 @@ library PoolStorage {
     uint256 private constant C_DECAY_BUFFER = 12 hours;
     uint256 private constant C_DECAY_INTERVAL = 4 hours;
 
+    int128 internal constant ONE_64x64 = 0x10000000000000000;
+
     struct Layout {
         // ERC20 token addresses
         address base;
@@ -477,6 +479,9 @@ library PoolStorage {
             tvl - freeLiq,
             tvl - pendingDeposits
         );
+
+        // Safeguard check
+        require(utilization64x64 < ONE_64x64, "utilization > 1");
     }
 
     /**
