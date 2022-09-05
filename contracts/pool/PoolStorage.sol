@@ -464,17 +464,17 @@ library PoolStorage {
 
         if (tvl <= pendingDeposits) return 0;
 
-        uint256 availableSupply = (ERC1155EnumerableStorage
-            .layout()
-            .totalSupply[tokenId] - l.totalPendingDeposits(isCall));
+        uint256 freeLiq = ERC1155EnumerableStorage.layout().totalSupply[
+            tokenId
+        ];
 
-        if (tvl < availableSupply) {
+        if (tvl < freeLiq) {
             // workaround for TVL underflow issue
-            availableSupply = tvl;
+            freeLiq = tvl;
         }
 
         utilization64x64 = ABDKMath64x64.divu(
-            tvl - availableSupply,
+            tvl - freeLiq,
             tvl - pendingDeposits
         );
     }
