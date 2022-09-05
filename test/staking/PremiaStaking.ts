@@ -791,4 +791,26 @@ describe('PremiaStaking', () => {
       );
     });
   });
+
+  describe('#sendFrom', () => {
+    // TODO: move to OFT test file
+
+    describe('reverts if', () => {
+      it('sender is not approved or owner', async () => {
+        await expect(
+          premiaStaking
+            .connect(alice)
+            .sendFrom(
+              premiaStaking.address,
+              0,
+              alice.address,
+              0,
+              alice.address,
+              ethers.constants.AddressZero,
+              '0x',
+            ),
+        ).to.be.reverted;
+      });
+    });
+  });
 });
