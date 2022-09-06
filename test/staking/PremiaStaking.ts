@@ -804,12 +804,12 @@ describe('PremiaStaking', () => {
               premiaStaking.address,
               0,
               alice.address,
-              0,
+              1,
               alice.address,
               ethers.constants.AddressZero,
               '0x',
             ),
-        ).to.be.reverted;
+        ).to.be.revertedWith('insufficient allowance');
       });
     });
   });
