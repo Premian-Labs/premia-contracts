@@ -481,7 +481,7 @@ library PoolStorage {
         );
 
         // Safeguard check
-        require(utilization64x64 < ONE_64x64, "utilization > 1");
+        require(utilization64x64 <= ONE_64x64, "utilization > 1");
     }
 
     /**
