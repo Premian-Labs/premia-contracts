@@ -48,13 +48,11 @@ contract PremiaStakingMigrator {
     {
         IERC20(OLD_STAKING).transferFrom(msg.sender, address(this), amount);
 
-        uint256 oldPremiaBalance = IERC20(PREMIA).balanceOf(address(this));
         IPremiaStakingOld(OLD_STAKING).leave(amount);
-        uint256 newPremiaBalance = IERC20(PREMIA).balanceOf(address(this));
 
-        uint256 toWithdraw = newPremiaBalance - oldPremiaBalance;
-        IERC20(PREMIA).transfer(to, toWithdraw);
+        uint256 balance = IERC20(PREMIA).balanceOf(address(this));
+        IERC20(PREMIA).transfer(to, balance);
 
-        return toWithdraw;
+        return balance;
     }
 }
