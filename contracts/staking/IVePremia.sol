@@ -6,29 +6,19 @@ import {VePremiaStorage} from "./VePremiaStorage.sol";
 import {IPremiaStaking} from "./IPremiaStaking.sol";
 
 interface IVePremia is IPremiaStaking {
-    event AddVote(
-        address indexed voter,
-        address indexed pool,
-        bool indexed isCall,
-        uint256 amount
-    );
+    event AddVote(address indexed voter, bytes indexed target, uint256 amount);
     event RemoveVote(
         address indexed voter,
-        address indexed pool,
-        bool indexed isCall,
+        bytes indexed target,
         uint256 amount
     );
 
     /**
      * @notice get total votes for specific pools
-     * @param pool address of the pool
-     * @param isCallPool whether the pool is call or put
+     * @param target ABI encoded target of the votes
      * @return total votes for specific pool
      */
-    function getPoolVotes(address pool, bool isCallPool)
-        external
-        view
-        returns (uint256);
+    function getPoolVotes(bytes memory target) external view returns (uint256);
 
     /**
      * @notice get votes of user

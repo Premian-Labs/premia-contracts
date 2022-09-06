@@ -255,7 +255,9 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         bool isCallPool,
         uint256 utilizationRate
     ) internal virtual {
-        uint256 votes = IVePremia(VE_PREMIA).getPoolVotes(pool, isCallPool);
+        uint256 votes = IVePremia(VE_PREMIA).getPoolVotes(
+            abi.encodePacked(pool, isCallPool)
+        );
         _setPoolAllocPoints(
             l,
             IPremiaMining.PoolAllocPoints(

@@ -8,7 +8,7 @@ import { increaseTimestamp, mineBlockUntil, setTimestamp } from '../utils/evm';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ERC20Mock, VePremia } from '../../typechain';
-import { parseEther, parseUnits } from 'ethers/lib/utils';
+import { parseEther, parseUnits, solidityPack } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
 import { ZERO_ADDRESS } from '../utils/constants';
 import { beforeEach } from 'mocha';
@@ -67,23 +67,19 @@ describe('PremiaMining', () => {
     await vePremia.connect(owner).castVotes([
       {
         amount: parseEther('250'),
-        poolAddress: p.pool.address,
-        isCallPool: true,
+        target: solidityPack(['address', 'bool'], [p.pool.address, true]),
       },
       {
         amount: parseEther('250'),
-        poolAddress: p.pool.address,
-        isCallPool: false,
+        target: solidityPack(['address', 'bool'], [p.pool.address, false]),
       },
       {
         amount: parseEther('250'),
-        poolAddress: p.poolWeth.address,
-        isCallPool: true,
+        target: solidityPack(['address', 'bool'], [p.poolWeth.address, true]),
       },
       {
         amount: parseEther('250'),
-        poolAddress: p.poolWeth.address,
-        isCallPool: false,
+        target: solidityPack(['address', 'bool'], [p.poolWeth.address, false]),
       },
     ]);
 
