@@ -351,18 +351,23 @@ library PoolStorage {
      * @notice get current C-Level, accounting for unrealized decay
      * @param l storage layout struct
      * @param isCall whether query is for call or put pool
+     * @param utilization64x64 utilization of the pool
      * @return cLevel64x64 64x64 fixed point representation of C-Level
      */
-    function getDecayAdjustedCLevel64x64(Layout storage l, bool isCall)
-        internal
-        view
-        returns (int128 cLevel64x64)
-    {
+    function getDecayAdjustedCLevel64x64(
+        Layout storage l,
+        bool isCall,
+        int128 utilization64x64
+    ) internal view returns (int128 cLevel64x64) {
         // get raw C-Level from storage
         cLevel64x64 = l.getRawCLevel64x64(isCall);
 
         // account for C-Level decay
-        cLevel64x64 = l.applyCLevelDecayAdjustment(cLevel64x64, isCall);
+        cLevel64x64 = l.applyCLevelDecayAdjustment(
+            cLevel64x64,
+            isCall,
+            utilization64x64
+        );
     }
 
     /**
@@ -379,7 +384,10 @@ library PoolStorage {
     {
         PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
 
-        int128 oldCLevel64x64 = l.getDecayAdjustedCLevel64x64(isCall);
+        int128 oldCLevel64x64 = l.getDecayAdjustedCLevel64x64(
+            isCall,
+            l.getUtilization64x64(isCall)
+        );
         int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
 
         if (
@@ -416,7 +424,8 @@ library PoolStorage {
     function applyCLevelDecayAdjustment(
         Layout storage l,
         int128 oldCLevel64x64,
-        bool isCall
+        bool isCall,
+        int128 utilization64x64
     ) internal view returns (int128 cLevel64x64) {
         uint256 timeElapsed = block.timestamp -
             (isCall ? l.cLevelUnderlyingUpdatedAt : l.cLevelBaseUpdatedAt);
@@ -439,7 +448,7 @@ library PoolStorage {
                 OptionMath.CalculateCLevelDecayArgs(
                     timeIntervalsElapsed64x64,
                     oldCLevel64x64,
-                    getUtilization64x64(l, isCall),
+                    utilization64x64,
                     0xb333333333333333, // 0.7
                     0xe666666666666666, // 0.9
                     0x10000000000000000, // 1.0

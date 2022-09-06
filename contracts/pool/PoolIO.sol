@@ -107,9 +107,10 @@ contract PoolIO is IPoolIO, PoolInternal {
     function withdraw(uint256 amount, bool isCallPool) public {
         PoolStorage.Layout storage l = PoolStorage.layout();
         uint256 toWithdraw = amount;
-        int128 utilization64x64 = l.getUtilization64x64(isCallPool);
 
         _processPendingDeposits(l, isCallPool);
+
+        int128 utilization64x64 = l.getUtilization64x64(isCallPool);
 
         uint256 depositedAt = l.depositedAt[msg.sender][isCallPool];
 
@@ -148,7 +149,13 @@ contract PoolIO is IPoolIO, PoolInternal {
             int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(
                 isCallPool
             );
-            _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
+            _setCLevel(
+                l,
+                oldLiquidity64x64,
+                newLiquidity64x64,
+                isCallPool,
+                utilization64x64
+            );
         }
 
         _subUserTVL(

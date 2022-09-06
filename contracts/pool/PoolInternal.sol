@@ -425,15 +425,19 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
         uint256 amount,
         bool isCallPool
     ) internal {
-        int128 utilization64x64 = l.getUtilization64x64(isCallPool);
-
         // Reset gradual divestment timestamp
         delete l.divestmentTimestamps[msg.sender][isCallPool];
 
         _processPendingDeposits(l, isCallPool);
 
         l.depositedAt[msg.sender][isCallPool] = block.timestamp;
-        _addUserTVL(l, msg.sender, isCallPool, amount, utilization64x64);
+        _addUserTVL(
+            l,
+            msg.sender,
+            isCallPool,
+            amount,
+            l.getUtilization64x64(isCallPool)
+        );
 
         _processAvailableFunds(msg.sender, amount, isCallPool, false, false);
 
@@ -536,7 +540,13 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
         );
         int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCall);
 
-        _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCall);
+        _setCLevel(
+            l,
+            oldLiquidity64x64,
+            newLiquidity64x64,
+            isCall,
+            utilization64x64
+        );
 
         // mint reserved liquidity tokens for fee receiver
 
@@ -1235,7 +1245,8 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
                     l.getTokenDecimals(isCall)
                 )
             ),
-            isCall
+            isCall,
+            l.getUtilization64x64(isCallPool)
         );
 
         delete l.nextDeposits[isCall];
@@ -1265,9 +1276,13 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
         PoolStorage.Layout storage l,
         int128 oldLiquidity64x64,
         int128 newLiquidity64x64,
-        bool isCallPool
+        bool isCallPool,
+        int128 utilization64x64
     ) internal {
-        int128 oldCLevel64x64 = l.getDecayAdjustedCLevel64x64(isCallPool);
+        int128 oldCLevel64x64 = l.getDecayAdjustedCLevel64x64(
+            isCallPool,
+            utilization64x64
+        );
 
         int128 cLevel64x64 = l.applyCLevelLiquidityChangeAdjustment(
             oldCLevel64x64,
