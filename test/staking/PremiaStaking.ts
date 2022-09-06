@@ -793,7 +793,22 @@ describe('PremiaStaking', () => {
   });
 
   describe('#sendFrom', () => {
-    // TODO: move to OFT test file
+    it('should not revert if no approval but owner', async () => {
+      await premia.connect(alice).approve(premiaStaking.address, 1);
+      await premiaStaking.connect(alice).stake(1, 0);
+
+      await premiaStaking
+        .connect(alice)
+        .sendFrom(
+          alice.address,
+          0,
+          alice.address,
+          1,
+          alice.address,
+          ethers.constants.AddressZero,
+          '0x',
+        );
+    });
 
     describe('reverts if', () => {
       it('sender is not approved or owner', async () => {

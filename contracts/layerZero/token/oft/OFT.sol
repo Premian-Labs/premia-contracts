@@ -32,7 +32,6 @@ contract OFT is OFTCore, ERC20, IOFT {
     ) internal virtual override {
         address spender = msg.sender;
 
-        // ToDo : Is approval required ?
         if (from != spender) {
             unchecked {
                 mapping(address => uint256)
