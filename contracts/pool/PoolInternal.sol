@@ -1246,7 +1246,7 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
                 )
             ),
             isCall,
-            l.getUtilization64x64(isCallPool)
+            l.getUtilization64x64(isCall)
         );
 
         delete l.nextDeposits[isCall];
