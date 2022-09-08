@@ -108,14 +108,12 @@ contract PoolIO is IPoolIO, PoolInternal {
         PoolStorage.Layout storage l = PoolStorage.layout();
         uint256 toWithdraw = amount;
 
+        uint256 depositedAt = l.depositedAt[msg.sender][isCallPool];
+        require(depositedAt + (1 days) < block.timestamp, "liq lock 1d");
+
         _processPendingDeposits(l, isCallPool);
 
         int128 utilization64x64 = l.getUtilization64x64(isCallPool);
-
-        uint256 depositedAt = l.depositedAt[msg.sender][isCallPool];
-
-        require(depositedAt + (1 days) < block.timestamp, "liq lock 1d");
-
         int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCallPool);
 
         uint256 reservedLiqToWithdraw;
