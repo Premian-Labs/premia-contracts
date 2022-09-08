@@ -8,7 +8,7 @@ import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { beforeEach } from 'mocha';
-import { parseEther, solidityPack } from 'ethers/lib/utils';
+import { defaultAbiCoder, parseEther } from 'ethers/lib/utils';
 import { ONE_DAY } from '../pool/PoolUtil';
 import { increaseTimestamp } from '../utils/evm';
 
@@ -59,21 +59,21 @@ describe('VePremia', () => {
       const votes = [
         {
           amount: parseEther('1'),
-          target: solidityPack(
+          target: defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000001', true],
           ),
         },
         {
           amount: parseEther('10'),
-          target: solidityPack(
+          target: defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000002', true],
           ),
         },
         {
           amount: parseEther('1.5'),
-          target: solidityPack(
+          target: defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000002', false],
           ),
@@ -99,7 +99,7 @@ describe('VePremia', () => {
         vePremia.connect(alice).castVotes([
           {
             amount: parseEther('1'),
-            target: solidityPack(
+            target: defaultAbiCoder.encode(
               ['address', 'bool'],
               ['0x0000000000000000000000000000000000000001', true],
             ),
@@ -113,7 +113,7 @@ describe('VePremia', () => {
         vePremia.connect(alice).castVotes([
           {
             amount: parseEther('10'),
-            target: solidityPack(
+            target: defaultAbiCoder.encode(
               ['address', 'bool'],
               ['0x0000000000000000000000000000000000000001', true],
             ),
@@ -128,21 +128,21 @@ describe('VePremia', () => {
       await vePremia.connect(alice).castVotes([
         {
           amount: parseEther('1'),
-          target: solidityPack(
+          target: defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000001', true],
           ),
         },
         {
           amount: parseEther('3'),
-          target: solidityPack(
+          target: defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000002', true],
           ),
         },
         {
           amount: parseEther('2.25'),
-          target: solidityPack(
+          target: defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000003', false],
           ),
@@ -153,21 +153,21 @@ describe('VePremia', () => {
       expect(votes).to.deep.eq([
         [
           parseEther('1'),
-          solidityPack(
+          defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000001', true],
           ),
         ],
         [
           parseEther('3'),
-          solidityPack(
+          defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000002', true],
           ),
         ],
         [
           parseEther('2.25'),
-          solidityPack(
+          defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000003', false],
           ),
@@ -179,7 +179,7 @@ describe('VePremia', () => {
       await vePremia.connect(alice).castVotes([
         {
           amount: parseEther('2'),
-          target: solidityPack(
+          target: defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000005', true],
           ),
@@ -190,7 +190,7 @@ describe('VePremia', () => {
       expect(votes).to.deep.eq([
         [
           parseEther('2'),
-          solidityPack(
+          defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000005', true],
           ),
@@ -199,7 +199,7 @@ describe('VePremia', () => {
 
       expect(
         await vePremia.getPoolVotes(
-          solidityPack(
+          defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000001', true],
           ),
@@ -208,7 +208,7 @@ describe('VePremia', () => {
 
       expect(
         await vePremia.getPoolVotes(
-          solidityPack(
+          defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000002', true],
           ),
@@ -217,7 +217,7 @@ describe('VePremia', () => {
 
       expect(
         await vePremia.getPoolVotes(
-          solidityPack(
+          defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000003', false],
           ),
@@ -226,7 +226,7 @@ describe('VePremia', () => {
 
       expect(
         await vePremia.getPoolVotes(
-          solidityPack(
+          defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000005', true],
           ),
@@ -240,21 +240,21 @@ describe('VePremia', () => {
       await vePremia.connect(alice).castVotes([
         {
           amount: parseEther('1'),
-          target: solidityPack(
+          target: defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000001', true],
           ),
         },
         {
           amount: parseEther('3'),
-          target: solidityPack(
+          target: defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000002', true],
           ),
         },
         {
           amount: parseEther('2.25'),
-          target: solidityPack(
+          target: defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000003', false],
           ),
@@ -267,21 +267,21 @@ describe('VePremia', () => {
       expect(votes).to.deep.eq([
         [
           parseEther('1'),
-          solidityPack(
+          defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000001', true],
           ),
         ],
         [
           parseEther('3'),
-          solidityPack(
+          defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000002', true],
           ),
         ],
         [
           parseEther('2.25'),
-          solidityPack(
+          defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000003', false],
           ),
@@ -299,14 +299,14 @@ describe('VePremia', () => {
       expect(votes).to.deep.eq([
         [
           parseEther('1'),
-          solidityPack(
+          defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000001', true],
           ),
         ],
         [
           parseEther('2.125'),
-          solidityPack(
+          defaultAbiCoder.encode(
             ['address', 'bool'],
             ['0x0000000000000000000000000000000000000002', true],
           ),
@@ -325,21 +325,21 @@ describe('VePremia', () => {
     await vePremia.connect(alice).castVotes([
       {
         amount: parseEther('10'),
-        target: solidityPack(
+        target: defaultAbiCoder.encode(
           ['address', 'bool'],
           ['0x0000000000000000000000000000000000000001', true],
         ),
       },
       {
         amount: parseEther('5'),
-        target: solidityPack(
+        target: defaultAbiCoder.encode(
           ['address', 'bool'],
           ['0x0000000000000000000000000000000000000002', true],
         ),
       },
       {
         amount: parseEther('6.25'),
-        target: solidityPack(
+        target: defaultAbiCoder.encode(
           ['address', 'bool'],
           ['0x0000000000000000000000000000000000000003', false],
         ),
@@ -356,21 +356,21 @@ describe('VePremia', () => {
     expect(votes).to.deep.eq([
       [
         parseEther('10'),
-        solidityPack(
+        defaultAbiCoder.encode(
           ['address', 'bool'],
           ['0x0000000000000000000000000000000000000001', true],
         ),
       ],
       [
         parseEther('5'),
-        solidityPack(
+        defaultAbiCoder.encode(
           ['address', 'bool'],
           ['0x0000000000000000000000000000000000000002', true],
         ),
       ],
       [
         parseEther('6.25'),
-        solidityPack(
+        defaultAbiCoder.encode(
           ['address', 'bool'],
           ['0x0000000000000000000000000000000000000003', false],
         ),
@@ -384,7 +384,7 @@ describe('VePremia', () => {
     expect(votes).to.deep.eq([
       [
         parseEther('7.5'),
-        solidityPack(
+        defaultAbiCoder.encode(
           ['address', 'bool'],
           ['0x0000000000000000000000000000000000000001', true],
         ),
