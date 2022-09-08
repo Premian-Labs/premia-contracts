@@ -106,7 +106,6 @@ contract PoolIO is IPoolIO, PoolInternal {
      */
     function withdraw(uint256 amount, bool isCallPool) public {
         PoolStorage.Layout storage l = PoolStorage.layout();
-        uint256 toWithdraw = amount;
 
         uint256 depositedAt = l.depositedAt[msg.sender][isCallPool];
         require(depositedAt + (1 days) < block.timestamp, "liq lock 1d");
@@ -116,33 +115,27 @@ contract PoolIO is IPoolIO, PoolInternal {
         int128 utilization64x64 = l.getUtilization64x64(isCallPool);
         int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCallPool);
 
-        uint256 reservedLiqToWithdraw;
+        uint256 reservedLiqTokenId = _getReservedLiquidityTokenId(isCallPool);
+        uint256 reservedLiquidity = _balanceOf(msg.sender, reservedLiqTokenId);
 
-        {
-            uint256 reservedLiqTokenId = _getReservedLiquidityTokenId(
-                isCallPool
-            );
-            uint256 reservedLiquidity = _balanceOf(
-                msg.sender,
-                reservedLiqTokenId
-            );
+        uint256 reservedLiqToWithdraw = reservedLiquidity < amount
+            ? reservedLiquidity
+            : amount;
 
-            if (reservedLiquidity > 0) {
-                if (reservedLiquidity < toWithdraw) {
-                    reservedLiqToWithdraw = reservedLiquidity;
-                } else {
-                    reservedLiqToWithdraw = toWithdraw;
-                }
+        uint256 freeLiqToWithdraw = amount - reservedLiqToWithdraw;
 
-                toWithdraw -= reservedLiqToWithdraw;
-                // burn reserved liquidity tokens from sender
-                _burn(msg.sender, reservedLiqTokenId, reservedLiqToWithdraw);
-            }
+        if (reservedLiqToWithdraw > 0) {
+            // burn reserved liquidity tokens from sender
+            _burn(msg.sender, reservedLiqTokenId, reservedLiqToWithdraw);
         }
 
-        if (toWithdraw > 0) {
+        if (freeLiqToWithdraw > 0) {
             // burn free liquidity tokens from sender
-            _burn(msg.sender, _getFreeLiquidityTokenId(isCallPool), toWithdraw);
+            _burn(
+                msg.sender,
+                _getFreeLiquidityTokenId(isCallPool),
+                freeLiqToWithdraw
+            );
 
             int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(
                 isCallPool
@@ -160,7 +153,7 @@ contract PoolIO is IPoolIO, PoolInternal {
             l,
             msg.sender,
             isCallPool,
-            amount - reservedLiqToWithdraw,
+            freeLiqToWithdraw,
             utilization64x64
         );
         _processAvailableFunds(msg.sender, amount, isCallPool, true, true);
