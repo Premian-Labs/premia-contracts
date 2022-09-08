@@ -12,6 +12,24 @@ import { parseEther, solidityPack } from 'ethers/lib/utils';
 import { ONE_DAY } from '../pool/PoolUtil';
 import { increaseTimestamp } from '../utils/evm';
 
+/* Example to decode packed target data
+
+const targetData = '0x000000000000000000000000000000000000000101;
+const pool = hexDataSlice(
+  targetData,
+  0,
+  20,
+);
+const isCallPool = hexDataSlice(
+  targetData,
+  20,
+  21,
+);
+
+ */
+
+////////////////////
+
 let admin: SignerWithAddress;
 let alice: SignerWithAddress;
 let bob: SignerWithAddress;
@@ -151,12 +169,26 @@ describe('VePremia', () => {
 
       let votes = await vePremia.getUserVotes(alice.address);
       expect(votes).to.deep.eq([
-        [parseEther('1'), '0x0000000000000000000000000000000000000001', true],
-        [parseEther('3'), '0x0000000000000000000000000000000000000002', true],
+        [
+          parseEther('1'),
+          solidityPack(
+            ['address', 'bool'],
+            ['0x0000000000000000000000000000000000000001', true],
+          ),
+        ],
+        [
+          parseEther('3'),
+          solidityPack(
+            ['address', 'bool'],
+            ['0x0000000000000000000000000000000000000002', true],
+          ),
+        ],
         [
           parseEther('2.25'),
-          '0x0000000000000000000000000000000000000003',
-          false,
+          solidityPack(
+            ['address', 'bool'],
+            ['0x0000000000000000000000000000000000000003', false],
+          ),
         ],
       ]);
 
@@ -174,7 +206,13 @@ describe('VePremia', () => {
 
       votes = await vePremia.getUserVotes(alice.address);
       expect(votes).to.deep.eq([
-        [parseEther('2'), '0x0000000000000000000000000000000000000005', true],
+        [
+          parseEther('2'),
+          solidityPack(
+            ['address', 'bool'],
+            ['0x0000000000000000000000000000000000000005', true],
+          ),
+        ],
       ]);
 
       expect(
@@ -245,12 +283,26 @@ describe('VePremia', () => {
 
       let votes = await vePremia.getUserVotes(alice.address);
       expect(votes).to.deep.eq([
-        [parseEther('1'), '0x0000000000000000000000000000000000000001', true],
-        [parseEther('3'), '0x0000000000000000000000000000000000000002', true],
+        [
+          parseEther('1'),
+          solidityPack(
+            ['address', 'bool'],
+            ['0x0000000000000000000000000000000000000001', true],
+          ),
+        ],
+        [
+          parseEther('3'),
+          solidityPack(
+            ['address', 'bool'],
+            ['0x0000000000000000000000000000000000000002', true],
+          ),
+        ],
         [
           parseEther('2.25'),
-          '0x0000000000000000000000000000000000000003',
-          false,
+          solidityPack(
+            ['address', 'bool'],
+            ['0x0000000000000000000000000000000000000003', false],
+          ),
         ],
       ]);
 
@@ -263,11 +315,19 @@ describe('VePremia', () => {
       votes = await vePremia.getUserVotes(alice.address);
 
       expect(votes).to.deep.eq([
-        [parseEther('1'), '0x0000000000000000000000000000000000000001', true],
+        [
+          parseEther('1'),
+          solidityPack(
+            ['address', 'bool'],
+            ['0x0000000000000000000000000000000000000001', true],
+          ),
+        ],
         [
           parseEther('2.125'),
-          '0x0000000000000000000000000000000000000002',
-          true,
+          solidityPack(
+            ['address', 'bool'],
+            ['0x0000000000000000000000000000000000000002', true],
+          ),
         ],
       ]);
 
@@ -312,9 +372,27 @@ describe('VePremia', () => {
 
     let votes = await vePremia.getUserVotes(alice.address);
     expect(votes).to.deep.eq([
-      [parseEther('10'), '0x0000000000000000000000000000000000000001', true],
-      [parseEther('5'), '0x0000000000000000000000000000000000000002', true],
-      [parseEther('6.25'), '0x0000000000000000000000000000000000000003', false],
+      [
+        parseEther('10'),
+        solidityPack(
+          ['address', 'bool'],
+          ['0x0000000000000000000000000000000000000001', true],
+        ),
+      ],
+      [
+        parseEther('5'),
+        solidityPack(
+          ['address', 'bool'],
+          ['0x0000000000000000000000000000000000000002', true],
+        ),
+      ],
+      [
+        parseEther('6.25'),
+        solidityPack(
+          ['address', 'bool'],
+          ['0x0000000000000000000000000000000000000003', false],
+        ),
+      ],
     ]);
 
     await vePremia.connect(alice).stake(parseEther('1'), ONE_DAY * 365);
@@ -322,7 +400,13 @@ describe('VePremia', () => {
 
     votes = await vePremia.getUserVotes(alice.address);
     expect(votes).to.deep.eq([
-      [parseEther('7.5'), '0x0000000000000000000000000000000000000001', true],
+      [
+        parseEther('7.5'),
+        solidityPack(
+          ['address', 'bool'],
+          ['0x0000000000000000000000000000000000000001', true],
+        ),
+      ],
     ]);
   });
 });

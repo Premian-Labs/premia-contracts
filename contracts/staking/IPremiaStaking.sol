@@ -67,18 +67,6 @@ interface IPremiaStaking {
     function getPendingRewards() external view returns (uint256);
 
     /**
-     * @notice get current withdrawal delay
-     * @return withdrawal delay
-     */
-    function getWithdrawalDelay() external view returns (uint256);
-
-    /**
-     * @notice set current withdrawal delay
-     * @param delay withdrawal delay
-     */
-    function setWithdrawalDelay(uint256 delay) external;
-
-    /**
      * @notice get pending withdrawal data of a user
      * @return amount pending withdrawal amount
      * @return startDate start timestamp of withdrawal

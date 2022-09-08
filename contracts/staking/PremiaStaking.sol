@@ -31,6 +31,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     uint64 internal constant MAX_PERIOD = 4 * 365 days;
     uint256 internal constant ACC_REWARD_PRECISION = 1e30;
     uint256 internal constant MAX_CONTRACT_DISCOUNT = 3000; // -30%
+    uint256 internal constant WITHDRAWAL_DELAY = 10 days;
 
     struct UpdateArgsInternal {
         address user;
@@ -569,7 +570,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         require(startDate > 0, "No pending withdrawal");
         require(
-            block.timestamp > startDate + l.withdrawalDelay,
+            block.timestamp > startDate + WITHDRAWAL_DELAY,
             "Withdrawal still pending"
         );
 
@@ -691,20 +692,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         return PremiaStakingStorage.layout().userInfo[user];
     }
 
-    /**
-     * @inheritdoc IPremiaStaking
-     */
-    function getWithdrawalDelay() external view returns (uint256) {
-        return PremiaStakingStorage.layout().withdrawalDelay;
-    }
-
-    /**
-     * @inheritdoc IPremiaStaking
-     */
-    function setWithdrawalDelay(uint256 delay) external onlyOwner {
-        PremiaStakingStorage.layout().withdrawalDelay = delay;
-    }
-
     function getPendingWithdrawals() external view returns (uint256) {
         return PremiaStakingStorage.layout().pendingWithdrawal;
     }
@@ -721,7 +708,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         amount = l.withdrawals[user].amount;
         startDate = l.withdrawals[user].startDate;
-        unlockDate = startDate + l.withdrawalDelay;
+        unlockDate = startDate + WITHDRAWAL_DELAY;
     }
 
     function _decay(
