@@ -12,6 +12,24 @@ import { parseEther, solidityPack } from 'ethers/lib/utils';
 import { ONE_DAY } from '../pool/PoolUtil';
 import { increaseTimestamp } from '../utils/evm';
 
+/* Example to decode packed target data
+
+const targetData = '0x000000000000000000000000000000000000000101;
+const pool = hexDataSlice(
+  targetData,
+  0,
+  20,
+);
+const isCallPool = hexDataSlice(
+  targetData,
+  20,
+  21,
+);
+
+ */
+
+////////////////////
+
 let admin: SignerWithAddress;
 let alice: SignerWithAddress;
 let bob: SignerWithAddress;
