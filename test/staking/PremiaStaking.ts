@@ -668,18 +668,6 @@ describe('PremiaStaking', () => {
     expect(await otherPremiaStaking.totalSupply()).to.eq(parseEther('10'));
   });
 
-  describe('#setWithdrawalDelay', () => {
-    it('should correctly set withdrawal delay if owner', async () => {
-      expect(await premiaStaking.getWithdrawalDelay()).to.eq(10 * ONE_DAY);
-      await expect(
-        premiaStaking.connect(alice).setWithdrawalDelay(ONE_DAY),
-      ).to.be.revertedWith('Ownable: sender must be owner');
-
-      await premiaStaking.connect(admin).setWithdrawalDelay(ONE_DAY);
-      expect(await premiaStaking.getWithdrawalDelay()).to.eq(ONE_DAY);
-    });
-  });
-
   describe('#getStakeLevels', () => {
     it('should correctly return stake levels', async () => {
       expect(await premiaStaking.getStakeLevels()).to.deep.eq([

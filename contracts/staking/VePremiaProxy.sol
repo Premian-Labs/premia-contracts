@@ -6,8 +6,6 @@ pragma solidity ^0.8.0;
 import {ProxyUpgradeableOwnable} from "../ProxyUpgradeableOwnable.sol";
 import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/metadata/ERC20MetadataStorage.sol";
 
-import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
-
 contract VePremiaProxy is ProxyUpgradeableOwnable {
     using ERC20MetadataStorage for ERC20MetadataStorage.Layout;
 
@@ -18,7 +16,5 @@ contract VePremiaProxy is ProxyUpgradeableOwnable {
         l.setName("vePREMIA");
         l.setSymbol("vePREMIA");
         l.setDecimals(18);
-
-        PremiaStakingStorage.layout().withdrawalDelay = 10 days;
     }
 }

@@ -22,7 +22,7 @@ library PremiaStakingStorage {
 
     struct Layout {
         uint256 pendingWithdrawal;
-        uint256 withdrawalDelay;
+        uint256 _deprecated_withdrawalDelay;
         mapping(address => Withdrawal) withdrawals;
         uint256 availableRewards;
         uint256 lastRewardUpdate; // Timestamp of last reward distribution update
