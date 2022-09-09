@@ -8,7 +8,7 @@ library VePremiaStorage {
         keccak256("premia.contracts.staking.VePremia");
 
     enum VoteVersion {
-        V2
+        V2 // poolAddress : 20 bytes / isCallPool : 2 bytes
     }
 
     struct Vote {
