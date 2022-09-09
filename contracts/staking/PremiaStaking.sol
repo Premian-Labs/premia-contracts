@@ -11,7 +11,6 @@ import {ERC20Permit} from "@solidstate/contracts/token/ERC20/permit/ERC20Permit.
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
-import {IExchangeHelper} from "../interfaces/IExchangeHelper.sol";
 import {IPremiaStaking} from "./IPremiaStaking.sol";
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 import {OFT} from "../layerZero/token/oft/OFT.sol";
@@ -361,57 +360,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             _calculateUserPower(_balanceOf(user), u.stakePeriod),
             u.unstakeRewardDebt
         );
-    }
-
-    /**
-     * @inheritdoc IPremiaStaking
-     */
-    function compound(
-        address callee,
-        address allowanceTarget,
-        bytes memory data,
-        uint256 amountOutMin
-    ) external returns (uint256 amountCredited) {
-        _updateRewards();
-
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
-
-        UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
-            l,
-            u,
-            msg.sender
-        );
-
-        uint256 amount = u.reward + args.reward;
-        delete u.reward;
-        delete args.reward;
-
-        IERC20(REWARD_TOKEN).safeTransfer(EXCHANGE_HELPER, amount);
-
-        amountCredited = IExchangeHelper(EXCHANGE_HELPER).swapWithToken(
-            REWARD_TOKEN,
-            PREMIA,
-            amount,
-            callee,
-            allowanceTarget,
-            data,
-            msg.sender
-        );
-
-        require(amountCredited >= amountOutMin, "not enough output from trade");
-
-        args.newPower = _calculateUserPower(
-            args.balance + args.unstakeReward + amountCredited,
-            u.stakePeriod
-        );
-
-        _beforeStake(msg.sender, amountCredited, u.stakePeriod);
-        _mint(msg.sender, amountCredited);
-
-        _updateUser(l, u, args);
-
-        emit Compound(msg.sender, amount, amountCredited);
     }
 
     function harvest() external {
