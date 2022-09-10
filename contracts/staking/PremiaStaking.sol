@@ -296,12 +296,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
 
-        uint64 lockedUntil = uint64(block.timestamp) + period;
-        require(
-            lockedUntil > u.lockedUntil,
-            "Cannot add stake with lower stake period"
-        );
-
         _updateRewards();
         _beforeStake(msg.sender, amount, period);
         IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
@@ -312,8 +306,20 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             msg.sender
         );
 
-        u.lockedUntil = lockedUntil;
-        u.stakePeriod = period;
+        uint256 lockLeft;
+        if (u.lockedUntil > block.timestamp) {
+            lockLeft = block.timestamp - u.lockedUntil;
+        }
+
+        lockLeft =
+            (lockLeft * args.balance + period * amount) /
+            (args.balance + amount);
+
+        u.lockedUntil = uint64(block.timestamp + lockLeft);
+        u.stakePeriod = uint64(
+            (u.stakePeriod * args.balance + period * amount) /
+                (args.balance + amount)
+        );
 
         args.newPower = _calculateUserPower(
             args.balance + amount + args.unstakeReward,
@@ -324,7 +330,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         _updateUser(l, u, args);
 
-        emit Stake(msg.sender, amount, period, lockedUntil);
+        emit Stake(msg.sender, amount, u.stakePeriod, u.lockedUntil);
     }
 
     /**
