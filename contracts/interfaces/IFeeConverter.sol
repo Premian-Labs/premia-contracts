@@ -7,7 +7,8 @@ interface IFeeConverter {
         address indexed account,
         address indexed token,
         uint256 inAmount,
-        uint256 outAmount
+        uint256 outAmount,
+        uint256 treasuryAmount
     );
 
     event SetAuthorized(address indexed account, bool isAuthorized);

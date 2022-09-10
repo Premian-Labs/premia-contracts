@@ -26,7 +26,7 @@ contract FeeConverter is IFeeConverter, OwnableInternal {
     // The treasury address which will receive a portion of the protocol fees
     address private immutable TREASURY;
     // The percentage of protocol fees the treasury will get (in basis points)
-    uint256 private constant TREASURY_FEE = 2e3; // 20%
+    uint256 private constant TREASURY_SHARE = 2e3; // 20%
 
     uint256 private constant INVERSE_BASIS_POINT = 1e4;
 
@@ -90,25 +90,31 @@ contract FeeConverter is IFeeConverter, OwnableInternal {
 
         if (amount == 0) return;
 
-        uint256 fee = (amount * TREASURY_FEE) / INVERSE_BASIS_POINT;
-        uint256 amountMinusFee = amount - fee;
-
-        IERC20(sourceToken).safeTransfer(TREASURY, fee);
-        IERC20(sourceToken).safeTransfer(EXCHANGE_HELPER, amountMinusFee);
+        IERC20(sourceToken).safeTransfer(EXCHANGE_HELPER, amount);
 
         uint256 outAmount = IExchangeHelper(EXCHANGE_HELPER).swapWithToken(
             sourceToken,
             USDC,
-            amountMinusFee,
+            amount,
             callee,
             allowanceTarget,
             data,
             address(this)
         );
 
-        IERC20(USDC).approve(PREMIA_STAKING, outAmount);
-        IPremiaStaking(PREMIA_STAKING).addRewards(outAmount);
+        uint256 treasuryAmount = (outAmount * TREASURY_SHARE) /
+            INVERSE_BASIS_POINT;
 
-        emit Converted(msg.sender, sourceToken, amountMinusFee, outAmount);
+        IERC20(USDC).safeTransfer(TREASURY, treasuryAmount);
+        IERC20(USDC).approve(PREMIA_STAKING, outAmount - treasuryAmount);
+        IPremiaStaking(PREMIA_STAKING).addRewards(outAmount - treasuryAmount);
+
+        emit Converted(
+            msg.sender,
+            sourceToken,
+            amount,
+            outAmount,
+            treasuryAmount
+        );
     }
 }
