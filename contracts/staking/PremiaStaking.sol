@@ -678,10 +678,10 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     {
         stakeLevels = new IPremiaStaking.StakeLevel[](4);
 
-        stakeLevels[0] = IPremiaStaking.StakeLevel(5000 * 1e18, 2500); // -25%
-        stakeLevels[1] = IPremiaStaking.StakeLevel(50000 * 1e18, 5000); // -50%
-        stakeLevels[2] = IPremiaStaking.StakeLevel(250000 * 1e18, 7500); // -75%
-        stakeLevels[3] = IPremiaStaking.StakeLevel(500000 * 1e18, 9500); // -95%
+        stakeLevels[0] = IPremiaStaking.StakeLevel(5000 * 1e18, 1000); // -10%
+        stakeLevels[1] = IPremiaStaking.StakeLevel(50000 * 1e18, 2500); // -25%
+        stakeLevels[2] = IPremiaStaking.StakeLevel(500000 * 1e18, 3500); // -35%
+        stakeLevels[3] = IPremiaStaking.StakeLevel(2500000 * 1e18, 6000); // -60%
     }
 
     function _getStakePeriodMultiplier(uint256 period)
