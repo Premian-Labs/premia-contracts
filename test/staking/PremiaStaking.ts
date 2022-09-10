@@ -184,7 +184,7 @@ describe('PremiaStaking', () => {
       await premiaStaking.connect(alice).stake(stakeAmount, ONE_YEAR);
       let amountWithBonus = await premiaStaking.getUserPower(alice.address);
       expect(amountWithBonus).to.eq(parseEther('150000'));
-      expect(await premiaStaking.getDiscount(alice.address)).to.eq(6250);
+      expect(await premiaStaking.getDiscount(alice.address)).to.eq(2722);
 
       await increaseTimestamp(ONE_YEAR + 1);
 
@@ -193,15 +193,15 @@ describe('PremiaStaking', () => {
       amountWithBonus = await premiaStaking.getUserPower(alice.address);
 
       expect(amountWithBonus).to.eq(parseEther('137500'));
-      expect(await premiaStaking.getDiscount(alice.address)).to.eq(6093);
+      expect(await premiaStaking.getDiscount(alice.address)).to.eq(2694);
 
-      await premia.mint(alice.address, parseEther('1000000'));
+      await premia.mint(alice.address, parseEther('5000000'));
       await premia
         .connect(alice)
-        .approve(premiaStaking.address, parseEther('1000000'));
-      await premiaStaking.connect(alice).stake(parseEther('1000000'), ONE_YEAR);
+        .approve(premiaStaking.address, parseEther('5000000'));
+      await premiaStaking.connect(alice).stake(parseEther('5000000'), ONE_YEAR);
 
-      expect(await premiaStaking.getDiscount(alice.address)).to.eq(9500);
+      expect(await premiaStaking.getDiscount(alice.address)).to.eq(6000);
     });
 
     it('should stake successfully with permit', async () => {
@@ -671,10 +671,10 @@ describe('PremiaStaking', () => {
   describe('#getStakeLevels', () => {
     it('should correctly return stake levels', async () => {
       expect(await premiaStaking.getStakeLevels()).to.deep.eq([
-        [parseEther('5000'), BigNumber.from(2500)],
-        [parseEther('50000'), BigNumber.from(5000)],
-        [parseEther('250000'), BigNumber.from(7500)],
-        [parseEther('500000'), BigNumber.from(9500)],
+        [parseEther('5000'), BigNumber.from(1000)],
+        [parseEther('50000'), BigNumber.from(2500)],
+        [parseEther('500000'), BigNumber.from(3500)],
+        [parseEther('2500000'), BigNumber.from(6000)],
       ]);
     });
   });
