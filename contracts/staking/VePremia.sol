@@ -113,7 +113,7 @@ contract VePremia is IVePremia, PremiaStaking {
 
             toSubtract -= votesRemoved;
 
-            emit RemoveVote(user, vote.target, votesRemoved);
+            emit RemoveVote(user, vote.version, vote.target, votesRemoved);
 
             if (toSubtract == 0) return;
         }
@@ -136,9 +136,12 @@ contract VePremia is IVePremia, PremiaStaking {
     /**
      * @inheritdoc IVePremia
      */
-    function getPoolVotes(bytes memory target) external view returns (uint256) {
+    function getPoolVotes(
+        VePremiaStorage.VoteVersion version,
+        bytes memory target
+    ) external view returns (uint256) {
         VePremiaStorage.Layout storage l = VePremiaStorage.layout();
-        return l.votes[target];
+        return l.votes[version][target];
     }
 
     /**
@@ -172,8 +175,8 @@ contract VePremia is IVePremia, PremiaStaking {
         for (uint256 i = 0; i < l.userVotes[msg.sender].length; i++) {
             VePremiaStorage.Vote memory vote = l.userVotes[msg.sender][i];
 
-            l.votes[vote.target] -= vote.amount;
-            emit RemoveVote(msg.sender, vote.target, vote.amount);
+            l.votes[vote.version][vote.target] -= vote.amount;
+            emit RemoveVote(msg.sender, vote.version, vote.target, vote.amount);
         }
 
         delete l.userVotes[msg.sender];
@@ -190,9 +193,9 @@ contract VePremia is IVePremia, PremiaStaking {
             );
 
             l.userVotes[msg.sender].push(votes[i]);
-            l.votes[vote.target] += vote.amount;
+            l.votes[vote.version][vote.target] += vote.amount;
 
-            emit AddVote(msg.sender, vote.target, vote.amount);
+            emit AddVote(msg.sender, vote.version, vote.target, vote.amount);
         }
     }
 }

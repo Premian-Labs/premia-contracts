@@ -12,6 +12,7 @@ import {IPremiaMining} from "./IPremiaMining.sol";
 import {IPoolIO} from "../pool/IPoolIO.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
 import {IVePremia} from "../staking/IVePremia.sol";
+import {VePremiaStorage} from "../staking/VePremiaStorage.sol";
 
 /**
  * @title Premia liquidity mining contract, derived from Sushiswap's MasterChef.sol ( https://github.com/sushiswap/sushiswap )
@@ -256,6 +257,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         uint256 utilizationRate
     ) internal virtual {
         uint256 votes = IVePremia(VE_PREMIA).getPoolVotes(
+            VePremiaStorage.VoteVersion.V2,
             abi.encodePacked(pool, isCallPool)
         );
         _setPoolAllocPoints(

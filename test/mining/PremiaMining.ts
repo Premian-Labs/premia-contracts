@@ -67,18 +67,22 @@ describe('PremiaMining', () => {
     await vePremia.connect(owner).castVotes([
       {
         amount: parseEther('250'),
+        version: 0,
         target: solidityPack(['address', 'bool'], [p.pool.address, true]),
       },
       {
         amount: parseEther('250'),
+        version: 0,
         target: solidityPack(['address', 'bool'], [p.pool.address, false]),
       },
       {
         amount: parseEther('250'),
+        version: 0,
         target: solidityPack(['address', 'bool'], [p.poolWeth.address, true]),
       },
       {
         amount: parseEther('250'),
+        version: 0,
         target: solidityPack(['address', 'bool'], [p.poolWeth.address, false]),
       },
     ]);
