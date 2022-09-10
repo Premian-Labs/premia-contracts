@@ -290,6 +290,15 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         uint64 period
     ) internal virtual {}
 
+    function _calculateWeightedAverage(
+        uint256 A,
+        uint256 B,
+        uint256 weightA,
+        uint256 weightB
+    ) internal pure returns (uint256) {
+        return (A * weightA + B * weightB) / (weightA + weightB);
+    }
+
     function _stake(uint256 amount, uint64 period) internal {
         require(period <= MAX_PERIOD, "Gt max period");
 
@@ -311,14 +320,21 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             lockLeft = block.timestamp - u.lockedUntil;
         }
 
-        lockLeft =
-            (lockLeft * args.balance + period * amount) /
-            (args.balance + amount);
+        lockLeft = _calculateWeightedAverage(
+            lockLeft,
+            period,
+            args.balance,
+            amount
+        );
 
         u.lockedUntil = uint64(block.timestamp + lockLeft);
         u.stakePeriod = uint64(
-            (u.stakePeriod * args.balance + period * amount) /
-                (args.balance + amount)
+            _calculateWeightedAverage(
+                u.stakePeriod,
+                period,
+                args.balance,
+                amount
+            )
         );
 
         args.newPower = _calculateUserPower(
