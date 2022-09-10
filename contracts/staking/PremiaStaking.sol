@@ -156,22 +156,33 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             toAddress
         );
 
-        // Extend lock if target chain has earlier unlock timestamp
-        if (u.lockedUntil < lockedUntil) {
-            u.lockedUntil = lockedUntil;
+        uint256 lockLeftSource;
+        if (lockedUntil > block.timestamp) {
+            lockLeftSource = block.timestamp - lockedUntil;
         }
 
-        if (u.stakePeriod > stakePeriod) {
-            u.stakePeriod = stakePeriod;
-
-            if (u.lockedUntil > block.timestamp) {
-                uint64 toLock = uint64(block.timestamp) - u.lockedUntil;
-                // If the time to lock expiration is greater than the stake period, this value becomes the new stake period
-                if (toLock > u.stakePeriod) {
-                    u.stakePeriod = toLock;
-                }
-            }
+        uint256 lockLeftDestination;
+        if (u.lockedUntil > block.timestamp) {
+            lockLeftDestination = block.timestamp - u.lockedUntil;
         }
+
+        uint256 lockLeft = _calculateWeightedAverage(
+            lockLeftSource,
+            lockLeftDestination,
+            amount,
+            args.balance
+        );
+
+        u.stakePeriod = uint64(
+            _calculateWeightedAverage(
+                stakePeriod,
+                u.stakePeriod,
+                amount,
+                args.balance
+            )
+        );
+
+        u.lockedUntil = uint64(block.timestamp + lockLeft);
 
         emit BridgeLock(toAddress, u.stakePeriod, u.lockedUntil);
 
