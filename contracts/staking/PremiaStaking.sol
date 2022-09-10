@@ -158,12 +158,12 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         uint256 lockLeftSource;
         if (lockedUntil > block.timestamp) {
-            lockLeftSource = block.timestamp - lockedUntil;
+            lockLeftSource = lockedUntil - block.timestamp;
         }
 
         uint256 lockLeftDestination;
         if (u.lockedUntil > block.timestamp) {
-            lockLeftDestination = block.timestamp - u.lockedUntil;
+            lockLeftDestination = u.lockedUntil - block.timestamp;
         }
 
         uint256 lockLeft = _calculateWeightedAverage(
@@ -328,7 +328,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         uint256 lockLeft;
         if (u.lockedUntil > block.timestamp) {
-            lockLeft = block.timestamp - u.lockedUntil;
+            lockLeft = u.lockedUntil - block.timestamp;
         }
 
         lockLeft = _calculateWeightedAverage(
