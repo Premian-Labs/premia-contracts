@@ -353,6 +353,9 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             u.stakePeriod
         );
 
+        // Sanity check (This should not be able to happen)
+        require(args.newPower >= args.oldPower, "newPower < oldPower");
+
         _mint(msg.sender, amount);
 
         _updateUser(l, u, args);

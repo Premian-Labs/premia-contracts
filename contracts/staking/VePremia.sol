@@ -20,33 +20,6 @@ contract VePremia is IVePremia, PremiaStaking {
         address exchangeHelper
     ) PremiaStaking(lzEndpoint, premia, rewardToken, exchangeHelper) {}
 
-    function _beforeStake(
-        address user,
-        uint256 amount,
-        uint64 period
-    ) internal override {
-        super._beforeStake(user, amount, period);
-        PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
-            .layout()
-            .userInfo[user];
-
-        VePremiaStorage.Layout storage l = VePremiaStorage.layout();
-
-        uint256 balance = _balanceOf(user);
-
-        uint256 currentPower = _calculateUserPower(
-            balance,
-            userInfo.stakePeriod
-        );
-
-        uint256 newPower = _calculateUserPower(amount + balance, period);
-
-        if (newPower < currentPower) {
-            // We can have newPower < currentPower if user add a small amount with a smaller stake period
-            _subtractExtraUserVotes(l, user, currentPower - newPower);
-        }
-    }
-
     function _beforeUnstake(address user, uint256 amount) internal override {
         PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
             .layout()
