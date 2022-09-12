@@ -3,10 +3,10 @@ import {
   ERC20__factory,
   ERC20Mock,
   ERC20Mock__factory,
+  FeeConverter,
+  FeeConverter__factory,
   PremiaErc20,
   PremiaErc20__factory,
-  PremiaMaker,
-  PremiaMaker__factory,
   ProxyUpgradeableOwnable__factory,
   VePremia,
   VePremia__factory,
@@ -77,30 +77,31 @@ export async function deployV1(
     );
   }
 
-  const premiaMakerImpl = await new PremiaMaker__factory(deployer).deploy(
-    premia.address,
+  const feeConverterImpl = await new FeeConverter__factory(deployer).deploy(
+    exchangeProxy ?? ethers.constants.AddressZero,
+    rewardToken.address,
     vePremia.address,
     treasury,
   );
 
   const premiaMakerProxy = await new ProxyUpgradeableOwnable__factory(
     deployer,
-  ).deploy(premiaMakerImpl.address);
+  ).deploy(feeConverterImpl.address);
 
-  const premiaMaker = PremiaMaker__factory.connect(
+  const feeConverter = FeeConverter__factory.connect(
     premiaMakerProxy.address,
     deployer,
   );
 
   if (log) {
     console.log(
-      `PremiaMaker deployed at ${premiaMaker.address} (Args : ${premia.address} / ${vePremia.address} / ${treasury})`,
+      `PremiaMaker deployed at ${feeConverter.address} (Args : ${premia.address} / ${vePremia.address} / ${treasury})`,
     );
   }
 
   return {
     premia,
-    premiaMaker,
+    feeConverter,
     vePremia,
   };
 }
@@ -108,5 +109,5 @@ export async function deployV1(
 export interface IPremiaContracts {
   premia: PremiaErc20 | ERC20Mock;
   vePremia: VePremia;
-  premiaMaker: PremiaMaker;
+  feeConverter: FeeConverter;
 }

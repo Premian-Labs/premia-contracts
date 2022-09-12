@@ -61,7 +61,7 @@ async function main() {
     exchangeHelper.address,
     premia.address,
     fixedFromFloat(0.03),
-    contracts.premiaMaker.address,
+    contracts.feeConverter.address,
     contracts.vePremia.address,
   );
 
