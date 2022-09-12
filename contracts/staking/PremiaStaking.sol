@@ -155,19 +155,11 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             toAddress
         );
 
-        uint256 lockLeftSource;
-        if (lockedUntil > block.timestamp) {
-            lockLeftSource = lockedUntil - block.timestamp;
-        }
-
-        uint256 lockLeftDestination;
-        if (u.lockedUntil > block.timestamp) {
-            lockLeftDestination = u.lockedUntil - block.timestamp;
-        }
-
         uint256 lockLeft = _calculateWeightedAverage(
-            lockLeftSource,
-            lockLeftDestination,
+            lockedUntil > block.timestamp ? lockedUntil - block.timestamp : 0,
+            u.lockedUntil > block.timestamp
+                ? u.lockedUntil - block.timestamp
+                : 0,
             amount,
             args.balance
         );
@@ -325,13 +317,10 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             msg.sender
         );
 
-        uint256 lockLeft;
-        if (u.lockedUntil > block.timestamp) {
-            lockLeft = u.lockedUntil - block.timestamp;
-        }
-
-        lockLeft = _calculateWeightedAverage(
-            lockLeft,
+        uint256 lockLeft = _calculateWeightedAverage(
+            u.lockedUntil > block.timestamp
+                ? u.lockedUntil - block.timestamp
+                : 0,
             period,
             args.balance,
             amount
