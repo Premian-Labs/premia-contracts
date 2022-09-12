@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 
 import {AddressUtils} from "@solidstate/contracts/utils/AddressUtils.sol";
 import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
-import {ERC20} from "@solidstate/contracts/token/ERC20/ERC20.sol";
 import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 import {ERC20Permit} from "@solidstate/contracts/token/ERC20/permit/ERC20Permit.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
