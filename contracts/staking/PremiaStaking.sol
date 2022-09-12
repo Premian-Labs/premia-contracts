@@ -58,11 +58,9 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     ) internal virtual override {
         if (from == address(0) || to == address(0)) return;
 
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage u = l.userInfo[from];
-
         require(
-            u.lockedUntil <= block.timestamp,
+            PremiaStakingStorage.layout().userInfo[from].lockedUntil <=
+                block.timestamp,
             "cant transfer tokens while locked"
         );
     }
@@ -190,10 +188,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
      * @inheritdoc IPremiaStaking
      */
     function addRewards(uint256 amount) external {
-        _addRewards(amount);
-    }
-
-    function _addRewards(uint256 amount) internal {
         _updateRewards();
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
@@ -364,10 +358,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         uint256 accRewardPerShare = l.accRewardPerShare;
         if (l.lastRewardUpdate > 0 && l.availableRewards > 0) {
-            uint256 pendingRewards = _getPendingRewards();
-
             accRewardPerShare +=
-                (pendingRewards * ACC_REWARD_PRECISION) /
+                (_getPendingRewards() * ACC_REWARD_PRECISION) /
                 l.totalPower;
         }
 
@@ -438,12 +430,11 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
      */
     function earlyUnstake(uint256 amount) external {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
 
         uint256 feePercentage = _getEarlyUnstakeFee(msg.sender);
         uint256 fee = (amount * feePercentage) / 1e4;
 
-        _startWithdraw(l, u, amount, fee);
+        _startWithdraw(l, l.userInfo[msg.sender], amount, fee);
     }
 
     /**
@@ -462,8 +453,9 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         view
         returns (uint256 feePercentage)
     {
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage u = l.userInfo[user];
+        PremiaStakingStorage.UserInfo storage u = PremiaStakingStorage
+            .layout()
+            .userInfo[user];
 
         require(u.lockedUntil > block.timestamp, "Not locked");
         uint256 lockLeft = u.lockedUntil - block.timestamp;
@@ -568,9 +560,11 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
      * @inheritdoc IPremiaStaking
      */
     function getUserPower(address user) external view returns (uint256) {
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo memory u = l.userInfo[user];
-        return _calculateUserPower(_balanceOf(user), u.stakePeriod);
+        return
+            _calculateUserPower(
+                _balanceOf(user),
+                PremiaStakingStorage.layout().userInfo[user].stakePeriod
+            );
     }
 
     /**
@@ -578,11 +572,10 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
      */
     function getDiscount(address user) external view returns (uint256) {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo memory u = l.userInfo[user];
 
         uint256 userPower = _calculateUserPower(
             _balanceOf(user),
-            u.stakePeriod
+            l.userInfo[user].stakePeriod
         );
 
         // If user is a contract, we use a different formula based on % of total power owned by the contract
@@ -836,7 +829,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     }
 
     function _getAvailablePremiaAmount() internal view returns (uint256) {
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        return IERC20(PREMIA).balanceOf(address(this)) - l.pendingWithdrawal;
+        return
+            IERC20(PREMIA).balanceOf(address(this)) -
+            PremiaStakingStorage.layout().pendingWithdrawal;
     }
 }
