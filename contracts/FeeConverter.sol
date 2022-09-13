@@ -90,17 +90,21 @@ contract FeeConverter is IFeeConverter, OwnableInternal {
 
         if (amount == 0) return;
 
-        IERC20(sourceToken).safeTransfer(EXCHANGE_HELPER, amount);
+        uint256 outAmount = amount;
 
-        uint256 outAmount = IExchangeHelper(EXCHANGE_HELPER).swapWithToken(
-            sourceToken,
-            USDC,
-            amount,
-            callee,
-            allowanceTarget,
-            data,
-            address(this)
-        );
+        if (sourceToken != USDC) {
+            IERC20(sourceToken).safeTransfer(EXCHANGE_HELPER, amount);
+
+            outAmount = IExchangeHelper(EXCHANGE_HELPER).swapWithToken(
+                sourceToken,
+                USDC,
+                amount,
+                callee,
+                allowanceTarget,
+                data,
+                address(this)
+            );
+        }
 
         uint256 treasuryAmount = (outAmount * TREASURY_SHARE) /
             INVERSE_BASIS_POINT;
