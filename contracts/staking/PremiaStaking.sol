@@ -168,6 +168,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             )
         );
 
+        u.lockedUntil = uint64(block.timestamp) + lockLeft;
+
         u.stakePeriod = uint64(
             _calculateWeightedAverage(
                 stakePeriod,
@@ -177,17 +179,16 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             )
         );
 
-        u.lockedUntil = uint64(block.timestamp) + lockLeft;
-
-        emit BridgeLock(toAddress, u.stakePeriod, u.lockedUntil);
-
-        _mint(toAddress, amount);
-
         args.newPower = _calculateUserPower(
             args.balance + amount + args.unstakeReward,
             u.stakePeriod
         );
+
+        _mint(toAddress, amount);
+
         _updateUser(l, u, args);
+
+        emit BridgeLock(toAddress, u.stakePeriod, u.lockedUntil);
     }
 
     /**
@@ -280,14 +281,14 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             r,
             s
         );
-        _stake(amount, period);
+        _stake(msg.sender, amount, period);
     }
 
     /**
      * @inheritdoc IPremiaStaking
      */
     function stake(uint256 amount, uint64 period) external {
-        _stake(amount, period);
+        _stake(msg.sender, amount, period);
     }
 
     function _beforeStake(
@@ -305,20 +306,25 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         return (A * weightA + B * weightB) / (weightA + weightB);
     }
 
-    function _stake(uint256 amount, uint64 period) internal {
+    function _stake(
+        address toAddress,
+        uint256 amount,
+        uint64 period
+    ) internal {
         require(period <= MAX_PERIOD, "Gt max period");
 
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
+        _beforeStake(toAddress, amount, period);
+        IERC20(PREMIA).safeTransferFrom(toAddress, address(this), amount);
 
         _updateRewards();
-        _beforeStake(msg.sender, amount, period);
-        IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
+
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[toAddress];
 
         UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
             l,
             u,
-            msg.sender
+            toAddress
         );
 
         uint64 lockLeft = uint64(
@@ -333,6 +339,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         );
 
         u.lockedUntil = uint64(block.timestamp) + lockLeft;
+
         u.stakePeriod = uint64(
             _calculateWeightedAverage(
                 u.stakePeriod,
@@ -350,11 +357,11 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         // Sanity check (This should not be able to happen)
         require(args.newPower >= args.oldPower, "newPower < oldPower");
 
-        _mint(msg.sender, amount);
+        _mint(toAddress, amount);
 
         _updateUser(l, u, args);
 
-        emit Stake(msg.sender, amount, u.stakePeriod, u.lockedUntil);
+        emit Stake(toAddress, amount, u.stakePeriod, u.lockedUntil);
     }
 
     /**
