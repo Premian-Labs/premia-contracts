@@ -155,13 +155,17 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             toAddress
         );
 
-        uint256 lockLeft = _calculateWeightedAverage(
-            lockedUntil > block.timestamp ? lockedUntil - block.timestamp : 0,
-            u.lockedUntil > block.timestamp
-                ? u.lockedUntil - block.timestamp
-                : 0,
-            amount,
-            args.balance
+        uint64 lockLeft = uint64(
+            _calculateWeightedAverage(
+                lockedUntil > block.timestamp
+                    ? lockedUntil - block.timestamp
+                    : 0,
+                u.lockedUntil > block.timestamp
+                    ? u.lockedUntil - block.timestamp
+                    : 0,
+                amount,
+                args.balance
+            )
         );
 
         u.stakePeriod = uint64(
@@ -173,7 +177,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             )
         );
 
-        u.lockedUntil = uint64(block.timestamp + lockLeft);
+        u.lockedUntil = uint64(block.timestamp) + lockLeft;
 
         emit BridgeLock(toAddress, u.stakePeriod, u.lockedUntil);
 
@@ -317,16 +321,18 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             msg.sender
         );
 
-        uint256 lockLeft = _calculateWeightedAverage(
-            u.lockedUntil > block.timestamp
-                ? u.lockedUntil - block.timestamp
-                : 0,
-            period,
-            args.balance,
-            amount
+        uint64 lockLeft = uint64(
+            _calculateWeightedAverage(
+                u.lockedUntil > block.timestamp
+                    ? u.lockedUntil - block.timestamp
+                    : 0,
+                period,
+                args.balance,
+                amount
+            )
         );
 
-        u.lockedUntil = uint64(block.timestamp + lockLeft);
+        u.lockedUntil = uint64(block.timestamp) + lockLeft;
         u.stakePeriod = uint64(
             _calculateWeightedAverage(
                 u.stakePeriod,
