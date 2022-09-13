@@ -9,13 +9,13 @@ interface IVePremia is IPremiaStaking {
     event AddVote(
         address indexed voter,
         VePremiaStorage.VoteVersion indexed version,
-        bytes indexed target,
+        bytes target,
         uint256 amount
     );
     event RemoveVote(
         address indexed voter,
         VePremiaStorage.VoteVersion indexed version,
-        bytes indexed target,
+        bytes target,
         uint256 amount
     );
 
