@@ -291,12 +291,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         _stake(msg.sender, amount, period);
     }
 
-    function _beforeStake(
-        address user,
-        uint256 amount,
-        uint64 period
-    ) internal virtual {}
-
     function _calculateWeightedAverage(
         uint256 A,
         uint256 B,
@@ -313,7 +307,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     ) internal {
         require(period <= MAX_PERIOD, "Gt max period");
 
-        _beforeStake(toAddress, amount, period);
         IERC20(PREMIA).safeTransferFrom(toAddress, address(this), amount);
 
         _updateRewards();
@@ -777,7 +770,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         u.reward += reward;
 
         if (unstakeReward > 0) {
-            _beforeStake(user, unstakeReward, u.stakePeriod);
             l.availableUnstakeRewards -= unstakeReward;
             _mint(user, unstakeReward);
             emit EarlyUnstakeRewardCollected(user, unstakeReward);
