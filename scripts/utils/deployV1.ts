@@ -103,6 +103,7 @@ export async function deployV1(
     premia,
     feeConverter,
     vePremia,
+    rewardToken,
   };
 }
 
@@ -110,4 +111,5 @@ export interface IPremiaContracts {
   premia: PremiaErc20 | ERC20Mock;
   vePremia: VePremia;
   feeConverter: FeeConverter;
+  rewardToken: ERC20 | ERC20Mock;
 }
