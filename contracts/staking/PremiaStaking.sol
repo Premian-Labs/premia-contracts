@@ -144,51 +144,54 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         uint64 stakePeriod,
         uint64 lockedUntil
     ) internal {
-        _updateRewards();
+        unchecked {
+            _updateRewards();
 
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage u = l.userInfo[toAddress];
+            PremiaStakingStorage.Layout storage l = PremiaStakingStorage
+                .layout();
+            PremiaStakingStorage.UserInfo storage u = l.userInfo[toAddress];
 
-        UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
-            l,
-            u,
-            toAddress
-        );
+            UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
+                l,
+                u,
+                toAddress
+            );
 
-        uint64 lockLeft = uint64(
-            _calculateWeightedAverage(
-                lockedUntil > block.timestamp
-                    ? lockedUntil - block.timestamp
-                    : 0,
-                u.lockedUntil > block.timestamp
-                    ? u.lockedUntil - block.timestamp
-                    : 0,
-                amount,
-                args.balance
-            )
-        );
+            uint64 lockLeft = uint64(
+                _calculateWeightedAverage(
+                    lockedUntil > block.timestamp
+                        ? lockedUntil - block.timestamp
+                        : 0,
+                    u.lockedUntil > block.timestamp
+                        ? u.lockedUntil - block.timestamp
+                        : 0,
+                    amount,
+                    args.balance
+                )
+            );
 
-        u.lockedUntil = uint64(block.timestamp) + lockLeft;
+            u.lockedUntil = uint64(block.timestamp) + lockLeft;
 
-        u.stakePeriod = uint64(
-            _calculateWeightedAverage(
-                stakePeriod,
-                u.stakePeriod,
-                amount,
-                args.balance
-            )
-        );
+            u.stakePeriod = uint64(
+                _calculateWeightedAverage(
+                    stakePeriod,
+                    u.stakePeriod,
+                    amount,
+                    args.balance
+                )
+            );
 
-        args.newPower = _calculateUserPower(
-            args.balance + amount + args.unstakeReward,
-            u.stakePeriod
-        );
+            args.newPower = _calculateUserPower(
+                args.balance + amount + args.unstakeReward,
+                u.stakePeriod
+            );
 
-        _mint(toAddress, amount);
+            _mint(toAddress, amount);
 
-        _updateUser(l, u, args);
+            _updateUser(l, u, args);
 
-        emit Stake(toAddress, amount, u.stakePeriod, u.lockedUntil);
+            emit Stake(toAddress, amount, u.stakePeriod, u.lockedUntil);
+        }
     }
 
     /**
