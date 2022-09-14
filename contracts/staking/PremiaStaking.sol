@@ -133,7 +133,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             toAddress := mload(add(toAddressBytes, 20))
         }
 
-        _creditTo(toAddress, amount, stakePeriod, lockedUntil);
+        _creditTo(toAddress, amount, stakePeriod, lockedUntil, true);
 
         emit ReceiveFromChain(srcChainId, srcAddress, toAddress, amount, nonce);
     }
@@ -142,7 +142,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         address toAddress,
         uint256 amount,
         uint64 stakePeriod,
-        uint64 lockedUntil
+        uint64 lockedUntil,
+        bool bridge
     ) internal {
         unchecked {
             _updateRewards();
@@ -191,6 +192,13 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             _updateUser(l, u, args);
 
             emit Stake(toAddress, amount, u.stakePeriod, u.lockedUntil);
+
+            if (bridge) {
+                emit BridgeLock(toAddress, u.stakePeriod, u.lockedUntil);
+            } else {
+                // Sanity check (This should not be able to happen)
+                require(args.newPower >= args.oldPower, "newPower < oldPower");
+            }
         }
     }
 
@@ -316,7 +324,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             toAddress,
             amount,
             stakePeriod,
-            uint64(block.timestamp) + stakePeriod
+            uint64(block.timestamp) + stakePeriod,
+            false
         );
     }
 
