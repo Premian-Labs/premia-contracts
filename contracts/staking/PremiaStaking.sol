@@ -188,7 +188,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
         _updateUser(l, u, args);
 
-        emit BridgeLock(toAddress, u.stakePeriod, u.lockedUntil);
+        emit Stake(toAddress, amount, u.stakePeriod, u.lockedUntil);
     }
 
     /**
@@ -303,58 +303,18 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     function _stake(
         address toAddress,
         uint256 amount,
-        uint64 period
+        uint64 stakePeriod
     ) internal {
-        require(period <= MAX_PERIOD, "Gt max period");
+        require(stakePeriod <= MAX_PERIOD, "Gt max period");
 
         IERC20(PREMIA).safeTransferFrom(toAddress, address(this), amount);
 
-        _updateRewards();
-
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage u = l.userInfo[toAddress];
-
-        UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
-            l,
-            u,
-            toAddress
+        _creditTo(
+            toAddress,
+            amount,
+            stakePeriod,
+            uint64(block.timestamp) + stakePeriod
         );
-
-        uint64 lockLeft = uint64(
-            _calculateWeightedAverage(
-                u.lockedUntil > block.timestamp
-                    ? u.lockedUntil - block.timestamp
-                    : 0,
-                period,
-                args.balance,
-                amount
-            )
-        );
-
-        u.lockedUntil = uint64(block.timestamp) + lockLeft;
-
-        u.stakePeriod = uint64(
-            _calculateWeightedAverage(
-                u.stakePeriod,
-                period,
-                args.balance,
-                amount
-            )
-        );
-
-        args.newPower = _calculateUserPower(
-            args.balance + amount + args.unstakeReward,
-            u.stakePeriod
-        );
-
-        // Sanity check (This should not be able to happen)
-        require(args.newPower >= args.oldPower, "newPower < oldPower");
-
-        _mint(toAddress, amount);
-
-        _updateUser(l, u, args);
-
-        emit Stake(toAddress, amount, u.stakePeriod, u.lockedUntil);
     }
 
     /**
