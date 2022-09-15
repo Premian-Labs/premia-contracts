@@ -193,9 +193,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
                 emit BridgeLock(toAddress, u.stakePeriod, u.lockedUntil);
             } else {
                 emit Stake(toAddress, amount, u.stakePeriod, u.lockedUntil);
-
-                // Sanity check (This should not be able to happen)
-                require(args.newPower >= args.oldPower, "newPower < oldPower");
             }
         }
     }
