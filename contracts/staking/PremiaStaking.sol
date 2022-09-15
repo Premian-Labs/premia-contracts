@@ -164,7 +164,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
                     u.lockedUntil > block.timestamp
                         ? u.lockedUntil - block.timestamp
                         : 0,
-                    amount,
+                    amount + args.unstakeReward,
                     args.balance
                 )
             );
@@ -175,7 +175,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
                 _calculateWeightedAverage(
                     stakePeriod,
                     u.stakePeriod,
-                    amount,
+                    amount + args.unstakeReward,
                     args.balance
                 )
             );
