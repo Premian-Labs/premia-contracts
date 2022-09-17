@@ -140,7 +140,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         address toAddress,
         uint256 amount,
         uint64 stakePeriod,
-        uint64 lockedUntil,
+        uint64 creditLockedUntil,
         bool bridge
     ) internal {
         unchecked {
@@ -156,20 +156,22 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
                 toAddress
             );
 
+            uint64 lockedUntil = u.lockedUntil;
+
             uint64 lockLeft = uint64(
                 _calculateWeightedAverage(
+                    creditLockedUntil > block.timestamp
+                        ? creditLockedUntil - block.timestamp
+                        : 0,
                     lockedUntil > block.timestamp
                         ? lockedUntil - block.timestamp
-                        : 0,
-                    u.lockedUntil > block.timestamp
-                        ? u.lockedUntil - block.timestamp
                         : 0,
                     amount + args.unstakeReward,
                     args.balance
                 )
             );
 
-            u.lockedUntil = uint64(block.timestamp) + lockLeft;
+            u.lockedUntil = lockedUntil = uint64(block.timestamp) + lockLeft;
 
             u.stakePeriod = uint64(
                 _calculateWeightedAverage(
@@ -190,9 +192,9 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             _updateUser(l, u, args);
 
             if (bridge) {
-                emit BridgeLock(toAddress, u.stakePeriod, u.lockedUntil);
+                emit BridgeLock(toAddress, u.stakePeriod, lockedUntil);
             } else {
-                emit Stake(toAddress, amount, u.stakePeriod, u.lockedUntil);
+                emit Stake(toAddress, amount, u.stakePeriod, lockedUntil);
             }
         }
     }
