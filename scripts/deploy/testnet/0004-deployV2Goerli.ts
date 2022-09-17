@@ -11,6 +11,7 @@ import { deployV1 } from '../../utils/deployV1';
 async function main() {
   const [deployer] = await ethers.getSigners();
   const premia = await new PremiaErc20__factory(deployer).deploy();
+  await premia.deployed();
 
   const contracts = await deployV1(
     deployer,
@@ -25,8 +26,11 @@ async function main() {
   );
 
   const daiToken = await new ERC20Mock__factory(deployer).deploy('DAI', 18);
+  await daiToken.deployed();
   const wbtcToken = await new ERC20Mock__factory(deployer).deploy('WBTC', 8);
+  await wbtcToken.deployed();
   const linkToken = await new ERC20Mock__factory(deployer).deploy('LINK', 18);
+  await linkToken.deployed();
 
   const eth: PoolToken = {
     tokenAddress: '0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6',

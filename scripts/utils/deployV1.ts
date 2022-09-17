@@ -27,6 +27,7 @@ export async function deployV1(
   if (isTest) {
     if (!premiaAddress) {
       premia = await new ERC20Mock__factory(deployer).deploy('PREMIA', 18);
+      await premia.deployed();
     } else {
       premia = PremiaErc20__factory.connect(premiaAddress, deployer);
     }
@@ -47,14 +48,17 @@ export async function deployV1(
   const xPremiaImpl = await new PremiaStakingWithFeeDiscount__factory(
     deployer,
   ).deploy(premia.address, ZERO_ADDRESS, ZERO_ADDRESS);
+  await xPremiaImpl.deployed();
   const xPremiaProxy = await new PremiaStakingProxy__factory(deployer).deploy(
     xPremiaImpl.address,
   );
+  await xPremiaProxy.deployed();
 
   const xPremia = PremiaStakingWithFeeDiscount__factory.connect(
     xPremiaImpl.address,
     deployer,
   );
+  await xPremia.deployed();
 
   if (log) {
     console.log(
@@ -67,10 +71,12 @@ export async function deployV1(
     xPremia.address,
     treasury,
   );
+  await premiaMakerImpl.deployed();
 
   const premiaMakerProxy = await new ProxyUpgradeableOwnable__factory(
     deployer,
   ).deploy(premiaMakerImpl.address);
+  await premiaMakerProxy.deployed();
 
   const premiaMaker = PremiaMaker__factory.connect(
     premiaMakerProxy.address,
@@ -86,9 +92,11 @@ export async function deployV1(
   const feeDiscountStandaloneImpl = await new FeeDiscount__factory(
     deployer,
   ).deploy(xPremia.address);
+  await feeDiscountStandaloneImpl.deployed();
   const feeDiscountStandaloneProxy = await new ProxyUpgradeableOwnable__factory(
     deployer,
   ).deploy(feeDiscountStandaloneImpl.address);
+  await feeDiscountStandaloneProxy.deployed();
   const feeDiscountStandalone = FeeDiscount__factory.connect(
     feeDiscountStandaloneProxy.address,
     deployer,
