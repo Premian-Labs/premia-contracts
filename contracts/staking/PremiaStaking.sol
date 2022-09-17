@@ -428,12 +428,18 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         view
         returns (uint256 feePercentage)
     {
-        PremiaStakingStorage.UserInfo storage u = PremiaStakingStorage
+        uint256 lockedUntil = PremiaStakingStorage
             .layout()
-            .userInfo[user];
+            .userInfo[user]
+            .lockedUntil;
 
-        require(u.lockedUntil > block.timestamp, "Not locked");
-        uint256 lockLeft = u.lockedUntil - block.timestamp;
+        require(lockedUntil > block.timestamp, "Not locked");
+
+        uint256 lockLeft;
+
+        unchecked {
+            lockLeft = lockedUntil - block.timestamp;
+        }
 
         feePercentage = (lockLeft * 2500) / 365 days; // 25% fee per year left
         if (feePercentage > 7500) {
