@@ -143,6 +143,14 @@ export default {
       // gasPrice: 100000000000,
       timeout: 100000,
     },
+    goerliArbitrum: {
+      url: `https://goerli-rollup.arbitrum.io/rpc`,
+      accounts: [PKEY_ETH_TEST],
+      //gas: 120000000000,
+      // blockGasLimit: 120000000000,
+      // gasPrice: 100000000000,
+      timeout: 100000,
+    },
     fantomDev: {
       url: `https://rpc.ftm.tools/`,
       accounts: [PKEY_ETH_TEST],

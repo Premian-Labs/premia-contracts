@@ -15,8 +15,12 @@ async function main() {
   let lzEndpoint: string;
   if (chainId === 4) {
     lzEndpoint = LZ_ENDPOINTS.rinkeby;
+  } else if (chainId === 5) {
+    lzEndpoint = LZ_ENDPOINTS.goerli;
   } else if (chainId === 421611) {
     lzEndpoint = LZ_ENDPOINTS['arbitrum-rinkeby'];
+  } else if (chainId === 421613) {
+    lzEndpoint = LZ_ENDPOINTS['arbitrum-goerli'];
   } else {
     throw new Error('ChainId not implemented');
   }
@@ -32,6 +36,7 @@ async function main() {
   await usdc.deployed();
 
   const exchangeHelper = await new ExchangeHelper__factory(deployer).deploy();
+  await exchangeHelper.deployed();
 
   console.log('exchange helper : ', exchangeHelper.address);
 
