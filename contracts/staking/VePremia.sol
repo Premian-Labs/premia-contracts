@@ -20,46 +20,17 @@ contract VePremia is IVePremia, PremiaStaking {
         address exchangeHelper
     ) PremiaStaking(lzEndpoint, premia, rewardToken, exchangeHelper) {}
 
-    function _beforeStake(
-        address user,
-        uint256 amount,
-        uint64 period
-    ) internal override {
-        super._beforeStake(user, amount, period);
-        PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
-            .layout()
-            .userInfo[user];
-
-        VePremiaStorage.Layout storage l = VePremiaStorage.layout();
-
-        uint256 balance = _balanceOf(user);
-
-        uint256 currentPower = _calculateUserPower(
-            balance,
-            userInfo.stakePeriod
-        );
-
-        uint256 newPower = _calculateUserPower(amount + balance, period);
-
-        if (newPower < currentPower) {
-            // We can have newPower < currentPower if user add a small amount with a smaller stake period
-            _subtractExtraUserVotes(l, user, currentPower - newPower);
-        }
-    }
-
     function _beforeUnstake(address user, uint256 amount) internal override {
-        PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
-            .layout()
-            .userInfo[user];
-
-        VePremiaStorage.Layout storage l = VePremiaStorage.layout();
-
         uint256 votingPowerUnstaked = _calculateUserPower(
             amount,
-            userInfo.stakePeriod
+            PremiaStakingStorage.layout().userInfo[user].stakePeriod
         );
 
-        _subtractExtraUserVotes(l, user, votingPowerUnstaked);
+        _subtractExtraUserVotes(
+            VePremiaStorage.layout(),
+            user,
+            votingPowerUnstaked
+        );
     }
 
     /**
@@ -70,13 +41,9 @@ contract VePremia is IVePremia, PremiaStaking {
         address user,
         uint256 amountUnstaked
     ) internal {
-        PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
-            .layout()
-            .userInfo[user];
-
         uint256 votingPower = _calculateUserPower(
             _balanceOf(user),
-            userInfo.stakePeriod
+            PremiaStakingStorage.layout().userInfo[user].stakePeriod
         );
         uint256 votingPowerUsed = _calculateUserVotingPowerUsed(user);
         uint256 votingPowerLeftAfterUnstake = votingPower - amountUnstaked;
@@ -140,8 +107,7 @@ contract VePremia is IVePremia, PremiaStaking {
         VePremiaStorage.VoteVersion version,
         bytes memory target
     ) external view returns (uint256) {
-        VePremiaStorage.Layout storage l = VePremiaStorage.layout();
-        return l.votes[version][target];
+        return VePremiaStorage.layout().votes[version][target];
     }
 
     /**
@@ -161,14 +127,10 @@ contract VePremia is IVePremia, PremiaStaking {
     function castVotes(VePremiaStorage.Vote[] memory votes) external {
         VePremiaStorage.Layout storage l = VePremiaStorage.layout();
 
-        PremiaStakingStorage.UserInfo memory userInfo = PremiaStakingStorage
-            .layout()
-            .userInfo[msg.sender];
-
         uint256 balance = _balanceOf(msg.sender);
         uint256 userVotingPower = _calculateUserPower(
             balance,
-            userInfo.stakePeriod
+            PremiaStakingStorage.layout().userInfo[msg.sender].stakePeriod
         );
 
         // Remove previous votes

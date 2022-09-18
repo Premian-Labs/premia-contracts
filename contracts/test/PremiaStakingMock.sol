@@ -59,6 +59,6 @@ contract PremiaStakingMock is PremiaStaking {
         uint64 stakePeriod,
         uint64 lockedUntil
     ) external {
-        _creditTo(toAddress, amount, stakePeriod, lockedUntil);
+        _creditTo(toAddress, amount, stakePeriod, lockedUntil, false);
     }
 }

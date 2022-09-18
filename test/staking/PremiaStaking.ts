@@ -239,37 +239,6 @@ describe('PremiaStaking', () => {
       ).to.be.revertedWith('Stake still locked');
     });
 
-    it('should not allow adding to stake with smaller period than period of stake left', async () => {
-      await premiaStaking
-        .connect(alice)
-        .stake(stakeAmount.div(2), 3 * oneMonth);
-
-      await increaseTimestamp(oneMonth);
-
-      // Fail setting one month stake
-      await expect(
-        premiaStaking.connect(alice).stake(stakeAmount.div(4), oneMonth),
-      ).to.be.revertedWith('Cannot add stake with lower stake period');
-
-      // Success adding 3 months stake
-      await premiaStaking
-        .connect(alice)
-        .stake(stakeAmount.div(4), 3 * oneMonth);
-      let userInfo = await premiaStaking.getUserInfo(alice.address);
-      let balance = await premiaStaking.balanceOf(alice.address);
-      expect(balance).to.eq(stakeAmount.div(4).mul(3));
-      expect(userInfo.stakePeriod).to.eq(3 * oneMonth);
-
-      // Success adding for 6 months stake
-      await premiaStaking
-        .connect(alice)
-        .stake(stakeAmount.div(4), 6 * oneMonth);
-      userInfo = await premiaStaking.getUserInfo(alice.address);
-      balance = await premiaStaking.balanceOf(alice.address);
-      expect(balance).to.eq(stakeAmount);
-      expect(userInfo.stakePeriod).to.eq(6 * oneMonth);
-    });
-
     it('should correctly calculate stake period multiplier', async () => {
       expect(await premiaStaking.getStakePeriodMultiplier(0)).to.eq(2500);
       expect(await premiaStaking.getStakePeriodMultiplier(ONE_YEAR / 2)).to.eq(
