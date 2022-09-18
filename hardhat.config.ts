@@ -114,16 +114,8 @@ export default {
       //gasPrice: 10,
       timeout: 300000,
     },
-    kovan: {
-      url: `https://eth-kovan.alchemyapi.io/v2/${API_KEY_ALCHEMY}`,
-      accounts: [PKEY_ETH_TEST],
-      //gas: 120000000000,
-      blockGasLimit: 120000000000,
-      //gasPrice: 10,
-      timeout: 300000,
-    },
-    ropsten: {
-      url: `https://eth-ropsten.alchemyapi.io/v2/${API_KEY_ALCHEMY}`,
+    goerli: {
+      url: `https://eth-goerli.alchemyapi.io/v2/${API_KEY_ALCHEMY}`,
       accounts: [PKEY_ETH_TEST],
       //gas: 120000000000,
       blockGasLimit: 120000000000,
@@ -164,7 +156,7 @@ export default {
   },
 
   abiExporter: {
-    runOnCompile: false,
+    runOnCompile: true,
     path: './abi',
     clear: true,
     flat: true,

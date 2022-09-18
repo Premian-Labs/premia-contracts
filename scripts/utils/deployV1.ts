@@ -31,12 +31,14 @@ export async function deployV1(
   if (isTest) {
     if (!premiaAddress) {
       premia = await new ERC20Mock__factory(deployer).deploy('PREMIA', 18);
+      await premia.deployed();
     } else {
       premia = PremiaErc20__factory.connect(premiaAddress, deployer);
     }
 
     if (!rewardTokenAddress) {
       rewardToken = await new ERC20Mock__factory(deployer).deploy('USDC', 6);
+      await rewardToken.deployed();
     } else {
       rewardToken = ERC20Mock__factory.connect(rewardTokenAddress, deployer);
     }
@@ -65,9 +67,11 @@ export async function deployV1(
     rewardToken.address,
     exchangeProxy ?? ethers.constants.AddressZero,
   );
+  await vePremiaImpl.deployed();
   const vePremiaProxy = await new VePremiaProxy__factory(deployer).deploy(
     vePremiaImpl.address,
   );
+  await vePremiaProxy.deployed();
 
   const vePremia = VePremia__factory.connect(vePremiaImpl.address, deployer);
 
@@ -83,6 +87,7 @@ export async function deployV1(
     vePremia.address,
     treasury,
   );
+  await feeConverterImpl.deployed();
 
   const premiaMakerProxy = await new ProxyUpgradeableOwnable__factory(
     deployer,

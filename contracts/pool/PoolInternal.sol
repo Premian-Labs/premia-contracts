@@ -1474,6 +1474,12 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
         }
     }
 
+    /*
+     * @notice mint ERC1155 token without pasing data payload or calling safe transfer acceptance check
+     * @param account recipient of minted tokens
+     * @param tokenId id of token to mint
+     * @param amount quantity of tokens to mint
+     */
     function _mint(
         address account,
         uint256 tokenId,

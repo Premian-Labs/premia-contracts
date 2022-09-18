@@ -12,6 +12,7 @@ import { deployV1 } from '../../utils/deployV1';
 async function main() {
   const [deployer] = await ethers.getSigners();
   const premia = await new PremiaErc20__factory(deployer).deploy();
+  await premia.deployed();
 
   const contracts = await deployV1(
     deployer,
@@ -22,39 +23,42 @@ async function main() {
     premia.address,
   );
 
-  // Kovan addresses
-  const weth = '0xd0A1E359811322d97991E03f863a0C30C2cF029C';
+  const weth = ethers.utils.getAddress(
+    '0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6',
+  );
 
-  const ethToken = await new ERC20Mock__factory(deployer).deploy('ETH', 18);
   const daiToken = await new ERC20Mock__factory(deployer).deploy('DAI', 18);
+  await daiToken.deployed();
   const wbtcToken = await new ERC20Mock__factory(deployer).deploy('WBTC', 8);
+  await wbtcToken.deployed();
   const linkToken = await new ERC20Mock__factory(deployer).deploy('LINK', 18);
+  await linkToken.deployed();
 
   const eth: PoolToken = {
-    tokenAddress: ethToken.address,
-    oracleAddress: '0x9326BFA02ADD2366b30bacB125260Af641031331',
+    tokenAddress: '0xb4fbf271143f4fbf7b91a5ded31805e42b2208d6',
+    oracleAddress: '0xD4a33860578De61DBAbDc8BFdb98FD742fA7028e',
     minimum: '0.05',
   };
 
   const dai: PoolToken = {
     tokenAddress: daiToken.address,
-    oracleAddress: '0x777A68032a88E5A84678A77Af2CD65A7b3c0775a',
+    oracleAddress: '0x0d79df66BE487753B02D015Fb622DED7f0E9798d',
     minimum: '200',
   };
 
   const btc: PoolToken = {
     tokenAddress: wbtcToken.address,
-    oracleAddress: '0x6135b13325bfC4B00278B4abC5e20bbce2D6580e',
+    oracleAddress: '0xA39434A63A52E749F02807ae27335515BA4b07F7',
     minimum: '0.005',
   };
 
   const link: PoolToken = {
     tokenAddress: linkToken.address,
-    oracleAddress: '0x396c5E36DD0a0F5a5D33dae44368D4193f69a1F0',
+    oracleAddress: '0x48731cF7e84dc94C5f84577882c14Be11a5B7456',
     minimum: '5',
   };
 
-  const exchangeHelper = await ExchangeHelper__factory(deployer).deploy();
+  const exchangeHelper = await new ExchangeHelper__factory(deployer).deploy();
 
   const { premiaDiamond, proxyManager } = await deployV2(
     weth,
