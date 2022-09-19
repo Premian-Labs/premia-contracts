@@ -66,23 +66,24 @@ contract VePremia is IVePremia, PremiaStaking {
         uint256 amount
     ) internal {
         uint256 toSubtract = amount;
-        for (uint256 i = l.userVotes[user].length; i > 0; i--) {
-            VePremiaStorage.Vote memory vote = l.userVotes[user][i - 1];
+        VePremiaStorage.Vote[] storage userVotes = l.userVotes[user];
+
+        for (uint256 i = userVotes.length; i > 0; ) {
+            VePremiaStorage.Vote storage vote = userVotes[--i];
 
             uint256 votesRemoved;
             if (toSubtract <= vote.amount) {
                 votesRemoved = toSubtract;
-                l.userVotes[user][i - 1].amount -= toSubtract;
+                vote.amount -= toSubtract;
+                i = 0;
             } else {
                 votesRemoved = vote.amount;
-                l.userVotes[user].pop();
+                userVotes.pop();
             }
 
             toSubtract -= votesRemoved;
 
             emit RemoveVote(user, vote.version, vote.target, votesRemoved);
-
-            if (toSubtract == 0) return;
         }
     }
 
