@@ -91,12 +91,14 @@ contract VePremia is IVePremia, PremiaStaking {
         view
         returns (uint256 votingPowerUsed)
     {
-        VePremiaStorage.Vote[] memory userVotes = VePremiaStorage
-            .layout()
-            .userVotes[user];
+        unchecked {
+            VePremiaStorage.Vote[] memory userVotes = VePremiaStorage
+                .layout()
+                .userVotes[user];
 
-        for (uint256 i = 0; i < userVotes.length; i++) {
-            votingPowerUsed += userVotes[i].amount;
+            for (uint256 i = 0; i < userVotes.length; i++) {
+                votingPowerUsed += userVotes[i].amount;
+            }
         }
     }
 
