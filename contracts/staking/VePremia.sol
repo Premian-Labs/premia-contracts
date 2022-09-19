@@ -139,13 +139,11 @@ contract VePremia is IVePremia, PremiaStaking {
                 PremiaStakingStorage.layout().userInfo[msg.sender].stakePeriod
             );
 
-            VePremiaStorage.Vote[] storage voteStorage = l.userVotes[
-                msg.sender
-            ];
+            VePremiaStorage.Vote[] storage userVotes = l.userVotes[msg.sender];
 
             // Remove previous votes
-            for (uint256 i = voteStorage.length; i > 0; ) {
-                VePremiaStorage.Vote memory vote = voteStorage[--i];
+            for (uint256 i = userVotes.length; i > 0; ) {
+                VePremiaStorage.Vote memory vote = userVotes[--i];
 
                 l.votes[vote.version][vote.target] -= vote.amount;
                 emit RemoveVote(
@@ -155,7 +153,7 @@ contract VePremia is IVePremia, PremiaStaking {
                     vote.amount
                 );
 
-                voteStorage.pop();
+                userVotes.pop();
             }
 
             // Cast new votes
@@ -169,7 +167,7 @@ contract VePremia is IVePremia, PremiaStaking {
                     "not enough voting power"
                 );
 
-                voteStorage.push(votes[i]);
+                userVotes.push(votes[i]);
                 l.votes[vote.version][vote.target] += vote.amount;
 
                 emit AddVote(
