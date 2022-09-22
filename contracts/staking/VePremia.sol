@@ -65,10 +65,10 @@ contract VePremia is IVePremia, PremiaStaking {
         address user,
         uint256 amount
     ) internal {
-        unchecked {
-            uint256 toSubtract = amount;
-            VePremiaStorage.Vote[] storage userVotes = l.userVotes[user];
+        uint256 toSubtract = amount;
+        VePremiaStorage.Vote[] storage userVotes = l.userVotes[user];
 
+        unchecked {
             for (uint256 i = userVotes.length; i > 0; ) {
                 VePremiaStorage.Vote storage vote = userVotes[--i];
 
@@ -95,11 +95,11 @@ contract VePremia is IVePremia, PremiaStaking {
         view
         returns (uint256 votingPowerUsed)
     {
-        unchecked {
-            VePremiaStorage.Vote[] memory userVotes = VePremiaStorage
-                .layout()
-                .userVotes[user];
+        VePremiaStorage.Vote[] memory userVotes = VePremiaStorage
+            .layout()
+            .userVotes[user];
 
+        unchecked {
             for (uint256 i = 0; i < userVotes.length; i++) {
                 votingPowerUsed += userVotes[i].amount;
             }
@@ -131,53 +131,41 @@ contract VePremia is IVePremia, PremiaStaking {
      * @inheritdoc IVePremia
      */
     function castVotes(VePremiaStorage.Vote[] memory votes) external {
-        unchecked {
-            VePremiaStorage.Layout storage l = VePremiaStorage.layout();
+        VePremiaStorage.Layout storage l = VePremiaStorage.layout();
 
-            uint256 balance = _balanceOf(msg.sender);
-            uint256 userVotingPower = _calculateUserPower(
-                balance,
-                PremiaStakingStorage.layout().userInfo[msg.sender].stakePeriod
+        uint256 balance = _balanceOf(msg.sender);
+        uint256 userVotingPower = _calculateUserPower(
+            balance,
+            PremiaStakingStorage.layout().userInfo[msg.sender].stakePeriod
+        );
+
+        VePremiaStorage.Vote[] storage userVotes = l.userVotes[msg.sender];
+
+        // Remove previous votes
+        for (uint256 i = userVotes.length; i > 0; ) {
+            VePremiaStorage.Vote memory vote = userVotes[--i];
+
+            l.votes[vote.version][vote.target] -= vote.amount;
+            emit RemoveVote(msg.sender, vote.version, vote.target, vote.amount);
+
+            userVotes.pop();
+        }
+
+        // Cast new votes
+        uint256 votingPowerUsed = 0;
+        for (uint256 i = 0; i < votes.length; i++) {
+            VePremiaStorage.Vote memory vote = votes[i];
+
+            votingPowerUsed += votes[i].amount;
+            require(
+                votingPowerUsed <= userVotingPower,
+                "not enough voting power"
             );
 
-            VePremiaStorage.Vote[] storage userVotes = l.userVotes[msg.sender];
+            userVotes.push(votes[i]);
+            l.votes[vote.version][vote.target] += vote.amount;
 
-            // Remove previous votes
-            for (uint256 i = userVotes.length; i > 0; ) {
-                VePremiaStorage.Vote memory vote = userVotes[--i];
-
-                l.votes[vote.version][vote.target] -= vote.amount;
-                emit RemoveVote(
-                    msg.sender,
-                    vote.version,
-                    vote.target,
-                    vote.amount
-                );
-
-                userVotes.pop();
-            }
-
-            // Cast new votes
-            uint256 votingPowerUsed = 0;
-            for (uint256 i = 0; i < votes.length; i++) {
-                VePremiaStorage.Vote memory vote = votes[i];
-
-                votingPowerUsed += votes[i].amount;
-                require(
-                    votingPowerUsed <= userVotingPower,
-                    "not enough voting power"
-                );
-
-                userVotes.push(votes[i]);
-                l.votes[vote.version][vote.target] += vote.amount;
-
-                emit AddVote(
-                    msg.sender,
-                    vote.version,
-                    vote.target,
-                    vote.amount
-                );
-            }
+            emit AddVote(msg.sender, vote.version, vote.target, vote.amount);
         }
     }
 }
