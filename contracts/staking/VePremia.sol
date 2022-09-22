@@ -76,7 +76,6 @@ contract VePremia is IVePremia, PremiaStaking {
                 if (toSubtract <= vote.amount) {
                     votesRemoved = toSubtract;
                     vote.amount -= toSubtract;
-                    i = 0;
                 } else {
                     votesRemoved = vote.amount;
                     userVotes.pop();
@@ -85,6 +84,8 @@ contract VePremia is IVePremia, PremiaStaking {
                 toSubtract -= votesRemoved;
 
                 emit RemoveVote(user, vote.version, vote.target, votesRemoved);
+
+                if (toSubtract == 0) break;
             }
         }
     }
