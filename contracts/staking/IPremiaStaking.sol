@@ -3,8 +3,12 @@
 pragma solidity ^0.8.0;
 
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
+import {IOFT} from "../layerZero/token/oft/IOFT.sol";
 
-interface IPremiaStaking {
+import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
+
+// IERC20Metadata inheritance not possible due to linearization issue
+interface IPremiaStaking is IERC2612, IOFT {
     event Stake(
         address indexed user,
         uint256 amount,
