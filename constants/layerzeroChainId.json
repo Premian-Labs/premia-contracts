@@ -1,11 +1,11 @@
 {
-  "ethereum": 1,
-  "bsc": 2,
-  "avalanche": 6,
-  "polygon": 9,
-  "arbitrum": 10,
-  "optimism": 11,
-  "fantom": 12,
+  "ethereum": 101,
+  "bsc": 102,
+  "avalanche": 106,
+  "polygon": 109,
+  "arbitrum": 110,
+  "optimism": 111,
+  "fantom": 112,
 
   "rinkeby":          10001,
   "goerli":           10021,
