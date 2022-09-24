@@ -276,7 +276,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         bytes32 r,
         bytes32 s
     ) external {
-        IERC2612(address(PREMIA)).permit(
+        IERC2612(PREMIA).permit(
             msg.sender,
             address(this),
             amount,
