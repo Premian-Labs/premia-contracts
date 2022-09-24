@@ -66,23 +66,27 @@ contract VePremia is IVePremia, PremiaStaking {
         uint256 amount
     ) internal {
         uint256 toSubtract = amount;
-        for (uint256 i = l.userVotes[user].length; i > 0; i--) {
-            VePremiaStorage.Vote memory vote = l.userVotes[user][i - 1];
+        VePremiaStorage.Vote[] storage userVotes = l.userVotes[user];
 
-            uint256 votesRemoved;
-            if (toSubtract <= vote.amount) {
-                votesRemoved = toSubtract;
-                l.userVotes[user][i - 1].amount -= toSubtract;
-            } else {
-                votesRemoved = vote.amount;
-                l.userVotes[user].pop();
+        unchecked {
+            for (uint256 i = userVotes.length; i > 0; ) {
+                VePremiaStorage.Vote storage vote = userVotes[--i];
+
+                uint256 votesRemoved;
+                if (toSubtract <= vote.amount) {
+                    votesRemoved = toSubtract;
+                    vote.amount -= toSubtract;
+                } else {
+                    votesRemoved = vote.amount;
+                    userVotes.pop();
+                }
+
+                toSubtract -= votesRemoved;
+
+                emit RemoveVote(user, vote.version, vote.target, votesRemoved);
+
+                if (toSubtract == 0) break;
             }
-
-            toSubtract -= votesRemoved;
-
-            emit RemoveVote(user, vote.version, vote.target, votesRemoved);
-
-            if (toSubtract == 0) return;
         }
     }
 
@@ -95,8 +99,10 @@ contract VePremia is IVePremia, PremiaStaking {
             .layout()
             .userVotes[user];
 
-        for (uint256 i = 0; i < userVotes.length; i++) {
-            votingPowerUsed += userVotes[i].amount;
+        unchecked {
+            for (uint256 i = 0; i < userVotes.length; i++) {
+                votingPowerUsed += userVotes[i].amount;
+            }
         }
     }
 
@@ -133,15 +139,17 @@ contract VePremia is IVePremia, PremiaStaking {
             PremiaStakingStorage.layout().userInfo[msg.sender].stakePeriod
         );
 
+        VePremiaStorage.Vote[] storage userVotes = l.userVotes[msg.sender];
+
         // Remove previous votes
-        for (uint256 i = 0; i < l.userVotes[msg.sender].length; i++) {
-            VePremiaStorage.Vote memory vote = l.userVotes[msg.sender][i];
+        for (uint256 i = userVotes.length; i > 0; ) {
+            VePremiaStorage.Vote memory vote = userVotes[--i];
 
             l.votes[vote.version][vote.target] -= vote.amount;
             emit RemoveVote(msg.sender, vote.version, vote.target, vote.amount);
-        }
 
-        delete l.userVotes[msg.sender];
+            userVotes.pop();
+        }
 
         // Cast new votes
         uint256 votingPowerUsed = 0;
@@ -154,7 +162,7 @@ contract VePremia is IVePremia, PremiaStaking {
                 "not enough voting power"
             );
 
-            l.userVotes[msg.sender].push(votes[i]);
+            userVotes.push(votes[i]);
             l.votes[vote.version][vote.target] += vote.amount;
 
             emit AddVote(msg.sender, vote.version, vote.target, vote.amount);
