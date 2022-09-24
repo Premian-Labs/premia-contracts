@@ -1702,16 +1702,13 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
                     }
 
                     if (to != address(0)) {
-                        int128 utilization64x64 = l.getUtilization64x64(
-                            id == UNDERLYING_FREE_LIQ_TOKEN_ID
-                        );
                         _transferUserTVL(
                             l,
                             from,
                             to,
                             isCallPool,
                             amount,
-                            utilization64x64
+                            l.getUtilization64x64(isCallPool)
                         );
                     }
                 }
