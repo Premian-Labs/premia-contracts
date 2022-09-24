@@ -92,7 +92,7 @@ contract PremiaStakingUpgrade is ERC20, OwnableInternal {
         emit UserUpgraded(userAddress, oldStake, oldBalance, newBalance);
     }
 
-    function _getStakePeriodMultiplier(uint256 period)
+    function _getStakePeriodMultiplierBPS(uint256 period)
         internal
         pure
         returns (uint256)
@@ -111,7 +111,7 @@ contract PremiaStakingUpgrade is ERC20, OwnableInternal {
         returns (uint256)
     {
         return
-            (balance * _getStakePeriodMultiplier(stakePeriod)) /
+            (balance * _getStakePeriodMultiplierBPS(stakePeriod)) /
             INVERSE_BASIS_POINT;
     }
 

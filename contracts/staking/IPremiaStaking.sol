@@ -33,7 +33,7 @@ interface IPremiaStaking is IERC2612, IOFT {
 
     struct StakeLevel {
         uint256 amount; // Amount to stake
-        uint256 discount; // Discount when amount is reached
+        uint256 discountBPS; // Discount when amount is reached
     }
 
     event BridgeLock(
@@ -138,7 +138,7 @@ interface IPremiaStaking is IERC2612, IOFT {
      * @param user address of the user
      * @return feePercentage % fee to pay for early unstake (1e4 = 100%)
      */
-    function getEarlyUnstakeFee(address user)
+    function getEarlyUnstakeFeeBPS(address user)
         external
         view
         returns (uint256 feePercentage);
@@ -177,7 +177,7 @@ interface IPremiaStaking is IERC2612, IOFT {
      * @return Percentage of protocol fee discount (in basis point)
      *         Ex : 1000 = 10% fee discount
      */
-    function getDiscount(address user) external view returns (uint256);
+    function getDiscountBPS(address user) external view returns (uint256);
 
     /**
      * @notice Get stake levels
@@ -192,7 +192,7 @@ interface IPremiaStaking is IERC2612, IOFT {
      * @return The multiplier for this staking period
      *         Ex : 20000 = x2
      */
-    function getStakePeriodMultiplier(uint256 period)
+    function getStakePeriodMultiplierBPS(uint256 period)
         external
         returns (uint256);
 

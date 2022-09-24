@@ -406,8 +406,8 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     function earlyUnstake(uint256 amount) external {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
-        uint256 feePercentage = _getEarlyUnstakeFee(msg.sender);
-        uint256 fee = (amount * feePercentage) / 1e4;
+        uint256 feePercentageBPS = _getEarlyUnstakeFeeBPS(msg.sender);
+        uint256 fee = (amount * feePercentageBPS) / 1e4;
 
         _startWithdraw(l, l.userInfo[msg.sender], amount, fee);
     }
@@ -415,18 +415,18 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getEarlyUnstakeFee(address user)
+    function getEarlyUnstakeFeeBPS(address user)
         external
         view
         returns (uint256 feePercentage)
     {
-        return _getEarlyUnstakeFee(user);
+        return _getEarlyUnstakeFeeBPS(user);
     }
 
-    function _getEarlyUnstakeFee(address user)
+    function _getEarlyUnstakeFeeBPS(address user)
         internal
         view
-        returns (uint256 feePercentage)
+        returns (uint256 feePercentageBPS)
     {
         uint256 lockedUntil = PremiaStakingStorage
             .layout()
@@ -441,9 +441,9 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
             lockLeft = lockedUntil - block.timestamp;
         }
 
-        feePercentage = (lockLeft * 2500) / 365 days; // 25% fee per year left
-        if (feePercentage > 7500) {
-            feePercentage = 7500; // Capped at 75%
+        feePercentageBPS = (lockLeft * 2500) / 365 days; // 25% fee per year left
+        if (feePercentageBPS > 7500) {
+            feePercentageBPS = 7500; // Capped at 75%
         }
     }
 
@@ -551,7 +551,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getDiscount(address user) external view returns (uint256) {
+    function getDiscountBPS(address user) external view returns (uint256) {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
         uint256 userPower = _calculateUserPower(
@@ -576,33 +576,35 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
 
             if (userPower < level.amount) {
                 uint256 amountPrevLevel;
-                uint256 discountPrevLevel;
+                uint256 discountPrevLevelBPS;
 
                 // If stake is lower, user is in this level, and we need to LERP with prev level to get discount value
                 if (i > 0) {
                     amountPrevLevel = stakeLevels[i - 1].amount;
-                    discountPrevLevel = stakeLevels[i - 1].discount;
+                    discountPrevLevelBPS = stakeLevels[i - 1].discountBPS;
                 } else {
                     // If this is the first level, prev level is 0 / 0
                     amountPrevLevel = 0;
-                    discountPrevLevel = 0;
+                    discountPrevLevelBPS = 0;
                 }
 
-                uint256 remappedDiscount = level.discount - discountPrevLevel;
+                uint256 remappedDiscountBPS = level.discountBPS -
+                    discountPrevLevelBPS;
 
                 uint256 remappedAmount = level.amount - amountPrevLevel;
                 uint256 remappedPower = userPower - amountPrevLevel;
-                uint256 levelProgress = (remappedPower * INVERSE_BASIS_POINT) /
-                    remappedAmount;
+                uint256 levelProgressBPS = (remappedPower *
+                    INVERSE_BASIS_POINT) / remappedAmount;
 
                 return
-                    discountPrevLevel +
-                    ((remappedDiscount * levelProgress) / INVERSE_BASIS_POINT);
+                    discountPrevLevelBPS +
+                    ((remappedDiscountBPS * levelProgressBPS) /
+                        INVERSE_BASIS_POINT);
             }
         }
 
         // If no match found it means user is >= max possible stake, and therefore has max discount possible
-        return stakeLevels[stakeLevels.length - 1].discount;
+        return stakeLevels[stakeLevels.length - 1].discountBPS;
     }
 
     /**
@@ -619,12 +621,12 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getStakePeriodMultiplier(uint256 period)
+    function getStakePeriodMultiplierBPS(uint256 period)
         external
         pure
         returns (uint256)
     {
-        return _getStakePeriodMultiplier(period);
+        return _getStakePeriodMultiplierBPS(period);
     }
 
     /**
@@ -682,7 +684,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         stakeLevels[3] = IPremiaStaking.StakeLevel(2500000 * 1e18, 6000); // -60%
     }
 
-    function _getStakePeriodMultiplier(uint256 period)
+    function _getStakePeriodMultiplierBPS(uint256 period)
         internal
         pure
         returns (uint256)
@@ -701,7 +703,7 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         returns (uint256)
     {
         return
-            (balance * _getStakePeriodMultiplier(stakePeriod)) /
+            (balance * _getStakePeriodMultiplierBPS(stakePeriod)) /
             INVERSE_BASIS_POINT;
     }
 

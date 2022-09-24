@@ -184,7 +184,7 @@ describe('PremiaStaking', () => {
       await premiaStaking.connect(alice).stake(stakeAmount, ONE_YEAR);
       let amountWithBonus = await premiaStaking.getUserPower(alice.address);
       expect(amountWithBonus).to.eq(parseEther('150000'));
-      expect(await premiaStaking.getDiscount(alice.address)).to.eq(2722);
+      expect(await premiaStaking.getDiscountBPS(alice.address)).to.eq(2722);
 
       await increaseTimestamp(ONE_YEAR + 1);
 
@@ -193,7 +193,7 @@ describe('PremiaStaking', () => {
       amountWithBonus = await premiaStaking.getUserPower(alice.address);
 
       expect(amountWithBonus).to.eq(parseEther('137500'));
-      expect(await premiaStaking.getDiscount(alice.address)).to.eq(2694);
+      expect(await premiaStaking.getDiscountBPS(alice.address)).to.eq(2694);
 
       await premia.mint(alice.address, parseEther('5000000'));
       await premia
@@ -201,7 +201,7 @@ describe('PremiaStaking', () => {
         .approve(premiaStaking.address, parseEther('5000000'));
       await premiaStaking.connect(alice).stake(parseEther('5000000'), ONE_YEAR);
 
-      expect(await premiaStaking.getDiscount(alice.address)).to.eq(6000);
+      expect(await premiaStaking.getDiscountBPS(alice.address)).to.eq(6000);
     });
 
     it('should stake successfully with permit', async () => {
@@ -240,22 +240,22 @@ describe('PremiaStaking', () => {
     });
 
     it('should correctly calculate stake period multiplier', async () => {
-      expect(await premiaStaking.getStakePeriodMultiplier(0)).to.eq(2500);
-      expect(await premiaStaking.getStakePeriodMultiplier(ONE_YEAR / 2)).to.eq(
-        7500,
-      );
-      expect(await premiaStaking.getStakePeriodMultiplier(ONE_YEAR)).to.eq(
+      expect(await premiaStaking.getStakePeriodMultiplierBPS(0)).to.eq(2500);
+      expect(
+        await premiaStaking.getStakePeriodMultiplierBPS(ONE_YEAR / 2),
+      ).to.eq(7500);
+      expect(await premiaStaking.getStakePeriodMultiplierBPS(ONE_YEAR)).to.eq(
         12500,
       );
-      expect(await premiaStaking.getStakePeriodMultiplier(2 * ONE_YEAR)).to.eq(
-        22500,
-      );
-      expect(await premiaStaking.getStakePeriodMultiplier(4 * ONE_YEAR)).to.eq(
-        42500,
-      );
-      expect(await premiaStaking.getStakePeriodMultiplier(5 * ONE_YEAR)).to.eq(
-        42500,
-      );
+      expect(
+        await premiaStaking.getStakePeriodMultiplierBPS(2 * ONE_YEAR),
+      ).to.eq(22500);
+      expect(
+        await premiaStaking.getStakePeriodMultiplierBPS(4 * ONE_YEAR),
+      ).to.eq(42500);
+      expect(
+        await premiaStaking.getStakePeriodMultiplierBPS(5 * ONE_YEAR),
+      ).to.eq(42500);
     });
   });
 
@@ -710,11 +710,15 @@ describe('PremiaStaking', () => {
 
       //
 
-      expect(await premiaStaking.getEarlyUnstakeFee(alice.address)).to.eq(7500);
+      expect(await premiaStaking.getEarlyUnstakeFeeBPS(alice.address)).to.eq(
+        7500,
+      );
 
       await increaseTimestamp(2 * 365 * ONE_DAY);
 
-      expect(await premiaStaking.getEarlyUnstakeFee(alice.address)).to.eq(5000);
+      expect(await premiaStaking.getEarlyUnstakeFeeBPS(alice.address)).to.eq(
+        5000,
+      );
 
       await premiaStaking.connect(alice).earlyUnstake(parseEther('100'));
 
