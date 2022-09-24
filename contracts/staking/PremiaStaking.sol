@@ -391,11 +391,9 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         uint256 oldUserPower,
         uint256 newUserPower
     ) internal {
-        if (newUserPower == oldUserPower) return;
-
         if (newUserPower > oldUserPower) {
             l.totalPower += newUserPower - oldUserPower;
-        } else {
+        } else if (newUserPower < oldUserPower) {
             l.totalPower -= oldUserPower - newUserPower;
         }
     }
