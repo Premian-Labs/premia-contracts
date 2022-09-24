@@ -23,7 +23,7 @@ contract PoolIO is IPoolIO, PoolInternal {
     using EnumerableSet for EnumerableSet.UintSet;
     using PoolStorage for PoolStorage.Layout;
 
-    struct ReassignBatchArgs {
+    struct ReassignBatchArgsInternal {
         uint256[] tokenIds;
         uint256[] contractSizes;
         bool divest;
@@ -32,7 +32,7 @@ contract PoolIO is IPoolIO, PoolInternal {
         int128 utilizationPut64x64;
     }
 
-    struct ReassignBatchResult {
+    struct ReassignBatchResultInternal {
         uint256[] baseCosts;
         uint256[] feeCosts;
         uint256 amountOutCall;
@@ -245,8 +245,8 @@ contract PoolIO is IPoolIO, PoolInternal {
             false
         );
 
-        ReassignBatchResult memory result = _reassignBatch(
-            ReassignBatchArgs(
+        ReassignBatchResultInternal memory result = _reassignBatch(
+            ReassignBatchArgsInternal(
                 tokenIds,
                 contractSizes,
                 divest,
@@ -264,9 +264,9 @@ contract PoolIO is IPoolIO, PoolInternal {
         );
     }
 
-    function _reassignBatch(ReassignBatchArgs memory args)
+    function _reassignBatch(ReassignBatchArgsInternal memory args)
         internal
-        returns (ReassignBatchResult memory result)
+        returns (ReassignBatchResultInternal memory result)
     {
         result.baseCosts = new uint256[](args.tokenIds.length);
         result.feeCosts = new uint256[](args.tokenIds.length);
