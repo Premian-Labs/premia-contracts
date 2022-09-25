@@ -526,8 +526,6 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
         IERC20(PREMIA).safeTransfer(msg.sender, amount);
 
         emit Withdraw(msg.sender, amount);
-
-        //
     }
 
     /**
