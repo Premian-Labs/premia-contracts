@@ -13,6 +13,8 @@ import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {IPremiaStaking} from "./IPremiaStaking.sol";
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 import {OFT} from "../layerZero/token/oft/OFT.sol";
+import {OFTCore} from "../layerZero/token/oft/OFTCore.sol";
+import {IOFTCore} from "../layerZero/token/oft/IOFTCore.sol";
 
 contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
     using SafeERC20 for IERC20;
@@ -63,6 +65,47 @@ contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
                 block.timestamp,
             "cant transfer tokens while locked"
         );
+    }
+
+    function estimateSendFee(
+        uint16 dstChainId,
+        bytes memory toAddress,
+        uint256 amount,
+        bool useZro,
+        bytes memory adapterParams
+    )
+        public
+        view
+        virtual
+        override(OFTCore, IOFTCore)
+        returns (uint256 nativeFee, uint256 zroFee)
+    {
+        // Convert bytes to address
+        address to;
+        assembly {
+            to := mload(add(toAddress, 32))
+        }
+
+        PremiaStakingStorage.UserInfo storage u = PremiaStakingStorage
+            .layout()
+            .userInfo[to];
+
+        // mock the payload for send()
+        bytes memory payload = abi.encode(
+            to,
+            amount,
+            u.stakePeriod,
+            u.lockedUntil
+        );
+
+        return
+            lzEndpoint.estimateFees(
+                dstChainId,
+                address(this),
+                payload,
+                useZro,
+                adapterParams
+            );
     }
 
     function _send(
