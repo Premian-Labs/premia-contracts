@@ -2286,7 +2286,7 @@ export function describeBehaviorOfPoolIO(
 
           await expect(
             instance.connect(lp1).annihilate(longTokenId, amount, true),
-          ).to.be.revertedWith('ERC1155: burn amount exceeds balances');
+          ).to.be.revertedWith('ERC1155: burn amount exceeds balance');
         });
 
         it('sender has insufficient short token balance', async () => {
