@@ -3,14 +3,14 @@
 pragma solidity ^0.8.0;
 
 import {SafeCast} from "@solidstate/contracts/utils/SafeCast.sol";
-import {OwnableInternal} from "@solidstate/contracts/access/OwnableInternal.sol";
-import {ERC20} from "@solidstate/contracts/token/ERC20/ERC20.sol";
-import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
+import {OwnableInternal} from "@solidstate/contracts/access/ownable/OwnableInternal.sol";
+import {SolidStateERC20} from "@solidstate/contracts/token/ERC20/SolidStateERC20.sol";
+import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
 
 import {FeeDiscountStorage} from "./FeeDiscountStorage.sol";
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 
-contract PremiaStakingUpgrade is ERC20, OwnableInternal {
+contract PremiaStakingUpgrade is SolidStateERC20, OwnableInternal {
     using SafeCast for uint256;
 
     event UserUpgraded(

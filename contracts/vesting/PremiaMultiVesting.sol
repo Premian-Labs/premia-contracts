@@ -3,9 +3,9 @@
 
 pragma solidity ^0.8.0;
 
-import {SafeOwnable} from "@solidstate/contracts/access/SafeOwnable.sol";
-import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
-import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
+import {SafeOwnable} from "@solidstate/contracts/access/ownable/SafeOwnable.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/ownable/OwnableStorage.sol";
+import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
 
 /**
  * @author Premia

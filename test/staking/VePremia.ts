@@ -7,7 +7,6 @@ import {
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { beforeEach } from 'mocha';
 import { parseEther, solidityPack } from 'ethers/lib/utils';
 import { ONE_DAY } from '../pool/PoolUtil';
 import { increaseTimestamp } from '../utils/evm';

@@ -3,13 +3,12 @@
 
 pragma solidity ^0.8.0;
 
-import {ERC20} from "@solidstate/contracts/token/ERC20/ERC20.sol";
-import {ERC20Permit} from "@solidstate/contracts/token/ERC20/permit/ERC20Permit.sol";
+import {SolidStateERC20} from "@solidstate/contracts/token/ERC20/SolidStateERC20.sol";
 import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/metadata/ERC20MetadataStorage.sol";
 
 /// @author Premia
 /// @title The Premia token
-contract PremiaErc20 is ERC20, ERC20Permit {
+contract PremiaErc20 is SolidStateERC20 {
     using ERC20MetadataStorage for ERC20MetadataStorage.Layout;
 
     constructor() {

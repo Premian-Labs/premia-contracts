@@ -11,7 +11,6 @@ import { ERC20Mock, VePremia } from '../../typechain';
 import { parseEther, parseUnits, solidityPack } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
 import { ZERO_ADDRESS } from '../utils/constants';
-import { beforeEach } from 'mocha';
 
 const oneDay = 24 * 3600;
 
@@ -34,7 +33,7 @@ describe('PremiaMining', () => {
   const spotPrice = 2000;
   const totalRewardAmount = 200000;
 
-  beforeEach(async () => {
+  before(async () => {
     [owner, lp1, lp2, lp3, buyer, feeReceiver] = await ethers.getSigners();
 
     const data = await deployVePremiaMocked(owner);

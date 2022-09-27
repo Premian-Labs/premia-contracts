@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import {OwnableInternal} from "@solidstate/contracts/access/OwnableInternal.sol";
+import {OwnableInternal} from "@solidstate/contracts/access/ownable/OwnableInternal.sol";
 
 import {ILayerZeroReceiver} from "../interfaces/ILayerZeroReceiver.sol";
 import {ILayerZeroUserApplicationConfig} from "../interfaces/ILayerZeroUserApplicationConfig.sol";

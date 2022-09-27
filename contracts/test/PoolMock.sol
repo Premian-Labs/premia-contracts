@@ -2,9 +2,9 @@
 
 pragma solidity ^0.8.0;
 
-import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/ownable/OwnableStorage.sol";
 import {ERC165Storage} from "@solidstate/contracts/introspection/ERC165Storage.sol";
-import {ERC20} from "@solidstate/contracts/token/ERC20/ERC20.sol";
+import {SolidStateERC20} from "@solidstate/contracts/token/ERC20/SolidStateERC20.sol";
 import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/metadata/ERC20MetadataStorage.sol";
 
 import {PoolBase} from "../pool/PoolBase.sol";

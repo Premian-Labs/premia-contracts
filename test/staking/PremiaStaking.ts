@@ -12,7 +12,6 @@ import { signERC2612Permit } from 'eth-permit';
 import { increaseTimestamp, setTimestamp } from '../utils/evm';
 import { parseEther, parseUnits } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
-import { beforeEach } from 'mocha';
 import { BigNumber, BigNumberish } from 'ethers';
 import { ONE_YEAR } from '../pool/PoolUtil';
 

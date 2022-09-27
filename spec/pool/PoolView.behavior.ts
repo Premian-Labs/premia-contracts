@@ -15,16 +15,14 @@ import {
 } from '../../test/pool/PoolUtil';
 
 interface PoolViewBehaviorArgs {
-  deploy: () => Promise<IPool>;
   getPoolUtil: () => Promise<PoolUtil>;
   getExchangeHelper: () => Promise<string>;
 }
 
-export function describeBehaviorOfPoolView({
-  deploy,
-  getPoolUtil,
-  getExchangeHelper,
-}: PoolViewBehaviorArgs) {
+export function describeBehaviorOfPoolView(
+  deploy: () => Promise<IPool>,
+  { getPoolUtil, getExchangeHelper }: PoolViewBehaviorArgs,
+) {
   describe('::PoolView', () => {
     let buyer: SignerWithAddress;
     let lp1: SignerWithAddress;

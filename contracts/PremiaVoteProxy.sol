@@ -3,7 +3,7 @@
 
 pragma solidity ^0.8.0;
 
-import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
 
 import {IPremiaStaking} from "./staking/IPremiaStaking.sol";
 

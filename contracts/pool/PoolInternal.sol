@@ -4,12 +4,12 @@
 pragma solidity ^0.8.0;
 
 import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
-import {IERC173} from "@solidstate/contracts/access/IERC173.sol";
-import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
+import {IERC173} from "@solidstate/contracts/interfaces/IERC173.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/ownable/OwnableStorage.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
-import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
 import {ERC1155EnumerableInternal, ERC1155EnumerableStorage, EnumerableSet} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
-import {IWETH} from "@solidstate/contracts/utils/IWETH.sol";
+import {IWETH} from "@solidstate/contracts/interfaces/IWETH.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
 import {IExchangeHelper} from "../interfaces/IExchangeHelper.sol";

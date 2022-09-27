@@ -26,7 +26,6 @@ import {
 } from '../../test/pool/PoolUtil';
 
 interface PoolBaseBehaviorArgs {
-  deploy: () => Promise<IPool>;
   getUnderlying: () => Promise<ERC20Mock>;
   getBase: () => Promise<ERC20Mock>;
   getPoolUtil: () => Promise<PoolUtil>;
@@ -43,8 +42,8 @@ interface PoolBaseBehaviorArgs {
 }
 
 export function describeBehaviorOfPoolBase(
+  deploy: () => Promise<IPool>,
   {
-    deploy,
     getUnderlying,
     getBase,
     getPoolUtil,
@@ -76,8 +75,8 @@ export function describeBehaviorOfPoolBase(
     });
 
     describeBehaviorOfERC1155Enumerable(
+      deploy,
       {
-        deploy: async () => instance,
         mint: mintERC1155,
         burn: burnERC1155,
         tokenId: BigNumber.from(

@@ -31,7 +31,6 @@ import {
 } from '../../test/pool/PoolUtil';
 
 interface PoolWriteBehaviorArgs {
-  deploy: () => Promise<IPool>;
   getBase: () => Promise<ERC20Mock>;
   getUnderlying: () => Promise<ERC20Mock>;
   getPoolUtil: () => Promise<PoolUtil>;
@@ -39,14 +38,16 @@ interface PoolWriteBehaviorArgs {
   getUniswap: () => Promise<IUniswap>;
 }
 
-export function describeBehaviorOfPoolWrite({
-  deploy,
-  getBase,
-  getUnderlying,
-  getPoolUtil,
-  apyFeeRate,
-  getUniswap,
-}: PoolWriteBehaviorArgs) {
+export function describeBehaviorOfPoolWrite(
+  deploy: () => Promise<IPool>,
+  {
+    getBase,
+    getUnderlying,
+    getPoolUtil,
+    apyFeeRate,
+    getUniswap,
+  }: PoolWriteBehaviorArgs,
+) {
   describe('::PoolWrite', () => {
     let owner: SignerWithAddress;
     let buyer: SignerWithAddress;

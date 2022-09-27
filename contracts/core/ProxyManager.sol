@@ -3,7 +3,7 @@
 
 pragma solidity ^0.8.0;
 
-import {OwnableInternal} from "@solidstate/contracts/access/OwnableInternal.sol";
+import {OwnableInternal} from "@solidstate/contracts/access/ownable/OwnableInternal.sol";
 
 import {IProxyManager} from "./IProxyManager.sol";
 import {ProxyManagerStorage} from "./ProxyManagerStorage.sol";

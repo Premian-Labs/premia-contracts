@@ -4,16 +4,14 @@ import { IPool } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 interface PoolSettingsBehaviorArgs {
-  deploy: () => Promise<IPool>;
   getProtocolOwner: () => Promise<SignerWithAddress>;
   getNonProtocolOwner: () => Promise<SignerWithAddress>;
 }
 
-export function describeBehaviorOfPoolSettings({
-  deploy,
-  getProtocolOwner,
-  getNonProtocolOwner,
-}: PoolSettingsBehaviorArgs) {
+export function describeBehaviorOfPoolSettings(
+  deploy: () => Promise<IPool>,
+  { getProtocolOwner, getNonProtocolOwner }: PoolSettingsBehaviorArgs,
+) {
   describe('::PoolSettings', () => {
     let protocolOwner: SignerWithAddress;
     let nonProtocolOwner: SignerWithAddress;

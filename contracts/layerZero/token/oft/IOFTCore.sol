@@ -2,8 +2,8 @@
 
 pragma solidity ^0.8.0;
 
-import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
-import {IERC165} from "@solidstate/contracts/introspection/IERC165.sol";
+import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
+import {IERC165} from "@solidstate/contracts/interfaces/IERC165.sol";
 
 /**
  * @dev Interface of the IOFT core standard
