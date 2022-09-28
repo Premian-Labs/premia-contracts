@@ -3,7 +3,7 @@
 
 pragma solidity ^0.8.0;
 
-import {OwnableInternal, OwnableStorage} from "@solidstate/contracts/access/OwnableInternal.sol";
+import {OwnableInternal, OwnableStorage} from "@solidstate/contracts/access/ownable/OwnableInternal.sol";
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 

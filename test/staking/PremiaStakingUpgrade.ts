@@ -1,6 +1,6 @@
 import {
-  ERC20,
-  ERC20__factory,
+  SolidStateERC20,
+  SolidStateERC20__factory,
   ExchangeHelper__factory,
   PremiaErc20,
   PremiaErc20__factory,
@@ -25,7 +25,7 @@ const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`;
 const blockNumber = 15251100;
 
 let premia: PremiaErc20;
-let xPremia: ERC20;
+let xPremia: SolidStateERC20;
 
 let holders: string[] = [];
 
@@ -64,7 +64,7 @@ describe('PremiaStakingUpgrade', () => {
 
     //
 
-    xPremia = ERC20__factory.connect(
+    xPremia = SolidStateERC20__factory.connect(
       '0xF1bB87563A122211d40d393eBf1c633c330377F9',
       admin,
     );

@@ -3,15 +3,15 @@
 pragma solidity ^0.8.0;
 
 import {ERC20Base, ERC20BaseStorage} from "@solidstate/contracts/token/ERC20/base/ERC20Base.sol";
-import {ERC20} from "@solidstate/contracts/token/ERC20/ERC20.sol";
-import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
-import {IERC165} from "@solidstate/contracts/introspection/IERC165.sol";
+import {SolidStateERC20} from "@solidstate/contracts/token/ERC20/SolidStateERC20.sol";
+import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
+import {IERC165} from "@solidstate/contracts/interfaces/IERC165.sol";
 
 import {OFTCore} from "./OFTCore.sol";
 import {IOFT} from "./IOFT.sol";
 
 // override decimal() function is needed
-contract OFT is OFTCore, ERC20, IOFT {
+contract OFT is OFTCore, SolidStateERC20, IOFT {
     constructor(address lzEndpoint) OFTCore(lzEndpoint) {}
 
     function circulatingSupply()

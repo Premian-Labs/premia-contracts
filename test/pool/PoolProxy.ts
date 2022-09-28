@@ -152,15 +152,17 @@ describe('PoolProxy', function () {
     await ethers.provider.send('evm_revert', [snapshotId]);
   });
 
-  describeBehaviorOfProxy({
-    deploy: async () => Proxy__factory.connect(instance.address, owner),
-    implementationFunction: 'getPoolSettings()',
-    implementationFunctionArgs: [],
-  });
+  describeBehaviorOfProxy(
+    async () => Proxy__factory.connect(instance.address, owner),
+    {
+      implementationFunction: 'getPoolSettings()',
+      implementationFunctionArgs: [],
+    },
+  );
 
   describeBehaviorOfPoolBase(
+    async () => instance,
     {
-      deploy: async () => instance,
       getBase: async () => base,
       getUnderlying: async () => underlying,
       getPoolUtil: async () => p,
@@ -175,16 +177,14 @@ describe('PoolProxy', function () {
     ['::ERC1155Enumerable'],
   );
 
-  describeBehaviorOfPoolExercise({
-    deploy: async () => instance,
+  describeBehaviorOfPoolExercise(async () => instance, {
     getBase: async () => base,
     getUnderlying: async () => underlying,
     apyFeeRate: FEE_APY,
     getPoolUtil: async () => p,
   });
 
-  describeBehaviorOfPoolIO({
-    deploy: async () => instance,
+  describeBehaviorOfPoolIO(async () => instance, {
     getBase: async () => base,
     getUnderlying: async () => underlying,
     getPoolUtil: async () => p,
@@ -192,25 +192,21 @@ describe('PoolProxy', function () {
     getUniswap: async () => uniswap,
   });
 
-  describeBehaviorOfPoolSell({
-    deploy: async () => instance,
+  describeBehaviorOfPoolSell(async () => instance, {
     getPoolUtil: async () => p,
   });
 
-  describeBehaviorOfPoolSettings({
-    deploy: async () => instance,
+  describeBehaviorOfPoolSettings(async () => instance, {
     getProtocolOwner: async () => owner,
     getNonProtocolOwner: async () => thirdParty,
   });
 
-  describeBehaviorOfPoolView({
-    deploy: async () => instance,
+  describeBehaviorOfPoolView(async () => instance, {
     getPoolUtil: async () => p,
     getExchangeHelper: async () => exchangeHelper.address,
   });
 
-  describeBehaviorOfPoolWrite({
-    deploy: async () => instance,
+  describeBehaviorOfPoolWrite(async () => instance, {
     getBase: async () => base,
     getUnderlying: async () => underlying,
     getPoolUtil: async () => p,

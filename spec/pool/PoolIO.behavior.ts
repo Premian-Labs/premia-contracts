@@ -23,7 +23,6 @@ import {
 } from '../../test/pool/PoolUtil';
 
 interface PoolIOBehaviorArgs {
-  deploy: () => Promise<IPool>;
   getBase: () => Promise<ERC20Mock>;
   getUnderlying: () => Promise<ERC20Mock>;
   getPoolUtil: () => Promise<PoolUtil>;
@@ -31,14 +30,16 @@ interface PoolIOBehaviorArgs {
   getUniswap: () => Promise<IUniswap>;
 }
 
-export function describeBehaviorOfPoolIO({
-  deploy,
-  getBase,
-  getUnderlying,
-  getPoolUtil,
-  apyFeeRate,
-  getUniswap,
-}: PoolIOBehaviorArgs) {
+export function describeBehaviorOfPoolIO(
+  deploy: () => Promise<IPool>,
+  {
+    getBase,
+    getUnderlying,
+    getPoolUtil,
+    apyFeeRate,
+    getUniswap,
+  }: PoolIOBehaviorArgs,
+) {
   describe('::PoolIO', () => {
     let owner: SignerWithAddress;
     let buyer: SignerWithAddress;
@@ -2285,7 +2286,7 @@ export function describeBehaviorOfPoolIO({
 
           await expect(
             instance.connect(lp1).annihilate(longTokenId, amount, true),
-          ).to.be.revertedWith('ERC1155: burn amount exceeds balances');
+          ).to.be.revertedWith('ERC1155: burn amount exceeds balance');
         });
 
         it('sender has insufficient short token balance', async () => {

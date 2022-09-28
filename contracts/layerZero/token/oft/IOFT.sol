@@ -3,11 +3,11 @@
 pragma solidity ^0.8.0;
 
 import {IOFTCore} from "./IOFTCore.sol";
-import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
+import {ISolidStateERC20} from "@solidstate/contracts/token/ERC20/ISolidStateERC20.sol";
 
 /**
  * @dev Interface of the OFT standard
  */
-interface IOFT is IOFTCore, IERC20 {
+interface IOFT is IOFTCore, ISolidStateERC20 {
 
 }

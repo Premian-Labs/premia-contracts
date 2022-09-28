@@ -14,14 +14,13 @@ import { bnToNumber } from '../../test/utils/math';
 import { increaseTimestamp } from '../../test/utils/evm';
 
 interface PoolSellBehaviorArgs {
-  deploy: () => Promise<IPool>;
   getPoolUtil: () => Promise<PoolUtil>;
 }
 
-export function describeBehaviorOfPoolSell({
-  deploy,
-  getPoolUtil,
-}: PoolSellBehaviorArgs) {
+export function describeBehaviorOfPoolSell(
+  deploy: () => Promise<IPool>,
+  { getPoolUtil }: PoolSellBehaviorArgs,
+) {
   describe('::PoolSell', () => {
     let owner: SignerWithAddress;
     let buyer: SignerWithAddress;

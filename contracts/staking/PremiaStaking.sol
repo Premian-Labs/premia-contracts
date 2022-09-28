@@ -4,9 +4,8 @@
 pragma solidity ^0.8.0;
 
 import {AddressUtils} from "@solidstate/contracts/utils/AddressUtils.sol";
-import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
 import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
-import {ERC20Permit} from "@solidstate/contracts/token/ERC20/permit/ERC20Permit.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
@@ -16,7 +15,7 @@ import {OFT} from "../layerZero/token/oft/OFT.sol";
 import {OFTCore} from "../layerZero/token/oft/OFTCore.sol";
 import {IOFTCore} from "../layerZero/token/oft/IOFTCore.sol";
 
-contract PremiaStaking is IPremiaStaking, OFT, ERC20Permit {
+contract PremiaStaking is IPremiaStaking, OFT {
     using SafeERC20 for IERC20;
     using ABDKMath64x64 for int128;
     using AddressUtils for address;

@@ -4,7 +4,10 @@
 pragma solidity ^0.8.0;
 
 import {ERC165} from "@solidstate/contracts/introspection/ERC165.sol";
+import {ERC1155Base} from "@solidstate/contracts/token/ERC1155/base/ERC1155Base.sol";
+import {ERC1155BaseInternal} from "@solidstate/contracts/token/ERC1155/base/ERC1155BaseInternal.sol";
 import {ERC1155Enumerable} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
+import {ERC1155EnumerableInternal} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155EnumerableInternal.sol";
 import {IERC20Metadata} from "@solidstate/contracts/token/ERC20/metadata/IERC20Metadata.sol";
 import {Multicall} from "@solidstate/contracts/utils/Multicall.sol";
 
@@ -15,7 +18,13 @@ import {PoolInternal} from "./PoolInternal.sol";
  * @title Premia option pool
  * @dev deployed standalone and referenced by PoolProxy
  */
-contract PoolBase is PoolInternal, ERC1155Enumerable, ERC165, Multicall {
+contract PoolBase is
+    PoolInternal,
+    ERC1155Base,
+    ERC1155Enumerable,
+    ERC165,
+    Multicall
+{
     constructor(
         address ivolOracle,
         address wrappedNativeToken,
@@ -60,7 +69,11 @@ contract PoolBase is PoolInternal, ERC1155Enumerable, ERC165, Multicall {
         uint256[] memory ids,
         uint256[] memory amounts,
         bytes memory data
-    ) internal virtual override(PoolInternal, ERC1155Enumerable) {
+    )
+        internal
+        virtual
+        override(ERC1155BaseInternal, ERC1155EnumerableInternal, PoolInternal)
+    {
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
     }
 }

@@ -21,20 +21,16 @@ import {
 import { createUniswap, IUniswap } from '../../test/utils/uniswap';
 
 interface PoolExerciseBehaviorArgs {
-  deploy: () => Promise<IPool>;
   getBase: () => Promise<ERC20Mock>;
   getUnderlying: () => Promise<ERC20Mock>;
   getPoolUtil: () => Promise<PoolUtil>;
   apyFeeRate: BigNumberish;
 }
 
-export function describeBehaviorOfPoolExercise({
-  deploy,
-  getUnderlying,
-  getBase,
-  getPoolUtil,
-  apyFeeRate,
-}: PoolExerciseBehaviorArgs) {
+export function describeBehaviorOfPoolExercise(
+  deploy: () => Promise<IPool>,
+  { getUnderlying, getBase, getPoolUtil, apyFeeRate }: PoolExerciseBehaviorArgs,
+) {
   describe('::PoolExercise', () => {
     let owner: SignerWithAddress;
     let buyer: SignerWithAddress;

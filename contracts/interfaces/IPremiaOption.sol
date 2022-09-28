@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import {IERC1155} from "@solidstate/contracts/token/ERC1155/IERC1155.sol";
+import {IERC1155} from "@solidstate/contracts/interfaces/IERC1155.sol";
 import {IUniswapV2Router02} from "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol";
 
 import {IFlashLoanReceiver} from "../interfaces/IFlashLoanReceiver.sol";

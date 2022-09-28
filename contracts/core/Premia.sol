@@ -3,12 +3,12 @@
 
 pragma solidity ^0.8.0;
 
-import {Diamond} from "@solidstate/contracts/proxy/diamond/Diamond.sol";
+import {SolidStateDiamond} from "@solidstate/contracts/proxy/diamond/SolidStateDiamond.sol";
 
 /**
  * @title Premia core contract
  * @dev based on the EIP2535 Diamond standard
  */
-contract Premia is Diamond {
+contract Premia is SolidStateDiamond {
 
 }
