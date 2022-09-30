@@ -92,32 +92,6 @@ abstract contract LzApp is
         );
     }
 
-    function _checkGasLimit(
-        uint16 dstChainId,
-        uint16 _type,
-        bytes memory adapterParams,
-        uint256 extraGas
-    ) internal view virtual {
-        uint256 providedGasLimit = _getGasLimit(adapterParams);
-        uint256 minGasLimit = LzAppStorage.layout().minDstGasLookup[dstChainId][
-            _type
-        ] + extraGas;
-        require(minGasLimit > 0, "LzApp: minGasLimit not set");
-        require(providedGasLimit >= minGasLimit, "LzApp: gas limit is too low");
-    }
-
-    function _getGasLimit(bytes memory adapterParams)
-        internal
-        pure
-        virtual
-        returns (uint256 gasLimit)
-    {
-        require(adapterParams.length >= 34, "LzApp: invalid adapterParams");
-        assembly {
-            gasLimit := mload(add(adapterParams, 34))
-        }
-    }
-
     //---------------------------UserApplication config----------------------------------------
     function getConfig(
         uint16 version,
@@ -189,18 +163,6 @@ abstract contract LzApp is
     function setPrecrime(address _precrime) external onlyOwner {
         LzAppStorage.layout().precrime = _precrime;
         emit SetPrecrime(_precrime);
-    }
-
-    function setMinDstGas(
-        uint16 _dstChainId,
-        uint16 _packetType,
-        uint256 _minGas
-    ) external onlyOwner {
-        require(_minGas > 0, "LzApp: invalid minGas");
-        LzAppStorage.layout().minDstGasLookup[_dstChainId][
-            _packetType
-        ] = _minGas;
-        emit SetMinDstGas(_dstChainId, _packetType, _minGas);
     }
 
     //--------------------------- VIEW FUNCTION ----------------------------------------
