@@ -5,8 +5,14 @@ pragma solidity ^0.8.0;
 import {NonblockingLzApp} from "../../lzApp/NonblockingLzApp.sol";
 import {IOFTCore} from "./IOFTCore.sol";
 import {ERC165, IERC165} from "@solidstate/contracts/introspection/ERC165.sol";
+import {BytesLib} from "../../util/BytesLib.sol";
 
 abstract contract OFTCore is NonblockingLzApp, ERC165, IOFTCore {
+    using BytesLib for bytes;
+
+    // packet type
+    uint16 public constant PT_SEND = 0;
+
     constructor(address lzEndpoint) NonblockingLzApp(lzEndpoint) {}
 
     function estimateSendFee(
@@ -17,7 +23,12 @@ abstract contract OFTCore is NonblockingLzApp, ERC165, IOFTCore {
         bytes memory adapterParams
     ) public view virtual override returns (uint256 nativeFee, uint256 zroFee) {
         // mock the payload for send()
-        bytes memory payload = abi.encode(toAddress, amount);
+        bytes memory payload = abi.encode(
+            PT_SEND,
+            abi.encodePacked(msg.sender),
+            toAddress,
+            amount
+        );
         return
             lzEndpoint.estimateFees(
                 dstChainId,
@@ -54,19 +65,16 @@ abstract contract OFTCore is NonblockingLzApp, ERC165, IOFTCore {
         uint64 nonce,
         bytes memory payload
     ) internal virtual override {
-        // decode and load the toAddress
-        (bytes memory toAddressBytes, uint256 amount) = abi.decode(
-            payload,
-            (bytes, uint256)
-        );
-        address toAddress;
+        uint16 packetType;
         assembly {
-            toAddress := mload(add(toAddressBytes, 20))
+            packetType := mload(add(payload, 32))
         }
 
-        _creditTo(srcChainId, toAddress, amount);
-
-        emit ReceiveFromChain(srcChainId, srcAddress, toAddress, amount, nonce);
+        if (packetType == PT_SEND) {
+            _sendAck(srcChainId, srcAddress, nonce, payload);
+        } else {
+            revert("OFTCore: unknown packet type");
+        }
     }
 
     function _send(
@@ -80,17 +88,38 @@ abstract contract OFTCore is NonblockingLzApp, ERC165, IOFTCore {
     ) internal virtual {
         _debitFrom(from, dstChainId, toAddress, amount);
 
-        bytes memory payload = abi.encode(toAddress, amount);
+        bytes memory payload = abi.encode(
+            PT_SEND,
+            abi.encodePacked(from),
+            toAddress,
+            amount
+        );
+
         _lzSend(
             dstChainId,
             payload,
             refundAddress,
             zroPaymentAddress,
-            adapterParams
+            adapterParams,
+            msg.value
         );
 
-        uint64 nonce = lzEndpoint.getOutboundNonce(dstChainId, address(this));
-        emit SendToChain(from, dstChainId, toAddress, amount, nonce);
+        emit SendToChain(from, dstChainId, toAddress, amount);
+    }
+
+    function _sendAck(
+        uint16 srcChainId,
+        bytes memory,
+        uint64,
+        bytes memory payload
+    ) internal virtual {
+        (, bytes memory from, bytes memory toAddressBytes, uint256 amount) = abi
+            .decode(payload, (uint16, bytes, bytes, uint256));
+
+        address to = toAddressBytes.toAddress(0);
+
+        _creditTo(srcChainId, to, amount);
+        emit ReceiveFromChain(srcChainId, from, to, amount);
     }
 
     function _debitFrom(

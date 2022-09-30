@@ -58,8 +58,7 @@ interface IOFTCore is IERC165 {
         address indexed sender,
         uint16 indexed dstChainId,
         bytes indexed toAddress,
-        uint256 amount,
-        uint64 nonce
+        uint256 amount
     );
 
     /**
@@ -70,7 +69,8 @@ interface IOFTCore is IERC165 {
         uint16 indexed srcChainId,
         bytes indexed srcAddress,
         address indexed toAddress,
-        uint256 amount,
-        uint64 nonce
+        uint256 amount
     );
+
+    event SetUseCustomAdapterParams(bool _useCustomAdapterParams);
 }

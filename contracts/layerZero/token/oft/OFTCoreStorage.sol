@@ -2,14 +2,12 @@
 
 pragma solidity ^0.8.0;
 
-library LzAppStorage {
+library OFTCoreStorage {
     bytes32 internal constant STORAGE_SLOT =
-        keccak256("premia.contracts.storage.LzApp");
+        keccak256("premia.contracts.storage.OFTCore");
 
     struct Layout {
-        mapping(uint16 => bytes) trustedRemoteLookup;
-        mapping(uint16 => mapping(uint16 => uint256)) minDstGasLookup;
-        address precrime;
+        bool useCustomAdapterParams;
     }
 
     function layout() internal pure returns (Layout storage l) {

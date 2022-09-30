@@ -8,6 +8,7 @@ import {ILayerZeroReceiver} from "../interfaces/ILayerZeroReceiver.sol";
 import {ILayerZeroUserApplicationConfig} from "../interfaces/ILayerZeroUserApplicationConfig.sol";
 import {ILayerZeroEndpoint} from "../interfaces/ILayerZeroEndpoint.sol";
 import {LzAppStorage} from "./LzAppStorage.sol";
+import {BytesLib} from "../util/BytesLib.sol";
 
 /*
  * a generic LzReceiver implementation
@@ -17,9 +18,14 @@ abstract contract LzApp is
     ILayerZeroReceiver,
     ILayerZeroUserApplicationConfig
 {
+    using BytesLib for bytes;
+
     ILayerZeroEndpoint public immutable lzEndpoint;
 
-    event SetTrustedRemote(uint16 srcChainId, bytes srcAddress);
+    event SetPrecrime(address precrime);
+    event SetTrustedRemote(uint16 _remoteChainId, bytes _path);
+    event SetTrustedRemoteAddress(uint16 _remoteChainId, bytes _remoteAddress);
+    event SetMinDstGas(uint16 _dstChainId, uint16 _type, uint256 _minDstGas);
 
     constructor(address endpoint) {
         lzEndpoint = ILayerZeroEndpoint(endpoint);
@@ -40,9 +46,9 @@ abstract contract LzApp is
             "LzApp: invalid endpoint caller"
         );
 
-        LzAppStorage.Layout storage l = LzAppStorage.layout();
-
-        bytes memory trustedRemote = l.trustedRemoteLookup[srcChainId];
+        bytes memory trustedRemote = LzAppStorage.layout().trustedRemoteLookup[
+            srcChainId
+        ];
         // if will still block the message pathway from (srcChainId, srcAddress). should not receive message from untrusted remote.
         require(
             srcAddress.length == trustedRemote.length &&
@@ -66,16 +72,17 @@ abstract contract LzApp is
         bytes memory payload,
         address payable refundAddress,
         address zroPaymentAddress,
-        bytes memory adapterParams
+        bytes memory adapterParams,
+        uint256 nativeFee
     ) internal virtual {
-        LzAppStorage.Layout storage l = LzAppStorage.layout();
-
-        bytes memory trustedRemote = l.trustedRemoteLookup[dstChainId];
+        bytes memory trustedRemote = LzAppStorage.layout().trustedRemoteLookup[
+            dstChainId
+        ];
         require(
             trustedRemote.length != 0,
             "LzApp: destination chain is not a trusted source"
         );
-        lzEndpoint.send{value: msg.value}(
+        lzEndpoint.send{value: nativeFee}(
             dstChainId,
             trustedRemote,
             payload,
@@ -83,6 +90,32 @@ abstract contract LzApp is
             zroPaymentAddress,
             adapterParams
         );
+    }
+
+    function _checkGasLimit(
+        uint16 dstChainId,
+        uint16 _type,
+        bytes memory adapterParams,
+        uint256 extraGas
+    ) internal view virtual {
+        uint256 providedGasLimit = _getGasLimit(adapterParams);
+        uint256 minGasLimit = LzAppStorage.layout().minDstGasLookup[dstChainId][
+            _type
+        ] + extraGas;
+        require(minGasLimit > 0, "LzApp: minGasLimit not set");
+        require(providedGasLimit >= minGasLimit, "LzApp: gas limit is too low");
+    }
+
+    function _getGasLimit(bytes memory adapterParams)
+        internal
+        pure
+        virtual
+        returns (uint256 gasLimit)
+    {
+        require(adapterParams.length >= 34, "LzApp: invalid adapterParams");
+        assembly {
+            gasLimit := mload(add(adapterParams, 34))
+        }
     }
 
     //---------------------------UserApplication config----------------------------------------
@@ -137,9 +170,37 @@ abstract contract LzApp is
         external
         onlyOwner
     {
-        LzAppStorage.Layout storage l = LzAppStorage.layout();
-        l.trustedRemoteLookup[srcChainId] = srcAddress;
+        LzAppStorage.layout().trustedRemoteLookup[srcChainId] = srcAddress;
         emit SetTrustedRemote(srcChainId, srcAddress);
+    }
+
+    function getTrustedRemoteAddress(uint16 _remoteChainId)
+        external
+        view
+        returns (bytes memory)
+    {
+        bytes memory path = LzAppStorage.layout().trustedRemoteLookup[
+            _remoteChainId
+        ];
+        require(path.length != 0, "LzApp: no trusted path record");
+        return path.slice(0, path.length - 20); // the last 20 bytes should be address(this)
+    }
+
+    function setPrecrime(address _precrime) external onlyOwner {
+        LzAppStorage.layout().precrime = _precrime;
+        emit SetPrecrime(_precrime);
+    }
+
+    function setMinDstGas(
+        uint16 _dstChainId,
+        uint16 _packetType,
+        uint256 _minGas
+    ) external onlyOwner {
+        require(_minGas > 0, "LzApp: invalid minGas");
+        LzAppStorage.layout().minDstGasLookup[_dstChainId][
+            _packetType
+        ] = _minGas;
+        emit SetMinDstGas(_dstChainId, _packetType, _minGas);
     }
 
     //--------------------------- VIEW FUNCTION ----------------------------------------
@@ -149,8 +210,9 @@ abstract contract LzApp is
         view
         returns (bool)
     {
-        LzAppStorage.Layout storage l = LzAppStorage.layout();
-        bytes memory trustedSource = l.trustedRemoteLookup[srcChainId];
+        bytes memory trustedSource = LzAppStorage.layout().trustedRemoteLookup[
+            srcChainId
+        ];
         return keccak256(trustedSource) == keccak256(srcAddress);
     }
 }

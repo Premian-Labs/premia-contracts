@@ -14,11 +14,13 @@ import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 import {OFT} from "../layerZero/token/oft/OFT.sol";
 import {OFTCore} from "../layerZero/token/oft/OFTCore.sol";
 import {IOFTCore} from "../layerZero/token/oft/IOFTCore.sol";
+import {BytesLib} from "../layerZero/util/BytesLib.sol";
 
 contract PremiaStaking is IPremiaStaking, OFT {
     using SafeERC20 for IERC20;
     using ABDKMath64x64 for int128;
     using AddressUtils for address;
+    using BytesLib for bytes;
 
     address internal immutable PREMIA;
     address internal immutable REWARD_TOKEN;
@@ -148,34 +150,30 @@ contract PremiaStaking is IPremiaStaking, OFT {
             payload,
             refundAddress,
             zroPaymentAddress,
-            adapterParams
+            adapterParams,
+            msg.value
         );
 
-        uint64 nonce = lzEndpoint.getOutboundNonce(dstChainId, address(this));
-        emit SendToChain(from, dstChainId, toAddress, amount, nonce);
+        emit SendToChain(from, dstChainId, toAddress, amount);
     }
 
-    function _nonblockingLzReceive(
+    function _sendAck(
         uint16 srcChainId,
         bytes memory srcAddress,
-        uint64 nonce,
+        uint64,
         bytes memory payload
     ) internal virtual override {
-        // decode and load the toAddress
         (
             bytes memory toAddressBytes,
             uint256 amount,
             uint64 stakePeriod,
             uint64 lockedUntil
         ) = abi.decode(payload, (bytes, uint256, uint64, uint64));
-        address toAddress;
-        assembly {
-            toAddress := mload(add(toAddressBytes, 20))
-        }
 
-        _creditTo(toAddress, amount, stakePeriod, lockedUntil, true);
+        address to = toAddressBytes.toAddress(0);
 
-        emit ReceiveFromChain(srcChainId, srcAddress, toAddress, amount, nonce);
+        _creditTo(to, amount, stakePeriod, lockedUntil, true);
+        emit ReceiveFromChain(srcChainId, srcAddress, to, amount);
     }
 
     function _creditTo(

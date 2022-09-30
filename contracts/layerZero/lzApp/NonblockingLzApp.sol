@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 import {LzApp} from "./LzApp.sol";
 import {NonblockingLzAppStorage} from "./NonblockingLzAppStorage.sol";
+import {ExcessivelySafeCall} from "../util/ExcessivelySafeCall.sol";
 
 /*
  * the default LayerZero messaging behaviour is blocking, i.e. any failed message will block the channel
@@ -11,13 +12,22 @@ import {NonblockingLzAppStorage} from "./NonblockingLzAppStorage.sol";
  * NOTE: if the srcAddress is not configured properly, it will still block the message pathway from (srcChainId, srcAddress)
  */
 abstract contract NonblockingLzApp is LzApp {
+    using ExcessivelySafeCall for address;
+
     constructor(address endpoint) LzApp(endpoint) {}
 
     event MessageFailed(
         uint16 srcChainId,
         bytes srcAddress,
         uint64 nonce,
-        bytes payload
+        bytes payload,
+        bytes reason
+    );
+    event RetryMessageSuccess(
+        uint16 srcChainId,
+        bytes srcAddress,
+        uint64 nonce,
+        bytes32 payloadHash
     );
 
     // overriding the virtual function in LzReceiver
@@ -27,18 +37,23 @@ abstract contract NonblockingLzApp is LzApp {
         uint64 nonce,
         bytes memory payload
     ) internal virtual override {
-        // try-catch all errors/exceptions
-        try this.nonblockingLzReceive(srcChainId, srcAddress, nonce, payload) {
-            // do nothing
-        } catch {
-            NonblockingLzAppStorage.Layout storage l = NonblockingLzAppStorage
-                .layout();
-
-            // error / exception
-            l.failedMessages[srcChainId][srcAddress][nonce] = keccak256(
+        (bool success, bytes memory reason) = address(this).excessivelySafeCall(
+            gasleft(),
+            150,
+            abi.encodeWithSelector(
+                this.nonblockingLzReceive.selector,
+                srcChainId,
+                srcAddress,
+                nonce,
                 payload
-            );
-            emit MessageFailed(srcChainId, srcAddress, nonce, payload);
+            )
+        );
+        // try-catch all errors/exceptions
+        if (!success) {
+            NonblockingLzAppStorage.layout().failedMessages[srcChainId][
+                srcAddress
+            ][nonce] = keccak256(payload);
+            emit MessageFailed(srcChainId, srcAddress, nonce, payload, reason);
         }
     }
 
@@ -87,6 +102,7 @@ abstract contract NonblockingLzApp is LzApp {
         delete l.failedMessages[srcChainId][srcAddress][nonce];
         // execute the message. revert if it fails again
         _nonblockingLzReceive(srcChainId, srcAddress, nonce, payload);
+        emit RetryMessageSuccess(srcChainId, srcAddress, nonce, payloadHash);
     }
 
     function failedMessages(
