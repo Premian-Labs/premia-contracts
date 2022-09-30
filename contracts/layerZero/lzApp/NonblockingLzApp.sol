@@ -14,6 +14,10 @@ import {ExcessivelySafeCall} from "../util/ExcessivelySafeCall.sol";
 abstract contract NonblockingLzApp is LzApp {
     using ExcessivelySafeCall for address;
 
+    error NonblockingLzApp__CallerNotLzApp();
+    error NonblockingLzApp__InvalidPayload();
+    error NonblockingLzApp__NoStoredMessage();
+
     constructor(address endpoint) LzApp(endpoint) {}
 
     event MessageFailed(
@@ -64,10 +68,8 @@ abstract contract NonblockingLzApp is LzApp {
         bytes memory payload
     ) public virtual {
         // only internal transaction
-        require(
-            msg.sender == address(this),
-            "NonblockingLzApp: caller must be LzApp"
-        );
+        if (msg.sender != address(this))
+            revert NonblockingLzApp__CallerNotLzApp();
         _nonblockingLzReceive(srcChainId, srcAddress, nonce, payload);
     }
 
@@ -90,14 +92,13 @@ abstract contract NonblockingLzApp is LzApp {
 
         // assert there is message to retry
         bytes32 payloadHash = l.failedMessages[srcChainId][srcAddress][nonce];
-        require(
-            payloadHash != bytes32(0),
-            "NonblockingLzApp: no stored message"
-        );
-        require(
-            keccak256(payload) == payloadHash,
-            "NonblockingLzApp: invalid payload"
-        );
+
+        if (payloadHash == bytes32(0))
+            revert NonblockingLzApp__NoStoredMessage();
+
+        if (keccak256(payload) != payloadHash)
+            revert NonblockingLzApp__InvalidPayload();
+
         // clear the stored message
         delete l.failedMessages[srcChainId][srcAddress][nonce];
         // execute the message. revert if it fails again
