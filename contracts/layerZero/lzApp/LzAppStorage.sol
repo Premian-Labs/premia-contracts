@@ -8,7 +8,6 @@ library LzAppStorage {
 
     struct Layout {
         mapping(uint16 => bytes) trustedRemoteLookup;
-        mapping(uint16 => mapping(uint16 => uint256)) minDstGasLookup;
         address precrime;
     }
 
