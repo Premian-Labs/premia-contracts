@@ -139,6 +139,7 @@ contract PremiaStaking is IPremiaStaking, OFT {
         _updateUser(l, u, args);
 
         bytes memory payload = abi.encode(
+            PT_SEND,
             toAddress,
             amount,
             u.stakePeriod,
@@ -163,11 +164,12 @@ contract PremiaStaking is IPremiaStaking, OFT {
         bytes memory payload
     ) internal virtual override {
         (
+            ,
             bytes memory toAddressBytes,
             uint256 amount,
             uint64 stakePeriod,
             uint64 lockedUntil
-        ) = abi.decode(payload, (bytes, uint256, uint64, uint64));
+        ) = abi.decode(payload, (uint16, bytes, uint256, uint64, uint64));
 
         address to = toAddressBytes.toAddress(0);
 
