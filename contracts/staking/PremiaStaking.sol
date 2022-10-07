@@ -92,6 +92,7 @@ contract PremiaStaking is IPremiaStaking, OFT {
 
         // mock the payload for send()
         bytes memory payload = abi.encode(
+            PT_SEND,
             to,
             amount,
             u.stakePeriod,
