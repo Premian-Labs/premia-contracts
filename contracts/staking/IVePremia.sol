@@ -6,6 +6,8 @@ import {VePremiaStorage} from "./VePremiaStorage.sol";
 import {IPremiaStaking} from "./IPremiaStaking.sol";
 
 interface IVePremia is IPremiaStaking {
+    error VePremia__NotEnoughVotingPower();
+
     event AddVote(
         address indexed voter,
         VePremiaStorage.VoteVersion indexed version,

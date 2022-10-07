@@ -40,7 +40,7 @@ contract OFT is OFTCore, SolidStateERC20, IOFT {
                     ];
 
                 uint256 allowance = allowances[spender];
-                require(amount <= allowance, "insufficient allowance");
+                if (amount > allowance) revert OFT_InsufficientAllowance();
 
                 _approve(
                     from,

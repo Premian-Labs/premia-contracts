@@ -14,11 +14,13 @@ import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 import {OFT} from "../layerZero/token/oft/OFT.sol";
 import {OFTCore} from "../layerZero/token/oft/OFTCore.sol";
 import {IOFTCore} from "../layerZero/token/oft/IOFTCore.sol";
+import {BytesLib} from "../layerZero/util/BytesLib.sol";
 
 contract PremiaStaking is IPremiaStaking, OFT {
     using SafeERC20 for IERC20;
     using ABDKMath64x64 for int128;
     using AddressUtils for address;
+    using BytesLib for bytes;
 
     address internal immutable PREMIA;
     address internal immutable REWARD_TOKEN;
@@ -59,11 +61,10 @@ contract PremiaStaking is IPremiaStaking, OFT {
     ) internal virtual override {
         if (from == address(0) || to == address(0)) return;
 
-        require(
-            PremiaStakingStorage.layout().userInfo[from].lockedUntil <=
-                block.timestamp,
-            "cant transfer tokens while locked"
-        );
+        if (
+            PremiaStakingStorage.layout().userInfo[from].lockedUntil >
+            block.timestamp
+        ) revert PremiaStaking__CantTransferWhenLocked();
     }
 
     function estimateSendFee(
@@ -148,34 +149,30 @@ contract PremiaStaking is IPremiaStaking, OFT {
             payload,
             refundAddress,
             zroPaymentAddress,
-            adapterParams
+            adapterParams,
+            msg.value
         );
 
-        uint64 nonce = lzEndpoint.getOutboundNonce(dstChainId, address(this));
-        emit SendToChain(from, dstChainId, toAddress, amount, nonce);
+        emit SendToChain(from, dstChainId, toAddress, amount);
     }
 
-    function _nonblockingLzReceive(
+    function _sendAck(
         uint16 srcChainId,
         bytes memory srcAddress,
-        uint64 nonce,
+        uint64,
         bytes memory payload
     ) internal virtual override {
-        // decode and load the toAddress
         (
             bytes memory toAddressBytes,
             uint256 amount,
             uint64 stakePeriod,
             uint64 lockedUntil
         ) = abi.decode(payload, (bytes, uint256, uint64, uint64));
-        address toAddress;
-        assembly {
-            toAddress := mload(add(toAddressBytes, 20))
-        }
 
-        _creditTo(toAddress, amount, stakePeriod, lockedUntil, true);
+        address to = toAddressBytes.toAddress(0);
 
-        emit ReceiveFromChain(srcChainId, srcAddress, toAddress, amount, nonce);
+        _creditTo(to, amount, stakePeriod, lockedUntil, true);
+        emit ReceiveFromChain(srcChainId, srcAddress, to, amount);
     }
 
     function _creditTo(
@@ -351,7 +348,8 @@ contract PremiaStaking is IPremiaStaking, OFT {
         uint256 amount,
         uint64 stakePeriod
     ) internal {
-        require(stakePeriod <= MAX_PERIOD, "Gt max period");
+        if (stakePeriod > MAX_PERIOD)
+            revert PremiaStaking__ExcessiveStakePeriod();
 
         IERC20(PREMIA).safeTransferFrom(toAddress, address(this), amount);
 
@@ -475,7 +473,8 @@ contract PremiaStaking is IPremiaStaking, OFT {
             .userInfo[user]
             .lockedUntil;
 
-        require(lockedUntil > block.timestamp, "Not locked");
+        if (lockedUntil <= block.timestamp)
+            revert PremiaStaking__StakeNotLocked();
 
         uint256 lockLeft;
 
@@ -496,7 +495,8 @@ contract PremiaStaking is IPremiaStaking, OFT {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
 
-        require(u.lockedUntil <= block.timestamp, "Stake still locked");
+        if (u.lockedUntil > block.timestamp)
+            revert PremiaStaking__StakeLocked();
 
         _startWithdraw(l, u, amount, 0);
     }
@@ -507,10 +507,8 @@ contract PremiaStaking is IPremiaStaking, OFT {
         uint256 amount,
         uint256 fee
     ) internal {
-        require(
-            _getAvailablePremiaAmount() >= amount - fee,
-            "Not enough liquidity"
-        );
+        if (_getAvailablePremiaAmount() < amount - fee)
+            revert PremiaStaking__NotEnoughLiquidity();
 
         _updateRewards();
         _beforeUnstake(msg.sender, amount);
@@ -555,11 +553,9 @@ contract PremiaStaking is IPremiaStaking, OFT {
 
         uint256 startDate = l.withdrawals[msg.sender].startDate;
 
-        require(startDate > 0, "No pending withdrawal");
-        require(
-            block.timestamp > startDate + WITHDRAWAL_DELAY,
-            "Withdrawal still pending"
-        );
+        if (startDate == 0) revert PremiaStaking__NoPendingWithdrawal();
+        if (block.timestamp <= startDate + WITHDRAWAL_DELAY)
+            revert PremiaStaking__WithdrawalStillPending();
 
         uint256 amount = l.withdrawals[msg.sender].amount;
         l.pendingWithdrawal -= amount;

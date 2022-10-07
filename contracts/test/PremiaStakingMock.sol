@@ -50,7 +50,7 @@ contract PremiaStakingMock is PremiaStaking {
 
         _updateUser(l, u, args);
 
-        emit SendToChain(from, dstChainId, toAddress, amount, 0);
+        emit SendToChain(from, dstChainId, toAddress, amount);
     }
 
     function creditTo(

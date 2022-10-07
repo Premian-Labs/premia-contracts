@@ -157,10 +157,8 @@ contract VePremia is IVePremia, PremiaStaking {
             VePremiaStorage.Vote memory vote = votes[i];
 
             votingPowerUsed += votes[i].amount;
-            require(
-                votingPowerUsed <= userVotingPower,
-                "not enough voting power"
-            );
+            if (votingPowerUsed > userVotingPower)
+                revert VePremia__NotEnoughVotingPower();
 
             userVotes.push(votes[i]);
             l.votes[vote.version][vote.target] += vote.amount;
