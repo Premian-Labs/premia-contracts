@@ -235,7 +235,7 @@ describe('PremiaStaking', () => {
       await premiaStaking.connect(alice).stake(stakeAmount, oneMonth);
       await expect(
         premiaStaking.connect(alice).startWithdraw(1),
-      ).to.be.revertedWith('Stake still locked');
+      ).to.be.revertedWith('PremiaStaking__StakeLocked()');
     });
 
     it('should correctly calculate stake period multiplier', async () => {
@@ -266,7 +266,7 @@ describe('PremiaStaking', () => {
 
     await expect(
       premiaStaking.connect(alice).transfer(bob.address, parseEther('1')),
-    ).to.be.revertedWith('cant transfer tokens while locked');
+    ).to.be.revertedWith('PremiaStaking__CantTransferWhenLocked()');
   });
 
   it('should successfully transfer tokens if not locked', async () => {
@@ -313,13 +313,13 @@ describe('PremiaStaking', () => {
   it('should not allow enter if not enough approve', async () => {
     await expect(
       premiaStaking.connect(alice).stake(parseEther('100'), 0),
-    ).to.be.revertedWith('ERC20: transfer amount exceeds allowance');
+    ).to.be.revertedWith('ERC20Base__InsufficientAllowance()');
     await premia
       .connect(alice)
       .approve(premiaStaking.address, parseEther('50'));
     await expect(
       premiaStaking.connect(alice).stake(parseEther('100'), 0),
-    ).to.be.revertedWith('ERC20: transfer amount exceeds allowance');
+    ).to.be.revertedWith('ERC20Base__InsufficientAllowance()');
     await premia
       .connect(alice)
       .approve(premiaStaking.address, parseEther('100'));
@@ -355,7 +355,7 @@ describe('PremiaStaking', () => {
 
     await expect(
       otherPremiaStaking.connect(alice).startWithdraw(parseEther('10')),
-    ).to.be.revertedWith('Not enough liquidity');
+    ).to.be.revertedWith('PremiaStaking__NotEnoughLiquidity()');
   });
 
   it('should correctly handle withdrawal with delay', async () => {
@@ -365,7 +365,7 @@ describe('PremiaStaking', () => {
     await premiaStaking.connect(alice).stake(parseEther('100'), 0);
 
     await expect(premiaStaking.connect(alice).withdraw()).to.be.revertedWith(
-      'No pending withdrawal',
+      'PremiaStaking__NoPendingWithdrawal()',
     );
 
     await premiaStaking.connect(alice).startWithdraw(parseEther('40'));
@@ -376,7 +376,7 @@ describe('PremiaStaking', () => {
 
     await increaseTimestamp(ONE_DAY * 10 - 5);
     await expect(premiaStaking.connect(alice).withdraw()).to.be.revertedWith(
-      'Withdrawal still pending',
+      'PremiaStaking__WithdrawalStillPending()',
     );
 
     await increaseTimestamp(10);
@@ -388,7 +388,7 @@ describe('PremiaStaking', () => {
     expect(await premia.balanceOf(alice.address)).to.eq(parseEther('40'));
 
     await expect(premiaStaking.connect(alice).withdraw()).to.be.revertedWith(
-      'No pending withdrawal',
+      'PremiaStaking__NoPendingWithdrawal()',
     );
   });
 
@@ -784,7 +784,7 @@ describe('PremiaStaking', () => {
               ethers.constants.AddressZero,
               '0x',
             ),
-        ).to.be.revertedWith('insufficient allowance');
+        ).to.be.revertedWith('OFT_InsufficientAllowance()');
       });
     });
   });

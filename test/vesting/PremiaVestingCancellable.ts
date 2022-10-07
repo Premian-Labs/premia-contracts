@@ -69,7 +69,7 @@ describe('PremiaVestingCancellable', () => {
   it('should fail to withdraw if not called by owner', async () => {
     await expect(
       premiaVestingCancellable.connect(admin).withdraw(),
-    ).to.be.revertedWith('Ownable: sender must be owner');
+    ).to.be.revertedWith('Ownable__NotOwner()');
   });
 
   it('should fail cancelling the vesting if not called from thirdParty', async () => {
