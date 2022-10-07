@@ -45,13 +45,9 @@ abstract contract LzApp is
             "LzApp: invalid endpoint caller"
         );
 
-        bytes memory trustedRemote = LzAppStorage.layout().trustedRemote[
-            srcChainId
-        ];
         // if will still block the message pathway from (srcChainId, srcAddress). should not receive message from untrusted remote.
         require(
-            srcAddress.length == trustedRemote.length &&
-                keccak256(srcAddress) == keccak256(trustedRemote),
+            _isTrustedRemote(srcChainId, srcAddress),
             "LzApp: invalid source sending contract"
         );
 
@@ -166,14 +162,25 @@ abstract contract LzApp is
 
     //--------------------------- VIEW FUNCTION ----------------------------------------
 
-    function isTrustedRemote(uint16 srcChainId, bytes calldata srcAddress)
+    function isTrustedRemote(uint16 srcChainId, bytes memory srcAddress)
         external
         view
         returns (bool)
     {
-        bytes memory trustedSource = LzAppStorage.layout().trustedRemote[
+        return _isTrustedRemote(srcChainId, srcAddress);
+    }
+
+    function _isTrustedRemote(uint16 srcChainId, bytes memory srcAddress)
+        internal
+        view
+        returns (bool)
+    {
+        bytes memory trustedRemote = LzAppStorage.layout().trustedRemote[
             srcChainId
         ];
-        return keccak256(trustedSource) == keccak256(srcAddress);
+
+        return
+            srcAddress.length == trustedRemote.length &&
+            keccak256(trustedRemote) == keccak256(srcAddress);
     }
 }
