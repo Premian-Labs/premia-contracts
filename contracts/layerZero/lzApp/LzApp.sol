@@ -25,6 +25,11 @@ abstract contract LzApp is
     event SetPrecrime(address precrime);
     event SetTrustedRemoteAddress(uint16 _remoteChainId, bytes _remoteAddress);
 
+    error LzApp__InvalidEndpointCaller();
+    error LzApp__InvalidSource();
+    error LzApp__NotTrustedSource();
+    error LzApp__NoTrustedPathRecord();
+
     constructor(address endpoint) {
         lzEndpoint = ILayerZeroEndpoint(endpoint);
     }
@@ -39,16 +44,12 @@ abstract contract LzApp is
         bytes memory payload
     ) public virtual {
         // lzReceive must be called by the endpoint for security
-        require(
-            msg.sender == address(lzEndpoint),
-            "LzApp: invalid endpoint caller"
-        );
+        if (msg.sender != address(lzEndpoint))
+            revert LzApp__InvalidEndpointCaller();
 
         // if will still block the message pathway from (srcChainId, srcAddress). should not receive message from untrusted remote.
-        require(
-            _isTrustedRemote(srcChainId, srcAddress),
-            "LzApp: invalid source sending contract"
-        );
+        if (!_isTrustedRemote(srcChainId, srcAddress))
+            revert LzApp__InvalidSource();
 
         _blockingLzReceive(srcChainId, srcAddress, nonce, payload);
     }
@@ -72,10 +73,7 @@ abstract contract LzApp is
         bytes memory trustedRemote = LzAppStorage.layout().trustedRemote[
             dstChainId
         ];
-        require(
-            trustedRemote.length != 0,
-            "LzApp: destination chain is not a trusted source"
-        );
+        if (trustedRemote.length == 0) revert LzApp__NotTrustedSource();
         lzEndpoint.send{value: nativeFee}(
             dstChainId,
             trustedRemote,
@@ -150,7 +148,7 @@ abstract contract LzApp is
         returns (bytes memory)
     {
         bytes memory path = LzAppStorage.layout().trustedRemote[_remoteChainId];
-        require(path.length != 0, "LzApp: no trusted path record");
+        if (path.length == 0) revert LzApp__NoTrustedPathRecord();
         return path.slice(0, path.length - 20); // the last 20 bytes should be address(this)
     }
 

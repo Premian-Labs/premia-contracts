@@ -9,6 +9,14 @@ import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 
 // IERC20Metadata inheritance not possible due to linearization issue
 interface IPremiaStaking is IERC2612, IOFT {
+    error PremiaStaking__CantTransferWhenLocked();
+    error PremiaStaking__ExcessiveStakePeriod();
+    error PremiaStaking__NoPendingWithdrawal();
+    error PremiaStaking__NotEnoughLiquidity();
+    error PremiaStaking__StakeLocked();
+    error PremiaStaking__StakeNotLocked();
+    error PremiaStaking__WithdrawalStillPending();
+
     event Stake(
         address indexed user,
         uint256 amount,

@@ -9,5 +9,5 @@ import {ISolidStateERC20} from "@solidstate/contracts/token/ERC20/ISolidStateERC
  * @dev Interface of the OFT standard
  */
 interface IOFT is IOFTCore, ISolidStateERC20 {
-
+    error OFT_InsufficientAllowance();
 }
