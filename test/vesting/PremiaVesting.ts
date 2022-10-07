@@ -64,8 +64,8 @@ describe('PremiaVesting', () => {
   });
 
   it('should fail to withdraw if not called by owner', async () => {
-    await expect(premiaVesting.connect(admin).withdraw()).to.be.revertedWith(
-      'Ownable: sender must be owner',
-    );
+    await expect(
+      premiaVesting.connect(admin).withdraw(),
+    ).to.be.revertedWithCustomError(premiaVesting, 'Ownable__NotOwner');
   });
 });

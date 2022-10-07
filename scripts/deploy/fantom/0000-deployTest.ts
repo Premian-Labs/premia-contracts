@@ -68,7 +68,7 @@ async function main() {
     exchangeHelper.address,
     premia.address,
     fixedFromFloat(0.03),
-    contracts.premiaMaker.address,
+    contracts.feeConverter.address,
     contracts.xPremia.address,
     '0xD77203CDBd33B849Dc0B03A4f906F579A766C0A6',
   );
@@ -78,15 +78,10 @@ async function main() {
   await deployPool(proxyManager, usdc, btc, 75);
   await deployPool(proxyManager, usdc, yfi, 75);
 
-  const premiaMakerKeeper = await new PremiaMakerKeeper__factory(
-    deployer,
-  ).deploy(contracts.premiaMaker.address, premiaDiamond.address);
-
   const processExpiredKeeper = await new ProcessExpiredKeeper__factory(
     deployer,
   ).deploy(premiaDiamond.address);
 
-  console.log('PremiaMakerKeeper', premiaMakerKeeper.address);
   console.log('ProcessExpiredKeeper', processExpiredKeeper.address);
 }
 

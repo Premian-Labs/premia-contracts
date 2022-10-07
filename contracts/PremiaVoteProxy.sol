@@ -3,24 +3,15 @@
 
 pragma solidity ^0.8.0;
 
-import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
 
-import {IFeeDiscount} from "./staking/IFeeDiscount.sol";
 import {IPremiaStaking} from "./staking/IPremiaStaking.sol";
 
 contract PremiaVoteProxy {
-    address internal immutable PREMIA;
-    address internal immutable xPREMIA;
-    address internal immutable FEE_DISCOUNT;
+    address internal immutable VE_PREMIA;
 
-    constructor(
-        address _premia,
-        address _xPremia,
-        address _feeDiscount
-    ) {
-        PREMIA = _premia;
-        xPREMIA = _xPremia;
-        FEE_DISCOUNT = _feeDiscount;
+    constructor(address vePremia) {
+        VE_PREMIA = vePremia;
     }
 
     function decimals() external pure returns (uint8) {
@@ -36,20 +27,10 @@ contract PremiaVoteProxy {
     }
 
     function totalSupply() external view returns (uint256) {
-        return IERC20(PREMIA).totalSupply();
+        return IPremiaStaking(VE_PREMIA).getTotalPower();
     }
 
-    function balanceOf(address _voter) external view returns (uint256) {
-        uint256 _votes = IERC20(PREMIA).balanceOf(_voter);
-
-        uint256 totalXPremia = IERC20(xPREMIA).balanceOf(_voter) +
-            IFeeDiscount(FEE_DISCOUNT).getUserInfo(_voter).balance;
-
-        uint256 xPremiaToPremiaRatio = IPremiaStaking(xPREMIA)
-            .getXPremiaToPremiaRatio();
-
-        _votes += (totalXPremia * xPremiaToPremiaRatio) / 1e18;
-
-        return _votes;
+    function balanceOf(address voter) external view returns (uint256) {
+        return IPremiaStaking(VE_PREMIA).getUserPower(voter);
     }
 }

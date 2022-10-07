@@ -3,14 +3,16 @@
 
 pragma solidity ^0.8.0;
 
-import {OwnableInternal, OwnableStorage} from "@solidstate/contracts/access/OwnableInternal.sol";
-import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
+import {OwnableInternal, OwnableStorage} from "@solidstate/contracts/access/ownable/OwnableInternal.sol";
+import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 
 import {PremiaMiningStorage} from "./PremiaMiningStorage.sol";
 import {IPremiaMining} from "./IPremiaMining.sol";
 import {IPoolIO} from "../pool/IPoolIO.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
+import {IVePremia} from "../staking/IVePremia.sol";
+import {VePremiaStorage} from "../staking/VePremiaStorage.sol";
 
 /**
  * @title Premia liquidity mining contract, derived from Sushiswap's MasterChef.sol ( https://github.com/sushiswap/sushiswap )
@@ -21,33 +23,24 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
     address internal immutable DIAMOND;
     address internal immutable PREMIA;
+    address internal immutable VE_PREMIA;
 
     uint256 private constant ONE_YEAR = 365 days;
+    uint256 private constant INVERSE_BASIS_POINT = 1e4;
+    uint256 private constant MIN_POINT_MULTIPLIER = 2500; // 25% -> If utilization rate is less than this value, we use this value instead
 
-    event Claim(
-        address indexed user,
-        address indexed pool,
-        bool indexed isCallPool,
-        uint256 rewardAmount
-    );
-    event UpdatePoolAlloc(address indexed pool, uint256 allocPoints);
-
-    constructor(address _diamond, address _premia) {
+    constructor(
+        address _diamond,
+        address _premia,
+        address _vePremia
+    ) {
         DIAMOND = _diamond;
         PREMIA = _premia;
+        VE_PREMIA = _vePremia;
     }
 
     modifier onlyPool(address _pool) {
         require(msg.sender == _pool, "Not pool");
-        _;
-    }
-
-    modifier onlyDiamondOrOwner() {
-        require(
-            msg.sender == DIAMOND ||
-                msg.sender == OwnableStorage.layout().owner,
-            "Not diamond or owner"
-        );
         _;
     }
 
@@ -107,71 +100,35 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         PremiaMiningStorage.layout().premiaPerYear = _premiaPerYear;
     }
 
-    /**
-     * @notice Add a new option pool to the liquidity mining. Can only be called by the owner or premia diamond
-     * @param _pool Address of option pool contract
-     * @param _allocPoints Weight of this pool in the reward calculation
-     */
-    function addPool(address _pool, uint256 _allocPoints)
-        external
-        onlyDiamondOrOwner
-    {
-        PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
-        require(
-            l.poolInfo[_pool][true].lastRewardTimestamp == 0 &&
-                l.poolInfo[_pool][false].lastRewardTimestamp == 0,
-            "Pool exists"
-        );
-
-        l.totalAllocPoint += (_allocPoints * 2);
-
-        l.poolInfo[_pool][true] = PremiaMiningStorage.PoolInfo({
-            allocPoint: _allocPoints,
-            lastRewardTimestamp: block.timestamp,
-            accPremiaPerShare: 0
-        });
-
-        l.poolInfo[_pool][false] = PremiaMiningStorage.PoolInfo({
-            allocPoint: _allocPoints,
-            lastRewardTimestamp: block.timestamp,
-            accPremiaPerShare: 0
-        });
-
-        emit UpdatePoolAlloc(_pool, _allocPoints);
-    }
-
-    /**
-     * @notice Set new alloc points for an option pool. Can only be called by the owner or premia diamond
-     * @param _pools List of addresses of option pool contract
-     * @param _allocPoints List of weight of each pool in reward calculations
-     */
-    function setPoolAllocPoints(
-        address[] memory _pools,
-        uint256[] memory _allocPoints
-    ) public onlyDiamondOrOwner {
-        PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
-
-        for (uint256 i; i < _pools.length; i++) {
-            address pool = _pools[i];
-            uint256 allocPoints = _allocPoints[i];
-
-            require(
-                l.poolInfo[pool][true].lastRewardTimestamp > 0 &&
-                    l.poolInfo[pool][false].lastRewardTimestamp > 0,
-                "Pool does not exists"
-            );
-
-            l.totalAllocPoint =
-                l.totalAllocPoint -
-                l.poolInfo[pool][true].allocPoint -
-                l.poolInfo[pool][false].allocPoint +
-                (allocPoints * 2);
-
-            l.poolInfo[pool][true].allocPoint = allocPoints;
-            l.poolInfo[pool][false].allocPoint = allocPoints;
-
-            emit UpdatePoolAlloc(pool, allocPoints);
+    function _setPoolAllocPoints(
+        PremiaMiningStorage.Layout storage l,
+        IPremiaMining.PoolAllocPoints memory _data
+    ) internal {
+        if (_data.poolUtilizationRateBPS < MIN_POINT_MULTIPLIER) {
+            _data.poolUtilizationRateBPS = MIN_POINT_MULTIPLIER;
         }
+
+        uint256 allocPoints = (_data.votes * _data.poolUtilizationRateBPS) /
+            INVERSE_BASIS_POINT;
+
+        l.totalAllocPoint =
+            l.totalAllocPoint -
+            l.poolInfo[_data.pool][_data.isCallPool].allocPoint +
+            allocPoints;
+        l.poolInfo[_data.pool][_data.isCallPool].allocPoint = allocPoints;
+
+        // If alloc points set for a new pool, we initialize the last reward timestamp
+        if (l.poolInfo[_data.pool][_data.isCallPool].lastRewardTimestamp == 0) {
+            l.poolInfo[_data.pool][_data.isCallPool].lastRewardTimestamp = block
+                .timestamp;
+        }
+
+        emit UpdatePoolAlloc(
+            _data.pool,
+            _data.isCallPool,
+            _data.votes,
+            _data.poolUtilizationRateBPS
+        );
     }
 
     /**
@@ -209,7 +166,11 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         ][_user];
         uint256 accPremiaPerShare = pool.accPremiaPerShare;
 
-        if (block.timestamp > pool.lastRewardTimestamp && TVL != 0) {
+        if (
+            block.timestamp > pool.lastRewardTimestamp &&
+            TVL > 0 &&
+            pool.allocPoint > 0
+        ) {
             uint256 premiaReward = (((block.timestamp -
                 pool.lastRewardTimestamp) * l.premiaPerYear) *
                 pool.allocPoint) /
@@ -234,13 +195,15 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @param _pool Address of option pool contract
      * @param _isCallPool True if for call option pool, False if for put option pool
      * @param _totalTVL Total amount of tokens deposited in the option pool
+     * @param _utilizationRate Utilization rate of the pool (1e4 = 100%)
      */
     function updatePool(
         address _pool,
         bool _isCallPool,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) external onlyPool(_pool) {
-        _updatePool(_pool, _isCallPool, _totalTVL);
+        _updatePool(_pool, _isCallPool, _totalTVL, _utilizationRate);
     }
 
     /**
@@ -248,11 +211,13 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @param _pool Address of option pool contract
      * @param _isCallPool True if for call option pool, False if for put option pool
      * @param _totalTVL Total amount of tokens deposited in the option pool
+     * @param _utilizationRate Utilization rate of the pool (1e4 = 100%)
      */
     function _updatePool(
         address _pool,
         bool _isCallPool,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) internal {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
 
@@ -264,50 +229,45 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
             return;
         }
 
-        if (_totalTVL == 0) {
-            pool.lastRewardTimestamp = block.timestamp;
-            return;
+        if (_totalTVL > 0 && pool.allocPoint > 0) {
+            uint256 premiaReward = (((block.timestamp -
+                pool.lastRewardTimestamp) * l.premiaPerYear) *
+                pool.allocPoint) /
+                l.totalAllocPoint /
+                ONE_YEAR;
+
+            // If we are running out of rewards to distribute, distribute whats left
+            if (premiaReward > l.premiaAvailable) {
+                premiaReward = l.premiaAvailable;
+            }
+
+            l.premiaAvailable -= premiaReward;
+            pool.accPremiaPerShare += (premiaReward * 1e12) / _totalTVL;
         }
 
-        uint256 premiaReward = (((block.timestamp - pool.lastRewardTimestamp) *
-            l.premiaPerYear) * pool.allocPoint) /
-            l.totalAllocPoint /
-            ONE_YEAR;
-
-        // If we are running out of rewards to distribute, distribute whats left
-        if (premiaReward > l.premiaAvailable) {
-            premiaReward = l.premiaAvailable;
-        }
-
-        l.premiaAvailable -= premiaReward;
-        pool.accPremiaPerShare += (premiaReward * 1e12) / _totalTVL;
         pool.lastRewardTimestamp = block.timestamp;
+
+        _updatePoolAllocPoints(l, _pool, _isCallPool, _utilizationRate);
     }
 
-    /**
-     * @notice Allocate pending rewards to a user. Only callable by the option pool
-     * @param _user User for whom allocate the rewards
-     * @param _pool Address of option pool contract
-     * @param _isCallPool True if for call option pool, False if for put option pool
-     * @param _userTVLOld Total amount of tokens deposited in the option pool by user before the allocation update
-     * @param _userTVLNew Total amount of tokens deposited in the option pool by user after the allocation update
-     * @param _totalTVL Total amount of tokens deposited in the option pool
-     */
-    function allocatePending(
-        address _user,
-        address _pool,
-        bool _isCallPool,
-        uint256 _userTVLOld,
-        uint256 _userTVLNew,
-        uint256 _totalTVL
-    ) external onlyPool(_pool) {
-        _allocatePending(
-            _user,
-            _pool,
-            _isCallPool,
-            _userTVLOld,
-            _userTVLNew,
-            _totalTVL
+    function _updatePoolAllocPoints(
+        PremiaMiningStorage.Layout storage l,
+        address pool,
+        bool isCallPool,
+        uint256 utilizationRate
+    ) internal virtual {
+        uint256 votes = IVePremia(VE_PREMIA).getPoolVotes(
+            VePremiaStorage.VoteVersion.V2,
+            abi.encodePacked(pool, isCallPool)
+        );
+        _setPoolAllocPoints(
+            l,
+            IPremiaMining.PoolAllocPoints(
+                pool,
+                isCallPool,
+                votes,
+                utilizationRate
+            )
         );
     }
 
@@ -319,6 +279,37 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @param _userTVLOld Total amount of tokens deposited in the option pool by user before the allocation update
      * @param _userTVLNew Total amount of tokens deposited in the option pool by user after the allocation update
      * @param _totalTVL Total amount of tokens deposited in the option pool
+     * @param _utilizationRate Utilization rate of the pool (1e4 = 100%)
+     */
+    function allocatePending(
+        address _user,
+        address _pool,
+        bool _isCallPool,
+        uint256 _userTVLOld,
+        uint256 _userTVLNew,
+        uint256 _totalTVL,
+        uint256 _utilizationRate
+    ) external onlyPool(_pool) {
+        _allocatePending(
+            _user,
+            _pool,
+            _isCallPool,
+            _userTVLOld,
+            _userTVLNew,
+            _totalTVL,
+            _utilizationRate
+        );
+    }
+
+    /**
+     * @notice Allocate pending rewards to a user. Only callable by the option pool
+     * @param _user User for whom allocate the rewards
+     * @param _pool Address of option pool contract
+     * @param _isCallPool True if for call option pool, False if for put option pool
+     * @param _userTVLOld Total amount of tokens deposited in the option pool by user before the allocation update
+     * @param _userTVLNew Total amount of tokens deposited in the option pool by user after the allocation update
+     * @param _totalTVL Total amount of tokens deposited in the option pool
+     * @param _utilizationRate Utilization rate of the pool (1e4 = 100%)
      */
     function _allocatePending(
         address _user,
@@ -326,7 +317,8 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         bool _isCallPool,
         uint256 _userTVLOld,
         uint256 _userTVLNew,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) internal {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
         PremiaMiningStorage.PoolInfo storage pool = l.poolInfo[_pool][
@@ -336,7 +328,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
             _isCallPool
         ][_user];
 
-        _updatePool(_pool, _isCallPool, _totalTVL);
+        _updatePool(_pool, _isCallPool, _totalTVL, _utilizationRate);
 
         user.reward +=
             ((_userTVLOld * pool.accPremiaPerShare) / 1e12) -
@@ -353,6 +345,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @param _userTVLOld Total amount of tokens deposited in the option pool by user before the allocation update
      * @param _userTVLNew Total amount of tokens deposited in the option pool by user after the allocation update
      * @param _totalTVL Total amount of tokens deposited in the option pool
+     * @param _utilizationRate Utilization rate of the pool (1e4 = 100%)
      */
     function claim(
         address _user,
@@ -360,7 +353,8 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         bool _isCallPool,
         uint256 _userTVLOld,
         uint256 _userTVLNew,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) external onlyPool(_pool) {
         PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
 
@@ -370,7 +364,8 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
             _isCallPool,
             _userTVLOld,
             _userTVLNew,
-            _totalTVL
+            _totalTVL,
+            _utilizationRate
         );
 
         uint256 reward = l.userInfo[_pool][_isCallPool][_user].reward;

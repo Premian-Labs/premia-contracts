@@ -5,6 +5,27 @@ pragma solidity ^0.8.0;
 import {PremiaMiningStorage} from "./PremiaMiningStorage.sol";
 
 interface IPremiaMining {
+    struct PoolAllocPoints {
+        address pool;
+        bool isCallPool;
+        uint256 votes;
+        uint256 poolUtilizationRateBPS; // 100% = 1e4
+    }
+
+    event Claim(
+        address indexed user,
+        address indexed pool,
+        bool indexed isCallPool,
+        uint256 rewardAmount
+    );
+
+    event UpdatePoolAlloc(
+        address indexed pool,
+        bool indexed isCallPool,
+        uint256 votes,
+        uint256 poolUtilizationRateBPS
+    );
+
     function addPremiaRewards(uint256 _amount) external;
 
     function premiaRewardsAvailable() external view returns (uint256);
@@ -18,13 +39,6 @@ interface IPremiaMining {
 
     function getPremiaPerYear() external view returns (uint256);
 
-    function addPool(address _pool, uint256 _allocPoints) external;
-
-    function setPoolAllocPoints(
-        address[] memory _pools,
-        uint256[] memory _allocPoints
-    ) external;
-
     function pendingPremia(
         address _pool,
         bool _isCallPool,
@@ -34,7 +48,8 @@ interface IPremiaMining {
     function updatePool(
         address _pool,
         bool _isCallPool,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) external;
 
     function allocatePending(
@@ -43,7 +58,8 @@ interface IPremiaMining {
         bool _isCallPool,
         uint256 _userTVLOld,
         uint256 _userTVLNew,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) external;
 
     function claim(
@@ -52,6 +68,7 @@ interface IPremiaMining {
         bool _isCallPool,
         uint256 _userTVLOld,
         uint256 _userTVLNew,
-        uint256 _totalTVL
+        uint256 _totalTVL,
+        uint256 _utilizationRate
     ) external;
 }

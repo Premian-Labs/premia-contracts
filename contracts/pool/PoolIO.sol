@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 
 import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
+import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
 
 import {IPoolIO} from "./IPoolIO.sol";
 import {IPoolInternal} from "./IPoolInternal.sol";
@@ -21,6 +22,22 @@ contract PoolIO is IPoolIO, PoolInternal {
     using EnumerableSet for EnumerableSet.AddressSet;
     using EnumerableSet for EnumerableSet.UintSet;
     using PoolStorage for PoolStorage.Layout;
+
+    struct ReassignBatchArgsInternal {
+        uint256[] tokenIds;
+        uint256[] contractSizes;
+        bool divest;
+        int128 newPrice64x64;
+        int128 utilizationCall64x64;
+        int128 utilizationPut64x64;
+    }
+
+    struct ReassignBatchResultInternal {
+        uint256[] baseCosts;
+        uint256[] feeCosts;
+        uint256 amountOutCall;
+        uint256 amountOutPut;
+    }
 
     constructor(
         address ivolOracle,
@@ -89,51 +106,56 @@ contract PoolIO is IPoolIO, PoolInternal {
      */
     function withdraw(uint256 amount, bool isCallPool) public {
         PoolStorage.Layout storage l = PoolStorage.layout();
-        uint256 toWithdraw = amount;
+
+        uint256 depositedAt = l.depositedAt[msg.sender][isCallPool];
+        require(depositedAt + (1 days) < block.timestamp, "liq lock 1d");
 
         _processPendingDeposits(l, isCallPool);
 
-        uint256 depositedAt = l.depositedAt[msg.sender][isCallPool];
-
-        require(depositedAt + (1 days) < block.timestamp, "liq lock 1d");
-
+        int128 utilization64x64 = l.getUtilization64x64(isCallPool);
         int128 oldLiquidity64x64 = l.totalFreeLiquiditySupply64x64(isCallPool);
 
-        uint256 reservedLiqToWithdraw;
+        uint256 reservedLiqTokenId = _getReservedLiquidityTokenId(isCallPool);
+        uint256 reservedLiquidity = _balanceOf(msg.sender, reservedLiqTokenId);
 
-        {
-            uint256 reservedLiqTokenId = _getReservedLiquidityTokenId(
-                isCallPool
-            );
-            uint256 reservedLiquidity = _balanceOf(
-                msg.sender,
-                reservedLiqTokenId
-            );
+        uint256 reservedLiqToWithdraw = reservedLiquidity < amount
+            ? reservedLiquidity
+            : amount;
 
-            if (reservedLiquidity > 0) {
-                if (reservedLiquidity < toWithdraw) {
-                    reservedLiqToWithdraw = reservedLiquidity;
-                } else {
-                    reservedLiqToWithdraw = toWithdraw;
-                }
+        uint256 freeLiqToWithdraw = amount - reservedLiqToWithdraw;
 
-                toWithdraw -= reservedLiqToWithdraw;
-                // burn reserved liquidity tokens from sender
-                _burn(msg.sender, reservedLiqTokenId, reservedLiqToWithdraw);
-            }
+        if (reservedLiqToWithdraw > 0) {
+            // burn reserved liquidity tokens from sender
+            _burn(msg.sender, reservedLiqTokenId, reservedLiqToWithdraw);
         }
 
-        if (toWithdraw > 0) {
+        if (freeLiqToWithdraw > 0) {
             // burn free liquidity tokens from sender
-            _burn(msg.sender, _getFreeLiquidityTokenId(isCallPool), toWithdraw);
+            _burn(
+                msg.sender,
+                _getFreeLiquidityTokenId(isCallPool),
+                freeLiqToWithdraw
+            );
 
             int128 newLiquidity64x64 = l.totalFreeLiquiditySupply64x64(
                 isCallPool
             );
-            _setCLevel(l, oldLiquidity64x64, newLiquidity64x64, isCallPool);
+            _setCLevel(
+                l,
+                oldLiquidity64x64,
+                newLiquidity64x64,
+                isCallPool,
+                utilization64x64
+            );
         }
 
-        _subUserTVL(l, msg.sender, isCallPool, amount - reservedLiqToWithdraw);
+        _subUserTVL(
+            l,
+            msg.sender,
+            isCallPool,
+            freeLiqToWithdraw,
+            utilization64x64
+        );
         _processAvailableFunds(msg.sender, amount, isCallPool, true, true);
         emit Withdrawal(msg.sender, isCallPool, depositedAt, amount);
     }
@@ -153,41 +175,46 @@ contract PoolIO is IPoolIO, PoolInternal {
             uint256 amountOut
         )
     {
-        PoolStorage.Layout storage l = PoolStorage.layout();
-        int128 newPrice64x64 = _update(l);
-
-        uint64 maturity;
-        int128 strike64x64;
         bool isCall;
+        int128 utilization64x64;
 
         {
-            PoolStorage.TokenType tokenType;
-            (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(
-                tokenId
+            int128 newPrice64x64 = _update(PoolStorage.layout());
+            uint64 maturity;
+            int128 strike64x64;
+
+            {
+                PoolStorage.TokenType tokenType;
+                (tokenType, maturity, strike64x64) = PoolStorage.parseTokenId(
+                    tokenId
+                );
+
+                isCall =
+                    tokenType == PoolStorage.TokenType.SHORT_CALL ||
+                    tokenType == PoolStorage.TokenType.LONG_CALL;
+            }
+
+            utilization64x64 = PoolStorage.layout().getUtilization64x64(isCall);
+
+            (baseCost, feeCost, amountOut) = _reassign(
+                PoolStorage.layout(),
+                msg.sender,
+                maturity,
+                strike64x64,
+                isCall,
+                contractSize,
+                newPrice64x64
             );
-
-            isCall =
-                tokenType == PoolStorage.TokenType.SHORT_CALL ||
-                tokenType == PoolStorage.TokenType.LONG_CALL;
         }
-
-        (baseCost, feeCost, amountOut) = _reassign(
-            l,
-            msg.sender,
-            maturity,
-            strike64x64,
-            isCall,
-            contractSize,
-            newPrice64x64
-        );
 
         _processAvailableFunds(msg.sender, amountOut, isCall, divest, true);
 
         _subUserTVL(
-            l,
+            PoolStorage.layout(),
             msg.sender,
             isCall,
-            divest ? baseCost + feeCost + amountOut : baseCost + feeCost
+            divest ? baseCost + feeCost + amountOut : baseCost + feeCost,
+            utilization64x64
         );
     }
 
@@ -211,55 +238,84 @@ contract PoolIO is IPoolIO, PoolInternal {
 
         int128 newPrice64x64 = _update(PoolStorage.layout());
 
-        baseCosts = new uint256[](tokenIds.length);
-        feeCosts = new uint256[](tokenIds.length);
-        bool[] memory isCallToken = new bool[](tokenIds.length);
+        int128 utilizationCall64x64 = PoolStorage.layout().getUtilization64x64(
+            true
+        );
+        int128 utilizationPut64x64 = PoolStorage.layout().getUtilization64x64(
+            false
+        );
 
-        for (uint256 i; i < tokenIds.length; i++) {
+        ReassignBatchResultInternal memory result = _reassignBatch(
+            ReassignBatchArgsInternal(
+                tokenIds,
+                contractSizes,
+                divest,
+                newPrice64x64,
+                utilizationCall64x64,
+                utilizationPut64x64
+            )
+        );
+
+        return (
+            result.baseCosts,
+            result.feeCosts,
+            result.amountOutCall,
+            result.amountOutPut
+        );
+    }
+
+    function _reassignBatch(ReassignBatchArgsInternal memory args)
+        internal
+        returns (ReassignBatchResultInternal memory result)
+    {
+        result.baseCosts = new uint256[](args.tokenIds.length);
+        result.feeCosts = new uint256[](args.tokenIds.length);
+        bool[] memory isCallToken = new bool[](args.tokenIds.length);
+
+        for (uint256 i; i < args.tokenIds.length; i++) {
             (
                 PoolStorage.TokenType tokenType,
                 uint64 maturity,
                 int128 strike64x64
-            ) = PoolStorage.parseTokenId(tokenIds[i]);
+            ) = PoolStorage.parseTokenId(args.tokenIds[i]);
             bool isCall = tokenType == PoolStorage.TokenType.SHORT_CALL ||
                 tokenType == PoolStorage.TokenType.LONG_CALL;
             uint256 amountOut;
-            uint256 contractSize = contractSizes[i];
 
             isCallToken[i] = isCall;
 
-            (baseCosts[i], feeCosts[i], amountOut) = _reassign(
+            (result.baseCosts[i], result.feeCosts[i], amountOut) = _reassign(
                 PoolStorage.layout(),
                 msg.sender,
                 maturity,
                 strike64x64,
                 isCall,
-                contractSize,
-                newPrice64x64
+                args.contractSizes[i],
+                args.newPrice64x64
             );
 
             if (isCall) {
-                amountOutCall += amountOut;
+                result.amountOutCall += amountOut;
             } else {
-                amountOutPut += amountOut;
+                result.amountOutPut += amountOut;
             }
         }
 
-        if (amountOutCall > 0) {
+        if (result.amountOutCall > 0) {
             uint256 reassignmentCost;
 
-            for (uint256 i; i < tokenIds.length; i++) {
+            for (uint256 i; i < args.tokenIds.length; i++) {
                 if (isCallToken[i] == false) continue;
 
-                reassignmentCost += baseCosts[i];
-                reassignmentCost += feeCosts[i];
+                reassignmentCost += result.baseCosts[i];
+                reassignmentCost += result.feeCosts[i];
             }
 
             _processAvailableFunds(
                 msg.sender,
-                amountOutCall,
+                result.amountOutCall,
                 true,
-                divest,
+                args.divest,
                 true
             );
 
@@ -267,25 +323,28 @@ contract PoolIO is IPoolIO, PoolInternal {
                 PoolStorage.layout(),
                 msg.sender,
                 true,
-                divest ? reassignmentCost + amountOutCall : reassignmentCost
+                args.divest
+                    ? reassignmentCost + result.amountOutCall
+                    : reassignmentCost,
+                args.utilizationCall64x64
             );
         }
 
-        if (amountOutPut > 0) {
+        if (result.amountOutPut > 0) {
             uint256 reassignmentCost;
 
-            for (uint256 i; i < tokenIds.length; i++) {
+            for (uint256 i; i < args.tokenIds.length; i++) {
                 if (isCallToken[i] == true) continue;
 
-                reassignmentCost += baseCosts[i];
-                reassignmentCost += feeCosts[i];
+                reassignmentCost += result.baseCosts[i];
+                reassignmentCost += result.feeCosts[i];
             }
 
             _processAvailableFunds(
                 msg.sender,
-                amountOutPut,
+                result.amountOutPut,
                 false,
-                divest,
+                args.divest,
                 true
             );
 
@@ -293,7 +352,10 @@ contract PoolIO is IPoolIO, PoolInternal {
                 PoolStorage.layout(),
                 msg.sender,
                 false,
-                divest ? reassignmentCost + amountOutPut : reassignmentCost
+                args.divest
+                    ? reassignmentCost + result.amountOutPut
+                    : reassignmentCost,
+                args.utilizationPut64x64
             );
         }
     }
@@ -327,6 +389,7 @@ contract PoolIO is IPoolIO, PoolInternal {
             tokenType == PoolStorage.TokenType.LONG_CALL;
 
         PoolStorage.Layout storage l = PoolStorage.layout();
+        int128 utilization64x64 = l.getUtilization64x64(isCall);
 
         uint256 collateralFreed = _annihilate(
             l,
@@ -355,7 +418,8 @@ contract PoolIO is IPoolIO, PoolInternal {
             l,
             msg.sender,
             isCall,
-            divest ? tokenAmount : collateralFreed - tokenAmount
+            divest ? tokenAmount : collateralFreed - tokenAmount,
+            utilization64x64
         );
     }
 
@@ -373,6 +437,7 @@ contract PoolIO is IPoolIO, PoolInternal {
         PoolStorage.Layout storage l = PoolStorage.layout();
         uint256 userTVL = l.userTVL[account][isCallPool];
         uint256 totalTVL = l.totalTVL[isCallPool];
+        int128 utilization64x64 = l.getUtilization64x64(isCallPool);
 
         IPremiaMining(PREMIA_MINING_ADDRESS).claim(
             account,
@@ -380,7 +445,8 @@ contract PoolIO is IPoolIO, PoolInternal {
             isCallPool,
             userTVL,
             userTVL,
-            totalTVL
+            totalTVL,
+            ABDKMath64x64Token.toDecimals(utilization64x64, 4)
         );
     }
 
@@ -393,13 +459,15 @@ contract PoolIO is IPoolIO, PoolInternal {
         IPremiaMining(PREMIA_MINING_ADDRESS).updatePool(
             address(this),
             true,
-            l.totalTVL[true]
+            l.totalTVL[true],
+            ABDKMath64x64Token.toDecimals(l.getUtilization64x64(true), 4)
         );
 
         IPremiaMining(PREMIA_MINING_ADDRESS).updatePool(
             address(this),
             false,
-            l.totalTVL[false]
+            l.totalTVL[false],
+            ABDKMath64x64Token.toDecimals(l.getUtilization64x64(false), 4)
         );
     }
 }

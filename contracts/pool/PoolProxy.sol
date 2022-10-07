@@ -4,13 +4,13 @@
 pragma solidity ^0.8.0;
 
 import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
-import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/ownable/OwnableStorage.sol";
 import {ERC165Storage} from "@solidstate/contracts/introspection/ERC165Storage.sol";
 import {Proxy} from "@solidstate/contracts/proxy/Proxy.sol";
-import {IDiamondLoupe} from "@solidstate/contracts/proxy/diamond/IDiamondLoupe.sol";
+import {IDiamondReadable} from "@solidstate/contracts/proxy/diamond/readable/IDiamondReadable.sol";
 import {IERC20Metadata} from "@solidstate/contracts/token/ERC20/metadata/IERC20Metadata.sol";
-import {IERC1155} from "@solidstate/contracts/token/ERC1155/IERC1155.sol";
-import {IERC165} from "@solidstate/contracts/introspection/IERC165.sol";
+import {IERC1155} from "@solidstate/contracts/interfaces/IERC1155.sol";
+import {IERC165} from "@solidstate/contracts/interfaces/IERC165.sol";
 
 import {IProxyManager} from "../core/IProxyManager.sol";
 import {PoolStorage} from "./PoolStorage.sol";
@@ -83,6 +83,6 @@ contract PoolProxy is Proxy {
     }
 
     function _getImplementation() internal view override returns (address) {
-        return IDiamondLoupe(DIAMOND).facetAddress(msg.sig);
+        return IDiamondReadable(DIAMOND).facetAddress(msg.sig);
     }
 }

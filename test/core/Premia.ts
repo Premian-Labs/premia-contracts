@@ -11,7 +11,7 @@ import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 
 import { describeBehaviorOfProxyManager } from './ProxyManager.behavior';
-import { describeBehaviorOfDiamond } from '@solidstate/spec';
+import { describeBehaviorOfSolidStateDiamond } from '@solidstate/spec';
 
 describe('Premia', function () {
   let nobody: SignerWithAddress;
@@ -75,15 +75,17 @@ describe('Premia', function () {
     };
   });
 
-  describeBehaviorOfDiamond(
+  describeBehaviorOfSolidStateDiamond(
+    async () => {
+      (instance as any).getAddress = () => instance.address;
+      return instance;
+    },
     {
-      deploy: async () => {
-        (instance as any).getAddress = () => instance.address;
-        return instance;
-      },
       getOwner: async () => owner,
       getNomineeOwner: async () => nomineeOwner,
       getNonOwner: async () => nobody,
+      facetFunction: 'getPoolList()',
+      facetFunctionArgs: [],
       facetCuts,
       fallbackAddress: ethers.constants.AddressZero,
     },

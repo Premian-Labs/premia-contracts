@@ -22,6 +22,8 @@ import {
   PremiaOptionNFTDisplay__factory,
   ProxyManager__factory,
   ProxyUpgradeableOwnable__factory,
+  VePremia__factory,
+  VePremiaProxy__factory,
   VolatilitySurfaceOracle,
   VolatilitySurfaceOracle__factory,
   WETH9,
@@ -32,7 +34,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber, BigNumberish } from 'ethers';
 import { increaseTimestamp } from '../utils/evm';
 import { formatUnits, parseEther, parseUnits } from 'ethers/lib/utils';
-import { deployMockContract, MockContract } from 'ethereum-waffle';
+import {
+  deployMockContract,
+  MockContract,
+} from '@ethereum-waffle/mock-contract';
 import { diamondCut } from '../../scripts/utils/diamond';
 import {
   fixedFromFloat,
@@ -205,6 +210,30 @@ export function getMaxCost(
   }
 }
 
+export async function deployVePremiaMocked(
+  owner: SignerWithAddress,
+  exchangeHelper?: string,
+) {
+  const erc20Factory = new ERC20Mock__factory(owner);
+  const premia = await erc20Factory.deploy('PREMIA', 18);
+  const rewardToken = await erc20Factory.deploy('USDC', 6);
+
+  const vePremiaImpl = await new VePremia__factory(owner).deploy(
+    ethers.constants.AddressZero,
+    premia.address,
+    rewardToken.address,
+    exchangeHelper ?? ethers.constants.AddressZero,
+  );
+
+  const vePremiaProxy = await new VePremiaProxy__factory(owner).deploy(
+    vePremiaImpl.address,
+  );
+
+  const vePremia = VePremia__factory.connect(vePremiaProxy.address, owner);
+
+  return { vePremia, premia, rewardToken };
+}
+
 export class PoolUtil {
   premiaDiamond: Premia;
   pool: IPool;
@@ -236,8 +265,8 @@ export class PoolUtil {
     deployer: SignerWithAddress,
     premia: string,
     priceUnderlying: number,
-    feeReceiver: any,
-    premiaFeeDiscount: string,
+    feeReceiver: string,
+    vePremia: string,
     exchangeHelper: string,
     wethAddress?: string,
   ) {
@@ -299,6 +328,7 @@ export class PoolUtil {
     const premiaMiningImpl = await new PremiaMining__factory(deployer).deploy(
       premiaDiamond.address,
       premia,
+      vePremia,
     );
 
     const premiaMiningProxy = await new PremiaMiningProxy__factory(
@@ -342,8 +372,8 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver.address,
-      premiaFeeDiscount,
+      feeReceiver,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -368,8 +398,8 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver.address,
-      premiaFeeDiscount,
+      feeReceiver,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -389,8 +419,8 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver.address,
-      premiaFeeDiscount,
+      feeReceiver,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -413,8 +443,8 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver.address,
-      premiaFeeDiscount,
+      feeReceiver,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -438,8 +468,8 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver.address,
-      premiaFeeDiscount,
+      feeReceiver,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -462,8 +492,8 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver.address,
-      premiaFeeDiscount,
+      feeReceiver,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -485,8 +515,8 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver.address,
-      premiaFeeDiscount,
+      feeReceiver,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -509,8 +539,8 @@ export class PoolUtil {
       ivolOracle.address,
       weth.address,
       premiaMining.address,
-      feeReceiver.address,
-      premiaFeeDiscount,
+      feeReceiver,
+      vePremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -555,7 +585,6 @@ export class PoolUtil {
       // minimum amounts
       fixedFromFloat(100),
       fixedFromFloat(0.1),
-      100,
     );
 
     let events = (await tx.wait()).events;
@@ -573,7 +602,6 @@ export class PoolUtil {
       // minimum amounts
       fixedFromFloat(100),
       fixedFromFloat(0.1),
-      100,
     );
 
     events = (await tx.wait()).events;

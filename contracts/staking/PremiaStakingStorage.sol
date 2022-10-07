@@ -12,12 +12,25 @@ library PremiaStakingStorage {
         uint256 startDate; // Will unlock at startDate + withdrawalDelay
     }
 
+    struct UserInfo {
+        uint256 reward; // Amount of rewards accrued which havent been claimed yet
+        uint256 rewardDebt; // Debt to subtract from reward calculation
+        uint256 unstakeRewardDebt; // Debt to subtract from reward calculation from early unstake fee
+        uint64 stakePeriod; // Stake period selected by user
+        uint64 lockedUntil; // Timestamp at which the lock ends
+    }
+
     struct Layout {
         uint256 pendingWithdrawal;
-        uint256 withdrawalDelay;
+        uint256 _deprecated_withdrawalDelay;
         mapping(address => Withdrawal) withdrawals;
         uint256 availableRewards;
         uint256 lastRewardUpdate; // Timestamp of last reward distribution update
+        uint256 totalPower; // Total power of all staked tokens (underlying amount with multiplier applied)
+        mapping(address => UserInfo) userInfo;
+        uint256 accRewardPerShare;
+        uint256 accUnstakeRewardPerShare;
+        uint256 availableUnstakeRewards;
     }
 
     function layout() internal pure returns (Layout storage l) {

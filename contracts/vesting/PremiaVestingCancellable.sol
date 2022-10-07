@@ -4,10 +4,10 @@
 pragma solidity ^0.8.0;
 
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
-import {IERC20} from "@solidstate/contracts/token/ERC20/IERC20.sol";
+import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
 
-import {Ownable} from "@solidstate/contracts/access/Ownable.sol";
-import {OwnableStorage} from "@solidstate/contracts/access/OwnableStorage.sol";
+import {Ownable} from "@solidstate/contracts/access/ownable/Ownable.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/ownable/OwnableStorage.sol";
 
 /// @author Premia
 /// @title Vesting contract releasing premia over the course of 2 years, and cancellable by a third party

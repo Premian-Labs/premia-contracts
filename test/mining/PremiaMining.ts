@@ -1,78 +1,51 @@
 import { expect } from 'chai';
-import { getTokenDecimals, PoolUtil } from '../pool/PoolUtil';
-import { increaseTimestamp, mineBlockUntil, resetHardhat } from '../utils/evm';
-import { ethers, network } from 'hardhat';
-import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import {
-  ERC20Mock,
-  ERC20Mock__factory,
-  FeeDiscount,
-  FeeDiscount__factory,
-  ProxyUpgradeableOwnable__factory,
-} from '../../typechain';
-import { parseEther, parseUnits } from 'ethers/lib/utils';
+  deployVePremiaMocked,
+  getTokenDecimals,
+  PoolUtil,
+} from '../pool/PoolUtil';
+import { increaseTimestamp, mineBlockUntil, setTimestamp } from '../utils/evm';
+import { ethers } from 'hardhat';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
+import { ERC20Mock, VePremia } from '../../typechain';
+import { parseEther, parseUnits, solidityPack } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
 import { ZERO_ADDRESS } from '../utils/constants';
 
 const oneDay = 24 * 3600;
-const oneMonth = 30 * oneDay;
 
-const { API_KEY_ALCHEMY } = process.env;
-const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`;
-const blockNumber = 13569795;
 const CHAI_ALMOST_OVERRIDE = 0.05;
 
 describe('PremiaMining', () => {
+  let snapshotId: number;
+
   let owner: SignerWithAddress;
   let lp1: SignerWithAddress;
   let lp2: SignerWithAddress;
   let lp3: SignerWithAddress;
   let buyer: SignerWithAddress;
   let feeReceiver: SignerWithAddress;
-  let multisig: SignerWithAddress;
-
+  let vePremia: VePremia;
   let premia: ERC20Mock;
-  let xPremia: ERC20Mock;
-  let feeDiscount: FeeDiscount;
 
   let p: PoolUtil;
 
   const spotPrice = 2000;
   const totalRewardAmount = 200000;
 
-  beforeEach(async () => {
-    await ethers.provider.send('hardhat_reset', [
-      { forking: { jsonRpcUrl, blockNumber } },
-    ]);
-
-    // Impersonate multisig
-    await network.provider.request({
-      method: 'hardhat_impersonateAccount',
-      params: ['0xc22FAe86443aEed038A4ED887bbA8F5035FD12F0'],
-    });
-    multisig = await ethers.getSigner(
-      '0xc22FAe86443aEed038A4ED887bbA8F5035FD12F0',
-    );
-
+  before(async () => {
     [owner, lp1, lp2, lp3, buyer, feeReceiver] = await ethers.getSigners();
 
-    const erc20Factory = new ERC20Mock__factory(owner);
-    premia = await erc20Factory.deploy('PREMIA', 18);
-    xPremia = await erc20Factory.deploy('xPREMIA', 18);
-    const feeDiscountImpl = await new FeeDiscount__factory(owner).deploy(
-      xPremia.address,
-    );
-    const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
-      owner,
-    ).deploy(feeDiscountImpl.address);
-    feeDiscount = FeeDiscount__factory.connect(feeDiscountProxy.address, owner);
+    const data = await deployVePremiaMocked(owner);
+    vePremia = data.vePremia;
+    premia = data.premia;
 
     p = await PoolUtil.deploy(
       owner,
       premia.address,
       spotPrice,
-      feeReceiver,
-      feeDiscount.address,
+      feeReceiver.address,
+      vePremia.address,
       ZERO_ADDRESS,
     );
 
@@ -83,6 +56,40 @@ describe('PremiaMining', () => {
     await p.premiaMining.addPremiaRewards(
       parseEther(totalRewardAmount.toString()),
     );
+
+    //
+
+    // Set pool weights through votes
+    await premia.mint(owner.address, parseEther('1000'));
+    await premia.connect(owner).approve(vePremia.address, parseEther('1000'));
+    await vePremia.connect(owner).stake(parseEther('1000'), oneDay * 365);
+    await vePremia.connect(owner).castVotes([
+      {
+        amount: parseEther('250'),
+        version: 0,
+        target: solidityPack(['address', 'bool'], [p.pool.address, true]),
+      },
+      {
+        amount: parseEther('250'),
+        version: 0,
+        target: solidityPack(['address', 'bool'], [p.pool.address, false]),
+      },
+      {
+        amount: parseEther('250'),
+        version: 0,
+        target: solidityPack(['address', 'bool'], [p.poolWeth.address, true]),
+      },
+      {
+        amount: parseEther('250'),
+        version: 0,
+        target: solidityPack(['address', 'bool'], [p.poolWeth.address, false]),
+      },
+    ]);
+
+    await p.pool.updateMiningPools();
+    await p.poolWeth.updateMiningPools();
+
+    //
 
     for (const lp of [lp1, lp2, lp3]) {
       await p.underlying.mint(
@@ -100,30 +107,34 @@ describe('PremiaMining', () => {
     }
   });
 
+  beforeEach(async () => {
+    snapshotId = await ethers.provider.send('evm_snapshot', []);
+  });
+
   afterEach(async () => {
-    await resetHardhat();
+    await ethers.provider.send('evm_revert', [snapshotId]);
   });
 
   it('should revert if calling update not from the option pool', async () => {
     await expect(
-      p.premiaMining.updatePool(p.pool.address, true, parseEther('1')),
+      p.premiaMining.updatePool(p.pool.address, true, parseEther('1'), 5000),
     ).to.be.revertedWith('Not pool');
   });
 
   it('should distribute PREMIA properly for each LP', async () => {
-    const { number: initial } = await ethers.provider.getBlock('latest');
+    const { timestamp } = await ethers.provider.getBlock('latest');
 
     await p.pool
       .connect(lp1)
       .deposit(parseUnits('10', getTokenDecimals(false)), false);
 
-    await increaseTimestamp(oneDay);
+    await setTimestamp(timestamp + oneDay);
 
     await p.pool
       .connect(lp1)
       .deposit(parseUnits('10', getTokenDecimals(true)), true);
 
-    await increaseTimestamp(2 * oneDay);
+    await setTimestamp(timestamp + 3 * oneDay);
 
     await p.pool
       .connect(lp2)
@@ -137,16 +148,17 @@ describe('PremiaMining', () => {
       ),
     ).to.almost(500, CHAI_ALMOST_OVERRIDE);
 
-    await increaseTimestamp(3 * oneDay);
+    await setTimestamp(timestamp + 6 * oneDay);
     await p.pool
       .connect(lp3)
       .deposit(parseUnits('30', getTokenDecimals(true)), true);
 
     // LP1 should have pending reward of : 2*250 + 3*1/3*250 + 2*1/6*250 = 833.33
-    await increaseTimestamp(2 * oneDay);
+    await setTimestamp(timestamp + 8 * oneDay);
     await p.pool
       .connect(lp1)
       .deposit(parseUnits('10', getTokenDecimals(true)), true);
+
     expect(
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
@@ -154,27 +166,28 @@ describe('PremiaMining', () => {
     ).to.almost(833.33, CHAI_ALMOST_OVERRIDE);
 
     // LP2 should have pending reward of: 3*2/3*250 + 2*2/6*250 + 5*2/7*250 = 1023.81
-    await increaseTimestamp(5 * oneDay);
+    await setTimestamp(timestamp + 13 * oneDay);
     await p.pool
       .connect(lp2)
       .withdraw(parseUnits('5', getTokenDecimals(true)), true);
+
     expect(
       bnToNumber(
         await p.premiaMining.pendingPremia(p.pool.address, true, lp2.address),
       ),
     ).to.almost(1023.81, CHAI_ALMOST_OVERRIDE);
 
-    await increaseTimestamp(oneDay);
+    await setTimestamp(timestamp + 14 * oneDay);
     await p.pool
       .connect(lp1)
       .withdraw(parseUnits('20', getTokenDecimals(true)), true);
 
-    await increaseTimestamp(oneDay);
+    await setTimestamp(timestamp + 15 * oneDay);
     await p.pool
       .connect(lp2)
       .withdraw(parseUnits('15', getTokenDecimals(true)), true);
 
-    await increaseTimestamp(oneDay);
+    await setTimestamp(timestamp + 16 * oneDay);
     await p.pool
       .connect(lp3)
       .withdraw(parseUnits('30', getTokenDecimals(true)), true);

@@ -2,14 +2,11 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { ethers } from 'hardhat';
 import {
   ERC20Mock,
-  ERC20Mock__factory,
-  FeeDiscount,
-  FeeDiscount__factory,
+  ExchangeHelper__factory,
+  IExchangeHelper,
   IPool,
   Proxy__factory,
-  ProxyUpgradeableOwnable__factory,
-  IExchangeHelper,
-  ExchangeHelper__factory,
+  VePremia,
 } from '../../typechain';
 
 import { fixedFromFloat } from '@premia/utils';
@@ -24,6 +21,7 @@ import { describeBehaviorOfPoolSell } from '../../spec/pool/PoolSell.behavior';
 import {
   DECIMALS_BASE,
   DECIMALS_UNDERLYING,
+  deployVePremiaMocked,
   FEE_APY,
   PoolUtil,
 } from './PoolUtil';
@@ -48,7 +46,7 @@ describe('PoolProxy', function () {
   let exchangeHelper: IExchangeHelper;
 
   let xPremia: ERC20Mock;
-  let feeDiscount: FeeDiscount;
+  let vePremia: VePremia;
 
   let base: ERC20Mock;
   let underlying: ERC20Mock;
@@ -63,18 +61,7 @@ describe('PoolProxy', function () {
     [owner, lp1, lp2, buyer, thirdParty, feeReceiver] =
       await ethers.getSigners();
 
-    const erc20Factory = new ERC20Mock__factory(owner);
-
-    premia = await erc20Factory.deploy('PREMIA', 18);
-    xPremia = await erc20Factory.deploy('xPREMIA', 18);
-
-    const feeDiscountImpl = await new FeeDiscount__factory(owner).deploy(
-      xPremia.address,
-    );
-    const feeDiscountProxy = await new ProxyUpgradeableOwnable__factory(
-      owner,
-    ).deploy(feeDiscountImpl.address);
-    feeDiscount = FeeDiscount__factory.connect(feeDiscountProxy.address, owner);
+    const { premia, vePremia } = await deployVePremiaMocked(owner);
 
     uniswap = await createUniswap(owner);
 
@@ -84,8 +71,8 @@ describe('PoolProxy', function () {
       owner,
       premia.address,
       spotPrice,
-      feeReceiver,
-      feeDiscount.address,
+      feeReceiver.address,
+      vePremia.address,
       exchangeHelper.address,
       uniswap.weth.address,
     );
@@ -165,15 +152,17 @@ describe('PoolProxy', function () {
     await ethers.provider.send('evm_revert', [snapshotId]);
   });
 
-  describeBehaviorOfProxy({
-    deploy: async () => Proxy__factory.connect(instance.address, owner),
-    implementationFunction: 'getPoolSettings()',
-    implementationFunctionArgs: [],
-  });
+  describeBehaviorOfProxy(
+    async () => Proxy__factory.connect(instance.address, owner),
+    {
+      implementationFunction: 'getPoolSettings()',
+      implementationFunctionArgs: [],
+    },
+  );
 
   describeBehaviorOfPoolBase(
+    async () => instance,
     {
-      deploy: async () => instance,
       getBase: async () => base,
       getUnderlying: async () => underlying,
       getPoolUtil: async () => p,
@@ -188,18 +177,14 @@ describe('PoolProxy', function () {
     ['::ERC1155Enumerable'],
   );
 
-  describeBehaviorOfPoolExercise({
-    deploy: async () => instance,
+  describeBehaviorOfPoolExercise(async () => instance, {
     getBase: async () => base,
     getUnderlying: async () => underlying,
-    getFeeDiscount: async () => feeDiscount,
-    getXPremia: async () => xPremia,
     apyFeeRate: FEE_APY,
     getPoolUtil: async () => p,
   });
 
-  describeBehaviorOfPoolIO({
-    deploy: async () => instance,
+  describeBehaviorOfPoolIO(async () => instance, {
     getBase: async () => base,
     getUnderlying: async () => underlying,
     getPoolUtil: async () => p,
@@ -207,25 +192,21 @@ describe('PoolProxy', function () {
     getUniswap: async () => uniswap,
   });
 
-  describeBehaviorOfPoolSell({
-    deploy: async () => instance,
+  describeBehaviorOfPoolSell(async () => instance, {
     getPoolUtil: async () => p,
   });
 
-  describeBehaviorOfPoolSettings({
-    deploy: async () => instance,
+  describeBehaviorOfPoolSettings(async () => instance, {
     getProtocolOwner: async () => owner,
     getNonProtocolOwner: async () => thirdParty,
   });
 
-  describeBehaviorOfPoolView({
-    deploy: async () => instance,
+  describeBehaviorOfPoolView(async () => instance, {
     getPoolUtil: async () => p,
     getExchangeHelper: async () => exchangeHelper.address,
   });
 
-  describeBehaviorOfPoolWrite({
-    deploy: async () => instance,
+  describeBehaviorOfPoolWrite(async () => instance, {
     getBase: async () => base,
     getUnderlying: async () => underlying,
     getPoolUtil: async () => p,

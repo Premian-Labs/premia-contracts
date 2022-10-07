@@ -13,6 +13,7 @@ import {
   getMaxCost,
   getStrike,
   PoolUtil,
+  deployVePremiaMocked,
 } from '../pool/PoolUtil';
 import { increaseTimestamp } from '../utils/evm';
 import { ZERO_ADDRESS } from '../utils/constants';
@@ -31,14 +32,16 @@ describe('ProcessExpiredKeeper', () => {
   beforeEach(async () => {
     [owner, lp, buyer, feeReceiver] = await ethers.getSigners();
 
+    const { vePremia } = await deployVePremiaMocked(owner);
+
     p = await PoolUtil.deploy(
       owner,
       (
         await new ERC20Mock__factory(owner).deploy('PREMIA', 18)
       ).address,
       spotPrice,
-      feeReceiver,
-      ZERO_ADDRESS,
+      feeReceiver.address,
+      vePremia.address,
       ZERO_ADDRESS,
     );
     expKeeper = await new ProcessExpiredKeeper__factory(owner).deploy(

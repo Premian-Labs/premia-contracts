@@ -4,6 +4,7 @@ import {
   ERC20Mock__factory,
   ExchangeHelper__factory,
   PremiaErc20__factory,
+  ProcessExpiredKeeper__factory,
 } from '../../../typechain';
 import { ethers } from 'hardhat';
 import { deployV1 } from '../../utils/deployV1';
@@ -16,6 +17,7 @@ async function main() {
   const contracts = await deployV1(
     deployer,
     deployer.address,
+    ethers.constants.AddressZero,
     true,
     true,
     premia.address,
@@ -59,28 +61,23 @@ async function main() {
   const exchangeHelper = await new ExchangeHelper__factory(deployer).deploy();
 
   const { premiaDiamond, proxyManager } = await deployV2(
-    eth.tokenAddress,
+    weth,
     exchangeHelper.address,
     premia.address,
     fixedFromFloat(0.03),
-    contracts.premiaMaker.address,
-    contracts.xPremia.address,
+    contracts.feeConverter.address,
+    contracts.vePremia.address,
   );
 
   await deployPool(proxyManager, dai, eth, 100);
   await deployPool(proxyManager, dai, btc, 100);
   await deployPool(proxyManager, dai, link, 100);
 
-  // const premiaMakerKeeper = await new PremiaMakerKeeper__factory(
-  //   deployer,
-  // ).deploy(contracts.premiaMaker.address, premiaDiamond.address);
-  //
-  // const processExpiredKeeper = await new ProcessExpiredKeeper__factory(
-  //   deployer,
-  // ).deploy(premiaDiamond.address);
-  //
-  // console.log('PremiaMakerKeeper', premiaMakerKeeper.address);
-  // console.log('ProcessExpiredKeeper', processExpiredKeeper.address);
+  const processExpiredKeeper = await new ProcessExpiredKeeper__factory(
+    deployer,
+  ).deploy(premiaDiamond.address);
+
+  console.log('ProcessExpiredKeeper', processExpiredKeeper.address);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

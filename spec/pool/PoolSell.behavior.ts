@@ -14,14 +14,13 @@ import { bnToNumber } from '../../test/utils/math';
 import { increaseTimestamp } from '../../test/utils/evm';
 
 interface PoolSellBehaviorArgs {
-  deploy: () => Promise<IPool>;
   getPoolUtil: () => Promise<PoolUtil>;
 }
 
-export function describeBehaviorOfPoolSell({
-  deploy,
-  getPoolUtil,
-}: PoolSellBehaviorArgs) {
+export function describeBehaviorOfPoolSell(
+  deploy: () => Promise<IPool>,
+  { getPoolUtil }: PoolSellBehaviorArgs,
+) {
   describe('::PoolSell', () => {
     let owner: SignerWithAddress;
     let buyer: SignerWithAddress;
@@ -141,7 +140,7 @@ export function describeBehaviorOfPoolSell({
               instance
                 .connect(buyer)
                 .sell(maturity, strike64x64, isCall, parseUnderlying('1')),
-            ).to.be.revertedWith('0x11');
+            ).to.be.revertedWithPanic('0x11');
           });
         });
       }

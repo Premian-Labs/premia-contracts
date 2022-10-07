@@ -1,6 +1,7 @@
 import Dotenv from 'dotenv';
 // Hardhat plugins
-import '@nomiclabs/hardhat-waffle';
+import '@nomicfoundation/hardhat-chai-matchers';
+import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-etherscan';
 import '@solidstate/hardhat-4byte-uploader';
 import '@solidstate/hardhat-test-short-circuit';
@@ -42,7 +43,7 @@ export default {
   solidity: {
     compilers: [
       {
-        version: '0.8.12',
+        version: '0.8.17',
         settings: {
           optimizer: {
             enabled: true,
@@ -137,6 +138,14 @@ export default {
     },
     rinkebyArbitrum: {
       url: `https://rinkeby.arbitrum.io/rpc`,
+      accounts: [PKEY_ETH_TEST],
+      //gas: 120000000000,
+      // blockGasLimit: 120000000000,
+      // gasPrice: 100000000000,
+      timeout: 100000,
+    },
+    goerliArbitrum: {
+      url: `https://goerli-rollup.arbitrum.io/rpc`,
       accounts: [PKEY_ETH_TEST],
       //gas: 120000000000,
       // blockGasLimit: 120000000000,
