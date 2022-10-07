@@ -24,7 +24,6 @@ abstract contract LzApp is
 
     event SetPrecrime(address precrime);
     event SetTrustedRemoteAddress(uint16 _remoteChainId, bytes _remoteAddress);
-    event SetMinDstGas(uint16 _dstChainId, uint16 _type, uint256 _minDstGas);
 
     constructor(address endpoint) {
         lzEndpoint = ILayerZeroEndpoint(endpoint);
