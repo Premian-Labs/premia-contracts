@@ -23,7 +23,6 @@ abstract contract LzApp is
     ILayerZeroEndpoint public immutable lzEndpoint;
 
     event SetPrecrime(address precrime);
-    event SetTrustedRemote(uint16 _remoteChainId, bytes _path);
     event SetTrustedRemoteAddress(uint16 _remoteChainId, bytes _remoteAddress);
     event SetMinDstGas(uint16 _dstChainId, uint16 _type, uint256 _minDstGas);
 
@@ -139,13 +138,13 @@ abstract contract LzApp is
         lzEndpoint.forceResumeReceive(srcChainId, srcAddress);
     }
 
-    // allow owner to set it multiple times.
-    function setTrustedRemote(uint16 srcChainId, bytes calldata srcAddress)
-        external
-        onlyOwner
-    {
-        LzAppStorage.layout().trustedRemoteLookup[srcChainId] = srcAddress;
-        emit SetTrustedRemote(srcChainId, srcAddress);
+    function setTrustedRemoteAddress(
+        uint16 remoteChainId,
+        bytes calldata remoteAddress
+    ) external onlyOwner {
+        LzAppStorage.layout().trustedRemoteLookup[remoteChainId] = abi
+            .encodePacked(remoteAddress, address(this));
+        emit SetTrustedRemoteAddress(remoteChainId, remoteAddress);
     }
 
     function getTrustedRemoteAddress(uint16 _remoteChainId)

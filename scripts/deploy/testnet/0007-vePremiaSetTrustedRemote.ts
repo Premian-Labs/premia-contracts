@@ -1,6 +1,7 @@
 import { ethers } from 'hardhat';
 import { VePremia, VePremia__factory } from '../../../typechain';
 import CHAIN_ID from '../../../constants/layerzeroChainId.json';
+import { solidityPack } from 'ethers/lib/utils';
 
 async function main() {
   const [deployer] = await ethers.getSigners();
@@ -8,7 +9,8 @@ async function main() {
   const chainId = await deployer.getChainId();
 
   let vePremia: VePremia;
-  let srcAddress: string;
+  let remoteAddress: string;
+  let localAddress: string;
   let srcChainId: number;
 
   const vePremiaAddress = {
@@ -20,31 +22,39 @@ async function main() {
 
   if (chainId === 4) {
     vePremia = VePremia__factory.connect(vePremiaAddress.rinkeby, deployer);
-    srcAddress = vePremiaAddress.rinkebyArbitrum;
+    remoteAddress = vePremiaAddress.rinkebyArbitrum;
+    localAddress = vePremiaAddress.rinkeby;
     srcChainId = CHAIN_ID['arbitrum-rinkeby'];
   } else if (chainId === 5) {
     vePremia = VePremia__factory.connect(vePremiaAddress.goerli, deployer);
-    srcAddress = vePremiaAddress.goerliArbitrum;
+    remoteAddress = vePremiaAddress.goerliArbitrum;
+    localAddress = vePremiaAddress.goerli;
     srcChainId = CHAIN_ID['arbitrum-goerli'];
   } else if (chainId === 421611) {
     vePremia = VePremia__factory.connect(
       vePremiaAddress.rinkebyArbitrum,
       deployer,
     );
-    srcAddress = vePremiaAddress.rinkeby;
+    remoteAddress = vePremiaAddress.rinkeby;
+    localAddress = vePremiaAddress.rinkebyArbitrum;
     srcChainId = CHAIN_ID.rinkeby;
   } else if (chainId === 421613) {
     vePremia = VePremia__factory.connect(
       vePremiaAddress.goerliArbitrum,
       deployer,
     );
-    srcAddress = vePremiaAddress.goerli;
+    remoteAddress = vePremiaAddress.goerli;
+    localAddress = vePremiaAddress.goerliArbitrum;
     srcChainId = CHAIN_ID.goerli;
   } else {
     throw new Error('ChainId not implemented');
   }
 
-  await vePremia.setTrustedRemote(srcChainId, srcAddress);
+  const trustedRemote = solidityPack(
+    ['address', 'address'],
+    [remoteAddress, localAddress],
+  );
+  await vePremia.setTrustedRemoteAddress(srcChainId, trustedRemote);
 }
 
 main()
