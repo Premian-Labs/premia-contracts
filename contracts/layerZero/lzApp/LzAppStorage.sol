@@ -7,7 +7,7 @@ library LzAppStorage {
         keccak256("premia.contracts.storage.LzApp");
 
     struct Layout {
-        mapping(uint16 => bytes) trustedRemoteLookup;
+        mapping(uint16 => bytes) trustedRemote;
         address precrime;
     }
 

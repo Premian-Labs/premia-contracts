@@ -45,7 +45,7 @@ abstract contract LzApp is
             "LzApp: invalid endpoint caller"
         );
 
-        bytes memory trustedRemote = LzAppStorage.layout().trustedRemoteLookup[
+        bytes memory trustedRemote = LzAppStorage.layout().trustedRemote[
             srcChainId
         ];
         // if will still block the message pathway from (srcChainId, srcAddress). should not receive message from untrusted remote.
@@ -74,7 +74,7 @@ abstract contract LzApp is
         bytes memory adapterParams,
         uint256 nativeFee
     ) internal virtual {
-        bytes memory trustedRemote = LzAppStorage.layout().trustedRemoteLookup[
+        bytes memory trustedRemote = LzAppStorage.layout().trustedRemote[
             dstChainId
         ];
         require(
@@ -142,8 +142,10 @@ abstract contract LzApp is
         uint16 remoteChainId,
         bytes calldata remoteAddress
     ) external onlyOwner {
-        LzAppStorage.layout().trustedRemoteLookup[remoteChainId] = abi
-            .encodePacked(remoteAddress, address(this));
+        LzAppStorage.layout().trustedRemote[remoteChainId] = abi.encodePacked(
+            remoteAddress,
+            address(this)
+        );
         emit SetTrustedRemoteAddress(remoteChainId, remoteAddress);
     }
 
@@ -152,9 +154,7 @@ abstract contract LzApp is
         view
         returns (bytes memory)
     {
-        bytes memory path = LzAppStorage.layout().trustedRemoteLookup[
-            _remoteChainId
-        ];
+        bytes memory path = LzAppStorage.layout().trustedRemote[_remoteChainId];
         require(path.length != 0, "LzApp: no trusted path record");
         return path.slice(0, path.length - 20); // the last 20 bytes should be address(this)
     }
@@ -171,7 +171,7 @@ abstract contract LzApp is
         view
         returns (bool)
     {
-        bytes memory trustedSource = LzAppStorage.layout().trustedRemoteLookup[
+        bytes memory trustedSource = LzAppStorage.layout().trustedRemote[
             srcChainId
         ];
         return keccak256(trustedSource) == keccak256(srcAddress);
