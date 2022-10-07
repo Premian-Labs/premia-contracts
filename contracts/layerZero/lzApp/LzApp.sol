@@ -23,7 +23,8 @@ abstract contract LzApp is
     ILayerZeroEndpoint public immutable lzEndpoint;
 
     event SetPrecrime(address precrime);
-    event SetTrustedRemote(uint16 _remoteChainId, bytes _path);
+    event SetTrustedRemoteAddress(uint16 _remoteChainId, bytes _remoteAddress);
+    event SetMinDstGas(uint16 _dstChainId, uint16 _type, uint256 _minDstGas);
 
     error LzApp__InvalidEndpointCaller();
     error LzApp__InvalidSource();
@@ -47,14 +48,9 @@ abstract contract LzApp is
         if (msg.sender != address(lzEndpoint))
             revert LzApp__InvalidEndpointCaller();
 
-        bytes memory trustedRemote = LzAppStorage.layout().trustedRemoteLookup[
-            srcChainId
-        ];
         // if will still block the message pathway from (srcChainId, srcAddress). should not receive message from untrusted remote.
-        if (
-            srcAddress.length != trustedRemote.length ||
-            keccak256(srcAddress) != keccak256(trustedRemote)
-        ) revert LzApp__InvalidSource();
+        if (!_isTrustedRemote(srcChainId, srcAddress))
+            revert LzApp__InvalidSource();
 
         _blockingLzReceive(srcChainId, srcAddress, nonce, payload);
     }
@@ -75,7 +71,7 @@ abstract contract LzApp is
         bytes memory adapterParams,
         uint256 nativeFee
     ) internal virtual {
-        bytes memory trustedRemote = LzAppStorage.layout().trustedRemoteLookup[
+        bytes memory trustedRemote = LzAppStorage.layout().trustedRemote[
             dstChainId
         ];
         if (trustedRemote.length == 0) revert LzApp__NotTrustedSource();
@@ -136,13 +132,15 @@ abstract contract LzApp is
         lzEndpoint.forceResumeReceive(srcChainId, srcAddress);
     }
 
-    // allow owner to set it multiple times.
-    function setTrustedRemote(uint16 srcChainId, bytes calldata srcAddress)
-        external
-        onlyOwner
-    {
-        LzAppStorage.layout().trustedRemoteLookup[srcChainId] = srcAddress;
-        emit SetTrustedRemote(srcChainId, srcAddress);
+    function setTrustedRemoteAddress(
+        uint16 remoteChainId,
+        bytes calldata remoteAddress
+    ) external onlyOwner {
+        LzAppStorage.layout().trustedRemote[remoteChainId] = abi.encodePacked(
+            remoteAddress,
+            address(this)
+        );
+        emit SetTrustedRemoteAddress(remoteChainId, remoteAddress);
     }
 
     function getTrustedRemoteAddress(uint16 _remoteChainId)
@@ -150,9 +148,7 @@ abstract contract LzApp is
         view
         returns (bytes memory)
     {
-        bytes memory path = LzAppStorage.layout().trustedRemoteLookup[
-            _remoteChainId
-        ];
+        bytes memory path = LzAppStorage.layout().trustedRemote[_remoteChainId];
         if (path.length == 0) revert LzApp__NoTrustedPathRecord();
         return path.slice(0, path.length - 20); // the last 20 bytes should be address(this)
     }
@@ -164,14 +160,25 @@ abstract contract LzApp is
 
     //--------------------------- VIEW FUNCTION ----------------------------------------
 
-    function isTrustedRemote(uint16 srcChainId, bytes calldata srcAddress)
+    function isTrustedRemote(uint16 srcChainId, bytes memory srcAddress)
         external
         view
         returns (bool)
     {
-        bytes memory trustedSource = LzAppStorage.layout().trustedRemoteLookup[
+        return _isTrustedRemote(srcChainId, srcAddress);
+    }
+
+    function _isTrustedRemote(uint16 srcChainId, bytes memory srcAddress)
+        internal
+        view
+        returns (bool)
+    {
+        bytes memory trustedRemote = LzAppStorage.layout().trustedRemote[
             srcChainId
         ];
-        return keccak256(trustedSource) == keccak256(srcAddress);
+
+        return
+            srcAddress.length == trustedRemote.length &&
+            keccak256(trustedRemote) == keccak256(srcAddress);
     }
 }
