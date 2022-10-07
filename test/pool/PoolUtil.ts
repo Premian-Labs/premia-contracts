@@ -34,7 +34,10 @@ import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
 import { BigNumber, BigNumberish } from 'ethers';
 import { increaseTimestamp } from '../utils/evm';
 import { formatUnits, parseEther, parseUnits } from 'ethers/lib/utils';
-import { deployMockContract, MockContract } from 'ethereum-waffle';
+import {
+  deployMockContract,
+  MockContract,
+} from '@ethereum-waffle/mock-contract';
 import { diamondCut } from '../../scripts/utils/diamond';
 import {
   fixedFromFloat,

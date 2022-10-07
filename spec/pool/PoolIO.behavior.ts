@@ -2286,7 +2286,10 @@ export function describeBehaviorOfPoolIO(
 
           await expect(
             instance.connect(lp1).annihilate(longTokenId, amount, true),
-          ).to.be.revertedWith('ERC1155Base__BurnExceedsBalance()');
+          ).to.be.revertedWithCustomError(
+            instance,
+            'ERC1155Base__BurnExceedsBalance',
+          );
         });
 
         it('sender has insufficient short token balance', async () => {
@@ -2325,7 +2328,7 @@ export function describeBehaviorOfPoolIO(
 
           await expect(
             instance.connect(lp1).annihilate(shortTokenId, amount, true),
-          ).to.be.revertedWith('0x11');
+          ).to.be.revertedWithPanic('0x11');
         });
       });
     });

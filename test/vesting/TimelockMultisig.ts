@@ -54,7 +54,7 @@ describe('TimelockMultisig', () => {
     await startWithdrawal(signer1);
 
     await expect(startWithdrawal(signer1)).to.be.revertedWith(
-      'pending withdrawal',
+      'invalid pending withdrawal status',
     );
   });
 

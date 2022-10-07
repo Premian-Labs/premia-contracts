@@ -84,6 +84,8 @@ describe('Premia', function () {
       getOwner: async () => owner,
       getNomineeOwner: async () => nomineeOwner,
       getNonOwner: async () => nobody,
+      facetFunction: 'getPoolList()',
+      facetFunctionArgs: [],
       facetCuts,
       fallbackAddress: ethers.constants.AddressZero,
     },
@@ -91,8 +93,10 @@ describe('Premia', function () {
   );
 
   describeBehaviorOfProxyManager(
-    async () => ProxyManager__factory.connect(instance.address, owner),
-    {},
+    {
+      deploy: async () =>
+        ProxyManager__factory.connect(instance.address, owner),
+    },
     [],
   );
 });

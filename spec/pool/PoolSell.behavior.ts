@@ -140,7 +140,7 @@ export function describeBehaviorOfPoolSell(
               instance
                 .connect(buyer)
                 .sell(maturity, strike64x64, isCall, parseUnderlying('1')),
-            ).to.be.revertedWith('0x11');
+            ).to.be.revertedWithPanic('0x11');
           });
         });
       }

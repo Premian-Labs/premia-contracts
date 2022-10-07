@@ -127,7 +127,10 @@ describe('VePremia', () => {
             ),
           },
         ]),
-      ).to.be.revertedWith('VePremia__NotEnoughVotingPower()');
+      ).to.be.revertedWithCustomError(
+        vePremia,
+        'VePremia__NotEnoughVotingPower',
+      );
 
       await vePremia.connect(alice).stake(parseEther('1'), ONE_DAY * 365);
 
@@ -142,7 +145,10 @@ describe('VePremia', () => {
             ),
           },
         ]),
-      ).to.be.revertedWith('VePremia__NotEnoughVotingPower()');
+      ).to.be.revertedWithCustomError(
+        vePremia,
+        'VePremia__NotEnoughVotingPower',
+      );
     });
 
     it('should successfully cast user votes', async () => {

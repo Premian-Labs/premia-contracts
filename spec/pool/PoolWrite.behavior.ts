@@ -1419,7 +1419,7 @@ export function describeBehaviorOfPoolWrite(
                 isCall,
                 parseOption('0.01', isCall),
               ),
-          ).to.be.revertedWith('excess slip');
+          ).to.be.revertedWith('excess slipp');
         });
       });
     });
