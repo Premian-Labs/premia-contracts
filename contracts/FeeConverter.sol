@@ -60,6 +60,17 @@ contract FeeConverter is IFeeConverter, OwnableInternal {
 
     receive() external payable {}
 
+    /**
+     * @inheritdoc IFeeConverter
+     */
+    function getExchangeHelper()
+        external
+        view
+        returns (address exchangeHelper)
+    {
+        exchangeHelper = EXCHANGE_HELPER;
+    }
+
     ///////////
     // Admin //
     ///////////

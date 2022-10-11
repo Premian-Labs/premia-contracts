@@ -13,6 +13,12 @@ interface IFeeConverter {
 
     event SetAuthorized(address indexed account, bool isAuthorized);
 
+    /**
+     * @notice get the exchange helper address
+     * @return exchangeHelper exchange helper address
+     */
+    function getExchangeHelper() external view returns (address exchangeHelper);
+
     function convert(
         address sourceToken,
         address callee,
