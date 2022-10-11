@@ -91,6 +91,9 @@ contract FeeConverter is IFeeConverter, OwnableInternal {
 
     //////////////////////////
 
+    /**
+     * @inheritdoc IFeeConverter
+     */
     function convert(
         address sourceToken,
         address callee,

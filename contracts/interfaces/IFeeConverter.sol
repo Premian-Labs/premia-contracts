@@ -19,6 +19,13 @@ interface IFeeConverter {
      */
     function getExchangeHelper() external view returns (address exchangeHelper);
 
+    /**
+     * @notice convert held tokens to USDC and distribute as rewards
+     * @param sourceToken address of token to convert
+     * @param callee exchange address to call to execute the trade.
+     * @param allowanceTarget address for which to set allowance for the trade
+     * @param data calldata to execute the trade
+     */
     function convert(
         address sourceToken,
         address callee,
