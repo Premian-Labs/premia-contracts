@@ -399,19 +399,20 @@ contract PremiaStaking is IPremiaStaking, OFT {
     }
 
     function harvest() external {
-        _harvest(msg.sender, msg.sender);
+        uint256 amount = _harvest(msg.sender);
+        IERC20(REWARD_TOKEN).safeTransfer(msg.sender, amount);
     }
 
-    function _harvest(address owner, address recipient) internal {
+    function _harvest(address account) internal returns (uint256 amount) {
         _updateRewards();
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage u = l.userInfo[owner];
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[account];
 
         UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
             l,
             u,
-            owner
+            account
         );
 
         if (args.unstakeReward > 0) {
@@ -428,9 +429,9 @@ contract PremiaStaking is IPremiaStaking, OFT {
         uint256 amount = u.reward;
         u.reward = 0;
 
-        IERC20(REWARD_TOKEN).safeTransfer(recipient, amount);
+        emit Harvest(account, amount);
 
-        emit Harvest(owner, amount);
+        return amount;
     }
 
     function _updateTotalPower(
