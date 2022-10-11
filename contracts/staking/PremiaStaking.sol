@@ -328,6 +328,9 @@ contract PremiaStaking is IPremiaStaking, OFT {
             r,
             s
         );
+
+        IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
+
         _stake(msg.sender, amount, period);
     }
 
@@ -335,6 +338,7 @@ contract PremiaStaking is IPremiaStaking, OFT {
      * @inheritdoc IPremiaStaking
      */
     function stake(uint256 amount, uint64 period) external {
+        IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
         _stake(msg.sender, amount, period);
     }
 
@@ -360,8 +364,6 @@ contract PremiaStaking is IPremiaStaking, OFT {
             msg.sender
         );
 
-        IERC20(PREMIA).safeTransfer(msg.sender, amountPremia);
-
         _stake(msg.sender, amountPremia, stakePeriod);
     }
 
@@ -381,8 +383,6 @@ contract PremiaStaking is IPremiaStaking, OFT {
     ) internal {
         if (stakePeriod > MAX_PERIOD)
             revert PremiaStaking__ExcessiveStakePeriod();
-
-        IERC20(PREMIA).safeTransferFrom(toAddress, address(this), amount);
 
         _creditTo(
             toAddress,
