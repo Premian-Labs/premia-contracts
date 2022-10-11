@@ -12,7 +12,7 @@ interface IExchangeHelper {
      * @notice perform arbitrary swap transaction
      * @param sourceToken source token to pull into this address
      * @param targetToken target token to buy
-     * @param pullAmount amount of source token to start the trade
+     * @param sourceTokenAmount amount of source token to start the trade
      * @param callee exchange address to call to execute the trade.
      * @param allowanceTarget address for which to set allowance for the trade
      * @param data calldata to execute the trade
@@ -22,7 +22,7 @@ interface IExchangeHelper {
     function swapWithToken(
         address sourceToken,
         address targetToken,
-        uint256 pullAmount,
+        uint256 sourceTokenAmount,
         address callee,
         address allowanceTarget,
         bytes calldata data,
