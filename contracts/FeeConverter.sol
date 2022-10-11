@@ -104,9 +104,11 @@ contract FeeConverter is IFeeConverter, OwnableInternal {
 
         if (amount == 0) return;
 
-        uint256 outAmount = amount;
+        uint256 outAmount;
 
-        if (sourceToken != USDC) {
+        if (sourceToken == USDC) {
+            outAmount = amount;
+        } else {
             IERC20(sourceToken).safeTransfer(EXCHANGE_HELPER, amount);
 
             outAmount = IExchangeHelper(EXCHANGE_HELPER).swapWithToken(
