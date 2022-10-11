@@ -695,7 +695,10 @@ contract PremiaStaking is IPremiaStaking, OFT {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         amount = l.withdrawals[user].amount;
         startDate = l.withdrawals[user].startDate;
-        unlockDate = startDate + WITHDRAWAL_DELAY;
+
+        if (startDate > 0) {
+            unlockDate = startDate + WITHDRAWAL_DELAY;
+        }
     }
 
     function _decay(
