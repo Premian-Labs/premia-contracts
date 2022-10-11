@@ -454,12 +454,10 @@ contract PremiaStaking is IPremiaStaking, OFT {
 
         _updateUser(l, u, args);
 
-        uint256 amount = u.reward;
+        amount = u.reward;
         u.reward = 0;
 
         emit Harvest(account, amount);
-
-        return amount;
     }
 
     function _updateTotalPower(
