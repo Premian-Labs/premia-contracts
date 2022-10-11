@@ -76,8 +76,8 @@ contract FeeConverter is IFeeConverter, OwnableInternal {
     ///////////
 
     /**
-     * @notice Set a custom swap path for a token
-     * @param account The account for which to set new value
+     * @notice Set authorization for address to use the convert function
+     * @param account The account for which to set new authorization status
      * @param isAuthorized Whether the account is authorized or not
      */
     function setAuthorized(address account, bool isAuthorized)
