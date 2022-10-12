@@ -342,6 +342,9 @@ contract PremiaStaking is IPremiaStaking, OFT {
         _stake(msg.sender, amount, period);
     }
 
+    /**
+     * @inheritdoc IPremiaStaking
+     */
     function harvestAndStake(
         address callee,
         address allowanceTarget,

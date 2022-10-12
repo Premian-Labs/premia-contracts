@@ -120,6 +120,20 @@ interface IPremiaStaking is IERC2612, IOFT {
     function stake(uint256 amount, uint64 period) external;
 
     /**
+     * @notice harvest rewards, convert to PREMIA using exchange helper, and stake
+     * @param callee exchange address to call to execute the trade.
+     * @param allowanceTarget address for which to set allowance for the trade
+     * @param data calldata to execute the trade
+     * @param stakePeriod The lockup period (in seconds)
+     */
+    function harvestAndStake(
+        address callee,
+        address allowanceTarget,
+        bytes calldata data,
+        uint64 stakePeriod
+    ) external;
+
+    /**
      * @notice Harvest rewards directly to user wallet
      */
     function harvest() external;
