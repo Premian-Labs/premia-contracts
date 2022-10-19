@@ -2,6 +2,8 @@ import { expect } from 'chai';
 import {
   ERC20Mock,
   ERC20Mock__factory,
+  IExchangeHelper,
+  ExchangeHelper__factory,
   PremiaStakingMock,
   PremiaStakingMock__factory,
   PremiaStakingProxy__factory,
@@ -14,7 +16,15 @@ import { parseEther, parseUnits } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
 import { BigNumber, BigNumberish } from 'ethers';
 import { ONE_YEAR } from '../pool/PoolUtil';
+import {
+  createUniswap,
+  createUniswapPair,
+  depositUniswapLiquidity,
+  IUniswap,
+  uniswapABIs,
+} from '../utils/uniswap';
 
+let uniswap: IUniswap;
 let admin: SignerWithAddress;
 let alice: SignerWithAddress;
 let bob: SignerWithAddress;
@@ -24,6 +34,7 @@ let usdc: ERC20Mock;
 let premiaStakingImplementation: PremiaStakingMock;
 let premiaStaking: PremiaStakingMock;
 let otherPremiaStaking: PremiaStakingMock;
+let exchangeHelper: IExchangeHelper;
 
 const ONE_DAY = 3600 * 24;
 const USDC_DECIMALS = 6;
@@ -78,13 +89,14 @@ describe('PremiaStaking', () => {
 
     premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
     usdc = await new ERC20Mock__factory(admin).deploy('USDC', USDC_DECIMALS);
+    exchangeHelper = await new ExchangeHelper__factory(admin).deploy();
     premiaStakingImplementation = await new PremiaStakingMock__factory(
       admin,
     ).deploy(
       ethers.constants.AddressZero,
       premia.address,
       usdc.address,
-      ethers.constants.AddressZero,
+      exchangeHelper.address,
     );
 
     const premiaStakingProxy = await new PremiaStakingProxy__factory(
@@ -113,6 +125,38 @@ describe('PremiaStaking', () => {
     await usdc
       .connect(admin)
       .approve(premiaStaking.address, ethers.constants.MaxUint256);
+
+    uniswap = await createUniswap(admin);
+
+    const pairUsdc = await createUniswapPair(
+      admin,
+      uniswap.factory,
+      usdc.address,
+      uniswap.weth.address,
+    );
+
+    const pairPremia = await createUniswapPair(
+      admin,
+      uniswap.factory,
+      premia.address,
+      uniswap.weth.address,
+    );
+
+    await depositUniswapLiquidity(
+      admin,
+      uniswap.weth.address,
+      pairUsdc,
+      ethers.utils.parseUnits('100', 18),
+      ethers.utils.parseUnits('100', 18),
+    );
+
+    await depositUniswapLiquidity(
+      admin,
+      uniswap.weth.address,
+      pairPremia,
+      ethers.utils.parseUnits('100', 18),
+      ethers.utils.parseUnits('100', 18),
+    );
   });
 
   beforeEach(async () => {
@@ -700,6 +744,66 @@ describe('PremiaStaking', () => {
       expect(
         (await premiaStaking.getPendingUserRewards(alice.address))[0],
       ).to.eq(0);
+    });
+  });
+
+  describe('#harvestAndStake', () => {
+    it('harvests rewards, converts to PREMIA, and stakes', async () => {
+      await premia
+        .connect(alice)
+        .approve(premiaStaking.address, parseEther('100'));
+      await premia
+        .connect(bob)
+        .approve(premiaStaking.address, parseEther('100'));
+      await premia
+        .connect(carol)
+        .approve(premiaStaking.address, parseEther('100'));
+
+      await premiaStaking.connect(alice).stake(parseEther('30'), 0);
+      await premiaStaking.connect(bob).stake(parseEther('10'), 0);
+      await premiaStaking.connect(carol).stake(parseEther('10'), 0);
+
+      await premiaStaking.connect(admin).addRewards(parseUSDC('50'));
+
+      await increaseTimestamp(ONE_DAY * 30);
+
+      const aliceRewards = await premiaStaking.getPendingUserRewards(
+        alice.address,
+      );
+
+      const amountBefore = await premiaStaking.callStatic.balanceOf(
+        alice.address,
+      );
+
+      const uniswapPath = [usdc.address, uniswap.weth.address, premia.address];
+
+      const { timestamp } = await ethers.provider.getBlock('latest');
+
+      const totalRewards = aliceRewards[0].add(aliceRewards[1]);
+
+      const iface = new ethers.utils.Interface(uniswapABIs);
+      const data = iface.encodeFunctionData('swapExactTokensForTokens', [
+        totalRewards,
+        ethers.constants.Zero,
+        uniswapPath,
+        exchangeHelper.address,
+        ethers.constants.MaxUint256,
+      ]);
+
+      await premiaStaking.connect(alice).harvestAndStake(
+        {
+          amountOutMin: ethers.constants.Zero,
+          callee: uniswap.router.address,
+          allowanceTarget: uniswap.router.address,
+          data,
+          refundAddress: alice.address,
+        },
+        ethers.constants.Zero,
+      );
+
+      const amountAfter = await premiaStaking.balanceOf(alice.address);
+
+      expect(amountAfter).to.be.gt(amountBefore);
     });
   });
 

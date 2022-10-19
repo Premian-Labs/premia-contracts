@@ -60,13 +60,24 @@ contract FeeConverter is IFeeConverter, OwnableInternal {
 
     receive() external payable {}
 
+    /**
+     * @inheritdoc IFeeConverter
+     */
+    function getExchangeHelper()
+        external
+        view
+        returns (address exchangeHelper)
+    {
+        exchangeHelper = EXCHANGE_HELPER;
+    }
+
     ///////////
     // Admin //
     ///////////
 
     /**
-     * @notice Set a custom swap path for a token
-     * @param account The account for which to set new value
+     * @notice Set authorization for address to use the convert function
+     * @param account The account for which to set new authorization status
      * @param isAuthorized Whether the account is authorized or not
      */
     function setAuthorized(address account, bool isAuthorized)
@@ -80,6 +91,9 @@ contract FeeConverter is IFeeConverter, OwnableInternal {
 
     //////////////////////////
 
+    /**
+     * @inheritdoc IFeeConverter
+     */
     function convert(
         address sourceToken,
         address callee,
@@ -90,9 +104,11 @@ contract FeeConverter is IFeeConverter, OwnableInternal {
 
         if (amount == 0) return;
 
-        uint256 outAmount = amount;
+        uint256 outAmount;
 
-        if (sourceToken != USDC) {
+        if (sourceToken == USDC) {
+            outAmount = amount;
+        } else {
             IERC20(sourceToken).safeTransfer(EXCHANGE_HELPER, amount);
 
             outAmount = IExchangeHelper(EXCHANGE_HELPER).swapWithToken(

@@ -9,6 +9,7 @@ import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
+import {IExchangeHelper} from "../interfaces/IExchangeHelper.sol";
 import {IPremiaStaking} from "./IPremiaStaking.sol";
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 import {OFT} from "../layerZero/token/oft/OFT.sol";
@@ -327,6 +328,9 @@ contract PremiaStaking is IPremiaStaking, OFT {
             r,
             s
         );
+
+        IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
+
         _stake(msg.sender, amount, period);
     }
 
@@ -334,7 +338,37 @@ contract PremiaStaking is IPremiaStaking, OFT {
      * @inheritdoc IPremiaStaking
      */
     function stake(uint256 amount, uint64 period) external {
+        IERC20(PREMIA).safeTransferFrom(msg.sender, address(this), amount);
         _stake(msg.sender, amount, period);
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function harvestAndStake(
+        IPremiaStaking.SwapArgs memory s,
+        uint64 stakePeriod
+    ) external {
+        uint256 amountRewardToken = _harvest(msg.sender);
+
+        if (amountRewardToken == 0) return;
+
+        IERC20(REWARD_TOKEN).safeTransfer(EXCHANGE_HELPER, amountRewardToken);
+
+        uint256 amountPremia = IExchangeHelper(EXCHANGE_HELPER).swapWithToken(
+            REWARD_TOKEN,
+            PREMIA,
+            amountRewardToken,
+            s.callee,
+            s.allowanceTarget,
+            s.data,
+            s.refundAddress
+        );
+
+        if (amountPremia < s.amountOutMin)
+            revert PremiaStaking__InsufficientSwapOutput();
+
+        _stake(msg.sender, amountPremia, stakePeriod);
     }
 
     function _calculateWeightedAverage(
@@ -353,8 +387,6 @@ contract PremiaStaking is IPremiaStaking, OFT {
     ) internal {
         if (stakePeriod > MAX_PERIOD)
             revert PremiaStaking__ExcessiveStakePeriod();
-
-        IERC20(PREMIA).safeTransferFrom(toAddress, address(this), amount);
 
         _creditTo(
             toAddress,
@@ -399,15 +431,20 @@ contract PremiaStaking is IPremiaStaking, OFT {
     }
 
     function harvest() external {
+        uint256 amount = _harvest(msg.sender);
+        IERC20(REWARD_TOKEN).safeTransfer(msg.sender, amount);
+    }
+
+    function _harvest(address account) internal returns (uint256 amount) {
         _updateRewards();
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[account];
 
         UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
             l,
             u,
-            msg.sender
+            account
         );
 
         if (args.unstakeReward > 0) {
@@ -421,12 +458,10 @@ contract PremiaStaking is IPremiaStaking, OFT {
 
         _updateUser(l, u, args);
 
-        uint256 amount = u.reward;
+        amount = u.reward;
         u.reward = 0;
 
-        IERC20(REWARD_TOKEN).safeTransfer(msg.sender, amount);
-
-        emit Harvest(msg.sender, amount);
+        emit Harvest(account, amount);
     }
 
     function _updateTotalPower(
