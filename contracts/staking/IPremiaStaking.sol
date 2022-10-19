@@ -16,6 +16,7 @@ interface IPremiaStaking is IERC2612, IOFT {
     error PremiaStaking__StakeLocked();
     error PremiaStaking__StakeNotLocked();
     error PremiaStaking__WithdrawalStillPending();
+    error PremiaStaking__InsufficientSwapOutput();
 
     event Stake(
         address indexed user,
@@ -42,6 +43,19 @@ interface IPremiaStaking is IERC2612, IOFT {
     struct StakeLevel {
         uint256 amount; // Amount to stake
         uint256 discountBPS; // Discount when amount is reached
+    }
+
+    struct SwapArgs {
+        //min amount out to be used to purchase
+        uint256 amountOutMin;
+        // exchange address to call to execute the trade
+        address callee;
+        // address for which to set allowance for the trade
+        address allowanceTarget;
+        // data to execute the trade
+        bytes data;
+        // address to which refund excess tokens
+        address refundAddress;
     }
 
     event BridgeLock(
@@ -121,15 +135,11 @@ interface IPremiaStaking is IERC2612, IOFT {
 
     /**
      * @notice harvest rewards, convert to PREMIA using exchange helper, and stake
-     * @param callee exchange address to call to execute the trade.
-     * @param allowanceTarget address for which to set allowance for the trade
-     * @param data calldata to execute the trade
+     * @param s swap arguments
      * @param stakePeriod The lockup period (in seconds)
      */
     function harvestAndStake(
-        address callee,
-        address allowanceTarget,
-        bytes calldata data,
+        IPremiaStaking.SwapArgs memory s,
         uint64 stakePeriod
     ) external;
 

@@ -346,9 +346,7 @@ contract PremiaStaking is IPremiaStaking, OFT {
      * @inheritdoc IPremiaStaking
      */
     function harvestAndStake(
-        address callee,
-        address allowanceTarget,
-        bytes calldata data,
+        IPremiaStaking.SwapArgs memory s,
         uint64 stakePeriod
     ) external {
         uint256 amountRewardToken = _harvest(msg.sender);
@@ -361,11 +359,14 @@ contract PremiaStaking is IPremiaStaking, OFT {
             REWARD_TOKEN,
             PREMIA,
             amountRewardToken,
-            callee,
-            allowanceTarget,
-            data,
-            msg.sender
+            s.callee,
+            s.allowanceTarget,
+            s.data,
+            s.refundAddress
         );
+
+        if (amountPremia < s.amountOutMin)
+            revert PremiaStaking__InsufficientSwapOutput();
 
         _stake(msg.sender, amountPremia, stakePeriod);
     }
