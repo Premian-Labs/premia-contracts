@@ -68,6 +68,13 @@ contract PremiaStaking is IPremiaStaking, OFT {
         ) revert PremiaStaking__CantTransferWhenLocked();
     }
 
+    /**
+     * @inheritdoc IPremiaStaking
+     */
+    function getRewardToken() external view returns (address) {
+        return REWARD_TOKEN;
+    }
+
     function estimateSendFee(
         uint16 dstChainId,
         bytes memory toAddress,

@@ -65,6 +65,12 @@ interface IPremiaStaking is IERC2612, IOFT {
     );
 
     /**
+     * @notice Returns the reward token address
+     * @return The reward token address
+     */
+    function getRewardToken() external view returns (address);
+
+    /**
      * @notice add premia tokens as available tokens to be distributed as rewards
      * @param amount amount of premia tokens to add as rewards
      */
