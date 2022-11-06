@@ -305,32 +305,18 @@ describe('PremiaStaking', () => {
     });
   });
 
-  it('should fail transferring token if locked', async () => {
-    await premia
-      .connect(alice)
-      .approve(premiaStaking.address, parseEther('100'));
-    await premiaStaking.connect(alice).stake(parseEther('100'), 30 * ONE_DAY);
-
-    await expect(
-      premiaStaking.connect(alice).transfer(bob.address, parseEther('1')),
-    ).to.be.revertedWithCustomError(
-      premiaStaking,
-      'PremiaStaking__CantTransferWhenLocked',
-    );
-  });
-
-  it('should successfully transfer tokens if not locked', async () => {
+  it('should fail transferring tokens', async () => {
     await premia
       .connect(alice)
       .approve(premiaStaking.address, parseEther('100'));
     await premiaStaking.connect(alice).stake(parseEther('100'), 0);
 
-    await premiaStaking.connect(alice).transfer(bob.address, parseEther('1'));
-
-    expect(await premiaStaking.balanceOf(alice.address)).to.eq(
-      parseEther('99'),
+    await expect(
+      premiaStaking.connect(alice).transfer(bob.address, parseEther('1')),
+    ).to.be.revertedWithCustomError(
+      premiaStaking,
+      'PremiaStaking__CantTransfer',
     );
-    expect(await premiaStaking.balanceOf(bob.address)).to.eq(parseEther('1'));
   });
 
   it('should successfully stake with permit', async () => {

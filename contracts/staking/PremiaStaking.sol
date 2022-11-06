@@ -62,10 +62,7 @@ contract PremiaStaking is IPremiaStaking, OFT {
     ) internal virtual override {
         if (from == address(0) || to == address(0)) return;
 
-        if (
-            PremiaStakingStorage.layout().userInfo[from].lockedUntil >
-            block.timestamp
-        ) revert PremiaStaking__CantTransferWhenLocked();
+        revert PremiaStaking__CantTransfer();
     }
 
     /**
