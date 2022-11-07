@@ -8,9 +8,9 @@ import {
   PremiaErc20,
   PremiaErc20__factory,
   ProxyUpgradeableOwnable__factory,
-  VePremia,
-  VePremia__factory,
-  VePremiaProxy__factory,
+  VxPremia,
+  VxPremia__factory,
+  VxPremiaProxy__factory,
 } from '../../typechain';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { ethers } from 'ethers';
@@ -61,30 +61,30 @@ export async function deployV1(
 
   //
 
-  const vePremiaImpl = await new VePremia__factory(deployer).deploy(
+  const vxPremiaImpl = await new VxPremia__factory(deployer).deploy(
     lzEndpoint,
     premia.address,
     rewardToken.address,
     exchangeProxy ?? ethers.constants.AddressZero,
   );
-  await vePremiaImpl.deployed();
-  const vePremiaProxy = await new VePremiaProxy__factory(deployer).deploy(
-    vePremiaImpl.address,
+  await vxPremiaImpl.deployed();
+  const vxPremiaProxy = await new VxPremiaProxy__factory(deployer).deploy(
+    vxPremiaImpl.address,
   );
-  await vePremiaProxy.deployed();
+  await vxPremiaProxy.deployed();
 
-  const vePremia = VePremia__factory.connect(vePremiaImpl.address, deployer);
+  const vxPremia = VxPremia__factory.connect(vxPremiaImpl.address, deployer);
 
   if (log) {
     console.log(
-      `PremiaStaking deployed at ${vePremiaProxy.address} (Args : ${vePremiaImpl.address})`,
+      `PremiaStaking deployed at ${vxPremiaProxy.address} (Args : ${vxPremiaImpl.address})`,
     );
   }
 
   const feeConverterImpl = await new FeeConverter__factory(deployer).deploy(
     exchangeProxy ?? ethers.constants.AddressZero,
     rewardToken.address,
-    vePremia.address,
+    vxPremia.address,
     treasury,
   );
   await feeConverterImpl.deployed();
@@ -100,21 +100,21 @@ export async function deployV1(
 
   if (log) {
     console.log(
-      `PremiaMaker deployed at ${feeConverter.address} (Args : ${premia.address} / ${vePremia.address} / ${treasury})`,
+      `PremiaMaker deployed at ${feeConverter.address} (Args : ${premia.address} / ${vxPremia.address} / ${treasury})`,
     );
   }
 
   return {
     premia,
     feeConverter,
-    vePremia,
+    vxPremia: vxPremia,
     rewardToken,
   };
 }
 
 export interface IPremiaContracts {
   premia: PremiaErc20 | ERC20Mock;
-  vePremia: VePremia;
+  vxPremia: VxPremia;
   feeConverter: FeeConverter;
   rewardToken: ERC20 | ERC20Mock;
 }

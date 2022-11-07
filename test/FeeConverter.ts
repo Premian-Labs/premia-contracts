@@ -132,10 +132,10 @@ describe('FeeConverter', () => {
     ).to.almost(165.79);
     expect(await uniswap.dai.balanceOf(p.feeConverter.address)).to.eq(0);
     expect(
-      bnToNumber(await p.rewardToken.balanceOf(p.vePremia.address)),
+      bnToNumber(await p.rewardToken.balanceOf(p.vxPremia.address)),
     ).to.almost(663.16);
 
-    expect(bnToNumber((await p.vePremia.getAvailableRewards())[0])).to.almost(
+    expect(bnToNumber((await p.vxPremia.getAvailableRewards())[0])).to.almost(
       663.16,
     );
   });
@@ -196,14 +196,14 @@ describe('FeeConverter', () => {
     ).to.almost(1817.68);
     expect(await uniswap.weth.balanceOf(p.feeConverter.address)).to.eq(0);
     expect(
-      bnToNumber(await p.rewardToken.balanceOf(p.vePremia.address)),
+      bnToNumber(await p.rewardToken.balanceOf(p.vxPremia.address)),
     ).to.almost(7270.73);
-    expect(bnToNumber((await p.vePremia.getAvailableRewards())[0])).to.almost(
+    expect(bnToNumber((await p.vxPremia.getAvailableRewards())[0])).to.almost(
       7270.73,
     );
   });
 
-  it('should send rewardToken successfully to vePremia', async () => {
+  it('should send rewardToken successfully to vxPremia', async () => {
     await p.feeConverter.setAuthorized(admin.address, true);
 
     await (p.rewardToken as ERC20Mock).mint(
@@ -221,10 +221,10 @@ describe('FeeConverter', () => {
       parseEther('2'),
     );
     expect(await p.rewardToken.balanceOf(p.feeConverter.address)).to.eq(0);
-    expect(await p.rewardToken.balanceOf(p.vePremia.address)).to.eq(
+    expect(await p.rewardToken.balanceOf(p.vxPremia.address)).to.eq(
       parseEther('8'),
     );
-    expect(bnToNumber((await p.vePremia.getAvailableRewards())[0])).to.almost(
+    expect(bnToNumber((await p.vxPremia.getAvailableRewards())[0])).to.almost(
       8,
     );
   });

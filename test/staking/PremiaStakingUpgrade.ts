@@ -1,19 +1,16 @@
 import {
-  SolidStateERC20,
-  SolidStateERC20__factory,
   ExchangeHelper__factory,
   PremiaErc20,
   PremiaErc20__factory,
-  PremiaStakingMigrator,
   PremiaStakingUpgrade__factory,
   ProxyUpgradeableOwnable__factory,
-  VePremia__factory,
+  SolidStateERC20,
+  SolidStateERC20__factory,
+  VxPremia__factory,
 } from '../../typechain';
 import { ethers, network } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { formatEther, parseEther } from 'ethers/lib/utils';
 import { expect } from 'chai';
-import { BigNumber } from 'ethers';
 import { bnToNumber } from '../utils/math';
 
 let admin: SignerWithAddress;
@@ -162,7 +159,7 @@ describe('PremiaStakingUpgrade', () => {
 
     const exchangeHelper = await new ExchangeHelper__factory(treasury).deploy();
     const usdc = '0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48';
-    let vePremia = await new VePremia__factory(treasury).deploy(
+    let vxPremia = await new VxPremia__factory(treasury).deploy(
       ethers.constants.AddressZero,
       premia.address,
       usdc,
@@ -172,11 +169,11 @@ describe('PremiaStakingUpgrade', () => {
     await ProxyUpgradeableOwnable__factory.connect(
       xPremia.address,
       treasury,
-    ).setImplementation(vePremia.address);
+    ).setImplementation(vxPremia.address);
 
-    vePremia = VePremia__factory.connect(xPremia.address, treasury);
+    vxPremia = VxPremia__factory.connect(xPremia.address, treasury);
 
-    const pendingWithdrawals = await vePremia.getPendingWithdrawals();
+    const pendingWithdrawals = await vxPremia.getPendingWithdrawals();
 
     // console.log(formatEther(totalSupplyAfter));
     // console.log(formatEther(premiaStaked.sub(pendingWithdrawals)));
@@ -188,12 +185,12 @@ describe('PremiaStakingUpgrade', () => {
       bnToNumber(totalSupplyAfter.sub(premiaStaked.sub(pendingWithdrawals))),
     ).to.be.almost(0);
 
-    const totalPower = await vePremia.getTotalPower();
+    const totalPower = await vxPremia.getTotalPower();
     expect(bnToNumber(totalPower.mul(4))).to.almost(
       bnToNumber(totalSupplyAfter),
     );
 
-    expect(await vePremia.balanceOf(vePremia.address)).to.eq(0);
+    expect(await vxPremia.balanceOf(vxPremia.address)).to.eq(0);
 
     // console.log(holders.length);
   });

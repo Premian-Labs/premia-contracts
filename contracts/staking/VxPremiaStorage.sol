@@ -3,9 +3,9 @@
 
 pragma solidity ^0.8.0;
 
-library VePremiaStorage {
+library VxPremiaStorage {
     bytes32 internal constant STORAGE_SLOT =
-        keccak256("premia.contracts.staking.VePremia");
+        keccak256("premia.contracts.staking.VxPremia");
 
     enum VoteVersion {
         V2 // poolAddress : 20 bytes / isCallPool : 2 bytes

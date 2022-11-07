@@ -1,5 +1,5 @@
 import { ethers } from 'hardhat';
-import { deployVePremiaMocked, PoolUtil } from '../../../test/pool/PoolUtil';
+import { deployVxPremiaMocked, PoolUtil } from '../../../test/pool/PoolUtil';
 import { createUniswap } from '../../../test/utils/uniswap';
 import { ExchangeHelper__factory, PoolMock__factory } from '../../../typechain';
 
@@ -8,7 +8,7 @@ const spotPrice = 2000;
 async function main() {
   const [owner, feeReceiver] = await ethers.getSigners();
 
-  const { vePremia, premia } = await deployVePremiaMocked(owner);
+  const { vxPremia, premia } = await deployVxPremiaMocked(owner);
 
   const exchangeHelper = await new ExchangeHelper__factory(owner).deploy();
 
@@ -19,7 +19,7 @@ async function main() {
     premia.address,
     spotPrice,
     feeReceiver.address,
-    vePremia.address,
+    vxPremia.address,
     exchangeHelper.address,
     uniswap.weth.address,
   );
@@ -27,7 +27,7 @@ async function main() {
   console.log('owner: ', owner.address);
   console.log('fee receiver: ', feeReceiver.address);
   console.log('premia address: ', premia.address);
-  console.log('vePremia address: ', vePremia.address);
+  console.log('vxPremia address: ', vxPremia.address);
 
   console.log('weth address: ', uniswap.weth.address);
   console.log('premia diamond: ', p.premiaDiamond.address);

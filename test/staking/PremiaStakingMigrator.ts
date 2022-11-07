@@ -7,7 +7,7 @@ import {
   PremiaStaking__factory,
   PremiaStakingMigrator,
   PremiaStakingMigrator__factory,
-  VePremia,
+  VxPremia,
 } from '../../typechain';
 import { ethers, network } from 'hardhat';
 import { expect } from 'chai';
@@ -28,7 +28,7 @@ let premia: PremiaErc20;
 let migrator: PremiaStakingMigrator;
 let xPremiaOld: PremiaStaking;
 let feeDiscountOld: IPremiaFeeDiscountOld;
-let vePremia: VePremia;
+let vxPremia: VxPremia;
 
 describe('PremiaStakingMigrator', () => {
   beforeEach(async () => {
@@ -75,7 +75,7 @@ describe('PremiaStakingMigrator', () => {
       premia.address,
     );
 
-    vePremia = p.vePremia;
+    vxPremia = p.vxPremia;
 
     migrator = await new PremiaStakingMigrator__factory(treasury).deploy(
       premia.address,

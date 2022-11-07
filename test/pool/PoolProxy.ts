@@ -6,7 +6,7 @@ import {
   IExchangeHelper,
   IPool,
   Proxy__factory,
-  VePremia,
+  VxPremia,
 } from '../../typechain';
 
 import { fixedFromFloat } from '@premia/utils';
@@ -21,7 +21,7 @@ import { describeBehaviorOfPoolSell } from '../../spec/pool/PoolSell.behavior';
 import {
   DECIMALS_BASE,
   DECIMALS_UNDERLYING,
-  deployVePremiaMocked,
+  deployVxPremiaMocked,
   FEE_APY,
   PoolUtil,
 } from './PoolUtil';
@@ -46,7 +46,7 @@ describe('PoolProxy', function () {
   let exchangeHelper: IExchangeHelper;
 
   let xPremia: ERC20Mock;
-  let vePremia: VePremia;
+  let vxPremia: VxPremia;
 
   let base: ERC20Mock;
   let underlying: ERC20Mock;
@@ -61,7 +61,7 @@ describe('PoolProxy', function () {
     [owner, lp1, lp2, buyer, thirdParty, feeReceiver] =
       await ethers.getSigners();
 
-    const { premia, vePremia } = await deployVePremiaMocked(owner);
+    const { premia, vxPremia } = await deployVxPremiaMocked(owner);
 
     uniswap = await createUniswap(owner);
 
@@ -72,7 +72,7 @@ describe('PoolProxy', function () {
       premia.address,
       spotPrice,
       feeReceiver.address,
-      vePremia.address,
+      vxPremia.address,
       exchangeHelper.address,
       uniswap.weth.address,
     );

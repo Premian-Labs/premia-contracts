@@ -1,8 +1,8 @@
 import {
   ERC20Mock,
   ERC20Mock__factory,
-  VePremia,
-  VePremia__factory,
+  VxPremia,
+  VxPremia__factory,
 } from '../../typechain';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
@@ -35,9 +35,9 @@ let bob: SignerWithAddress;
 
 let premia: ERC20Mock;
 let usdc: ERC20Mock;
-let vePremia: VePremia;
+let vxPremia: VxPremia;
 
-describe('VePremia', () => {
+describe('VxPremia', () => {
   let snapshotId: number;
 
   before(async () => {
@@ -46,7 +46,7 @@ describe('VePremia', () => {
     premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
     usdc = await new ERC20Mock__factory(admin).deploy('USDC', 6);
 
-    vePremia = await new VePremia__factory(admin).deploy(
+    vxPremia = await new VxPremia__factory(admin).deploy(
       ethers.constants.AddressZero,
       premia.address,
       usdc.address,
@@ -57,7 +57,7 @@ describe('VePremia', () => {
       await premia.mint(u.address, parseEther('100'));
       await premia
         .connect(u)
-        .approve(vePremia.address, ethers.constants.MaxUint256);
+        .approve(vxPremia.address, ethers.constants.MaxUint256);
     }
   });
 
@@ -71,7 +71,7 @@ describe('VePremia', () => {
 
   describe('#getUserVotes', () => {
     it('should successfully return user votes', async () => {
-      await vePremia.connect(alice).stake(parseEther('10'), ONE_DAY * 365);
+      await vxPremia.connect(alice).stake(parseEther('10'), ONE_DAY * 365);
 
       const votes = [
         {
@@ -100,10 +100,10 @@ describe('VePremia', () => {
         },
       ];
 
-      await vePremia.connect(alice).castVotes(votes);
+      await vxPremia.connect(alice).castVotes(votes);
 
       expect(
-        (await vePremia.getUserVotes(alice.address)).map((el) => {
+        (await vxPremia.getUserVotes(alice.address)).map((el) => {
           return {
             amount: el.amount,
             version: el.version,
@@ -117,7 +117,7 @@ describe('VePremia', () => {
   describe('#castVotes', () => {
     it('should fail casting user vote if not enough voting power', async () => {
       await expect(
-        vePremia.connect(alice).castVotes([
+        vxPremia.connect(alice).castVotes([
           {
             amount: parseEther('1'),
             version: 0,
@@ -128,14 +128,14 @@ describe('VePremia', () => {
           },
         ]),
       ).to.be.revertedWithCustomError(
-        vePremia,
-        'VePremia__NotEnoughVotingPower',
+        vxPremia,
+        'VxPremia__NotEnoughVotingPower',
       );
 
-      await vePremia.connect(alice).stake(parseEther('1'), ONE_DAY * 365);
+      await vxPremia.connect(alice).stake(parseEther('1'), ONE_DAY * 365);
 
       await expect(
-        vePremia.connect(alice).castVotes([
+        vxPremia.connect(alice).castVotes([
           {
             amount: parseEther('10'),
             version: 0,
@@ -146,15 +146,15 @@ describe('VePremia', () => {
           },
         ]),
       ).to.be.revertedWithCustomError(
-        vePremia,
-        'VePremia__NotEnoughVotingPower',
+        vxPremia,
+        'VxPremia__NotEnoughVotingPower',
       );
     });
 
     it('should successfully cast user votes', async () => {
-      await vePremia.connect(alice).stake(parseEther('5'), ONE_DAY * 365);
+      await vxPremia.connect(alice).stake(parseEther('5'), ONE_DAY * 365);
 
-      await vePremia.connect(alice).castVotes([
+      await vxPremia.connect(alice).castVotes([
         {
           amount: parseEther('1'),
           version: 0,
@@ -181,7 +181,7 @@ describe('VePremia', () => {
         },
       ]);
 
-      let votes = await vePremia.getUserVotes(alice.address);
+      let votes = await vxPremia.getUserVotes(alice.address);
       expect(votes).to.deep.eq([
         [
           parseEther('1'),
@@ -211,7 +211,7 @@ describe('VePremia', () => {
 
       // Casting new votes should remove all existing votes, and set new ones
 
-      await vePremia.connect(alice).castVotes([
+      await vxPremia.connect(alice).castVotes([
         {
           amount: parseEther('2'),
           version: 0,
@@ -222,7 +222,7 @@ describe('VePremia', () => {
         },
       ]);
 
-      votes = await vePremia.getUserVotes(alice.address);
+      votes = await vxPremia.getUserVotes(alice.address);
       expect(votes).to.deep.eq([
         [
           parseEther('2'),
@@ -235,7 +235,7 @@ describe('VePremia', () => {
       ]);
 
       expect(
-        await vePremia.getPoolVotes(
+        await vxPremia.getPoolVotes(
           0,
           solidityPack(
             ['address', 'bool'],
@@ -245,7 +245,7 @@ describe('VePremia', () => {
       ).to.eq(0);
 
       expect(
-        await vePremia.getPoolVotes(
+        await vxPremia.getPoolVotes(
           0,
           solidityPack(
             ['address', 'bool'],
@@ -255,7 +255,7 @@ describe('VePremia', () => {
       ).to.eq(0);
 
       expect(
-        await vePremia.getPoolVotes(
+        await vxPremia.getPoolVotes(
           0,
           solidityPack(
             ['address', 'bool'],
@@ -265,7 +265,7 @@ describe('VePremia', () => {
       ).to.eq(0);
 
       expect(
-        await vePremia.getPoolVotes(
+        await vxPremia.getPoolVotes(
           0,
           solidityPack(
             ['address', 'bool'],
@@ -276,9 +276,9 @@ describe('VePremia', () => {
     });
 
     it('should remove some user votes if some tokens are withdrawn', async () => {
-      await vePremia.connect(alice).stake(parseEther('5'), ONE_DAY * 365);
+      await vxPremia.connect(alice).stake(parseEther('5'), ONE_DAY * 365);
 
-      await vePremia.connect(alice).castVotes([
+      await vxPremia.connect(alice).castVotes([
         {
           amount: parseEther('1'),
           version: 0,
@@ -307,7 +307,7 @@ describe('VePremia', () => {
 
       await increaseTimestamp(ONE_DAY * 366);
 
-      let votes = await vePremia.getUserVotes(alice.address);
+      let votes = await vxPremia.getUserVotes(alice.address);
       expect(votes).to.deep.eq([
         [
           parseEther('1'),
@@ -335,13 +335,13 @@ describe('VePremia', () => {
         ],
       ]);
 
-      expect(await vePremia.getUserPower(alice.address)).to.eq(
+      expect(await vxPremia.getUserPower(alice.address)).to.eq(
         parseEther('6.25'),
       );
 
-      await vePremia.connect(alice).startWithdraw(parseEther('2.5'));
+      await vxPremia.connect(alice).startWithdraw(parseEther('2.5'));
 
-      votes = await vePremia.getUserVotes(alice.address);
+      votes = await vxPremia.getUserVotes(alice.address);
 
       expect(votes).to.deep.eq([
         [
@@ -362,7 +362,7 @@ describe('VePremia', () => {
         ],
       ]);
 
-      expect(await vePremia.getUserPower(alice.address)).to.eq(
+      expect(await vxPremia.getUserPower(alice.address)).to.eq(
         parseEther('3.125'),
       );
     });

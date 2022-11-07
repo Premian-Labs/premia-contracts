@@ -1,13 +1,13 @@
 import { expect } from 'chai';
 import {
-  deployVePremiaMocked,
+  deployVxPremiaMocked,
   getTokenDecimals,
   PoolUtil,
 } from '../pool/PoolUtil';
 import { increaseTimestamp, mineBlockUntil, setTimestamp } from '../utils/evm';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { ERC20Mock, VePremia } from '../../typechain';
+import { ERC20Mock, VxPremia } from '../../typechain';
 import { parseEther, parseUnits, solidityPack } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
 import { ZERO_ADDRESS } from '../utils/constants';
@@ -25,7 +25,7 @@ describe('PremiaMining', () => {
   let lp3: SignerWithAddress;
   let buyer: SignerWithAddress;
   let feeReceiver: SignerWithAddress;
-  let vePremia: VePremia;
+  let vxPremia: VxPremia;
   let premia: ERC20Mock;
 
   let p: PoolUtil;
@@ -36,8 +36,8 @@ describe('PremiaMining', () => {
   before(async () => {
     [owner, lp1, lp2, lp3, buyer, feeReceiver] = await ethers.getSigners();
 
-    const data = await deployVePremiaMocked(owner);
-    vePremia = data.vePremia;
+    const data = await deployVxPremiaMocked(owner);
+    vxPremia = data.vxPremia;
     premia = data.premia;
 
     p = await PoolUtil.deploy(
@@ -45,7 +45,7 @@ describe('PremiaMining', () => {
       premia.address,
       spotPrice,
       feeReceiver.address,
-      vePremia.address,
+      vxPremia.address,
       ZERO_ADDRESS,
     );
 
@@ -61,9 +61,9 @@ describe('PremiaMining', () => {
 
     // Set pool weights through votes
     await premia.mint(owner.address, parseEther('1000'));
-    await premia.connect(owner).approve(vePremia.address, parseEther('1000'));
-    await vePremia.connect(owner).stake(parseEther('1000'), oneDay * 365);
-    await vePremia.connect(owner).castVotes([
+    await premia.connect(owner).approve(vxPremia.address, parseEther('1000'));
+    await vxPremia.connect(owner).stake(parseEther('1000'), oneDay * 365);
+    await vxPremia.connect(owner).castVotes([
       {
         amount: parseEther('250'),
         version: 0,
