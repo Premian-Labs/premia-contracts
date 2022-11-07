@@ -11,8 +11,8 @@ import {PremiaMiningStorage} from "./PremiaMiningStorage.sol";
 import {IPremiaMining} from "./IPremiaMining.sol";
 import {IPoolIO} from "../pool/IPoolIO.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
-import {IVePremia} from "../staking/IVePremia.sol";
-import {VePremiaStorage} from "../staking/VePremiaStorage.sol";
+import {IVxPremia} from "../staking/IVxPremia.sol";
+import {VxPremiaStorage} from "../staking/VxPremiaStorage.sol";
 
 /**
  * @title Premia liquidity mining contract, derived from Sushiswap's MasterChef.sol ( https://github.com/sushiswap/sushiswap )
@@ -23,7 +23,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
 
     address internal immutable DIAMOND;
     address internal immutable PREMIA;
-    address internal immutable VE_PREMIA;
+    address internal immutable VX_PREMIA;
 
     uint256 private constant ONE_YEAR = 365 days;
     uint256 private constant INVERSE_BASIS_POINT = 1e4;
@@ -32,11 +32,11 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     constructor(
         address _diamond,
         address _premia,
-        address _vePremia
+        address _vxPremia
     ) {
         DIAMOND = _diamond;
         PREMIA = _premia;
-        VE_PREMIA = _vePremia;
+        VX_PREMIA = _vxPremia;
     }
 
     modifier onlyPool(address _pool) {
@@ -256,8 +256,8 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
         bool isCallPool,
         uint256 utilizationRate
     ) internal virtual {
-        uint256 votes = IVePremia(VE_PREMIA).getPoolVotes(
-            VePremiaStorage.VoteVersion.V2,
+        uint256 votes = IVxPremia(VX_PREMIA).getPoolVotes(
+            VxPremiaStorage.VoteVersion.V2,
             abi.encodePacked(pool, isCallPool)
         );
         _setPoolAllocPoints(

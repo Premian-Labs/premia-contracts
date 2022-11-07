@@ -13,7 +13,7 @@ import {
   getMaxCost,
   getStrike,
   PoolUtil,
-  deployVePremiaMocked,
+  deployVxPremiaMocked,
 } from '../pool/PoolUtil';
 import { increaseTimestamp } from '../utils/evm';
 import { ZERO_ADDRESS } from '../utils/constants';
@@ -32,7 +32,7 @@ describe('ProcessExpiredKeeper', () => {
   beforeEach(async () => {
     [owner, lp, buyer, feeReceiver] = await ethers.getSigners();
 
-    const { vePremia } = await deployVePremiaMocked(owner);
+    const { vxPremia } = await deployVxPremiaMocked(owner);
 
     p = await PoolUtil.deploy(
       owner,
@@ -41,7 +41,7 @@ describe('ProcessExpiredKeeper', () => {
       ).address,
       spotPrice,
       feeReceiver.address,
-      vePremia.address,
+      vxPremia.address,
       ZERO_ADDRESS,
     );
     expKeeper = await new ProcessExpiredKeeper__factory(owner).deploy(

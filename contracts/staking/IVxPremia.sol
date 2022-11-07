@@ -2,21 +2,21 @@
 
 pragma solidity ^0.8.0;
 
-import {VePremiaStorage} from "./VePremiaStorage.sol";
+import {VxPremiaStorage} from "./VxPremiaStorage.sol";
 import {IPremiaStaking} from "./IPremiaStaking.sol";
 
-interface IVePremia is IPremiaStaking {
-    error VePremia__NotEnoughVotingPower();
+interface IVxPremia is IPremiaStaking {
+    error VxPremia__NotEnoughVotingPower();
 
     event AddVote(
         address indexed voter,
-        VePremiaStorage.VoteVersion indexed version,
+        VxPremiaStorage.VoteVersion indexed version,
         bytes target,
         uint256 amount
     );
     event RemoveVote(
         address indexed voter,
-        VePremiaStorage.VoteVersion indexed version,
+        VxPremiaStorage.VoteVersion indexed version,
         bytes target,
         uint256 amount
     );
@@ -28,7 +28,7 @@ interface IVePremia is IPremiaStaking {
      * @return total votes for specific pool
      */
     function getPoolVotes(
-        VePremiaStorage.VoteVersion version,
+        VxPremiaStorage.VoteVersion version,
         bytes memory target
     ) external view returns (uint256);
 
@@ -40,11 +40,11 @@ interface IVePremia is IPremiaStaking {
     function getUserVotes(address user)
         external
         view
-        returns (VePremiaStorage.Vote[] memory);
+        returns (VxPremiaStorage.Vote[] memory);
 
     /**
      * @notice add or remove votes, in the limit of the user voting power
      * @param votes votes to cast
      */
-    function castVotes(VePremiaStorage.Vote[] memory votes) external;
+    function castVotes(VxPremiaStorage.Vote[] memory votes) external;
 }

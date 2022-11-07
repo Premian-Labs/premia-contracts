@@ -5,14 +5,14 @@ pragma solidity ^0.8.0;
 
 import {PremiaStaking} from "./PremiaStaking.sol";
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
-import {VePremiaStorage} from "./VePremiaStorage.sol";
-import {IVePremia} from "./IVePremia.sol";
+import {VxPremiaStorage} from "./VxPremiaStorage.sol";
+import {IVxPremia} from "./IVxPremia.sol";
 
 /**
  * @author Premia
  * @title A contract allowing you to use your locked Premia as voting power for mining weights
  */
-contract VePremia is IVePremia, PremiaStaking {
+contract VxPremia is IVxPremia, PremiaStaking {
     constructor(
         address lzEndpoint,
         address premia,
@@ -27,7 +27,7 @@ contract VePremia is IVePremia, PremiaStaking {
         );
 
         _subtractExtraUserVotes(
-            VePremiaStorage.layout(),
+            VxPremiaStorage.layout(),
             user,
             votingPowerUnstaked
         );
@@ -37,7 +37,7 @@ contract VePremia is IVePremia, PremiaStaking {
      * @notice subtract user votes, starting from the end of the list, if not enough voting power is left after amountUnstaked is unstaked
      */
     function _subtractExtraUserVotes(
-        VePremiaStorage.Layout storage l,
+        VxPremiaStorage.Layout storage l,
         address user,
         uint256 amountUnstaked
     ) internal {
@@ -61,16 +61,16 @@ contract VePremia is IVePremia, PremiaStaking {
      * @notice subtract user votes, starting from the end of the list
      */
     function _subtractUserVotes(
-        VePremiaStorage.Layout storage l,
+        VxPremiaStorage.Layout storage l,
         address user,
         uint256 amount
     ) internal {
         uint256 toSubtract = amount;
-        VePremiaStorage.Vote[] storage userVotes = l.userVotes[user];
+        VxPremiaStorage.Vote[] storage userVotes = l.userVotes[user];
 
         unchecked {
             for (uint256 i = userVotes.length; i > 0; ) {
-                VePremiaStorage.Vote storage vote = userVotes[--i];
+                VxPremiaStorage.Vote storage vote = userVotes[--i];
 
                 uint256 votesRemoved;
                 if (toSubtract <= vote.amount) {
@@ -95,7 +95,7 @@ contract VePremia is IVePremia, PremiaStaking {
         view
         returns (uint256 votingPowerUsed)
     {
-        VePremiaStorage.Vote[] memory userVotes = VePremiaStorage
+        VxPremiaStorage.Vote[] memory userVotes = VxPremiaStorage
             .layout()
             .userVotes[user];
 
@@ -107,31 +107,31 @@ contract VePremia is IVePremia, PremiaStaking {
     }
 
     /**
-     * @inheritdoc IVePremia
+     * @inheritdoc IVxPremia
      */
     function getPoolVotes(
-        VePremiaStorage.VoteVersion version,
+        VxPremiaStorage.VoteVersion version,
         bytes memory target
     ) external view returns (uint256) {
-        return VePremiaStorage.layout().votes[version][target];
+        return VxPremiaStorage.layout().votes[version][target];
     }
 
     /**
-     * @inheritdoc IVePremia
+     * @inheritdoc IVxPremia
      */
     function getUserVotes(address user)
         external
         view
-        returns (VePremiaStorage.Vote[] memory)
+        returns (VxPremiaStorage.Vote[] memory)
     {
-        return VePremiaStorage.layout().userVotes[user];
+        return VxPremiaStorage.layout().userVotes[user];
     }
 
     /**
-     * @inheritdoc IVePremia
+     * @inheritdoc IVxPremia
      */
-    function castVotes(VePremiaStorage.Vote[] memory votes) external {
-        VePremiaStorage.Layout storage l = VePremiaStorage.layout();
+    function castVotes(VxPremiaStorage.Vote[] memory votes) external {
+        VxPremiaStorage.Layout storage l = VxPremiaStorage.layout();
 
         uint256 balance = _balanceOf(msg.sender);
         uint256 userVotingPower = _calculateUserPower(
@@ -139,11 +139,11 @@ contract VePremia is IVePremia, PremiaStaking {
             PremiaStakingStorage.layout().userInfo[msg.sender].stakePeriod
         );
 
-        VePremiaStorage.Vote[] storage userVotes = l.userVotes[msg.sender];
+        VxPremiaStorage.Vote[] storage userVotes = l.userVotes[msg.sender];
 
         // Remove previous votes
         for (uint256 i = userVotes.length; i > 0; ) {
-            VePremiaStorage.Vote memory vote = userVotes[--i];
+            VxPremiaStorage.Vote memory vote = userVotes[--i];
 
             l.votes[vote.version][vote.target] -= vote.amount;
             emit RemoveVote(msg.sender, vote.version, vote.target, vote.amount);
@@ -154,11 +154,11 @@ contract VePremia is IVePremia, PremiaStaking {
         // Cast new votes
         uint256 votingPowerUsed = 0;
         for (uint256 i = 0; i < votes.length; i++) {
-            VePremiaStorage.Vote memory vote = votes[i];
+            VxPremiaStorage.Vote memory vote = votes[i];
 
             votingPowerUsed += votes[i].amount;
             if (votingPowerUsed > userVotingPower)
-                revert VePremia__NotEnoughVotingPower();
+                revert VxPremia__NotEnoughVotingPower();
 
             userVotes.push(votes[i]);
             l.votes[vote.version][vote.target] += vote.amount;

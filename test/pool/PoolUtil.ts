@@ -22,8 +22,8 @@ import {
   PremiaOptionNFTDisplay__factory,
   ProxyManager__factory,
   ProxyUpgradeableOwnable__factory,
-  VePremia__factory,
-  VePremiaProxy__factory,
+  VxPremia__factory,
+  VxPremiaProxy__factory,
   VolatilitySurfaceOracle,
   VolatilitySurfaceOracle__factory,
   WETH9,
@@ -210,7 +210,7 @@ export function getMaxCost(
   }
 }
 
-export async function deployVePremiaMocked(
+export async function deployVxPremiaMocked(
   owner: SignerWithAddress,
   exchangeHelper?: string,
 ) {
@@ -218,20 +218,20 @@ export async function deployVePremiaMocked(
   const premia = await erc20Factory.deploy('PREMIA', 18);
   const rewardToken = await erc20Factory.deploy('USDC', 6);
 
-  const vePremiaImpl = await new VePremia__factory(owner).deploy(
+  const vxPremiaImpl = await new VxPremia__factory(owner).deploy(
     ethers.constants.AddressZero,
     premia.address,
     rewardToken.address,
     exchangeHelper ?? ethers.constants.AddressZero,
   );
 
-  const vePremiaProxy = await new VePremiaProxy__factory(owner).deploy(
-    vePremiaImpl.address,
+  const vxPremiaProxy = await new VxPremiaProxy__factory(owner).deploy(
+    vxPremiaImpl.address,
   );
 
-  const vePremia = VePremia__factory.connect(vePremiaProxy.address, owner);
+  const vxPremia = VxPremia__factory.connect(vxPremiaProxy.address, owner);
 
-  return { vePremia, premia, rewardToken };
+  return { vxPremia, premia, rewardToken };
 }
 
 export class PoolUtil {
@@ -266,7 +266,7 @@ export class PoolUtil {
     premia: string,
     priceUnderlying: number,
     feeReceiver: string,
-    vePremia: string,
+    vxPremia: string,
     exchangeHelper: string,
     wethAddress?: string,
   ) {
@@ -328,7 +328,7 @@ export class PoolUtil {
     const premiaMiningImpl = await new PremiaMining__factory(deployer).deploy(
       premiaDiamond.address,
       premia,
-      vePremia,
+      vxPremia,
     );
 
     const premiaMiningProxy = await new PremiaMiningProxy__factory(
@@ -373,7 +373,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver,
-      vePremia,
+      vxPremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -399,7 +399,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver,
-      vePremia,
+      vxPremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -420,7 +420,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver,
-      vePremia,
+      vxPremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -444,7 +444,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver,
-      vePremia,
+      vxPremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -469,7 +469,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver,
-      vePremia,
+      vxPremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -493,7 +493,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver,
-      vePremia,
+      vxPremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -516,7 +516,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver,
-      vePremia,
+      vxPremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );
@@ -540,7 +540,7 @@ export class PoolUtil {
       weth.address,
       premiaMining.address,
       feeReceiver,
-      vePremia,
+      vxPremia,
       fixedFromFloat(FEE_PREMIUM),
       exchangeHelper,
     );

@@ -2,8 +2,8 @@ import { ethers } from 'hardhat';
 import {
   ERC20Mock__factory,
   ExchangeHelper__factory,
-  VePremia__factory,
-  VePremiaProxy__factory,
+  VxPremia__factory,
+  VxPremiaProxy__factory,
 } from '../../../typechain';
 import LZ_ENDPOINTS from '../../../constants/layerzeroEndpoints.json';
 
@@ -40,22 +40,22 @@ async function main() {
 
   console.log('exchange helper : ', exchangeHelper.address);
 
-  const vePremiaImpl = await new VePremia__factory(deployer).deploy(
+  const vxPremiaImpl = await new VxPremia__factory(deployer).deploy(
     lzEndpoint,
     premia.address,
     usdc.address,
     exchangeHelper.address,
   );
 
-  console.log('vePremia impl : ', vePremiaImpl.address);
-  await vePremiaImpl.deployed();
+  console.log('vxPremia impl : ', vxPremiaImpl.address);
+  await vxPremiaImpl.deployed();
 
-  const vePremiaProxy = await new VePremiaProxy__factory(deployer).deploy(
-    vePremiaImpl.address,
+  const vxPremiaProxy = await new VxPremiaProxy__factory(deployer).deploy(
+    vxPremiaImpl.address,
   );
 
-  console.log('vePremia : ', vePremiaProxy.address);
-  await vePremiaProxy.deployed();
+  console.log('vxPremia : ', vxPremiaProxy.address);
+  await vxPremiaProxy.deployed();
 }
 
 main()

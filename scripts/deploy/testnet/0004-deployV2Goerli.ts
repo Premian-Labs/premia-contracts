@@ -66,7 +66,7 @@ async function main() {
     premia.address,
     fixedFromFloat(0.03),
     contracts.feeConverter.address,
-    contracts.vePremia.address,
+    contracts.vxPremia.address,
   );
 
   await deployPool(proxyManager, dai, eth, 100);

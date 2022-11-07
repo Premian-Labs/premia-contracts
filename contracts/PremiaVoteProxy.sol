@@ -8,10 +8,10 @@ import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
 import {IPremiaStaking} from "./staking/IPremiaStaking.sol";
 
 contract PremiaVoteProxy {
-    address internal immutable VE_PREMIA;
+    address internal immutable VX_PREMIA;
 
-    constructor(address vePremia) {
-        VE_PREMIA = vePremia;
+    constructor(address vxPremia) {
+        VX_PREMIA = vxPremia;
     }
 
     function decimals() external pure returns (uint8) {
@@ -27,10 +27,10 @@ contract PremiaVoteProxy {
     }
 
     function totalSupply() external view returns (uint256) {
-        return IPremiaStaking(VE_PREMIA).getTotalPower();
+        return IPremiaStaking(VX_PREMIA).getTotalPower();
     }
 
     function balanceOf(address voter) external view returns (uint256) {
-        return IPremiaStaking(VE_PREMIA).getUserPower(voter);
+        return IPremiaStaking(VX_PREMIA).getUserPower(voter);
     }
 }

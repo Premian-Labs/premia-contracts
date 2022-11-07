@@ -7,15 +7,15 @@ import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/metadata/E
 
 import {ProxyUpgradeableOwnable} from "../ProxyUpgradeableOwnable.sol";
 
-contract VePremiaProxy is ProxyUpgradeableOwnable {
+contract VxPremiaProxy is ProxyUpgradeableOwnable {
     using ERC20MetadataStorage for ERC20MetadataStorage.Layout;
 
     constructor(address implementation)
         ProxyUpgradeableOwnable(implementation)
     {
         ERC20MetadataStorage.Layout storage l = ERC20MetadataStorage.layout();
-        l.setName("vePREMIA");
-        l.setSymbol("vePREMIA");
+        l.setName("vxPREMIA");
+        l.setSymbol("vxPREMIA");
         l.setDecimals(18);
     }
 }

@@ -167,7 +167,7 @@ interface IPremiaStaking is IERC2612, IOFT {
 
     /**
      * @notice unstake tokens before end of the lock period, for a fee
-     * @param amount the amount of vePremia to unstake
+     * @param amount the amount of vxPremia to unstake
      */
     function earlyUnstake(uint256 amount) external;
 
