@@ -115,7 +115,7 @@ contract PremiaStakingUpgrade is SolidStateERC20, OwnableInternal {
             uint256[4] memory userBalances = [
                 uint256(50000e18), // 50000
                 uint256(1e18), // 1
-                uint256(78e17), // 7.8
+                uint256(9e18), // 10
                 uint256(3438629288748208579477) // 3438.629288748208579477
             ];
 
@@ -132,28 +132,7 @@ contract PremiaStakingUpgrade is SolidStateERC20, OwnableInternal {
                 );
             }
 
-            //
-
-            // Credit whats left (Fees ?) to the bridge wallet
-            uint256 total = ((50000e18 +
-                1e18 +
-                78e17 +
-                3438629288748208579477) * oldL.xPremiaToPremiaRatio) / 1e18;
-
-            uint256 remaining = ((oldBalance * oldL.xPremiaToPremiaRatio) /
-                1e18) - total;
-            _mint(
-                address(0xa3A7B6F88361F48403514059F1F16C8E78d60EeC),
-                remaining
-            );
-            emit Stake(
-                address(0xa3A7B6F88361F48403514059F1F16C8E78d60EeC),
-                remaining,
-                0,
-                block.timestamp
-            );
-
-            emit UserUpgraded(userAddress, oldStake, oldBalance, remaining);
+            emit UserUpgraded(userAddress, oldStake, oldBalance, 0);
         } else {
             _burn(address(this), oldStake);
             _mint(userAddress, newBalance - oldBalance);
