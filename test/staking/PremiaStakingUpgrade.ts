@@ -130,10 +130,21 @@ describe('PremiaStakingUpgrade', () => {
     for (let i = 0; i <= Math.floor(holders.length / 100); i++) {
       console.log(i * 100, (i + 1) * 100);
       const tx = await upgradeContract.upgrade(
-        holders.slice(i * 100, (i + 1) * 100),
+        holders
+          .slice(i * 100, (i + 1) * 100)
+          .filter(
+            (el) =>
+              el.toLowerCase() !=
+              '0xa3A7B6F88361F48403514059F1F16C8E78d60EeC'.toLowerCase(),
+          ),
       );
       console.log('GAS', (await tx.wait()).gasUsed.toString());
     }
+
+    // We process Arbitrum bridge last
+    await upgradeContract.upgrade([
+      '0xa3A7B6F88361F48403514059F1F16C8E78d60EeC',
+    ]);
 
     const totalSupplyAfter = await xPremia.totalSupply();
     const premiaStaked = await premia.balanceOf(xPremia.address);
