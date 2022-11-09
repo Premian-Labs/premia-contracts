@@ -62,6 +62,16 @@ contract PremiaStakingUpgrade is SolidStateERC20, OwnableInternal {
 
     function _upgradeUser(address userAddress) internal {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+
+        // Process the pending withdrawal if there is one
+        if (l.withdrawals[userAddress].startDate > 0) {
+            uint256 amount = l.withdrawals[userAddress].amount;
+            l.pendingWithdrawal -= amount;
+            delete l.withdrawals[userAddress];
+
+            IERC20(PREMIA).transfer(userAddress, amount);
+        }
+
         PremiaStakingStorage.UserInfo storage user = l.userInfo[userAddress];
 
         uint256 oldBalance = _balanceOf(userAddress);
