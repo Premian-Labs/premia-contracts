@@ -124,6 +124,7 @@ contract PremiaStaking is IPremiaStaking, OFT {
         bytes memory adapterParams
     ) internal virtual override {
         _updateRewards();
+        _beforeUnstake(from, amount);
 
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage u = l.userInfo[from];
