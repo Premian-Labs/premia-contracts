@@ -115,7 +115,7 @@ contract PremiaStakingUpgrade is SolidStateERC20, OwnableInternal {
             uint256[4] memory userBalances = [
                 uint256(50000e18), // 50000
                 uint256(1e18), // 1
-                uint256(9e18), // 10
+                uint256(9e18), // 9
                 uint256(3438629288748208579477) // 3438.629288748208579477
             ];
 
