@@ -62,6 +62,16 @@ contract PremiaStakingUpgrade is SolidStateERC20, OwnableInternal {
 
     function _upgradeUser(address userAddress) internal {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+
+        // Process the pending withdrawal if there is one
+        if (l.withdrawals[userAddress].startDate > 0) {
+            uint256 amount = l.withdrawals[userAddress].amount;
+            l.pendingWithdrawal -= amount;
+            delete l.withdrawals[userAddress];
+
+            IERC20(PREMIA).transfer(userAddress, amount);
+        }
+
         PremiaStakingStorage.UserInfo storage user = l.userInfo[userAddress];
 
         uint256 oldBalance = _balanceOf(userAddress);
@@ -83,13 +93,55 @@ contract PremiaStakingUpgrade is SolidStateERC20, OwnableInternal {
 
         l.totalPower += _calculateStakeAmountWithBonus(newBalance, 0);
 
-        _burn(address(this), oldStake);
-        _mint(userAddress, newBalance - oldBalance);
+        // Exception for xPremia held in the arbitrum bridge wallet
+        // We burn balance from Arbitrum bridge, and credit on mainnet the amounts to users based on their balance on Arbitrum
+        // -----------------------------------------
+        // !!!  THIS NEEDS TO BE PROCESSED LAST !!!
+        // -----------------------------------------
+        if (
+            userAddress == address(0xa3A7B6F88361F48403514059F1F16C8E78d60EeC)
+        ) {
+            _burn(userAddress, oldBalance);
 
-        // We emit this event to initialize data correctly for the subgraph
-        emit Stake(userAddress, newBalance, 0, block.timestamp);
+            //
 
-        emit UserUpgraded(userAddress, oldStake, oldBalance, newBalance);
+            address[4] memory users = [
+                address(0xB351e199b63088D714dfC2E37A68c8620E33567e),
+                address(0x88B38e2d7fecE2bc584eA1e75bF06448825C5182),
+                address(0x5ca1ea5549E4e7CB64Ae35225E11865d2572b3F9),
+                address(0xC4D7a84A49d9Deb0118363D4D02Df784d896141D)
+            ];
+
+            uint256[4] memory userBalances = [
+                uint256(50000e18), // 50000
+                uint256(1e18), // 1
+                uint256(9e18), // 9
+                uint256(3438629288748208579477) // 3438.629288748208579477
+            ];
+
+            for (uint256 i = 0; i < users.length; i++) {
+                _mint(
+                    users[i],
+                    (userBalances[i] * oldL.xPremiaToPremiaRatio) / 1e18
+                );
+                emit Stake(
+                    users[i],
+                    (userBalances[i] * oldL.xPremiaToPremiaRatio) / 1e18,
+                    0,
+                    block.timestamp
+                );
+            }
+
+            emit UserUpgraded(userAddress, oldStake, oldBalance, 0);
+        } else {
+            _burn(address(this), oldStake);
+            _mint(userAddress, newBalance - oldBalance);
+
+            // We emit this event to initialize data correctly for the subgraph
+            emit Stake(userAddress, newBalance, 0, block.timestamp);
+
+            emit UserUpgraded(userAddress, oldStake, oldBalance, newBalance);
+        }
     }
 
     function _getStakePeriodMultiplierBPS(uint256 period)

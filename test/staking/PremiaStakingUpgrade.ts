@@ -19,7 +19,7 @@ let treasury: SignerWithAddress;
 
 const { API_KEY_ALCHEMY } = process.env;
 const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`;
-const blockNumber = 15251100;
+const blockNumber = 15932760;
 
 let premia: PremiaErc20;
 let xPremia: SolidStateERC20;
@@ -78,13 +78,6 @@ describe('PremiaStakingUpgrade', () => {
       }
     }
 
-    const r = await xPremia.queryFilter({
-      address: '0xf1bb87563a122211d40d393ebf1c633c330377f9',
-      topics: [
-        '0xe1fffcc4923d04b559f4d29a8bfc6cda04eb5b0d3c460751c2402c5c5cc9109c',
-      ],
-    });
-
     for (const e of await xPremia.queryFilter({
       address: '0xf1bb87563a122211d40d393ebf1c633c330377f9',
       topics: [
@@ -129,18 +122,6 @@ describe('PremiaStakingUpgrade', () => {
       treasury,
     ).setImplementation(upgrade.address);
 
-    // const totalSupplyBefore = await xPremia.totalSupply();
-
-    // console.log(
-    //   'AA',
-    //   await xPremia.balanceOf('0xa3A7B6F88361F48403514059F1F16C8E78d60EeC'),
-    // );
-
-    // console.log(
-    //   'locked',
-    //   formatEther(await xPremia.balanceOf(xPremia.address)),
-    // );
-
     const upgradeContract = PremiaStakingUpgrade__factory.connect(
       xPremia.address,
       treasury,
@@ -149,10 +130,21 @@ describe('PremiaStakingUpgrade', () => {
     for (let i = 0; i <= Math.floor(holders.length / 100); i++) {
       console.log(i * 100, (i + 1) * 100);
       const tx = await upgradeContract.upgrade(
-        holders.slice(i * 100, (i + 1) * 100),
+        holders
+          .slice(i * 100, (i + 1) * 100)
+          .filter(
+            (el) =>
+              el.toLowerCase() !=
+              '0xa3A7B6F88361F48403514059F1F16C8E78d60EeC'.toLowerCase(),
+          ),
       );
       console.log('GAS', (await tx.wait()).gasUsed.toString());
     }
+
+    // We process Arbitrum bridge last
+    await upgradeContract.upgrade([
+      '0xa3A7B6F88361F48403514059F1F16C8E78d60EeC',
+    ]);
 
     const totalSupplyAfter = await xPremia.totalSupply();
     const premiaStaked = await premia.balanceOf(xPremia.address);
@@ -173,17 +165,7 @@ describe('PremiaStakingUpgrade', () => {
 
     vxPremia = VxPremia__factory.connect(xPremia.address, treasury);
 
-    const pendingWithdrawals = await vxPremia.getPendingWithdrawals();
-
-    // console.log(formatEther(totalSupplyAfter));
-    // console.log(formatEther(premiaStaked.sub(pendingWithdrawals)));
-    // console.log(
-    //   'tot',
-    //   formatEther(totalSupplyAfter.sub(premiaStaked.sub(pendingWithdrawals))),
-    // );
-    expect(
-      bnToNumber(totalSupplyAfter.sub(premiaStaked.sub(pendingWithdrawals))),
-    ).to.be.almost(0);
+    expect(bnToNumber(totalSupplyAfter.sub(premiaStaked))).to.be.almost(0);
 
     const totalPower = await vxPremia.getTotalPower();
     expect(bnToNumber(totalPower.mul(4))).to.almost(
@@ -191,6 +173,7 @@ describe('PremiaStakingUpgrade', () => {
     );
 
     expect(await vxPremia.balanceOf(vxPremia.address)).to.eq(0);
+    expect(await vxPremia.getPendingWithdrawals()).to.eq(0);
 
     // console.log(holders.length);
   });
