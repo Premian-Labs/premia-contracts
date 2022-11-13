@@ -29,9 +29,18 @@ async function main() {
       chainId: CHAIN_ID.ethereum,
       address: '0xF1bB87563A122211d40d393eBf1c633c330377F9',
     },
-    [Chain.ARBITRUM]: { chainId: CHAIN_ID.arbitrum, address: '' },
-    [Chain.OPTIMISM]: { chainId: CHAIN_ID.optimism, address: '' },
-    [Chain.FANTOM]: { chainId: CHAIN_ID.fantom, address: '' },
+    [Chain.ARBITRUM]: {
+      chainId: CHAIN_ID.arbitrum,
+      address: '0x3992690E5405b69d50812470B0250c878bFA9322',
+    },
+    [Chain.OPTIMISM]: {
+      chainId: CHAIN_ID.optimism,
+      address: '0x17BAe0E202f6A22f2631B037C0660A88990d6023',
+    },
+    [Chain.FANTOM]: {
+      chainId: CHAIN_ID.fantom,
+      address: '0x9BCb8cE123E4bFA53C2319b12DbFB6F7B7675a30',
+    },
   };
 
   if (chainId === 1) {
