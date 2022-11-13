@@ -9,8 +9,7 @@ async function main() {
 
   let vxPremia: VxPremia;
   let remoteAddress: string;
-  let localAddress: string;
-  let srcChainId: number;
+  let remoteChainId: number;
 
   const vxPremiaAddress = {
     goerli: '0x67Dbd61479d4D79739BC0CEC27944A010c0C5A62',
@@ -20,21 +19,19 @@ async function main() {
   if (chainId === 5) {
     vxPremia = VxPremia__factory.connect(vxPremiaAddress.goerli, deployer);
     remoteAddress = vxPremiaAddress.goerliArbitrum;
-    localAddress = vxPremiaAddress.goerli;
-    srcChainId = CHAIN_ID['arbitrum-goerli'];
+    remoteChainId = CHAIN_ID['arbitrum-goerli'];
   } else if (chainId === 421613) {
     vxPremia = VxPremia__factory.connect(
       vxPremiaAddress.goerliArbitrum,
       deployer,
     );
     remoteAddress = vxPremiaAddress.goerli;
-    localAddress = vxPremiaAddress.goerliArbitrum;
-    srcChainId = CHAIN_ID.goerli;
+    remoteChainId = CHAIN_ID.goerli;
   } else {
     throw new Error('ChainId not implemented');
   }
 
-  await vxPremia.setTrustedRemoteAddress(srcChainId, remoteAddress);
+  await vxPremia.setTrustedRemoteAddress(remoteChainId, remoteAddress);
 }
 
 main()
