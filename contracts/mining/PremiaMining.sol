@@ -21,7 +21,6 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     using PremiaMiningStorage for PremiaMiningStorage.Layout;
     using SafeERC20 for IERC20;
 
-    address internal immutable DIAMOND;
     address internal immutable PREMIA;
     address internal immutable VX_PREMIA;
 
@@ -29,12 +28,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     uint256 private constant INVERSE_BASIS_POINT = 1e4;
     uint256 private constant MIN_POINT_MULTIPLIER = 2500; // 25% -> If utilization rate is less than this value, we use this value instead
 
-    constructor(
-        address _diamond,
-        address _premia,
-        address _vxPremia
-    ) {
-        DIAMOND = _diamond;
+    constructor(address _premia, address _vxPremia) {
         PREMIA = _premia;
         VX_PREMIA = _vxPremia;
     }
@@ -76,11 +70,10 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
      * @param isCallPool whether we want infos of the CALL pool or the PUT pool
      * @return Pool info
      */
-    function getPoolInfo(address pool, bool isCallPool)
-        external
-        view
-        returns (PremiaMiningStorage.PoolInfo memory)
-    {
+    function getPoolInfo(
+        address pool,
+        bool isCallPool
+    ) external view returns (PremiaMiningStorage.PoolInfo memory) {
         return PremiaMiningStorage.layout().poolInfo[pool][isCallPool];
     }
 
