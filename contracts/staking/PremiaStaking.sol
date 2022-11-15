@@ -429,13 +429,15 @@ contract PremiaStaking is IPremiaStaking, OFT {
         if (stakePeriod > MAX_PERIOD)
             revert PremiaStaking__ExcessiveStakePeriod();
 
-        _creditTo(
-            toAddress,
-            amount,
-            stakePeriod,
-            uint64(block.timestamp) + stakePeriod,
-            false
-        );
+        unchecked {
+            _creditTo(
+                toAddress,
+                amount,
+                stakePeriod,
+                uint64(block.timestamp) + stakePeriod,
+                false
+            );
+        }
     }
 
     /**
