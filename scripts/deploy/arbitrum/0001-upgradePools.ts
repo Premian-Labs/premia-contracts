@@ -34,7 +34,7 @@ async function main() {
   const weth = '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1';
   const premiaMining = '0xbC3c01D954282eEd8433da4359C1ac1443a7d09A';
   const feeReceiver = '0x7bf2392bd078C8353069CffeAcc67c094079be23';
-  const feeDiscountAddress = '0x7Fa86681A7c19416950bAE6c04A5116f3b07116D';
+  const feeDiscountAddress = '0x3992690E5405b69d50812470B0250c878bFA9322';
   const fee64x64 = fixedFromFloat(0.03);
   const optionMath = '0xC7A7275BC25a7Bf07C6D0c2f8784c5450Cb9B8f5';
   const nftDisplay = '0x9d22c080fde848f47b0c7654483715f27e44e433';
