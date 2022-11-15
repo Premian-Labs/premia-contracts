@@ -145,10 +145,10 @@ interface IPremiaStaking is IERC2612, IOFT {
     function stake(uint256 amount, uint64 period) external;
 
     /**
-     * @notice Increase vxPremia lock
+     * @notice update vxPremia lock
      * @param period The new lockup period (in seconds)
      */
-    function increaseLock(uint64 period) external;
+    function updateLock(uint64 period) external;
 
     /**
      * @notice harvest rewards, convert to PREMIA using exchange helper, and stake
