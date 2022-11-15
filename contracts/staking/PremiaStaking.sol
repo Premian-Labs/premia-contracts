@@ -358,15 +358,15 @@ contract PremiaStaking is IPremiaStaking, OFT {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
 
-        if (period <= u.stakePeriod) revert PremiaStaking__PeriodTooShort();
+        uint64 oldPeriod = u.stakePeriod;
+
+        if (period <= oldPeriod) revert PremiaStaking__PeriodTooShort();
 
         UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
             l,
             u,
             msg.sender
         );
-
-        uint64 oldPeriod = u.stakePeriod;
 
         unchecked {
             uint64 lockToAdd = period - oldPeriod;
