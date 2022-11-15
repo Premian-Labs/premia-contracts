@@ -4,6 +4,7 @@
 pragma solidity ^0.8.0;
 
 import {AddressUtils} from "@solidstate/contracts/utils/AddressUtils.sol";
+import {Math} from "@solidstate/contracts/utils/Math.sol";
 import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
 import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
@@ -350,6 +351,45 @@ contract PremiaStaking is IPremiaStaking, OFT {
     /**
      * @inheritdoc IPremiaStaking
      */
+    function updateLock(uint64 period) external {
+        if (period > MAX_PERIOD) revert PremiaStaking__ExcessiveStakePeriod();
+
+        _updateRewards();
+
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
+
+        uint64 oldPeriod = u.stakePeriod;
+
+        if (period <= oldPeriod) revert PremiaStaking__PeriodTooShort();
+
+        UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
+            l,
+            u,
+            msg.sender
+        );
+
+        unchecked {
+            uint64 lockToAdd = period - oldPeriod;
+            u.lockedUntil =
+                uint64(Math.max(u.lockedUntil, block.timestamp)) +
+                lockToAdd;
+            u.stakePeriod = period;
+
+            args.newPower = _calculateUserPower(
+                args.balance + args.unstakeReward,
+                period
+            );
+        }
+
+        _updateUser(l, u, args);
+
+        emit UpdateLock(msg.sender, oldPeriod, period);
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
     function harvestAndStake(
         IPremiaStaking.SwapArgs memory s,
         uint64 stakePeriod
@@ -393,13 +433,15 @@ contract PremiaStaking is IPremiaStaking, OFT {
         if (stakePeriod > MAX_PERIOD)
             revert PremiaStaking__ExcessiveStakePeriod();
 
-        _creditTo(
-            toAddress,
-            amount,
-            stakePeriod,
-            uint64(block.timestamp) + stakePeriod,
-            false
-        );
+        unchecked {
+            _creditTo(
+                toAddress,
+                amount,
+                stakePeriod,
+                uint64(block.timestamp) + stakePeriod,
+                false
+            );
+        }
     }
 
     /**
@@ -487,10 +529,12 @@ contract PremiaStaking is IPremiaStaking, OFT {
     function earlyUnstake(uint256 amount) external {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
-        uint256 feePercentageBPS = _getEarlyUnstakeFeeBPS(msg.sender);
-        uint256 fee = (amount * feePercentageBPS) / 1e4;
-
-        _startWithdraw(l, l.userInfo[msg.sender], amount, fee);
+        _startWithdraw(
+            l,
+            l.userInfo[msg.sender],
+            amount,
+            (amount * _getEarlyUnstakeFeeBPS(msg.sender)) / 1e4
+        );
     }
 
     /**
@@ -591,8 +635,11 @@ contract PremiaStaking is IPremiaStaking, OFT {
         uint256 startDate = l.withdrawals[msg.sender].startDate;
 
         if (startDate == 0) revert PremiaStaking__NoPendingWithdrawal();
-        if (block.timestamp <= startDate + WITHDRAWAL_DELAY)
-            revert PremiaStaking__WithdrawalStillPending();
+
+        unchecked {
+            if (block.timestamp <= startDate + WITHDRAWAL_DELAY)
+                revert PremiaStaking__WithdrawalStillPending();
+        }
 
         uint256 amount = l.withdrawals[msg.sender].amount;
         l.pendingWithdrawal -= amount;
@@ -635,49 +682,54 @@ contract PremiaStaking is IPremiaStaking, OFT {
         // If user is a contract, we use a different formula based on % of total power owned by the contract
         if (user.isContract()) {
             // Require 50% of overall staked power for contract to have max discount
-            if (userPower >= l.totalPower / 2) {
+            if (userPower >= l.totalPower >> 1) {
                 return MAX_CONTRACT_DISCOUNT;
             } else {
-                return (userPower * MAX_CONTRACT_DISCOUNT) / (l.totalPower / 2);
+                return
+                    (userPower * MAX_CONTRACT_DISCOUNT) / (l.totalPower >> 1);
             }
         }
 
         IPremiaStaking.StakeLevel[] memory stakeLevels = _getStakeLevels();
 
-        for (uint256 i = 0; i < stakeLevels.length; i++) {
-            IPremiaStaking.StakeLevel memory level = stakeLevels[i];
+        uint256 length = stakeLevels.length;
 
-            if (userPower < level.amount) {
-                uint256 amountPrevLevel;
-                uint256 discountPrevLevelBPS;
+        unchecked {
+            for (uint256 i = 0; i < length; i++) {
+                IPremiaStaking.StakeLevel memory level = stakeLevels[i];
 
-                // If stake is lower, user is in this level, and we need to LERP with prev level to get discount value
-                if (i > 0) {
-                    amountPrevLevel = stakeLevels[i - 1].amount;
-                    discountPrevLevelBPS = stakeLevels[i - 1].discountBPS;
-                } else {
-                    // If this is the first level, prev level is 0 / 0
-                    amountPrevLevel = 0;
-                    discountPrevLevelBPS = 0;
+                if (userPower < level.amount) {
+                    uint256 amountPrevLevel;
+                    uint256 discountPrevLevelBPS;
+
+                    // If stake is lower, user is in this level, and we need to LERP with prev level to get discount value
+                    if (i > 0) {
+                        amountPrevLevel = stakeLevels[i - 1].amount;
+                        discountPrevLevelBPS = stakeLevels[i - 1].discountBPS;
+                    } else {
+                        // If this is the first level, prev level is 0 / 0
+                        amountPrevLevel = 0;
+                        discountPrevLevelBPS = 0;
+                    }
+
+                    uint256 remappedDiscountBPS = level.discountBPS -
+                        discountPrevLevelBPS;
+
+                    uint256 remappedAmount = level.amount - amountPrevLevel;
+                    uint256 remappedPower = userPower - amountPrevLevel;
+                    uint256 levelProgressBPS = (remappedPower *
+                        INVERSE_BASIS_POINT) / remappedAmount;
+
+                    return
+                        discountPrevLevelBPS +
+                        ((remappedDiscountBPS * levelProgressBPS) /
+                            INVERSE_BASIS_POINT);
                 }
-
-                uint256 remappedDiscountBPS = level.discountBPS -
-                    discountPrevLevelBPS;
-
-                uint256 remappedAmount = level.amount - amountPrevLevel;
-                uint256 remappedPower = userPower - amountPrevLevel;
-                uint256 levelProgressBPS = (remappedPower *
-                    INVERSE_BASIS_POINT) / remappedAmount;
-
-                return
-                    discountPrevLevelBPS +
-                    ((remappedDiscountBPS * levelProgressBPS) /
-                        INVERSE_BASIS_POINT);
             }
-        }
 
-        // If no match found it means user is >= max possible stake, and therefore has max discount possible
-        return stakeLevels[stakeLevels.length - 1].discountBPS;
+            // If no match found it means user is >= max possible stake, and therefore has max discount possible
+            return stakeLevels[length - 1].discountBPS;
+        }
     }
 
     /**

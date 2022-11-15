@@ -11,12 +11,13 @@ import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 interface IPremiaStaking is IERC2612, IOFT {
     error PremiaStaking__CantTransfer();
     error PremiaStaking__ExcessiveStakePeriod();
+    error PremiaStaking__InsufficientSwapOutput();
     error PremiaStaking__NoPendingWithdrawal();
     error PremiaStaking__NotEnoughLiquidity();
+    error PremiaStaking__PeriodTooShort();
     error PremiaStaking__StakeLocked();
     error PremiaStaking__StakeNotLocked();
     error PremiaStaking__WithdrawalStillPending();
-    error PremiaStaking__InsufficientSwapOutput();
 
     event Stake(
         address indexed user,
@@ -62,6 +63,12 @@ interface IPremiaStaking is IERC2612, IOFT {
         address indexed user,
         uint64 stakePeriod,
         uint64 lockedUntil
+    );
+
+    event UpdateLock(
+        address indexed user,
+        uint64 oldStakePeriod,
+        uint64 newStakePeriod
     );
 
     /**
@@ -136,6 +143,12 @@ interface IPremiaStaking is IERC2612, IOFT {
      * @param period The lockup period (in seconds)
      */
     function stake(uint256 amount, uint64 period) external;
+
+    /**
+     * @notice update vxPremia lock
+     * @param period The new lockup period (in seconds)
+     */
+    function updateLock(uint64 period) external;
 
     /**
      * @notice harvest rewards, convert to PREMIA using exchange helper, and stake

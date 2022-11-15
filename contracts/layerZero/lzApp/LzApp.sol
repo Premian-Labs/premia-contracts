@@ -22,7 +22,7 @@ abstract contract LzApp is
 
     ILayerZeroEndpoint public immutable lzEndpoint;
 
-    event SetPrecrime(address precrime);
+    //    event SetPrecrime(address precrime);
     event SetTrustedRemoteAddress(uint16 _remoteChainId, bytes _remoteAddress);
 
     error LzApp__InvalidEndpointCaller();
@@ -150,10 +150,10 @@ abstract contract LzApp is
         return path.slice(0, path.length - 20); // the last 20 bytes should be address(this)
     }
 
-    function setPrecrime(address _precrime) external onlyOwner {
-        LzAppStorage.layout().precrime = _precrime;
-        emit SetPrecrime(_precrime);
-    }
+    //    function setPrecrime(address _precrime) external onlyOwner {
+    //        LzAppStorage.layout().precrime = _precrime;
+    //        emit SetPrecrime(_precrime);
+    //    }
 
     //--------------------------- VIEW FUNCTION ----------------------------------------
 

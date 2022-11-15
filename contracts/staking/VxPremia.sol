@@ -129,9 +129,8 @@ contract VxPremia is IVxPremia, PremiaStaking {
     function castVotes(VxPremiaStorage.Vote[] memory votes) external {
         VxPremiaStorage.Layout storage l = VxPremiaStorage.layout();
 
-        uint256 balance = _balanceOf(msg.sender);
         uint256 userVotingPower = _calculateUserPower(
-            balance,
+            _balanceOf(msg.sender),
             PremiaStakingStorage.layout().userInfo[msg.sender].stakePeriod
         );
 
