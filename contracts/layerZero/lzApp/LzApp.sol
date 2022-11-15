@@ -124,10 +124,10 @@ abstract contract LzApp is
     /**
      * @inheritdoc ILayerZeroUserApplicationConfig
      */
-    function forceResumeReceive(uint16 srcChainId, bytes calldata srcAddress)
-        external
-        onlyOwner
-    {
+    function forceResumeReceive(
+        uint16 srcChainId,
+        bytes calldata srcAddress
+    ) external onlyOwner {
         lzEndpoint.forceResumeReceive(srcChainId, srcAddress);
     }
 
@@ -142,11 +142,9 @@ abstract contract LzApp is
         emit SetTrustedRemoteAddress(remoteChainId, remoteAddress);
     }
 
-    function getTrustedRemoteAddress(uint16 _remoteChainId)
-        external
-        view
-        returns (bytes memory)
-    {
+    function getTrustedRemoteAddress(
+        uint16 _remoteChainId
+    ) external view returns (bytes memory) {
         bytes memory path = LzAppStorage.layout().trustedRemote[_remoteChainId];
         if (path.length == 0) revert LzApp__NoTrustedPathRecord();
         return path.slice(0, path.length - 20); // the last 20 bytes should be address(this)
@@ -159,19 +157,17 @@ abstract contract LzApp is
 
     //--------------------------- VIEW FUNCTION ----------------------------------------
 
-    function isTrustedRemote(uint16 srcChainId, bytes memory srcAddress)
-        external
-        view
-        returns (bool)
-    {
+    function isTrustedRemote(
+        uint16 srcChainId,
+        bytes memory srcAddress
+    ) external view returns (bool) {
         return _isTrustedRemote(srcChainId, srcAddress);
     }
 
-    function _isTrustedRemote(uint16 srcChainId, bytes memory srcAddress)
-        internal
-        view
-        returns (bool)
-    {
+    function _isTrustedRemote(
+        uint16 srcChainId,
+        bytes memory srcAddress
+    ) internal view returns (bool) {
         bytes memory trustedRemote = LzAppStorage.layout().trustedRemote[
             srcChainId
         ];

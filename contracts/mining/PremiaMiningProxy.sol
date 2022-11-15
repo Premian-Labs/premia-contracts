@@ -7,9 +7,10 @@ import {ProxyUpgradeableOwnable} from "../ProxyUpgradeableOwnable.sol";
 import {PremiaMiningStorage} from "./PremiaMiningStorage.sol";
 
 contract PremiaMiningProxy is ProxyUpgradeableOwnable {
-    constructor(address implementation, uint256 premiaPerYear)
-        ProxyUpgradeableOwnable(implementation)
-    {
+    constructor(
+        address implementation,
+        uint256 premiaPerYear
+    ) ProxyUpgradeableOwnable(implementation) {
         PremiaMiningStorage.layout().premiaPerYear = premiaPerYear;
     }
 }

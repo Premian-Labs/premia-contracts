@@ -98,14 +98,12 @@ interface IPremiaStaking is IERC2612, IOFT {
      * @return startDate start timestamp of withdrawal
      * @return unlockDate timestamp at which withdrawal becomes available
      */
-    function getPendingWithdrawal(address user)
+    function getPendingWithdrawal(
+        address user
+    )
         external
         view
-        returns (
-            uint256 amount,
-            uint256 startDate,
-            uint256 unlockDate
-        );
+        returns (uint256 amount, uint256 startDate, uint256 unlockDate);
 
     /**
      * @notice get the amount of PREMIA available for withdrawal
@@ -160,10 +158,9 @@ interface IPremiaStaking is IERC2612, IOFT {
      * @return reward amount of pending rewards from protocol fees (in REWARD_TOKEN)
      * @return unstakeReward amount of pending rewards from early unstake fees (in PREMIA)
      */
-    function getPendingUserRewards(address user)
-        external
-        view
-        returns (uint256 reward, uint256 unstakeReward);
+    function getPendingUserRewards(
+        address user
+    ) external view returns (uint256 reward, uint256 unstakeReward);
 
     /**
      * @notice unstake tokens before end of the lock period, for a fee
@@ -176,10 +173,9 @@ interface IPremiaStaking is IERC2612, IOFT {
      * @param user address of the user
      * @return feePercentage % fee to pay for early unstake (1e4 = 100%)
      */
-    function getEarlyUnstakeFeeBPS(address user)
-        external
-        view
-        returns (uint256 feePercentage);
+    function getEarlyUnstakeFeeBPS(
+        address user
+    ) external view returns (uint256 feePercentage);
 
     /**
      * @notice Initiate the withdrawal process by burning xPremia, starting the delay period
@@ -230,17 +226,16 @@ interface IPremiaStaking is IERC2612, IOFT {
      * @return The multiplier for this staking period
      *         Ex : 20000 = x2
      */
-    function getStakePeriodMultiplierBPS(uint256 period)
-        external
-        returns (uint256);
+    function getStakePeriodMultiplierBPS(
+        uint256 period
+    ) external returns (uint256);
 
     /**
      * @notice Get staking infos of a user
      * @param user The user address for which to get staking infos
      * @return The staking infos of the user
      */
-    function getUserInfo(address user)
-        external
-        view
-        returns (PremiaStakingStorage.UserInfo memory);
+    function getUserInfo(
+        address user
+    ) external view returns (PremiaStakingStorage.UserInfo memory);
 }

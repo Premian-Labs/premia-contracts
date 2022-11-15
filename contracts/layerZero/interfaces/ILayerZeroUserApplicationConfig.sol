@@ -34,6 +34,8 @@ interface ILayerZeroUserApplicationConfig {
      * @param srcChainId - the chainId of the source chain
      * @param srcAddress - the contract address of the source contract at the source chain
      */
-    function forceResumeReceive(uint16 srcChainId, bytes calldata srcAddress)
-        external;
+    function forceResumeReceive(
+        uint16 srcChainId,
+        bytes calldata srcAddress
+    ) external;
 }

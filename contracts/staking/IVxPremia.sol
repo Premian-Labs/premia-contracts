@@ -37,10 +37,9 @@ interface IVxPremia is IPremiaStaking {
      * @param user user from which to get votes
      * @return votes of user
      */
-    function getUserVotes(address user)
-        external
-        view
-        returns (VxPremiaStorage.Vote[] memory);
+    function getUserVotes(
+        address user
+    ) external view returns (VxPremiaStorage.Vote[] memory);
 
     /**
      * @notice add or remove votes, in the limit of the user voting power

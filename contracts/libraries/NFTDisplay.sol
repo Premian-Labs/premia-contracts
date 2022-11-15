@@ -31,11 +31,9 @@ library NFTDisplay {
         string underlyingSymbol;
     }
 
-    function buildTokenURI(BuildTokenURIParams memory _params)
-        public
-        pure
-        returns (string memory)
-    {
+    function buildTokenURI(
+        BuildTokenURIParams memory _params
+    ) public pure returns (string memory) {
         string memory base64image;
 
         {
@@ -74,11 +72,9 @@ library NFTDisplay {
             );
     }
 
-    function buildSVGImage(BuildTokenURIParams memory _params)
-        public
-        pure
-        returns (string memory)
-    {
+    function buildSVGImage(
+        BuildTokenURIParams memory _params
+    ) public pure returns (string memory) {
         string memory maturityString = maturityToString(_params.maturity);
         string memory strikePriceString = fixedToDecimalString(
             _params.strikePrice
@@ -97,11 +93,9 @@ library NFTDisplay {
             );
     }
 
-    function buildDescription(BuildTokenURIParams memory _params)
-        public
-        pure
-        returns (string memory)
-    {
+    function buildDescription(
+        BuildTokenURIParams memory _params
+    ) public pure returns (string memory) {
         string memory descriptionPartA = buildDescriptionPartA(
             _params.pool,
             _params.base,
@@ -167,11 +161,9 @@ library NFTDisplay {
         return string(abi.encodePacked(bufferA, bufferB));
     }
 
-    function buildName(BuildTokenURIParams memory _params)
-        public
-        pure
-        returns (string memory)
-    {
+    function buildName(
+        BuildTokenURIParams memory _params
+    ) public pure returns (string memory) {
         string memory pairName = getPairName(
             _params.baseSymbol,
             _params.underlyingSymbol
@@ -195,11 +187,9 @@ library NFTDisplay {
             );
     }
 
-    function buildAttributes(BuildTokenURIParams memory _params)
-        public
-        pure
-        returns (string memory)
-    {
+    function buildAttributes(
+        BuildTokenURIParams memory _params
+    ) public pure returns (string memory) {
         string memory pairName = getPairName(
             _params.baseSymbol,
             _params.underlyingSymbol
@@ -247,11 +237,9 @@ library NFTDisplay {
         return string(abi.encodePacked(underlyingSymbol, "/", baseSymbol));
     }
 
-    function maturityToString(uint64 maturity)
-        internal
-        pure
-        returns (string memory)
-    {
+    function maturityToString(
+        uint64 maturity
+    ) internal pure returns (string memory) {
         (uint256 year, uint256 month, uint256 date) = timestampToDate(maturity);
 
         return
@@ -266,11 +254,10 @@ library NFTDisplay {
             );
     }
 
-    function strikePriceToString(int128 strikePrice, string memory baseSymbol)
-        internal
-        pure
-        returns (string memory)
-    {
+    function strikePriceToString(
+        int128 strikePrice,
+        string memory baseSymbol
+    ) internal pure returns (string memory) {
         return
             string(
                 abi.encodePacked(
@@ -281,11 +268,10 @@ library NFTDisplay {
             );
     }
 
-    function optionTypeToString(bool isCall, bool isLong)
-        internal
-        pure
-        returns (string memory)
-    {
+    function optionTypeToString(
+        bool isCall,
+        bool isLong
+    ) internal pure returns (string memory) {
         return
             string(
                 abi.encodePacked(
@@ -295,19 +281,15 @@ library NFTDisplay {
             );
     }
 
-    function longShortToString(bool isLong)
-        internal
-        pure
-        returns (string memory)
-    {
+    function longShortToString(
+        bool isLong
+    ) internal pure returns (string memory) {
         return isLong ? "LONG" : "SHORT";
     }
 
-    function monthToString(uint256 month)
-        internal
-        pure
-        returns (string memory)
-    {
+    function monthToString(
+        uint256 month
+    ) internal pure returns (string memory) {
         if (month == 1) {
             return "JAN";
         } else if (month == 2) {
@@ -349,11 +331,9 @@ library NFTDisplay {
         return string(str);
     }
 
-    function fixedToDecimalString(int128 value64x64)
-        public
-        pure
-        returns (string memory)
-    {
+    function fixedToDecimalString(
+        int128 value64x64
+    ) public pure returns (string memory) {
         bool negative = value64x64 < 0;
         uint256 integer = uint256(value64x64.abs().toUInt());
         int128 decimal64x64 = value64x64 - int128(int256(integer << 64));
@@ -376,11 +356,9 @@ library NFTDisplay {
             );
     }
 
-    function onlySignificant(uint256 decimal)
-        public
-        pure
-        returns (string memory)
-    {
+    function onlySignificant(
+        uint256 decimal
+    ) public pure returns (string memory) {
         bytes memory b = bytes(decimal.toString());
         bytes memory buffer;
         bool foundSignificant;
@@ -397,11 +375,9 @@ library NFTDisplay {
         return string(buffer);
     }
 
-    function commaSeparateInteger(uint256 integer)
-        public
-        pure
-        returns (string memory)
-    {
+    function commaSeparateInteger(
+        uint256 integer
+    ) public pure returns (string memory) {
         bytes memory b = bytes(integer.toString());
         bytes memory buffer;
 
@@ -419,27 +395,15 @@ library NFTDisplay {
     /*
      * Source: https://github.com/bokkypoobah/BokkyPooBahsDateTimeLibrary/blob/master/contracts/BokkyPooBahsDateTimeLibrary.sol
      */
-    function timestampToDate(uint256 timestamp)
-        internal
-        pure
-        returns (
-            uint256 year,
-            uint256 month,
-            uint256 day
-        )
-    {
+    function timestampToDate(
+        uint256 timestamp
+    ) internal pure returns (uint256 year, uint256 month, uint256 day) {
         (year, month, day) = _daysToDate(timestamp / SECONDS_PER_DAY);
     }
 
-    function _daysToDate(uint256 _days)
-        internal
-        pure
-        returns (
-            uint256 year,
-            uint256 month,
-            uint256 day
-        )
-    {
+    function _daysToDate(
+        uint256 _days
+    ) internal pure returns (uint256 year, uint256 month, uint256 day) {
         int256 __days = int256(_days);
 
         int256 L = __days + 68569 + OFFSET19700101;

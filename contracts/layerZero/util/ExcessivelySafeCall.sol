@@ -117,10 +117,10 @@ library ExcessivelySafeCall {
      * @param _newSelector The new 4-byte selector
      * @param _buf The encoded contract args
      */
-    function swapSelector(bytes4 _newSelector, bytes memory _buf)
-        internal
-        pure
-    {
+    function swapSelector(
+        bytes4 _newSelector,
+        bytes memory _buf
+    ) internal pure {
         require(_buf.length >= 4);
         uint256 _mask = LOW_28_MASK;
         assembly {

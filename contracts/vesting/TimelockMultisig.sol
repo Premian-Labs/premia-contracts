@@ -88,11 +88,10 @@ contract TimelockMultisig {
         }
     }
 
-    function startWithdraw(address to, uint256 amount)
-        external
-        isSigner
-        hasPendingWithdrawal(false)
-    {
+    function startWithdraw(
+        address to,
+        uint256 amount
+    ) external isSigner hasPendingWithdrawal(false) {
         uint256 createdAt = block.timestamp;
         pendingWithdrawal = Withdrawal(to, amount, createdAt);
 

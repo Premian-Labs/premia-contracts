@@ -17,11 +17,7 @@ contract PremiaStakingMigrator {
     // The old PremiaStaking contract
     address private immutable OLD_STAKING;
 
-    constructor(
-        address premia,
-        address oldFeeDiscount,
-        address oldStaking
-    ) {
+    constructor(address premia, address oldFeeDiscount, address oldStaking) {
         PREMIA = premia;
         OLD_FEE_DISCOUNT = oldFeeDiscount;
         OLD_STAKING = oldStaking;
@@ -32,20 +28,15 @@ contract PremiaStakingMigrator {
      * @param user User for whom to migrate
      * @param amount Amount of old xPremia to migrate
      */
-    function migrate(
-        address user,
-        uint256 amount,
-        uint256,
-        uint256
-    ) external {
+    function migrate(address user, uint256 amount, uint256, uint256) external {
         require(msg.sender == OLD_FEE_DISCOUNT, "Not authorized");
         _withdraw(amount, user);
     }
 
-    function _withdraw(uint256 amount, address to)
-        internal
-        returns (uint256 premiaWithdrawn)
-    {
+    function _withdraw(
+        uint256 amount,
+        address to
+    ) internal returns (uint256 premiaWithdrawn) {
         IERC20(OLD_STAKING).transferFrom(msg.sender, address(this), amount);
 
         IPremiaStakingOld(OLD_STAKING).leave(amount);

@@ -48,11 +48,9 @@ library NFTSVG {
         string strikePriceString;
     }
 
-    function buildSVG(CreateSVGParams memory _params)
-        public
-        pure
-        returns (string memory)
-    {
+    function buildSVG(
+        CreateSVGParams memory _params
+    ) public pure returns (string memory) {
         string memory tokens = buildTokens(
             _params.baseSymbol,
             _params.underlyingSymbol
@@ -190,11 +188,9 @@ library NFTSVG {
             );
     }
 
-    function buildUnderlyingGradient(string memory underlyingSymbol)
-        internal
-        pure
-        returns (string memory)
-    {
+    function buildUnderlyingGradient(
+        string memory underlyingSymbol
+    ) internal pure returns (string memory) {
         (
             string memory underlyingColorA,
             string memory underlyingColorB
@@ -215,11 +211,9 @@ library NFTSVG {
             );
     }
 
-    function buildBaseGradient(string memory baseSymbol)
-        internal
-        pure
-        returns (string memory)
-    {
+    function buildBaseGradient(
+        string memory baseSymbol
+    ) internal pure returns (string memory) {
         (string memory baseColorA, string memory baseColorB) = getTokenColors(
             baseSymbol
         );
@@ -277,11 +271,9 @@ library NFTSVG {
             );
     }
 
-    function buildShortLongTag(bool _isLong)
-        internal
-        pure
-        returns (string memory)
-    {
+    function buildShortLongTag(
+        bool _isLong
+    ) internal pure returns (string memory) {
         return _isLong ? buildLongTag() : buildShortTag();
     }
 
@@ -309,11 +301,9 @@ library NFTSVG {
             );
     }
 
-    function getUnderlyingLogo(string memory tokenSymbol)
-        internal
-        pure
-        returns (string memory)
-    {
+    function getUnderlyingLogo(
+        string memory tokenSymbol
+    ) internal pure returns (string memory) {
         bytes32 hash = keccak256(abi.encodePacked(tokenSymbol));
 
         if (
@@ -330,11 +320,9 @@ library NFTSVG {
         }
     }
 
-    function getBaseLogo(string memory tokenSymbol)
-        internal
-        pure
-        returns (string memory)
-    {
+    function getBaseLogo(
+        string memory tokenSymbol
+    ) internal pure returns (string memory) {
         bytes32 hash = keccak256(abi.encodePacked(tokenSymbol));
 
         if (hash == keccak256(abi.encodePacked("DAI"))) {
@@ -344,11 +332,9 @@ library NFTSVG {
         }
     }
 
-    function getBaseLogoSmall(string memory tokenSymbol)
-        internal
-        pure
-        returns (string memory)
-    {
+    function getBaseLogoSmall(
+        string memory tokenSymbol
+    ) internal pure returns (string memory) {
         bytes32 hash = keccak256(abi.encodePacked(tokenSymbol));
 
         if (hash == keccak256(abi.encodePacked("DAI"))) {
@@ -358,11 +344,9 @@ library NFTSVG {
         }
     }
 
-    function getTokenColors(string memory tokenSymbol)
-        internal
-        pure
-        returns (string memory, string memory)
-    {
+    function getTokenColors(
+        string memory tokenSymbol
+    ) internal pure returns (string memory, string memory) {
         bytes32 hash = keccak256(abi.encodePacked(tokenSymbol));
 
         if (

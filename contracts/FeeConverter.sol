@@ -80,10 +80,10 @@ contract FeeConverter is IFeeConverter, OwnableInternal {
      * @param account The account for which to set new authorization status
      * @param isAuthorized Whether the account is authorized or not
      */
-    function setAuthorized(address account, bool isAuthorized)
-        external
-        onlyOwner
-    {
+    function setAuthorized(
+        address account,
+        bool isAuthorized
+    ) external onlyOwner {
         FeeConverterStorage.layout().isAuthorized[account] = isAuthorized;
 
         emit SetAuthorized(account, isAuthorized);

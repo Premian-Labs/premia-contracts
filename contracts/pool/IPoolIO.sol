@@ -29,9 +29,10 @@ interface IPoolIO {
      * @param s swap arguments
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
      */
-    function swapAndDeposit(IPoolInternal.SwapArgs memory s, bool isCallPool)
-        external
-        payable;
+    function swapAndDeposit(
+        IPoolInternal.SwapArgs memory s,
+        bool isCallPool
+    ) external payable;
 
     /**
      * @notice redeem pool share tokens for underlying asset
@@ -53,13 +54,7 @@ interface IPoolIO {
         uint256 tokenId,
         uint256 contractSize,
         bool divest
-    )
-        external
-        returns (
-            uint256 baseCost,
-            uint256 feeCost,
-            uint256 amountOut
-        );
+    ) external returns (uint256 baseCost, uint256 feeCost, uint256 amountOut);
 
     /**
      * @notice reassign set of short position to new underwriter

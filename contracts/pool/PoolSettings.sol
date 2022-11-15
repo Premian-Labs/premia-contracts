@@ -46,10 +46,9 @@ contract PoolSettings is IPoolSettings, PoolInternal {
         )
     {}
 
-    function processApyFees(APYFeeData[] calldata apyFeeData)
-        external
-        onlyProtocolOwner
-    {
+    function processApyFees(
+        APYFeeData[] calldata apyFeeData
+    ) external onlyProtocolOwner {
         unchecked {
             PoolStorage.Layout storage l = PoolStorage.layout();
 
@@ -109,10 +108,10 @@ contract PoolSettings is IPoolSettings, PoolInternal {
     /**
      * @inheritdoc IPoolSettings
      */
-    function setMinimumAmounts(uint256 baseMinimum, uint256 underlyingMinimum)
-        external
-        onlyProtocolOwner
-    {
+    function setMinimumAmounts(
+        uint256 baseMinimum,
+        uint256 underlyingMinimum
+    ) external onlyProtocolOwner {
         PoolStorage.Layout storage l = PoolStorage.layout();
         l.baseMinimum = baseMinimum;
         l.underlyingMinimum = underlyingMinimum;
@@ -121,10 +120,10 @@ contract PoolSettings is IPoolSettings, PoolInternal {
     /**
      * @inheritdoc IPoolSettings
      */
-    function setSteepness64x64(int128 steepness64x64, bool isCallPool)
-        external
-        onlyProtocolOwner
-    {
+    function setSteepness64x64(
+        int128 steepness64x64,
+        bool isCallPool
+    ) external onlyProtocolOwner {
         if (isCallPool) {
             PoolStorage.layout().steepnessUnderlying64x64 = steepness64x64;
         } else {
@@ -137,10 +136,10 @@ contract PoolSettings is IPoolSettings, PoolInternal {
     /**
      * @inheritdoc IPoolSettings
      */
-    function setCLevel64x64(int128 cLevel64x64, bool isCallPool)
-        external
-        onlyProtocolOwner
-    {
+    function setCLevel64x64(
+        int128 cLevel64x64,
+        bool isCallPool
+    ) external onlyProtocolOwner {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         l.setCLevel(cLevel64x64, isCallPool);
@@ -165,10 +164,9 @@ contract PoolSettings is IPoolSettings, PoolInternal {
     /**
      * @inheritdoc IPoolSettings
      */
-    function setSpotOffset64x64(int128 spotOffset64x64)
-        external
-        onlyProtocolOwner
-    {
+    function setSpotOffset64x64(
+        int128 spotOffset64x64
+    ) external onlyProtocolOwner {
         require(spotOffset64x64 >= 0, "too low");
         require(spotOffset64x64 < OptionMath.ONE_64x64, "too high");
         PoolStorage.layout().spotOffset64x64 = spotOffset64x64;

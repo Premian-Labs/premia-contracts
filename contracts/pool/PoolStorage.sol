@@ -156,14 +156,12 @@ library PoolStorage {
      * @return maturity timestamp of option maturity
      * @return strike64x64 option strike price
      */
-    function parseTokenId(uint256 tokenId)
+    function parseTokenId(
+        uint256 tokenId
+    )
         internal
         pure
-        returns (
-            TokenType tokenType,
-            uint64 maturity,
-            int128 strike64x64
-        )
+        returns (TokenType tokenType, uint64 maturity, int128 strike64x64)
     {
         assembly {
             tokenType := shr(248, tokenId)
@@ -172,11 +170,10 @@ library PoolStorage {
         }
     }
 
-    function getTokenType(bool isCall, bool isLong)
-        internal
-        pure
-        returns (TokenType tokenType)
-    {
+    function getTokenType(
+        bool isCall,
+        bool isLong
+    ) internal pure returns (TokenType tokenType) {
         if (isCall) {
             tokenType = isLong ? TokenType.LONG_CALL : TokenType.SHORT_CALL;
         } else {
@@ -184,27 +181,24 @@ library PoolStorage {
         }
     }
 
-    function getPoolToken(Layout storage l, bool isCall)
-        internal
-        view
-        returns (address token)
-    {
+    function getPoolToken(
+        Layout storage l,
+        bool isCall
+    ) internal view returns (address token) {
         token = isCall ? l.underlying : l.base;
     }
 
-    function getTokenDecimals(Layout storage l, bool isCall)
-        internal
-        view
-        returns (uint8 decimals)
-    {
+    function getTokenDecimals(
+        Layout storage l,
+        bool isCall
+    ) internal view returns (uint8 decimals) {
         decimals = isCall ? l.underlyingDecimals : l.baseDecimals;
     }
 
-    function getMinimumAmount(Layout storage l, bool isCall)
-        internal
-        view
-        returns (uint256 minimumAmount)
-    {
+    function getMinimumAmount(
+        Layout storage l,
+        bool isCall
+    ) internal view returns (uint256 minimumAmount) {
         minimumAmount = isCall ? l.underlyingMinimum : l.baseMinimum;
     }
 
@@ -214,11 +208,10 @@ library PoolStorage {
      * @param isCall whether query is for call or put pool
      * @return 64x64 fixed point representation of total free liquidity
      */
-    function totalFreeLiquiditySupply64x64(Layout storage l, bool isCall)
-        internal
-        view
-        returns (int128)
-    {
+    function totalFreeLiquiditySupply64x64(
+        Layout storage l,
+        bool isCall
+    ) internal view returns (int128) {
         uint256 tokenId = formatTokenId(
             isCall ? TokenType.UNDERLYING_FREE_LIQ : TokenType.BASE_FREE_LIQ,
             0,
@@ -242,11 +235,9 @@ library PoolStorage {
         return timestamp == 0 || timestamp > block.timestamp;
     }
 
-    function getFeeApy64x64(Layout storage l)
-        internal
-        view
-        returns (int128 feeApy64x64)
-    {
+    function getFeeApy64x64(
+        Layout storage l
+    ) internal view returns (int128 feeApy64x64) {
         feeApy64x64 = l.feeApy64x64;
 
         if (feeApy64x64 == 0) {
@@ -255,11 +246,9 @@ library PoolStorage {
         }
     }
 
-    function getMinApy64x64(Layout storage l)
-        internal
-        view
-        returns (int128 feeApy64x64)
-    {
+    function getMinApy64x64(
+        Layout storage l
+    ) internal view returns (int128 feeApy64x64) {
         feeApy64x64 = l.getFeeApy64x64() << 3;
     }
 
@@ -339,11 +328,10 @@ library PoolStorage {
      * @param isCall whether query is for call or put pool
      * @return cLevel64x64 64x64 fixed point representation of C-Level
      */
-    function getRawCLevel64x64(Layout storage l, bool isCall)
-        internal
-        view
-        returns (int128 cLevel64x64)
-    {
+    function getRawCLevel64x64(
+        Layout storage l,
+        bool isCall
+    ) internal view returns (int128 cLevel64x64) {
         cLevel64x64 = isCall ? l.cLevelUnderlying64x64 : l.cLevelBase64x64;
     }
 
@@ -377,11 +365,10 @@ library PoolStorage {
      * @return cLevel64x64 64x64 fixed point representation of C-Level
      * @return liquidity64x64 64x64 fixed point representation of new liquidity amount
      */
-    function getRealPoolState(Layout storage l, bool isCall)
-        internal
-        view
-        returns (int128 cLevel64x64, int128 liquidity64x64)
-    {
+    function getRealPoolState(
+        Layout storage l,
+        bool isCall
+    ) internal view returns (int128 cLevel64x64, int128 liquidity64x64) {
         PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
 
         int128 oldCLevel64x64 = l.getDecayAdjustedCLevel64x64(
@@ -459,11 +446,10 @@ library PoolStorage {
             );
     }
 
-    function getUtilization64x64(Layout storage l, bool isCall)
-        internal
-        view
-        returns (int128 utilization64x64)
-    {
+    function getUtilization64x64(
+        Layout storage l,
+        bool isCall
+    ) internal view returns (int128 utilization64x64) {
         uint256 tokenId = formatTokenId(
             isCall ? TokenType.UNDERLYING_FREE_LIQ : TokenType.BASE_FREE_LIQ,
             0,
@@ -562,11 +548,9 @@ library PoolStorage {
         l.underlyingOracle = underlyingOracle;
     }
 
-    function fetchPriceUpdate(Layout storage l)
-        internal
-        view
-        returns (int128 price64x64)
-    {
+    function fetchPriceUpdate(
+        Layout storage l
+    ) internal view returns (int128 price64x64) {
         int256 priceUnderlying = AggregatorInterface(l.underlyingOracle)
             .latestAnswer();
         int256 priceBase = AggregatorInterface(l.baseOracle).latestAnswer();
@@ -596,11 +580,10 @@ library PoolStorage {
      * @param timestamp timestamp to query
      * @return 64x64 fixed point representation of price
      */
-    function getPriceUpdate(Layout storage l, uint256 timestamp)
-        internal
-        view
-        returns (int128)
-    {
+    function getPriceUpdate(
+        Layout storage l,
+        uint256 timestamp
+    ) internal view returns (int128) {
         return l.bucketPrices64x64[timestamp / (1 hours)];
     }
 
@@ -610,11 +593,10 @@ library PoolStorage {
      * @param timestamp timestamp to query
      * @return 64x64 fixed point representation of price
      */
-    function getPriceUpdateAfter(Layout storage l, uint256 timestamp)
-        internal
-        view
-        returns (int128)
-    {
+    function getPriceUpdateAfter(
+        Layout storage l,
+        uint256 timestamp
+    ) internal view returns (int128) {
         // price updates are grouped into hourly buckets
         uint256 bucket = timestamp / (1 hours);
         // divide by 256 to get the index of the relevant price update sequence
@@ -653,11 +635,10 @@ library PoolStorage {
         return l.bucketPrices64x64[((sequenceId + 1) << 8) - msb - 1];
     }
 
-    function totalPendingDeposits(Layout storage l, bool isCallPool)
-        internal
-        view
-        returns (uint256)
-    {
+    function totalPendingDeposits(
+        Layout storage l,
+        bool isCallPool
+    ) internal view returns (uint256) {
         return l.nextDeposits[isCallPool].totalPendingDeposits;
     }
 

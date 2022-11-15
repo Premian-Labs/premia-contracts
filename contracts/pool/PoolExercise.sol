@@ -56,9 +56,10 @@ contract PoolExercise is IPoolExercise, PoolInternal {
     /**
      * @inheritdoc IPoolExercise
      */
-    function processExpired(uint256 longTokenId, uint256 contractSize)
-        external
-    {
+    function processExpired(
+        uint256 longTokenId,
+        uint256 contractSize
+    ) external {
         _exercise(address(0), longTokenId, contractSize);
     }
 }

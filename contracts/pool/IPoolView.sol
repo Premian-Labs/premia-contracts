@@ -64,10 +64,9 @@ interface IPoolView is IERC1155Metadata {
      * @param timestamp timestamp to query
      * @return spot64x64 64x64 fixed point representation of price
      */
-    function getPriceAfter64x64(uint256 timestamp)
-        external
-        view
-        returns (int128 spot64x64);
+    function getPriceAfter64x64(
+        uint256 timestamp
+    ) external view returns (int128 spot64x64);
 
     /**
      * @notice get parameters for token id
@@ -76,14 +75,9 @@ interface IPoolView is IERC1155Metadata {
      * @return maturity
      * @return 64x64 fixed point representation of strike price
      */
-    function getParametersForTokenId(uint256 tokenId)
-        external
-        pure
-        returns (
-            PoolStorage.TokenType,
-            uint64,
-            int128
-        );
+    function getParametersForTokenId(
+        uint256 tokenId
+    ) external pure returns (PoolStorage.TokenType, uint64, int128);
 
     /**
      * @notice get minimum purchase and interval amounts
@@ -101,10 +95,9 @@ interface IPoolView is IERC1155Metadata {
      * @return underlyingTVL user total value locked in call pool (in underlying token amount)
      * @return baseTVL user total value locked in put pool (in base token amount)
      */
-    function getUserTVL(address account)
-        external
-        view
-        returns (uint256 underlyingTVL, uint256 baseTVL);
+    function getUserTVL(
+        address account
+    ) external view returns (uint256 underlyingTVL, uint256 baseTVL);
 
     /**
      * @notice get TVL (total value locked) of entire Pool
@@ -123,7 +116,10 @@ interface IPoolView is IERC1155Metadata {
      * @return liquidityBeforePosition total available liquidity before account's liquidity queue
      * @return positionSize size of the account's liquidity queue position
      */
-    function getLiquidityQueuePosition(address account, bool isCallPool)
+    function getLiquidityQueuePosition(
+        address account,
+        bool isCallPool
+    )
         external
         view
         returns (uint256 liquidityBeforePosition, uint256 positionSize);
@@ -134,10 +130,10 @@ interface IPoolView is IERC1155Metadata {
      * @param shortTokenId short token id whose reserved fees to query
      * @return amount quantity of fees reserved
      */
-    function getFeesReserved(address account, uint256 shortTokenId)
-        external
-        view
-        returns (uint256 amount);
+    function getFeesReserved(
+        address account,
+        uint256 shortTokenId
+    ) external view returns (uint256 amount);
 
     /**
      * @notice get the address of PremiaMining contract
@@ -151,7 +147,9 @@ interface IPoolView is IERC1155Metadata {
      * @return callDivestmentTimestamp gradual divestment timestamp of the user for the call pool
      * @return putDivestmentTimestamp gradual divestment timestamp of the user for the put pool
      */
-    function getDivestmentTimestamps(address account)
+    function getDivestmentTimestamps(
+        address account
+    )
         external
         view
         returns (

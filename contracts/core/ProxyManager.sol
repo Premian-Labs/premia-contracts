@@ -44,11 +44,10 @@ contract ProxyManager is IProxyManager, OwnableInternal {
      * @param underlying underlying token
      * @return pool address (zero address if pool does not exist)
      */
-    function getPool(address base, address underlying)
-        external
-        view
-        returns (address)
-    {
+    function getPool(
+        address base,
+        address underlying
+    ) external view returns (address) {
         return ProxyManagerStorage.layout().getPool(base, underlying);
     }
 

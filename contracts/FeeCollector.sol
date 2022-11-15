@@ -20,9 +20,10 @@ contract FeeCollector is IFeeCollector {
         RECEIVER = _receiver;
     }
 
-    function withdraw(address[] memory pools, address[] memory tokens)
-        external
-    {
+    function withdraw(
+        address[] memory pools,
+        address[] memory tokens
+    ) external {
         for (uint256 i = 0; i < pools.length; i++) {
             IPoolIO(pools[i]).withdrawFees();
         }

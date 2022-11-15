@@ -46,19 +46,19 @@ interface ILayerZeroEndpoint is ILayerZeroUserApplicationConfig {
      * @param srcChainId - the source chain identifier
      * @param srcAddress - the source chain contract address
      */
-    function getInboundNonce(uint16 srcChainId, bytes calldata srcAddress)
-        external
-        view
-        returns (uint64);
+    function getInboundNonce(
+        uint16 srcChainId,
+        bytes calldata srcAddress
+    ) external view returns (uint64);
 
     /*
      * @notice get the outboundNonce from this source chain which, consequently, is always an EVM
      * @param srcAddress - the source chain contract address
      */
-    function getOutboundNonce(uint16 dstChainId, address srcAddress)
-        external
-        view
-        returns (uint64);
+    function getOutboundNonce(
+        uint16 dstChainId,
+        address srcAddress
+    ) external view returns (uint64);
 
     /*
      * @notice gets a quote in source native gas, for the amount that send() requires to pay for message delivery
@@ -98,28 +98,26 @@ interface ILayerZeroEndpoint is ILayerZeroUserApplicationConfig {
      * @param srcChainId - the source chain identifier
      * @param srcAddress - the source chain contract address
      */
-    function hasStoredPayload(uint16 srcChainId, bytes calldata srcAddress)
-        external
-        view
-        returns (bool);
+    function hasStoredPayload(
+        uint16 srcChainId,
+        bytes calldata srcAddress
+    ) external view returns (bool);
 
     /*
      * @notice query if the libraryAddress is valid for sending msgs.
      * @param userApplication - the user app address on this EVM chain
      */
-    function getSendLibraryAddress(address userApplication)
-        external
-        view
-        returns (address);
+    function getSendLibraryAddress(
+        address userApplication
+    ) external view returns (address);
 
     /*
      * @notice query if the libraryAddress is valid for receiving msgs.
      * @param userApplication - the user app address on this EVM chain
      */
-    function getReceiveLibraryAddress(address userApplication)
-        external
-        view
-        returns (address);
+    function getReceiveLibraryAddress(
+        address userApplication
+    ) external view returns (address);
 
     /*
      * @notice query if the non-reentrancy guard for send() is on
@@ -151,17 +149,15 @@ interface ILayerZeroEndpoint is ILayerZeroUserApplicationConfig {
      * @notice get the send() LayerZero messaging library version
      * @param userApplication - the contract address of the user application
      */
-    function getSendVersion(address userApplication)
-        external
-        view
-        returns (uint16);
+    function getSendVersion(
+        address userApplication
+    ) external view returns (uint16);
 
     /*
      * @notice get the lzReceive() LayerZero messaging library version
      * @param userApplication - the contract address of the user application
      */
-    function getReceiveVersion(address userApplication)
-        external
-        view
-        returns (uint16);
+    function getReceiveVersion(
+        address userApplication
+    ) external view returns (uint16);
 }

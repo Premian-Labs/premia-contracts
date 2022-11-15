@@ -14,11 +14,10 @@ import {IPremiaOptionNFTDisplay} from "./interfaces/IPremiaOptionNFTDisplay.sol"
 contract PremiaOptionNFTDisplay is IPremiaOptionNFTDisplay {
     using UintUtils for uint256;
 
-    function tokenURI(address _pool, uint256 _tokenId)
-        external
-        view
-        returns (string memory)
-    {
+    function tokenURI(
+        address _pool,
+        uint256 _tokenId
+    ) external view returns (string memory) {
         IPool pool = IPool(_pool);
         PoolStorage.PoolSettings memory settings = pool.getPoolSettings();
         (
