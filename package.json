@@ -46,11 +46,11 @@
     "@nomiclabs/hardhat-etherscan": "^3.1.2",
     "@premia/utils": "^0.0.4",
     "@solidstate/abdk-math-extensions": "^1.0.0",
-    "@solidstate/contracts": "^0.0.43",
+    "@solidstate/contracts": "^0.0.48",
     "@solidstate/hardhat-4byte-uploader": "^1.0.2",
     "@solidstate/hardhat-test-short-circuit": "^1.0.2",
-    "@solidstate/library": "^0.0.43",
-    "@solidstate/spec": "^0.0.43",
+    "@solidstate/library": "^0.0.48",
+    "@solidstate/spec": "^0.0.48",
     "@typechain/ethers-v5": "^10.1.1",
     "@typechain/hardhat": "^6.1.4",
     "@types/chai": "^4.3.4",
@@ -82,7 +82,7 @@
     "solidity-coverage": "^0.8.2",
     "ts-node": "^10.9.1",
     "typechain": "^8.1.1",
-    "typescript": "^4.8.4",
+    "typescript": "^4.9.3",
     "utf8": "^3.0.0"
   }
 }
