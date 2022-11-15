@@ -4,6 +4,7 @@
 pragma solidity ^0.8.0;
 
 import {AddressUtils} from "@solidstate/contracts/utils/AddressUtils.sol";
+import {Math} from "@solidstate/contracts/utils/Math.sol";
 import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
 import {IERC2612} from "@solidstate/contracts/token/ERC20/permit/IERC2612.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
@@ -370,9 +371,9 @@ contract PremiaStaking is IPremiaStaking, OFT {
 
         unchecked {
             uint64 lockToAdd = period - oldPeriod;
-            u.lockedUntil = u.lockedUntil > uint64(block.timestamp)
-                ? u.lockedUntil + lockToAdd
-                : uint64(block.timestamp) + lockToAdd;
+            u.lockedUntil =
+                uint64(Math.max(u.lockedUntil, block.timestamp)) +
+                lockToAdd;
             u.stakePeriod = period;
 
             args.newPower = _calculateUserPower(
