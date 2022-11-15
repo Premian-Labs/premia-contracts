@@ -682,7 +682,9 @@ contract PremiaStaking is IPremiaStaking, OFT {
 
         IPremiaStaking.StakeLevel[] memory stakeLevels = _getStakeLevels();
 
-        for (uint256 i = 0; i < stakeLevels.length; i++) {
+        uint256 length = stakeLevels.length;
+
+        for (uint256 i = 0; i < length; ) {
             IPremiaStaking.StakeLevel memory level = stakeLevels[i];
 
             if (userPower < level.amount) {
@@ -691,8 +693,10 @@ contract PremiaStaking is IPremiaStaking, OFT {
 
                 // If stake is lower, user is in this level, and we need to LERP with prev level to get discount value
                 if (i > 0) {
-                    amountPrevLevel = stakeLevels[i - 1].amount;
-                    discountPrevLevelBPS = stakeLevels[i - 1].discountBPS;
+                    unchecked {
+                        amountPrevLevel = stakeLevels[i - 1].amount;
+                        discountPrevLevelBPS = stakeLevels[i - 1].discountBPS;
+                    }
                 } else {
                     // If this is the first level, prev level is 0 / 0
                     amountPrevLevel = 0;
@@ -712,10 +716,16 @@ contract PremiaStaking is IPremiaStaking, OFT {
                     ((remappedDiscountBPS * levelProgressBPS) /
                         INVERSE_BASIS_POINT);
             }
+
+            unchecked {
+                ++i;
+            }
         }
 
-        // If no match found it means user is >= max possible stake, and therefore has max discount possible
-        return stakeLevels[stakeLevels.length - 1].discountBPS;
+        unchecked {
+            // If no match found it means user is >= max possible stake, and therefore has max discount possible
+            return stakeLevels[length - 1].discountBPS;
+        }
     }
 
     /**
