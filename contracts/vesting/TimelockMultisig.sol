@@ -4,7 +4,7 @@
 pragma solidity ^0.8.0;
 
 import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
-import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
+import {EnumerableSet} from "@solidstate/contracts/data/EnumerableSet.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 
 contract TimelockMultisig {

@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
+import {EnumerableSet} from "@solidstate/contracts/data/EnumerableSet.sol";
 
 library VolatilitySurfaceOracleStorage {
     bytes32 internal constant STORAGE_SLOT =

@@ -7,7 +7,7 @@ import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABD
 import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
 import {ERC1155BaseStorage} from "@solidstate/contracts/token/ERC1155/base/ERC1155BaseStorage.sol";
 import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
-import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
+import {EnumerableSet} from "@solidstate/contracts/data/EnumerableSet.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
 import {PoolInternal} from "./PoolInternal.sol";

@@ -3,7 +3,7 @@
 
 pragma solidity ^0.8.0;
 
-import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
+import {EnumerableSet} from "@solidstate/contracts/data/EnumerableSet.sol";
 
 import {IPremiaOptionNFTDisplay} from "../interfaces/IPremiaOptionNFTDisplay.sol";
 import {IPoolView, IERC1155Metadata} from "./IPoolView.sol";
