@@ -690,45 +690,39 @@ contract PremiaStaking is IPremiaStaking, OFT {
 
         uint256 length = stakeLevels.length;
 
-        for (uint256 i = 0; i < length; ) {
-            IPremiaStaking.StakeLevel memory level = stakeLevels[i];
+        unchecked {
+            for (uint256 i = 0; i < length; i++) {
+                IPremiaStaking.StakeLevel memory level = stakeLevels[i];
 
-            if (userPower < level.amount) {
-                uint256 amountPrevLevel;
-                uint256 discountPrevLevelBPS;
+                if (userPower < level.amount) {
+                    uint256 amountPrevLevel;
+                    uint256 discountPrevLevelBPS;
 
-                // If stake is lower, user is in this level, and we need to LERP with prev level to get discount value
-                if (i > 0) {
-                    unchecked {
+                    // If stake is lower, user is in this level, and we need to LERP with prev level to get discount value
+                    if (i > 0) {
                         amountPrevLevel = stakeLevels[i - 1].amount;
                         discountPrevLevelBPS = stakeLevels[i - 1].discountBPS;
+                    } else {
+                        // If this is the first level, prev level is 0 / 0
+                        amountPrevLevel = 0;
+                        discountPrevLevelBPS = 0;
                     }
-                } else {
-                    // If this is the first level, prev level is 0 / 0
-                    amountPrevLevel = 0;
-                    discountPrevLevelBPS = 0;
+
+                    uint256 remappedDiscountBPS = level.discountBPS -
+                        discountPrevLevelBPS;
+
+                    uint256 remappedAmount = level.amount - amountPrevLevel;
+                    uint256 remappedPower = userPower - amountPrevLevel;
+                    uint256 levelProgressBPS = (remappedPower *
+                        INVERSE_BASIS_POINT) / remappedAmount;
+
+                    return
+                        discountPrevLevelBPS +
+                        ((remappedDiscountBPS * levelProgressBPS) /
+                            INVERSE_BASIS_POINT);
                 }
-
-                uint256 remappedDiscountBPS = level.discountBPS -
-                    discountPrevLevelBPS;
-
-                uint256 remappedAmount = level.amount - amountPrevLevel;
-                uint256 remappedPower = userPower - amountPrevLevel;
-                uint256 levelProgressBPS = (remappedPower *
-                    INVERSE_BASIS_POINT) / remappedAmount;
-
-                return
-                    discountPrevLevelBPS +
-                    ((remappedDiscountBPS * levelProgressBPS) /
-                        INVERSE_BASIS_POINT);
             }
 
-            unchecked {
-                ++i;
-            }
-        }
-
-        unchecked {
             // If no match found it means user is >= max possible stake, and therefore has max discount possible
             return stakeLevels[length - 1].discountBPS;
         }
