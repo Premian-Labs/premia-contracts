@@ -369,7 +369,10 @@ contract PremiaStaking is IPremiaStaking, OFT {
         uint64 oldPeriod = u.stakePeriod;
 
         unchecked {
-            u.lockedUntil += period - oldPeriod;
+            uint64 lockToAdd = period - oldPeriod;
+            u.lockedUntil = u.lockedUntil > uint64(block.timestamp)
+                ? u.lockedUntil + lockToAdd
+                : uint64(block.timestamp) + lockToAdd;
             u.stakePeriod = period;
 
             args.newPower = _calculateUserPower(
