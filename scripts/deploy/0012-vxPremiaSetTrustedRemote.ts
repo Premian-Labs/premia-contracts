@@ -80,7 +80,7 @@ async function main() {
   }
 
   for (const r of remoteList) {
-    await vxPremia.setTrustedRemoteAddress(r.chainId, r.address);
+    await (await vxPremia.setTrustedRemoteAddress(r.chainId, r.address)).wait();
   }
 }
 
