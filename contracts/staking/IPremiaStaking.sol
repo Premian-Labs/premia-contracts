@@ -65,7 +65,7 @@ interface IPremiaStaking is IERC2612, IOFT {
         uint64 lockedUntil
     );
 
-    event IncreaseLock(
+    event UpdateLock(
         address indexed user,
         uint64 oldStakePeriod,
         uint64 newStakePeriod

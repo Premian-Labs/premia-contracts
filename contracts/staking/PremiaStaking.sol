@@ -380,7 +380,7 @@ contract PremiaStaking is IPremiaStaking, OFT {
 
         _updateUser(l, u, args);
 
-        emit IncreaseLock(msg.sender, oldPeriod, period);
+        emit UpdateLock(msg.sender, oldPeriod, period);
     }
 
     /**
