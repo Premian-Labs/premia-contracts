@@ -76,7 +76,9 @@ library OptionMath {
      * @return premiaPrice64x64 64x64 fixed point representation of Premia option price
      * @return cLevel64x64 64x64 fixed point representation of C-Level of Pool after purchase
      */
-    function quotePrice(QuoteArgs memory args)
+    function quotePrice(
+        QuoteArgs memory args
+    )
         external
         pure
         returns (
@@ -137,11 +139,9 @@ library OptionMath {
      * @param args structured CalculateCLevelDecayArgs
      * @return cLevelDecayed64x64 C-Level after accounting for decay
      */
-    function calculateCLevelDecay(CalculateCLevelDecayArgs memory args)
-        external
-        pure
-        returns (int128 cLevelDecayed64x64)
-    {
+    function calculateCLevelDecay(
+        CalculateCLevelDecayArgs memory args
+    ) external pure returns (int128 cLevelDecayed64x64) {
         int128 convFHighU64x64 = (args.utilization64x64 >=
             args.utilizationUpperBound64x64 &&
             args.oldCLevel64x64 <= args.cLevelLowerBound64x64)
@@ -179,11 +179,10 @@ library OptionMath {
      * @param newTimestamp current timestamp
      * @return 64x64 fixed point representation of exponential decay coefficient
      */
-    function _decay(uint256 oldTimestamp, uint256 newTimestamp)
-        internal
-        pure
-        returns (int128)
-    {
+    function _decay(
+        uint256 oldTimestamp,
+        uint256 newTimestamp
+    ) internal pure returns (int128) {
         return
             ONE_64x64.sub(
                 (-ABDKMath64x64.divu(newTimestamp - oldTimestamp, 7 days)).exp()

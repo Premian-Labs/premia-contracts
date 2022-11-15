@@ -11,8 +11,10 @@ interface IPoolSettings {
      * @param baseMinimum minimum base currency interval size
      * @param underlyingMinimum minimum underlying currency interval size
      */
-    function setMinimumAmounts(uint256 baseMinimum, uint256 underlyingMinimum)
-        external;
+    function setMinimumAmounts(
+        uint256 baseMinimum,
+        uint256 underlyingMinimum
+    ) external;
 
     /**
      * @notice set steepness of internal C-Level update multiplier

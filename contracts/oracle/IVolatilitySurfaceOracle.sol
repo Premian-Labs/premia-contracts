@@ -11,20 +11,18 @@ interface IVolatilitySurfaceOracle {
      * @param params Parameters of IV model to pack
      * @return result The packed parameters of IV model
      */
-    function formatParams(int256[5] memory params)
-        external
-        pure
-        returns (bytes32 result);
+    function formatParams(
+        int256[5] memory params
+    ) external pure returns (bytes32 result);
 
     /**
      * @notice Unpack IV model parameters from a bytes32
      * @param input Packed IV model parameters to unpack
      * @return params The unpacked parameters of the IV model
      */
-    function parseParams(bytes32 input)
-        external
-        pure
-        returns (int256[] memory params);
+    function parseParams(
+        bytes32 input
+    ) external pure returns (int256[] memory params);
 
     /**
      * @notice Get the list of whitelisted relayers
@@ -38,10 +36,10 @@ interface IVolatilitySurfaceOracle {
      * @param underlying The underlying token of the pair
      * @return The IV model parameters
      */
-    function getParams(address base, address underlying)
-        external
-        view
-        returns (VolatilitySurfaceOracleStorage.Update memory);
+    function getParams(
+        address base,
+        address underlying
+    ) external view returns (VolatilitySurfaceOracleStorage.Update memory);
 
     /**
      * @notice Get unpacked IV model parameters
@@ -49,20 +47,19 @@ interface IVolatilitySurfaceOracle {
      * @param underlying The underlying token of the pair
      * @return The unpacked IV model parameters
      */
-    function getParamsUnpacked(address base, address underlying)
-        external
-        view
-        returns (int256[] memory);
+    function getParamsUnpacked(
+        address base,
+        address underlying
+    ) external view returns (int256[] memory);
 
     /**
      * @notice Get time to maturity in years, as a 64x64 fixed point representation
      * @param maturity Maturity timestamp
      * @return Time to maturity (in years), as a 64x64 fixed point representation
      */
-    function getTimeToMaturity64x64(uint64 maturity)
-        external
-        view
-        returns (int128);
+    function getTimeToMaturity64x64(
+        uint64 maturity
+    ) external view returns (int128);
 
     /**
      * @notice calculate the annualized volatility for given set of parameters

@@ -110,11 +110,9 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
         _;
     }
 
-    function _fetchFeeDiscount64x64(address feePayer)
-        internal
-        view
-        returns (int128 discount64x64)
-    {
+    function _fetchFeeDiscount64x64(
+        address feePayer
+    ) internal view returns (int128 discount64x64) {
         if (FEE_DISCOUNT_ADDRESS != address(0)) {
             discount64x64 = ABDKMath64x64.divu(
                 IPremiaStaking(FEE_DISCOUNT_ADDRESS).getDiscountBPS(feePayer),
@@ -143,11 +141,9 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
      * @param args structured quote arguments
      * @return result quote result
      */
-    function _quotePurchasePrice(PoolStorage.QuoteArgsInternal memory args)
-        internal
-        view
-        returns (PoolStorage.QuoteResultInternal memory result)
-    {
+    function _quotePurchasePrice(
+        PoolStorage.QuoteArgsInternal memory args
+    ) internal view returns (PoolStorage.QuoteResultInternal memory result) {
         require(
             args.strike64x64 > 0 && args.spot64x64 > 0 && args.maturity > 0,
             "invalid args"
@@ -228,11 +224,9 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
         );
     }
 
-    function _quoteSalePrice(PoolStorage.QuoteArgsInternal memory args)
-        internal
-        view
-        returns (int128 baseCost64x64, int128 feeCost64x64)
-    {
+    function _quoteSalePrice(
+        PoolStorage.QuoteArgsInternal memory args
+    ) internal view returns (int128 baseCost64x64, int128 feeCost64x64) {
         require(
             args.strike64x64 > 0 && args.spot64x64 > 0 && args.maturity > 0,
             "invalid args"
@@ -327,11 +321,9 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
         baseCost64x64 -= feeCost64x64;
     }
 
-    function _getAvailableBuybackLiquidity(uint256 shortTokenId)
-        internal
-        view
-        returns (uint256 totalLiquidity)
-    {
+    function _getAvailableBuybackLiquidity(
+        uint256 shortTokenId
+    ) internal view returns (uint256 totalLiquidity) {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         EnumerableSet.AddressSet storage accounts = ERC1155EnumerableStorage
@@ -591,11 +583,7 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
         int128 newPrice64x64
     )
         internal
-        returns (
-            uint256 baseCost,
-            uint256 feeCost,
-            uint256 netCollateralFreed
-        )
+        returns (uint256 baseCost, uint256 feeCost, uint256 netCollateralFreed)
     {
         (baseCost, feeCost) = _purchase(
             l,
@@ -1227,9 +1215,10 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
         _mint(account, freeLiqTokenId, amount);
     }
 
-    function _processPendingDeposits(PoolStorage.Layout storage l, bool isCall)
-        internal
-    {
+    function _processPendingDeposits(
+        PoolStorage.Layout storage l,
+        bool isCall
+    ) internal {
         PoolStorage.BatchData storage batchData = l.nextDeposits[isCall];
 
         if (batchData.eta == 0 || block.timestamp < batchData.eta) return;
@@ -1252,21 +1241,17 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
         delete l.nextDeposits[isCall];
     }
 
-    function _getFreeLiquidityTokenId(bool isCall)
-        internal
-        view
-        returns (uint256 freeLiqTokenId)
-    {
+    function _getFreeLiquidityTokenId(
+        bool isCall
+    ) internal view returns (uint256 freeLiqTokenId) {
         freeLiqTokenId = isCall
             ? UNDERLYING_FREE_LIQ_TOKEN_ID
             : BASE_FREE_LIQ_TOKEN_ID;
     }
 
-    function _getReservedLiquidityTokenId(bool isCall)
-        internal
-        view
-        returns (uint256 reservedLiqTokenId)
-    {
+    function _getReservedLiquidityTokenId(
+        bool isCall
+    ) internal view returns (uint256 reservedLiqTokenId) {
         reservedLiqTokenId = isCall
             ? UNDERLYING_RESERVED_LIQ_TOKEN_ID
             : BASE_RESERVED_LIQ_TOKEN_ID;
@@ -1306,10 +1291,9 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
      * @param l storage layout struct
      * @return newPrice64x64 64x64 fixed point representation of current spot price
      */
-    function _update(PoolStorage.Layout storage l)
-        internal
-        returns (int128 newPrice64x64)
-    {
+    function _update(
+        PoolStorage.Layout storage l
+    ) internal returns (int128 newPrice64x64) {
         if (l.updatedAt == block.timestamp) {
             return (l.getPriceUpdate(block.timestamp));
         }
@@ -1331,11 +1315,7 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
      * @param token ERC20 token address
      * @param amount quantity of token to transfer
      */
-    function _pushTo(
-        address to,
-        address token,
-        uint256 amount
-    ) internal {
+    function _pushTo(address to, address token, uint256 amount) internal {
         if (amount == 0) return;
 
         require(IERC20(token).transfer(to, amount), "ERC20 transfer failed");
@@ -1422,10 +1402,10 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
      * @param isCallPool whether to deposit underlying in the call pool or base in the put pool
      * @return credit quantity of credit to apply
      */
-    function _creditMessageValue(uint256 amount, bool isCallPool)
-        internal
-        returns (uint256 credit)
-    {
+    function _creditMessageValue(
+        uint256 amount,
+        bool isCallPool
+    ) internal returns (uint256 credit) {
         if (msg.value > 0) {
             require(
                 PoolStorage.layout().getPoolToken(isCallPool) ==
@@ -1480,11 +1460,7 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
      * @param tokenId id of token to mint
      * @param amount quantity of tokens to mint
      */
-    function _mint(
-        address account,
-        uint256 tokenId,
-        uint256 amount
-    ) internal {
+    function _mint(address account, uint256 tokenId, uint256 amount) internal {
         _mint(account, tokenId, amount, "");
     }
 

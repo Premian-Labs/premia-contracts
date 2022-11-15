@@ -35,11 +35,7 @@ contract PremiaVestingCancellable is Ownable {
     //////////////////////////////////////////////////
 
     // @param _premia The premia token
-    constructor(
-        IERC20 _premia,
-        address _treasury,
-        address _thirdParty
-    ) {
+    constructor(IERC20 _premia, address _treasury, address _thirdParty) {
         OwnableStorage.layout().owner = msg.sender;
 
         premia = _premia;

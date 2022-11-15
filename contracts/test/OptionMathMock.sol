@@ -20,7 +20,9 @@ contract OptionMathMock {
             );
     }
 
-    function quotePrice(OptionMath.QuoteArgs memory args)
+    function quotePrice(
+        OptionMath.QuoteArgs memory args
+    )
         external
         pure
         returns (
@@ -32,11 +34,10 @@ contract OptionMathMock {
         return OptionMath.quotePrice(args);
     }
 
-    function decay(uint256 oldTimestamp, uint256 newTimestamp)
-        external
-        pure
-        returns (int128)
-    {
+    function decay(
+        uint256 oldTimestamp,
+        uint256 newTimestamp
+    ) external pure returns (int128) {
         return OptionMath._decay(oldTimestamp, newTimestamp);
     }
 

@@ -60,20 +60,18 @@ interface IPremiaOption is IERC1155 {
 
     function maxExpiration() external view returns (uint256);
 
-    function optionData(uint256 _optionId)
-        external
-        view
-        returns (OptionData memory);
+    function optionData(
+        uint256 _optionId
+    ) external view returns (OptionData memory);
 
-    function tokenStrikeIncrement(address _token)
-        external
-        view
-        returns (uint256);
+    function tokenStrikeIncrement(
+        address _token
+    ) external view returns (uint256);
 
-    function nbWritten(address _writer, uint256 _optionId)
-        external
-        view
-        returns (uint256);
+    function nbWritten(
+        address _writer,
+        uint256 _optionId
+    ) external view returns (uint256);
 
     function getOptionId(
         address _token,
@@ -112,13 +110,14 @@ interface IPremiaOption is IERC1155 {
         uint256 _amount
     ) external returns (uint256);
 
-    function writeOption(OptionWriteArgs memory _option)
-        external
-        returns (uint256);
+    function writeOption(
+        OptionWriteArgs memory _option
+    ) external returns (uint256);
 
-    function writeOptionFrom(address _from, OptionWriteArgs memory _option)
-        external
-        returns (uint256);
+    function writeOptionFrom(
+        address _from,
+        OptionWriteArgs memory _option
+    ) external returns (uint256);
 
     function cancelOption(uint256 _optionId, uint256 _amount) external;
 

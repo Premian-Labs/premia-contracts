@@ -32,10 +32,10 @@ interface IPremiaMining {
 
     function getTotalAllocationPoints() external view returns (uint256);
 
-    function getPoolInfo(address pool, bool isCallPool)
-        external
-        view
-        returns (PremiaMiningStorage.PoolInfo memory);
+    function getPoolInfo(
+        address pool,
+        bool isCallPool
+    ) external view returns (PremiaMiningStorage.PoolInfo memory);
 
     function getPremiaPerYear() external view returns (uint256);
 

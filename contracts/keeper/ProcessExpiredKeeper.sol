@@ -17,11 +17,9 @@ contract ProcessExpiredKeeper is KeeperCompatibleInterface {
         PREMIA_DIAMOND = premiaDiamond;
     }
 
-    function checkUpkeep(bytes calldata)
-        external
-        view
-        returns (bool upkeepNeeded, bytes memory performData)
-    {
+    function checkUpkeep(
+        bytes calldata
+    ) external view returns (bool upkeepNeeded, bytes memory performData) {
         address[] memory poolList = IProxyManager(PREMIA_DIAMOND).getPoolList();
 
         for (uint256 i = 0; i < poolList.length; i++) {

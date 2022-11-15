@@ -47,11 +47,10 @@ contract PoolSell is IPoolSell, PoolInternal {
     /**
      * @inheritdoc IPoolSell
      */
-    function isBuybackEnabled(address account, bool isCallPool)
-        external
-        view
-        returns (bool)
-    {
+    function isBuybackEnabled(
+        address account,
+        bool isCallPool
+    ) external view returns (bool) {
         return PoolStorage.layout().isBuybackEnabled[account][isCallPool];
     }
 

@@ -133,11 +133,9 @@ contract PremiaMultiVesting is SafeOwnable {
         }
     }
 
-    function getPendingDeposits(address _user)
-        external
-        view
-        returns (Deposit[] memory)
-    {
+    function getPendingDeposits(
+        address _user
+    ) external view returns (Deposit[] memory) {
         Deposit[] memory result = new Deposit[](
             depositsLength[_user] - lastClaimedDepositId[_user]
         );

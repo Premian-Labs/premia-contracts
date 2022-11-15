@@ -27,7 +27,8 @@ contract PriceFeedConverter {
         int256 quotePrice = AggregatorInterface(QUOTE).latestAnswer();
         int256 basePrice = AggregatorInterface(BASE).latestAnswer();
 
-        return (quotePrice * basePrice) / int256(10**(uint256(QUOTE_DECIMALS)));
+        return
+            (quotePrice * basePrice) / int256(10 ** (uint256(QUOTE_DECIMALS)));
     }
 
     function decimals() external view returns (uint8) {

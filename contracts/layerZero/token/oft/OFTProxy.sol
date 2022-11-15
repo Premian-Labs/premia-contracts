@@ -13,9 +13,9 @@ import {IOFTCore} from "./IOFTCore.sol";
 contract OFTProxy is ProxyUpgradeableOwnable {
     using ERC165Storage for ERC165Storage.Layout;
 
-    constructor(address implementation)
-        ProxyUpgradeableOwnable(implementation)
-    {
+    constructor(
+        address implementation
+    ) ProxyUpgradeableOwnable(implementation) {
         {
             ERC165Storage.Layout storage l = ERC165Storage.layout();
             l.setSupportedInterface(type(IERC165).interfaceId, true);

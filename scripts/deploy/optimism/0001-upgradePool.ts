@@ -34,7 +34,7 @@ async function main() {
   const weth = '0x4200000000000000000000000000000000000006';
   const premiaMining = '0xbfDC37499D99046710a9C567016791c71cD25Cf6';
   const feeReceiver = '0x982aD8F6b468DfC460e3cd3087DF348895CA3080';
-  const feeDiscountAddress = ethers.constants.AddressZero;
+  const feeDiscountAddress = '0x17BAe0E202f6A22f2631B037C0660A88990d6023';
   const fee64x64 = fixedFromFloat(0.03);
   const optionMath = '0x4F273F4Efa9ECF5Dd245a338FAd9fe0BAb63B350';
   const nftDisplay = '0x9d3F42C5ca9426303b91567288E461230049e092';

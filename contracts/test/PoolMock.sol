@@ -42,31 +42,17 @@ contract PoolMock is PoolBase {
         return PoolStorage.formatTokenId(tokenType, maturity, strikePrice);
     }
 
-    function parseTokenId(uint256 tokenId)
-        external
-        pure
-        returns (
-            PoolStorage.TokenType,
-            uint64,
-            int128
-        )
-    {
+    function parseTokenId(
+        uint256 tokenId
+    ) external pure returns (PoolStorage.TokenType, uint64, int128) {
         return PoolStorage.parseTokenId(tokenId);
     }
 
-    function mint(
-        address account,
-        uint256 tokenId,
-        uint256 amount
-    ) external {
+    function mint(address account, uint256 tokenId, uint256 amount) external {
         _mint(account, tokenId, amount);
     }
 
-    function burn(
-        address account,
-        uint256 tokenId,
-        uint256 amount
-    ) external {
+    function burn(address account, uint256 tokenId, uint256 amount) external {
         _burn(account, tokenId, amount);
     }
 
@@ -86,11 +72,9 @@ contract PoolMock is PoolBase {
         return PoolStorage.layout().liquidityQueueAscending[true][address(0)];
     }
 
-    function getPriceUpdateAfter(uint256 timestamp)
-        external
-        view
-        returns (int128)
-    {
+    function getPriceUpdateAfter(
+        uint256 timestamp
+    ) external view returns (int128) {
         return PoolStorage.layout().getPriceUpdateAfter(timestamp);
     }
 
