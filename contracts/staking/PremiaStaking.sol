@@ -350,6 +350,37 @@ contract PremiaStaking is IPremiaStaking, OFT {
     /**
      * @inheritdoc IPremiaStaking
      */
+    function increaseLock(uint64 period) external {
+        _updateRewards();
+
+        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
+        PremiaStakingStorage.UserInfo storage u = l.userInfo[msg.sender];
+
+        if (period <= u.stakePeriod) revert PremiaStaking__PeriodTooShort();
+
+        UpdateArgsInternal memory args = _getInitialUpdateArgsInternal(
+            l,
+            u,
+            msg.sender
+        );
+
+        uint64 oldPeriod = u.stakePeriod;
+        u.lockedUntil += period - oldPeriod;
+        u.stakePeriod = period;
+
+        args.newPower = _calculateUserPower(
+            args.balance + args.unstakeReward,
+            period
+        );
+
+        _updateUser(l, u, args);
+
+        emit IncreaseLock(msg.sender, oldPeriod, period);
+    }
+
+    /**
+     * @inheritdoc IPremiaStaking
+     */
     function harvestAndStake(
         IPremiaStaking.SwapArgs memory s,
         uint64 stakePeriod
@@ -405,11 +436,9 @@ contract PremiaStaking is IPremiaStaking, OFT {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getPendingUserRewards(address user)
-        external
-        view
-        returns (uint256 reward, uint256 unstakeReward)
-    {
+    function getPendingUserRewards(
+        address user
+    ) external view returns (uint256 reward, uint256 unstakeReward) {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         PremiaStakingStorage.UserInfo storage u = l.userInfo[user];
 
@@ -498,19 +527,15 @@ contract PremiaStaking is IPremiaStaking, OFT {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getEarlyUnstakeFeeBPS(address user)
-        external
-        view
-        returns (uint256 feePercentage)
-    {
+    function getEarlyUnstakeFeeBPS(
+        address user
+    ) external view returns (uint256 feePercentage) {
         return _getEarlyUnstakeFeeBPS(user);
     }
 
-    function _getEarlyUnstakeFeeBPS(address user)
-        internal
-        view
-        returns (uint256 feePercentageBPS)
-    {
+    function _getEarlyUnstakeFeeBPS(
+        address user
+    ) internal view returns (uint256 feePercentageBPS) {
         uint256 lockedUntil = PremiaStakingStorage
             .layout()
             .userInfo[user]
@@ -700,22 +725,18 @@ contract PremiaStaking is IPremiaStaking, OFT {
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getStakePeriodMultiplierBPS(uint256 period)
-        external
-        pure
-        returns (uint256)
-    {
+    function getStakePeriodMultiplierBPS(
+        uint256 period
+    ) external pure returns (uint256) {
         return _getStakePeriodMultiplierBPS(period);
     }
 
     /**
      * @inheritdoc IPremiaStaking
      */
-    function getUserInfo(address user)
-        external
-        view
-        returns (PremiaStakingStorage.UserInfo memory)
-    {
+    function getUserInfo(
+        address user
+    ) external view returns (PremiaStakingStorage.UserInfo memory) {
         return PremiaStakingStorage.layout().userInfo[user];
     }
 
@@ -723,14 +744,12 @@ contract PremiaStaking is IPremiaStaking, OFT {
         return PremiaStakingStorage.layout().pendingWithdrawal;
     }
 
-    function getPendingWithdrawal(address user)
+    function getPendingWithdrawal(
+        address user
+    )
         external
         view
-        returns (
-            uint256 amount,
-            uint256 startDate,
-            uint256 unlockDate
-        )
+        returns (uint256 amount, uint256 startDate, uint256 unlockDate)
     {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
         amount = l.withdrawals[user].amount;
@@ -766,11 +785,9 @@ contract PremiaStaking is IPremiaStaking, OFT {
         stakeLevels[3] = IPremiaStaking.StakeLevel(2500000 * 1e18, 6000); // -60%
     }
 
-    function _getStakePeriodMultiplierBPS(uint256 period)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _getStakePeriodMultiplierBPS(
+        uint256 period
+    ) internal pure returns (uint256) {
         uint256 oneYear = 365 days;
 
         if (period == 0) return 2500; // x0.25
@@ -779,11 +796,10 @@ contract PremiaStaking is IPremiaStaking, OFT {
         return 2500 + (period * 1e4) / oneYear; // 0.25x + 1.0x per year lockup
     }
 
-    function _calculateUserPower(uint256 balance, uint64 stakePeriod)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _calculateUserPower(
+        uint256 balance,
+        uint64 stakePeriod
+    ) internal pure returns (uint256) {
         return
             (balance * _getStakePeriodMultiplierBPS(stakePeriod)) /
             INVERSE_BASIS_POINT;
@@ -867,11 +883,10 @@ contract PremiaStaking is IPremiaStaking, OFT {
         return args;
     }
 
-    function _calculateRewardDebt(uint256 accRewardPerShare, uint256 power)
-        internal
-        pure
-        returns (uint256)
-    {
+    function _calculateRewardDebt(
+        uint256 accRewardPerShare,
+        uint256 power
+    ) internal pure returns (uint256) {
         return (power * accRewardPerShare) / ACC_REWARD_PRECISION;
     }
 
