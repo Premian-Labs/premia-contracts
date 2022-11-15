@@ -634,8 +634,11 @@ contract PremiaStaking is IPremiaStaking, OFT {
         uint256 startDate = l.withdrawals[msg.sender].startDate;
 
         if (startDate == 0) revert PremiaStaking__NoPendingWithdrawal();
-        if (block.timestamp <= startDate + WITHDRAWAL_DELAY)
-            revert PremiaStaking__WithdrawalStillPending();
+
+        unchecked {
+            if (block.timestamp <= startDate + WITHDRAWAL_DELAY)
+                revert PremiaStaking__WithdrawalStillPending();
+        }
 
         uint256 amount = l.withdrawals[msg.sender].amount;
         l.pendingWithdrawal -= amount;
