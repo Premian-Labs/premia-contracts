@@ -90,11 +90,9 @@ contract VxPremia is IVxPremia, PremiaStaking {
         }
     }
 
-    function _calculateUserVotingPowerUsed(address user)
-        internal
-        view
-        returns (uint256 votingPowerUsed)
-    {
+    function _calculateUserVotingPowerUsed(
+        address user
+    ) internal view returns (uint256 votingPowerUsed) {
         VxPremiaStorage.Vote[] memory userVotes = VxPremiaStorage
             .layout()
             .userVotes[user];
@@ -119,11 +117,9 @@ contract VxPremia is IVxPremia, PremiaStaking {
     /**
      * @inheritdoc IVxPremia
      */
-    function getUserVotes(address user)
-        external
-        view
-        returns (VxPremiaStorage.Vote[] memory)
-    {
+    function getUserVotes(
+        address user
+    ) external view returns (VxPremiaStorage.Vote[] memory) {
         return VxPremiaStorage.layout().userVotes[user];
     }
 
@@ -133,9 +129,8 @@ contract VxPremia is IVxPremia, PremiaStaking {
     function castVotes(VxPremiaStorage.Vote[] memory votes) external {
         VxPremiaStorage.Layout storage l = VxPremiaStorage.layout();
 
-        uint256 balance = _balanceOf(msg.sender);
         uint256 userVotingPower = _calculateUserPower(
-            balance,
+            _balanceOf(msg.sender),
             PremiaStakingStorage.layout().userInfo[msg.sender].stakePeriod
         );
 

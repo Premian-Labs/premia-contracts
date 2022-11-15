@@ -525,10 +525,12 @@ contract PremiaStaking is IPremiaStaking, OFT {
     function earlyUnstake(uint256 amount) external {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
 
-        uint256 feePercentageBPS = _getEarlyUnstakeFeeBPS(msg.sender);
-        uint256 fee = (amount * feePercentageBPS) / 1e4;
-
-        _startWithdraw(l, l.userInfo[msg.sender], amount, fee);
+        _startWithdraw(
+            l,
+            l.userInfo[msg.sender],
+            amount,
+            (amount * _getEarlyUnstakeFeeBPS(msg.sender)) / 1e4
+        );
     }
 
     /**
