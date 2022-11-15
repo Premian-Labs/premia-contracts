@@ -2,8 +2,8 @@ import { expect } from 'chai';
 import {
   ERC20Mock,
   ERC20Mock__factory,
-  IExchangeHelper,
   ExchangeHelper__factory,
+  IExchangeHelper,
   PremiaStakingMock,
   PremiaStakingMock__factory,
   PremiaStakingProxy__factory,
@@ -11,7 +11,7 @@ import {
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { signERC2612Permit } from 'eth-permit';
-import { increaseTimestamp, setTimestamp } from '../utils/evm';
+import { increaseTimestamp } from '../utils/evm';
 import { parseEther, parseUnits } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
 import { BigNumber, BigNumberish } from 'ethers';
@@ -863,6 +863,29 @@ describe('PremiaStaking', () => {
       expect(await premiaStaking.balanceOf(carol.address)).to.eq(
         parseEther('100').add(carolFeeReward),
       );
+    });
+  });
+
+  describe('#updateLock', () => {
+    it('should correctly increase user lock', async () => {
+      await premia.connect(alice).approve(premiaStaking.address, 1000);
+      await premiaStaking.connect(alice).stake(1000, 0);
+      let block = await ethers.provider.getBlock('latest');
+
+      let uInfo = await premiaStaking.getUserInfo(alice.address);
+      expect(uInfo.stakePeriod).to.eq(0);
+      expect(uInfo.lockedUntil).to.eq(block.timestamp);
+      expect(await premiaStaking.getUserPower(alice.address)).to.eq(250);
+      expect(await premiaStaking.getTotalPower()).to.eq(250);
+
+      await premiaStaking.connect(alice).updateLock(ONE_YEAR * 2);
+      block = await ethers.provider.getBlock('latest');
+
+      uInfo = await premiaStaking.getUserInfo(alice.address);
+      expect(uInfo.stakePeriod).to.eq(ONE_YEAR * 2);
+      expect(uInfo.lockedUntil).to.eq(block.timestamp + ONE_YEAR * 2);
+      expect(await premiaStaking.getUserPower(alice.address)).to.eq(2250);
+      expect(await premiaStaking.getTotalPower()).to.eq(2250);
     });
   });
 
