@@ -2,7 +2,7 @@
 
 pragma solidity ^0.8.0;
 
-import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
+import {EnumerableSet} from "@solidstate/contracts/data/EnumerableSet.sol";
 
 library VolatilitySurfaceOracleStorage {
     bytes32 internal constant STORAGE_SLOT =
@@ -41,11 +41,9 @@ library VolatilitySurfaceOracleStorage {
         return l.parameters[base][underlying].params;
     }
 
-    function parseParams(bytes32 input)
-        internal
-        pure
-        returns (int256[] memory params)
-    {
+    function parseParams(
+        bytes32 input
+    ) internal pure returns (int256[] memory params) {
         params = new int256[](PARAM_AMOUNT);
 
         // Value to add to negative numbers to cast them to int256
@@ -87,11 +85,9 @@ library VolatilitySurfaceOracleStorage {
         }
     }
 
-    function formatParams(int256[5] memory params)
-        internal
-        pure
-        returns (bytes32 result)
-    {
+    function formatParams(
+        int256[5] memory params
+    ) internal pure returns (bytes32 result) {
         int256 max = int256(1 << PARAM_BITS_MINUS_ONE);
 
         unchecked {

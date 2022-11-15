@@ -3,7 +3,7 @@
 
 pragma solidity ^0.8.0;
 
-import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
+import {EnumerableSet} from "@solidstate/contracts/data/EnumerableSet.sol";
 
 import {IPremiaOptionNFTDisplay} from "../interfaces/IPremiaOptionNFTDisplay.sol";
 import {IPoolView, IERC1155Metadata} from "./IPoolView.sol";
@@ -86,11 +86,9 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getCLevel64x64(bool isCall)
-        external
-        view
-        returns (int128 cLevel64x64)
-    {
+    function getCLevel64x64(
+        bool isCall
+    ) external view returns (int128 cLevel64x64) {
         (cLevel64x64, ) = PoolStorage.layout().getRealPoolState(isCall);
     }
 
@@ -122,11 +120,9 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getPriceAfter64x64(uint256 timestamp)
-        external
-        view
-        returns (int128 spot64x64)
-    {
+    function getPriceAfter64x64(
+        uint256 timestamp
+    ) external view returns (int128 spot64x64) {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         spot64x64 = l.getPriceUpdateAfter(timestamp);
@@ -139,15 +135,9 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getParametersForTokenId(uint256 tokenId)
-        external
-        pure
-        returns (
-            PoolStorage.TokenType,
-            uint64,
-            int128
-        )
-    {
+    function getParametersForTokenId(
+        uint256 tokenId
+    ) external pure returns (PoolStorage.TokenType, uint64, int128) {
         return PoolStorage.parseTokenId(tokenId);
     }
 
@@ -166,11 +156,9 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getUserTVL(address user)
-        external
-        view
-        returns (uint256 underlyingTVL, uint256 baseTVL)
-    {
+    function getUserTVL(
+        address user
+    ) external view returns (uint256 underlyingTVL, uint256 baseTVL) {
         PoolStorage.Layout storage l = PoolStorage.layout();
         return (l.userTVL[user][true], l.userTVL[user][false]);
     }
@@ -190,7 +178,10 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getLiquidityQueuePosition(address account, bool isCallPool)
+    function getLiquidityQueuePosition(
+        address account,
+        bool isCallPool
+    )
         external
         view
         returns (uint256 liquidityBeforePosition, uint256 positionSize)
@@ -227,7 +218,9 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getDivestmentTimestamps(address account)
+    function getDivestmentTimestamps(
+        address account
+    )
         external
         view
         returns (
@@ -243,11 +236,10 @@ contract PoolView is IPoolView, PoolInternal {
     /**
      * @inheritdoc IPoolView
      */
-    function getFeesReserved(address account, uint256 shortTokenId)
-        external
-        view
-        returns (uint256 feesReserved)
-    {
+    function getFeesReserved(
+        address account,
+        uint256 shortTokenId
+    ) external view returns (uint256 feesReserved) {
         feesReserved = PoolStorage.layout().feesReserved[account][shortTokenId];
     }
 

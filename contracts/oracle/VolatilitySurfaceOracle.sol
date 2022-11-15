@@ -4,7 +4,7 @@
 pragma solidity ^0.8.0;
 
 import {OwnableInternal, OwnableStorage} from "@solidstate/contracts/access/ownable/OwnableInternal.sol";
-import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
+import {EnumerableSet} from "@solidstate/contracts/data/EnumerableSet.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 
 import {OptionMath} from "../libraries/OptionMath.sol";
@@ -34,22 +34,18 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     /**
      * @inheritdoc IVolatilitySurfaceOracle
      */
-    function formatParams(int256[5] memory params)
-        external
-        pure
-        returns (bytes32 result)
-    {
+    function formatParams(
+        int256[5] memory params
+    ) external pure returns (bytes32 result) {
         return VolatilitySurfaceOracleStorage.formatParams(params);
     }
 
     /**
      * @inheritdoc IVolatilitySurfaceOracle
      */
-    function parseParams(bytes32 input)
-        external
-        pure
-        returns (int256[] memory params)
-    {
+    function parseParams(
+        bytes32 input
+    ) external pure returns (int256[] memory params) {
         return VolatilitySurfaceOracleStorage.parseParams(input);
     }
 
@@ -73,11 +69,10 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     /**
      * @inheritdoc IVolatilitySurfaceOracle
      */
-    function getParams(address base, address underlying)
-        external
-        view
-        returns (VolatilitySurfaceOracleStorage.Update memory)
-    {
+    function getParams(
+        address base,
+        address underlying
+    ) external view returns (VolatilitySurfaceOracleStorage.Update memory) {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
         return l.parameters[base][underlying];
@@ -86,11 +81,10 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     /**
      * @inheritdoc IVolatilitySurfaceOracle
      */
-    function getParamsUnpacked(address base, address underlying)
-        external
-        view
-        returns (int256[] memory)
-    {
+    function getParamsUnpacked(
+        address base,
+        address underlying
+    ) external view returns (int256[] memory) {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
         bytes32 packed = l.getParams(base, underlying);
@@ -100,11 +94,9 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     /**
      * @inheritdoc IVolatilitySurfaceOracle
      */
-    function getTimeToMaturity64x64(uint64 maturity)
-        external
-        view
-        returns (int128)
-    {
+    function getTimeToMaturity64x64(
+        uint64 maturity
+    ) external view returns (int128) {
         return ABDKMath64x64.divu(maturity - block.timestamp, 365 days);
     }
 
@@ -191,16 +183,15 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
                 strike64x64,
                 timeToMaturity64x64,
                 isCall
-            ).mulu(10**18);
+            ).mulu(10 ** 18);
     }
 
     /**
      * @inheritdoc IVolatilitySurfaceOracle
      */
-    function addWhitelistedRelayers(address[] memory accounts)
-        external
-        onlyOwner
-    {
+    function addWhitelistedRelayers(
+        address[] memory accounts
+    ) external onlyOwner {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
 
@@ -212,10 +203,9 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
     /**
      * @inheritdoc IVolatilitySurfaceOracle
      */
-    function removeWhitelistedRelayers(address[] memory accounts)
-        external
-        onlyOwner
-    {
+    function removeWhitelistedRelayers(
+        address[] memory accounts
+    ) external onlyOwner {
         VolatilitySurfaceOracleStorage.Layout
             storage l = VolatilitySurfaceOracleStorage.layout();
 
@@ -264,7 +254,7 @@ contract VolatilitySurfaceOracle is IVolatilitySurfaceOracle, OwnableInternal {
      * @return 64x64 fixed point representation of parameter
      */
     function _toParameter64x64(int256 value) private pure returns (int128) {
-        return ABDKMath64x64.divi(value, int256(10**DECIMALS));
+        return ABDKMath64x64.divi(value, int256(10 ** DECIMALS));
     }
 
     /**

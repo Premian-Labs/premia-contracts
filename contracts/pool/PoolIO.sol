@@ -3,7 +3,7 @@
 
 pragma solidity ^0.8.0;
 
-import {EnumerableSet} from "@solidstate/contracts/utils/EnumerableSet.sol";
+import {EnumerableSet} from "@solidstate/contracts/data/EnumerableSet.sol";
 import {ABDKMath64x64} from "abdk-libraries-solidity/ABDKMath64x64.sol";
 import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
 
@@ -62,9 +62,10 @@ contract PoolIO is IPoolIO, PoolInternal {
     /**
      * @inheritdoc IPoolIO
      */
-    function setDivestmentTimestamp(uint64 timestamp, bool isCallPool)
-        external
-    {
+    function setDivestmentTimestamp(
+        uint64 timestamp,
+        bool isCallPool
+    ) external {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         require(
@@ -88,10 +89,10 @@ contract PoolIO is IPoolIO, PoolInternal {
     /**
      * @inheritdoc IPoolIO
      */
-    function swapAndDeposit(IPoolInternal.SwapArgs memory s, bool isCallPool)
-        external
-        payable
-    {
+    function swapAndDeposit(
+        IPoolInternal.SwapArgs memory s,
+        bool isCallPool
+    ) external payable {
         PoolStorage.Layout storage l = PoolStorage.layout();
 
         address tokenOut = l.getPoolToken(isCallPool);
@@ -167,14 +168,7 @@ contract PoolIO is IPoolIO, PoolInternal {
         uint256 tokenId,
         uint256 contractSize,
         bool divest
-    )
-        external
-        returns (
-            uint256 baseCost,
-            uint256 feeCost,
-            uint256 amountOut
-        )
-    {
+    ) external returns (uint256 baseCost, uint256 feeCost, uint256 amountOut) {
         bool isCall;
         int128 utilization64x64;
 
@@ -264,10 +258,9 @@ contract PoolIO is IPoolIO, PoolInternal {
         );
     }
 
-    function _reassignBatch(ReassignBatchArgsInternal memory args)
-        internal
-        returns (ReassignBatchResultInternal memory result)
-    {
+    function _reassignBatch(
+        ReassignBatchArgsInternal memory args
+    ) internal returns (ReassignBatchResultInternal memory result) {
         result.baseCosts = new uint256[](args.tokenIds.length);
         result.feeCosts = new uint256[](args.tokenIds.length);
         bool[] memory isCallToken = new bool[](args.tokenIds.length);
