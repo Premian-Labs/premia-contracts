@@ -174,6 +174,7 @@ abstract contract LzApp is
 
         return
             srcAddress.length == trustedRemote.length &&
+            trustedRemote.length > 0 &&
             keccak256(trustedRemote) == keccak256(srcAddress);
     }
 }
