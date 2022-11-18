@@ -48,12 +48,14 @@ contract VxPremia is IVxPremia, PremiaStaking {
         uint256 votingPowerUsed = _calculateUserVotingPowerUsed(user);
         uint256 votingPowerLeftAfterUnstake = votingPower - amountUnstaked;
 
-        if (votingPowerUsed > votingPowerLeftAfterUnstake) {
-            _subtractUserVotes(
-                l,
-                user,
-                votingPowerUsed - votingPowerLeftAfterUnstake
-            );
+        unchecked {
+            if (votingPowerUsed > votingPowerLeftAfterUnstake) {
+                _subtractUserVotes(
+                    l,
+                    user,
+                    votingPowerUsed - votingPowerLeftAfterUnstake
+                );
+            }
         }
     }
 

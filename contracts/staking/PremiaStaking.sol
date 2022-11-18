@@ -146,16 +146,15 @@ contract PremiaStaking is IPremiaStaking, OFT {
 
         _updateUser(l, u, args);
 
-        bytes memory payload = abi.encode(
-            PT_SEND,
-            toAddress,
-            amount,
-            u.stakePeriod,
-            u.lockedUntil
-        );
         _lzSend(
             dstChainId,
-            payload,
+            abi.encode(
+                PT_SEND,
+                toAddress,
+                amount,
+                u.stakePeriod,
+                u.lockedUntil
+            ),
             refundAddress,
             zroPaymentAddress,
             adapterParams,
