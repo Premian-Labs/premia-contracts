@@ -367,4 +367,31 @@ describe('VxPremia', () => {
       );
     });
   });
+
+  it('should successfully update total pool votes', async () => {
+    await vxPremia.connect(alice).stake(parseEther('10'), ONE_DAY * 365);
+
+    await vxPremia.connect(alice).castVotes([
+      {
+        amount: parseEther('12.5'),
+        version: 0,
+        target: solidityPack(
+          ['address', 'bool'],
+          ['0x0000000000000000000000000000000000000001', true],
+        ),
+      },
+    ]);
+
+    await increaseTimestamp(ONE_DAY * 366);
+
+    const target = solidityPack(
+      ['address', 'bool'],
+      ['0x0000000000000000000000000000000000000001', true],
+    );
+    expect(await vxPremia.getPoolVotes(0, target)).to.eq(parseEther('12.5'));
+
+    await vxPremia.connect(alice).startWithdraw(parseEther('5'));
+
+    expect(await vxPremia.getPoolVotes(0, target)).to.eq(parseEther('6.25'));
+  });
 });

@@ -85,6 +85,7 @@ contract VxPremia is IVxPremia, PremiaStaking {
 
                 toSubtract -= votesRemoved;
 
+                l.votes[vote.version][vote.target] -= vote.amount;
                 emit RemoveVote(user, vote.version, vote.target, votesRemoved);
 
                 if (toSubtract == 0) break;
