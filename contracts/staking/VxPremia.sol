@@ -72,26 +72,22 @@ contract VxPremia is IVxPremia, PremiaStaking {
 
         unchecked {
             for (uint256 i = userVotes.length; i > 0; ) {
-                VxPremiaStorage.Vote storage vote = userVotes[--i];
+                VxPremiaStorage.Vote memory vote = userVotes[--i];
 
                 uint256 votesRemoved;
                 bool pop = false;
                 if (toSubtract <= vote.amount) {
                     votesRemoved = toSubtract;
-                    vote.amount -= toSubtract;
+                    userVotes[i].amount -= toSubtract;
                 } else {
                     votesRemoved = vote.amount;
-                    pop = true;
+                    userVotes.pop();
                 }
 
                 toSubtract -= votesRemoved;
 
-                l.votes[vote.version][vote.target] -= vote.amount;
+                l.votes[vote.version][vote.target] -= votesRemoved;
                 emit RemoveVote(user, vote.version, vote.target, votesRemoved);
-
-                if (pop) {
-                    userVotes.pop();
-                }
 
                 if (toSubtract == 0) break;
             }
