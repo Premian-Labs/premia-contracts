@@ -394,4 +394,35 @@ describe('VxPremia', () => {
 
     expect(await vxPremia.getPoolVotes(0, target)).to.eq(parseEther('6.25'));
   });
+
+  it('should properly remove all votes if unstaking all', async () => {
+    await vxPremia.connect(alice).stake(parseEther('10'), ONE_DAY * 365);
+
+    await vxPremia.connect(alice).castVotes([
+      {
+        amount: parseEther('6.25'),
+        version: 0,
+        target: solidityPack(
+          ['address', 'bool'],
+          ['0x0000000000000000000000000000000000000001', true],
+        ),
+      },
+      {
+        amount: parseEther('6.25'),
+        version: 0,
+        target: solidityPack(
+          ['address', 'bool'],
+          ['0x0000000000000000000000000000000000000002', true],
+        ),
+      },
+    ]);
+
+    await increaseTimestamp(ONE_DAY * 366);
+
+    expect((await vxPremia.getUserVotes(alice.address)).length).to.eq(2);
+
+    await vxPremia.connect(alice).startWithdraw(parseEther('10'));
+
+    expect((await vxPremia.getUserVotes(alice.address)).length).to.eq(0);
+  });
 });

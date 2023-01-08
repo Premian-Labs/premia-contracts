@@ -75,7 +75,7 @@ contract VxPremia is IVxPremia, PremiaStaking {
 
                 uint256 votesRemoved;
 
-                if (amount <= vote.amount) {
+                if (amount < vote.amount) {
                     votesRemoved = amount;
                     userVotes[i].amount -= amount;
                 } else {
