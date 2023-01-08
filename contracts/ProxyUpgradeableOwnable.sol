@@ -4,7 +4,8 @@
 pragma solidity ^0.8.0;
 
 import {Proxy} from "@solidstate/contracts/proxy/Proxy.sol";
-import {SafeOwnable, OwnableStorage} from "@solidstate/contracts/access/ownable/SafeOwnable.sol";
+import {SafeOwnable} from "@solidstate/contracts/access/ownable/SafeOwnable.sol";
+import {OwnableStorage} from "@solidstate/contracts/access/ownable/OwnableStorage.sol";
 import {ProxyUpgradeableOwnableStorage} from "./ProxyUpgradeableOwnableStorage.sol";
 
 contract ProxyUpgradeableOwnable is Proxy, SafeOwnable {
@@ -12,7 +13,7 @@ contract ProxyUpgradeableOwnable is Proxy, SafeOwnable {
     using OwnableStorage for OwnableStorage.Layout;
 
     constructor(address implementation) {
-        OwnableStorage.layout().setOwner(msg.sender);
+        OwnableStorage.layout().owner = msg.sender;
         ProxyUpgradeableOwnableStorage.layout().implementation = implementation;
     }
 

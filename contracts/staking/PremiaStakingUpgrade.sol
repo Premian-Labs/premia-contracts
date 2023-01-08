@@ -48,8 +48,8 @@ contract PremiaStakingUpgrade is SolidStateERC20, OwnableInternal {
         {
             ERC20MetadataStorage.Layout storage metadataL = ERC20MetadataStorage
                 .layout();
-            metadataL.setName("vxPremia");
-            metadataL.setSymbol("vxPREMIA");
+            metadataL.name = "vxPremia";
+            metadataL.symbol = "vxPREMIA";
         }
 
         FeeDiscountStorage.Layout storage oldL = FeeDiscountStorage.layout();

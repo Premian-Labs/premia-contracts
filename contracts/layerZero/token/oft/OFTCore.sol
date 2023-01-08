@@ -4,10 +4,10 @@ pragma solidity ^0.8.0;
 
 import {NonblockingLzApp} from "../../lzApp/NonblockingLzApp.sol";
 import {IOFTCore} from "./IOFTCore.sol";
-import {ERC165, IERC165} from "@solidstate/contracts/introspection/ERC165.sol";
+import {ERC165Base, IERC165} from "@solidstate/contracts/introspection/ERC165/base/ERC165Base.sol";
 import {BytesLib} from "../../util/BytesLib.sol";
 
-abstract contract OFTCore is NonblockingLzApp, ERC165, IOFTCore {
+abstract contract OFTCore is NonblockingLzApp, ERC165Base, IOFTCore {
     using BytesLib for bytes;
 
     // packet type

@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 
 import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/ownable/OwnableStorage.sol";
-import {ERC165Storage} from "@solidstate/contracts/introspection/ERC165Storage.sol";
+import {ERC165BaseStorage} from "@solidstate/contracts/introspection/ERC165/base/ERC165BaseStorage.sol";
 import {Proxy} from "@solidstate/contracts/proxy/Proxy.sol";
 import {IDiamondReadable} from "@solidstate/contracts/proxy/diamond/readable/IDiamondReadable.sol";
 import {IERC20Metadata} from "@solidstate/contracts/token/ERC20/metadata/IERC20Metadata.sol";
@@ -20,7 +20,7 @@ import {PoolStorage} from "./PoolStorage.sol";
  */
 contract PoolProxy is Proxy {
     using PoolStorage for PoolStorage.Layout;
-    using ERC165Storage for ERC165Storage.Layout;
+    using ERC165BaseStorage for ERC165BaseStorage.Layout;
 
     address private immutable DIAMOND;
 
@@ -76,9 +76,9 @@ contract PoolProxy is Proxy {
         }
 
         {
-            ERC165Storage.Layout storage l = ERC165Storage.layout();
-            l.setSupportedInterface(type(IERC165).interfaceId, true);
-            l.setSupportedInterface(type(IERC1155).interfaceId, true);
+            ERC165BaseStorage.Layout storage l = ERC165BaseStorage.layout();
+            l.supportedInterfaces[type(IERC165).interfaceId] = true;
+            l.supportedInterfaces[type(IERC1155).interfaceId] = true;
         }
     }
 

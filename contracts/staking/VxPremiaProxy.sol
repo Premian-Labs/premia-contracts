@@ -14,8 +14,8 @@ contract VxPremiaProxy is ProxyUpgradeableOwnable {
         address implementation
     ) ProxyUpgradeableOwnable(implementation) {
         ERC20MetadataStorage.Layout storage l = ERC20MetadataStorage.layout();
-        l.setName("vxPremia");
-        l.setSymbol("vxPREMIA");
-        l.setDecimals(18);
+        l.name = "vxPremia";
+        l.symbol = "vxPREMIA";
+        l.decimals = 18;
     }
 }

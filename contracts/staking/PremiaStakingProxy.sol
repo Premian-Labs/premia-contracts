@@ -13,8 +13,8 @@ contract PremiaStakingProxy is ProxyUpgradeableOwnable {
         address implementation
     ) ProxyUpgradeableOwnable(implementation) {
         ERC20MetadataStorage.Layout storage l = ERC20MetadataStorage.layout();
-        l.setName("Staked Premia");
-        l.setSymbol("xPREMIA");
-        l.setDecimals(18);
+        l.name = "Staked Premia";
+        l.symbol = "xPREMIA";
+        l.decimals = 18;
     }
 }

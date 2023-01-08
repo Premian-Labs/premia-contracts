@@ -14,9 +14,9 @@ contract PremiaErc20 is SolidStateERC20 {
     constructor() {
         ERC20MetadataStorage.Layout storage l = ERC20MetadataStorage.layout();
 
-        l.setName("Premia");
-        l.setSymbol("PREMIA");
-        l.setDecimals(18);
+        l.name = "Premia";
+        l.symbol = "PREMIA";
+        l.decimals = 18;
 
         _mint(msg.sender, 1e26);
         // 100m

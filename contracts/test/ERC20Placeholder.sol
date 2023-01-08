@@ -12,8 +12,8 @@ contract ERC20Placeholder is SolidStateERC20 {
     constructor() {
         ERC20MetadataStorage.Layout storage l = ERC20MetadataStorage.layout();
 
-        l.setName("Placeholder");
-        l.setSymbol("PLACEHOLDER");
-        l.setDecimals(18);
+        l.name = "Placeholder";
+        l.symbol = "PLACEHOLDER";
+        l.decimals = 18;
     }
 }

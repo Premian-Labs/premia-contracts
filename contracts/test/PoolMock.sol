@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 import {OwnableStorage} from "@solidstate/contracts/access/ownable/OwnableStorage.sol";
-import {ERC165Storage} from "@solidstate/contracts/introspection/ERC165Storage.sol";
+import {ERC165BaseStorage} from "@solidstate/contracts/introspection/ERC165/base/ERC165BaseStorage.sol";
 import {SolidStateERC20} from "@solidstate/contracts/token/ERC20/SolidStateERC20.sol";
 import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/metadata/ERC20MetadataStorage.sol";
 
@@ -11,7 +11,7 @@ import {PoolBase} from "../pool/PoolBase.sol";
 import {PoolStorage} from "../pool/PoolStorage.sol";
 
 contract PoolMock is PoolBase {
-    using ERC165Storage for ERC165Storage.Layout;
+    using ERC165BaseStorage for ERC165BaseStorage.Layout;
     using PoolStorage for PoolStorage.Layout;
 
     constructor(

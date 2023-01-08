@@ -21,7 +21,7 @@ contract OFT is OFTCore, SolidStateERC20, IOFT {
         override
         returns (uint256)
     {
-        return totalSupply();
+        return _totalSupply();
     }
 
     function _debitFrom(
