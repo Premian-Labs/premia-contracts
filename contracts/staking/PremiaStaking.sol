@@ -839,18 +839,6 @@ contract PremiaStaking is IPremiaStaking, OFT {
         }
     }
 
-    function _updateRewardDebt(
-        PremiaStakingStorage.Layout storage l,
-        PremiaStakingStorage.UserInfo storage u,
-        uint256 power
-    ) internal {
-        u.rewardDebt = _calculateRewardDebt(l.accRewardPerShare, power);
-        u.unstakeRewardDebt = _calculateRewardDebt(
-            l.accUnstakeRewardPerShare,
-            power
-        );
-    }
-
     function _getInitialUpdateArgsInternal(
         PremiaStakingStorage.Layout storage l,
         PremiaStakingStorage.UserInfo storage u,
@@ -890,7 +878,13 @@ contract PremiaStaking is IPremiaStaking, OFT {
         PremiaStakingStorage.UserInfo storage u,
         UpdateArgsInternal memory args
     ) internal {
-        _updateRewardDebt(l, u, args.newPower);
+        // Update reward debt
+        u.rewardDebt = _calculateRewardDebt(l.accRewardPerShare, args.newPower);
+        u.unstakeRewardDebt = _calculateRewardDebt(
+            l.accUnstakeRewardPerShare,
+            args.newPower
+        );
+
         _creditRewards(l, u, args.user, args.reward, args.unstakeReward);
         _updateTotalPower(l, args.oldPower, args.newPower);
     }
