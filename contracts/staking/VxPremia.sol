@@ -164,4 +164,15 @@ contract VxPremia is IVxPremia, PremiaStaking {
             emit AddVote(msg.sender, vote.version, vote.target, vote.amount);
         }
     }
+
+    function fixPoolVotes(
+        bytes memory target,
+        uint256 amount
+    ) external onlyOwner {
+        unchecked {
+            VxPremiaStorage.layout().votes[VxPremiaStorage.VoteVersion.V2][
+                target
+            ] -= amount;
+        }
+    }
 }
