@@ -96,20 +96,11 @@ contract PremiaStaking is IPremiaStaking, OFT {
             .layout()
             .userInfo[to];
 
-        // mock the payload for send()
-        bytes memory payload = abi.encode(
-            PT_SEND,
-            to,
-            amount,
-            u.stakePeriod,
-            u.lockedUntil
-        );
-
         return
             lzEndpoint.estimateFees(
                 dstChainId,
                 address(this),
-                payload,
+                abi.encode(PT_SEND, to, amount, u.stakePeriod, u.lockedUntil),
                 useZro,
                 adapterParams
             );
@@ -253,14 +244,12 @@ contract PremiaStaking is IPremiaStaking, OFT {
     function addRewards(uint256 amount) external {
         _updateRewards();
 
-        PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-
         IERC20(REWARD_TOKEN).safeTransferFrom(
             msg.sender,
             address(this),
             amount
         );
-        l.availableRewards += amount;
+        PremiaStakingStorage.layout().availableRewards += amount;
 
         emit RewardsAdded(amount);
     }
@@ -834,20 +823,6 @@ contract PremiaStaking is IPremiaStaking, OFT {
             ((accRewardPerShare * power) / ACC_REWARD_PRECISION) - rewardDebt;
     }
 
-    function _calculateRewards(
-        PremiaStakingStorage.Layout storage l,
-        PremiaStakingStorage.UserInfo storage u,
-        uint256 power
-    ) internal view returns (uint256 reward, uint256 unstakeReward) {
-        reward = _calculateReward(l.accRewardPerShare, power, u.rewardDebt);
-
-        unstakeReward = _calculateReward(
-            l.accUnstakeRewardPerShare,
-            power,
-            u.unstakeRewardDebt
-        );
-    }
-
     function _creditRewards(
         PremiaStakingStorage.Layout storage l,
         PremiaStakingStorage.UserInfo storage u,
@@ -889,16 +864,16 @@ contract PremiaStaking is IPremiaStaking, OFT {
             args.oldPower = _calculateUserPower(args.balance, u.stakePeriod);
         }
 
-        {
-            (uint256 reward, uint256 unstakeReward) = _calculateRewards(
-                l,
-                u,
-                args.oldPower
-            );
-
-            args.reward = reward;
-            args.unstakeReward = unstakeReward;
-        }
+        args.reward = _calculateReward(
+            l.accRewardPerShare,
+            args.oldPower,
+            u.rewardDebt
+        );
+        args.unstakeReward = _calculateReward(
+            l.accUnstakeRewardPerShare,
+            args.oldPower,
+            u.unstakeRewardDebt
+        );
 
         return args;
     }
