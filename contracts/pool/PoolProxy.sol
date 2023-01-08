@@ -5,7 +5,7 @@ pragma solidity ^0.8.0;
 
 import {ABDKMath64x64Token} from "@solidstate/abdk-math-extensions/contracts/ABDKMath64x64Token.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/ownable/OwnableStorage.sol";
-import {ERC165BaseStorage} from "@solidstate/contracts/introspection/ERC165/base/ERC165BaseStorage.sol";
+import {ERC165BaseInternal} from "@solidstate/contracts/introspection/ERC165/base/ERC165BaseInternal.sol";
 import {Proxy} from "@solidstate/contracts/proxy/Proxy.sol";
 import {IDiamondReadable} from "@solidstate/contracts/proxy/diamond/readable/IDiamondReadable.sol";
 import {IERC20Metadata} from "@solidstate/contracts/token/ERC20/metadata/IERC20Metadata.sol";
@@ -18,9 +18,8 @@ import {PoolStorage} from "./PoolStorage.sol";
 /**
  * @title Upgradeable proxy with centrally controlled Pool implementation
  */
-contract PoolProxy is Proxy {
+contract PoolProxy is Proxy, ERC165BaseInternal {
     using PoolStorage for PoolStorage.Layout;
-    using ERC165BaseStorage for ERC165BaseStorage.Layout;
 
     address private immutable DIAMOND;
 
@@ -38,48 +37,43 @@ contract PoolProxy is Proxy {
         DIAMOND = diamond;
         OwnableStorage.layout().owner = msg.sender;
 
-        {
-            PoolStorage.Layout storage l = PoolStorage.layout();
+        PoolStorage.Layout storage l = PoolStorage.layout();
 
-            l.base = base;
-            l.underlying = underlying;
+        l.base = base;
+        l.underlying = underlying;
 
-            l.setOracles(baseOracle, underlyingOracle);
+        l.setOracles(baseOracle, underlyingOracle);
 
-            uint8 baseDecimals = IERC20Metadata(base).decimals();
-            uint8 underlyingDecimals = IERC20Metadata(underlying).decimals();
+        uint8 baseDecimals = IERC20Metadata(base).decimals();
+        uint8 underlyingDecimals = IERC20Metadata(underlying).decimals();
 
-            l.baseDecimals = baseDecimals;
-            l.underlyingDecimals = underlyingDecimals;
+        l.baseDecimals = baseDecimals;
+        l.underlyingDecimals = underlyingDecimals;
 
-            l.baseMinimum = ABDKMath64x64Token.toDecimals(
-                baseMinimum64x64,
-                baseDecimals
-            );
+        l.baseMinimum = ABDKMath64x64Token.toDecimals(
+            baseMinimum64x64,
+            baseDecimals
+        );
 
-            l.underlyingMinimum = ABDKMath64x64Token.toDecimals(
-                underlyingMinimum64x64,
-                underlyingDecimals
-            );
+        l.underlyingMinimum = ABDKMath64x64Token.toDecimals(
+            underlyingMinimum64x64,
+            underlyingDecimals
+        );
 
-            l.steepnessBase64x64 = initialSteepness64x64;
-            l.steepnessUnderlying64x64 = initialSteepness64x64;
-            l.cLevelBase64x64 = initialCLevel64x64;
-            l.cLevelUnderlying64x64 = initialCLevel64x64;
+        l.steepnessBase64x64 = initialSteepness64x64;
+        l.steepnessUnderlying64x64 = initialSteepness64x64;
+        l.cLevelBase64x64 = initialCLevel64x64;
+        l.cLevelUnderlying64x64 = initialCLevel64x64;
 
-            int128 newPrice64x64 = l.fetchPriceUpdate();
-            l.setPriceUpdate(block.timestamp, newPrice64x64);
+        int128 newPrice64x64 = l.fetchPriceUpdate();
+        l.setPriceUpdate(block.timestamp, newPrice64x64);
 
-            l.updatedAt = block.timestamp;
-            l.cLevelBaseUpdatedAt = block.timestamp;
-            l.cLevelUnderlyingUpdatedAt = block.timestamp;
-        }
+        l.updatedAt = block.timestamp;
+        l.cLevelBaseUpdatedAt = block.timestamp;
+        l.cLevelUnderlyingUpdatedAt = block.timestamp;
 
-        {
-            ERC165BaseStorage.Layout storage l = ERC165BaseStorage.layout();
-            l.supportedInterfaces[type(IERC165).interfaceId] = true;
-            l.supportedInterfaces[type(IERC1155).interfaceId] = true;
-        }
+        _setSupportsInterface(type(IERC165).interfaceId, true);
+        _setSupportsInterface(type(IERC1155).interfaceId, true);
     }
 
     function _getImplementation() internal view override returns (address) {

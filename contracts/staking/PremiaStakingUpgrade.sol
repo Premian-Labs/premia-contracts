@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 
 import {SafeCast} from "@solidstate/contracts/utils/SafeCast.sol";
 import {OwnableInternal} from "@solidstate/contracts/access/ownable/OwnableInternal.sol";
-import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/metadata/ERC20MetadataStorage.sol";
 import {SolidStateERC20} from "@solidstate/contracts/token/ERC20/SolidStateERC20.sol";
 import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
 
@@ -12,7 +11,6 @@ import {FeeDiscountStorage} from "./FeeDiscountStorage.sol";
 import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 
 contract PremiaStakingUpgrade is SolidStateERC20, OwnableInternal {
-    using ERC20MetadataStorage for ERC20MetadataStorage.Layout;
     using SafeCast for uint256;
 
     event UserUpgraded(
@@ -45,12 +43,8 @@ contract PremiaStakingUpgrade is SolidStateERC20, OwnableInternal {
     }
 
     function upgrade(address[] memory users) external onlyOwner {
-        {
-            ERC20MetadataStorage.Layout storage metadataL = ERC20MetadataStorage
-                .layout();
-            metadataL.name = "vxPremia";
-            metadataL.symbol = "vxPREMIA";
-        }
+        _setName("vxPremia");
+        _setSymbol("vxPREMIA");
 
         FeeDiscountStorage.Layout storage oldL = FeeDiscountStorage.layout();
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();

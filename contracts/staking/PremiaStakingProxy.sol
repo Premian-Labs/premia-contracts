@@ -3,18 +3,16 @@
 
 pragma solidity ^0.8.0;
 
+import {ERC20MetadataInternal} from "@solidstate/contracts/token/ERC20/metadata/ERC20MetadataInternal.sol";
+
 import {ProxyUpgradeableOwnable} from "../ProxyUpgradeableOwnable.sol";
-import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/metadata/ERC20MetadataStorage.sol";
 
-contract PremiaStakingProxy is ProxyUpgradeableOwnable {
-    using ERC20MetadataStorage for ERC20MetadataStorage.Layout;
-
+contract PremiaStakingProxy is ProxyUpgradeableOwnable, ERC20MetadataInternal {
     constructor(
         address implementation
     ) ProxyUpgradeableOwnable(implementation) {
-        ERC20MetadataStorage.Layout storage l = ERC20MetadataStorage.layout();
-        l.name = "Staked Premia";
-        l.symbol = "xPREMIA";
-        l.decimals = 18;
+        _setName("Staked Premia");
+        _setSymbol("xPREMIA");
+        _setDecimals(18);
     }
 }
