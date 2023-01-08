@@ -263,7 +263,9 @@ contract PremiaStaking is IPremiaStaking, OFT {
         returns (uint256 rewards, uint256 unstakeRewards)
     {
         PremiaStakingStorage.Layout storage l = PremiaStakingStorage.layout();
-        rewards = l.availableRewards - _getPendingRewards();
+        unchecked {
+            rewards = l.availableRewards - _getPendingRewards();
+        }
         unstakeRewards = l.availableUnstakeRewards;
     }
 
@@ -298,7 +300,11 @@ contract PremiaStaking is IPremiaStaking, OFT {
         l.accRewardPerShare +=
             (pendingRewards * ACC_REWARD_PRECISION) /
             l.totalPower;
-        l.availableRewards -= pendingRewards;
+
+        unchecked {
+            l.availableRewards -= pendingRewards;
+        }
+
         l.lastRewardUpdate = block.timestamp;
     }
 
@@ -519,7 +525,7 @@ contract PremiaStaking is IPremiaStaking, OFT {
             l,
             l.userInfo[msg.sender],
             amount,
-            (amount * _getEarlyUnstakeFeeBPS(msg.sender)) / 1e4
+            (amount * _getEarlyUnstakeFeeBPS(msg.sender)) / INVERSE_BASIS_POINT
         );
     }
 
@@ -547,9 +553,9 @@ contract PremiaStaking is IPremiaStaking, OFT {
 
         unchecked {
             lockLeft = lockedUntil - block.timestamp;
+            feePercentageBPS = (lockLeft * 2500) / 365 days; // 25% fee per year left
         }
 
-        feePercentageBPS = (lockLeft * 2500) / 365 days; // 25% fee per year left
         if (feePercentageBPS > 7500) {
             feePercentageBPS = 7500; // Capped at 75%
         }
@@ -574,7 +580,12 @@ contract PremiaStaking is IPremiaStaking, OFT {
         uint256 amount,
         uint256 fee
     ) internal {
-        if (_getAvailablePremiaAmount() < amount - fee)
+        uint256 amountMinusFee;
+        unchecked {
+            amountMinusFee = amount - fee;
+        }
+
+        if (_getAvailablePremiaAmount() < amountMinusFee)
             revert PremiaStaking__NotEnoughLiquidity();
 
         _updateRewards();
@@ -587,7 +598,7 @@ contract PremiaStaking is IPremiaStaking, OFT {
         );
 
         _burn(msg.sender, amount);
-        l.pendingWithdrawal += amount - fee;
+        l.pendingWithdrawal += amountMinusFee;
 
         if (fee > 0) {
             l.accUnstakeRewardPerShare +=
@@ -604,7 +615,7 @@ contract PremiaStaking is IPremiaStaking, OFT {
 
         _updateUser(l, u, args);
 
-        l.withdrawals[msg.sender].amount += amount - fee;
+        l.withdrawals[msg.sender].amount += amountMinusFee;
         l.withdrawals[msg.sender].startDate = block.timestamp;
 
         emit Unstake(msg.sender, amount, fee, block.timestamp);
@@ -762,8 +773,10 @@ contract PremiaStaking is IPremiaStaking, OFT {
         amount = l.withdrawals[user].amount;
         startDate = l.withdrawals[user].startDate;
 
-        if (startDate > 0) {
-            unlockDate = startDate + WITHDRAWAL_DELAY;
+        unchecked {
+            if (startDate > 0) {
+                unlockDate = startDate + WITHDRAWAL_DELAY;
+            }
         }
     }
 
@@ -795,12 +808,14 @@ contract PremiaStaking is IPremiaStaking, OFT {
     function _getStakePeriodMultiplierBPS(
         uint256 period
     ) internal pure returns (uint256) {
-        uint256 oneYear = 365 days;
+        unchecked {
+            uint256 oneYear = 365 days;
 
-        if (period == 0) return 2500; // x0.25
-        if (period >= 4 * oneYear) return 42500; // x4.25
+            if (period == 0) return 2500; // x0.25
+            if (period >= 4 * oneYear) return 42500; // x4.25
 
-        return 2500 + (period * 1e4) / oneYear; // 0.25x + 1.0x per year lockup
+            return 2500 + (period * 1e4) / oneYear; // 0.25x + 1.0x per year lockup
+        }
     }
 
     function _calculateUserPower(
