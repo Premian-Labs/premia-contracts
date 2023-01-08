@@ -155,11 +155,11 @@ contract VxPremia is IVxPremia, PremiaStaking {
         for (uint256 i = 0; i < votes.length; i++) {
             VxPremiaStorage.Vote memory vote = votes[i];
 
-            votingPowerUsed += votes[i].amount;
+            votingPowerUsed += vote.amount;
             if (votingPowerUsed > userVotingPower)
                 revert VxPremia__NotEnoughVotingPower();
 
-            userVotes.push(votes[i]);
+            userVotes.push(vote);
             l.votes[vote.version][vote.target] += vote.amount;
 
             emit AddVote(msg.sender, vote.version, vote.target, vote.amount);
