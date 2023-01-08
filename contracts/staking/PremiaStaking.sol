@@ -448,17 +448,15 @@ contract PremiaStaking is IPremiaStaking, OFT {
                 l.totalPower;
         }
 
+        uint256 power = _calculateUserPower(_balanceOf(user), u.stakePeriod);
+
         reward =
             u.reward +
-            _calculateReward(
-                accRewardPerShare,
-                _calculateUserPower(_balanceOf(user), u.stakePeriod),
-                u.rewardDebt
-            );
+            _calculateReward(accRewardPerShare, power, u.rewardDebt);
 
         unstakeReward = _calculateReward(
             l.accUnstakeRewardPerShare,
-            _calculateUserPower(_balanceOf(user), u.stakePeriod),
+            power,
             u.unstakeRewardDebt
         );
     }

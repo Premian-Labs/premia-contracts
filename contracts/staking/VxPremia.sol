@@ -67,7 +67,6 @@ contract VxPremia is IVxPremia, PremiaStaking {
         address user,
         uint256 amount
     ) internal {
-        uint256 toSubtract = amount;
         VxPremiaStorage.Vote[] storage userVotes = l.userVotes[user];
 
         unchecked {
@@ -76,20 +75,20 @@ contract VxPremia is IVxPremia, PremiaStaking {
 
                 uint256 votesRemoved;
 
-                if (toSubtract <= vote.amount) {
-                    votesRemoved = toSubtract;
-                    userVotes[i].amount -= toSubtract;
+                if (amount <= vote.amount) {
+                    votesRemoved = amount;
+                    userVotes[i].amount -= amount;
                 } else {
                     votesRemoved = vote.amount;
                     userVotes.pop();
                 }
 
-                toSubtract -= votesRemoved;
+                amount -= votesRemoved;
 
                 l.votes[vote.version][vote.target] -= votesRemoved;
                 emit RemoveVote(user, vote.version, vote.target, votesRemoved);
 
-                if (toSubtract == 0) break;
+                if (amount == 0) break;
             }
         }
     }
