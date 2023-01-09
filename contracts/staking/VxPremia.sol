@@ -179,12 +179,15 @@ contract VxPremia is IVxPremia, PremiaStaking {
                 targets[i]
             ] -= amounts[i];
 
-            emit RemoveVote(
-                users[i],
-                VxPremiaStorage.VoteVersion.V2,
-                targets[i],
-                amounts[i]
-            );
+            // If address passed for user is 0, we dont need to emit the event
+            if (users[i] != address(0)) {
+                emit RemoveVote(
+                    users[i],
+                    VxPremiaStorage.VoteVersion.V2,
+                    targets[i],
+                    amounts[i]
+                );
+            }
         }
     }
 }
