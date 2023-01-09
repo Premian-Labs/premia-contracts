@@ -67,27 +67,28 @@ contract VxPremia is IVxPremia, PremiaStaking {
         address user,
         uint256 amount
     ) internal {
-        uint256 toSubtract = amount;
         VxPremiaStorage.Vote[] storage userVotes = l.userVotes[user];
 
         unchecked {
             for (uint256 i = userVotes.length; i > 0; ) {
-                VxPremiaStorage.Vote storage vote = userVotes[--i];
+                VxPremiaStorage.Vote memory vote = userVotes[--i];
 
                 uint256 votesRemoved;
-                if (toSubtract <= vote.amount) {
-                    votesRemoved = toSubtract;
-                    vote.amount -= toSubtract;
+
+                if (amount < vote.amount) {
+                    votesRemoved = amount;
+                    userVotes[i].amount -= amount;
                 } else {
                     votesRemoved = vote.amount;
                     userVotes.pop();
                 }
 
-                toSubtract -= votesRemoved;
+                amount -= votesRemoved;
 
+                l.votes[vote.version][vote.target] -= votesRemoved;
                 emit RemoveVote(user, vote.version, vote.target, votesRemoved);
 
-                if (toSubtract == 0) break;
+                if (amount == 0) break;
             }
         }
     }
@@ -153,14 +154,40 @@ contract VxPremia is IVxPremia, PremiaStaking {
         for (uint256 i = 0; i < votes.length; i++) {
             VxPremiaStorage.Vote memory vote = votes[i];
 
-            votingPowerUsed += votes[i].amount;
+            votingPowerUsed += vote.amount;
             if (votingPowerUsed > userVotingPower)
                 revert VxPremia__NotEnoughVotingPower();
 
-            userVotes.push(votes[i]);
+            userVotes.push(vote);
             l.votes[vote.version][vote.target] += vote.amount;
 
             emit AddVote(msg.sender, vote.version, vote.target, vote.amount);
+        }
+    }
+
+    function fixPoolVotes(
+        address[] memory users,
+        bytes[] memory targets,
+        uint256[] memory amounts
+    ) external onlyOwner {
+        require(
+            users.length == targets.length && users.length == amounts.length
+        );
+
+        for (uint256 i = 0; i < users.length; i++) {
+            VxPremiaStorage.layout().votes[VxPremiaStorage.VoteVersion.V2][
+                targets[i]
+            ] -= amounts[i];
+
+            // If address passed for user is 0, we dont need to emit the event
+            if (users[i] != address(0)) {
+                emit RemoveVote(
+                    users[i],
+                    VxPremiaStorage.VoteVersion.V2,
+                    targets[i],
+                    amounts[i]
+                );
+            }
         }
     }
 }

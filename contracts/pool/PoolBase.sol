@@ -3,7 +3,7 @@
 
 pragma solidity ^0.8.0;
 
-import {ERC165} from "@solidstate/contracts/introspection/ERC165.sol";
+import {ERC165Base} from "@solidstate/contracts/introspection/ERC165/base/ERC165Base.sol";
 import {ERC1155Base} from "@solidstate/contracts/token/ERC1155/base/ERC1155Base.sol";
 import {ERC1155BaseInternal} from "@solidstate/contracts/token/ERC1155/base/ERC1155BaseInternal.sol";
 import {ERC1155Enumerable} from "@solidstate/contracts/token/ERC1155/enumerable/ERC1155Enumerable.sol";
@@ -22,7 +22,7 @@ contract PoolBase is
     PoolInternal,
     ERC1155Base,
     ERC1155Enumerable,
-    ERC165,
+    ERC165Base,
     Multicall
 {
     constructor(

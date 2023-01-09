@@ -82,6 +82,18 @@ export default {
         },
       },
     ],
+    overrides: {
+      'contracts/staking/VxPremia.sol': {
+        version: '0.8.17',
+        settings: {
+          viaIR: true,
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
+      },
+    },
   },
   paths: {
     cache: CACHE_PATH ?? './cache',

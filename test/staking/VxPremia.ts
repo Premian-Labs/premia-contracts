@@ -9,7 +9,8 @@ import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { parseEther, solidityPack } from 'ethers/lib/utils';
 import { ONE_DAY } from '../pool/PoolUtil';
-import { increaseTimestamp } from '../utils/evm';
+import { impersonate, increaseTimestamp } from '../utils/evm';
+import { getEventArgs } from '../utils/events';
 
 /* Example to decode packed target data
 
@@ -366,5 +367,153 @@ describe('VxPremia', () => {
         parseEther('3.125'),
       );
     });
+  });
+
+  it('should successfully update total pool votes', async () => {
+    await vxPremia.connect(alice).stake(parseEther('10'), ONE_DAY * 365);
+
+    await vxPremia.connect(alice).castVotes([
+      {
+        amount: parseEther('12.5'),
+        version: 0,
+        target: solidityPack(
+          ['address', 'bool'],
+          ['0x0000000000000000000000000000000000000001', true],
+        ),
+      },
+    ]);
+
+    await increaseTimestamp(ONE_DAY * 366);
+
+    const target = solidityPack(
+      ['address', 'bool'],
+      ['0x0000000000000000000000000000000000000001', true],
+    );
+    expect(await vxPremia.getPoolVotes(0, target)).to.eq(parseEther('12.5'));
+
+    await vxPremia.connect(alice).startWithdraw(parseEther('5'));
+
+    expect(await vxPremia.getPoolVotes(0, target)).to.eq(parseEther('6.25'));
+  });
+
+  it('should properly remove all votes if unstaking all', async () => {
+    await vxPremia.connect(alice).stake(parseEther('10'), ONE_DAY * 365);
+
+    await vxPremia.connect(alice).castVotes([
+      {
+        amount: parseEther('6.25'),
+        version: 0,
+        target: solidityPack(
+          ['address', 'bool'],
+          ['0x0000000000000000000000000000000000000001', true],
+        ),
+      },
+      {
+        amount: parseEther('6.25'),
+        version: 0,
+        target: solidityPack(
+          ['address', 'bool'],
+          ['0x0000000000000000000000000000000000000002', true],
+        ),
+      },
+    ]);
+
+    await increaseTimestamp(ONE_DAY * 366);
+
+    expect((await vxPremia.getUserVotes(alice.address)).length).to.eq(2);
+
+    await vxPremia.connect(alice).startWithdraw(parseEther('10'));
+
+    expect((await vxPremia.getUserVotes(alice.address)).length).to.eq(0);
+  });
+
+  it('should emit RemoveVote event', async () => {
+    await vxPremia.connect(alice).stake(parseEther('10'), ONE_DAY * 365);
+
+    const target1 = solidityPack(
+      ['address', 'bool'],
+      ['0x0000000000000000000000000000000000000001', true],
+    );
+
+    const target2 = solidityPack(
+      ['address', 'bool'],
+      ['0x0000000000000000000000000000000000000002', true],
+    );
+
+    await vxPremia.connect(alice).castVotes([
+      {
+        amount: parseEther('7'),
+        version: 0,
+        target: target1,
+      },
+      {
+        amount: parseEther('3'),
+        version: 0,
+        target: target2,
+      },
+    ]);
+
+    await increaseTimestamp(ONE_DAY * 366);
+
+    let tx = await vxPremia.connect(alice).startWithdraw(parseEther('4'));
+    let event = (await getEventArgs(tx, 'RemoveVote'))[0];
+
+    expect(event[0].voter).to.eq(alice.address);
+    expect(event[0].version).to.eq(0);
+    expect(event[0].target).to.eq(target2);
+    expect(event[0].amount).to.eq(parseEther('2.5'));
+
+    tx = await vxPremia.connect(alice).startWithdraw(parseEther('4'));
+    event = (await getEventArgs(tx, 'RemoveVote'))[0];
+
+    expect(event[0].voter).to.eq(alice.address);
+    expect(event[0].version).to.eq(0);
+    expect(event[0].target).to.eq(target2);
+    expect(event[0].amount).to.eq(parseEther('0.5'));
+
+    expect(event[1].voter).to.eq(alice.address);
+    expect(event[1].version).to.eq(0);
+    expect(event[1].target).to.eq(target1);
+    expect(event[1].amount).to.eq(parseEther('4.5'));
+  });
+
+  it('should remove pool votes', async () => {
+    await vxPremia.connect(alice).stake(parseEther('10'), ONE_DAY * 365);
+
+    const target1 = solidityPack(
+      ['address', 'bool'],
+      ['0x0000000000000000000000000000000000000001', true],
+    );
+
+    const target2 = solidityPack(
+      ['address', 'bool'],
+      ['0x0000000000000000000000000000000000000002', true],
+    );
+
+    await vxPremia.connect(alice).castVotes([
+      {
+        amount: parseEther('7'),
+        version: 0,
+        target: target1,
+      },
+      {
+        amount: parseEther('3'),
+        version: 0,
+        target: target2,
+      },
+    ]);
+
+    const zeroAddress = await impersonate(admin, ethers.constants.AddressZero);
+
+    await vxPremia
+      .connect(zeroAddress)
+      .fixPoolVotes(
+        [alice.address, alice.address, alice.address],
+        [target1, target1, target2],
+        [parseEther('1'), parseEther('3'), parseEther('1')],
+      );
+
+    expect(await vxPremia.getPoolVotes(0, target1)).to.eq(parseEther('3'));
+    expect(await vxPremia.getPoolVotes(0, target2)).to.eq(parseEther('2'));
   });
 });

@@ -3,19 +3,16 @@
 
 pragma solidity ^0.8.0;
 
-import {ERC20MetadataStorage} from "@solidstate/contracts/token/ERC20/metadata/ERC20MetadataStorage.sol";
+import {ERC20MetadataInternal} from "@solidstate/contracts/token/ERC20/metadata/ERC20MetadataInternal.sol";
 
 import {ProxyUpgradeableOwnable} from "../ProxyUpgradeableOwnable.sol";
 
-contract VxPremiaProxy is ProxyUpgradeableOwnable {
-    using ERC20MetadataStorage for ERC20MetadataStorage.Layout;
-
+contract VxPremiaProxy is ProxyUpgradeableOwnable, ERC20MetadataInternal {
     constructor(
         address implementation
     ) ProxyUpgradeableOwnable(implementation) {
-        ERC20MetadataStorage.Layout storage l = ERC20MetadataStorage.layout();
-        l.setName("vxPremia");
-        l.setSymbol("vxPREMIA");
-        l.setDecimals(18);
+        _setName("vxPremia");
+        _setSymbol("vxPREMIA");
+        _setDecimals(18);
     }
 }
