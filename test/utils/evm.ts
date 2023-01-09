@@ -1,6 +1,7 @@
 import { ethers, network } from 'hardhat';
 import { ONE_WEEK } from './constants';
 import { BigNumber } from 'ethers';
+import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 
 export async function resetHardhat() {
   if ((network as any).config.forking) {
@@ -53,4 +54,22 @@ export async function increaseTimestamp(amount: number) {
 
 export async function setTimestampPostExpiration() {
   await setTimestamp(new Date().getTime() / 1000 + ONE_WEEK);
+}
+
+export async function impersonate(
+  deployer: SignerWithAddress,
+  address: string,
+): Promise<SignerWithAddress> {
+  await network.provider.request({
+    method: 'hardhat_impersonateAccount',
+    params: [address],
+  });
+
+  // send enough ETH to contract to cover tx cost.
+  await deployer.sendTransaction({
+    to: address,
+    value: ethers.utils.parseEther('1'),
+  });
+
+  return await ethers.getSigner(address);
 }
