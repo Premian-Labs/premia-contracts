@@ -161,7 +161,10 @@ contract VxPremia is IVxPremia, PremiaStaking {
                 revert VxPremia__NotEnoughVotingPower();
 
             // abi.encodePacked on [address, bool] uses 20 bytes for the address and 1 byte for the bool
-            if (vote.target.length != 21) revert VxPremia__InvalidVoteTarget();
+            if (
+                vote.version != VxPremiaStorage.VoteVersion.V2 ||
+                vote.target.length != 21
+            ) revert VxPremia__InvalidVoteTarget();
 
             // Check that the pool address is valid
             address poolAddress = address(
