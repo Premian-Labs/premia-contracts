@@ -269,6 +269,7 @@ export class PoolUtil {
     vxPremia: string,
     exchangeHelper: string,
     wethAddress?: string,
+    premiaDiamondAddress?: string,
   ) {
     const erc20Factory = new ERC20Mock__factory(deployer);
 
@@ -296,7 +297,14 @@ export class PoolUtil {
     //
 
     const optionMath = await new OptionMath__factory(deployer).deploy();
-    const premiaDiamond = await new Premia__factory(deployer).deploy();
+
+    let premiaDiamond: Premia;
+    if (premiaDiamondAddress) {
+      premiaDiamond = Premia__factory.connect(premiaDiamondAddress, deployer);
+    } else {
+      premiaDiamond = await new Premia__factory(deployer).deploy();
+    }
+
     const poolDiamond = await new Premia__factory(deployer).deploy();
 
     const ivolOracleImpl = await new VolatilitySurfaceOracle__factory(

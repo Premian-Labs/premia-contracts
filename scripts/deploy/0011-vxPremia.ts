@@ -51,12 +51,12 @@ async function main() {
   console.log('vxPremia impl : ', vxPremiaImpl.address);
   await vxPremiaImpl.deployed();
 
-  const vxPremiaProxy = await new VxPremiaProxy__factory(deployer).deploy(
-    vxPremiaImpl.address,
-  );
-
-  console.log('vxPremia : ', vxPremiaProxy.address);
-  await vxPremiaProxy.deployed();
+  // const vxPremiaProxy = await new VxPremiaProxy__factory(deployer).deploy(
+  //   vxPremiaImpl.address,
+  // );
+  //
+  // console.log('vxPremia : ', vxPremiaProxy.address);
+  // await vxPremiaProxy.deployed();
 }
 
 main()

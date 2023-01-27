@@ -8,17 +8,24 @@ import {PremiaStakingStorage} from "./PremiaStakingStorage.sol";
 import {VxPremiaStorage} from "./VxPremiaStorage.sol";
 import {IVxPremia} from "./IVxPremia.sol";
 
+import {IProxyManager} from "../core/IProxyManager.sol";
+
 /**
  * @author Premia
  * @title A contract allowing you to use your locked Premia as voting power for mining weights
  */
 contract VxPremia is IVxPremia, PremiaStaking {
+    address private immutable PROXY_MANAGER;
+
     constructor(
+        address proxyManager,
         address lzEndpoint,
         address premia,
         address rewardToken,
         address exchangeHelper
-    ) PremiaStaking(lzEndpoint, premia, rewardToken, exchangeHelper) {}
+    ) PremiaStaking(lzEndpoint, premia, rewardToken, exchangeHelper) {
+        PROXY_MANAGER = proxyManager;
+    }
 
     function _beforeUnstake(address user, uint256 amount) internal override {
         uint256 votingPowerUnstaked = _calculateUserPower(
@@ -140,14 +147,9 @@ contract VxPremia is IVxPremia, PremiaStaking {
         VxPremiaStorage.Vote[] storage userVotes = l.userVotes[msg.sender];
 
         // Remove previous votes
-        for (uint256 i = userVotes.length; i > 0; ) {
-            VxPremiaStorage.Vote memory vote = userVotes[--i];
+        _resetUserVotes(l, userVotes, msg.sender);
 
-            l.votes[vote.version][vote.target] -= vote.amount;
-            emit RemoveVote(msg.sender, vote.version, vote.target, vote.amount);
-
-            userVotes.pop();
-        }
+        address[] memory poolList = IProxyManager(PROXY_MANAGER).getPoolList();
 
         // Cast new votes
         uint256 votingPowerUsed = 0;
@@ -158,6 +160,24 @@ contract VxPremia is IVxPremia, PremiaStaking {
             if (votingPowerUsed > userVotingPower)
                 revert VxPremia__NotEnoughVotingPower();
 
+            // abi.encodePacked on [address, bool] uses 20 bytes for the address and 1 byte for the bool
+            if (vote.target.length != 21) revert VxPremia__InvalidVoteTarget();
+
+            // Check that the pool address is valid
+            address poolAddress = address(
+                uint160(uint256(bytes32(vote.target)) >> 96) // We need to shift by 96, as we want the 160 most significant bits, which are the pool address
+            );
+
+            bool found = false;
+            for (uint256 j = 0; j < poolList.length; j++) {
+                if (poolAddress == poolList[j]) {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (found == false) revert VxPremia__InvalidPoolAddress();
+
             userVotes.push(vote);
             l.votes[vote.version][vote.target] += vote.amount;
 
@@ -165,29 +185,24 @@ contract VxPremia is IVxPremia, PremiaStaking {
         }
     }
 
-    function fixPoolVotes(
-        address[] memory users,
-        bytes[] memory targets,
-        uint256[] memory amounts
-    ) external onlyOwner {
-        require(
-            users.length == targets.length && users.length == amounts.length
-        );
+    function _resetUserVotes(
+        VxPremiaStorage.Layout storage l,
+        VxPremiaStorage.Vote[] storage userVotes,
+        address user
+    ) internal {
+        for (uint256 i = userVotes.length; i > 0; ) {
+            VxPremiaStorage.Vote memory vote = userVotes[--i];
 
-        for (uint256 i = 0; i < users.length; i++) {
-            VxPremiaStorage.layout().votes[VxPremiaStorage.VoteVersion.V2][
-                targets[i]
-            ] -= amounts[i];
+            l.votes[vote.version][vote.target] -= vote.amount;
+            emit RemoveVote(user, vote.version, vote.target, vote.amount);
 
-            // If address passed for user is 0, we dont need to emit the event
-            if (users[i] != address(0)) {
-                emit RemoveVote(
-                    users[i],
-                    VxPremiaStorage.VoteVersion.V2,
-                    targets[i],
-                    amounts[i]
-                );
-            }
+            userVotes.pop();
         }
+    }
+
+    function resetUserVotes(address user) external onlyOwner {
+        VxPremiaStorage.Layout storage l = VxPremiaStorage.layout();
+        VxPremiaStorage.Vote[] storage userVotes = l.userVotes[user];
+        _resetUserVotes(l, userVotes, user);
     }
 }
