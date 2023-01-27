@@ -19,6 +19,7 @@ export async function deployV1(
   deployer: SignerWithAddress,
   treasury: string,
   lzEndpoint: string,
+  premiaDiamond: string,
   isTest: boolean,
   log = false,
   premiaAddress?: string,
@@ -62,6 +63,7 @@ export async function deployV1(
   //
 
   const vxPremiaImpl = await new VxPremia__factory(deployer).deploy(
+    premiaDiamond,
     lzEndpoint,
     premia.address,
     rewardToken.address,

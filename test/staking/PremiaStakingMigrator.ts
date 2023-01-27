@@ -65,10 +65,10 @@ describe('PremiaStakingMigrator', () => {
     );
 
     //
-
     const p = await deployV1(
       treasury,
       treasury.address,
+      ethers.constants.AddressZero,
       ethers.constants.AddressZero,
       true,
       false,

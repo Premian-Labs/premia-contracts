@@ -213,12 +213,14 @@ export function getMaxCost(
 export async function deployVxPremiaMocked(
   owner: SignerWithAddress,
   exchangeHelper?: string,
+  premiaDiamond?: string,
 ) {
   const erc20Factory = new ERC20Mock__factory(owner);
   const premia = await erc20Factory.deploy('PREMIA', 18);
   const rewardToken = await erc20Factory.deploy('USDC', 6);
 
   const vxPremiaImpl = await new VxPremia__factory(owner).deploy(
+    premiaDiamond ?? ethers.constants.AddressZero,
     ethers.constants.AddressZero,
     premia.address,
     rewardToken.address,

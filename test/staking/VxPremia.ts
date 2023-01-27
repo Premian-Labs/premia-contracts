@@ -2,10 +2,12 @@ import {
   ERC20Mock,
   ERC20Mock__factory,
   ExchangeHelper__factory,
+  Ownable__factory,
   Premia__factory,
   ProxyManager__factory,
   VxPremia,
   VxPremia__factory,
+  VxPremiaProxy__factory,
 } from '../../typechain';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
@@ -424,5 +426,63 @@ describe('VxPremia', () => {
     expect(event[1].version).to.eq(0);
     expect(event[1].target).to.eq(target1);
     expect(event[1].amount).to.eq(parseEther('4.5'));
+  });
+
+  it('should reset user votes', async () => {
+    await vxPremia.connect(alice).stake(parseEther('10'), ONE_DAY * 365);
+
+    const target1 = solidityPack(['address', 'bool'], [p.pool.address, true]);
+
+    const target2 = solidityPack(
+      ['address', 'bool'],
+      [p.poolWeth.address, true],
+    );
+
+    await vxPremia.connect(alice).castVotes([
+      {
+        amount: parseEther('7'),
+        version: 0,
+        target: target1,
+      },
+      {
+        amount: parseEther('3'),
+        version: 0,
+        target: target2,
+      },
+    ]);
+
+    await vxPremia.connect(alice).castVotes([
+      {
+        amount: parseEther('7'),
+        version: 0,
+        target: target1,
+      },
+      {
+        amount: parseEther('3'),
+        version: 0,
+        target: target2,
+      },
+    ]);
+
+    let votes = await vxPremia.getUserVotes(alice.address);
+
+    expect(votes.length).to.eq(2);
+
+    expect(votes[0].target).to.eq(target1);
+    expect(votes[0].amount).to.eq(parseEther('7'));
+
+    expect(votes[1].target).to.eq(target2);
+    expect(votes[1].amount).to.eq(parseEther('3'));
+
+    await vxPremia.connect(admin).resetUserVotes(alice.address);
+
+    votes = await vxPremia.getUserVotes(alice.address);
+    expect(votes.length).to.eq(0);
+  });
+
+  it('should fail resetting user votes if not called from owner', async () => {
+    await expect(
+      vxPremia.connect(alice).resetUserVotes(alice.address),
+    ).to.be.revertedWithCustomError(vxPremia, 'Ownable__NotOwner');
   });
 });
