@@ -167,19 +167,19 @@ contract VxPremia is IVxPremia, PremiaStaking {
             ) revert VxPremia__InvalidVoteTarget();
 
             // Check that the pool address is valid
-            address poolAddress = address(
+            address contractAddress = address(
                 uint160(uint256(bytes32(vote.target)) >> 96) // We need to shift by 96, as we want the 160 most significant bits, which are the pool address
             );
 
-            bool found = false;
+            bool isValid = false;
             for (uint256 j = 0; j < poolList.length; j++) {
-                if (poolAddress == poolList[j]) {
-                    found = true;
+                if (contractAddress == poolList[j]) {
+                    isValid = true;
                     break;
                 }
             }
 
-            if (found == false) revert VxPremia__InvalidPoolAddress();
+            if (isValid == false) revert VxPremia__InvalidPoolAddress();
 
             userVotes.push(vote);
             l.votes[vote.version][vote.target] += vote.amount;
