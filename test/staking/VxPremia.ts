@@ -2,7 +2,6 @@ import {
   ERC20Mock,
   ERC20Mock__factory,
   ExchangeHelper__factory,
-  Ownable__factory,
   Premia__factory,
   ProxyManager__factory,
   VxPremia,
@@ -56,13 +55,19 @@ describe('VxPremia', () => {
     premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
     usdc = await new ERC20Mock__factory(admin).deploy('USDC', 6);
 
-    vxPremia = await new VxPremia__factory(admin).deploy(
+    const vxPremiaImpl = await new VxPremia__factory(admin).deploy(
       premiaDiamond.address,
       ethers.constants.AddressZero,
       premia.address,
       usdc.address,
       ethers.constants.AddressZero,
     );
+
+    const vxPremiaProxy = await new VxPremiaProxy__factory(admin).deploy(
+      vxPremiaImpl.address,
+    );
+
+    vxPremia = VxPremia__factory.connect(vxPremiaProxy.address, admin);
 
     const exchangeHelper = await new ExchangeHelper__factory(admin).deploy();
     const uniswap = await createUniswap(admin);
