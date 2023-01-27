@@ -213,12 +213,14 @@ export function getMaxCost(
 export async function deployVxPremiaMocked(
   owner: SignerWithAddress,
   exchangeHelper?: string,
+  premiaDiamond?: string,
 ) {
   const erc20Factory = new ERC20Mock__factory(owner);
   const premia = await erc20Factory.deploy('PREMIA', 18);
   const rewardToken = await erc20Factory.deploy('USDC', 6);
 
   const vxPremiaImpl = await new VxPremia__factory(owner).deploy(
+    premiaDiamond ?? ethers.constants.AddressZero,
     ethers.constants.AddressZero,
     premia.address,
     rewardToken.address,
@@ -269,6 +271,7 @@ export class PoolUtil {
     vxPremia: string,
     exchangeHelper: string,
     wethAddress?: string,
+    premiaDiamondAddress?: string,
   ) {
     const erc20Factory = new ERC20Mock__factory(deployer);
 
@@ -296,7 +299,14 @@ export class PoolUtil {
     //
 
     const optionMath = await new OptionMath__factory(deployer).deploy();
-    const premiaDiamond = await new Premia__factory(deployer).deploy();
+
+    let premiaDiamond: Premia;
+    if (premiaDiamondAddress) {
+      premiaDiamond = Premia__factory.connect(premiaDiamondAddress, deployer);
+    } else {
+      premiaDiamond = await new Premia__factory(deployer).deploy();
+    }
+
     const poolDiamond = await new Premia__factory(deployer).deploy();
 
     const ivolOracleImpl = await new VolatilitySurfaceOracle__factory(

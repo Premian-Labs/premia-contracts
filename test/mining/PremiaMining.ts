@@ -7,7 +7,7 @@ import {
 import { increaseTimestamp, mineBlockUntil, setTimestamp } from '../utils/evm';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/signers';
-import { ERC20Mock, VxPremia } from '../../typechain';
+import { ERC20Mock, Premia__factory, VxPremia } from '../../typechain';
 import { parseEther, parseUnits, solidityPack } from 'ethers/lib/utils';
 import { bnToNumber } from '../utils/math';
 import { ZERO_ADDRESS } from '../utils/constants';
@@ -36,7 +36,13 @@ describe('PremiaMining', () => {
   before(async () => {
     [owner, lp1, lp2, lp3, buyer, feeReceiver] = await ethers.getSigners();
 
-    const data = await deployVxPremiaMocked(owner);
+    const premiaDiamond = await new Premia__factory(owner).deploy();
+
+    const data = await deployVxPremiaMocked(
+      owner,
+      undefined,
+      premiaDiamond.address,
+    );
     vxPremia = data.vxPremia;
     premia = data.premia;
 
@@ -47,6 +53,8 @@ describe('PremiaMining', () => {
       feeReceiver.address,
       vxPremia.address,
       ZERO_ADDRESS,
+      undefined,
+      premiaDiamond.address,
     );
 
     await premia.mint(owner.address, parseEther(totalRewardAmount.toString()));

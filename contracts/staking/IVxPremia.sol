@@ -6,6 +6,8 @@ import {VxPremiaStorage} from "./VxPremiaStorage.sol";
 import {IPremiaStaking} from "./IPremiaStaking.sol";
 
 interface IVxPremia is IPremiaStaking {
+    error VxPremia__InvalidPoolAddress();
+    error VxPremia__InvalidVoteTarget();
     error VxPremia__NotEnoughVotingPower();
 
     event AddVote(

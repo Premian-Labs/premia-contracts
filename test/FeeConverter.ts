@@ -41,6 +41,7 @@ describe('FeeConverter', () => {
       admin,
       treasury.address,
       ethers.constants.AddressZero,
+      ethers.constants.AddressZero,
       true,
       false,
       undefined,
