@@ -13,6 +13,7 @@ import {IPoolIO} from "../pool/IPoolIO.sol";
 import {IPoolView} from "../pool/IPoolView.sol";
 import {IVxPremia} from "../staking/IVxPremia.sol";
 import {VxPremiaStorage} from "../staking/VxPremiaStorage.sol";
+import {IProxyManager} from "../core/IProxyManager.sol";
 
 /**
  * @title Premia liquidity mining contract, derived from Sushiswap's MasterChef.sol ( https://github.com/sushiswap/sushiswap )
@@ -21,6 +22,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     using PremiaMiningStorage for PremiaMiningStorage.Layout;
     using SafeERC20 for IERC20;
 
+    address internal immutable PROXY_MANAGER;
     address internal immutable PREMIA;
     address internal immutable VX_PREMIA;
 
@@ -28,13 +30,24 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     uint256 private constant INVERSE_BASIS_POINT = 1e4;
     uint256 private constant MIN_POINT_MULTIPLIER = 2500; // 25% -> If utilization rate is less than this value, we use this value instead
 
-    constructor(address _premia, address _vxPremia) {
+    constructor(address _proxyManager, address _premia, address _vxPremia) {
+        PROXY_MANAGER = _proxyManager;
         PREMIA = _premia;
         VX_PREMIA = _vxPremia;
     }
 
     modifier onlyPool(address _pool) {
-        require(msg.sender == _pool, "Not pool");
+        address[] memory poolList = IProxyManager(PROXY_MANAGER).getPoolList();
+
+        bool isValid = false;
+        for (uint256 j = 0; j < poolList.length; j++) {
+            if (_pool == poolList[j]) {
+                isValid = true;
+                break;
+            }
+        }
+
+        require(isValid && msg.sender == _pool, "Not pool");
         _;
     }
 
