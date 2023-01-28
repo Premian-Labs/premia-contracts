@@ -127,6 +127,58 @@ describe('PremiaMining', () => {
     await expect(
       p.premiaMining.updatePool(p.pool.address, true, parseEther('1'), 5000),
     ).to.be.revertedWith('Not pool');
+
+    await expect(
+      p.premiaMining.allocatePending(
+        owner.address,
+        p.pool.address,
+        true,
+        parseEther('0'),
+        parseEther('1'),
+        parseEther('1'),
+        5000,
+      ),
+    ).to.be.revertedWith('Not pool');
+
+    await expect(
+      p.premiaMining.claim(
+        owner.address,
+        p.pool.address,
+        true,
+        parseEther('0'),
+        parseEther('1'),
+        parseEther('1'),
+        5000,
+      ),
+    ).to.be.revertedWith('Not pool');
+
+    await expect(
+      p.premiaMining.updatePool(owner.address, true, parseEther('1'), 5000),
+    ).to.be.revertedWith('Not pool');
+
+    await expect(
+      p.premiaMining.allocatePending(
+        owner.address,
+        owner.address,
+        true,
+        parseEther('0'),
+        parseEther('1'),
+        parseEther('1'),
+        5000,
+      ),
+    ).to.be.revertedWith('Not pool');
+
+    await expect(
+      p.premiaMining.claim(
+        owner.address,
+        owner.address,
+        true,
+        parseEther('0'),
+        parseEther('1'),
+        parseEther('1'),
+        5000,
+      ),
+    ).to.be.revertedWith('Not pool');
   });
 
   it('should distribute PREMIA properly for each LP', async () => {
