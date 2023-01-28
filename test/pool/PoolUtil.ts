@@ -336,6 +336,7 @@ export class PoolUtil {
     );
 
     const premiaMiningImpl = await new PremiaMining__factory(deployer).deploy(
+      premiaDiamond.address,
       premia,
       vxPremia,
     );
