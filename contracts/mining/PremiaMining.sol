@@ -58,7 +58,7 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
             l.pools[poolList[i]] = true;
         }
 
-        require(!l.pools[_pool], "Not pool");
+        require(l.pools[_pool], "Not pool");
     }
 
     /**
