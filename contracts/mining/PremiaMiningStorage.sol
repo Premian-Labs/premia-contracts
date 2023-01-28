@@ -42,6 +42,8 @@ library PremiaMiningStorage {
         mapping(address => mapping(bool => mapping(address => UserInfo))) userInfo;
         // Total allocation points. Must be the sum of all allocation points in all pools.
         uint256 totalAllocPoint;
+        // pool -> whether pool is valid
+        mapping(address => bool) pools;
     }
 
     function layout() internal pure returns (Layout storage l) {

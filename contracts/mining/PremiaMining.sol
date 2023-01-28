@@ -37,18 +37,28 @@ contract PremiaMining is IPremiaMining, OwnableInternal {
     }
 
     modifier onlyPool(address _pool) {
+        _validatePool(_pool);
+        _;
+    }
+
+    /**
+     * @notice validate that pool is registered on the proxy manager and is the message sender
+     * @param _pool pool to validate
+     */
+    function _validatePool(address _pool) private {
+        require(msg.sender == _pool, "Not pool");
+
+        PremiaMiningStorage.Layout storage l = PremiaMiningStorage.layout();
+
+        if (l.pools[_pool]) return;
+
         address[] memory poolList = IProxyManager(PROXY_MANAGER).getPoolList();
 
-        bool isValid = false;
-        for (uint256 j = 0; j < poolList.length; j++) {
-            if (_pool == poolList[j]) {
-                isValid = true;
-                break;
-            }
+        for (uint256 i = 0; i < poolList.length; i++) {
+            l.pools[poolList[i]] = true;
         }
 
-        require(isValid && msg.sender == _pool, "Not pool");
-        _;
+        require(!l.pools[_pool], "Not pool");
     }
 
     /**
