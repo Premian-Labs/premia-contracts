@@ -26,6 +26,9 @@ contract PremiaVesting is Ownable {
     // The timestamp at which last withdrawal has been done
     uint256 public lastWithdrawalTimestamp;
 
+    // Amount available to withdraw. We leave this as internal, as this only gets updated on withdrawal.
+    // `getAmountAvailableToWithdraw` returns a more up to date value, as it sums this value with pending update amount.
+    // Once `endTimestamp` is passed, this value is ignored (We dont update it anymore, and we dont check it)
     uint256 internal amountAvailableToWithdraw;
 
     //////////////////////////////////////////////////
