@@ -7,7 +7,7 @@ import {
 } from '../../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { setTimestamp } from '../utils/evm';
+import { resetHardhat, setTimestamp } from '../utils/evm';
 import { parseEther } from 'ethers/lib/utils';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { ONE_DAY, ONE_YEAR } from '../pool/PoolUtil';
@@ -22,7 +22,9 @@ const startTimestamp = getCurrentTimestamp() - 10 * ONE_DAY;
 const releasePeriod = ONE_YEAR;
 
 describe('PremiaVesting', () => {
-  beforeEach(async () => {
+  let snapshotId: number;
+
+  before(async () => {
     [admin, user1, user2, user3] = await ethers.getSigners();
 
     const premiaFactory = new ERC20Mock__factory(admin);
@@ -38,6 +40,14 @@ describe('PremiaVesting', () => {
     const amount = parseEther('730');
     await premia.mint(premiaVesting.address, amount);
     await premiaVesting.transferOwnership(user1.address);
+  });
+
+  beforeEach(async () => {
+    snapshotId = await ethers.provider.send('evm_snapshot', []);
+  });
+
+  afterEach(async () => {
+    await ethers.provider.send('evm_revert', [snapshotId]);
   });
 
   it('should properly handle withdrawals', async () => {
