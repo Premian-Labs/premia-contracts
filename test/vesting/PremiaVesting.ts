@@ -1,9 +1,9 @@
 import { expect } from 'chai';
 import {
-  PremiaVesting,
-  PremiaVesting__factory,
   ERC20Mock,
   ERC20Mock__factory,
+  PremiaVesting,
+  PremiaVesting__factory,
 } from '../../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
@@ -11,7 +11,6 @@ import { setTimestamp } from '../utils/evm';
 import { parseEther } from 'ethers/lib/utils';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { ONE_DAY, ONE_YEAR } from '../pool/PoolUtil';
-import * as timers from 'timers';
 
 let admin: SignerWithAddress;
 let user1: SignerWithAddress;
@@ -41,34 +40,34 @@ describe('PremiaVesting', () => {
     await premiaVesting.transferOwnership(user1.address);
   });
 
-  it('should withdraw 200 premia, then 50 premia if withdrawing after 100 days and then after 25 days', async () => {
+  it('should properly handle withdrawals', async () => {
     await setTimestamp(startTimestamp + 100 * 24 * 3600);
     expect(await premiaVesting.getAmountAvailableToWithdraw()).to.eq(
       parseEther('200'),
     );
     await premiaVesting
       .connect(user1)
-      .withdraw(user1.address, parseEther('200'));
+      .withdraw(user1.address, parseEther('150'));
 
     let balance = await premia.balanceOf(user1.address);
     let balanceLeft = await premia.balanceOf(premiaVesting.address);
-    expect(balance).to.eq(parseEther('200'));
-    expect(balanceLeft).to.eq(parseEther('530'));
-    expect(await premiaVesting.getAmountAvailableToWithdraw()).to.be.lessThan(
-      parseEther('0.0001'),
+    expect(balance).to.eq(parseEther('150'));
+    expect(balanceLeft).to.eq(parseEther('580'));
+    expect(await premiaVesting.getAmountAvailableToWithdraw()).to.eq(
+      '50000023148148148148', // A little above 50, as time increments after tx executed
     );
 
     await setTimestamp(startTimestamp + 125 * 24 * 3600);
     expect(await premiaVesting.getAmountAvailableToWithdraw()).to.eq(
-      '49999999999999999999', // 49.999999999999999999 because of rounding
+      '99999999999999999999', // 99.999999999999999999 instead of 100 because of rounding
     );
     await premiaVesting
       .connect(user1)
-      .withdraw(user2.address, parseEther('50')); // We can still withdraw 50, cause when this is executed, time is incremented by 1s which brings available slightly above 50
+      .withdraw(user2.address, parseEther('100')); // We can still withdraw 50, cause when this is executed, time is incremented by 1s which brings available slightly above 50
 
     balance = await premia.balanceOf(user2.address);
     balanceLeft = await premia.balanceOf(premiaVesting.address);
-    expect(balance).to.eq(parseEther('50'));
+    expect(balance).to.eq(parseEther('100'));
     expect(balanceLeft).to.eq(parseEther('480'));
   });
 
