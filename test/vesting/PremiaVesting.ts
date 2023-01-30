@@ -7,7 +7,7 @@ import {
 } from '../../typechain';
 import { ethers } from 'hardhat';
 import { SignerWithAddress } from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { resetHardhat, setTimestamp } from '../utils/evm';
+import { setTimestamp } from '../utils/evm';
 import { parseEther } from 'ethers/lib/utils';
 import { getCurrentTimestamp } from 'hardhat/internal/hardhat-network/provider/utils/getCurrentTimestamp';
 import { ONE_DAY, ONE_YEAR } from '../pool/PoolUtil';
@@ -51,7 +51,7 @@ describe('PremiaVesting', () => {
   });
 
   it('should properly handle withdrawals', async () => {
-    await setTimestamp(startTimestamp + 100 * 24 * 3600);
+    await setTimestamp(startTimestamp + 100 * ONE_DAY);
     expect(await premiaVesting.getAmountAvailableToWithdraw()).to.eq(
       parseEther('200'),
     );
@@ -67,7 +67,7 @@ describe('PremiaVesting', () => {
       '50000023148148148148', // A little above 50, as time increments after tx executed
     );
 
-    await setTimestamp(startTimestamp + 125 * 24 * 3600);
+    await setTimestamp(startTimestamp + 125 * ONE_DAY);
     expect(await premiaVesting.getAmountAvailableToWithdraw()).to.eq(
       '99999999999999999999', // 99.999999999999999999 instead of 100 because of rounding
     );
@@ -82,7 +82,7 @@ describe('PremiaVesting', () => {
   });
 
   it('should be able to withdraw all premia if withdrawing after endTimestamp', async () => {
-    await setTimestamp(startTimestamp + 100 * 24 * 3600);
+    await setTimestamp(startTimestamp + 100 * ONE_DAY);
     await premiaVesting
       .connect(user1)
       .withdraw(user1.address, parseEther('200'));
@@ -102,14 +102,14 @@ describe('PremiaVesting', () => {
   });
 
   it('should fail to withdraw if not called by owner', async () => {
-    await setTimestamp(startTimestamp + 100 * 24 * 3600);
+    await setTimestamp(startTimestamp + 100 * ONE_DAY);
     await expect(
       premiaVesting.connect(admin).withdraw(user1.address, parseEther('100')),
     ).to.be.revertedWithCustomError(premiaVesting, 'Ownable__NotOwner');
   });
 
   it('should fail to withdraw more than available', async () => {
-    await setTimestamp(startTimestamp + 100 * 24 * 3600);
+    await setTimestamp(startTimestamp + 100 * ONE_DAY);
 
     await expect(
       premiaVesting

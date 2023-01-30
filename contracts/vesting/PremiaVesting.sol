@@ -10,7 +10,7 @@ import {Ownable} from "@solidstate/contracts/access/ownable/Ownable.sol";
 import {OwnableStorage} from "@solidstate/contracts/access/ownable/OwnableStorage.sol";
 
 /// @author Premia
-/// @title Vesting contract for Premia founder allocations, releasing the allocations over the course of a year
+/// @title Vesting contract, releasing the allocations over the course of a given period
 contract PremiaVesting is Ownable {
     using SafeERC20 for IERC20;
 
@@ -78,7 +78,7 @@ contract PremiaVesting is Ownable {
     function _update() internal {
         if (
             block.timestamp == lastWithdrawalTimestamp ||
-            block.timestamp > endTimestamp
+            block.timestamp >= endTimestamp
         ) return;
 
         uint256 updateAmount = _calculateUpdateAmount();
