@@ -21,8 +21,6 @@ contract PremiaVesting is Ownable {
 
     // The timestamp at which release ends
     uint256 public endTimestamp;
-    // The length of the release period (Once this period is passed, amount is fully unlocked)
-    uint256 public releasePeriod;
     // The timestamp at which last withdrawal has been done
     uint256 public lastWithdrawalTimestamp;
 
@@ -46,7 +44,6 @@ contract PremiaVesting is Ownable {
         premia = _premia;
         endTimestamp = _startTimestamp + _releasePeriod;
         lastWithdrawalTimestamp = _startTimestamp;
-        releasePeriod = _releasePeriod;
     }
 
     //////////////////////////////////////////////////
