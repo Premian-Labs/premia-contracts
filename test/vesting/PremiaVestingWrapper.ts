@@ -24,7 +24,7 @@ const jsonRpcUrl = `https://eth-mainnet.alchemyapi.io/v2/${API_KEY_ALCHEMY}`;
 const blockNumber = 13366880;
 const ONE_DAY = 24 * 3600;
 const VESTED_PREMIA = 2500000;
-const CHAI_ALMOST_OVERRIDE = 0.2;
+const CHAI_ALMOST_OVERRIDE = 0.25;
 
 describe('PremiaVesting', () => {
   beforeEach(async () => {

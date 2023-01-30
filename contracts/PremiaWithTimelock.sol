@@ -10,8 +10,8 @@ import {SafeERC20} from "@solidstate/contracts/utils/SafeERC20.sol";
 import {IERC20} from "@solidstate/contracts/interfaces/IERC20.sol";
 
 /// @author Premia
-/// @title 3 days timelock contract for dev fund
-contract PremiaDevFund is Ownable {
+/// @title Hold premia tokens with 3 days timelock for withdrawal
+contract PremiaWithTimelock is Ownable {
     using SafeERC20 for IERC20;
 
     // The premia token

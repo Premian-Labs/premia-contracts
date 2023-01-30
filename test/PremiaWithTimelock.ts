@@ -1,7 +1,7 @@
 import { expect } from 'chai';
 import {
-  PremiaDevFund,
-  PremiaDevFund__factory,
+  PremiaWithTimelock,
+  PremiaWithTimelock__factory,
   ERC20Mock,
   ERC20Mock__factory,
 } from '../typechain';
@@ -13,34 +13,34 @@ import { ZERO_ADDRESS } from './utils/constants';
 
 let admin: SignerWithAddress;
 let premia: ERC20Mock;
-let premiaDevFund: PremiaDevFund;
+let premiaWithTimelock: PremiaWithTimelock;
 
-describe('PremiaDevFund', () => {
+describe('PremiaWithTimelock', () => {
   beforeEach(async () => {
     [admin] = await ethers.getSigners();
 
     premia = await new ERC20Mock__factory(admin).deploy('PREMIA', 18);
-    premiaDevFund = await new PremiaDevFund__factory(admin).deploy(
+    premiaWithTimelock = await new PremiaWithTimelock__factory(admin).deploy(
       premia.address,
     );
 
-    await premia.mint(premiaDevFund.address, parseEther('3000'));
+    await premia.mint(premiaWithTimelock.address, parseEther('3000'));
   });
 
   it('should not allow withdrawal if timelock has not passed', async () => {
-    await expect(premiaDevFund.doWithdraw()).to.be.revertedWith(
+    await expect(premiaWithTimelock.doWithdraw()).to.be.revertedWith(
       'No pending withdrawal',
     );
 
-    await premiaDevFund.startWithdrawal(admin.address, parseEther('1000'));
-    expect(await premiaDevFund.pendingWithdrawalAmount()).to.eq(
+    await premiaWithTimelock.startWithdrawal(admin.address, parseEther('1000'));
+    expect(await premiaWithTimelock.pendingWithdrawalAmount()).to.eq(
       parseEther('1000'),
     );
-    expect(await premiaDevFund.pendingWithdrawalDestination()).to.eq(
+    expect(await premiaWithTimelock.pendingWithdrawalDestination()).to.eq(
       admin.address,
     );
 
-    await expect(premiaDevFund.doWithdraw()).to.be.revertedWith(
+    await expect(premiaWithTimelock.doWithdraw()).to.be.revertedWith(
       'Still timelocked',
     );
 
@@ -48,26 +48,26 @@ describe('PremiaDevFund', () => {
 
     await setTimestamp(now + 3 * 24 * 3600 - 200);
 
-    await expect(premiaDevFund.doWithdraw()).to.be.revertedWith(
+    await expect(premiaWithTimelock.doWithdraw()).to.be.revertedWith(
       'Still timelocked',
     );
 
     await setTimestamp(now + 3 * 24 * 3600 + 60);
 
-    await premiaDevFund.doWithdraw();
+    await premiaWithTimelock.doWithdraw();
 
     expect(await premia.balanceOf(admin.address)).to.eq(parseEther('1000'));
-    expect(await premia.balanceOf(premiaDevFund.address)).to.eq(
+    expect(await premia.balanceOf(premiaWithTimelock.address)).to.eq(
       parseEther('2000'),
     );
 
-    await expect(premiaDevFund.doWithdraw()).to.be.revertedWith(
+    await expect(premiaWithTimelock.doWithdraw()).to.be.revertedWith(
       'No pending withdrawal',
     );
-    expect(await premiaDevFund.pendingWithdrawalAmount()).to.eq(0);
-    expect(await premiaDevFund.pendingWithdrawalDestination()).to.eq(
+    expect(await premiaWithTimelock.pendingWithdrawalAmount()).to.eq(0);
+    expect(await premiaWithTimelock.pendingWithdrawalDestination()).to.eq(
       ZERO_ADDRESS,
     );
-    expect(await premiaDevFund.withdrawalETA()).to.eq(0);
+    expect(await premiaWithTimelock.withdrawalETA()).to.eq(0);
   });
 });
