@@ -38,6 +38,11 @@ contract ChainlinkWrapper is
     {}
 
     /// @inheritdoc IChainlinkWrapper
+    function aggregator() external pure returns (address) {
+        return address(0);
+    }
+
+    /// @inheritdoc IChainlinkWrapper
     function decimals() external view returns (uint8) {
         return TOKEN_OUT_USD_ORACLE.decimals();
     }

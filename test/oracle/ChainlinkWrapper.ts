@@ -137,6 +137,14 @@ describe('ChainlinkWrapper', () => {
     });
   });
 
+  describe('#aggregator', async () => {
+    it('should return zero address', async () => {
+      expect(await instance.aggregator()).to.be.eq(
+        ethers.constants.AddressZero,
+      );
+    });
+  });
+
   describe('#latestAnswer', async () => {
     it('should return latest answer for pair', async () => {
       let networks = { tokenIn: 'coingecko', tokenOut: 'arbitrum' };

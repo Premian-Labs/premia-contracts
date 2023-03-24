@@ -7,6 +7,10 @@ import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/Ag
 import {IUniswapV3Factory} from "../vendor/uniswap/IUniswapV3Factory.sol";
 
 interface IChainlinkWrapper {
+    /// @notice Returns the zero address
+    /// @return The zero address
+    function aggregator() external view returns (address);
+
     /// @notice Returns the decimal places of the price
     /// @return The decimal places of the price
     function decimals() external view returns (uint8);
