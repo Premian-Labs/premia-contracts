@@ -19,9 +19,6 @@ async function main() {
   let tokenIn: string;
   let tokenOut: string;
 
-  let cardinalityPerMinute: number;
-  let period: number;
-
   if (chainId === 42161) {
     // Arbitrum addresses
     uniswapV3Factory = '0x1F98431c8aD98523631AE4a59f267346ea31F984';
@@ -29,9 +26,6 @@ async function main() {
 
     tokenIn = '0x912CE59144191C1204E64559FE8253a0e49E6548';
     tokenOut = '0x82aF49447D8a07e3bd95BD0d56f35241523fBab1';
-
-    cardinalityPerMinute = 200;
-    period = 600;
   } else {
     throw new Error('ChainId not implemented');
   }

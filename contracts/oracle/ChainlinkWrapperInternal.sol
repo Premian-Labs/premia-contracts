@@ -25,6 +25,8 @@ contract ChainlinkWrapperInternal is IChainlinkWrapperInternal {
     IUniswapV3Factory internal immutable UNISWAP_V3_FACTORY;
     AggregatorV3Interface internal immutable TOKEN_OUT_USD_ORACLE;
 
+    uint32 internal constant PERIOD = 10 minutes;
+
     address internal immutable TOKEN_IN;
     address internal immutable TOKEN_OUT;
 
@@ -46,11 +48,8 @@ contract ChainlinkWrapperInternal is IChainlinkWrapperInternal {
     }
 
     function _quote() internal view returns (int256) {
-        ChainlinkWrapperStorage.Layout storage l = ChainlinkWrapperStorage
-            .layout();
-
         address[] memory pools = _getAllPoolsForPair(TOKEN_IN, TOKEN_OUT);
-        int24 weightedTick = _fetchWeightedTick(pools, l.period);
+        int24 weightedTick = _fetchWeightedTick(pools, PERIOD);
 
         int8 tokenOutOracleDecimals = int8(TOKEN_OUT_USD_ORACLE.decimals());
         int256 factor = tokenOutOracleDecimals - int8(_decimals(TOKEN_OUT));

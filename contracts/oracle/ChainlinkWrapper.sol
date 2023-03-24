@@ -68,58 +68,13 @@ contract ChainlinkWrapper is
     }
 
     /// @inheritdoc IChainlinkWrapper
-    function period() external view returns (uint32) {
-        return ChainlinkWrapperStorage.layout().period;
-    }
-
-    /// @inheritdoc IChainlinkWrapper
-    function cardinalityPerMinute() external view returns (uint8) {
-        return ChainlinkWrapperStorage.layout().cardinalityPerMinute;
-    }
-
-    /// @inheritdoc IChainlinkWrapper
-    function targetCardinality() external view returns (uint16) {
-        return ChainlinkWrapperStorage.layout().targetCardinality;
+    function period() external pure returns (uint32) {
+        return PERIOD;
     }
 
     /// @inheritdoc IChainlinkWrapper
     function supportedFeeTiers() external view returns (uint24[] memory) {
         return ChainlinkWrapperStorage.layout().feeTiers;
-    }
-
-    /// @inheritdoc IChainlinkWrapper
-    function setPeriod(uint32 newPeriod) external onlyOwner {
-        if (newPeriod == 0) revert ChainlinkWrapper__PeriodNotSet();
-
-        ChainlinkWrapperStorage.Layout storage l = ChainlinkWrapperStorage
-            .layout();
-
-        l.period = newPeriod;
-
-        l.targetCardinality =
-            uint16((newPeriod * l.cardinalityPerMinute) / 60) +
-            1;
-
-        emit UpdatedPeriod(newPeriod);
-    }
-
-    /// @inheritdoc IChainlinkWrapper
-    function setCardinalityPerMinute(
-        uint8 newCardinalityPerMinute
-    ) external onlyOwner {
-        if (newCardinalityPerMinute == 0)
-            revert ChainlinkWrapper__CardinalityPerMinuteNotSet();
-
-        ChainlinkWrapperStorage.Layout storage l = ChainlinkWrapperStorage
-            .layout();
-
-        l.cardinalityPerMinute = newCardinalityPerMinute;
-
-        l.targetCardinality =
-            uint16((l.period * newCardinalityPerMinute) / 60) +
-            1;
-
-        emit UpdatedCardinalityPerMinute(newCardinalityPerMinute);
     }
 
     /// @inheritdoc IChainlinkWrapper

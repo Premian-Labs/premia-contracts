@@ -38,31 +38,9 @@ interface IChainlinkWrapper {
     /// @return The period used for the TWAP
     function period() external view returns (uint32);
 
-    /// @notice Returns the cardinality per minute used for adding support to pairs
-    /// @return The cardinality per minute used for increase cardinality calculations
-    function cardinalityPerMinute() external view returns (uint8);
-
-    /// @notice Returns the target observation cardinality for pools
-    /// @return The target observation cardinality for pools
-    function targetCardinality() external view returns (uint16);
-
     /// @notice Returns all supported fee tiers
     /// @return The supported fee tiers
     function supportedFeeTiers() external view returns (uint24[] memory);
-
-    /// @notice Sets the period to be used for the TWAP calculation
-    /// @dev Will revert it is lower than the minimum period or greater than maximum period.
-    ///      Can only be called by owner
-    ///      WARNING: increasing the period could cause big problems, because Uniswap V3 pools might not support a TWAP so old
-    /// @param newPeriod The new period
-    function setPeriod(uint32 newPeriod) external;
-
-    /// @notice Sets the cardinality per minute to be used when increasing observation cardinality at the moment of adding support for pairs
-    /// @dev Will revert if the given cardinality is zero
-    ///      Can only be called by users with the admin role
-    ///      WARNING: increasing the cardinality per minute will make adding support to a pair significantly costly
-    /// @param cardinalityPerMinute The new cardinality per minute
-    function setCardinalityPerMinute(uint8 cardinalityPerMinute) external;
 
     /// @notice Inserts a new fee tier
     /// @dev Will revert if the given tier is invalid, or already supported

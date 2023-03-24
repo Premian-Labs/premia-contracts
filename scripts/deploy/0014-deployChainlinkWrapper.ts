@@ -47,17 +47,10 @@ async function main() {
   console.log(`ChainlinkWrapper impl : ${implementation.address}`);
 
   const proxy = await new ChainlinkWrapperProxy__factory(deployer).deploy(
-    cardinalityPerMinute,
-    period,
     implementation.address,
   );
 
   await proxy.deployed();
-
-  const instance = ChainlinkWrapper__factory.connect(proxy.address, deployer);
-
-  await (await instance.setPeriod(period)).wait();
-  await (await instance.setCardinalityPerMinute(cardinalityPerMinute)).wait();
 
   console.log(`ChainlinkWrapper proxy : ${proxy.address}`);
 }
