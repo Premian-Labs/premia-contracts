@@ -5,12 +5,10 @@ pragma solidity ^0.8.0;
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import {SafeOwnable} from "@solidstate/contracts/access/ownable/SafeOwnable.sol";
-import {IERC20Metadata} from "@solidstate/contracts/token/ERC20/metadata/IERC20Metadata.sol";
 import {Multicall} from "@solidstate/contracts/utils/Multicall.sol";
 
 import {IUniswapV3Factory} from "../vendor/uniswap/IUniswapV3Factory.sol";
 
-import {ChainlinkWrapper} from "./ChainlinkWrapper.sol";
 import {ChainlinkWrapperInternal} from "./ChainlinkWrapperInternal.sol";
 import {ChainlinkWrapperStorage} from "./ChainlinkWrapperStorage.sol";
 import {IChainlinkWrapper} from "./IChainlinkWrapper.sol";

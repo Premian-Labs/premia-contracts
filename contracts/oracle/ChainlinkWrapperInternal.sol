@@ -15,7 +15,6 @@ import {PoolAddress} from "../vendor/uniswap/PoolAddress.sol";
 
 import {IChainlinkWrapperInternal} from "./IChainlinkWrapperInternal.sol";
 import {ChainlinkWrapperStorage} from "./ChainlinkWrapperStorage.sol";
-import {ChainlinkWrapperInternal} from "./ChainlinkWrapperInternal.sol";
 
 contract ChainlinkWrapperInternal is IChainlinkWrapperInternal {
     using SafeCast for int256;
