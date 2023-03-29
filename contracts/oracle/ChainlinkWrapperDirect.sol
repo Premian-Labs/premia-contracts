@@ -3,7 +3,6 @@
 
 pragma solidity ^0.8.0;
 
-import {AggregatorInterface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorInterface.sol";
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
 import {IChainlinkWrapperInternal} from "./IChainlinkWrapperInternal.sol";
