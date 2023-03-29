@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 
 import {AggregatorV3Interface} from "@chainlink/contracts/src/v0.8/interfaces/AggregatorV3Interface.sol";
 
+import {IAggregator} from "./IAggregator.sol";
 import {IChainlinkWrapperInternal} from "./IChainlinkWrapperInternal.sol";
 
 /// @notice Used as a replacement of ChainlinkWrapper, to use a Chainlink price feed deployed afterwards
@@ -33,5 +34,9 @@ contract ChainlinkWrapperDirect is IChainlinkWrapperInternal {
 
     function decimals() external view returns (uint8) {
         return CHAINLINK_PRICE_FEED.decimals();
+    }
+
+    function aggregator() external view returns (address) {
+        return IAggregator(address(CHAINLINK_PRICE_FEED)).aggregator();
     }
 }
