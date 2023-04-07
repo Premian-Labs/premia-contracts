@@ -66,8 +66,6 @@ describe('PremiaVestingTransfer', () => {
 
       const mainnetDeployerSigner = await ethers.getSigner(mainnetDeployer);
 
-      console.log(1);
-
       await ProxyUpgradeableOwnable__factory.connect(
         newContracts[i],
         mainnetDeployerSigner,
@@ -80,14 +78,10 @@ describe('PremiaVestingTransfer', () => {
 
       const ownerSigner = await ethers.getSigner(owner);
 
-      console.log(2);
-
       await ProxyUpgradeableOwnable__factory.connect(
         oldContracts[i],
         ownerSigner,
       ).transferOwnership(transferContract.address);
-
-      console.log(3);
 
       await network.provider.request({
         method: 'hardhat_stopImpersonatingAccount',
@@ -95,15 +89,6 @@ describe('PremiaVestingTransfer', () => {
       });
 
       await transferContract.connect(deployer).transfer();
-
-      console.log(
-        await transferContract.OLD_CONTRACT(),
-        await transferContract.NEW_CONTRACT(),
-        oldContracts[i],
-        newContracts[i],
-        await premia.balanceOf(oldContracts[i]),
-        await premia.balanceOf(newContracts[i]),
-      );
 
       expect(await premia.balanceOf(oldContracts[i])).to.equal(0);
       expect(await premia.balanceOf(newContracts[i])).to.equal(
