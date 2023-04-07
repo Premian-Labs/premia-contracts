@@ -2,6 +2,7 @@ import { expect } from 'chai';
 import {
   PremiaErc20,
   PremiaErc20__factory,
+  PremiaVesting__factory,
   PremiaVestingTransfer__factory,
   ProxyUpgradeableOwnable__factory,
 } from '../../typechain';
@@ -94,6 +95,27 @@ describe('PremiaVestingTransfer', () => {
       expect(await premia.balanceOf(newContracts[i])).to.equal(
         parseEther('2500000'),
       );
+
+      await network.provider.request({
+        method: 'hardhat_impersonateAccount',
+        params: [owner],
+      });
+
+      const newContract = await PremiaVesting__factory.connect(
+        newContracts[i],
+        ownerSigner,
+      );
+
+      const balanceBefore = await premia.balanceOf(owner);
+      await newContract.withdraw(owner, parseEther('100000'));
+      const balanceAfter = await premia.balanceOf(owner);
+
+      expect(balanceAfter.sub(balanceBefore)).to.equal(parseEther('100000'));
+
+      await network.provider.request({
+        method: 'hardhat_stopImpersonatingAccount',
+        params: [owner],
+      });
 
       i++;
     }
