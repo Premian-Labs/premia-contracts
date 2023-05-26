@@ -1677,7 +1677,7 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
                         l.removeUnderwriter(from, isCallPool);
                     }
 
-                    if (to != address(0)) {
+                    if (to != address(0) && to != from) {
                         _transferUserTVL(
                             l,
                             from,
