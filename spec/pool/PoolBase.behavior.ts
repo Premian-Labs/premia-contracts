@@ -459,7 +459,7 @@ export function describeBehaviorOfPoolBase(
               .connect(owner)
               .safeTransferFrom(
                 owner.address,
-                owner.address,
+                lp1.address,
                 getFreeLiqTokenId(isCall),
                 '1',
                 '0x',
@@ -478,12 +478,31 @@ export function describeBehaviorOfPoolBase(
               .connect(owner)
               .safeTransferFrom(
                 owner.address,
-                owner.address,
+                lp1.address,
                 getReservedLiqTokenId(isCall),
                 '1',
                 '0x',
               ),
           ).to.be.revertedWith('liq lock 1d');
+        });
+
+        it('self transferring ERC1155 tokens', async () => {
+          const isCall = true;
+          const amount = parseOption('100', isCall);
+
+          await instance.connect(owner).deposit(amount, isCall);
+
+          await expect(
+            instance
+              .connect(owner)
+              .safeTransferFrom(
+                owner.address,
+                owner.address,
+                getFreeLiqTokenId(isCall),
+                '1',
+                '0x',
+              ),
+          ).to.be.revertedWith('self transfer not allowed');
         });
       });
     });

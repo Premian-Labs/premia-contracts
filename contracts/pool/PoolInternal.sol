@@ -1620,6 +1620,8 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
         uint256[] memory amounts,
         bytes memory data
     ) internal virtual override {
+        if (from == to) revert("self transfer not allowed");
+
         super._beforeTokenTransfer(operator, from, to, ids, amounts, data);
 
         PoolStorage.Layout storage l = PoolStorage.layout();
@@ -1677,7 +1679,7 @@ contract PoolInternal is IPoolInternal, IPoolEvents, ERC1155EnumerableInternal {
                         l.removeUnderwriter(from, isCallPool);
                     }
 
-                    if (to != address(0) && to != from) {
+                    if (to != address(0)) {
                         _transferUserTVL(
                             l,
                             from,
