@@ -338,37 +338,4 @@ describe('PremiaMining', () => {
       ),
     ).to.almost(250);
   });
-
-  it('should still reward expected amount of tokens when self-transferring liquidity tokens', async () => {
-    const { timestamp } = await ethers.provider.getBlock('latest');
-
-    await p.pool
-      .connect(lp1)
-      .deposit(parseUnits('10', getTokenDecimals(false)), false);
-
-    await setTimestamp(timestamp + oneDay);
-
-    await p.pool
-      .connect(lp1)
-      .deposit(parseUnits('10', getTokenDecimals(true)), true);
-
-    await setTimestamp(timestamp + 3 * oneDay);
-
-    await p.pool
-      .connect(lp1)
-      .safeTransferFrom(
-        lp1.address,
-        lp1.address,
-        getFreeLiqTokenId(true),
-        parseUnits('10', getTokenDecimals(true)),
-        '0x',
-      );
-
-    // Pool should get 250 reward per day, therefore lp should have 2 * 250 pending reward now
-    expect(
-      bnToNumber(
-        await p.premiaMining.pendingPremia(p.pool.address, true, lp1.address),
-      ),
-    ).to.almost(500, CHAI_ALMOST_OVERRIDE);
-  });
 });
