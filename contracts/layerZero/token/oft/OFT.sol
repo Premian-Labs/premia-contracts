@@ -36,7 +36,7 @@ contract OFT is OFTCore, SolidStateERC20, IOFT {
             unchecked {
                 mapping(address => uint256)
                     storage allowances = ERC20BaseStorage.layout().allowances[
-                        spender
+                        from
                     ];
 
                 uint256 allowance = allowances[spender];
